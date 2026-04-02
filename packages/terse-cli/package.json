@@ -20,7 +20,8 @@
     "fflate": "^0.8.0",
     "handlebars": "^4.7.9",
     "ora": "^8.0.0",
-    "terse-sdk": "^0.1.2",
+    "terse-sdk": "workspace:*",
+    "terse-types": "workspace:*",
     "tsx": "^4.0.0"
   },
   "devDependencies": {

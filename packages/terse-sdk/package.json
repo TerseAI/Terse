@@ -16,6 +16,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@slack/types": "^2.20.1"
+    "@slack/types": "^2.20.1",
+    "terse-types": ""
   }
 }

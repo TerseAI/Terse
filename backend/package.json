@@ -86,12 +86,8 @@
         "tsx": "^4.20.3",
         "uuid": "^11.0.3",
         "ws": "^8.18.3",
-        "zod": "^4.3.6"
-    },
-    "pnpm": {
-        "overrides": {
-            "@types/express-serve-static-core": "5.0.7"
-        }
+        "zod": "^4.3.6",
+        "terse-types": "workspace:*"
     },
     "devDependencies": {
         "@trivago/prettier-plugin-sort-imports": "^6.0.2",

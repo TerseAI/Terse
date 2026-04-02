@@ -1,22 +1,9 @@
 {
   "name": "ai-product-owner",
   "private": true,
-  "workspaces": [
-    "packages/terse-sdk",
-    "packages/terse-cli",
-    "shared"
-  ],
   "scripts": {
-    "sync:shared": "node scripts/copy-shared.js",
-    "build:shared": "npm run build -w terse-types",
-    "pack:shared": "npm run build:shared && npm_config_cache=/tmp/terse-npm-cache npm pack -w terse-types --dry-run",
-    "version:shared:patch": "npm version patch -w terse-types --no-git-tag-version",
-    "version:shared:minor": "npm version minor -w terse-types --no-git-tag-version",
-    "version:shared:major": "npm version major -w terse-types --no-git-tag-version",
-    "publish:shared": "npm run build:shared && npm_config_cache=/tmp/terse-npm-cache npm publish -w terse-types --access public",
-    "build:packages": "npm run build -w terse-sdk && npm run build -w terse-cli",
-    "link:cli": "npm run build:packages && npm link --workspace terse-cli",
-    "link:packages": "npm run build:packages && npm link --workspace terse-sdk && npm link --workspace terse-cli",
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r run dev",
     "python:setup": "uv sync --all-packages",
     "python:test": "./.venv/bin/pytest packages/terse-python-sdk/tests",
     "python:check": "./.venv/bin/ruff check packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ruff format --check packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ty check packages/terse-python-sdk/src && npm run python:test",
@@ -26,5 +13,10 @@
     "python:build": "npm run python:dist:clean && uv build --package terse-sdk",
     "python:dist:check": "npm run python:build && uvx twine check dist/terse_sdk-*",
     "python:publish": "npm run python:dist:check && uvx twine upload dist/terse_sdk-*"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/express-serve-static-core": "5.0.7"
+    }
   }
 }
