@@ -13,8 +13,10 @@ import pytest
 import terse_sdk.runtime as runtime_module
 import terse_sdk.types as terse_types
 from terse_sdk import (
+    ConfigType,
     CronJobInputEvent,
     EventType,
+    IntegrationType,
     MissingApiKeyError,
     SdkAgentStreamEvent,
     SdkAgentStreamEventDone,
@@ -26,10 +28,17 @@ from terse_sdk import (
     SdkAgentToolApprovalRequest,
     SerializedEventInputEvent,
     SkillConfig,
+    SlackChannelType,
+    SlackInputEvent,
+    SlackListChannelsToolOutput,
+    SlackListUsersToolOutput,
+    SlackReadConversationToolOutput,
+    SlackSendMessageToolOutput,
     Terse,
     TerseAgent,
     TerseApiError,
     TerseRuntimeError,
+    TriggerConfig,
     clear_job_registry,
     deserialize_input_event,
     execute_registered_job,
@@ -178,6 +187,61 @@ def test_deserialize_input_event_supports_camel_case_payloads() -> None:
     assert event.formatted_content == "Scheduled job"
 
 
+def test_deserialize_input_event_enriches_slack_metadata() -> None:
+    event = deserialize_input_event(
+        {
+            "integrationType": "slack",
+            "eventType": "message",
+            "formattedContent": "Slack message",
+            "debugLog": "slack-debug",
+            "metadata": {
+                "channelId": "C123",
+                "channelName": "alerts",
+                "userId": "U123",
+                "userName": "Olivia",
+                "text": "Deploy finished",
+                "timestamp": "1710000000.100000",
+                "threadTs": "1710000000.000001",
+                "teamId": "T123",
+                "permalink": "https://slack.example/message",
+                "channelType": "im",
+                "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}],
+                "attachments": [
+                    {
+                        "fallback": "fallback text",
+                        "author_name": "Terse",
+                    }
+                ],
+                "files": [
+                    {
+                        "id": "F123",
+                        "name": "deploy.log",
+                        "url_private": "https://files.example/deploy.log",
+                    }
+                ],
+            },
+        }
+    )
+
+    assert isinstance(event, SlackInputEvent)
+    assert event.channel_id == "C123"
+    assert event.channel_name == "alerts"
+    assert event.user_id == "U123"
+    assert event.user_name == "Olivia"
+    assert event.text == "Deploy finished"
+    assert event.timestamp == "1710000000.100000"
+    assert event.thread_ts == "1710000000.000001"
+    assert event.thread_timestamp == "1710000000.000001"
+    assert event.team_id == "T123"
+    assert event.permalink == "https://slack.example/message"
+    assert event.channel_type == SlackChannelType.IM
+    assert event.blocks == [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}]
+    assert event.attachments is not None
+    assert event.attachments[0].author_name == "Terse"
+    assert event.files is not None
+    assert event.files[0].url_private == "https://files.example/deploy.log"
+
+
 def test_deserialize_input_event_falls_back_for_unknown_integrations() -> None:
     event = deserialize_input_event(
         {
@@ -190,6 +254,72 @@ def test_deserialize_input_event_falls_back_for_unknown_integrations() -> None:
 
     assert isinstance(event, SerializedEventInputEvent)
     assert event.integration_type == "unknown_service"
+
+
+def test_slack_tool_output_models_accept_backend_shapes() -> None:
+    send_result = SlackSendMessageToolOutput.model_validate(
+        {
+            "success": True,
+            "message_ts": "1710000000.100000",
+            "channel": "#alerts",
+            "thread_ts": "1710000000.100000",
+            "summary": 'text message sent to #alerts: "Deploy finished"',
+            "has_blocks": False,
+        }
+    )
+    channels_result = SlackListChannelsToolOutput.model_validate(
+        {
+            "success": True,
+            "channels": [
+                {
+                    "id": "C123",
+                    "name": "#alerts",
+                    "isPrivate": False,
+                    "isIm": False,
+                    "isMpim": False,
+                    "userId": None,
+                }
+            ],
+            "count": 1,
+            "nextCursor": "cursor_123",
+            "hasMore": True,
+        }
+    )
+    users_result = SlackListUsersToolOutput.model_validate(
+        {
+            "success": True,
+            "users": [{"id": "U123", "name": "Olivia"}],
+            "count": 1,
+        }
+    )
+    conversation_result = SlackReadConversationToolOutput.model_validate(
+        {
+            "success": True,
+            "channelId": "C123",
+            "channelName": "#alerts",
+            "messages": [
+                {
+                    "userId": "U123",
+                    "userName": "Olivia",
+                    "text": "Deploy finished",
+                    "timestamp": "1710000000.100000",
+                    "threadTs": "1710000000.100000",
+                }
+            ],
+            "count": 1,
+            "hasMore": False,
+            "nextCursor": None,
+        }
+    )
+
+    assert send_result.message_ts == "1710000000.100000"
+    assert send_result.has_blocks is False
+    assert channels_result.next_cursor == "cursor_123"
+    assert channels_result.channels[0].is_private is False
+    assert channels_result.channels[0].user_id is None
+    assert users_result.users[0].name == "Olivia"
+    assert conversation_result.channel_id == "C123"
+    assert conversation_result.messages[0].user_name == "Olivia"
 
 
 def test_agent_execute_tool_includes_session_and_run_headers() -> None:
@@ -235,6 +365,47 @@ def test_agent_tools_lazy_attach_from_generated_module() -> None:
         assert agent.tools is fake_tools
 
     assert created_agents == [agent]
+
+
+def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
+    seen_tools: list[object] = []
+    seen_manual_tool_configs: list[object] = []
+    generated_module = ModuleType("terse_generated")
+
+    def create_tools(agent: TerseAgent) -> object:
+        seen_manual_tool_configs.extend(agent.manual_tool_configs or [])
+        return SimpleNamespace(slack="slack-tools")
+
+    generated_module.create_tools = create_tools  # type: ignore[attr-defined]
+
+    job = runtime_module.RegisteredJob(
+        name="trigger-only-manual-tools",
+        handler=lambda event, agent: seen_tools.append(agent.tools.slack),
+        triggers=[
+            TriggerConfig(
+                integration_id="slack_integration",
+                integration_type=IntegrationType.SLACK,
+                event_type="message",
+                config_type=ConfigType.SLACK,
+                config={"channelId": "C123"},
+            )
+        ],
+        skills=[],
+    )
+
+    with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
+        execute_registered_job(
+            job,
+            CronJobInputEvent(
+                event_type="manual",
+                formatted_content="manual trigger",
+                debug_log="manual",
+            ),
+            agent=TerseAgent(),
+        )
+
+    assert seen_tools == ["slack-tools"]
+    assert [config.integration_type for config in seen_manual_tool_configs] == [IntegrationType.SLACK]
 
 
 def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> None:
@@ -379,6 +550,43 @@ def test_agent_run_serializes_missing_attio_object_slug_as_null() -> None:
         )
 
     assert captured["json"]["skills"][0]["config"]["objectSlug"] is None
+
+
+def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
+    captured: dict[str, object] = {}
+    stream = _FakeEventSource([json.dumps({"type": "done"})])
+
+    def fake_connect_sse(
+        client: object,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: dict[str, object],
+    ) -> _FakeEventSource:
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        return stream
+
+    with (
+        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
+        patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
+    ):
+        list(
+            TerseAgent(
+                skills=[],
+                manual_tool_configs=[
+                    TriggerConfig(
+                        integration_id="slack_integration",
+                        integration_type=IntegrationType.SLACK,
+                        event_type="message",
+                        config_type=ConfigType.SLACK,
+                        config={"channelId": "C123"},
+                    )
+                ],
+            ).run("hello")
+        )
+
+    assert captured["json"]["skills"] == []
 
 
 def test_agent_run_raises_on_failed_tool_call() -> None:

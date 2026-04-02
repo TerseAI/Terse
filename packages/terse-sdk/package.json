@@ -14,5 +14,8 @@
   },
   "devDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@slack/types": "^2.20.1"
   }
 }

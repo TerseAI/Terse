@@ -2,6 +2,7 @@ import type {
     AttioAttributeData,
     AttioInstanceData,
     CodegenInput,
+    SlackInstanceData,
     SnowflakeInstanceData,
     ToolDefinition,
 } from "../codegenTypes.js"
@@ -10,6 +11,10 @@ const SUPPORTED_TOOL_SPECS = [
     ["attio", "attio_list_objects", "list_objects"],
     ["attio", "attio_query_records", "query_records"],
     ["attio", "attio_upsert_record", "upsert_record"],
+    ["slack", "slack_send_message", "send_message"],
+    ["slack", "slack_list_channels", "list_channels"],
+    ["slack", "slack_list_users", "list_users"],
+    ["slack", "slack_read_conversation", "read_conversation"],
     ["snowflake", "snowflakeExecuteQuery", "execute_query"],
     ["snowflake", "snowflakeExplainQuery", "explain_query"],
 ] as const
@@ -29,6 +34,10 @@ const TOOL_OUTPUT_MODEL_BY_TOOL: Record<string, string> = {
     attio_list_objects: "AttioListObjectsToolOutput",
     attio_query_records: "AttioQueryRecordsToolOutput",
     attio_upsert_record: "AttioUpsertRecordToolOutput",
+    slack_send_message: "SlackSendMessageToolOutput",
+    slack_list_channels: "SlackListChannelsToolOutput",
+    slack_list_users: "SlackListUsersToolOutput",
+    slack_read_conversation: "SlackReadConversationToolOutput",
     snowflakeExecuteQuery: "SnowflakeExecuteQueryToolOutput",
     snowflakeExplainQuery: "SnowflakeExplainQueryToolOutput",
 }
@@ -87,12 +96,29 @@ export interface PythonSnowflakeCtx {
     skillToolType: string
 }
 
+export interface PythonSlackChannelCtx {
+    staticName: string
+    channelIdRepr: string
+    nameRepr: string
+}
+
+export interface PythonSlackCtx {
+    instanceIdRepr: string
+    channels: PythonSlackChannelCtx[]
+    tools: PythonToolCtx[]
+    approvableTools: PythonToolCtx[]
+    skillToolType: string
+}
+
 export interface PythonTemplateContext {
     attio: PythonAttioCtx | null
+    slack: PythonSlackCtx | null
     snowflake: PythonSnowflakeCtx | null
     hasAttio: boolean
     hasAttioAttrs: boolean
     hasAttioTools: boolean
+    hasSlack: boolean
+    hasSlackTools: boolean
     hasSnowflake: boolean
     hasSnowflakeTools: boolean
     hasAnyToolNameTypes: boolean
@@ -102,6 +128,7 @@ export interface PythonTemplateContext {
     pydanticImportsLine?: string
     needsJsonImport: boolean
     attioToolNamesLiteral?: string
+    slackToolNamesLiteral?: string
     snowflakeToolNamesLiteral?: string
     allToolNamesLiteral?: string
     exportedNamesRepr: string
@@ -109,48 +136,67 @@ export interface PythonTemplateContext {
 
 export function preparePythonTemplateContext(input: CodegenInput): PythonTemplateContext {
     const attioTools = selectSupportedTools(input.tools, "attio")
+    const slackTools = selectSupportedTools(input.tools, "slack")
     const snowflakeTools = selectSupportedTools(input.tools, "snowflake")
 
     const attio = input.attio[0] ? buildAttioCtx(input.attio[0], attioTools) : null
+    const slack = input.slack[0] ? buildSlackCtx(input.slack[0], slackTools) : null
     const snowflake = input.snowflake[0] ? buildSnowflakeCtx(input.snowflake[0], snowflakeTools) : null
 
     const hasAttio = attio !== null
     const hasAttioAttrs = !!attio?.hasAttrs
     const hasAttioTools = (attio?.tools.length ?? 0) > 0
+    const hasSlack = slack !== null
+    const hasSlackTools = (slack?.tools.length ?? 0) > 0
     const hasSnowflake = snowflake !== null
     const hasSnowflakeTools = (snowflake?.tools.length ?? 0) > 0
     const hasAnyToolNameTypes =
-        (attio?.approvableTools.length ?? 0) > 0 || (snowflake?.approvableTools.length ?? 0) > 0
-    const hasAnyDeterministicTools = hasAttioTools || hasSnowflakeTools
+        (attio?.approvableTools.length ?? 0) > 0 ||
+        (slack?.approvableTools.length ?? 0) > 0 ||
+        (snowflake?.approvableTools.length ?? 0) > 0
+    const hasAnyDeterministicTools = hasAttioTools || hasSlackTools || hasSnowflakeTools
 
     const sdkImports = ["SkillConfig", "TerseAgent as _SdkTerseAgent", "TriggerConfig"]
+    if (hasSlack) {
+        sdkImports.push("SlackEventType")
+    }
     if (hasAttioAttrs && hasAttioTools) {
         sdkImports.push("AttioTypedQueryResult", "AttioTypedRecord", "AttioTypedUpsertResult")
     }
-    for (const tool of [...(attio?.tools ?? []), ...(snowflake?.tools ?? [])]) {
+    for (const tool of [...(attio?.tools ?? []), ...(slack?.tools ?? []), ...(snowflake?.tools ?? [])]) {
         pushUnique(sdkImports, tool.outputModel)
     }
 
-    const typingImportsLine = hasAttioAttrs
-        ? "from typing import Any, Generic, Literal, Sequence, TypeVar, TypedDict, cast"
-        : hasAnyToolNameTypes
-            ? "from typing import Literal"
-            : undefined
+    const typingImports = new Set<string>()
+    if (hasAttioAttrs) {
+        for (const name of ["Any", "Generic", "Sequence", "TypeVar", "TypedDict", "cast"]) {
+            typingImports.add(name)
+        }
+    }
+    if (hasSlack) {
+        typingImports.add("ClassVar")
+        typingImports.add("Sequence")
+    }
+    if (hasAnyToolNameTypes) {
+        typingImports.add("Literal")
+    }
+    const typingImportsLine = typingImports.size
+        ? `from typing import ${Array.from(typingImports).sort().join(", ")}`
+        : undefined
 
-    const pydanticImportsLine = hasAttio
-        ? `from pydantic import BaseModel, ConfigDict${hasAnyDeterministicTools ? ", validate_call" : ""}`
-        : hasSnowflakeTools
-            ? "from pydantic import validate_call"
-            : undefined
+    const pydanticImportsLine = hasAttio || hasSlack ? "from pydantic import BaseModel, ConfigDict" : undefined
 
-    const exportedNames = buildExportedNames(attio, snowflake)
+    const exportedNames = buildExportedNames(attio, slack, snowflake)
 
     return {
         attio,
+        slack,
         snowflake,
         hasAttio,
         hasAttioAttrs,
         hasAttioTools,
+        hasSlack,
+        hasSlackTools,
         hasSnowflake,
         hasSnowflakeTools,
         hasAnyToolNameTypes,
@@ -158,13 +204,18 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
         sdkImports,
         typingImportsLine,
         pydanticImportsLine,
-        needsJsonImport: hasAttioTools,
+        needsJsonImport: hasAttioTools || hasSlackTools,
         attioToolNamesLiteral: attio?.approvableTools.length ? buildToolNamesLiteral(attio.approvableTools) : undefined,
+        slackToolNamesLiteral: slack?.approvableTools.length ? buildToolNamesLiteral(slack.approvableTools) : undefined,
         snowflakeToolNamesLiteral: snowflake?.approvableTools.length
             ? buildToolNamesLiteral(snowflake.approvableTools)
             : undefined,
         allToolNamesLiteral: hasAnyToolNameTypes
-            ? buildToolNamesLiteral([...(attio?.approvableTools ?? []), ...(snowflake?.approvableTools ?? [])])
+            ? buildToolNamesLiteral([
+                  ...(attio?.approvableTools ?? []),
+                  ...(slack?.approvableTools ?? []),
+                  ...(snowflake?.approvableTools ?? []),
+              ])
             : undefined,
         exportedNamesRepr: pyListRepr(exportedNames),
     }
@@ -227,6 +278,24 @@ function buildSnowflakeCtx(instance: SnowflakeInstanceData, tools: ToolDefinitio
         tools: toolContexts,
         approvableTools: toolContexts.filter(tool => tool.approvable),
         skillToolType: toolContexts.some(tool => tool.approvable) ? "SnowflakeToolNames" : "str",
+    }
+}
+
+function buildSlackCtx(instance: SlackInstanceData, tools: ToolDefinition[]): PythonSlackCtx {
+    const toolContexts = tools.map(buildToolCtx)
+    const usedNames = new Set<string>()
+    const channels = instance.channels.map(channel => ({
+        staticName: uniqueName(toPascalCase(channel.name || "Channel") || "Channel", usedNames),
+        channelIdRepr: pyRepr(channel.id),
+        nameRepr: pyRepr(channel.name),
+    }))
+
+    return {
+        instanceIdRepr: pyRepr(instance.id),
+        channels,
+        tools: toolContexts,
+        approvableTools: toolContexts.filter(tool => tool.approvable),
+        skillToolType: toolContexts.some(tool => tool.approvable) ? "SlackToolNames" : "str",
     }
 }
 
@@ -306,17 +375,23 @@ function buildToolNamesLiteral(tools: PythonToolCtx[]): string {
 
 function buildExportedNames(
     attio: PythonAttioCtx | null,
+    slack: PythonSlackCtx | null,
     snowflake: PythonSnowflakeCtx | null
 ): string[] {
     const names = ["Schedule", "GeneratedTools", "create_tools", "attach_tools", "TerseAgent"]
 
-    for (const tool of [...(attio?.tools ?? []), ...(snowflake?.tools ?? [])]) {
+    for (const tool of [...(attio?.tools ?? []), ...(slack?.tools ?? []), ...(snowflake?.tools ?? [])]) {
         pushUnique(names, tool.outputModel)
     }
 
     if ((attio?.approvableTools.length ?? 0) > 0) names.push("AttioToolNames")
+    if ((slack?.approvableTools.length ?? 0) > 0) names.push("SlackToolNames")
     if ((snowflake?.approvableTools.length ?? 0) > 0) names.push("SnowflakeToolNames")
-    if ((attio?.approvableTools.length ?? 0) > 0 || (snowflake?.approvableTools.length ?? 0) > 0) {
+    if (
+        (attio?.approvableTools.length ?? 0) > 0 ||
+        (slack?.approvableTools.length ?? 0) > 0 ||
+        (snowflake?.approvableTools.length ?? 0) > 0
+    ) {
         names.push("AllToolNames")
     }
 
@@ -337,6 +412,7 @@ function buildExportedNames(
         names.push("Attio")
     }
 
+    names.push("Slack", "SlackChannel")
     names.push("Snowflake")
     return names
 }
