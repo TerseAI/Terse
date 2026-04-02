@@ -9,7 +9,7 @@ import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJobRegistry } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
-import { ApiRoutes } from "terse-types.js"
+import { ApiRoutes } from "terse-types"
 import type { ConfigInstance } from "./shared/Configs.js"
 import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "./shared/types.js"
 

@@ -36,7 +36,7 @@ import type {
     SnowflakeIntegration,
 } from "./shared/Integrations.js"
 import { IntegrationType } from "./shared/Integrations.js"
-import { ApiRoutes } from "terse-types.js"
+import { ApiRoutes } from "terse-types"
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 
 // ── Main ──────────────────────────────────────────────────────────────
