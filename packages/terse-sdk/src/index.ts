@@ -7,7 +7,7 @@ import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
 import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkApprovalDecisionRequestBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "./shared/types.js"
 
 import { IntegrationType } from "./shared/Integrations.js"
-import { ApiRoutes } from "terse-types.js"
+import { ApiRoutes } from "terse-types"
 // Re-export SDK-specific types
 export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 export {
