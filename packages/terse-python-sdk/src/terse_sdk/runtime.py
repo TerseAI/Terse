@@ -373,6 +373,12 @@ def deserialize_input_event(
     else:
         payload = dict(value)
 
+    if _read_integration_type(payload) == "slack":
+        try:
+            return _deserialize_slack_input_event(payload)
+        except ValidationError:
+            return SerializedEventInputEvent.model_validate(payload)
+
     event_class = _EVENT_MODEL_BY_INTEGRATION.get(_read_integration_type(payload))
     if event_class is None:
         return SerializedEventInputEvent.model_validate(payload)
@@ -512,6 +518,34 @@ def _as_object_dict(value: object) -> dict[str, object] | None:
 def _read_integration_type(payload: Mapping[str, object]) -> str:
     raw_value = payload.get("integrationType", payload.get("integration_type"))
     return str(raw_value or "")
+
+
+def _deserialize_slack_input_event(payload: Mapping[str, object]) -> SlackInputEvent:
+    metadata = payload.get("metadata")
+    metadata_dict = dict(metadata) if isinstance(metadata, Mapping) else {}
+
+    return SlackInputEvent.model_validate(
+        {
+            "integrationType": "slack",
+            "eventType": payload.get("eventType", payload.get("event_type", "unknown")),
+            "formattedContent": payload.get("formattedContent", payload.get("formatted_content", "")),
+            "debugLog": payload.get("debugLog", payload.get("debug_log", "")),
+            "metadata": metadata_dict or None,
+            "channelId": metadata_dict.get("channelId", payload.get("channelId", payload.get("channel_id", ""))),
+            "channelName": metadata_dict.get("channelName", payload.get("channelName", payload.get("channel_name"))),
+            "userId": metadata_dict.get("userId", payload.get("userId", payload.get("user_id", ""))),
+            "userName": metadata_dict.get("userName", payload.get("userName", payload.get("user_name"))),
+            "text": metadata_dict.get("text", payload.get("text", "")),
+            "timestamp": metadata_dict.get("timestamp", payload.get("timestamp", "")),
+            "threadTs": metadata_dict.get("threadTs", payload.get("threadTs", payload.get("thread_ts"))),
+            "teamId": metadata_dict.get("teamId", payload.get("teamId", payload.get("team_id", ""))),
+            "permalink": metadata_dict.get("permalink", payload.get("permalink")),
+            "channelType": metadata_dict.get("channelType", payload.get("channelType", payload.get("channel_type"))),
+            "blocks": metadata_dict.get("blocks", payload.get("blocks")),
+            "attachments": metadata_dict.get("attachments", payload.get("attachments")),
+            "files": metadata_dict.get("files", payload.get("files")),
+        }
+    )
 
 
 def _parse_tool_call_completed(raw: str) -> dict[str, str]:

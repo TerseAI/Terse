@@ -125,6 +125,57 @@ class SnowflakeExplainQueryToolOutput(ToolOutputBase):
     rowCount: float
 
 
+class SlackSendMessageToolOutput(ToolOutputBase):
+    message_ts: str | None = None
+    channel: str
+    thread_ts: str | None = None
+    summary: str
+    has_blocks: bool
+
+
+class SlackChannelListItem(_CamelModel):
+    id: str | None = None
+    name: str
+    is_private: bool = False
+    is_im: bool = False
+    is_mpim: bool = False
+    user_id: str | None = None
+
+
+class SlackListChannelsToolOutput(ToolOutputBase):
+    channels: list[SlackChannelListItem]
+    count: int
+    next_cursor: str | None = None
+    has_more: bool
+
+
+class SlackUserSummary(_CamelModel):
+    id: str
+    name: str
+
+
+class SlackListUsersToolOutput(ToolOutputBase):
+    users: list[SlackUserSummary]
+    count: int
+
+
+class SlackConversationMessage(_CamelModel):
+    user_id: str | None = None
+    user_name: str | None = None
+    text: str
+    timestamp: str | None = None
+    thread_ts: str | None = None
+
+
+class SlackReadConversationToolOutput(ToolOutputBase):
+    channel_id: str
+    channel_name: str | None = None
+    messages: list[SlackConversationMessage]
+    count: int
+    has_more: bool
+    next_cursor: str | None = None
+
+
 __all__ = [
     "AttioListObjectsToolOutput",
     "AttioQueryRecordsToolOutput",
@@ -133,6 +184,13 @@ __all__ = [
     "AttioTypedUpsertResult",
     "AttioUpsertError",
     "AttioUpsertRecordToolOutput",
+    "SlackChannelListItem",
+    "SlackConversationMessage",
+    "SlackListChannelsToolOutput",
+    "SlackListUsersToolOutput",
+    "SlackReadConversationToolOutput",
+    "SlackSendMessageToolOutput",
+    "SlackUserSummary",
     "SnowflakeExecuteQueryToolOutput",
     "SnowflakeExplainQueryToolOutput",
     "ToolOutputBase",

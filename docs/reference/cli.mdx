@@ -85,7 +85,7 @@ Use it after:
 - changing available resources in a connected integration
 - updating the generated tool surface you want your workflows to use
 
-Current Python code generation focuses on `Schedule`, `Attio`, `Snowflake`, and deterministic wrappers for supported Attio and Snowflake tools. `terse run`, `terse test`, and `terse deploy` still work for Python projects through the same CLI.
+Current Python code generation includes `Schedule`, `Attio`, `Slack`, `Snowflake`, and deterministic wrappers for supported Attio, Slack, and Snowflake tools. In Python, `agent.tools.slack.*` is direct deterministic access, while `skills=[Slack.skill(...)]` controls model-visible Slack access during `run` and `run_and_wait`.
 
 ## `terse login`
 

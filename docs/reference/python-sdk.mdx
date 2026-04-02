@@ -42,7 +42,7 @@ Import these from `terse_sdk`:
 Import these from `terse_generated`:
 
 - `TerseAgent` — the generated subclass with typed `agent.tools`
-- `Schedule`, `Attio`, `Snowflake` — generated trigger and skill helpers
+- `Schedule`, `Attio`, `Slack`, `Snowflake` — generated trigger and skill helpers
 
 ## `Terse`
 
@@ -138,8 +138,11 @@ Use `execute_tool` when you know the exact tool name and parameters in advance.
 Generated helpers attach deterministic wrappers under `agent.tools.*`.
 
 ```python
-result = agent.tools.snowflake.execute_query(
-    query="select current_date()",
+from terse_generated import SlackChannel
+
+result = agent.tools.slack.send_message(
+    channel=SlackChannel.Alerts,
+    message="Deploy finished",
 )
 ```
 
@@ -166,8 +169,11 @@ Today, Python generation focuses on:
 
 - `Schedule.cron(...)`
 - `Attio.skill(...)`
+- `Slack.on_message(...)`, `Slack.on_dm(...)`, `Slack.trigger(...)`, `Slack.skill(...)`
 - `Snowflake.skill()`
+- generated `SlackChannel.*` constants
 - deterministic wrappers on `agent.tools.attio`
+- deterministic wrappers on `agent.tools.slack`
 - deterministic wrappers on `agent.tools.snowflake`
 - generated `TerseAgent`, `GeneratedTools`, `create_tools()`, and `attach_tools()`
 
@@ -178,13 +184,14 @@ Today, Python generation focuses on:
 
 ## Current Python surface
 
-The Python CLI/runtime path is real and supported, but the generated helper surface is narrower than TypeScript today.
-
 Python projects currently get first-class generated helpers for:
 
 - scheduled workflows via `Schedule`
 - Attio skills and deterministic Attio tool wrappers
+- Slack triggers, skills, event models, channel constants, and deterministic Slack tool wrappers
 - Snowflake skills and deterministic Snowflake tool wrappers
+
+Use `agent.tools.slack.*` for direct deterministic Slack calls. Use `skills=[Slack.skill(...)]` when you want Slack to be model-visible during `run` or `run_and_wait`.
 
 If a helper is not present in `src/terse_generated.py`, do not invent it. Re-run `terse generate` first, then check what the generated file actually exports.
 

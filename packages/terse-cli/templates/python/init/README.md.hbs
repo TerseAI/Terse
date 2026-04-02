@@ -27,12 +27,14 @@ Edit `src/main.py` to register jobs with `@app.job(...)`.
 
 The starter scaffold registers `Attio.skill()` and `Snowflake.skill()` by default.
 
-After you connect Attio or Snowflake in Terse, rerun `terse generate` to refresh `src/terse_generated.py` with the real integration IDs and deterministic tool wrappers.
+After you connect Attio, Slack, or Snowflake in Terse, rerun `terse generate` to refresh `src/terse_generated.py` with the real integration IDs, generated resources, and deterministic tool wrappers.
 
-Import helpers like `Attio`, `AttioObject`, `Schedule`, `Snowflake`, and `TerseAgent` from `terse_generated`.
+Import helpers like `Attio`, `AttioObject`, `Schedule`, `Slack`, `SlackChannel`, `Snowflake`, and `TerseAgent` from `terse_generated`.
 
 If a job includes the integration in `triggers=` or `skills=`, it can call deterministic wrappers like:
 
 ```python
 agent.tools.snowflake.execute_query(query="select 1")
 ```
+
+Use `agent.tools.slack.*` for direct deterministic Slack calls. Use `skills=[Slack.skill(...)]` when you want Slack to be visible to the model during `run()` or `run_and_wait()`.

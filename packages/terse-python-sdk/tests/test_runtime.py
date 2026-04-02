@@ -28,6 +28,12 @@ from terse_sdk import (
     SdkAgentToolApprovalRequest,
     SerializedEventInputEvent,
     SkillConfig,
+    SlackChannelType,
+    SlackInputEvent,
+    SlackListChannelsToolOutput,
+    SlackListUsersToolOutput,
+    SlackReadConversationToolOutput,
+    SlackSendMessageToolOutput,
     Terse,
     TerseAgent,
     TerseApiError,
@@ -181,6 +187,61 @@ def test_deserialize_input_event_supports_camel_case_payloads() -> None:
     assert event.formatted_content == "Scheduled job"
 
 
+def test_deserialize_input_event_enriches_slack_metadata() -> None:
+    event = deserialize_input_event(
+        {
+            "integrationType": "slack",
+            "eventType": "message",
+            "formattedContent": "Slack message",
+            "debugLog": "slack-debug",
+            "metadata": {
+                "channelId": "C123",
+                "channelName": "alerts",
+                "userId": "U123",
+                "userName": "Olivia",
+                "text": "Deploy finished",
+                "timestamp": "1710000000.100000",
+                "threadTs": "1710000000.000001",
+                "teamId": "T123",
+                "permalink": "https://slack.example/message",
+                "channelType": "im",
+                "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}],
+                "attachments": [
+                    {
+                        "fallback": "fallback text",
+                        "author_name": "Terse",
+                    }
+                ],
+                "files": [
+                    {
+                        "id": "F123",
+                        "name": "deploy.log",
+                        "url_private": "https://files.example/deploy.log",
+                    }
+                ],
+            },
+        }
+    )
+
+    assert isinstance(event, SlackInputEvent)
+    assert event.channel_id == "C123"
+    assert event.channel_name == "alerts"
+    assert event.user_id == "U123"
+    assert event.user_name == "Olivia"
+    assert event.text == "Deploy finished"
+    assert event.timestamp == "1710000000.100000"
+    assert event.thread_ts == "1710000000.000001"
+    assert event.thread_timestamp == "1710000000.000001"
+    assert event.team_id == "T123"
+    assert event.permalink == "https://slack.example/message"
+    assert event.channel_type == SlackChannelType.IM
+    assert event.blocks == [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}]
+    assert event.attachments is not None
+    assert event.attachments[0].author_name == "Terse"
+    assert event.files is not None
+    assert event.files[0].url_private == "https://files.example/deploy.log"
+
+
 def test_deserialize_input_event_falls_back_for_unknown_integrations() -> None:
     event = deserialize_input_event(
         {
@@ -193,6 +254,72 @@ def test_deserialize_input_event_falls_back_for_unknown_integrations() -> None:
 
     assert isinstance(event, SerializedEventInputEvent)
     assert event.integration_type == "unknown_service"
+
+
+def test_slack_tool_output_models_accept_backend_shapes() -> None:
+    send_result = SlackSendMessageToolOutput.model_validate(
+        {
+            "success": True,
+            "message_ts": "1710000000.100000",
+            "channel": "#alerts",
+            "thread_ts": "1710000000.100000",
+            "summary": 'text message sent to #alerts: "Deploy finished"',
+            "has_blocks": False,
+        }
+    )
+    channels_result = SlackListChannelsToolOutput.model_validate(
+        {
+            "success": True,
+            "channels": [
+                {
+                    "id": "C123",
+                    "name": "#alerts",
+                    "isPrivate": False,
+                    "isIm": False,
+                    "isMpim": False,
+                    "userId": None,
+                }
+            ],
+            "count": 1,
+            "nextCursor": "cursor_123",
+            "hasMore": True,
+        }
+    )
+    users_result = SlackListUsersToolOutput.model_validate(
+        {
+            "success": True,
+            "users": [{"id": "U123", "name": "Olivia"}],
+            "count": 1,
+        }
+    )
+    conversation_result = SlackReadConversationToolOutput.model_validate(
+        {
+            "success": True,
+            "channelId": "C123",
+            "channelName": "#alerts",
+            "messages": [
+                {
+                    "userId": "U123",
+                    "userName": "Olivia",
+                    "text": "Deploy finished",
+                    "timestamp": "1710000000.100000",
+                    "threadTs": "1710000000.100000",
+                }
+            ],
+            "count": 1,
+            "hasMore": False,
+            "nextCursor": None,
+        }
+    )
+
+    assert send_result.message_ts == "1710000000.100000"
+    assert send_result.has_blocks is False
+    assert channels_result.next_cursor == "cursor_123"
+    assert channels_result.channels[0].is_private is False
+    assert channels_result.channels[0].user_id is None
+    assert users_result.users[0].name == "Olivia"
+    assert conversation_result.channel_id == "C123"
+    assert conversation_result.messages[0].user_name == "Olivia"
 
 
 def test_agent_execute_tool_includes_session_and_run_headers() -> None:

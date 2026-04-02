@@ -12,6 +12,7 @@ from .enums import (
     GitHubEventType,
     IntegrationType,
     RunHistoryActionType,
+    SlackEventType,
     WorkOSEventType,
 )
 
@@ -66,6 +67,7 @@ class SlackConfigInstance(_BaseConfig):
     channelName: str | None = None
     listenToUserDms: bool | None = None
     userIds: list[str] | None = None
+    eventTypes: list[SlackEventType] | None = None
 
 
 class SlackOutputConfigInstance(_BaseConfig):
@@ -74,6 +76,7 @@ class SlackOutputConfigInstance(_BaseConfig):
     channelName: str | None = None
     listenToUserDms: bool | None = None
     userIds: list[str] | None = None
+    userNames: list[str] | None = None
 
 
 class NotionConfigInstance(_BaseConfig):
