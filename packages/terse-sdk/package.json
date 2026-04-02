@@ -17,6 +17,6 @@
   },
   "dependencies": {
     "@slack/types": "^2.20.1",
-    "terse-types": ""
+    "terse-types": "workspace:*"
   }
 }

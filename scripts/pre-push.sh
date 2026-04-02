@@ -8,7 +8,7 @@ pnpm run format
 pnpm run build
 
 # Run backend prisma format script
-pnpm exec --filter backend prisma format
+pnpm --filter backend exec prisma format
 
 echo "Installing workspace dependencies..."
 pnpm install
