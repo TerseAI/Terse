@@ -4,11 +4,14 @@ set -e
 # Run all format scripts
 pnpm run format
 
+# Ensure prisma client is up to date
+pnpm --filter backend exec prisma format
+pnpm --filter backend exec prisma generate client
+
 # Run all build scripts
 pnpm run build
 
 # Run backend prisma format script
-pnpm --filter backend exec prisma format
 
 echo "Installing workspace dependencies..."
 pnpm install
