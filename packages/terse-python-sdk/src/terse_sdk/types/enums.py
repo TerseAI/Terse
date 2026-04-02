@@ -87,6 +87,13 @@ WorkOSEventType: TypeAlias = Literal[
     "invitation.revoked",
 ]
 
+
+class SlackChannelType(StrEnum):
+    CHANNEL = "channel"
+    GROUP = "group"
+    MPIM = "mpim"
+    IM = "im"
+
 __all__ = [
     "ApprovalActionType",
     "ApprovalRequestStatus",
@@ -103,6 +110,7 @@ __all__ = [
     "RunHistoryActionType",
     "RunHistoryDecisionAction",
     "RunHistoryStatus",
+    "SlackChannelType",
     "SlackEventType",
     "TicketSystemType",
     "ToolCallExecutionStatus",

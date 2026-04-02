@@ -7,6 +7,7 @@ from typing import Annotated, Any, Literal, TypeAlias
 from pydantic import Field
 
 from ._base import TerseModel
+from .enums import SlackChannelType
 
 
 class InputEvent(TerseModel):
@@ -70,8 +71,70 @@ class GithubInputEvent(InputEvent):
     metadata: GithubEventMetadata | None = None
 
 
+class SlackAttachmentField(TerseModel):
+    title: str
+    value: str
+    short: bool
+
+
+class SlackAttachment(TerseModel):
+    fallback: str | None = None
+    color: str | None = None
+    pretext: str | None = None
+    author_name: str | None = None
+    author_link: str | None = None
+    author_icon: str | None = None
+    title: str | None = None
+    title_link: str | None = None
+    text: str | None = None
+    fields: list[SlackAttachmentField] | None = None
+    image_url: str | None = None
+    thumb_url: str | None = None
+    footer: str | None = None
+    footer_icon: str | None = None
+    ts: int | None = None
+
+
+class SlackFile(TerseModel):
+    id: str
+    name: str | None = None
+    title: str | None = None
+    mimetype: str | None = None
+    filetype: str | None = None
+    url_private: str | None = None
+    url_private_download: str | None = None
+    thumb_64: str | None = None
+    thumb_80: str | None = None
+    thumb_160: str | None = None
+    thumb_360: str | None = None
+    thumb_480: str | None = None
+    thumb_720: str | None = None
+    thumb_800: str | None = None
+    thumb_960: str | None = None
+    thumb_1024: str | None = None
+    original_w: int | None = None
+    original_h: int | None = None
+
+
 class SlackInputEvent(InputEvent):
     integration_type: Literal["slack"] = "slack"
+    channel_id: str = ""
+    channel_name: str | None = None
+    user_id: str = ""
+    user_name: str | None = None
+    text: str = ""
+    timestamp: str = ""
+    thread_ts: str | None = None
+    team_id: str = ""
+    permalink: str | None = None
+    channel_type: SlackChannelType | None = None
+    blocks: list[dict[str, Any]] | None = None
+    attachments: list[SlackAttachment] | None = None
+    files: list[SlackFile] | None = None
+
+    @property
+    def thread_timestamp(self) -> str | None:
+        return self.thread_ts
 
 
 class LinearInputEvent(InputEvent):
@@ -210,6 +273,9 @@ __all__ = [
     "NotionInputEvent",
     "PosthogInputEvent",
     "SerializedEventInputEvent",
+    "SlackAttachment",
+    "SlackAttachmentField",
+    "SlackFile",
     "SlackInputEvent",
     "SnowflakeInputEvent",
     "TerseInputEvent",

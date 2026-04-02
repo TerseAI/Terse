@@ -10,7 +10,6 @@ import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
-
 export async function test(
     jobName?: string,
     verbose?: boolean,

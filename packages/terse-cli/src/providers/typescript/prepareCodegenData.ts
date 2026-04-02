@@ -484,7 +484,7 @@ function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDe
 function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefinition[]): SectionContext<SlackSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
-    return sectionData(["SlackConfig", "SlackOutputConfig", "TypedSkill", "SlackEventType"], {
+    return sectionData(["SlackConfig", "SlackOutputConfig", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackMessageEvent"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
         channelClass: buildResourceClassContext(

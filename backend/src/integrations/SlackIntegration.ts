@@ -982,6 +982,24 @@ export class SlackEvent extends InputEvent implements Identifiable {
         return `Slack Event: ${isDM ? "DM" : this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId}}`
     }
 
+    serializeMetadata(): Record<string, unknown> {
+        return {
+            channelId: this.data.channelId,
+            channelName: this.data.channelName,
+            userId: this.data.userId,
+            userName: this.data.userName,
+            text: this.data.text,
+            timestamp: this.data.timestamp,
+            threadTs: this.data.threadTimestamp,
+            teamId: this.data.teamId,
+            permalink: this.data.permalink,
+            channelType: this.data.channelType,
+            blocks: this.data.blocks,
+            attachments: this.data.attachments,
+            files: this.data.files
+        }
+    }
+
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
         // Check if integration type matches
         if (agentTrigger.config_type !== InputConfigType.SLACK) {
