@@ -45,6 +45,23 @@ export interface WorkOSListUsersResponse {
     }
 }
 
+export interface WorkOSOrganizationResponse {
+    id: string
+    name: string
+    external_id: string | null
+    domains?: string[]
+    created_at: string
+    updated_at: string
+}
+
+export interface WorkOSListOrganizationsResponse {
+    data: WorkOSOrganizationResponse[]
+    list_metadata: {
+        after: string | null
+        before: string | null
+    }
+}
+
 /**
  * List users from the customer's WorkOS account using their API key.
  */
@@ -71,6 +88,32 @@ export async function listWorkOSUsers(apiKey: string, options: { limit?: number;
     }
 
     return (await response.json()) as WorkOSListUsersResponse
+}
+
+/**
+ * List organizations from the customer's WorkOS account using their API key.
+ */
+export async function listWorkOSOrganizations(apiKey: string, options: { limit?: number; after?: string; before?: string } = {}): Promise<WorkOSListOrganizationsResponse> {
+    const params = new URLSearchParams()
+    if (options.limit) params.set("limit", String(Math.min(options.limit, 100)))
+    if (options.after) params.set("after", options.after)
+    if (options.before) params.set("before", options.before)
+
+    const response = await fetch(`https://api.workos.com/organizations?${params.toString()}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+        }
+    })
+
+    if (!response.ok) {
+        const errorText = await response.text()
+        logger.error("Failed to list WorkOS organizations", { status: response.status, error: errorText })
+        throw new Error(`WorkOS organizations API returned ${response.status}: ${errorText}`)
+    }
+
+    return (await response.json()) as WorkOSListOrganizationsResponse
 }
 
 /**
