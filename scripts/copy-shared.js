@@ -16,6 +16,11 @@ const esmTargets = [
   path.join(root, 'packages', 'terse-sdk', 'src', 'shared'),
 ];
 
+const sharedSourceFiles = fs
+  .readdirSync(srcDir, { withFileTypes: true })
+  .filter(entry => entry.isFile() && entry.name.endsWith('.ts'))
+  .map(entry => entry.name);
+
 /**
  * Rewrite relative imports in .ts files to include .js extensions,
  * so the compiled output works under Node's native ESM loader.
@@ -30,28 +35,25 @@ function addJsExtensions(content) {
 for (const dest of bundlerTargets) {
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
-  fs.cpSync(srcDir, dest, { recursive: true });
+  for (const file of sharedSourceFiles) {
+    fs.copyFileSync(path.join(srcDir, file), path.join(dest, file));
+  }
 }
 
 for (const dest of esmTargets) {
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
   // Copy all files, rewriting .ts imports for ESM compat
-  const files = fs.readdirSync(srcDir);
-  for (const file of files) {
+  for (const file of sharedSourceFiles) {
     const srcFile = path.join(srcDir, file);
     const destFile = path.join(dest, file);
-    if (file.endsWith('.ts')) {
-      const content = fs.readFileSync(srcFile, 'utf-8');
-      fs.writeFileSync(destFile, addJsExtensions(content));
-    } else {
-      fs.cpSync(srcFile, destFile, { recursive: true });
-    }
+    const content = fs.readFileSync(srcFile, 'utf-8');
+    fs.writeFileSync(destFile, addJsExtensions(content));
   }
 }
 
 
 
 console.log(
-  'Copied shared folder to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, packages/terse-cli/src/shared'
+  'Copied shared source files to backend/src/shared, frontend/src/shared, packages/terse-sdk/src/shared, packages/terse-cli/src/shared'
 );

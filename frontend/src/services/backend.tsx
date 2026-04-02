@@ -1,7 +1,7 @@
 import axios from "axios"
+import { ApiRoutes, buildApiRoute } from "terse-types"
 
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
-import { ApiRoutes } from "../shared/ApiRoutes"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "../shared/ApprovalTypes"
 import {
     AtlassianIntegration,
@@ -570,8 +570,9 @@ export const BackendProvider: BackendService = {
     },
 
     getUserById: (id: string) => {
+        const url = buildApiRoute(ApiRoutes.USERS.BY_ID, { id })
         return axios
-            .get<User>(`${backendBaseUrl}${ApiRoutes.USERS.BY_ID.build(id)}`, { withCredentials: true })
+            .get<User>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error fetching user:", error)
@@ -624,7 +625,8 @@ export const BackendProvider: BackendService = {
             params.append("state", stateToken)
         }
         const queryString = params.toString()
-        const url = `${backendBaseUrl}${ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE.build(integrationType)}${queryString ? `?${queryString}` : ""}`
+        const apiUrl = buildApiRoute(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, { integrationType })
+        const url = `${backendBaseUrl}${apiUrl}${queryString ? `?${queryString}` : ""}`
         return axios
             .get(url, { withCredentials: true })
             .then(response => response.data)
@@ -868,8 +870,9 @@ export const BackendProvider: BackendService = {
     },
 
     getAttioObjects: (integrationId: string) => {
+        const url = buildApiRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId })
         return axios
-            .get<AttioObjectWithAttributes[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.OBJECTS.build(integrationId)}`, { withCredentials: true })
+            .get<AttioObjectWithAttributes[]>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting Attio objects:", error)
@@ -957,8 +960,9 @@ export const BackendProvider: BackendService = {
     },
 
     getLaunchDarklyProjects: (integrationId: string) => {
+        const url = buildApiRoute(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, { integrationId })
         return axios
-            .get<LaunchDarklyProjectsResponse>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.build(integrationId)}`, { withCredentials: true })
+            .get<LaunchDarklyProjectsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error fetching LaunchDarkly projects:", error)
@@ -967,8 +971,9 @@ export const BackendProvider: BackendService = {
     },
 
     getLaunchDarklyEnvironments: (integrationId: string, projectKey: string) => {
+        const url = buildApiRoute(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT, { integrationId, projectKey })
         return axios
-            .get<LaunchDarklyEnvironmentsResponse>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT.build(integrationId, projectKey)}`, { withCredentials: true })
+            .get<LaunchDarklyEnvironmentsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error fetching LaunchDarkly environments:", error)
@@ -1156,8 +1161,9 @@ export const BackendProvider: BackendService = {
     },
 
     getAgentById: (id: string) => {
+        const url = buildApiRoute(ApiRoutes.AGENTS.BY_ID, { id })
         return axios
-            .get<Agent>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`, { withCredentials: true })
+            .get<Agent>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting agent:", error)
@@ -1166,8 +1172,9 @@ export const BackendProvider: BackendService = {
     },
 
     getAgentImprovements: (agentId: string) => {
+        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, { agentId })
         return axios
-            .get<GetAgentImprovementsResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.BY_AGENT_ID.build(agentId)}`, { withCredentials: true })
+            .get<GetAgentImprovementsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting agent improvements:", error)
@@ -1176,8 +1183,9 @@ export const BackendProvider: BackendService = {
     },
 
     applyImprovement: (agentId: string, improvementId: string) => {
+        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.APPLY, { agentId, improvementId })
         return axios
-            .post<ApplyImprovementResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.APPLY.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .post<ApplyImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error applying improvement:", error)
@@ -1186,8 +1194,9 @@ export const BackendProvider: BackendService = {
     },
 
     dismissImprovement: (agentId: string, improvementId: string) => {
+        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.DISMISS, { agentId, improvementId })
         return axios
-            .post<DismissImprovementResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.DISMISS.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .post<DismissImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error dismissing improvement:", error)
@@ -1196,8 +1205,9 @@ export const BackendProvider: BackendService = {
     },
 
     undoDismissImprovement: (agentId: string, improvementId: string) => {
+        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, { agentId, improvementId })
         return axios
-            .post<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.UNDO_DISMISS.build(agentId, improvementId)}`, {}, { withCredentials: true })
+            .post<{ success: boolean }>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error undoing dismiss:", error)
@@ -1206,8 +1216,9 @@ export const BackendProvider: BackendService = {
     },
 
     toggleImprovementsEnabled: (agentId: string, enabled: boolean) => {
+        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, { agentId })
         return axios
-            .patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED.build(agentId)}`, { enabled }, { withCredentials: true })
+            .patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${url}`, { enabled }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error toggling improvements setting:", error)
@@ -1226,8 +1237,9 @@ export const BackendProvider: BackendService = {
     },
 
     updateAgent: (id: string, data: AgentUpdate) => {
+        const url = buildApiRoute(ApiRoutes.AGENTS.BY_ID, { id })
         return axios
-            .patch<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`, data, { withCredentials: true })
+            .patch<{ success: boolean; id: string }>(`${backendBaseUrl}${url}`, data, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error updating agent:", error)
@@ -1236,8 +1248,9 @@ export const BackendProvider: BackendService = {
     },
 
     deleteAgent: (id: string) => {
+        const url = buildApiRoute(ApiRoutes.AGENTS.BY_ID, { id })
         return axios
-            .delete<{ success: boolean; message: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`, { withCredentials: true })
+            .delete<{ success: boolean; message: string }>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error deleting agent:", error)
@@ -1271,7 +1284,8 @@ export const BackendProvider: BackendService = {
         if (params.start) usp.append("start", params.start)
         if (params.end) usp.append("end", params.end)
         if (params.status && params.status.length) usp.append("status", params.status.join(","))
-        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.BY_AGENT_ID.build(agentId)}${usp.toString() ? `?${usp.toString()}` : ""}`
+        const apiUrl = buildApiRoute(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, { agentId })
+        const url = `${backendBaseUrl}${apiUrl}${usp.toString() ? `?${usp.toString()}` : ""}`
         return axios
             .get<GetRunHistoryResponse>(url, { withCredentials: true })
             .then(r => r.data)
@@ -1282,7 +1296,8 @@ export const BackendProvider: BackendService = {
     },
 
     getChatHistory: runId => {
-        const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID.build(runId)}`
+        const apiUrl = buildApiRoute(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, { runId })
+        const url = `${backendBaseUrl}${apiUrl}`
         return axios
             .get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: RunHistoryStatus }>(url, { withCredentials: true })
             .then(r => r.data)
@@ -1293,7 +1308,8 @@ export const BackendProvider: BackendService = {
     },
 
     getBuilderChatHistory: sessionId => {
-        const url = `${backendBaseUrl}${ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID.build(sessionId)}`
+        const apiUrl = buildApiRoute(ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID, { sessionId })
+        const url = `${backendBaseUrl}${apiUrl}`
         return axios
             .get<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>(url, { withCredentials: true })
             .then(r => r.data)
@@ -1330,9 +1346,11 @@ export const BackendProvider: BackendService = {
         const params = new URLSearchParams()
         params.append("page", page.toString())
         params.append("pageSize", pageSize.toString())
+        const apiUrl = buildApiRoute(ApiRoutes.SENT_NOTIFICATIONS.LIST, {})
+        const url = `${backendBaseUrl}${apiUrl}?${params.toString()}`
 
         return axios
-            .get<GetSentNotificationsResponse>(`${backendBaseUrl}${ApiRoutes.SENT_NOTIFICATIONS.LIST}?${params.toString()}`, { withCredentials: true })
+            .get<GetSentNotificationsResponse>(url, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting sent notifications:", error)
@@ -1368,8 +1386,9 @@ export const BackendProvider: BackendService = {
     },
 
     updateNotificationDestination: (destination: NotificationDestination) => {
+        const url = buildApiRoute(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, { id: destination.id })
         return axios
-            .put<NotificationDestination>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.build(destination.id)}`, destination, { withCredentials: true })
+            .put<NotificationDestination>(`${backendBaseUrl}${url}`, destination, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error updating notification destination:", error)
@@ -1378,8 +1397,9 @@ export const BackendProvider: BackendService = {
     },
 
     deleteNotificationDestination: (destination: NotificationDestination) => {
+        const url = buildApiRoute(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, { id: destination.id })
         return axios
-            .delete<void>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.build(destination.id)}`, { withCredentials: true })
+            .delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error deleting notification destination:", error)
@@ -1408,8 +1428,9 @@ export const BackendProvider: BackendService = {
     },
 
     updateApiToken: (id: string, name: string) => {
+        const url = buildApiRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
         return axios
-            .patch<ApiToken>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.BY_ID.build(id)}`, { name }, { withCredentials: true })
+            .patch<ApiToken>(`${backendBaseUrl}${url}`, { name }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error updating API token:", error)
@@ -1418,8 +1439,9 @@ export const BackendProvider: BackendService = {
     },
 
     deleteApiToken: (id: string) => {
+        const url = buildApiRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
         return axios
-            .delete<void>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.BY_ID.build(id)}`, { withCredentials: true })
+            .delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error deleting API token:", error)
@@ -1448,8 +1470,9 @@ export const BackendProvider: BackendService = {
     },
 
     triggerWithEvent: (automationId: string, event: SerializedEvent) => {
+        const url = buildApiRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { id: automationId })
         return axios
-            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT.build(automationId)}`, { event }, { withCredentials: true })
+            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error triggering with event:", error)
@@ -1458,8 +1481,9 @@ export const BackendProvider: BackendService = {
     },
 
     triggerManually: (triggerId: string, context?: string) => {
+        const url = buildApiRoute(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, { id: triggerId })
         return axios
-            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.build(triggerId)}`, { context }, { withCredentials: true })
+            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { context }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error triggering manually:", error)
@@ -1600,8 +1624,9 @@ export const BackendProvider: BackendService = {
     },
 
     getOrgLogoUrl: (organizationId: string) => {
+        const url = buildApiRoute(ApiRoutes.ORGANIZATIONS.LOGO, { organizationId })
         return axios
-            .get<{ logoUrl: string | null }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LOGO.build(organizationId)}`, { withCredentials: true })
+            .get<{ logoUrl: string | null }>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data.logoUrl)
             .catch(error => {
                 console.error("Error getting logo URL:", error)

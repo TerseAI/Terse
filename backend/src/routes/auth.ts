@@ -1,11 +1,11 @@
 import { users as PrismaUser } from "@prisma/client"
 import { AuthenticateWithSessionCookieSuccessResponse, AuthenticationResponse } from "@workos-inc/node"
 import { NextFunction, Request, Response } from "express"
+import { ApiRoutes } from "terse-types"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { ApiRoutes } from "../shared/ApiRoutes"
 import { Role, User } from "../shared/types"
 import { Session } from "../types/session"
 import { AccessTokenClaims, decodeAccessTokenClaims } from "../utility/accessTokenClaims"

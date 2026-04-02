@@ -1,4 +1,4 @@
-import { INTEGRATION_METADATA, IntegrationType } from "../shared/Integrations"
+import { INTEGRATION_METADATA, IntegrationType } from "./Integrations"
 
 /**
  * The phases a tool call can be in for display purposes.

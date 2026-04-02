@@ -1,10 +1,10 @@
 import { InputConfigType } from "@prisma/client"
+import { ApiRoutes, buildApiRoute } from "terse-types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { settings } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
-import { ApiRoutes } from "../shared/ApiRoutes"
 import { FrontendRoutes } from "../shared/FrontendRoutes"
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "../shared/Integrations"
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
@@ -231,7 +231,8 @@ export class CronJobIntegrationManager
 
     private getWebhookUrl(inputId: string): string {
         const baseUrl = settings.urls.backend
-        return `${baseUrl}${ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.build(inputId)}`
+        const webhookUrl = buildApiRoute(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, { inputId })
+        return `${baseUrl}${webhookUrl}`
     }
 }
 

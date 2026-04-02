@@ -1,8 +1,10 @@
+import { Api } from "confluence.js"
+import { ApiRoutes, buildApiRoute } from "terse-types"
+
 import { settings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { ApiRoutes } from "../shared/ApiRoutes"
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations"
 import type { ConfluencePage, User } from "../shared/types"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
@@ -326,8 +328,8 @@ export class AtlassianClient {
             "comment_updated", // Comments edited
             "comment_deleted" // Comments removed
         ]
-
-        const webhookUrl = `${backendUrl}${ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.build(accountId)}`
+        const url = buildApiRoute(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID, { accountId })
+        const webhookUrl = `${backendUrl}${url}`
 
         // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint
         // Documentation: https://developer.atlassian.com/cloud/jira/platform/webhooks/

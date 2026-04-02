@@ -6,6 +6,9 @@
 /packages/terse-sdk/src/shared
 /packages/terse-cli/node_modules
 /packages/terse-cli/dist
+/shared/node_modules
+/shared/pnpm-lock.yaml
+/shared/dist
 .pnpm-store/
 
 # Python SDK artifacts

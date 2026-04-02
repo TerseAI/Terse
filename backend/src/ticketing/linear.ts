@@ -1,10 +1,10 @@
 import { Issue, IssuePayload, LinearClient, Project as LinearProject, User as LinearUser } from "@linear/sdk"
 import { IssueFilter, IssuesQueryVariables } from "@linear/sdk/dist/_generated_documents"
 import chalk from "chalk"
+import { ApiRoutes, buildApiRoute } from "terse-types"
 
 import { urls } from "../config/settings"
 import { SearchItem } from "../search/SearchItem"
-import { ApiRoutes } from "../shared/ApiRoutes"
 import { CommitAssociation, CreateTicketInput, Organization, Project, Team, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext } from "../shared/TicketSystem"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
@@ -84,8 +84,10 @@ export class LinearAdapter {
         const webhookSecret = this.generateWebhookSecret()
         const backendUrl = urls.backend
 
+        const url = buildApiRoute(`${backendUrl}${ApiRoutes.WEBHOOKS.LINEAR_BY_USER_ID}`, { userId: user.id })
+
         const webhook = await this.client.createWebhook({
-            url: `${backendUrl}${ApiRoutes.WEBHOOKS.LINEAR_BY_USER_ID.build(user.id)}`,
+            url: url,
             secret: webhookSecret,
             allPublicTeams: true,
             resourceTypes: ["Issue", "Comment", "Project", "IssueLabel", "User"]

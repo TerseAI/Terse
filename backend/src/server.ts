@@ -4,6 +4,7 @@ import cors from "cors"
 import "dotenv/config"
 import express, { NextFunction, Request, Response } from "express"
 import { createServer } from "http"
+import { ApiRoutes } from "terse-types"
 
 import { setupLLMAnalytics } from "./agent/openaiInstance"
 // Import settings early to validate environment variables at startup
@@ -58,7 +59,6 @@ import { getUserById } from "./routes/users"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
-import { ApiRoutes } from "./shared/ApiRoutes"
 import { User } from "./shared/types"
 import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./utility/analytics"
@@ -239,18 +239,18 @@ app.post(ApiRoutes.WEBHOOKS.WORKOS, async (req, res) => {
 })
 
 // WorkOS Trigger webhook needs raw body for signature verification
-app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID.pattern, express.raw({ type: "application/json" }))
+app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, express.raw({ type: "application/json" }))
 
-app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID.pattern, async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, async (req, res) => {
     handleWorkOSTriggerWebhook(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.pattern, async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID, async (req, res) => {
     // Use the new webhook handler which verifies authenticity and processes the event
     handleJiraWebhook(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.pattern, async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, async (req, res) => {
     handleScheduleWebhook(req, res)
 })
 
@@ -309,7 +309,7 @@ app.put(ApiRoutes.ORGANIZATIONS.UPDATE, authMiddleware, (req, res) => updateOrga
 
 app.get(ApiRoutes.ORGANIZATIONS.LOGO_UPLOAD_URL, authMiddleware, (req, res) => getLogoUploadUrl(req, res))
 
-app.get(ApiRoutes.ORGANIZATIONS.LOGO.pattern, authMiddleware, (req, res) => getLogoUrl(req, res))
+app.get(ApiRoutes.ORGANIZATIONS.LOGO, authMiddleware, (req, res) => getLogoUrl(req, res))
 
 // MARK: STATS
 app.get(ApiRoutes.STATS, authMiddleware, async (req, res) => {
@@ -326,17 +326,17 @@ app.get(ApiRoutes.RUN_HISTORY.ALL, authMiddleware, async (req, res) => {
     getAllRunHistory(req, res)
 })
 
-app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, authMiddleware, async (req, res) => {
     getRunHistory(req, res)
 })
 
-app.get(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, authMiddleware, async (req, res) => {
     getChatHistory(req, res)
 })
 
 // MARK: BUILDER CHAT
 
-app.get(ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID, authMiddleware, async (req, res) => {
     getBuilderChatHistory(req, res)
 })
 
@@ -348,7 +348,7 @@ app.get(ApiRoutes.SESSION.TOKEN, authMiddleware, async (req, res) => {
 
 // MARK: USERS
 
-app.get(ApiRoutes.USERS.BY_ID.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.USERS.BY_ID, authMiddleware, async (req, res) => {
     getUserById(req, res)
 })
 
@@ -431,7 +431,7 @@ app.get(ApiRoutes.ATTIO.OAUTH_CALLBACK, async (req, res) => {
     attioOAuthCallback(req, res)
 })
 
-app.get(ApiRoutes.ATTIO.OBJECTS.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.ATTIO.OBJECTS, authMiddleware, async (req, res) => {
     getAttioObjects(req, res)
 })
 
@@ -460,12 +460,12 @@ app.get(ApiRoutes.LINEAR.TEAMS, authMiddleware, async (req, res) => {
 })
 
 // Manual trigger endpoint (authenticated)
-app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.pattern, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, authMiddleware, async (req, res) => {
     handleManualTrigger(req, res)
 })
 
 // Trigger with a specific event payload (authenticated)
-app.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT.pattern, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, authMiddleware, async (req, res) => {
     handleTriggerWithEvent(req, res)
 })
 
@@ -515,11 +515,11 @@ app.post(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, authMiddleware, async (req, res) =
     createOrUpdateLaunchDarklyIntegration(req, res)
 })
 
-app.get(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, authMiddleware, async (req, res) => {
     getLaunchDarklyProjects(req, res)
 })
 
-app.get(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT, authMiddleware, async (req, res) => {
     getLaunchDarklyEnvironments(req, res)
 })
 
@@ -571,7 +571,7 @@ app.get("/agents/recent", authMiddleware, async (req, res) => {
     getRecentAgents(req, res)
 })
 
-app.get(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.AGENTS.BY_ID, authMiddleware, async (req, res) => {
     getUserAgent(req, res)
 })
 
@@ -579,33 +579,33 @@ app.post("/agents", authMiddleware, async (req, res) => {
     createAgent(req, res)
 })
 
-app.patch(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
+app.patch(ApiRoutes.AGENTS.BY_ID, authMiddleware, async (req, res) => {
     updateAgent(req, res)
 })
 
-app.delete(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.AGENTS.BY_ID, authMiddleware, async (req, res) => {
     deleteAgent(req, res)
 })
 
 // MARK: IMPROVEMENTS
 
-app.get(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, authMiddleware, async (req, res) => {
     getAgentImprovements(req, res)
 })
 
-app.post(ApiRoutes.IMPROVEMENTS.APPLY.pattern, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.IMPROVEMENTS.APPLY, authMiddleware, async (req, res) => {
     applyImprovement(req, res)
 })
 
-app.post(ApiRoutes.IMPROVEMENTS.DISMISS.pattern, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.IMPROVEMENTS.DISMISS, authMiddleware, async (req, res) => {
     dismissImprovement(req, res)
 })
 
-app.post(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS.pattern, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, authMiddleware, async (req, res) => {
     undoDismissImprovement(req, res)
 })
 
-app.patch(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED.pattern, authMiddleware, async (req, res) => {
+app.patch(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, authMiddleware, async (req, res) => {
     toggleImprovementsEnabled(req, res)
 })
 
@@ -621,7 +621,7 @@ app.get("/templates", authMiddleware, async (req, res) => {
 
 // MARK: INTEGRATIONS
 
-app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, authMiddleware, async (req, res) => {
     getIntegrationInstallationDetails(req, res)
 })
 
@@ -651,11 +651,11 @@ app.post(ApiRoutes.NOTIFICATION_SETTINGS, authMiddleware, async (req, res) => {
     updateNotificationSettings(req, res)
 })
 
-app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
+app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, authMiddleware, async (req, res) => {
     updateNotificationDestination(req, res)
 })
 
-app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, authMiddleware, async (req, res) => {
     deleteNotificationDestination(req, res)
 })
 
@@ -669,11 +669,11 @@ app.post(ApiRoutes.API_TOKENS.LIST, authMiddleware, async (req, res) => {
     createApiToken(req, res)
 })
 
-app.patch(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) => {
+app.patch(ApiRoutes.API_TOKENS.BY_ID, authMiddleware, async (req, res) => {
     updateApiToken(req, res)
 })
 
-app.delete(ApiRoutes.API_TOKENS.BY_ID.pattern, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.API_TOKENS.BY_ID, authMiddleware, async (req, res) => {
     deleteApiToken(req, res)
 })
 
@@ -729,11 +729,11 @@ app.post(ApiRoutes.SDK.DEPLOY, authMiddleware, async (req, res) => {
     handleSdkDeploy(req, res)
 })
 
-app.get(ApiRoutes.SDK.INTEGRATION_FIELDS.pattern, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SDK.INTEGRATION_FIELDS, authMiddleware, async (req, res) => {
     handleSdkIntegrationFields(req, res)
 })
 
-app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT.pattern, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, authMiddleware, async (req, res) => {
     handleSdkIntegrationFormSubmit(req, res)
 })
 
