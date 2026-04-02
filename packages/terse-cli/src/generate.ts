@@ -36,7 +36,7 @@ import type {
     SnowflakeIntegration,
 } from "./shared/Integrations.js"
 import { IntegrationType } from "./shared/Integrations.js"
-import { ApiRoutes } from "terse-types"
+import { ApiRoutes, buildApiRoute } from "terse-types"
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 
 // ── Main ──────────────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
             const instances = await fetchWithAuth<LaunchDarklyIntegration[]>(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, apiKey)
             input.launchdarkly = await Promise.all(instances.map(async (inst): Promise<LaunchDarklyInstanceData> => {
                 const resp = await fetchWithAuth<{ projects: Array<{ key: string; name: string }> }>(
-                    ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.build(inst.id), apiKey
+                    buildApiRoute(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, { integrationId: inst.id }), apiKey
                 ).catch(() => ({ projects: [] }))
                 return { id: inst.id, displayName: inst.tokenName || inst.email || inst.id, projects: resp.projects || [] }
             }))
@@ -262,7 +262,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                     plural_noun?: string
                     attributes?: AttioAttributeData[]
                 }>>(
-                    ApiRoutes.ATTIO.OBJECTS.build(inst.id), apiKey
+                    buildApiRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId: inst.id }), apiKey
                 ).catch(() => [] as Array<{
                     api_slug: string
                     singular_noun: string
