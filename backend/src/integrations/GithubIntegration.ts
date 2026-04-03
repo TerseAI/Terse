@@ -119,7 +119,7 @@ export class GithubIntegrationManager
         return userGithubInstallations.map(ugi => ({
             id: ugi.id,
             installation_id: ugi.installation_id,
-            account_name: ugi.account_name || null
+            account_name: ugi.account_name || "Unknown Account Name"
         }))
     }
 
