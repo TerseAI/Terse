@@ -1,7 +1,7 @@
+import { execFile } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 
 const execFileAsync = promisify(execFile)
@@ -27,10 +27,7 @@ export function loadDotenv(cwd: string): NodeJS.ProcessEnv {
 
         const key = trimmed.slice(0, separatorIndex).trim()
         let value = trimmed.slice(separatorIndex + 1).trim()
-        if (
-            (value.startsWith('"') && value.endsWith('"')) ||
-            (value.startsWith("'") && value.endsWith("'"))
-        ) {
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
             value = value.slice(1, -1)
         }
 
@@ -63,15 +60,11 @@ export async function execUv(
     return execFileAsync("uv", args, {
         cwd: opts.cwd,
         env: opts.env,
-        maxBuffer: 20 * 1024 * 1024,
+        maxBuffer: 20 * 1024 * 1024
     })
 }
 
-export async function withTempScript<T>(
-    source: string,
-    extension: string,
-    fn: (scriptPath: string) => Promise<T>
-): Promise<T> {
+export async function withTempScript<T>(source: string, extension: string, fn: (scriptPath: string) => Promise<T>): Promise<T> {
     const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "terse-cli-"))
     const scriptPath = path.join(tempDir, `script${extension}`)
 

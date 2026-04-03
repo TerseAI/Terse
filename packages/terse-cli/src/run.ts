@@ -1,18 +1,14 @@
-import fs from "fs"
 import chalk from "chalk"
+import fs from "fs"
+import type { SerializedEvent } from "terse-types"
+
 import { readApiKey } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
-import type { SerializedEvent } from "terse-types"
- 
-export async function run(
-    jobName?: string,
-    eventJson?: string,
-    eventFile?: string,
-    provider: LanguageProvider = resolveProvider()
-): Promise<void> {
+
+export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider()): Promise<void> {
     assertProjectRoot(provider)
 
     if (eventFile && !eventJson) {
@@ -27,7 +23,7 @@ export async function run(
 
     if (!eventJson) {
         console.error(chalk.red("Error: --event <json> or --event-file <path> is required.\n"))
-        console.error(chalk.dim("  Usage: terse run --event '{\"integrationType\":\"...\",\"formattedContent\":\"...\",\"debugLog\":\"...\"}'"))
+        console.error(chalk.dim('  Usage: terse run --event \'{"integrationType":"...","formattedContent":"...","debugLog":"..."}\''))
         console.error(chalk.dim("         terse run --event-file ./event.json"))
         console.error(chalk.dim("  Tip:   Use `terse test` to interactively pick a sample event.\n"))
         process.exit(1)

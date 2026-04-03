@@ -1,184 +1,184 @@
 {
-  "AUTH": {
-    "ME": "/me",
-    "LOGIN": "/login",
-    "LOGIN_URL": "/login/url",
-    "LOGOUT": "/logout",
-    "LOGOUT_URL": "/logout/url",
-    "GITHUB_APP_CALLBACK": "/auth/github-app/callback",
-    "WORKOS_CALLBACK": "/auth/workos/callback"
-  },
-  "WORKOS": {
-    "WIDGET_TOKEN": "/auth/workos/widget-token"
-  },
-  "ORGANIZATIONS": {
-    "CREATE": "/organizations",
-    "GET_CURRENT": "/organizations/current",
-    "LIST": "/organizations",
-    "SWITCH": "/organizations/switch",
-    "UPDATE": "/organizations",
-    "LOGO_UPLOAD_URL": "/organizations/logo/upload-url",
-    "LOGO": "/organizations/:organizationId/logo"
-  },
-  "STATS": "/stats",
-  "RUN_HISTORY": {
-    "ALL": "/run-history",
-    "ACTIONS": "/run-history/actions",
-    "BY_AGENT_ID": "/run-history/:agentId",
-    "CHAT_BY_RUN_ID": "/run-history/:runId/chat"
-  },
-  "SESSION": {
-    "TOKEN": "/session/token"
-  },
-  "GITHUB": {
-    "INTEGRATIONS": "/github/integrations",
-    "INSTALLATION_URL": "/github/installation-url",
-    "GET_REPOSITORIES_FOR_INTEGRATION": "/github/get-repositories-for-integration",
-    "INSTALLATION_CALLBACK": "/github/installation-callback",
-    "INSTALLATION_DELETED": "/github/installation-deleted",
-    "UNIFIED_EVENT": "/github/unified-event"
-  },
-  "ATLASSIAN": {
-    "INTEGRATIONS": "/atlassian/integrations",
-    "OAUTH_CALLBACK": "/atlassian/oauth/callback"
-  },
-  "JIRA": {
-    "RESOURCES": "/jira/resources",
-    "GET_API_KEY": "/jira/get-api-key",
-    "SET_API_KEY": "/jira/set-api-key",
-    "VALIDATE_AND_FETCH_PROJECTS": "/jira/validate-and-fetch-projects",
-    "DELETE_CREDENTIALS": "/jira/delete-credentials"
-  },
-  "CONFLUENCE": {
-    "INTEGRATIONS": "/confluence/integrations",
-    "RESOURCES": "/confluence/resources"
-  },
-  "GMAIL": {
-    "INTEGRATIONS": "/gmail/integrations",
-    "CALLBACK": "/gmail/callback",
-    "DELETE_INTEGRATION": "/gmail/delete-integration"
-  },
-  "NOTION": {
-    "INTEGRATIONS": "/notion/integrations",
-    "OAUTH_CALLBACK": "/notion/oauth/callback",
-    "RESOURCES": "/notion/resources",
-    "DELETE_INTEGRATION": "/notion/delete-integration"
-  },
-  "FIGMA": {
-    "INTEGRATIONS": "/figma/integrations",
-    "OAUTH_CALLBACK": "/figma/oauth/callback"
-  },
-  "LINEAR": {
-    "OAUTH_CALLBACK": "/linear/oauth/callback",
-    "WEBHOOK": "/linear/webhook",
-    "INTEGRATIONS": "/linear/integrations",
-    "TEAMS": "/linear/teams"
-  },
-  "SLACK": {
-    "INTEGRATIONS": "/slack/integrations",
-    "GET_CURRENT_INTEGRATION": "/slack/get-current-integration",
-    "OAUTH_CALLBACK": "/slack/oauth-callback",
-    "CHANNELS": "/slack/channels",
-    "USERS": "/slack/users",
-    "EVENTS": "/slack/events"
-  },
-  "POSTHOG": {
-    "INTEGRATIONS": "/posthog/integrations",
-    "PROJECTS": "/posthog/projects"
-  },
-  "LAUNCHDARKLY": {
-    "INTEGRATIONS": "/launchdarkly/integrations",
-    "PROJECTS_BY_INTEGRATION_ID": "/launchdarkly/integrations/:integrationId/projects",
-    "ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT": "/launchdarkly/integrations/:integrationId/projects/:projectKey/environments"
-  },
-  "DATADOG": {
-    "INTEGRATIONS": "/datadog/integrations",
-    "INDEXES": "/datadog/indexes"
-  },
-  "WORKOS_INTEGRATION": {
-    "INTEGRATIONS": "/workos-integration/integrations",
-    "WEBHOOK_SECRET": "/workos-integration/webhook-secret"
-  },
-  "SNOWFLAKE": {
-    "INTEGRATIONS": "/snowflake/integrations"
-  },
-  "ATTIO": {
-    "INTEGRATIONS": "/attio/integrations",
-    "OAUTH_CALLBACK": "/attio/oauth/callback",
-    "OBJECTS": "/attio/integrations/:integrationId/objects"
-  },
-  "AGENTS": {
-    "LIST": "/agents",
-    "RECENT": "/agents/recent",
-    "BY_ID": "/agents/:id"
-  },
-  "IMPROVEMENTS": {
-    "BY_AGENT_ID": "/agents/:agentId/improvements",
-    "APPLY": "/agents/:agentId/improvements/:id/apply",
-    "DISMISS": "/agents/:agentId/improvements/:id/dismiss",
-    "UNDO_DISMISS": "/agents/:agentId/improvements/:id/undo-dismiss",
-    "TOGGLE_ENABLED": "/agents/:agentId/improvements-enabled"
-  },
-  "TEMPLATES": "/templates",
-  "PUBLIC": {
-    "TEMPLATES": "/public/templates"
-  },
-  "TOOLS": {
-    "THAT_REQUIRE_APPROVALS": "/tools/that-require-approvals"
-  },
-  "INTEGRATIONS": {
-    "INSTALLATION_DETAILS_BY_TYPE": "/integrations/:integrationType/installation-details",
-    "LIST": "/integrations",
-    "ACTIVE": "/integrations/active"
-  },
-  "NOTIFICATION_DESTINATIONS": {
-    "LIST": "/notification-destinations",
-    "BY_ID": "/notification-destinations/:id"
-  },
-  "API_TOKENS": {
-    "LIST": "/api-tokens",
-    "BY_ID": "/api-tokens/:id"
-  },
-  "SDK": {
-    "ME": "/sdk/me",
-    "SAMPLE_EVENTS": "/sdk/sample-events",
-    "TOOL_EXECUTE": "/sdk/tool-execute",
-    "TOOL_DEFINITIONS": "/sdk/tool-definitions",
-    "AGENT_RUN": "/sdk/agent-run",
-    "APPROVAL_DECISION": "/sdk/approval-decision",
-    "SESSION_EVENTS": "/sdk/session-events",
-    "DEPLOY": "/sdk/deploy",
-    "DEVICE_TOKEN_EXCHANGE": "/sdk/auth/device-token-exchange",
-    "INTEGRATION_FIELDS": "/sdk/integrations/:integrationType/fields",
-    "INTEGRATION_FORM_SUBMIT": "/sdk/integrations/:integrationType/form-submit"
-  },
-  "NOTIFICATION_SETTINGS": "/notification-settings",
-  "SENT_NOTIFICATIONS": {
-    "LIST": "/sent-notifications"
-  },
-  "PENDING_APPROVALS": {
-    "LIST": "/pending-approvals"
-  },
-  "WEBHOOKS": {
-    "GMAIL": "/webhooks/gmail",
-    "FIGMA": "/webhooks/figma",
-    "WORKOS": "/webhooks/workos",
-    "JIRA_BY_ACCOUNT_ID": "/webhooks/jira/:accountId",
-    "LINEAR_BY_USER_ID": "/webhooks/linear/:userId",
-    "SCHEDULE_BY_INPUT_ID": "/webhooks/schedule/:inputId",
-    "WORKOS_TRIGGER_BY_INTEGRATION_ID": "/webhooks/workos-trigger/:integrationId"
-  },
-  "SCHEDULE": {
-    "TRIGGER_BY_INPUT_ID": "/schedule/trigger/:inputId",
-    "TRIGGER_WITH_EVENT": "/schedule/trigger-with-event/:automationId"
-  },
-  "REFRESH_TOKENS": "/refresh-tokens",
-  "REVIEW_AGENTS": "/review-agents",
-  "USERS": {
-    "CREATE": "/users",
-    "BY_ID": "/users/:id"
-  },
-  "BUILDER_CHAT": {
-    "HISTORY_BY_SESSION_ID": "/builder-chat/:sessionId/history"
-  }
+    "AUTH": {
+        "ME": "/me",
+        "LOGIN": "/login",
+        "LOGIN_URL": "/login/url",
+        "LOGOUT": "/logout",
+        "LOGOUT_URL": "/logout/url",
+        "GITHUB_APP_CALLBACK": "/auth/github-app/callback",
+        "WORKOS_CALLBACK": "/auth/workos/callback"
+    },
+    "WORKOS": {
+        "WIDGET_TOKEN": "/auth/workos/widget-token"
+    },
+    "ORGANIZATIONS": {
+        "CREATE": "/organizations",
+        "GET_CURRENT": "/organizations/current",
+        "LIST": "/organizations",
+        "SWITCH": "/organizations/switch",
+        "UPDATE": "/organizations",
+        "LOGO_UPLOAD_URL": "/organizations/logo/upload-url",
+        "LOGO": "/organizations/:organizationId/logo"
+    },
+    "STATS": "/stats",
+    "RUN_HISTORY": {
+        "ALL": "/run-history",
+        "ACTIONS": "/run-history/actions",
+        "BY_AGENT_ID": "/run-history/:agentId",
+        "CHAT_BY_RUN_ID": "/run-history/:runId/chat"
+    },
+    "SESSION": {
+        "TOKEN": "/session/token"
+    },
+    "GITHUB": {
+        "INTEGRATIONS": "/github/integrations",
+        "INSTALLATION_URL": "/github/installation-url",
+        "GET_REPOSITORIES_FOR_INTEGRATION": "/github/get-repositories-for-integration",
+        "INSTALLATION_CALLBACK": "/github/installation-callback",
+        "INSTALLATION_DELETED": "/github/installation-deleted",
+        "UNIFIED_EVENT": "/github/unified-event"
+    },
+    "ATLASSIAN": {
+        "INTEGRATIONS": "/atlassian/integrations",
+        "OAUTH_CALLBACK": "/atlassian/oauth/callback"
+    },
+    "JIRA": {
+        "RESOURCES": "/jira/resources",
+        "GET_API_KEY": "/jira/get-api-key",
+        "SET_API_KEY": "/jira/set-api-key",
+        "VALIDATE_AND_FETCH_PROJECTS": "/jira/validate-and-fetch-projects",
+        "DELETE_CREDENTIALS": "/jira/delete-credentials"
+    },
+    "CONFLUENCE": {
+        "INTEGRATIONS": "/confluence/integrations",
+        "RESOURCES": "/confluence/resources"
+    },
+    "GMAIL": {
+        "INTEGRATIONS": "/gmail/integrations",
+        "CALLBACK": "/gmail/callback",
+        "DELETE_INTEGRATION": "/gmail/delete-integration"
+    },
+    "NOTION": {
+        "INTEGRATIONS": "/notion/integrations",
+        "OAUTH_CALLBACK": "/notion/oauth/callback",
+        "RESOURCES": "/notion/resources",
+        "DELETE_INTEGRATION": "/notion/delete-integration"
+    },
+    "FIGMA": {
+        "INTEGRATIONS": "/figma/integrations",
+        "OAUTH_CALLBACK": "/figma/oauth/callback"
+    },
+    "LINEAR": {
+        "OAUTH_CALLBACK": "/linear/oauth/callback",
+        "WEBHOOK": "/linear/webhook",
+        "INTEGRATIONS": "/linear/integrations",
+        "TEAMS": "/linear/teams"
+    },
+    "SLACK": {
+        "INTEGRATIONS": "/slack/integrations",
+        "GET_CURRENT_INTEGRATION": "/slack/get-current-integration",
+        "OAUTH_CALLBACK": "/slack/oauth-callback",
+        "CHANNELS": "/slack/channels",
+        "USERS": "/slack/users",
+        "EVENTS": "/slack/events"
+    },
+    "POSTHOG": {
+        "INTEGRATIONS": "/posthog/integrations",
+        "PROJECTS": "/posthog/projects"
+    },
+    "LAUNCHDARKLY": {
+        "INTEGRATIONS": "/launchdarkly/integrations",
+        "PROJECTS_BY_INTEGRATION_ID": "/launchdarkly/integrations/:integrationId/projects",
+        "ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT": "/launchdarkly/integrations/:integrationId/projects/:projectKey/environments"
+    },
+    "DATADOG": {
+        "INTEGRATIONS": "/datadog/integrations",
+        "INDEXES": "/datadog/indexes"
+    },
+    "WORKOS_INTEGRATION": {
+        "INTEGRATIONS": "/workos-integration/integrations",
+        "WEBHOOK_SECRET": "/workos-integration/webhook-secret"
+    },
+    "SNOWFLAKE": {
+        "INTEGRATIONS": "/snowflake/integrations"
+    },
+    "ATTIO": {
+        "INTEGRATIONS": "/attio/integrations",
+        "OAUTH_CALLBACK": "/attio/oauth/callback",
+        "OBJECTS": "/attio/integrations/:integrationId/objects"
+    },
+    "AGENTS": {
+        "LIST": "/agents",
+        "RECENT": "/agents/recent",
+        "BY_ID": "/agents/:id"
+    },
+    "IMPROVEMENTS": {
+        "BY_AGENT_ID": "/agents/:agentId/improvements",
+        "APPLY": "/agents/:agentId/improvements/:id/apply",
+        "DISMISS": "/agents/:agentId/improvements/:id/dismiss",
+        "UNDO_DISMISS": "/agents/:agentId/improvements/:id/undo-dismiss",
+        "TOGGLE_ENABLED": "/agents/:agentId/improvements-enabled"
+    },
+    "TEMPLATES": "/templates",
+    "PUBLIC": {
+        "TEMPLATES": "/public/templates"
+    },
+    "TOOLS": {
+        "THAT_REQUIRE_APPROVALS": "/tools/that-require-approvals"
+    },
+    "INTEGRATIONS": {
+        "INSTALLATION_DETAILS_BY_TYPE": "/integrations/:integrationType/installation-details",
+        "LIST": "/integrations",
+        "ACTIVE": "/integrations/active"
+    },
+    "NOTIFICATION_DESTINATIONS": {
+        "LIST": "/notification-destinations",
+        "BY_ID": "/notification-destinations/:id"
+    },
+    "API_TOKENS": {
+        "LIST": "/api-tokens",
+        "BY_ID": "/api-tokens/:id"
+    },
+    "SDK": {
+        "ME": "/sdk/me",
+        "SAMPLE_EVENTS": "/sdk/sample-events",
+        "TOOL_EXECUTE": "/sdk/tool-execute",
+        "TOOL_DEFINITIONS": "/sdk/tool-definitions",
+        "AGENT_RUN": "/sdk/agent-run",
+        "APPROVAL_DECISION": "/sdk/approval-decision",
+        "SESSION_EVENTS": "/sdk/session-events",
+        "DEPLOY": "/sdk/deploy",
+        "DEVICE_TOKEN_EXCHANGE": "/sdk/auth/device-token-exchange",
+        "INTEGRATION_FIELDS": "/sdk/integrations/:integrationType/fields",
+        "INTEGRATION_FORM_SUBMIT": "/sdk/integrations/:integrationType/form-submit"
+    },
+    "NOTIFICATION_SETTINGS": "/notification-settings",
+    "SENT_NOTIFICATIONS": {
+        "LIST": "/sent-notifications"
+    },
+    "PENDING_APPROVALS": {
+        "LIST": "/pending-approvals"
+    },
+    "WEBHOOKS": {
+        "GMAIL": "/webhooks/gmail",
+        "FIGMA": "/webhooks/figma",
+        "WORKOS": "/webhooks/workos",
+        "JIRA_BY_ACCOUNT_ID": "/webhooks/jira/:accountId",
+        "LINEAR_BY_USER_ID": "/webhooks/linear/:userId",
+        "SCHEDULE_BY_INPUT_ID": "/webhooks/schedule/:inputId",
+        "WORKOS_TRIGGER_BY_INTEGRATION_ID": "/webhooks/workos-trigger/:integrationId"
+    },
+    "SCHEDULE": {
+        "TRIGGER_BY_INPUT_ID": "/schedule/trigger/:inputId",
+        "TRIGGER_WITH_EVENT": "/schedule/trigger-with-event/:automationId"
+    },
+    "REFRESH_TOKENS": "/refresh-tokens",
+    "REVIEW_AGENTS": "/review-agents",
+    "USERS": {
+        "CREATE": "/users",
+        "BY_ID": "/users/:id"
+    },
+    "BUILDER_CHAT": {
+        "HISTORY_BY_SESSION_ID": "/builder-chat/:sessionId/history"
+    }
 }

@@ -1,8 +1,8 @@
+import type { KnownBlock } from "@slack/types"
 import { IntegrationType } from "terse-types"
 import type { ConfigInstance } from "terse-types"
 import type { SerializedEvent } from "terse-types"
 import type { WorkOSEventType } from "terse-types"
-import type { KnownBlock } from "@slack/types"
 
 /**
  * Lightweight interface for input events.
@@ -99,14 +99,7 @@ export class GithubInputEvent implements InputEvent {
     private readonly _formattedContent: string
     private readonly _debugLog: string
 
-    constructor(opts: {
-        eventType: string
-        repository: GithubRepository
-        sender: GithubUser
-        commits: GithubCommit[]
-        formattedContent: string
-        debugLog: string
-    }) {
+    constructor(opts: { eventType: string; repository: GithubRepository; sender: GithubUser; commits: GithubCommit[]; formattedContent: string; debugLog: string }) {
         this.eventType = opts.eventType
         this.repository = opts.repository
         this.sender = opts.sender
@@ -127,15 +120,7 @@ export class GithubInputEvent implements InputEvent {
 export class GithubPRInputEvent extends GithubInputEvent {
     readonly pullRequest: GithubPRData
 
-    constructor(opts: {
-        eventType: string
-        repository: GithubRepository
-        sender: GithubUser
-        commits: GithubCommit[]
-        pullRequest: GithubPRData
-        formattedContent: string
-        debugLog: string
-    }) {
+    constructor(opts: { eventType: string; repository: GithubRepository; sender: GithubUser; commits: GithubCommit[]; pullRequest: GithubPRData; formattedContent: string; debugLog: string }) {
         super(opts)
         this.pullRequest = opts.pullRequest
     }
@@ -144,15 +129,7 @@ export class GithubPRInputEvent extends GithubInputEvent {
 export class GithubPushInputEvent extends GithubInputEvent {
     readonly branch: string
 
-    constructor(opts: {
-        eventType: string
-        repository: GithubRepository
-        sender: GithubUser
-        commits: GithubCommit[]
-        branch: string
-        formattedContent: string
-        debugLog: string
-    }) {
+    constructor(opts: { eventType: string; repository: GithubRepository; sender: GithubUser; commits: GithubCommit[]; branch: string; formattedContent: string; debugLog: string }) {
         super(opts)
         this.branch = opts.branch
     }
@@ -221,13 +198,7 @@ export class WorkOSInputEvent implements InputEvent {
     private readonly _formattedContent: string
     private readonly _debugLog: string
 
-    constructor(opts: {
-        eventType: WorkOSEventType | string
-        eventId: string
-        createdAt: string
-        formattedContent: string
-        debugLog: string
-    }) {
+    constructor(opts: { eventType: WorkOSEventType | string; eventId: string; createdAt: string; formattedContent: string; debugLog: string }) {
         this.eventType = opts.eventType
         this.eventId = opts.eventId
         this.createdAt = opts.createdAt
@@ -247,14 +218,7 @@ export class WorkOSInputEvent implements InputEvent {
 export class WorkOSUserInputEvent extends WorkOSInputEvent {
     readonly user: WorkOSEventUser
 
-    constructor(opts: {
-        eventType: WorkOSEventType | string
-        eventId: string
-        createdAt: string
-        user: WorkOSEventUser
-        formattedContent: string
-        debugLog: string
-    }) {
+    constructor(opts: { eventType: WorkOSEventType | string; eventId: string; createdAt: string; user: WorkOSEventUser; formattedContent: string; debugLog: string }) {
         super(opts)
         this.user = opts.user
     }
@@ -263,14 +227,7 @@ export class WorkOSUserInputEvent extends WorkOSInputEvent {
 export class WorkOSMembershipInputEvent extends WorkOSInputEvent {
     readonly membership: WorkOSEventMembership
 
-    constructor(opts: {
-        eventType: WorkOSEventType | string
-        eventId: string
-        createdAt: string
-        membership: WorkOSEventMembership
-        formattedContent: string
-        debugLog: string
-    }) {
+    constructor(opts: { eventType: WorkOSEventType | string; eventId: string; createdAt: string; membership: WorkOSEventMembership; formattedContent: string; debugLog: string }) {
         super(opts)
         this.membership = opts.membership
     }
@@ -298,14 +255,7 @@ export class WorkOSInvitationInputEvent extends WorkOSInputEvent {
 export class WorkOSOrganizationInputEvent extends WorkOSInputEvent {
     readonly organization: WorkOSEventOrganization
 
-    constructor(opts: {
-        eventType: WorkOSEventType | string
-        eventId: string
-        createdAt: string
-        organization: WorkOSEventOrganization
-        formattedContent: string
-        debugLog: string
-    }) {
+    constructor(opts: { eventType: WorkOSEventType | string; eventId: string; createdAt: string; organization: WorkOSEventOrganization; formattedContent: string; debugLog: string }) {
         super(opts)
         this.organization = opts.organization
     }
@@ -335,11 +285,9 @@ export function isWorkOSOrganizationEvent(event: InputEvent): event is WorkOSOrg
     return event instanceof WorkOSOrganizationInputEvent
 }
 
-
 // ---------------------------------------------------------------------------
 // Slack event data interfaces
 // ---------------------------------------------------------------------------
-
 
 export enum SlackChannelType {
     CHANNEL = "channel",
@@ -393,8 +341,6 @@ export interface SlackFile {
     original_h?: number
 }
 
-
-
 export class SlackMessageEvent implements InputEvent {
     readonly eventType: string
     readonly integrationType = IntegrationType.SLACK
@@ -415,21 +361,21 @@ export class SlackMessageEvent implements InputEvent {
     private readonly _debugLog: string
 
     constructor(opts: {
-    eventType: string
-    channelId: string
-    channelName?: string
-    userId: string
-    userName?: string
-    text: string
-    timestamp: string
-    threadTs?: string
-    teamId: string
-    permalink?: string
-    channelType?: SlackChannelType
-    blocks?: KnownBlock[]
-    attachments?: SlackAttachment[]
-    files?: SlackFile[]
-     formattedContent: string
+        eventType: string
+        channelId: string
+        channelName?: string
+        userId: string
+        userName?: string
+        text: string
+        timestamp: string
+        threadTs?: string
+        teamId: string
+        permalink?: string
+        channelType?: SlackChannelType
+        blocks?: KnownBlock[]
+        attachments?: SlackAttachment[]
+        files?: SlackFile[]
+        formattedContent: string
         debugLog: string
     }) {
         this.eventType = opts.eventType
@@ -462,7 +408,6 @@ export class SlackMessageEvent implements InputEvent {
         return this.threadTs
     }
 }
-
 
 // ---------------------------------------------------------------------------
 // Generic fallback for non-typed serialized events

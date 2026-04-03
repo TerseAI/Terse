@@ -1,13 +1,14 @@
-declare const process: { env: Record<string, string | undefined> }
-
-import type { InputEvent, TypedTrigger, TypedSkill, InferEvents, InferToolApprovals } from "./types.js"
 import { CONFIG_DETAILS } from "terse-types"
 import type { ConfigInstance } from "terse-types"
 import type { RunHistoryAction } from "terse-types"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkApprovalDecisionRequestBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "terse-types"
-
+import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ApiRoutes } from "terse-types"
+
+import type { InferEvents, InferToolApprovals, InputEvent, TypedSkill, TypedTrigger } from "./types.js"
+
+declare const process: { env: Record<string, string | undefined> }
+
 // Re-export SDK-specific types
 export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 export {
@@ -31,17 +32,7 @@ export {
     SlackMessageEvent,
     deserializeInputEvent
 } from "./types.js"
-export type {
-    GithubRepository,
-    GithubUser,
-    GithubFileDiff,
-    GithubCommit,
-    GithubPRData,
-    WorkOSEventUser,
-    WorkOSEventMembership,
-    WorkOSEventInvitation,
-    WorkOSEventOrganization
-} from "./types.js"
+export type { GithubRepository, GithubUser, GithubFileDiff, GithubCommit, GithubPRData, WorkOSEventUser, WorkOSEventMembership, WorkOSEventInvitation, WorkOSEventOrganization } from "./types.js"
 
 // Mock event for CLI's `terse run` command
 export class MockInputEvent implements InputEvent {
@@ -91,33 +82,16 @@ export {
     WorkOSEventType
 } from "terse-types"
 
-export type {
-    SdkAgentRunEventPayload,
-    SdkAgentSkillPayload,
-    SdkAgentRunOptionsPayload,
-    SdkAgentRunRequestBody,
-    SdkAgentRunResponseBody,
-    SdkAgentStreamEvent,
-    ToolOutputByName
-} from "terse-types"
+export type { SdkAgentRunEventPayload, SdkAgentSkillPayload, SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolOutputByName } from "terse-types"
 export { IntegrationType } from "terse-types"
 
-export {
-    RunHistoryAction,
-    RunHistoryStatus,
-    RunHistoryTrigger,
-    RunHistoryDecision,
-    RunHistoryRecord
-} from "terse-types"
+export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
 
 // SDK types
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<
-    TTriggers extends readonly TypedTrigger[] = TypedTrigger[],
-    TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]
-> = {
+export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[], TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> = {
     name: string
     triggers: [...TTriggers]
     skills: [...TSkills]
@@ -181,7 +155,7 @@ export class TerseAgent {
                 formattedContent: resolvedEvent.formatForAgentRunner(),
                 debugLog: resolvedEvent.debugLog()
             },
-            skills: this.serializeSkills(),
+            skills: this.serializeSkills()
         }
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {

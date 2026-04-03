@@ -1,8 +1,10 @@
+import Handlebars from "handlebars"
 import fs from "node:fs"
 import path from "node:path"
-import Handlebars from "handlebars"
+
 import { getTemplatesRoot, readTemplateFile } from "../templateUtils.js"
-import { escapeString, type TemplateContext } from "./prepareCodegenData.js"
+
+import { type TemplateContext, escapeString } from "./prepareCodegenData.js"
 
 let template: Handlebars.TemplateDelegate<TemplateContext> | undefined
 
@@ -15,18 +17,13 @@ function getHandlebars(): typeof Handlebars {
     })
     handlebars.registerHelper("escape", (value: unknown) => escapeString(String(value ?? "")))
     handlebars.registerHelper("eq", (left: unknown, right: unknown) => left === right)
-    handlebars.registerHelper("joinPipe", (values: unknown) =>
-        Array.isArray(values) ? values.join(" | ") : ""
-    )
+    handlebars.registerHelper("joinPipe", (values: unknown) => (Array.isArray(values) ? values.join(" | ") : ""))
 
     const partialsDir = path.join(getTemplatesRoot(), "typescript", "codegen", "partials")
     for (const entry of fs.readdirSync(partialsDir).sort()) {
         if (!entry.endsWith(".hbs")) continue
         const partialName = path.basename(entry, ".hbs")
-        handlebars.registerPartial(
-            partialName,
-            fs.readFileSync(path.join(partialsDir, entry), "utf-8")
-        )
+        handlebars.registerPartial(partialName, fs.readFileSync(path.join(partialsDir, entry), "utf-8"))
     }
 
     return handlebars
@@ -35,10 +32,7 @@ function getHandlebars(): typeof Handlebars {
 function getCompiledTemplate(): Handlebars.TemplateDelegate<TemplateContext> {
     if (!template) {
         const handlebars = getHandlebars()
-        template = handlebars.compile<TemplateContext>(
-            readTemplateFile("typescript/codegen/generated.hbs"),
-            { noEscape: true }
-        )
+        template = handlebars.compile<TemplateContext>(readTemplateFile("typescript/codegen/generated.hbs"), { noEscape: true })
     }
     return template
 }

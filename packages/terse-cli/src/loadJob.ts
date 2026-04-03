@@ -1,6 +1,7 @@
-import chalk from "chalk"
 import { select } from "@inquirer/prompts"
+import chalk from "chalk"
 import { CreateJobParameters } from "terse-sdk"
+
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 
@@ -34,7 +35,7 @@ export async function loadJob(provider: LanguageProvider, jobName?: string): Pro
     } else {
         resolvedName = await select<string>({
             message: "Multiple jobs found. Which one?",
-            choices: [...registry.keys()].map(name => ({ name, value: name })),
+            choices: [...registry.keys()].map(name => ({ name, value: name }))
         })
     }
 

@@ -1,8 +1,9 @@
-import chalk from "chalk"
 import { confirm } from "@inquirer/prompts"
-import { BACKEND_URL } from "../../config.js"
+import chalk from "chalk"
 import { ApiRoutes } from "terse-types"
-import type { SdkApprovalDecisionRequestBody, SdkAgentStreamEvent } from "terse-types"
+import type { SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
+
+import { BACKEND_URL } from "../../config.js"
 
 type SessionStartedEvent = {
     type: "session_started"
@@ -22,12 +23,9 @@ type SessionStreamOptions = {
     onEvent?: (event: SessionStreamEvent) => Promise<void> | void
 }
 
-export async function openSessionStream(
-    apiKey: string,
-    options: SessionStreamOptions = {}
-): Promise<SessionHandle> {
+export async function openSessionStream(apiKey: string, options: SessionStreamOptions = {}): Promise<SessionHandle> {
     const response = await fetch(`${BACKEND_URL}${ApiRoutes.SDK.SESSION_EVENTS}`, {
-        headers: { Authorization: `Bearer ${apiKey}`, Accept: "text/event-stream" },
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: "text/event-stream" }
     })
 
     if (!response.ok || !response.body) {
@@ -45,21 +43,18 @@ export async function openSessionStream(
 
     return {
         sessionId: sessionId.value,
-        close: () => reader.cancel().catch(() => {}),
+        close: () => reader.cancel().catch(() => {})
     }
 }
 
-export async function submitApprovalDecision(
-    apiKey: string,
-    params: SdkApprovalDecisionRequestBody
-): Promise<void> {
+export async function submitApprovalDecision(apiKey: string, params: SdkApprovalDecisionRequestBody): Promise<void> {
     const response = await fetch(`${BACKEND_URL}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
         method: "POST",
         headers: {
             Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
+            "Content-Type": "application/json"
         },
-        body: JSON.stringify(params),
+        body: JSON.stringify(params)
     })
 
     if (!response.ok) {
@@ -68,10 +63,7 @@ export async function submitApprovalDecision(
     }
 }
 
-export function logSessionEvent(
-    event: SessionStreamEvent,
-    options: { isPaused?: () => boolean; verbose?: boolean } = {}
-): void {
+export function logSessionEvent(event: SessionStreamEvent, options: { isPaused?: () => boolean; verbose?: boolean } = {}): void {
     if (!options.verbose) return
     if (options.isPaused?.()) return
     if (event.type === "session_started" || event.type === "tool_approval_requested" || event.type === "run_started") {
@@ -125,23 +117,15 @@ export async function promptForToolApproval(toolName: string, rawArguments: stri
 
     const approved = await confirm({
         message: `Approve ${toolName}?`,
-        default: true,
+        default: true
     })
 
-    console.log(
-        approved
-            ? chalk.green("  Approved. Resuming...\n")
-            : chalk.red("  Rejected.\n")
-    )
+    console.log(approved ? chalk.green("  Approved. Resuming...\n") : chalk.red("  Rejected.\n"))
 
     return approved
 }
 
-async function readSessionId(
-    reader: ReadableStreamDefaultReader<Uint8Array>,
-    decoder: TextDecoder,
-    buffer: string
-): Promise<{ value: string; remainingBuffer: string }> {
+async function readSessionId(reader: ReadableStreamDefaultReader<Uint8Array>, decoder: TextDecoder, buffer: string): Promise<{ value: string; remainingBuffer: string }> {
     while (true) {
         const { done, value } = await reader.read()
         if (done) {
@@ -162,12 +146,7 @@ async function readSessionId(
     }
 }
 
-function startEventConsumer(
-    reader: ReadableStreamDefaultReader<Uint8Array>,
-    decoder: TextDecoder,
-    initialBuffer: string,
-    options: SessionStreamOptions
-): void {
+function startEventConsumer(reader: ReadableStreamDefaultReader<Uint8Array>, decoder: TextDecoder, initialBuffer: string, options: SessionStreamOptions): void {
     let buffer = initialBuffer
 
     void (async () => {

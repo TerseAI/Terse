@@ -1,13 +1,14 @@
+import { confirm } from "@inquirer/prompts"
+import chalk from "chalk"
 import { exec } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import process from "node:process"
-import chalk from "chalk"
-import { confirm } from "@inquirer/prompts"
 import ora from "ora"
+import type { DeviceTokenExchangeResponse } from "terse-types"
+
 import { fetchWithAuth, readApiKey } from "./api.js"
 import { BACKEND_URL, WORKOS_CLIENT_ID } from "./config.js"
-import type { DeviceTokenExchangeResponse } from "terse-types"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"
@@ -79,7 +80,7 @@ async function pollForTokens(deviceCode: string, expiresIn: number, interval: nu
             return res.json() as Promise<TokenResponse>
         }
 
-        const data = await res.json() as { error?: string }
+        const data = (await res.json()) as { error?: string }
 
         switch (data.error) {
             case "authorization_pending":
@@ -107,7 +108,7 @@ async function exchangeForApiKey(accessToken: string): Promise<DeviceTokenExchan
     })
 
     if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as Record<string, unknown>
+        const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
         throw new Error(`${res.status} — ${body.error || "Failed to exchange token"}`)
     }
 

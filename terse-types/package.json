@@ -1,40 +1,42 @@
 {
-  "name": "terse-types",
-  "version": "0.0.1",
-  "type": "module",
-  "description": "Shared Terse TypeScript types, enums, constants, and helpers.",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+    "name": "terse-types",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "Shared Terse TypeScript types, enums, constants, and helpers.",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./*": {
+            "types": "./dist/*.d.ts",
+            "import": "./dist/*.js"
+        }
     },
-    "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js"
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json && node --input-type=module -e \"import { fix } from 'tsc-esm-fix'; await fix({ cwd: process.cwd(), target: ['dist'], ext: '.js' })\"",
+        "clean": "rm -rf dist",
+        "dev": "node ../scripts/tsc-watch-and-fix.mjs tsconfig.build.json dist",
+        "format": "pnpm exec prettier --config ../.prettierrc --write \"*.{ts,json}\"",
+        "format:check": "pnpm exec prettier --config ../.prettierrc --check \"*.{ts,json}\""
+    },
+    "keywords": [
+        "typescript",
+        "shared-types",
+        "terse"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "license": "ISC",
+    "devDependencies": {
+        "tsc-esm-fix": "^3.1.2",
+        "typescript": "^5.8.3"
     }
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json && node --input-type=module -e \"import { fix } from 'tsc-esm-fix'; await fix({ cwd: process.cwd(), target: ['dist'], ext: '.js' })\"",
-    "clean": "rm -rf dist",
-    "dev": "node ../scripts/tsc-watch-and-fix.mjs tsconfig.build.json dist"
-  },
-  "keywords": [
-    "typescript",
-    "shared-types",
-    "terse"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "license": "ISC",
-  "devDependencies": {
-    "tsc-esm-fix": "^3.1.2",
-    "typescript": "^5.8.3"
-  }
 }

@@ -1,17 +1,19 @@
+import chalk from "chalk"
 import { exec, execSync } from "node:child_process"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
-import chalk from "chalk"
-import { tsImport } from "tsx/esm/api"
 import type { ApprovalRequestInfo, CreateJobParameters } from "terse-sdk"
 import { TerseAgent } from "terse-sdk"
-import { BACKEND_URL } from "../../config.js"
 import type { SerializedEvent } from "terse-types"
+import { tsImport } from "tsx/esm/api"
+
+import { BACKEND_URL } from "../../config.js"
 import { convertSerializedEventToInputEvent } from "../../util.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { openSessionStream, promptForToolApproval } from "../shared/sessionStream.js"
+
 import { prepareTemplateContext } from "./prepareCodegenData.js"
 import { renderGeneratedCode } from "./templateEngine.js"
 
@@ -22,13 +24,13 @@ export class TypeScriptProvider implements LanguageProvider {
     readonly displayName = "TypeScript"
     readonly projectMarkers = {
         requiredFiles: ["package.json", "src/index.ts"],
-        description: "TypeScript Terse project",
+        description: "TypeScript Terse project"
     }
     readonly entryFile = "src/index.ts"
     readonly generatedCodePath = "src/terse.generated.ts"
     readonly deployExclusions = {
         dirs: new Set(["node_modules", ".git", "dist", ".next", ".turbo"]),
-        files: new Set([".env", ".DS_Store"]),
+        files: new Set([".env", ".DS_Store"])
     }
 
     scaffoldFiles(): Array<{ template: string; output: string }> {
@@ -38,7 +40,7 @@ export class TypeScriptProvider implements LanguageProvider {
             { template: "typescript/init/src/index.ts.hbs", output: "src/index.ts" },
             { template: "typescript/init/env.example.hbs", output: ".env.example" },
             { template: "typescript/init/gitignore.hbs", output: ".gitignore" },
-            { template: "typescript/init/.claude/settings.json.hbs", output: ".claude/settings.json" },
+            { template: "typescript/init/.claude/settings.json.hbs", output: ".claude/settings.json" }
         ]
     }
 
@@ -47,10 +49,7 @@ export class TypeScriptProvider implements LanguageProvider {
     }
 
     getPostInitSteps(packageManager: string): string[] {
-        return [
-            `${packageManager} run build    Build the project`,
-            `${packageManager} run dev      Run in development mode`,
-        ]
+        return [`${packageManager} run build    Build the project`, `${packageManager} run dev      Run in development mode`]
     }
 
     detectPackageManager(): string {
@@ -98,9 +97,7 @@ export class TypeScriptProvider implements LanguageProvider {
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const registry = (globalThis as any).__terse_jobRegistry as
-            | Map<string, CreateJobParameters>
-            | undefined
+        const registry = (globalThis as any).__terse_jobRegistry as Map<string, CreateJobParameters> | undefined
 
         if (!registry || registry.size === 0) {
             console.error(chalk.red(`No jobs found. Make sure your ${this.entryFile} calls client.createJob().`))
@@ -110,11 +107,7 @@ export class TypeScriptProvider implements LanguageProvider {
         return registry
     }
 
-    async executeJob(
-        job: CreateJobParameters,
-        event: SerializedEvent,
-        opts?: { verbose?: boolean }
-    ): Promise<void> {
+    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
         const inputEvent = convertSerializedEventToInputEvent(event)
         const isVerbose = opts?.verbose ?? false
 
@@ -125,7 +118,7 @@ export class TypeScriptProvider implements LanguageProvider {
         if (isVerbose && apiKey) {
             const session = await openSessionStream(apiKey, {
                 verbose: true,
-                isPaused: () => sessionPaused,
+                isPaused: () => sessionPaused
             })
             sessionId = session.sessionId
             closeSession = session.close

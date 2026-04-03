@@ -1,19 +1,12 @@
-import { spawn } from "node:child_process"
-import chalk from "chalk"
 import { confirm, input, password, select } from "@inquirer/prompts"
+import chalk from "chalk"
+import { spawn } from "node:child_process"
 import ora from "ora"
-import { readApiKey, readApiKeyOrBail } from "./api.js"
-import {
-    ConfigurationFieldDefinition,
-    FormFieldDefinition,
-    fetchIntegrationFields,
-    fetchInstallationUrl,
-    fetchIntegrations,
-    pollForConnection,
-    submitIntegrationForm
-} from "./integrationApi.js"
 import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
+
+import { readApiKey, readApiKeyOrBail } from "./api.js"
 import { generate } from "./generate.js"
+import { ConfigurationFieldDefinition, FormFieldDefinition, fetchInstallationUrl, fetchIntegrationFields, fetchIntegrations, pollForConnection, submitIntegrationForm } from "./integrationApi.js"
 
 type IntegrationChangeResult = {
     status: "added" | "modified" | "unchanged"
@@ -47,12 +40,10 @@ export async function listAndPromptIntegrations(): Promise<void> {
         integrations = await fetchIntegrations(apiKey)
     } catch {
         console.error(chalk.red("Failed to fetch integrations"))
-        return 
+        return
     }
 
-    const active = integrations.filter(
-        i => i.isActive && i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB
-    )
+    const active = integrations.filter(i => i.isActive && i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB)
 
     if (active.length > 0) {
         console.log("\n  Connected integrations:\n")
@@ -82,9 +73,7 @@ async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeR
     }
 
     // Filter out system integrations
-    const userFacing = integrations.filter(
-        i => i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB
-    )
+    const userFacing = integrations.filter(i => i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB)
 
     if (userFacing.length === 0) {
         console.log(chalk.yellow("\n  No integrations available.\n"))
@@ -121,17 +110,13 @@ async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeR
     if (fieldsResponse.installationType === "form") {
         const didUpdate = await handleFormIntegration(apiKey, selected, fieldsResponse.fields as FormFieldDefinition[])
         return {
-            status: didUpdate
-                ? selectedIntegration?.isActive ? "modified" : "added"
-                : "unchanged",
+            status: didUpdate ? (selectedIntegration?.isActive ? "modified" : "added") : "unchanged",
             integrationType: selected
         }
     } else if (fieldsResponse.installationType === "oauth") {
         const didUpdate = await handleOAuthIntegration(apiKey, selected, fieldsResponse.fields as ConfigurationFieldDefinition[])
         return {
-            status: didUpdate
-                ? selectedIntegration?.isActive ? "modified" : "added"
-                : "unchanged",
+            status: didUpdate ? (selectedIntegration?.isActive ? "modified" : "added") : "unchanged",
             integrationType: selected
         }
     } else {
@@ -155,13 +140,13 @@ async function handleFormIntegration(apiKey: string, integrationType: string, fi
         if (field.type === "password") {
             formValues[field.name] = await password({
                 message: `${field.label}${hint}`,
-                validate: field.required ? (v) => (v.length > 0 ? true : `${field.label} is required`) : undefined
+                validate: field.required ? v => (v.length > 0 ? true : `${field.label} is required`) : undefined
             })
         } else {
             formValues[field.name] = await input({
                 message: `${field.label}${hint}`,
                 default: field.placeholder,
-                validate: field.required ? (v) => (v.length > 0 ? true : `${field.label} is required`) : undefined
+                validate: field.required ? v => (v.length > 0 ? true : `${field.label} is required`) : undefined
             })
         }
     }

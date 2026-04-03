@@ -13,6 +13,8 @@
   ],
   "scripts": {
     "build": "tsc && npm run postbuild",
+    "format": "pnpm exec prettier --config ../.prettierrc --write \"src/**/*.ts\"",
+    "format:check": "pnpm exec prettier --config ../.prettierrc --check \"src/**/*.ts\"",
     "postbuild": "tsc-esm-fix dist",
     "start": "probot run ./lib/index.js",
     "test": "vitest"

@@ -1,21 +1,19 @@
 #!/usr/bin/env node
 
 import { Command } from "commander"
+
 import { loginAndWriteEnv } from "./auth.js"
 import { deploy } from "./deploy.js"
 import { generate } from "./generate.js"
-import { integrate } from "./integrate.js"
 import { init } from "./init.js"
+import { integrate } from "./integrate.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 import { run } from "./run.js"
 import { test } from "./test.js"
 
 const program = new Command()
 
-program
-    .name("terse")
-    .description("The Terse CLI — scaffold and manage Terse projects")
-    .version("0.1.0")
+program.name("terse").description("The Terse CLI — scaffold and manage Terse projects").version("0.1.0")
 
 program
     .command("init")
@@ -70,7 +68,7 @@ program
 
 program
     .command("deploy")
-        .description("Deploy all jobs to Terse (syncs with server — removed jobs are deleted)")
+    .description("Deploy all jobs to Terse (syncs with server — removed jobs are deleted)")
     .action(async () => {
         await deploy(resolveProvider())
     })

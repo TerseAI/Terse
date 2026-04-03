@@ -1,6 +1,7 @@
+import chalk from "chalk"
 import fs from "node:fs"
 import path from "node:path"
-import chalk from "chalk"
+
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 
 /**
@@ -9,16 +10,10 @@ import type { LanguageProvider } from "./providers/LanguageProvider.js"
  */
 export function assertProjectRoot(provider: LanguageProvider): void {
     const cwd = process.cwd()
-    const missingFiles = provider.projectMarkers.requiredFiles.filter(relativePath =>
-        !fs.existsSync(path.join(cwd, relativePath))
-    )
+    const missingFiles = provider.projectMarkers.requiredFiles.filter(relativePath => !fs.existsSync(path.join(cwd, relativePath)))
 
     if (missingFiles.length > 0) {
-        console.error(
-            chalk.red(
-                `Error: Current directory is not a ${provider.projectMarkers.description}. Missing: ${missingFiles.join(", ")}.`
-            )
-        )
+        console.error(chalk.red(`Error: Current directory is not a ${provider.projectMarkers.description}. Missing: ${missingFiles.join(", ")}.`))
         process.exit(1)
     }
 }

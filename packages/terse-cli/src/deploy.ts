@@ -1,17 +1,17 @@
+import chalk from "chalk"
+import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
-import chalk from "chalk"
 import ora from "ora"
-import { zipSync } from "fflate"
+import { ApiRoutes } from "terse-types"
+import type { ConfigInstance } from "terse-types"
+import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJobRegistry } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
-import { ApiRoutes } from "terse-types"
-import type { ConfigInstance } from "terse-types"
-import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "terse-types"
 
 export async function deploy(provider: LanguageProvider = resolveProvider()) {
     assertProjectRoot(provider)
@@ -74,11 +74,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
     }
 }
 
-function collectFiles(
-    dir: string,
-    baseDir: string,
-    provider: LanguageProvider
-): Record<string, Uint8Array> {
+function collectFiles(dir: string, baseDir: string, provider: LanguageProvider): Record<string, Uint8Array> {
     const entries: Record<string, Uint8Array> = {}
 
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -103,9 +99,7 @@ function serializeConfig(config: ConfigInstance): AgentTrigger | AgentOutput {
     return { id: "", config: rest as ConfigInstance }
 }
 
-function buildZipPayload(
-    provider: LanguageProvider
-): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {
+function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {
     const cwd = process.cwd()
     const files = collectFiles(cwd, cwd, provider)
     const fileCount = Object.keys(files).length
