@@ -295,7 +295,7 @@ export class CronJobEvent extends InputEvent {
             source: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             title: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             subheader: isManualTrigger ? "Triggered manually by user" : "Scheduled Job",
-            url: buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: this.data.inputId })
+            url: buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: this.data.inputId })
         }
     }
 }

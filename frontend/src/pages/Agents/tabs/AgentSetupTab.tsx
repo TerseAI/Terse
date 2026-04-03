@@ -151,7 +151,7 @@ function AgentOptionsMenu({
 
             if (result?.id) {
                 toast.success("Agent cloned successfully")
-                navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: result.id }))
+                navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: result.id }))
             } else {
                 toast.error("Failed to clone agent: no ID returned")
             }
@@ -288,7 +288,7 @@ function SaveAgentButton({
                 const creation = await createAgent(agentData)
 
                 if (creation?.id) {
-                    navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: creation.id }), { replace: true })
+                    navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: creation.id }), { replace: true })
                 }
             }
 

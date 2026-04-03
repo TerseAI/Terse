@@ -49,7 +49,7 @@ async function getEmailBranding(): Promise<EmailBranding> {
 }
 
 export async function sendEmailNotification(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, agent: Agent) {
-    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { agentId: agent.id })}` : undefined
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 
@@ -63,8 +63,8 @@ export async function sendEmailNotification(notificationDestination: UserNotific
 }
 
 export async function sendEmailApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: User) {
-    const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { agentId: agent.id, runId })}` : undefined
-    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { agentId: agent.id })}` : undefined
+    const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agent.id, runId })}` : undefined
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
     const notificationFor = formatApprovalNotificationFor(runAction.action)
@@ -79,8 +79,8 @@ export async function sendEmailApprovalRequest(notificationDestination: UserNoti
 }
 
 export async function sendEmailRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string) {
-    const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { agentId: agent.id, runId })}` : undefined
-    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { agentId: agent.id })}` : undefined
+    const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agent.id, runId })}` : undefined
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 

@@ -89,9 +89,9 @@ Use this information to understand temporal context.`
         const frontendUrl = settings.urls.frontend
         const agentId = this.deps.agent.id
         const runId = this.runContext.runId
-        const channelLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId })}`
-        const channelHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.HISTORY, { agentId })}`
-        const specificRunLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { agentId, runId })}`
+        const channelLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: agentId })}`
+        const channelHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.HISTORY, { id: agentId })}`
+        const specificRunLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agentId, runId })}`
 
         return {
             header: "DEEP LINKING TO TERSE APPLICATION",

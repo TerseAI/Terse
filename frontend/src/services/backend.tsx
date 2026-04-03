@@ -1183,7 +1183,7 @@ export const BackendProvider: BackendService = {
     },
 
     applyImprovement: (agentId: string, improvementId: string) => {
-        const url = buildRoute(ApiRoutes.IMPROVEMENTS.APPLY, { agentId, improvementId })
+        const url = buildRoute(ApiRoutes.IMPROVEMENTS.APPLY, { agentId, id: improvementId })
         return axios
             .post<ApplyImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
@@ -1194,7 +1194,7 @@ export const BackendProvider: BackendService = {
     },
 
     dismissImprovement: (agentId: string, improvementId: string) => {
-        const url = buildRoute(ApiRoutes.IMPROVEMENTS.DISMISS, { agentId, improvementId })
+        const url = buildRoute(ApiRoutes.IMPROVEMENTS.DISMISS, { agentId, id: improvementId })
         return axios
             .post<DismissImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
@@ -1205,7 +1205,7 @@ export const BackendProvider: BackendService = {
     },
 
     undoDismissImprovement: (agentId: string, improvementId: string) => {
-        const url = buildRoute(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, { agentId, improvementId })
+        const url = buildRoute(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, { agentId, id: improvementId })
         return axios
             .post<{ success: boolean }>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
@@ -1470,7 +1470,7 @@ export const BackendProvider: BackendService = {
     },
 
     triggerWithEvent: (automationId: string, event: SerializedEvent) => {
-        const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { id: automationId })
+        const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { automationId })
         return axios
             .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event }, { withCredentials: true })
             .then(response => response.data)
@@ -1481,7 +1481,7 @@ export const BackendProvider: BackendService = {
     },
 
     triggerManually: (triggerId: string, context?: string) => {
-        const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, { id: triggerId })
+        const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, { inputId: triggerId })
         return axios
             .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { context }, { withCredentials: true })
             .then(response => response.data)

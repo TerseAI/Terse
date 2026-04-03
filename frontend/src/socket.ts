@@ -119,13 +119,16 @@ export function initializeSocket() {
         return
     }
 
-    // Socket.IO needs the full origin URL, and we specify the path via the 'path' option
-    // The path will be: /api/socket.io (which the Vite proxy will forward to /socket.io on backend)
-    const socketUrl = import.meta.env.VITE_SOCKET_URL ?? window.location.origin
+    const configuredSocketUrl = import.meta.env.VITE_SOCKET_URL
+    const socketUrl = configuredSocketUrl ?? window.location.origin
+    const isSameOriginSocket = !configuredSocketUrl || new URL(configuredSocketUrl, window.location.origin).origin === window.location.origin
+    const socketBasePath = isSameOriginSocket ? (import.meta.env.VITE_WS_BASE ?? "/api") : ""
+    const socketPath = `${socketBasePath}/socket.io`
 
     // Socket is assigned synchronously here to prevent race conditions
     // The auth callback fetches a fresh token on every connection/reconnection attempt
     socket = io(socketUrl, {
+        path: socketPath,
         auth: async cb => {
             try {
                 const token = await BackendProvider.requestSessionSocketToken()
@@ -143,7 +146,10 @@ export function initializeSocket() {
         console.error("Error details:", {
             message: error.message,
             name: error.name,
-            stack: error.stack
+            stack: error.stack,
+            data: "data" in error ? error.data : undefined,
+            socketUrl,
+            socketPath
         })
     })
 

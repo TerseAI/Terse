@@ -20,9 +20,10 @@
         }
     },
     "scripts": {
-        "build": "tsc -p tsconfig.build.json && node --input-type=module -e \"import { fix } from 'tsc-esm-fix'; await fix({ cwd: process.cwd(), target: ['dist'], ext: '.js' })\"",
+        "generate:routes": "node ./generate-routes.mjs",
+        "build": "pnpm run generate:routes && tsc -p tsconfig.build.json && node --input-type=module -e \"import { fix } from 'tsc-esm-fix'; await fix({ cwd: process.cwd(), target: ['dist'], ext: '.js' })\"",
         "clean": "rm -rf dist",
-        "dev": "node ../scripts/tsc-watch-and-fix.mjs tsconfig.build.json dist",
+        "dev": "pnpm run generate:routes && node ../scripts/tsc-watch-and-fix.mjs tsconfig.build.json dist",
         "format": "pnpm exec prettier --config ../.prettierrc --write \"*.{ts,json}\"",
         "format:check": "pnpm exec prettier --config ../.prettierrc --check \"*.{ts,json}\""
     },

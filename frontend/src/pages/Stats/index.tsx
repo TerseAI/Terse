@@ -202,7 +202,7 @@ function AgentLeaderboard({ agents }: { agents: AgentActivityItem[] }) {
                             <div key={agent.agentId} className="group">
                                 <div className="flex items-center justify-between mb-1">
                                     <button
-                                        onClick={() => navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: agent.agentId }))}
+                                        onClick={() => navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: agent.agentId }))}
                                         className="text-sm font-medium text-foreground hover:underline underline-offset-4 transition-colors truncate max-w-[200px]"
                                     >
                                         {agent.agentName}
