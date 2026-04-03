@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
     "install-global": "npm run build && npm link"
   },
   "devDependencies": {

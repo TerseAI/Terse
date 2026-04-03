@@ -924,7 +924,7 @@ enum KnowledgeBaseConfigType {
   WORKOS
 }
 
-// Run History enums to mirror backend/shared RunHistoryTypes
+// Run History enums to mirror terse-types/RunHistoryTypes
 enum RunHistoryStatus {
   success
   failed
@@ -939,7 +939,7 @@ enum RunHistoryDecisionAction {
   skipped
 }
 
-// Chat event types for run history (matches shared/ModelEvents.ts ModelEvent types)
+// Chat event types for run history (matches terse-types/ModelEvents.ts ModelEvent types)
 enum RunHistoryChatEventType {
   TextDelta
   ToolCallGenerating

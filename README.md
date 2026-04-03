@@ -66,8 +66,10 @@ This will:
 For CLI work, use the TypeScript package directly:
 
 - `packages/terse-cli` for the CLI implementation
-- `npm run build:packages` from the repo root to build `terse-sdk` and `terse-cli`
-- `npm run link:cli` if you want a globally linked `terse` binary during development
+- `packages/terse-sdk` for the runtime SDK used by the CLI
+- `pnpm install` from the repo root to install workspace dependencies
+- `pnpm run install-global` from the repo root to build and globally link `terse-sdk` and `terse-cli`
+- `pnpm run dev` from the repo root to start the full workspace watch mode for `terse-types`, `terse-sdk`, `terse-cli`, `frontend`, and `backend`
 
 ### Astral Tooling
 
@@ -136,21 +138,6 @@ uv tree
 uv tree --package terse-sdk
 ```
 
-Shared-type sync only:
-
-```bash
-npm run sync:shared
-```
-
-### Python SDK Models
-
-The Python SDK request/response models are maintained by hand under `packages/terse-python-sdk/src/terse_sdk/types/`.
-
-If you only need to sync the repo-level shared TypeScript definitions for the JavaScript/TypeScript packages and the Python SDK models, run:
-
-```bash
-npm run sync:shared
-```
 
 ### Recommended Python Dev Loop
 
@@ -244,8 +231,9 @@ That's it! The repo includes:
   ```
 ## Local Dev
 
-you will need to make an ngrok account and get a dedicated dev url + access token. Then set the following env variables in backend/.env
+If you want webhook-compatible local dev, make an ngrok account and set these env variables in `backend/.env`:
 
+DEV_TUNNEL=1
 NGROK_AUTH_TOKEN=38Zg3QagX6X9AnYc6WKqwedwefdGCY21_2nVjhcyeynHFNmnr7ijBw
 NGROK_DOMAIN=abbie-smoking-yetta.ngrok-free.dev
 
@@ -255,7 +243,7 @@ Then, install ngrok with brew
 brew install ngrok
 ```
 
-After that, simply run pnpm run dev:tunnel and the rest will be taken care of.
+After that, run `pnpm run dev` from the repo root. The backend dev script will detect the tunnel config, start ngrok automatically, update `BACKEND_URL`, and then start the backend watcher.
 
 Make sure to set your test apps (Slack github etc...) to the ngrok url.
 

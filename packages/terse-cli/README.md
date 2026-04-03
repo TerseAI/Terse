@@ -10,12 +10,12 @@ npm install -g terse-cli
 
 ## Local Development
 
-From the repo root, use the npm workspace so `terse-cli` resolves the local `terse-sdk` automatically:
+From the repo root, use the pnpm workspace so `terse-cli` resolves the local `terse-sdk` and `terse-types` packages automatically:
 
 ```bash
-npm install
-npm run build:packages
-npm run link:cli
+pnpm install
+pnpm run dev
+pnpm run install-global
 ```
 
 ## Commands

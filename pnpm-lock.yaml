@@ -172,9 +172,9 @@ importers:
       socket.io:
         specifier: ^4.8.1
         version: 4.8.3
-     terse-types:
+      terse-types:
         specifier: workspace:*
-        version: link:../shared
+        version: link:../terse-types
       tsc-esm-fix:
         specifier: ^3.1.2
         version: 3.1.2
@@ -398,9 +398,9 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.5.0
-     terse-types:
+      terse-types:
         specifier: workspace:*
-        version: link:../shared
+        version: link:../terse-types
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -489,9 +489,9 @@ importers:
       terse-sdk:
         specifier: workspace:*
         version: link:../terse-sdk
-     terse-types:
+      terse-types:
         specifier: workspace:*
-        version: link:../../shared
+        version: link:../../terse-types
       tsx:
         specifier: ^4.0.0
         version: 4.21.0
@@ -508,15 +508,15 @@ importers:
       '@slack/types':
         specifier: ^2.20.1
         version: 2.20.1
-     terse-types:
+      terse-types:
         specifier: workspace:*
-        version: link:../../shared
+        version: link:../../terse-types
     devDependencies:
       typescript:
         specifier: ^5.0.0
         version: 5.8.3
 
-  shared:
+  terse-types:
     devDependencies:
       tsc-esm-fix:
         specifier: ^3.1.2

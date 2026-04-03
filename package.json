@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r run build",
-    "dev": "pnpm -r run dev",
+    "dev": "pnpm run dev:setup && pnpm -r --parallel --stream run dev",
+    "dev:setup": "pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli run build",
     "format": "pnpm -r run format",
     "install-global": "pnpm -r --filter terse-sdk --filter terse-cli run install-global",
     "python:setup": "uv sync --all-packages",

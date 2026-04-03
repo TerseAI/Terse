@@ -162,8 +162,8 @@ importers:
         specifier: ^3.3.1
         version: 3.3.1
      "terse-types"
-        specifier: link:../shared
-        version: link:../shared
+        specifier: link:../terse-types
+        version: link:../terse-types
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
