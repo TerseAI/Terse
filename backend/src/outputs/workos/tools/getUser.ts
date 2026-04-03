@@ -1,25 +1,14 @@
-import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { getWorkOSApiKeyByIntegrationId, getWorkOSUser } from "../workosApiClient"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
-    userId: z.string().describe("The WorkOS user ID to look up.")
-})
-
-export const getWorkOSUserTool: SessionToolOptions<typeof parameters, typeof ToolName.WORKOS_GET_USER> = {
-    name: ToolName.WORKOS_GET_USER,
+export const getWorkOSUserTool = defineSessionTool({
+    name: "getWorkOSUser",
     description: "Get detailed information about a specific WorkOS user by their user ID. Returns profile data including email, name, verification status, and timestamps.",
-    parameters: parameters,
-    execute: async ({ integrationId, userId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, userId }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -66,4 +55,4 @@ export const getWorkOSUserTool: SessionToolOptions<typeof parameters, typeof Too
             throw new Error(`Failed to get WorkOS user: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

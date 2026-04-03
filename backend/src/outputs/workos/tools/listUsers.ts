@@ -1,29 +1,15 @@
-import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { getWorkOSApiKeyByIntegrationId, listWorkOSUsers } from "../workosApiClient"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
-    email: z.string().nullable().optional().describe("Optional exact email address filter. Omit or pass null to list all users."),
-    organizationId: z.string().nullable().optional().describe("Optional WorkOS organization ID filter. Omit or pass null for all organizations."),
-    limit: z.number().default(20).describe("Maximum number of users to return (default: 20, max: 100)."),
-    after: z.string().nullable().optional().describe("Optional pagination cursor. Use the 'after' value from a previous response to get the next page.")
-})
-
-export const listWorkOSUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.WORKOS_LIST_USERS> = {
-    name: ToolName.WORKOS_LIST_USERS,
+export const listWorkOSUsersTool = defineSessionTool({
+    name: "listWorkOSUsers",
     description:
         "List users from the customer's WorkOS account. Supports filtering by email and organization ID. Returns user profiles including email, name, and creation date. Use pagination (after cursor) for large user sets.",
-    parameters: parameters,
-    execute: async ({ integrationId, email, organizationId, limit = 20, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, email, organizationId, limit = 20, after }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -78,4 +64,4 @@ export const listWorkOSUsersTool: SessionToolOptions<typeof parameters, typeof T
             throw new Error(`Failed to list WorkOS users: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

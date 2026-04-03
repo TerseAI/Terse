@@ -1,18 +1,12 @@
-import { ToolName } from "terse-types"
-import { z } from "zod"
-
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { ChatAgentContext } from "../../../agent/ChatAgent/ChatAgentContext"
 import { getWebSearchService } from "../../../services/webSearch"
-import { TypedToolOptions } from "../../../tools/toolUtils"
+import { TypedToolOptions, defineTool } from "../../../tools/toolUtils"
+import { Session } from "../../../types/session"
 
-const parameters = z.object({
-    urls: z.union([z.string(), z.array(z.string())]).describe("URL or list of URLs to extract content from"),
-    extract_depth: z.enum(["basic", "advanced"]).nullable().describe("'advanced' handles JavaScript-heavy pages but is slower")
-})
-
-export const webExtractTool: TypedToolOptions<typeof parameters, typeof ToolName.WEB_EXTRACT> = {
-    name: ToolName.WEB_EXTRACT,
+export const webExtractTool = defineTool({
+    name: "web_extract",
     description: "Extract the full text content from one or more web page URLs. Use this when you need to read the complete contents of a specific page.",
-    parameters: parameters,
     execute: async ({ urls, extract_depth }) => {
         const service = getWebSearchService()
         const urlList = Array.isArray(urls) ? urls : [urls]
@@ -22,4 +16,8 @@ export const webExtractTool: TypedToolOptions<typeof parameters, typeof ToolName
             extractDepth
         })
     }
-}
+})
+
+export const chatWebExtractTool: TypedToolOptions<"web_extract", ChatAgentContext> = webExtractTool
+
+export const runHistoryWebExtractTool: TypedToolOptions<"web_extract", SessionWithTracking<Session>> = webExtractTool

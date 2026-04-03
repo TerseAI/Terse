@@ -1,23 +1,15 @@
 import { GoogleGenAI } from "@google/genai"
 import axios from "axios"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
 import { gemini } from "../../../config/settings"
 import logger from "../../../logger"
 import { assertInternalGcsBucketUrl, buildImageEditKey, ensureStoredWithMetadata } from "../../../services/FileStorageService"
-import { SessionToolOptions } from "../../../tools/toolUtils"
+import { defineSessionTool } from "../../../tools/toolUtils"
 
-const parameters = z.object({
-    image_url: z.string().describe("URL of the image to edit. Must be a signed URL from our internal GCS image bucket."),
-    prompt: z.string().describe("Natural language instruction describing how to edit the image.")
-})
-
-export const imageEditTool: SessionToolOptions<typeof parameters, typeof ToolName.IMAGE_EDIT> = {
-    name: ToolName.IMAGE_EDIT,
+export const imageEditTool = defineSessionTool({
+    name: "image_edit",
     description:
         "Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see.",
-    parameters: parameters,
     execute: async ({ image_url, prompt }) => {
         assertInternalGcsBucketUrl(image_url)
 
@@ -74,4 +66,4 @@ export const imageEditTool: SessionToolOptions<typeof parameters, typeof ToolNam
             snippets: [{ type: "image", url: storedFile.url }]
         }
     }
-}
+})

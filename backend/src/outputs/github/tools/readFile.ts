@@ -1,13 +1,8 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFullName } from "../githubApiClient"
 
@@ -15,15 +10,8 @@ import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFul
  * Tool for reading file contents from GitHub repositories.
  * Uses GitHub's Contents API to fetch file contents from the default branch.
  */
-const readGitHubFileParameters = z.object({
-    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-    path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
-    startLine: z.number().nullable().optional().describe("Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning."),
-    endLine: z.number().nullable().optional().describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
-})
-
-export const readGitHubFileTool: SessionToolOptions<typeof readGitHubFileParameters, typeof ToolName.GITHUB_READ_FILE> = {
-    name: ToolName.GITHUB_READ_FILE,
+export const readGitHubFileTool = defineSessionTool({
+    name: "readGitHubFile",
     description: `Read the full contents of a file from a GitHub repository. Use this after finding relevant files via search to:
 - Understand the complete implementation of a function or class
 - See imports and dependencies
@@ -32,8 +20,7 @@ export const readGitHubFileTool: SessionToolOptions<typeof readGitHubFileParamet
 
 Note: This reads from the default branch (main/master). Large files may be truncated.`,
     strict: true,
-    parameters: readGitHubFileParameters,
-    execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repository, path, startLine, endLine }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -164,4 +151,4 @@ Note: This reads from the default branch (main/master). Large files may be trunc
             throw new Error(`${errorMessage}. ${tip}`)
         }
     }
-}
+})

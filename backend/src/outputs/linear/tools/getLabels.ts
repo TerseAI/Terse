@@ -1,27 +1,16 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { LinearAdapter } from "../../../ticketing/linear"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-    teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's labels.")
-})
-
-export const linearGetLabelsTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_GET_LABELS> = {
-    name: ToolName.LINEAR_GET_LABELS,
+export const linearGetLabelsTool = defineSessionTool({
+    name: "linear_get_labels",
     description: `List issue labels for the Linear workspace or a specific team. Use to pick labelIds for linear_create_ticket or linear_update_ticket.`,
-    parameters: parameters,
-    execute: async ({ integrationId, teamId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, teamId }, runContext) => {
         logger.debug("🛠️ Executing linear_get_labels tool", { integrationId, teamId })
 
         if (!runContext?.context) {
@@ -53,4 +42,4 @@ export const linearGetLabelsTool: SessionToolOptions<typeof parameters, typeof T
             throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }
     }
-}
+})

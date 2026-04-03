@@ -1,15 +1,10 @@
 import { Client } from "@notionhq/client"
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints"
-import { RunContext } from "@openai/agents"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {
@@ -230,18 +225,12 @@ async function fetchAllBlocks(notion: Client, blockId: string): Promise<any[]> {
     return allBlocks
 }
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-    pageId: z.string().describe("The Notion page ID to query.")
-})
-
-export const notionQueryPageTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_QUERY_PAGE> = {
-    name: ToolName.NOTION_QUERY_PAGE,
+export const notionQueryPageTool = defineSessionTool({
+    name: "notion_query_page",
     description: `Call this tool ONCE at the beginning of your run to get the page state. After calling it once, remember and reuse the results - DO NOT call it multiple times in the same run.
 
 This tool returns the current state of the page including all properties, metadata, and content blocks.`,
-    parameters: parameters,
-    execute: async ({ integrationId, pageId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, pageId }, runContext) => {
         logger.debug("Executing notion_query_page tool")
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -340,4 +329,4 @@ This tool returns the current state of the page including all properties, metada
             blocks_count: blocks.length
         }
     }
-}
+})

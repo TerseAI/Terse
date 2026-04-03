@@ -1,15 +1,10 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
-import { RunContext } from "@openai/agents"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 
 // Helper function to build property schema with format examples
 function buildPropertySchema(propertyName: string, propertyConfig: any): any {
@@ -61,13 +56,8 @@ function buildPropertySchema(propertyName: string, propertyConfig: any): any {
     return baseSchema
 }
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-    databaseId: z.string().describe("The Notion database ID (data source ID) to get the schema for.")
-})
-
-export const notionGetSchemaTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_GET_SCHEMA> = {
-    name: ToolName.NOTION_GET_SCHEMA,
+export const notionGetSchemaTool = defineSessionTool({
+    name: "notion_get_schema",
     description: `Gets the schema/structure of the Notion data source. This tool retrieves all property definitions including property names, types, valid options for select/status fields, and exact format examples for how to construct each property when writing to the database.
 
 Use this tool:
@@ -78,8 +68,7 @@ Use this tool:
 - To determine how to write to the Notion database by understanding its structure
 
 The schema information returned by this tool should be used to properly format properties when calling notion_create_or_update_database_row to create or update rows in the database.`,
-    parameters: parameters,
-    execute: async ({ integrationId, databaseId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, databaseId }, runContext) => {
         logger.debug("Executing notion_get_schema tool")
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -123,4 +112,4 @@ The schema information returned by this tool should be used to properly format p
             property_count: Object.keys(schema).length
         }
     }
-}
+})

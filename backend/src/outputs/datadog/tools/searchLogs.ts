@@ -2,42 +2,22 @@ import { client, v2 } from "@datadog/datadog-api-client"
 import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getDatadogLogsDeepLink, getDatadogSite } from "../../../utility/datadog"
-
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
-    defaultIndexes: z
-        .union([z.array(z.string()), z.null()])
-        .optional()
-        .describe('Default log indexes to search (e.g., ["main"]). Falls back to ["main"] if not provided.'),
-    query: z.string().nullable().optional().optional().describe("Datadog log search query (e.g., service:web AND @status:error)"),
-    indexes: z
-        .union([z.array(z.string()), z.null()])
-        .optional()
-        .describe('Log indexes to search (e.g., ["main"]). Defaults to defaultIndexes if not provided.'),
-    from: z.string().nullable().optional().optional().describe('Start time (ISO8601 or relative like "now-1h")'),
-    to: z.string().nullable().optional().optional().describe("End time (ISO8601). Defaults to now if not provided."),
-    limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50)"),
-    cursor: z.string().nullable().optional().optional().describe("Pagination cursor from previous response"),
-    sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)')
-})
 
 /**
  * Tool for querying Datadog logs with flexible filtering options.
  * This tool queries the Datadog Logs API v2 to find logs. You can filter by query string, indexes, time range, or combinations.
  */
-export const searchDatadogLogsTool: SessionToolOptions<typeof parameters, typeof ToolName.DATADOG_SEARCH_LOGS> = {
-    name: ToolName.DATADOG_SEARCH_LOGS,
+export const searchDatadogLogsTool = defineSessionTool({
+    name: "searchDatadogLogs",
     description: "Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.",
-    parameters: parameters,
+    //parameters: parameters,
     execute: async ({ integrationId, defaultIndexes, query, indexes, from, to, limit = 50, cursor, sort = "timestamp" }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -254,4 +234,4 @@ export const searchDatadogLogsTool: SessionToolOptions<typeof parameters, typeof
             throw new Error(`Failed to query Datadog logs: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

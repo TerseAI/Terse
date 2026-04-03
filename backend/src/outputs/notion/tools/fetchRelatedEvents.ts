@@ -1,20 +1,9 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { AttributionStore } from "../../../rag/AttributionStore"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
-
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-    pageId: z.string().describe("The Notion page ID (not used directly, but required for consistency)."),
-    block_id: z.string().describe("The Notion block ID to fetch related events for")
-})
+import { defineSessionTool } from "../../../tools/toolUtils"
 
 /**
  * Fetches events that are related to a specific Notion block.
@@ -23,8 +12,8 @@ const parameters = z.object({
  * IMPORTANT: This tool should be called BEFORE modifying a block to understand
  * the context and avoid recency bias.
  */
-export const fetchRelatedEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_FETCH_RELATED_EVENTS> = {
-    name: ToolName.NOTION_FETCH_RELATED_EVENTS,
+export const fetchRelatedEventsTool = defineSessionTool({
+    name: "notion_fetch_related_events",
     description: `Fetch source events that are related to a specific Notion block. This provides important context about what caused the block to be created or modified.
 
 CRITICAL: You MUST call this tool before calling notion_modify_blocks to understand the context and avoid recency bias. The events returned will help you make informed decisions about how to modify the block.
@@ -35,8 +24,7 @@ Use this when:
 - Before moving a block to understand its relationship to source events
 
 The tool returns the source events (e.g., Slack messages, emails) that led to this block's creation or modification.`,
-    parameters: parameters,
-    execute: async ({ integrationId, pageId, block_id }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, pageId, block_id }, runContext) => {
         logger.info("Fetching related events for block and user", { block_id, userId: runContext?.context?.user.displayName })
 
         if (!runContext?.context) {
@@ -97,4 +85,4 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
             throw new Error(`${errorMessage}. Failed to fetch related events. The block may still be modified, but without historical context.`)
         }
     }
-}
+})

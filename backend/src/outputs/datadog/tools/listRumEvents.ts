@@ -8,7 +8,7 @@ import { z } from "zod"
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getDatadogRumDeepLink, getDatadogSite, parseDatadogTimeString } from "../../../utility/datadog"
 
@@ -28,10 +28,9 @@ const parameters = z.object({
  * Use this to discover what RUM events exist, especially when it's ambiguous what you should be querying on.
  * Great for exploration before crafting specific search queries.
  */
-export const listRumEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.DATADOG_LIST_RUM_EVENTS> = {
-    name: ToolName.DATADOG_LIST_RUM_EVENTS,
+export const listRumEventsTool = defineSessionTool({
+    name: "listRumEvents",
     description: "List recent Datadog RUM events. Use for discovery when unsure what to query. Returns sessions, views, actions, errors, resources, long tasks.",
-    parameters: parameters,
     execute: async ({ integrationId, query, from, to, limit = 25, pageCursor, sort = "timestamp" }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -336,4 +335,4 @@ export const listRumEventsTool: SessionToolOptions<typeof parameters, typeof Too
             throw new Error(`Failed to list Datadog RUM events: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

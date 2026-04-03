@@ -1,27 +1,16 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegration"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const slackListUsersParameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
-    query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
-})
-
-export const slackListUsersTool: SessionToolOptions<typeof slackListUsersParameters, typeof ToolName.SLACK_LIST_USERS> = {
-    name: ToolName.SLACK_LIST_USERS,
+export const slackListUsersTool = defineSessionTool({
+    name: "slack_list_users",
     description: `List Slack workspace users (id and name). Use this to resolve user IDs to names when needed.
 Returns non-bot members. Optionally filter by name with the query parameter.`,
-    parameters: slackListUsersParameters,
-    execute: async ({ integrationId, query }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, query }, runContext) => {
         logger.debug("🛠️ Executing slack_list_users tool", { integrationId, query })
 
         if (!runContext?.context) {
@@ -63,4 +52,4 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
             throw new Error(`${errorMessage}. Check that the Slack integration is connected and has the required scopes (users:read).`)
         }
     }
-}
+})

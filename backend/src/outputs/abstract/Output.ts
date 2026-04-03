@@ -1,13 +1,14 @@
-import { ToolOptions } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { ConfigInstance } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { SessionToolOptions } from "../../tools/toolUtils"
+import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
+import { TypedToolOptions } from "../../tools/toolUtils"
 import { PrismaTransaction } from "../../types/prisma"
+import { Session } from "../../types/session"
 
 export interface ToolboxEntry {
-    tool: SessionToolOptions<any, any> | ToolOptions<any, any>
+    tool: TypedToolOptions<any, SessionWithTracking<Session>>
     isReadOnly: boolean
     integration: IntegrationType
     displayName: string

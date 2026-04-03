@@ -1,13 +1,8 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getBranch, getGitHubAccessToken, getRepositoryInfo, getTree, listDirectory, parseRepoFullName } from "../githubApiClient"
 
@@ -15,14 +10,8 @@ import { createGitHubClient, getBranch, getGitHubAccessToken, getRepositoryInfo,
  * Tool for listing directory contents in GitHub repositories.
  * Uses GitHub's Contents API and Git Trees API.
  */
-const listGitHubDirectoryParameters = z.object({
-    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-    path: z.string().describe('The directory path to list (e.g., "src/components"). Use empty string "" for root directory.'),
-    recursive: z.boolean().describe("If true, list all files recursively (can be large for big repos). Use false for single-level listing.")
-})
-
-export const listGitHubDirectoryTool: SessionToolOptions<typeof listGitHubDirectoryParameters, typeof ToolName.GITHUB_LIST_DIRECTORY> = {
-    name: ToolName.GITHUB_LIST_DIRECTORY,
+export const listGitHubDirectoryTool = defineSessionTool({
+    name: "listGitHubDirectory",
     description: `List files and directories in a GitHub repository. Use this to:
 - Explore the repository structure
 - Find where specific types of files are located
@@ -31,8 +20,7 @@ export const listGitHubDirectoryTool: SessionToolOptions<typeof listGitHubDirect
 
 Start with the root directory (empty path) to see the top-level structure, then drill down into interesting directories.`,
     strict: true,
-    parameters: listGitHubDirectoryParameters,
-    execute: async ({ repository, path = "", recursive = false }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repository, path = "", recursive = false }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -233,4 +221,4 @@ Start with the root directory (empty path) to see the top-level structure, then 
             throw new Error(`${errorMessage}. ${tip}`)
         }
     }
-}
+})

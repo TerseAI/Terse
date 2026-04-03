@@ -1,133 +1,2428 @@
-import type { ToolOutputByName } from "terse-types/types"
 import { z } from "zod"
 
-/**
- * Centralized definition of all tool names used in the system.
- *
- * This enum ensures type safety and prevents typos when referencing tool names.
- * All tool definitions must use values from this enum, and the validation
- * function will enforce that all tool names are present here.
- */
+import { runHistoryActionBaseSchema } from "./RunHistoryTypes"
+import { LinearStateName } from "./TicketSystem"
 
-export const ToolName = {
-    // Linear Tools
-    LINEAR_CREATE_TICKET: "linear_create_ticket",
-    LINEAR_UPDATE_TICKET: "linear_update_ticket",
-    LINEAR_ADD_COMMENT: "linear_add_comment",
-    LINEAR_SEARCH_TICKET: "linear_search_ticket",
-    LINEAR_READ_TICKET: "linear_read_ticket",
-    LINEAR_GET_STATES: "linear_get_states",
-    LINEAR_GET_LABELS: "linear_get_labels",
-    LINEAR_GET_PROJECTS: "linear_get_projects",
-    LINEAR_GET_TEAMS: "linear_get_teams",
-    LINEAR_GET_USERS: "linear_get_users",
+type AnySchema = z.ZodTypeAny
 
-    // Jira Tools
-    JIRA_CREATE_TICKET: "jira_create_ticket",
-    JIRA_UPDATE_TICKET: "jira_update_ticket",
-    JIRA_SEARCH_TICKET: "jira_search_ticket",
+export const toolOutputBaseSchema = z.object({
+    success: z.boolean(),
+    actions: z.array(runHistoryActionBaseSchema).optional()
+})
 
-    // Notion Tools
-    NOTION_CREATE_OR_UPDATE_PAGE: "notion_create_or_update_page",
-    NOTION_CREATE_OR_UPDATE_DATABASE_ROW: "notion_create_or_update_database_row",
-    NOTION_MODIFY_BLOCKS: "notion_modify_blocks",
-    NOTION_QUERY_PAGE: "notion_query_page",
-    NOTION_QUERY_DATABASE: "notion_query_database",
-    NOTION_GET_SCHEMA: "notion_get_schema",
-    NOTION_FETCH_RELATED_EVENTS: "notion_fetch_related_events",
-    NOTION_LIST_USERS: "notion_list_users",
+export const toolOutputSuccessSchema = toolOutputBaseSchema.extend({
+    success: z.literal(true)
+})
 
-    // Gmail Tools
-    GMAIL_SEND_EMAIL: "gmail_send_email",
-    GMAIL_CREATE_DRAFT: "gmail_create_draft",
+export const toolOutputFailureSchema = toolOutputBaseSchema.extend({
+    success: z.literal(false)
+})
 
-    // Slack Tools
-    SLACK_SEND_MESSAGE: "slack_send_message",
-    SLACK_LIST_CHANNELS: "slack_list_channels",
-    SLACK_LIST_USERS: "slack_list_users",
-    SLACK_READ_CONVERSATION: "slack_read_conversation",
+export type ToolOutputBase = z.infer<typeof toolOutputBaseSchema>
+export type ToolOutputSuccessBase = z.infer<typeof toolOutputSuccessSchema>
+export type ToolOutputFailureBase = z.infer<typeof toolOutputFailureSchema>
 
-    // Confluence Tools
-    CONFLUENCE_QUERY_PAGE: "confluence_query_page",
-    CONFLUENCE_ADD_COMMENT: "confluence_add_comment",
-
-    // GitHub Tools
-    GITHUB_SEARCH_CODE: "searchGitHubCode",
-    GITHUB_READ_FILE: "readGitHubFile",
-    GITHUB_LIST_PULL_REQUESTS: "listGitHubPullRequests",
-    GITHUB_LIST_DIRECTORY: "listGitHubDirectory",
-    GITHUB_LIST_COMMITS: "listGitHubCommits",
-    GITHUB_GREP_CODE: "grepGitHubCode",
-    GITHUB_SUMMARIZE_PULL_REQUEST_DIFF: "summarizeGitHubPullRequestDiff",
-
-    // PostHog Tools
-    POSTHOG_SEARCH_SESSIONS: "searchPosthogSessions",
-    POSTHOG_SEARCH_LOGS: "searchPosthogLogs",
-    POSTHOG_GET_SESSION_EVENTS: "getPosthogSessionEvents",
-    POSTHOG_SEARCH_EVENTS: "searchPosthogEvents",
-
-    // LaunchDarkly Tools
-    LAUNCHDARKLY_LIST_FEATURE_FLAGS: "listLaunchDarklyFlags",
-    LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS: "getLaunchDarklyFlagDetails",
-
-    // Datadog Tools
-    DATADOG_SEARCH_LOGS: "searchDatadogLogs",
-    DATADOG_SEARCH_RUM_EVENTS: "searchRumEvents",
-    DATADOG_LIST_RUM_EVENTS: "listRumEvents",
-    DATADOG_AGGREGATE_RUM_EVENTS: "aggregateRumEvents",
-
-    // Attio Tools
-    ATTIO_UPSERT_RECORD: "attio_upsert_record",
-    ATTIO_QUERY_RECORDS: "attio_query_records",
-    ATTIO_LIST_OBJECTS: "attio_list_objects",
-
-    // WorkOS Tools
-    WORKOS_LIST_USERS: "listWorkOSUsers",
-    WORKOS_LIST_ORGANIZATIONS: "listWorkOSOrganizations",
-    WORKOS_GET_USER: "getWorkOSUser",
-
-    // Snowflake Tools
-    SNOWFLAKE_EXPLAIN_QUERY: "snowflakeExplainQuery",
-    SNOWFLAKE_EXECUTE_QUERY: "snowflakeExecuteQuery",
-
-    // Terse
-    WEB_SEARCH: "web_search",
-    WEB_EXTRACT: "web_extract",
-    WEB_RESEARCH: "web_research",
-    IMAGE_EDIT: "image_edit"
-} as const
-
-/**
- * Type for all valid tool names
- */
-export type ToolName = (typeof ToolName)[keyof typeof ToolName]
-
-/**
- * Array of all valid tool names for runtime validation
- */
-export const ALL_TOOL_NAMES: readonly string[] = Object.values(ToolName)
-
-/**
- * Zod schema for a single tool name. Use for validating toolApprovals and API request bodies.
- */
-export const ToolNameSchema = z.enum(ALL_TOOL_NAMES as [string, ...string[]])
-
-/**
- * Set of all valid tool names for O(1) lookup
- */
-export const VALID_TOOL_NAMES_SET = new Set(ALL_TOOL_NAMES)
-
-/**
- * Type guard to check if a string is a valid tool name
- */
-export function isValidToolName(name: string): name is ToolName {
-    return VALID_TOOL_NAMES_SET.has(name)
+export function defineTool<const TName extends string, TInput extends AnySchema, TOutput extends AnySchema>(def: { name: TName; inputSchema: TInput; outputSchema: TOutput }) {
+    return def
 }
 
-type AssertNever<T extends never> = T
+const linearStateNameValues = Object.values(LinearStateName)
+const dateLikeSchema = z.union([z.string(), z.date()])
 
-type MissingToolOutputNames = Exclude<ToolName, keyof ToolOutputByName>
-type ExtraToolOutputNames = Exclude<keyof ToolOutputByName, ToolName>
+export const linearTeamSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    key: z.string()
+})
 
-type _ToolOutputByNameMustCoverAllToolNames = AssertNever<MissingToolOutputNames>
-type _ToolOutputByNameMustNotContainUnknownToolNames = AssertNever<ExtraToolOutputNames>
+export const linearIssueAssigneeSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string().optional()
+})
+
+export const linearIssueTeamSchema = linearTeamSchema
+
+export const linearIssueProjectSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+
+export const linearIssueSummarySchema = z.object({
+    id: z.string(),
+    identifier: z.string(),
+    title: z.string(),
+    description: z.string().nullable().optional(),
+    state: z.string(),
+    priority: z.number().nullable().optional(),
+    assignee: linearIssueAssigneeSchema.nullable(),
+    url: z.string(),
+    createdAt: dateLikeSchema,
+    updatedAt: dateLikeSchema
+})
+
+export const linearIssueDetailSchema = linearIssueSummarySchema.extend({
+    team: linearIssueTeamSchema.nullable(),
+    project: linearIssueProjectSchema.nullable(),
+    dueDate: dateLikeSchema.optional(),
+    estimate: z.number().nullable().optional()
+})
+
+export const linearIssueHandleSchema = z.object({
+    id: z.string(),
+    identifier: z.string(),
+    title: z.string(),
+    description: z.string().nullable().optional(),
+    url: z.string(),
+    createdAt: dateLikeSchema.optional(),
+    updatedAt: dateLikeSchema.optional()
+})
+
+export const linearCommentHandleSchema = z.object({
+    id: z.string(),
+    body: z.string().optional(),
+    createdAt: dateLikeSchema.optional(),
+    updatedAt: dateLikeSchema.optional()
+})
+
+export const linearReadTicketCommentSchema = z.object({
+    id: z.string(),
+    body: z.string(),
+    authorId: z.string(),
+    createdAt: z.string()
+})
+
+export const linearStateSummarySchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    type: z.string(),
+    color: z.string(),
+    teamId: z.string()
+})
+
+export const linearLabelSummarySchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    color: z.string(),
+    teamId: z.string()
+})
+
+export const linearProjectSummarySchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    teamId: z.string()
+})
+
+export const linearUserSummarySchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    avatarUrl: z.string().optional()
+})
+
+export const linearSearchPaginationSchema = z.object({
+    hasNextPage: z.boolean(),
+    endCursor: z.string().nullable(),
+    limit: z.number().nullable()
+})
+
+export const slackUserResponseSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+
+export const slackChannelListItemSchema = z.object({
+    id: z.string().optional(),
+    name: z.string(),
+    isPrivate: z.boolean(),
+    isIm: z.boolean(),
+    isMpim: z.boolean(),
+    userId: z.string().optional()
+})
+
+export const slackConversationMessageSchema = z.object({
+    userId: z.string().optional(),
+    userName: z.string().optional(),
+    text: z.string(),
+    timestamp: z.string().optional(),
+    threadTs: z.string().optional()
+})
+
+export const jiraIssueStateSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+
+export const jiraIssueAssigneeSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string().optional()
+})
+
+export const jiraIssueProjectRefSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    key: z.string()
+})
+
+export const jiraIssueTypeRefSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+
+export const jiraRichDescriptionSchema = z.union([z.string(), z.record(z.string(), z.unknown())])
+
+export const jiraIssueSummarySchema = z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    identifier: z.string(),
+    title: z.string().optional(),
+    description: jiraRichDescriptionSchema.optional(),
+    state: jiraIssueStateSchema.optional(),
+    priority: z.number().optional(),
+    assignee: jiraIssueAssigneeSchema.nullable().optional(),
+    labels: z.array(z.string()).optional(),
+    dueDate: z.string().optional(),
+    project: jiraIssueProjectRefSchema.optional(),
+    issueType: jiraIssueTypeRefSchema.optional(),
+    url: z.string().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional()
+})
+
+export const gitHubPaginationSchema = z.object({
+    page: z.number(),
+    perPage: z.number(),
+    hasMore: z.boolean()
+})
+
+export const gitHubCodeSearchResultSchema = z.object({
+    index: z.number(),
+    repository: z.string(),
+    path: z.string(),
+    url: z.string(),
+    snippets: z.string()
+})
+
+export const gitHubCodeGrepResultSchema = z.object({
+    index: z.number(),
+    repository: z.string(),
+    file: z.string(),
+    url: z.string(),
+    matches: z.string()
+})
+
+export const gitHubPullRequestSummarySchema = z.object({
+    number: z.number(),
+    title: z.string(),
+    description: z.string(),
+    author: z.string(),
+    state: z.string(),
+    merged: z.boolean(),
+    mergedAt: z.string().optional(),
+    createdAt: z.string(),
+    closedAt: z.string().optional(),
+    labels: z.array(z.string()),
+    baseBranch: z.string(),
+    headBranch: z.string(),
+    url: z.string()
+})
+
+export const gitHubDirectoryEntrySchema = z.object({
+    name: z.string().optional(),
+    path: z.string().optional(),
+    type: z.literal("directory").optional()
+})
+
+export const gitHubFileEntrySchema = z.object({
+    name: z.string().optional(),
+    path: z.string(),
+    type: z.literal("file").optional(),
+    size: z.number().optional()
+})
+
+export const gitHubOtherEntrySchema = z.object({
+    name: z.string(),
+    type: z.string()
+})
+
+export const gitHubCommitSummarySchema = z.object({
+    sha: z.string(),
+    fullSha: z.string(),
+    message: z.string(),
+    fullMessage: z.string(),
+    author: z.string(),
+    date: z.string(),
+    url: z.string()
+})
+
+export const gitHubPullRequestRefSchema = z.object({
+    number: z.number(),
+    title: z.string(),
+    state: z.string(),
+    merged: z.boolean(),
+    baseBranch: z.string(),
+    headBranch: z.string(),
+    url: z.string()
+})
+
+export const notionLooseObjectSchema = z.record(z.string(), z.unknown())
+
+export const notionUserReferenceSchema = z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    object: z.string().optional()
+})
+
+export const notionFileReferenceSchema = z.object({
+    name: z.string(),
+    type: z.string(),
+    file: z.string().optional(),
+    external: z.string().optional()
+})
+
+export const notionDateReferenceSchema = z.object({
+    start: z.string().optional(),
+    end: z.string().nullable().optional(),
+    time_zone: z.string().nullable().optional()
+})
+
+export const notionReadablePropertyValueSchema = z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(z.string()),
+    notionDateReferenceSchema,
+    notionUserReferenceSchema,
+    z.array(notionUserReferenceSchema),
+    z.array(notionFileReferenceSchema),
+    notionLooseObjectSchema
+])
+
+export const notionPageParentSchema = notionLooseObjectSchema
+
+export const notionPageBlockSchema: z.ZodType<{
+    id: string
+    type: string
+    object: string
+    created_time?: string
+    last_edited_time?: string
+    created_by?: z.infer<typeof notionUserReferenceSchema>
+    last_edited_by?: z.infer<typeof notionUserReferenceSchema>
+    has_children?: boolean
+    archived?: boolean
+    content?: string
+    rich_text?: Record<string, unknown>[]
+    checked?: boolean
+    language?: string
+    icon?: Record<string, unknown>
+    table_width?: number
+    has_column_header?: boolean
+    has_row_header?: boolean
+    caption?: string
+    file?: string
+    external?: string
+    url?: string
+    page_id?: string
+    database_id?: string
+    children?: any[]
+}> = z.lazy(() =>
+    z.object({
+        id: z.string(),
+        type: z.string(),
+        object: z.string(),
+        created_time: z.string().optional(),
+        last_edited_time: z.string().optional(),
+        created_by: notionUserReferenceSchema.optional(),
+        last_edited_by: notionUserReferenceSchema.optional(),
+        has_children: z.boolean().optional(),
+        archived: z.boolean().optional(),
+        content: z.string().optional(),
+        rich_text: z.array(notionLooseObjectSchema).optional(),
+        checked: z.boolean().optional(),
+        language: z.string().optional(),
+        icon: notionLooseObjectSchema.optional(),
+        table_width: z.number().optional(),
+        has_column_header: z.boolean().optional(),
+        has_row_header: z.boolean().optional(),
+        caption: z.string().optional(),
+        file: z.string().optional(),
+        external: z.string().optional(),
+        url: z.string().optional(),
+        page_id: z.string().optional(),
+        database_id: z.string().optional(),
+        children: z.array(notionPageBlockSchema).optional()
+    })
+)
+
+export const notionPageQueryMetadataSchema = z.object({
+    page_id: z.string(),
+    object: z.string(),
+    url: z.string().optional(),
+    public_url: z.string().nullable().optional(),
+    created_time: z.string().optional(),
+    last_edited_time: z.string().optional(),
+    archived: z.boolean().optional(),
+    icon: notionLooseObjectSchema.nullable().optional(),
+    cover: notionLooseObjectSchema.nullable().optional(),
+    parent: notionPageParentSchema.optional(),
+    created_by: notionUserReferenceSchema.optional(),
+    last_edited_by: notionUserReferenceSchema.optional(),
+    in_trash: z.boolean().optional()
+})
+
+export const notionDatabaseRowMutationResultSchema = toolOutputSuccessSchema.extend({
+    action: z.enum(["created", "updated"]),
+    page_id: z.string(),
+    url: z.string().optional()
+})
+
+export const notionSchemaPropertySchema = z.object({
+    type: z.string(),
+    id: z.string(),
+    options: z.array(z.string()).optional(),
+    format_example: z.string().optional()
+})
+
+export const notionDatabaseQueryPageSchema = z.object({
+    page_id: z.string(),
+    properties: z.record(z.string(), notionReadablePropertyValueSchema),
+    url: z.string().optional(),
+    created_time: z.string().optional(),
+    last_edited_time: z.string().optional()
+})
+
+export const notionQueryDatabaseFailureSchema = toolOutputFailureSchema.extend({
+    pages: z.array(notionDatabaseQueryPageSchema),
+    total_returned: z.literal(0),
+    has_more: z.literal(false),
+    next_cursor: z.null(),
+    error: z.string(),
+    hint: z.string()
+})
+
+export const notionQueryDatabaseSuccessSchema = toolOutputSuccessSchema.extend({
+    pages: z.array(notionDatabaseQueryPageSchema),
+    total_returned: z.number(),
+    has_more: z.boolean(),
+    next_cursor: z.string().nullable()
+})
+
+export const notionModifyBlocksAppendResultSchema = z.object({
+    operation: z.literal("append"),
+    actions: z.array(runHistoryActionBaseSchema),
+    block_ids: z.array(z.string()),
+    blocks_count: z.number()
+})
+
+export const notionModifyBlocksUpdateResultSchema = z.object({
+    operation: z.literal("update"),
+    actions: z.array(runHistoryActionBaseSchema),
+    block_id: z.string()
+})
+
+export const notionModifyBlocksDeleteResultSchema = z.object({
+    operation: z.literal("delete"),
+    actions: z.array(runHistoryActionBaseSchema),
+    block_id: z.string()
+})
+
+export const notionModifyBlocksOperationResultSchema = z.union([notionModifyBlocksAppendResultSchema, notionModifyBlocksUpdateResultSchema, notionModifyBlocksDeleteResultSchema])
+
+export const notionModifyBlocksAppendSuccessSchema = toolOutputSuccessSchema.extend({
+    operation: z.literal("append"),
+    block_ids: z.array(z.string()),
+    blocks_count: z.number()
+})
+
+export const notionModifyBlocksSingleBlockSuccessSchema = toolOutputSuccessSchema.extend({
+    operation: z.enum(["update", "delete"]),
+    block_id: z.string()
+})
+
+export const notionModifyBlocksBatchSuccessSchema = toolOutputSuccessSchema.extend({
+    operations: z.array(notionModifyBlocksOperationResultSchema),
+    block_ids: z.array(z.string()),
+    total_operations: z.number()
+})
+
+export const notionModifyBlocksSuccessSchema = z.union([notionModifyBlocksAppendSuccessSchema, notionModifyBlocksSingleBlockSuccessSchema, notionModifyBlocksBatchSuccessSchema])
+
+export const notionModifyBlocksFailureSchema = toolOutputFailureSchema.extend({
+    error: z.string(),
+    block_ids: z.array(z.string()),
+    operations: z.array(notionModifyBlocksOperationResultSchema).optional(),
+    failed_at_index: z.number().optional(),
+    total_operations: z.number().optional(),
+    hint: z.string().optional(),
+    retry_instructions: z.string().optional()
+})
+
+export const notionWorkspaceUserSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string().optional()
+})
+
+export const gmailHeaderSchema = z.object({
+    key: z.string(),
+    value: z.string()
+})
+
+export const gmailSendSummarySchema = z.object({
+    message_id: z.string(),
+    thread_id: z.string(),
+    to: z.string(),
+    subject: z.string(),
+    summary: z.string(),
+    is_reply: z.boolean()
+})
+
+export const gmailDraftSummarySchema = z.object({
+    draft_id: z.string(),
+    message_id: z.string(),
+    thread_id: z.string(),
+    draft_url: z.string(),
+    to: z.string(),
+    subject: z.string(),
+    summary: z.string(),
+    is_reply: z.boolean()
+})
+
+export const confluencePageSpaceSchema = z.object({
+    id: z.union([z.string(), z.number()]),
+    key: z.string(),
+    name: z.string(),
+    type: z.string()
+})
+
+export const confluencePageVersionAuthorSchema = z.object({
+    type: z.string(),
+    username: z.string().optional(),
+    userKey: z.string().optional(),
+    accountId: z.string().optional(),
+    displayName: z.string().optional()
+})
+
+export const confluencePageVersionSchema = z.object({
+    number: z.number(),
+    when: z.string(),
+    message: z.string().optional(),
+    by: confluencePageVersionAuthorSchema.optional()
+})
+
+export const confluenceBodyRepresentationSchema = z.object({
+    value: z.string(),
+    representation: z.string()
+})
+
+export const confluenceBodyContentSchema = z.object({
+    storage: confluenceBodyRepresentationSchema.optional(),
+    view: confluenceBodyRepresentationSchema.optional(),
+    export_view: confluenceBodyRepresentationSchema.optional()
+})
+
+export const confluencePageRelationSchema = z.object({
+    id: z.string(),
+    title: z.string(),
+    type: z.string()
+})
+
+export const confluenceCommentPositionSchema = z.object({
+    start: z.number(),
+    end: z.number()
+})
+
+export const confluencePageQueryResultSchema = z.object({
+    page_id: z.string(),
+    title: z.string(),
+    type: z.string(),
+    status: z.string(),
+    space: confluencePageSpaceSchema.optional(),
+    version: confluencePageVersionSchema.optional(),
+    created_date: z.string().optional(),
+    last_modified: z.string().optional(),
+    url: z.string().optional(),
+    body: confluenceBodyContentSchema,
+    body_text: z.string(),
+    ancestors: z.array(confluencePageRelationSchema),
+    descendants: z.array(confluencePageRelationSchema),
+    ancestors_count: z.number(),
+    descendants_count: z.number()
+})
+
+export const posthogSeverityLevelSchema = z.enum(["error", "warn", "info", "debug"])
+
+export const posthogSessionSummarySchema = z.object({
+    id: z.string(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    duration: z.number().optional(),
+    eventsCount: z.number(),
+    sessionUrl: z.string(),
+    personId: z.string(),
+    distinctId: z.string()
+})
+
+export const posthogSearchSessionsPaginationSchema = z.object({
+    limit: z.number(),
+    offset: z.number(),
+    hasNext: z.boolean(),
+    hasPrevious: z.boolean(),
+    nextOffset: z.number().nullable(),
+    previousOffset: z.number().nullable()
+})
+
+export const posthogSearchSessionsFoundSchema = toolOutputSuccessSchema.extend({
+    userEmail: z.string(),
+    projectId: z.string(),
+    personFound: z.literal(true),
+    personId: z.string(),
+    distinctId: z.string(),
+    totalSessions: z.number(),
+    sessions: z.array(posthogSessionSummarySchema),
+    sessionsLink: z.string(),
+    pagination: posthogSearchSessionsPaginationSchema,
+    message: z.string()
+})
+
+export const posthogSearchSessionsNotFoundSchema = toolOutputSuccessSchema.extend({
+    userEmail: z.string(),
+    projectId: z.string(),
+    personFound: z.literal(false),
+    sessions: z.array(posthogSessionSummarySchema).length(0),
+    totalSessions: z.literal(0),
+    message: z.string()
+})
+
+export const posthogLogEntrySchema = z.object({
+    id: z.string(),
+    timestamp: z.string().optional(),
+    level: z.string(),
+    message: z.string(),
+    service: z.string(),
+    attributes: z.record(z.string(), z.unknown())
+})
+
+export const posthogOffsetPaginationSchema = z.object({
+    limit: z.number(),
+    offset: z.number(),
+    hasMore: z.boolean(),
+    nextOffset: z.number().nullable(),
+    showing: z.string()
+})
+
+export const posthogEventCountSchema = z.object({
+    eventName: z.string(),
+    count: z.number()
+})
+
+export const posthogEventSummarySchema = z.object({
+    id: z.string(),
+    event: z.string(),
+    timestamp: z.string().optional(),
+    distinctId: z.string().optional(),
+    url: z.string().optional()
+})
+
+export const posthogSessionEventTypeSchema = z.enum(["click", "input", "scroll", "console", "network_error", "navigation", "custom", "page_load", "viewport_resize"])
+
+export const posthogSessionEventSchema = z.object({
+    type: posthogSessionEventTypeSchema,
+    timestamp: z.number(),
+    relativeTime: z.number(),
+    data: z.record(z.string(), z.unknown())
+})
+
+export const posthogSessionConsoleLogSchema = z.object({
+    timestamp: z.string(),
+    level: z.string(),
+    message: z.string()
+})
+
+export const posthogSessionEventsSummarySchema = z.object({
+    totalRawEvents: z.number(),
+    meaningfulEventsReturned: z.number(),
+    consoleLogsReturned: z.number()
+})
+
+export const linearCreateTicketInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
+    ticket: z.object({
+        title: z.string(),
+        teamId: z.string(),
+        description: z.string().nullable().optional(),
+        stateId: z.string().nullable().optional(),
+        priority: z.number().nullable().optional(),
+        projectId: z.string().nullable().optional(),
+        labelIds: z.array(z.string()).nullable().optional(),
+        assigneeId: z.string().nullable().optional()
+    })
+})
+
+export const linearUpdateTicketUpdatesSchema = z.object({
+    title: z.string().nullable().optional().describe("The updated title of the ticket."),
+    description: z.string().nullable().optional().describe("The updated description of the ticket."),
+    stateId: z.string().nullable().optional().describe("The ID of the state to set. Use linear_get_states to find available states."),
+    priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
+    projectId: z.string().nullable().optional().describe("The ID of the project to associate with the ticket. Use linear_get_projects to find available projects."),
+    labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels."),
+    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
+})
+
+export const linearUpdateTicketInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
+    issueId: z.string().describe("The ID of the Linear issue to update. Use linear_search_ticket to find the issue ID."),
+    updates: linearUpdateTicketUpdatesSchema
+})
+
+export const linearAddCommentInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
+    issueId: z.string().describe("The ID of the Linear issue to add the comment to. Use linear_search_ticket to find the issue ID."),
+    body: z.string().describe("The comment text to add to the issue.")
+})
+
+export const linearSearchTicketDateFilterFieldSchema = z.enum(["updatedAt", "createdAt"])
+
+export const linearSearchTicketInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
+    searchTerm: z
+        .string()
+        .optional()
+        .default("")
+        .describe(
+            `Plain-text keyword search (matched against titles, descriptions, etc.).
+            Do NOT include operators or field filters. Use dedicated parameters instead.
+            ✓ "block kit"
+            ✗ "team:TER state:Done updated:>2026-02-04 block kit"`
+        ),
+    stateNames: z
+        .array(z.nativeEnum(LinearStateName))
+        .nullable()
+        .optional()
+        .describe(`Filter to only include issues with these state names. Available states: ${linearStateNameValues.join(", ")}.`),
+    dateFilterField: linearSearchTicketDateFilterFieldSchema
+        .nullable()
+        .optional()
+        .describe("Which date field to filter on. Required if using dateAfter or dateBefore. Options: 'updatedAt' (when issue was last modified) or 'createdAt' (when issue was created)."),
+    dateAfter: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("Filter to only include issues where the dateFilterField is on or after this date. ISO 8601 format (e.g., '2026-01-01' or '2026-01-01T00:00:00Z')."),
+    dateBefore: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("Filter to only include issues where the dateFilterField is on or before this date. ISO 8601 format (e.g., '2026-02-01' or '2026-02-01T23:59:59Z')."),
+    limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
+    after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
+})
+
+export const linearReadTicketInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
+    issueId: z.string().describe("The Linear issue ID (UUID) or identifier (e.g. 'PROJ-123')."),
+    includeComments: z.boolean().nullable().optional().describe("Whether to include comments. Defaults to true.")
+})
+
+export const linearGetStatesInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
+    teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's states.")
+})
+
+export const linearGetLabelsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
+    teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's labels.")
+})
+
+export const linearGetProjectsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
+    teamId: z.string().nullable().optional().describe("Optional team ID to limit results to that team's projects.")
+})
+
+export const linearGetTeamsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use.")
+})
+
+export const linearGetUsersInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Linear integration to use.")
+})
+
+export const slackSendMessageInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace to use."),
+    channelId: z.string().describe("Slack channel or DM channel ID from the configured output destinations."),
+    message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
+    thread_ts: z
+        .string()
+        .nullable()
+        .optional()
+        .describe(
+            "Thread timestamp to reply to existing thread. If sending a message to a thread, this should be the timestamp of the thread to reply to. If sending an unthreaded message, this should be set to null."
+        ),
+    blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
+})
+
+export const slackListChannelsTypesSchema = z.enum(["public", "private", "im", "mpim", "all"])
+
+export const slackListChannelsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
+    types: slackListChannelsTypesSchema.nullable().optional().describe("Filter by type: public (public channels), private (private channels), im (DMs), mpim (group DMs), or all. Defaults to all."),
+    limit: z.number().min(1).max(500).nullable().optional().default(100).describe("Maximum number of conversations to return."),
+    cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
+})
+
+export const slackListUsersInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
+    query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
+})
+
+export const slackReadConversationInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
+    channelId: z.string().describe("The Slack channel ID to read (from slack_list_channels)."),
+    limit: z.number().min(1).max(200).nullable().optional().default(50).describe("Maximum number of messages to return."),
+    cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
+})
+
+export const jiraAssigneeInputSchema = z
+    .object({
+        email: z.string().describe("The assignee email")
+    })
+    .nullable()
+
+export const jiraCreateTicketInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
+    title: z.string().describe("The issue title/summary. This is required."),
+    description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
+    projectKey: z.string().describe('The Jira project key (e.g., "PROJ", "TEAM"). This is required.'),
+    issueType: z.string().nullable().optional().describe('The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")').default("Task"),
+    assignee: jiraAssigneeInputSchema.optional().describe("The assignee of the ticket"),
+    priority: z.number().nullable().optional().describe("The priority of the ticket (number, typically 1-5)"),
+    labels: z.array(z.string()).nullable().optional().describe("The labels for the ticket (array of label names)"),
+    dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.')
+})
+
+export const jiraUpdateTicketInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
+    issueKey: z.string().describe('The key of the Jira issue to update (e.g., "PROJ-123"). This is required.'),
+    title: z.string().nullable().optional().describe("The issue title/summary."),
+    description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
+    status: z.string().nullable().optional().describe('The status name to transition to (e.g., "In Progress", "Done", "To Do").'),
+    assignee: jiraAssigneeInputSchema.optional().describe("The assignee of the ticket. Set to null to unassign."),
+    priority: z.number().nullable().optional().describe("The priority of the ticket (number, typically 1-5)."),
+    labels: z.array(z.string()).nullable().optional().describe("The labels for the ticket (array of label names). This replaces all existing labels."),
+    dueDate: z
+        .string()
+        .nullable()
+        .optional()
+        .describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.')
+})
+
+export const jiraSearchTicketInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
+    jql: z.string().nullable().optional().describe("JQL (Jira Query Language) query to search for issues. If not provided, will search all issues."),
+    text: z.string().nullable().optional().describe('Text to search for in issue titles and descriptions. If provided, will be converted to JQL: text ~ "search term"'),
+    projectKey: z.string().nullable().optional().describe('Filter by Jira project key (e.g., "PROJ", "TEAM")'),
+    assigneeEmail: z.string().nullable().optional().describe("Filter by assignee email address"),
+    status: z.string().nullable().optional().describe('Filter by status name (e.g., "In Progress", "Done", "To Do")'),
+    limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 50 if not provided."),
+    nextPageToken: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.")
+})
+
+export const searchGitHubCodeInputSchema = z.object({
+    repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
+    query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
+    language: z.string().nullable().optional().describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
+    filename: z.string().nullable().optional().describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
+    path: z.string().nullable().optional().describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
+    perPage: z.number().describe("Number of results to return (default: 10, max: 100)"),
+    page: z
+        .number()
+        .int()
+        .min(1)
+        .nullable()
+        .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
+})
+
+export const grepGitHubCodeInputSchema = z.object({
+    repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
+    pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
+    fileExtension: z.string().nullable().optional().describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
+    path: z.string().nullable().optional().describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
+    perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
+    page: z
+        .number()
+        .int()
+        .min(1)
+        .nullable()
+        .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
+})
+
+export const readGitHubFileInputSchema = z.object({
+    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
+    startLine: z.number().nullable().optional().describe("Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning."),
+    endLine: z.number().nullable().optional().describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
+})
+
+export const listGitHubDirectoryInputSchema = z.object({
+    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    path: z.string().describe('The directory path to list (e.g., "src/components"). Use empty string "" for root directory.'),
+    recursive: z.boolean().describe("If true, list all files recursively (can be large for big repos). Use false for single-level listing.")
+})
+
+export const listGitHubPullRequestsInputSchema = z.object({
+    repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    state: z.enum(["open", "closed", "all"]).describe('Filter by PR state. Use "closed" to see merged PRs, "open" for in-progress, or "all" for both.'),
+    since: z
+        .string()
+        .nullable()
+        .describe('Start date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or after this date (starting at 00:00:00) are included. Use null for no start filter.'),
+    until: z.string().nullable().describe('End date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or before this date (ending at 23:59:59) are included. Use null for no end filter.'),
+    perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
+    page: z
+        .number()
+        .int()
+        .min(1)
+        .nullable()
+        .describe("Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
+})
+
+export const listGitHubCommitsInputSchema = z.object({
+    repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    since: z
+        .string()
+        .nullable()
+        .describe('Start of time window (ISO date string, e.g., "2024-01-01" or "2024-01-15T00:00:00Z"). Only commits after this date are included. Use null for no start filter.'),
+    until: z.string().nullable().optional().describe("End of time window (ISO date string). Only commits before this date are included. Use null for no end filter."),
+    branch: z.string().nullable().optional().describe('Branch name to list commits from (e.g., "main", "develop"). Use null for the repository\'s default branch.'),
+    path: z.string().nullable().optional().describe('Only include commits that affect this file or directory path (e.g., "src/components" or "package.json"). Use null for all paths.'),
+    author: z.string().nullable().optional().describe("Filter commits by author (GitHub username or email). Use null for all authors."),
+    perPage: z.number().describe("Number of results to return (default: 30, max: 100)")
+})
+
+export const summarizeGitHubPullRequestDiffInputSchema = z.object({
+    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    pullNumber: z.number().describe("The pull request number (e.g., 123 for PR #123)"),
+    page: z
+        .number()
+        .int()
+        .min(1)
+        .nullable()
+        .describe("Page number for pagination (default: 1). Use this to fetch additional files if a PR has more than 100 files. Use null for page 1. Must be a positive integer >= 1."),
+    context: z
+        .string()
+        .nullable()
+        .describe(
+            'Optional high-level context about what you\'re looking for in this PR. This helps the sub-agent focus its analysis. For example: "I need to understand the authentication changes" or "Focus on database migration changes". Use null if no specific context.'
+        )
+})
+
+export const notionCreateOrUpdatePageInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    page_id: z.string().nullable().optional().describe("ID of an existing page to update. Omit or null to create a new subpage under parentPageId."),
+    parentPageId: z
+        .string()
+        .optional()
+        .nullable()
+        .describe("Required for create: the allowed page ID under which to create the new subpage (from the Notion config list). Ignored when page_id is provided for update."),
+    title: z.string().describe("The page title (used for both create and update).")
+})
+
+export const notionCreateOrUpdateDatabaseRowInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    databaseId: z.string().describe("The Notion database ID (data source ID)."),
+    page_id: z.string().nullable().describe("The ID of the row to update (from notion_query_database). MUST be null to create a new row. Provide a valid page ID to update an existing row."),
+    properties_json: z
+        .string()
+        .describe(
+            'JSON string with property names and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'
+        )
+})
+
+export const notionModifyBlocksInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    pageId: z.string().describe("The Notion page ID to modify."),
+    operation_json: z.string().describe(`JSON string: a single operation object OR an array of operation objects (executed in order).
+Each operation: operation ("append"|"update"|"delete"); for append: blocks (array), optional parent_block_id, optional after_block_id; for update: block_id, block; for delete: block_id.
+Append with after_block_id inserts after that block; omit for end of page/parent.`)
+})
+
+export const notionQueryPageInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    pageId: z.string().describe("The Notion page ID to query.")
+})
+
+export const notionQueryDatabaseInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    databaseId: z.string().describe("The Notion database ID (data source ID) to query."),
+    filter_properties: z
+        .array(z.string())
+        .nullable()
+        .optional()
+        .describe("Array of property names or IDs to include in results. Only these properties will be returned, improving performance. Use property names from the database schema."),
+    filter: z.string().nullable().optional()
+        .describe(`JSON string with filter object to query pages matching specific criteria. Supports complex filtering with AND/OR logic, property filters, and timestamp filters.
+
+BASIC STRUCTURE:
+- Property filter: { "property": "Property Name", "type": { "condition": value } }
+- Timestamp filter: { "timestamp": "created_time" | "last_edited_time", "created_time" | "last_edited_time": { "condition": value } }
+- Compound filter: { "and": [...] } or { "or": [...] } to combine multiple filters (nesting supported up to 2 levels)
+
+PROPERTY FILTER TYPES AND CONDITIONS:
+
+1. CHECKBOX: { "property": "Name", "checkbox": { "equals": true|false } | { "does_not_equal": true|false } }
+
+2. DATE: { "property": "Name", "date": { 
+"after": "2021-05-10" | "2021-05-10T12:00:00" | "2021-10-15T12:00:00-07:00",
+"before": "2021-05-10",
+"equals": "2021-05-10",
+"on_or_after": "2021-05-10",
+"on_or_before": "2021-05-10",
+"is_empty": true,
+"is_not_empty": true,
+"past_week": {},
+"past_month": {},
+"past_year": {},
+"next_week": {},
+"next_month": {},
+"next_year": {},
+"this_week": {}
+} }
+
+3. FILES: { "property": "Name", "files": { "is_empty": true } | { "is_not_empty": true } }
+
+4. FORMULA: { "property": "Name", "formula": { 
+"checkbox": { checkbox conditions },
+"date": { date conditions },
+"number": { number conditions },
+"string": { rich_text conditions }
+} }
+
+5. MULTI_SELECT: { "property": "Name", "multi_select": { 
+"contains": "Value",
+"does_not_contain": "Value",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+6. NUMBER: { "property": "Name", "number": { 
+"equals": 42,
+"does_not_equal": 42,
+"greater_than": 42,
+"less_than": 42,
+"greater_than_or_equal_to": 42,
+"less_than_or_equal_to": 42,
+"is_empty": true,
+"is_not_empty": true
+} }
+
+7. PEOPLE (also for created_by, last_edited_by): { "property": "Name", "people": { 
+"contains": "uuid-v4",
+"does_not_contain": "uuid-v4",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+8. RELATION: { "property": "Name", "relation": { 
+"contains": "uuid-v4",
+"does_not_contain": "uuid-v4",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+9. RICH_TEXT (also title): { "property": "Name", "rich_text": { 
+"contains": "string",
+"does_not_contain": "string",
+"does_not_equal": "string",
+"ends_with": "string",
+"equals": "string",
+"is_empty": true,
+"is_not_empty": true,
+"starts_with": "string"
+} }
+
+10. ROLLUP: { "property": "Name", "rollup": { 
+"any": { filter condition },
+"every": { filter condition },
+"none": { filter condition },
+"date": { date conditions },
+"number": { number conditions }
+} }
+
+11. SELECT: { "property": "Name", "select": { 
+"equals": "Value",
+"does_not_equal": "Value",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+12. STATUS: { "property": "Name", "status": { 
+"equals": "Value",
+"does_not_equal": "Value",
+"is_empty": true,
+"is_not_empty": true
+} }
+
+13. TIMESTAMP: { "timestamp": "created_time" | "last_edited_time", "created_time" | "last_edited_time": { 
+same conditions as DATE filter (after, before, equals, on_or_after, on_or_before, is_empty, is_not_empty, past_week, past_month, past_year, next_week, next_month, next_year, this_week)
+} }
+NOTE: Do NOT include "property" field for timestamp filters.
+
+14. VERIFICATION: { "property": "Name", "verification": { "status": "verified" | "expired" | "none" } }
+
+15. UNIQUE_ID: { "property": "Name", "unique_id": { 
+"equals": 42,
+"does_not_equal": 42,
+"greater_than": 42,
+"less_than": 42,
+"greater_than_or_equal_to": 42,
+"less_than_or_equal_to": 42
+} }
+
+COMPOUND FILTERS:
+- AND: { "and": [filter1, filter2, ...] } - all conditions must match
+- OR: { "or": [filter1, filter2, ...] } - any condition can match
+- Nesting: Can nest AND/OR up to 2 levels deep
+
+EXAMPLES:
+- Simple: "{\\"property\\": \\"Task completed\\", \\"checkbox\\": {\\"equals\\": true}}"
+- Compound: "{\\"and\\": [{\\"property\\": \\"Done\\", \\"checkbox\\": {\\"equals\\": true}}, {\\"or\\": [{\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"A\\"}}, {\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"B\\"}}]}]}"
+- Timestamp: "{\\"timestamp\\": \\"created_time\\", \\"created_time\\": {\\"on_or_after\\": \\"2023-02-08\\"}}"`),
+    page_size: z.number().int().min(1).max(100).nullable().optional().describe("Number of results per page (1-100). Default returns all results. Use pagination for large databases."),
+    start_cursor: z.string().nullable().optional().describe("Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true."),
+    result_type: z.enum(["page", "data_source"]).nullable().optional().describe("Filter results to only pages or data sources. Only relevant for wiki databases.")
+})
+
+export const notionGetSchemaInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    databaseId: z.string().describe("The Notion database ID (data source ID) to get the schema for.")
+})
+
+export const notionFetchRelatedEventsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    pageId: z.string().describe("The Notion page ID (not used directly, but required for consistency)."),
+    block_id: z.string().describe("The Notion block ID to fetch related events for")
+})
+
+export const notionListUsersInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
+    query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
+})
+
+export const gmailSendEmailInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Gmail account to use."),
+    to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
+    subject: z.string().describe("Email subject line"),
+    body: z.string().nullable().optional().describe("Plain text email body content. Do not include image URLs here — images cannot be embedded in plain text."),
+    html_body: z
+        .string()
+        .nullable()
+        .optional()
+        .describe(
+            'HTML email body content. If provided with body, sends multipart/alternative. NEVER use <img src="https://..."> with remote URLs — they will expire. Images must be passed via image_urls and referenced as <img src="cid:image-1.png">.'
+        ),
+    thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new emails."),
+    cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
+    bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated."),
+    image_urls: z
+        .array(z.string())
+        .nullable()
+        .optional()
+        .describe(
+            'URLs of images to embed in the email. Must be signed URLs from our internal GCS image bucket. Each image is downloaded and base64-encoded as an inline MIME attachment with a Content-ID. Images are assigned sequential filenames: image-1.png, image-2.png, etc. (extension reflects actual MIME type). You MUST reference each one in html_body as <img src="cid:image-1.png">, <img src="cid:image-2.png">, etc. Do NOT put the raw URLs in html_body.'
+        ),
+    custom_headers: z
+        .array(gmailHeaderSchema)
+        .nullable()
+        .optional()
+        .describe(
+            'Custom email headers as key-value pairs. Useful for adding headers like List-Unsubscribe, List-Unsubscribe-Post, X-Priority, etc. Example: {"List-Unsubscribe": "<mailto:unsubscribe@example.com>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}'
+        )
+})
+
+export const gmailCreateDraftInputSchema = gmailSendEmailInputSchema.extend({
+    thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new drafts.")
+})
+
+export const confluenceQueryPageInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Atlassian/Confluence integration to use."),
+    pageId: z.string().describe("The Confluence page ID to query.")
+})
+
+export const confluenceAddCommentInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Atlassian/Confluence integration to use."),
+    pageId: z.string().describe("The Confluence page ID to add a comment to."),
+    comment_text: z.string().describe("The text content of the comment to add."),
+    text_to_comment_on: z
+        .string()
+        .nullable()
+        .optional()
+        .describe(
+            "Optional: The specific text in the page that this comment refers to. If provided, the tool will try to find this text and attach the comment to it. If not provided, you must specify start_position and end_position."
+        ),
+    start_position: z
+        .number()
+        .nullable()
+        .optional()
+        .describe("Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided."),
+    end_position: z
+        .number()
+        .nullable()
+        .optional()
+        .describe("Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.")
+})
+
+export const searchPosthogSessionsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
+    projectId: z.string().describe("The PostHog project ID."),
+    userEmail: z.string().describe("The email address of the user to query session recordings for. Must be a valid email address."),
+    limit: z.number().default(10).describe("Maximum number of session recordings to return (default: 10, max: 100)"),
+    offset: z.number().default(0).describe("Offset for pagination (default: 0)"),
+    last7Days: z
+        .boolean()
+        .default(false)
+        .describe(
+            "If true and dateFrom is not provided, filters session recordings from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."
+        ),
+    dateFrom: z
+        .union([z.string(), z.null()])
+        .describe(
+            'Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
+        ),
+    dateTo: z.string().nullable().optional().describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
+})
+
+export const searchPosthogLogsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
+    projectId: z.string().describe("The PostHog project ID."),
+    userEmail: z.string().nullable().optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
+    severityLevels: z
+        .union([z.array(posthogSeverityLevelSchema), z.null()])
+        .describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
+    messageSearch: z.string().nullable().optional().describe("Optional: Text to search for within log messages. Searches are case-insensitive and match partial text."),
+    limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50, max: 250)"),
+    offset: z.number().default(0).describe("Offset for pagination (default: 0). Use with limit to page through results. For example, offset=0 gets logs 1-50, offset=50 gets logs 51-100, etc."),
+    last7Days: z
+        .boolean()
+        .default(false)
+        .describe("If true and dateFrom is not provided, filters logs from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."),
+    dateFrom: z
+        .union([z.string(), z.null()])
+        .describe(
+            'Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
+        ),
+    dateTo: z.string().nullable().optional().describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
+})
+
+export const getPosthogSessionEventsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
+    projectId: z.string().describe("The PostHog project ID."),
+    sessionId: z.string().uuid().describe("The PostHog session ID (UUID format) to fetch events for. You can get this from searchPosthogSessions."),
+    startSeconds: z.number().nullable().optional().describe("Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning."),
+    endSeconds: z.number().nullable().optional().describe("Optional: End time in seconds from the beginning of the session. If not provided, goes until the end.")
+})
+
+export const posthogPropertyFilterValueSchema = z.union([z.string(), z.number(), z.boolean()])
+
+export const posthogPropertyFilterOperatorSchema = z.enum(["exact", "is_not", "icontains", "not_icontains", "gt", "lt", "gte", "lte"])
+
+export const posthogPropertyFilterSchema = z.object({
+    key: z.string().describe("Property key to filter on"),
+    value: posthogPropertyFilterValueSchema.describe("Property value to match"),
+    operator: posthogPropertyFilterOperatorSchema.default("exact").describe("Comparison operator")
+})
+
+export const searchPosthogEventsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
+    projectId: z.string().describe("The PostHog project ID."),
+    countByEventNameOnly: z.boolean().default(true).describe("If true (default), returns only event names and their counts. If false, returns full event list (larger response)."),
+    customEventsOnly: z
+        .boolean()
+        .default(true)
+        .describe(
+            "If true (default), only include custom events (exclude PostHog built-in events whose names start with $, e.g. $pageview, $autocapture). If false, include all events. Use true to get counts for events the project actually tracks (works for any user's project)."
+        ),
+    userEmail: z.string().nullable().optional().describe('Optional: User email to filter events by (e.g., "user@example.com").'),
+    eventName: z.string().nullable().optional().describe('Optional: Specific event name to filter by (e.g., "$pageview", "button_clicked", "form_submitted").'),
+    propertyFilters: z
+        .union([z.array(posthogPropertyFilterSchema), z.null()])
+        .optional()
+        .describe("Optional: Array of property filters to apply. Each filter has a key, value, and operator."),
+    limit: z.number().default(50).describe("Maximum number of events to return when countByEventNameOnly is false (default: 50, max: 100). Ignored when countByEventNameOnly is true."),
+    offset: z.number().default(0).describe("Offset for pagination when countByEventNameOnly is false (default: 0). Ignored when countByEventNameOnly is true."),
+    last7Days: z
+        .boolean()
+        .default(false)
+        .describe("If true and dateFrom is not provided, filters events from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."),
+    dateFrom: z
+        .union([z.string(), z.null()])
+        .describe(
+            'Start date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-06 14:00:00"). Do NOT use ISO format with T/Z (e.g. 2026-02-07T22:52:34Z) and do NOT use relative strings like "-7d". If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
+        ),
+    dateTo: z
+        .union([z.string(), z.null()])
+        .describe(
+            'End date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-07 14:00:00"). Do NOT use ISO format with T/Z and do NOT use relative strings like "now". If not provided, defaults to now.'
+        )
+})
+
+export const linearCreateTicketTool = defineTool({
+    name: "linear_create_ticket",
+    inputSchema: linearCreateTicketInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        issue: linearIssueHandleSchema
+    })
+})
+
+export const linearUpdateTicketTool = defineTool({
+    name: "linear_update_ticket",
+    inputSchema: linearUpdateTicketInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        issue: linearIssueHandleSchema
+    })
+})
+
+export const linearAddCommentTool = defineTool({
+    name: "linear_add_comment",
+    inputSchema: linearAddCommentInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        comment: linearCommentHandleSchema
+    })
+})
+
+export const linearSearchTicketTool = defineTool({
+    name: "linear_search_ticket",
+    inputSchema: linearSearchTicketInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        issues: z.array(linearIssueSummarySchema),
+        count: z.number(),
+        query: z.string(),
+        pagination: linearSearchPaginationSchema
+    })
+})
+
+export const linearReadTicketTool = defineTool({
+    name: "linear_read_ticket",
+    inputSchema: linearReadTicketInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        issue: linearIssueDetailSchema,
+        comments: z.array(linearReadTicketCommentSchema).optional()
+    })
+})
+
+export const linearGetStatesTool = defineTool({
+    name: "linear_get_states",
+    inputSchema: linearGetStatesInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        states: z.array(linearStateSummarySchema)
+    })
+})
+
+export const linearGetLabelsTool = defineTool({
+    name: "linear_get_labels",
+    inputSchema: linearGetLabelsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        labels: z.array(linearLabelSummarySchema)
+    })
+})
+
+export const linearGetProjectsTool = defineTool({
+    name: "linear_get_projects",
+    inputSchema: linearGetProjectsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        projects: z.array(linearProjectSummarySchema)
+    })
+})
+
+export const linearGetTeamsTool = defineTool({
+    name: "linear_get_teams",
+    inputSchema: linearGetTeamsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        teams: z.array(linearTeamSchema)
+    })
+})
+
+export const linearGetUsersTool = defineTool({
+    name: "linear_get_users",
+    inputSchema: linearGetUsersInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        users: z.array(linearUserSummarySchema)
+    })
+})
+
+export const slackSendMessageTool = defineTool({
+    name: "slack_send_message",
+    inputSchema: slackSendMessageInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        message_ts: z.string().optional(),
+        channel: z.string(),
+        thread_ts: z.string().optional(),
+        summary: z.string(),
+        has_blocks: z.boolean()
+    })
+})
+
+export const slackListChannelsTool = defineTool({
+    name: "slack_list_channels",
+    inputSchema: slackListChannelsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        channels: z.array(slackChannelListItemSchema),
+        count: z.number(),
+        nextCursor: z.string().nullable(),
+        hasMore: z.boolean()
+    })
+})
+
+export const slackListUsersTool = defineTool({
+    name: "slack_list_users",
+    inputSchema: slackListUsersInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        users: z.array(slackUserResponseSchema),
+        count: z.number()
+    })
+})
+
+export const slackReadConversationTool = defineTool({
+    name: "slack_read_conversation",
+    inputSchema: slackReadConversationInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        channelId: z.string(),
+        channelName: z.string().optional(),
+        messages: z.array(slackConversationMessageSchema),
+        count: z.number(),
+        hasMore: z.boolean(),
+        nextCursor: z.string().nullable()
+    })
+})
+
+export const jiraCreateTicketTool = defineTool({
+    name: "jira_create_ticket",
+    inputSchema: jiraCreateTicketInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        issue: jiraIssueSummarySchema
+    })
+})
+
+export const jiraUpdateTicketTool = defineTool({
+    name: "jira_update_ticket",
+    inputSchema: jiraUpdateTicketInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        issue: jiraIssueSummarySchema,
+        updatedFields: z.array(z.string())
+    })
+})
+
+export const jiraSearchTicketTool = defineTool({
+    name: "jira_search_ticket",
+    inputSchema: jiraSearchTicketInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        issues: z.array(jiraIssueSummarySchema),
+        count: z.number(),
+        total: z.number(),
+        maxResults: z.number(),
+        isLast: z.boolean(),
+        nextPageToken: z.string().optional(),
+        jql: z.string()
+    })
+})
+
+export const searchGitHubCodeTool = defineTool({
+    name: "searchGitHubCode",
+    inputSchema: searchGitHubCodeInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        totalCount: z.number(),
+        resultsReturned: z.number(),
+        query: z.string(),
+        repositories: z.array(z.string()),
+        pagination: gitHubPaginationSchema,
+        results: z.array(gitHubCodeSearchResultSchema),
+        message: z.string(),
+        tip: z.string()
+    })
+})
+
+export const grepGitHubCodeTool = defineTool({
+    name: "grepGitHubCode",
+    inputSchema: grepGitHubCodeInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        totalCount: z.number(),
+        resultsReturned: z.number(),
+        pattern: z.string(),
+        query: z.string(),
+        repositories: z.array(z.string()),
+        pagination: gitHubPaginationSchema,
+        results: z.array(gitHubCodeGrepResultSchema),
+        message: z.string(),
+        tip: z.string()
+    })
+})
+
+export const readGitHubFileTool = defineTool({
+    name: "readGitHubFile",
+    inputSchema: readGitHubFileInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        path: z.string(),
+        url: z.string(),
+        totalLines: z.number(),
+        displayedLines: z.string(),
+        size: z.number(),
+        content: z.string(),
+        warning: z.string().optional()
+    })
+})
+
+export const listGitHubDirectoryTool = defineTool({
+    name: "listGitHubDirectory",
+    inputSchema: listGitHubDirectoryInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        path: z.string(),
+        recursive: z.boolean(),
+        totalItems: z.number(),
+        directories: z.array(z.union([gitHubDirectoryEntrySchema, z.string()])),
+        files: z.array(gitHubFileEntrySchema),
+        warning: z.string().optional(),
+        tip: z.string().optional(),
+        truncated: z.boolean().optional(),
+        other: z.array(gitHubOtherEntrySchema).optional()
+    })
+})
+
+export const listGitHubPullRequestsTool = defineTool({
+    name: "listGitHubPullRequests",
+    inputSchema: listGitHubPullRequestsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        timeWindow: z.string(),
+        summary: z.object({
+            total: z.number(),
+            merged: z.number(),
+            open: z.number(),
+            closed: z.number()
+        }),
+        pagination: gitHubPaginationSchema,
+        pullRequests: z.array(gitHubPullRequestSummarySchema),
+        message: z.string()
+    })
+})
+
+export const listGitHubCommitsTool = defineTool({
+    name: "listGitHubCommits",
+    inputSchema: listGitHubCommitsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        timeWindow: z.string(),
+        filters: z.string(),
+        summary: z.object({
+            total: z.number(),
+            byAuthor: z.record(z.string(), z.number())
+        }),
+        commits: z.array(gitHubCommitSummarySchema),
+        message: z.string(),
+        tip: z.string()
+    })
+})
+
+export const summarizeGitHubPullRequestDiffTool = defineTool({
+    name: "summarizeGitHubPullRequestDiff",
+    inputSchema: summarizeGitHubPullRequestDiffInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        pullRequest: gitHubPullRequestRefSchema,
+        summary: z.record(z.string(), z.unknown()),
+        pagination: gitHubPaginationSchema,
+        analysis: z.string(),
+        message: z.string()
+    })
+})
+
+export const notionCreateOrUpdatePageTool = defineTool({
+    name: "notion_create_or_update_page",
+    inputSchema: notionCreateOrUpdatePageInputSchema,
+    outputSchema: notionDatabaseRowMutationResultSchema
+})
+
+export const notionCreateOrUpdateDatabaseRowTool = defineTool({
+    name: "notion_create_or_update_database_row",
+    inputSchema: notionCreateOrUpdateDatabaseRowInputSchema,
+    outputSchema: notionDatabaseRowMutationResultSchema
+})
+
+export const notionModifyBlocksTool = defineTool({
+    name: "notion_modify_blocks",
+    inputSchema: notionModifyBlocksInputSchema,
+    outputSchema: z.union([notionModifyBlocksSuccessSchema, notionModifyBlocksFailureSchema])
+})
+
+export const notionQueryPageTool = defineTool({
+    name: "notion_query_page",
+    inputSchema: notionQueryPageInputSchema,
+    outputSchema: notionPageQueryMetadataSchema.extend({
+        success: z.literal(true),
+        actions: z.array(runHistoryActionBaseSchema).optional(),
+        properties: z.record(z.string(), notionReadablePropertyValueSchema),
+        properties_raw: z.record(z.string(), z.unknown()).optional(),
+        blocks: z.array(notionPageBlockSchema),
+        blocks_count: z.number()
+    })
+})
+
+export const notionQueryDatabaseTool = defineTool({
+    name: "notion_query_database",
+    inputSchema: notionQueryDatabaseInputSchema,
+    outputSchema: z.discriminatedUnion("success", [notionQueryDatabaseSuccessSchema, notionQueryDatabaseFailureSchema])
+})
+
+export const notionGetSchemaTool = defineTool({
+    name: "notion_get_schema",
+    inputSchema: notionGetSchemaInputSchema,
+    outputSchema: toolOutputSuccessSchema.extend({
+        data_source_id: z.string(),
+        database_name: z.string(),
+        schema: z.record(z.string(), notionSchemaPropertySchema),
+        property_count: z.number()
+    })
+})
+
+export const notionFetchRelatedEventsTool = defineTool({
+    name: "notion_fetch_related_events",
+    inputSchema: notionFetchRelatedEventsInputSchema,
+    outputSchema: toolOutputSuccessSchema.extend({
+        events_count: z.number(),
+        events: z.string().optional(),
+        message: z.string()
+    })
+})
+
+export const notionListUsersTool = defineTool({
+    name: "notion_list_users",
+    inputSchema: notionListUsersInputSchema,
+    outputSchema: toolOutputSuccessSchema.extend({
+        users: z.array(notionWorkspaceUserSchema),
+        count: z.number()
+    })
+})
+
+export const gmailSendEmailTool = defineTool({
+    name: "gmail_send_email",
+    inputSchema: gmailSendEmailInputSchema,
+    outputSchema: toolOutputSuccessSchema.merge(gmailSendSummarySchema)
+})
+
+export const gmailCreateDraftTool = defineTool({
+    name: "gmail_create_draft",
+    inputSchema: gmailCreateDraftInputSchema,
+    outputSchema: toolOutputSuccessSchema.merge(gmailDraftSummarySchema)
+})
+
+export const confluenceQueryPageTool = defineTool({
+    name: "confluence_query_page",
+    inputSchema: confluenceQueryPageInputSchema,
+    outputSchema: toolOutputSuccessSchema.merge(confluencePageQueryResultSchema)
+})
+
+export const confluenceAddCommentTool = defineTool({
+    name: "confluence_add_comment",
+    inputSchema: confluenceAddCommentInputSchema,
+    outputSchema: toolOutputSuccessSchema.extend({
+        comment_id: z.string(),
+        comment_text: z.string(),
+        position: confluenceCommentPositionSchema,
+        text_commented_on: z.string().optional(),
+        message: z.string()
+    })
+})
+
+export const searchPosthogSessionsTool = defineTool({
+    name: "searchPosthogSessions",
+    inputSchema: searchPosthogSessionsInputSchema,
+    outputSchema: z.union([posthogSearchSessionsFoundSchema, posthogSearchSessionsNotFoundSchema])
+})
+
+export const searchPosthogLogsTool = defineTool({
+    name: "searchPosthogLogs",
+    inputSchema: searchPosthogLogsInputSchema,
+    outputSchema: toolOutputSuccessSchema.extend({
+        userEmail: z.string().nullable(),
+        severityLevels: z.array(posthogSeverityLevelSchema).nullable(),
+        messageSearch: z.string().nullable(),
+        projectId: z.string(),
+        totalLogs: z.number(),
+        logs: z.array(posthogLogEntrySchema),
+        logsLink: z.string(),
+        pagination: posthogOffsetPaginationSchema,
+        message: z.string()
+    })
+})
+
+export const getPosthogSessionEventsTool = defineTool({
+    name: "getPosthogSessionEvents",
+    inputSchema: getPosthogSessionEventsInputSchema,
+    outputSchema: toolOutputSuccessSchema.extend({
+        sessionId: z.string(),
+        sessionUrl: z.string(),
+        startTime: z.string(),
+        duration: z.number().optional(),
+        timeWindow: z.object({
+            startSeconds: z.number(),
+            endSeconds: z.number().nullable()
+        }),
+        summary: posthogSessionEventsSummarySchema,
+        events: z.array(posthogSessionEventSchema),
+        consoleLogs: z.array(posthogSessionConsoleLogSchema),
+        message: z.string()
+    })
+})
+
+export const searchPosthogEventsTool = defineTool({
+    name: "searchPosthogEvents",
+    inputSchema: searchPosthogEventsInputSchema,
+    outputSchema: z.union([
+        toolOutputSuccessSchema.extend({
+            countByEventNameOnly: z.literal(true),
+            customEventsOnly: z.boolean(),
+            eventCounts: z.array(posthogEventCountSchema),
+            totalEventTypes: z.number(),
+            eventsLink: z.string(),
+            message: z.string()
+        }),
+        toolOutputSuccessSchema.extend({
+            userEmail: z.string().nullable(),
+            eventName: z.string().nullable(),
+            projectId: z.string(),
+            totalEvents: z.number(),
+            events: z.array(posthogEventSummarySchema),
+            eventsLink: z.string(),
+            pagination: posthogOffsetPaginationSchema,
+            message: z.string()
+        })
+    ])
+})
+
+// Datadog schemas
+export const datadogLogEntrySchema = z.object({
+    id: z.string(),
+    timestamp: z.string().optional(),
+    message: z.string().optional(),
+    host: z.string().optional(),
+    service: z.string().optional(),
+    status: z.string().optional(),
+    tags: z.array(z.string()),
+    customAttributes: z.record(z.string(), z.unknown())
+})
+
+export const datadogCursorPaginationSchema = z.object({
+    limit: z.number(),
+    cursor: z.string().nullable().optional(),
+    nextCursor: z.string().nullable(),
+    hasMore: z.boolean(),
+    showing: z.string()
+})
+
+export const datadogRumSessionDetailsSchema = z.object({
+    id: z.string().optional(),
+    type: z.string().optional(),
+    hasReplay: z.boolean().optional(),
+    duration: z.number().optional()
+})
+
+export const datadogRumViewDetailsSchema = z.object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    url: z.string().optional(),
+    loadTime: z.number().optional(),
+    timeSpent: z.number().optional()
+})
+
+export const datadogRumActionDetailsSchema = z.object({
+    id: z.string().optional(),
+    type: z.string().optional(),
+    target: z.string().optional(),
+    loadingTime: z.number().optional()
+})
+
+export const datadogRumErrorDetailsSchema = z.object({
+    id: z.string().optional(),
+    message: z.string().optional(),
+    source: z.string().optional(),
+    stack: z.string().optional(),
+    type: z.string().optional()
+})
+
+export const datadogRumResourceDetailsSchema = z.object({
+    id: z.string().optional(),
+    type: z.string().optional(),
+    url: z.string().optional(),
+    method: z.string().optional(),
+    statusCode: z.number().optional(),
+    duration: z.number().optional()
+})
+
+export const datadogRumLongTaskDetailsSchema = z.object({
+    id: z.string().optional(),
+    duration: z.number().optional()
+})
+
+export const datadogRumEventSchema = z.object({
+    id: z.string(),
+    type: z.string(),
+    timestamp: z.string().optional(),
+    session: datadogRumSessionDetailsSchema.optional(),
+    view: z.union([datadogRumViewDetailsSchema, z.record(z.string(), z.unknown())]).optional(),
+    action: datadogRumActionDetailsSchema.optional(),
+    error: datadogRumErrorDetailsSchema.optional(),
+    resource: datadogRumResourceDetailsSchema.optional(),
+    longTask: datadogRumLongTaskDetailsSchema.optional(),
+    service: z.string().optional(),
+    version: z.string().optional(),
+    environment: z.string().optional(),
+    device: z.record(z.string(), z.unknown()).optional(),
+    os: z.record(z.string(), z.unknown()).optional(),
+    browser: z.record(z.string(), z.unknown()).optional(),
+    user: z.record(z.string(), z.unknown()).optional(),
+    tags: z.array(z.string()),
+    customAttributes: z.record(z.string(), z.unknown())
+})
+
+export const datadogAggregationBucketComputeSchema = z.object({
+    value: z.unknown(),
+    aggregation: z.string(),
+    metric: z.string()
+})
+
+export const datadogAggregationBucketSchema = z.object({
+    by: z.record(z.string(), z.unknown()),
+    computes: z.record(z.string(), datadogAggregationBucketComputeSchema)
+})
+
+export const datadogAggregationMetaSchema = z.object({
+    elapsed: z.number().optional(),
+    requestId: z.string().optional(),
+    status: z.unknown().optional()
+})
+
+// Datadog input schemas
+export const searchDatadogLogsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
+    defaultIndexes: z
+        .union([z.array(z.string()), z.null()])
+        .optional()
+        .describe('Default log indexes to search (e.g., ["main"]). Falls back to ["main"] if not provided.'),
+    query: z.string().nullable().optional().describe("Datadog log search query (e.g., service:web AND @status:error)"),
+    indexes: z
+        .union([z.array(z.string()), z.null()])
+        .optional()
+        .describe('Log indexes to search (e.g., ["main"]). Defaults to defaultIndexes if not provided.'),
+    from: z.string().nullable().optional().describe('Start time (ISO8601 or relative like "now-1h")'),
+    to: z.string().nullable().optional().describe("End time (ISO8601). Defaults to now if not provided."),
+    limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50)"),
+    cursor: z.string().nullable().optional().describe("Pagination cursor from previous response"),
+    sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)')
+})
+
+export const searchRumEventsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
+    query: z.string().nullable().optional().describe("Datadog RUM search query (e.g., @type:error AND @error.source:network)"),
+    from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
+    to: z.string().nullable().optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
+    limit: z.number().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
+    pageCursor: z.string().nullable().optional().describe("Pagination cursor from previous response"),
+    sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
+    timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")')
+})
+
+export const listRumEventsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
+    query: z.string().nullable().optional().describe("Datadog RUM search query to filter events (e.g., @type:view)"),
+    from: z.string().nullable().optional().describe('Minimum timestamp (ISO8601 only, e.g., "2020-09-17T11:48:36+01:00")'),
+    to: z.string().nullable().optional().describe("Maximum timestamp (ISO8601 only). Defaults to now if not provided."),
+    limit: z.number().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
+    pageCursor: z.string().nullable().optional().describe("Pagination cursor from previous response"),
+    sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)')
+})
+
+export const aggregateRumEventsInputSchema = z.object({
+    query: z.string().nullable().optional().describe("Datadog RUM search query to filter events before aggregation (e.g., @type:view)"),
+    from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
+    to: z.string().nullable().optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
+    compute: z
+        .array(
+            z.object({
+                aggregation: z.enum(["count", "pc90", "pc95", "pc99", "avg", "sum", "min", "max", "cardinality"]).describe("Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"),
+                metric: z.string().describe('Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
+                type: z.enum(["total", "timeseries"]).default("total").describe('Computation type: "total" (overall) or "timeseries" (time-bucketed)')
+            })
+        )
+        .describe("Array of metrics to compute. At least one required."),
+    groupBy: z
+        .union([
+            z.array(
+                z.object({
+                    facet: z.string().describe("Facet to group by (e.g., @view.name, @service, @browser.name)"),
+                    limit: z.number().default(10).describe("Maximum number of groups to return (default: 10)"),
+                    total: z.boolean().default(false).describe('Include "total" group with all events combined (default: false)')
+                })
+            ),
+            z.null()
+        ])
+        .describe("Facets to group results by"),
+    timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")'),
+    pageLimit: z.number().default(25).describe("Maximum number of buckets to return (default: 25)"),
+    integrationId: z.string().describe("The integration ID of the Datadog skill to use.")
+})
+
+// Terse tool schemas
+export const webExtractResultItemSchema = z.object({
+    url: z.string(),
+    raw_content: z.string()
+})
+
+export const webExtractOutputSchema = z.object({
+    results: z.array(webExtractResultItemSchema),
+    failed_results: z.unknown()
+})
+
+export const webResearchSourceSchema = z.object({
+    title: z.string(),
+    url: z.string()
+})
+
+export const webResearchOutputSchema = toolOutputBaseSchema.extend({
+    status: z.literal("completed"),
+    request_id: z.string(),
+    content: z.string().optional(),
+    sources: z.array(webResearchSourceSchema).optional()
+})
+
+export const imageEditSnippetSchema = z.object({
+    type: z.literal("image"),
+    url: z.string()
+})
+
+export const imageEditOutputSchema = toolOutputBaseSchema.extend({
+    url: z.string(),
+    image_url: z.string(),
+    summary: z.string(),
+    snippets: z.array(imageEditSnippetSchema)
+})
+
+// Terse input schemas
+export const webExtractInputSchema = z.object({
+    urls: z.union([z.string(), z.array(z.string())]).describe("URL or list of URLs to extract content from"),
+    extract_depth: z.enum(["basic", "advanced"]).nullable().describe("'advanced' handles JavaScript-heavy pages but is slower")
+})
+
+export const webResearchInputSchema = z.object({
+    input: z.string().describe("The research question or topic to investigate"),
+    model: z.enum(["mini", "pro", "auto"]).nullable().describe("'mini' for quick focused research, 'pro' for comprehensive multi-angle research, 'auto' picks automatically")
+})
+
+export const imageEditInputSchema = z.object({
+    image_url: z.string().describe("URL of the image to edit. Must be a signed URL from our internal GCS image bucket."),
+    prompt: z.string().describe("Natural language instruction describing how to edit the image.")
+})
+
+export const searchDatadogLogsTool = defineTool({
+    name: "searchDatadogLogs",
+    inputSchema: searchDatadogLogsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        query: z.string().nullable(),
+        indexes: z.array(z.string()),
+        totalLogs: z.number(),
+        logs: z.array(datadogLogEntrySchema),
+        logsLink: z.string(),
+        pagination: datadogCursorPaginationSchema,
+        warnings: z.string().nullable(),
+        message: z.string()
+    })
+})
+
+export const searchRumEventsTool = defineTool({
+    name: "searchRumEvents",
+    inputSchema: searchRumEventsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        query: z.string().nullable(),
+        totalEvents: z.number(),
+        events: z.array(datadogRumEventSchema),
+        eventsByType: z.record(z.string(), z.number()),
+        rumLink: z.string(),
+        pagination: datadogCursorPaginationSchema,
+        warnings: z.string().nullable(),
+        message: z.string()
+    })
+})
+
+export const listRumEventsTool = defineTool({
+    name: "listRumEvents",
+    inputSchema: listRumEventsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        query: z.string().nullable(),
+        totalEvents: z.number(),
+        events: z.array(datadogRumEventSchema),
+        eventsByType: z.record(z.string(), z.number()),
+        rumLink: z.string(),
+        pagination: datadogCursorPaginationSchema,
+        warnings: z.string().nullable(),
+        message: z.string()
+    })
+})
+
+export const aggregateRumEventsTool = defineTool({
+    name: "aggregateRumEvents",
+    inputSchema: aggregateRumEventsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        query: z.string().nullable(),
+        from: z.string(),
+        to: z.string().nullable(),
+        compute: z.string(),
+        groupBy: z.string(),
+        totalBuckets: z.number(),
+        buckets: z.array(datadogAggregationBucketSchema),
+        rumLink: z.string(),
+        pagination: datadogCursorPaginationSchema.omit({ cursor: true }),
+        warnings: z.string().nullable(),
+        meta: datadogAggregationMetaSchema,
+        message: z.string()
+    })
+})
+
+export const webExtractTool = defineTool({
+    name: "web_extract",
+    inputSchema: webExtractInputSchema,
+    outputSchema: webExtractOutputSchema
+})
+
+export const webResearchTool = defineTool({
+    name: "web_research",
+    inputSchema: webResearchInputSchema,
+    outputSchema: webResearchOutputSchema
+})
+
+export const imageEditTool = defineTool({
+    name: "image_edit",
+    inputSchema: imageEditInputSchema,
+    outputSchema: imageEditOutputSchema
+})
+
+// Attio schemas
+export const attioObjectSchema = z.object({
+    api_slug: z.string(),
+    singular_noun: z.string(),
+    plural_noun: z.string()
+})
+
+export const attioAttributeSchema = z
+    .object({
+        api_slug: z.string().optional(),
+        title: z.string().optional(),
+        type: z.string().optional(),
+        is_required: z.boolean().optional(),
+        is_unique: z.boolean().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioObjectWithAttributesSchema = attioObjectSchema.extend({
+    attributes: z.array(attioAttributeSchema).optional()
+})
+
+export const attioRecordIdentifierSchema = z
+    .object({
+        workspace_id: z.string().optional(),
+        object_id: z.string().optional(),
+        record_id: z.string().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioRecordSchema = z
+    .object({
+        id: attioRecordIdentifierSchema.optional(),
+        values: z.record(z.string(), z.unknown()).optional(),
+        web_url: z.string().optional(),
+        created_at: z.string().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioUpsertErrorSchema = z.object({
+    index: z.number(),
+    message: z.string()
+})
+
+// WorkOS schemas
+export const workOSUserSummarySchema = z.object({
+    id: z.string(),
+    email: z.string(),
+    emailVerified: z.boolean(),
+    firstName: z.string().nullable().optional(),
+    lastName: z.string().nullable().optional(),
+    profilePictureUrl: z.string().nullable().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string()
+})
+
+export const workOSOrganizationSummarySchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    externalId: z.string().nullable().optional(),
+    domains: z.array(z.string()),
+    createdAt: z.string(),
+    updatedAt: z.string()
+})
+
+export const workOSPaginationSchema = z.object({
+    hasMore: z.boolean(),
+    after: z.string().nullable().optional()
+})
+
+// LaunchDarkly schemas
+export const launchDarklyFlagSummarySchema = z.object({
+    key: z.string(),
+    name: z.string(),
+    description: z.string(),
+    environments: z.record(z.string(), z.boolean()),
+    url: z.string(),
+    environmentUrls: z.record(z.string(), z.string())
+})
+
+export const launchDarklyFlagMetadataSchema = z.object({
+    key: z.string(),
+    name: z.string(),
+    description: z.string(),
+    kind: z.string(),
+    variations: z.array(z.record(z.string(), z.unknown())),
+    tags: z.array(z.string()),
+    maintainerId: z.string().nullable()
+})
+
+export const launchDarklyEnvironmentConfigSchema = z.object({
+    on: z.boolean(),
+    targets: z.array(z.record(z.string(), z.unknown())),
+    contextTargets: z.array(z.record(z.string(), z.unknown())),
+    rules: z.array(z.record(z.string(), z.unknown())),
+    fallthrough: z.record(z.string(), z.unknown()).nullable(),
+    offVariation: z.number().nullable(),
+    prerequisites: z.array(z.record(z.string(), z.unknown()))
+})
+
+export const launchDarklyHistoryEntrySchema = z.object({
+    id: z.string(),
+    timestamp: z.string(),
+    kind: z.string(),
+    key: z.string(),
+    name: z.string(),
+    description: z.string(),
+    member: z.record(z.string(), z.unknown()).nullable(),
+    changes: z.array(z.record(z.string(), z.unknown()))
+})
+
+export const launchDarklyHistoryResultSchema = z.object({
+    entries: z.array(launchDarklyHistoryEntrySchema),
+    totalEntries: z.number(),
+    url: z.string()
+})
+
+// Snowflake schemas
+export const snowflakeQueryRowSchema = z.record(z.string(), z.unknown())
+
+// Attio input schemas
+export const attioListObjectsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use.")
+})
+
+export const attioQueryRecordsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
+    filter: z
+        .string()
+        .nullable()
+        .describe('Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators.'),
+    limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
+})
+
+export const attioUpsertRecordInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
+    matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
+    records: z
+        .string()
+        .describe(
+            'A JSON string representing a list of Attio records to upsert. Each record should map attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: \'[{"email_addresses":["test@example.com"],"name":"John"}]\'.'
+        )
+})
+
+// WorkOS input schemas
+export const listWorkOSUsersInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
+    email: z.string().nullable().optional().describe("Optional exact email address filter. Omit or pass null to list all users."),
+    organizationId: z.string().nullable().optional().describe("Optional WorkOS organization ID filter. Omit or pass null for all organizations."),
+    limit: z.number().default(20).describe("Maximum number of users to return (default: 20, max: 100)."),
+    after: z.string().nullable().optional().describe("Optional pagination cursor. Use the 'after' value from a previous response to get the next page.")
+})
+
+export const listWorkOSOrganizationsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
+    limit: z.number().default(20).describe("Maximum number of organizations to return (default: 20, max: 100)."),
+    after: z.string().nullable().optional().describe("Optional pagination cursor. Use the 'after' value from a previous response to get the next page.")
+})
+
+export const getWorkOSUserInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
+    userId: z.string().describe("The WorkOS user ID to look up.")
+})
+
+// LaunchDarkly input schemas
+export const listLaunchDarklyFlagsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the LaunchDarkly skill to use."),
+    projectKey: z.string().describe("The LaunchDarkly project key."),
+    environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
+    summary: z.boolean().default(true).describe("If true, return only flag key, name, and on/off state per environment. If false, return full flag details."),
+    filter: z.string().nullable().optional().describe("Optional: Filter flags by name/key containing this text."),
+    tags: z
+        .union([z.array(z.string()), z.null()])
+        .optional()
+        .describe("Optional: Filter flags by tags.")
+})
+
+export const getLaunchDarklyFlagDetailsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the LaunchDarkly skill to use."),
+    projectKey: z.string().describe("The LaunchDarkly project key."),
+    environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
+    flagKey: z.string().describe("The flag key to retrieve."),
+    environmentKey: z.string().nullable().optional().describe("Optional: Specific environment to get details for (if not provided, returns all configured environments)."),
+    includeHistory: z.boolean().default(false).describe("If true, includes change history for the flag over the specified time window."),
+    before: z.string().nullable().optional().describe("Optional: ISO date - only return history entries before this date (only used if includeHistory is true)."),
+    after: z.string().nullable().optional().describe("Optional: ISO date - only return history entries after this date (only used if includeHistory is true)."),
+    historyLimit: z.number().default(20).describe("Number of history entries to return if includeHistory is true (default: 20, max: 20).")
+})
+
+// Snowflake input schemas
+export const snowflakeExecuteQueryInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Snowflake connection to use."),
+    query: z.string().describe("The SQL query to execute. Should be a read-only SELECT statement.")
+})
+
+export const snowflakeExplainQueryInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Snowflake connection to use."),
+    query: z.string().describe("The SQL query to explain.")
+})
+
+export const attioListObjectsTool = defineTool({
+    name: "attio_list_objects",
+    inputSchema: attioListObjectsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        objects: z.array(attioObjectWithAttributesSchema),
+        count: z.number()
+    })
+})
+
+export const attioQueryRecordsTool = defineTool({
+    name: "attio_query_records",
+    inputSchema: attioQueryRecordsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        records: z.array(attioRecordSchema),
+        count: z.number()
+    })
+})
+
+export const attioUpsertRecordTool = defineTool({
+    name: "attio_upsert_record",
+    inputSchema: attioUpsertRecordInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        records: z.array(attioRecordSchema).optional(),
+        count: z.number().optional(),
+        requestedCount: z.number().optional(),
+        successCount: z.number().optional(),
+        failureCount: z.number().optional(),
+        partial: z.boolean().optional(),
+        errors: z.array(attioUpsertErrorSchema).optional()
+    })
+})
+
+export const listWorkOSUsersTool = defineTool({
+    name: "listWorkOSUsers",
+    inputSchema: listWorkOSUsersInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        users: z.array(workOSUserSummarySchema),
+        pagination: workOSPaginationSchema,
+        message: z.string()
+    })
+})
+
+export const listWorkOSOrganizationsTool = defineTool({
+    name: "listWorkOSOrganizations",
+    inputSchema: listWorkOSOrganizationsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        organizations: z.array(workOSOrganizationSummarySchema),
+        pagination: workOSPaginationSchema,
+        message: z.string()
+    })
+})
+
+export const getWorkOSUserTool = defineTool({
+    name: "getWorkOSUser",
+    inputSchema: getWorkOSUserInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        user: workOSUserSummarySchema,
+        message: z.string()
+    })
+})
+
+export const listLaunchDarklyFlagsTool = defineTool({
+    name: "listLaunchDarklyFlags",
+    inputSchema: listLaunchDarklyFlagsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        projectKey: z.string(),
+        totalFlags: z.number(),
+        flags: z.array(launchDarklyFlagSummarySchema),
+        flagsLink: z.string(),
+        message: z.string()
+    })
+})
+
+export const getLaunchDarklyFlagDetailsTool = defineTool({
+    name: "getLaunchDarklyFlagDetails",
+    inputSchema: getLaunchDarklyFlagDetailsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        projectKey: z.string(),
+        flag: launchDarklyFlagMetadataSchema,
+        environments: z.record(z.string(), launchDarklyEnvironmentConfigSchema),
+        url: z.string(),
+        history: launchDarklyHistoryResultSchema.optional(),
+        message: z.string()
+    })
+})
+
+export const snowflakeExecuteQueryTool = defineTool({
+    name: "snowflakeExecuteQuery",
+    inputSchema: snowflakeExecuteQueryInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        rows: z.array(snowflakeQueryRowSchema),
+        columns: z.array(z.string()),
+        rowCount: z.number()
+    })
+})
+
+export const snowflakeExplainQueryTool = defineTool({
+    name: "snowflakeExplainQuery",
+    inputSchema: snowflakeExplainQueryInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        explainPlan: z.array(snowflakeQueryRowSchema),
+        columns: z.array(z.string()),
+        rowCount: z.number()
+    })
+})
+
+export const webSearchTool = defineTool({
+    name: "web_search",
+    inputSchema: z.object({
+        query: z.string().describe("The search query"),
+        max_results: z.number().int().min(1).max(10).nullable().describe("Number of results to return (default 5)"),
+        search_depth: z.enum(["basic", "advanced"]).nullable().describe("'basic' is faster, 'advanced' is more thorough (default 'basic')"),
+        include_answer: z.boolean().nullable().describe("Include an LLM-generated answer summarizing the results (default false)"),
+        topic: z.enum(["general", "news"]).nullable().describe("'news' for recent news articles, 'general' for all web content (default 'general')"),
+        time_range: z.enum(["day", "week", "month", "year"]).nullable().describe("Filter results by recency")
+    }),
+    outputSchema: z.object({
+        query: z.string(),
+        answer: z.string().optional(),
+        results: z.array(
+            z.object({
+                title: z.string(),
+                url: z.string(),
+                content: z.string(),
+                score: z.number()
+            })
+        )
+    })
+})
+
+export const ToolDefinitions = {
+    [linearCreateTicketTool.name]: linearCreateTicketTool,
+    [linearUpdateTicketTool.name]: linearUpdateTicketTool,
+    [linearAddCommentTool.name]: linearAddCommentTool,
+    [linearSearchTicketTool.name]: linearSearchTicketTool,
+    [linearReadTicketTool.name]: linearReadTicketTool,
+    [linearGetStatesTool.name]: linearGetStatesTool,
+    [linearGetLabelsTool.name]: linearGetLabelsTool,
+    [linearGetProjectsTool.name]: linearGetProjectsTool,
+    [linearGetTeamsTool.name]: linearGetTeamsTool,
+    [linearGetUsersTool.name]: linearGetUsersTool,
+    [slackSendMessageTool.name]: slackSendMessageTool,
+    [slackListChannelsTool.name]: slackListChannelsTool,
+    [slackListUsersTool.name]: slackListUsersTool,
+    [slackReadConversationTool.name]: slackReadConversationTool,
+    [jiraCreateTicketTool.name]: jiraCreateTicketTool,
+    [jiraUpdateTicketTool.name]: jiraUpdateTicketTool,
+    [jiraSearchTicketTool.name]: jiraSearchTicketTool,
+    [searchGitHubCodeTool.name]: searchGitHubCodeTool,
+    [grepGitHubCodeTool.name]: grepGitHubCodeTool,
+    [readGitHubFileTool.name]: readGitHubFileTool,
+    [listGitHubDirectoryTool.name]: listGitHubDirectoryTool,
+    [listGitHubPullRequestsTool.name]: listGitHubPullRequestsTool,
+    [listGitHubCommitsTool.name]: listGitHubCommitsTool,
+    [summarizeGitHubPullRequestDiffTool.name]: summarizeGitHubPullRequestDiffTool,
+    [notionCreateOrUpdatePageTool.name]: notionCreateOrUpdatePageTool,
+    [notionCreateOrUpdateDatabaseRowTool.name]: notionCreateOrUpdateDatabaseRowTool,
+    [notionModifyBlocksTool.name]: notionModifyBlocksTool,
+    [notionQueryPageTool.name]: notionQueryPageTool,
+    [notionQueryDatabaseTool.name]: notionQueryDatabaseTool,
+    [notionGetSchemaTool.name]: notionGetSchemaTool,
+    [notionFetchRelatedEventsTool.name]: notionFetchRelatedEventsTool,
+    [notionListUsersTool.name]: notionListUsersTool,
+    [gmailSendEmailTool.name]: gmailSendEmailTool,
+    [gmailCreateDraftTool.name]: gmailCreateDraftTool,
+    [confluenceQueryPageTool.name]: confluenceQueryPageTool,
+    [confluenceAddCommentTool.name]: confluenceAddCommentTool,
+    [searchPosthogSessionsTool.name]: searchPosthogSessionsTool,
+    [searchPosthogLogsTool.name]: searchPosthogLogsTool,
+    [getPosthogSessionEventsTool.name]: getPosthogSessionEventsTool,
+    [searchPosthogEventsTool.name]: searchPosthogEventsTool,
+    [attioListObjectsTool.name]: attioListObjectsTool,
+    [attioQueryRecordsTool.name]: attioQueryRecordsTool,
+    [attioUpsertRecordTool.name]: attioUpsertRecordTool,
+    [listWorkOSUsersTool.name]: listWorkOSUsersTool,
+    [listWorkOSOrganizationsTool.name]: listWorkOSOrganizationsTool,
+    [getWorkOSUserTool.name]: getWorkOSUserTool,
+    [listLaunchDarklyFlagsTool.name]: listLaunchDarklyFlagsTool,
+    [getLaunchDarklyFlagDetailsTool.name]: getLaunchDarklyFlagDetailsTool,
+    [snowflakeExecuteQueryTool.name]: snowflakeExecuteQueryTool,
+    [snowflakeExplainQueryTool.name]: snowflakeExplainQueryTool,
+    [searchDatadogLogsTool.name]: searchDatadogLogsTool,
+    [searchRumEventsTool.name]: searchRumEventsTool,
+    [listRumEventsTool.name]: listRumEventsTool,
+    [aggregateRumEventsTool.name]: aggregateRumEventsTool,
+    [webSearchTool.name]: webSearchTool,
+    [webExtractTool.name]: webExtractTool,
+    [webResearchTool.name]: webResearchTool,
+    [imageEditTool.name]: imageEditTool
+} as const
+
+export type ToolName = keyof typeof ToolDefinitions
+
+export type ToolDefinitionByName<TName extends ToolName> = (typeof ToolDefinitions)[TName]
+
+export type ToolInputSchemaByName = {
+    [K in ToolName]: ToolDefinitionByName<K>["inputSchema"]
+}
+
+export type ToolOutputSchemaByName = {
+    [K in ToolName]: ToolDefinitionByName<K>["outputSchema"]
+}
+
+export type ToolInputByName = {
+    [K in ToolName]: z.infer<ToolInputSchemaByName[K]>
+}
+
+export type DefinedToolOutputByName = {
+    [K in ToolName]: z.infer<ToolOutputSchemaByName[K]>
+}
+
+export function isValidToolName(name: string): name is ToolName {
+    return name in ToolDefinitions
+}

@@ -1,45 +1,19 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
-
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
-    projectId: z.string().describe("The PostHog project ID."),
-    userEmail: z.string().email().describe("The email address of the user to query session recordings for. Must be a valid email address."),
-    limit: z.number().default(10).describe("Maximum number of session recordings to return (default: 10, max: 100)"),
-    offset: z.number().default(0).describe("Offset for pagination (default: 0)"),
-    last7Days: z
-        .boolean()
-        .default(false)
-        .describe(
-            "If true and dateFrom is not provided, filters session recordings from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."
-        ),
-    dateFrom: z
-        .union([z.string(), z.null()])
-        .describe(
-            'Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
-        ),
-    dateTo: z.string().nullable().optional().describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.')
-})
 
 /**
  * Tool for querying PostHog session recordings for a specific user.
  * This tool first finds the person by email, then retrieves their session recordings.
  */
-export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof ToolName.POSTHOG_SEARCH_SESSIONS> = {
-    name: ToolName.POSTHOG_SEARCH_SESSIONS,
+export const searchSessionsTool = defineSessionTool({
+    name: "searchPosthogSessions",
     description:
         "Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application. Returns the most recent session recordings first.",
-    parameters: parameters,
-    execute: async ({ integrationId, projectId, userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, projectId, userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -79,7 +53,7 @@ export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof To
                 } else if (personsResponse.status === 404) {
                     // Person not found is not necessarily an error - they might not have any events
                     return {
-                        success: true,
+                        success: true as const,
                         userEmail,
                         projectId,
                         personFound: false as const,
@@ -97,7 +71,7 @@ export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof To
 
             if (persons.length === 0) {
                 return {
-                    success: true,
+                    success: true as const,
                     userEmail,
                     projectId,
                     personFound: false as const,
@@ -219,7 +193,7 @@ export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof To
             const sessionsLink = `${posthogHost}/replay?person=${encodeURIComponent(personId)}`
 
             const response = {
-                success: true,
+                success: true as const,
                 userEmail,
                 projectId,
                 personFound: true as const,
@@ -259,4 +233,4 @@ export const searchSessionsTool: SessionToolOptions<typeof parameters, typeof To
             throw new Error(`Failed to query PostHog sessions: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

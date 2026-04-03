@@ -1,25 +1,17 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
 import type { AttioAttribute, AttioObject } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
+import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 
-const attioListObjectsParams = z.object({
-    integrationId: z.string().describe("The integration ID of the Attio workspace to use.")
-})
-
-export const attioListObjectsTool: SessionToolOptions<typeof attioListObjectsParams, typeof ToolName.ATTIO_LIST_OBJECTS> = {
-    name: ToolName.ATTIO_LIST_OBJECTS,
+export const attioListObjectsTool = defineSessionTool({
+    name: "attio_list_objects",
     description: `List all available object types in the Attio workspace, including their attributes and field definitions. Use this to discover what object types (e.g. people, companies, deals) exist and what attributes are available before creating or updating records.`,
-    parameters: attioListObjectsParams,
-    execute: async ({ integrationId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId }, runContext) => {
         logger.debug("Executing attio_list_objects tool", { integrationId })
 
         if (!runContext?.context) {
@@ -79,4 +71,4 @@ export const attioListObjectsTool: SessionToolOptions<typeof attioListObjectsPar
             throw new Error(errorMessage)
         }
     }
-}
+})
