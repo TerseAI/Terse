@@ -1,24 +1,14 @@
 import { Client } from "@notionhq/client"
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-    query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
-})
-
-export const notionListUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_LIST_USERS> = {
-    name: ToolName.NOTION_LIST_USERS,
+export const notionListUsersTool = defineSessionTool({
+    name: "notion_list_users",
     description: `List users in the Notion workspace. Use this to resolve user names to Notion user IDs
 for populating People properties (e.g., Assignee, Owner) when creating or updating database pages.
 
@@ -26,8 +16,7 @@ Returns workspace members (not bots). Optionally filter by name with the query p
 
 Use the returned user IDs in people property format:
 {"Assignee": {"people": [{"object": "user", "id": "<user_id>"}]}}`,
-    parameters: parameters,
-    execute: async ({ integrationId, query }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, query }, runContext) => {
         logger.debug("Executing notion_list_users tool", { integrationId, query })
 
         if (!runContext?.context) {
@@ -84,4 +73,4 @@ Use the returned user IDs in people property format:
             throw new Error(`${errorMessage}. Check that the Notion integration is connected and has access to the workspace.`)
         }
     }
-}
+})

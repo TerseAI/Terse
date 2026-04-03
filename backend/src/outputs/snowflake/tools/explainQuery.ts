@@ -1,25 +1,14 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
 
-const snowflakeExplainQueryParams = z.object({
-    integrationId: z.string().describe("The integration ID of the Snowflake connection to use."),
-    query: z.string().describe("The SQL query to explain.")
-})
-
-export const snowflakeExplainQueryTool: SessionToolOptions<typeof snowflakeExplainQueryParams, typeof ToolName.SNOWFLAKE_EXPLAIN_QUERY> = {
-    name: ToolName.SNOWFLAKE_EXPLAIN_QUERY,
+export const snowflakeExplainQueryTool = defineSessionTool({
+    name: "snowflakeExplainQuery",
     description: "Get the query execution plan for a Snowflake SQL query using EXPLAIN. Use this to understand how Snowflake will execute a query before running it.",
-    parameters: snowflakeExplainQueryParams,
-    execute: async ({ integrationId, query }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, query }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -55,4 +44,4 @@ export const snowflakeExplainQueryTool: SessionToolOptions<typeof snowflakeExpla
             throw new Error(`Failed to explain Snowflake query: ${error.message}`)
         }
     }
-}
+})

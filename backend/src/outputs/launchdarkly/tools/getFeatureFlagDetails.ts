@@ -1,39 +1,14 @@
-import { RunContext } from "@openai/agents"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the LaunchDarkly skill to use."),
-    projectKey: z.string().describe("The LaunchDarkly project key."),
-    environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
-    flagKey: z.string().describe("The flag key to retrieve."),
-    environmentKey: z.string().nullable().optional().optional().describe("Optional: Specific environment to get details for (if not provided, returns all configured environments)."),
-    includeHistory: z.boolean().default(false).describe("If true, includes change history for the flag over the specified time window."),
-    before: z.string().nullable().optional().optional().describe("Optional: ISO date - only return history entries before this date (only used if includeHistory is true)."),
-    after: z.string().nullable().optional().optional().describe("Optional: ISO date - only return history entries after this date (only used if includeHistory is true)."),
-    historyLimit: z.number().default(20).describe("Number of history entries to return if includeHistory is true (default: 20, max: 20).")
-})
-
-/**
- * Tool for getting detailed information about a specific LaunchDarkly feature flag.
- * Optionally includes change history over a time window.
- */
-export const getLaunchDarklyFlagDetailsTool: SessionToolOptions<typeof parameters, typeof ToolName.LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS> = {
-    name: ToolName.LAUNCHDARKLY_GET_FEATURE_FLAG_DETAILS,
+export const getLaunchDarklyFlagDetailsTool = defineSessionTool({
+    name: "getLaunchDarklyFlagDetails",
     description:
         "Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.",
-    parameters: parameters,
-    execute: async (
-        { integrationId, projectKey, environmentKeys, flagKey, environmentKey, includeHistory = false, before, after, historyLimit = 20 },
-        runContext?: RunContext<SessionWithTracking<Session>>
-    ) => {
+    execute: async ({ integrationId, projectKey, environmentKeys, flagKey, environmentKey, includeHistory = false, before, after, historyLimit = 20 }, runContext) => {
         logger.info("[LaunchDarkly] getFeatureFlagDetails - Tool called", {
             integrationId,
             projectKey,
@@ -332,38 +307,10 @@ export const getLaunchDarklyFlagDetailsTool: SessionToolOptions<typeof parameter
                 isReadOnly: true
             }
 
-            const result: any = {
-                success: true,
-                actions: [action],
-                projectKey,
-                flag: flagMetadata,
-                environments,
-                url: flagUrl_ui,
-                message: `Retrieved details for flag "${flagKey}" in project ${projectKey}. View flag: ${flagUrl_ui}`
-            }
+            let message = `Retrieved details for flag "${flagKey}" in project ${projectKey}. View flag: ${flagUrl_ui}`
 
-            if (includeHistory) {
-                result.history = {
-                    entries: historyEntries,
-                    totalEntries: historyEntries.length,
-                    url: historyLink || flagUrl_ui
-                }
-
-                logger.info("[LaunchDarkly] getFeatureFlagDetails - History included in result", {
-                    historyEntriesCount: historyEntries.length,
-                    hasHistoryLink: !!historyLink
-                })
-
-                if (historyEntries.length > 0) {
-                    result.message += `\nFound ${historyEntries.length} change(s) in history. View monitoring: ${historyLink || flagUrl_ui}`
-                } else {
-                    logger.warn("[LaunchDarkly] getFeatureFlagDetails - History requested but no entries returned", {
-                        flagKey,
-                        before,
-                        after,
-                        historyLimit
-                    })
-                }
+            if (includeHistory && historyEntries.length > 0) {
+                message += `\nFound ${historyEntries.length} change(s) in history. View monitoring: ${historyLink || flagUrl_ui}`
             }
 
             logger.info("[LaunchDarkly] getFeatureFlagDetails - Success", {
@@ -374,7 +321,22 @@ export const getLaunchDarklyFlagDetailsTool: SessionToolOptions<typeof parameter
                 historyEntriesCount: historyEntries.length
             })
 
-            return result
+            return {
+                success: true,
+                actions: [action],
+                projectKey,
+                flag: flagMetadata,
+                environments,
+                url: flagUrl_ui,
+                ...(includeHistory && {
+                    history: {
+                        entries: historyEntries,
+                        totalEntries: historyEntries.length,
+                        url: historyLink || flagUrl_ui
+                    }
+                }),
+                message
+            }
         } catch (error: any) {
             logger.error("[LaunchDarkly] getFeatureFlagDetails - Error", {
                 error: error,
@@ -387,4 +349,4 @@ export const getLaunchDarklyFlagDetailsTool: SessionToolOptions<typeof parameter
             throw new Error(`Failed to get LaunchDarkly flag details: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

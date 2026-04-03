@@ -1,16 +1,12 @@
-import { Agent, AgentInputItem, AgentOutputType, RunContext, run } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../../../agent/runner"
 import { buildUserMessage } from "../../../agent/userMessage"
 import { settings } from "../../../config/settings"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepoFullName } from "../githubApiClient"
 
@@ -20,21 +16,8 @@ import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepo
  * launches a sub-agent with a compact model (gpt-4o-mini) that reads the diff
  * and provides a concise summary.
  */
-const summarizeGitHubPullRequestDiffParameters = z.object({
-    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-    pullNumber: z.number().describe("The pull request number (e.g., 123 for PR #123)"),
-    page: z
-        .union([z.number().int().min(1), z.null()])
-        .describe("Page number for pagination (default: 1). Use this to fetch additional files if a PR has more than 100 files. Use null for page 1. Must be a positive integer >= 1."),
-    context: z
-        .union([z.string(), z.null()])
-        .describe(
-            'Optional high-level context about what you\'re looking for in this PR. This helps the sub-agent focus its analysis. For example: "I need to understand the authentication changes" or "Focus on database migration changes". Use null if no specific context.'
-        )
-})
-
-export const summarizeGitHubPullRequestDiffTool: SessionToolOptions<typeof summarizeGitHubPullRequestDiffParameters, typeof ToolName.GITHUB_SUMMARIZE_PULL_REQUEST_DIFF> = {
-    name: ToolName.GITHUB_SUMMARIZE_PULL_REQUEST_DIFF,
+export const summarizeGitHubPullRequestDiffTool = defineSessionTool({
+    name: "summarizeGitHubPullRequestDiff",
     description: `Summarize the diff of a pull request from a GitHub repository using an intelligent sub-agent. Use this to:
 - Understand what changes were made in a specific PR without loading the full diff into context
 - Get a concise summary of code changes before merging
@@ -52,8 +35,7 @@ The tool launches a sub-agent that:
 
 You can optionally provide high-level context about what you're looking for in the PR, which will help the sub-agent focus its analysis.`,
     strict: true,
-    parameters: summarizeGitHubPullRequestDiffParameters,
-    execute: async ({ repository, pullNumber, page, context }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repository, pullNumber, page, context }, runContext) => {
         const pageNumber = Math.max(1, page ?? 1)
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -123,7 +105,7 @@ You can optionally provide high-level context about what you're looking for in t
             }
 
             // Create the sub-agent with compact model
-            const summarizerAgent = new Agent<Session, AgentOutputType>({
+            const summarizerAgent = new Agent<any, AgentOutputType>({
                 name: "PR Diff Summarizer",
                 instructions: systemPrompt,
                 model: "gpt-4o-mini",
@@ -291,7 +273,7 @@ You can optionally provide high-level context about what you're looking for in t
             throw new Error(`${errorMessage}. ${tip}`)
         }
     }
-}
+})
 
 function buildSummarizerSystemPrompt(context?: string): string {
     return `You are a code review assistant specialized in analyzing and summarizing pull request diffs.

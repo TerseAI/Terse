@@ -1,34 +1,13 @@
-import { RunContext } from "@openai/agents"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the LaunchDarkly skill to use."),
-    projectKey: z.string().describe("The LaunchDarkly project key."),
-    environmentKeys: z.array(z.string()).describe("Array of environment keys to query."),
-    summary: z.boolean().default(true).describe("If true, return only flag key, name, and on/off state per environment. If false, return full flag details."),
-    filter: z.string().nullable().optional().optional().describe("Optional: Filter flags by name/key containing this text."),
-    tags: z
-        .union([z.array(z.string()), z.null()])
-        .optional()
-        .describe("Optional: Filter flags by tags.")
-})
-
-/**
- * Tool for listing LaunchDarkly feature flags with their enabled/disabled states per environment.
- */
-export const listLaunchDarklyFlagsTool: SessionToolOptions<typeof parameters, typeof ToolName.LAUNCHDARKLY_LIST_FEATURE_FLAGS> = {
-    name: ToolName.LAUNCHDARKLY_LIST_FEATURE_FLAGS,
+export const listLaunchDarklyFlagsTool = defineSessionTool({
+    name: "listLaunchDarklyFlags",
     description: "List all feature flags with enabled/disabled states per environment. Use summary=true for quick overview, summary=false for full details.",
-    parameters: parameters,
-    execute: async ({ integrationId, projectKey, environmentKeys, summary = true, filter, tags }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, projectKey, environmentKeys, summary = true, filter, tags }, runContext) => {
         logger.info("[LaunchDarkly] listFeatureFlags - Tool called", {
             integrationId,
             projectKey,
@@ -258,4 +237,4 @@ export const listLaunchDarklyFlagsTool: SessionToolOptions<typeof parameters, ty
             throw new Error(`Failed to list LaunchDarkly flags: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

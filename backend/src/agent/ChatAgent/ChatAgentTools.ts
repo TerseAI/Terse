@@ -76,7 +76,7 @@ async function getDefaultNotificationSettings(userId: string): Promise<AgentNoti
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         tool({ ...chatWebSearchTool, errorFunction: formatError }),
-        tool({ ...webExtractTool, errorFunction: formatError }),
+        //tool({ ...webExtractTool, errorFunction: formatError }),
         tool({
             name: "applyAgent",
             description:

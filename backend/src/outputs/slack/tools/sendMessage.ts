@@ -1,42 +1,22 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { KnownBlock, WebClient } from "@slack/web-api"
 import { IntegrationType } from "terse-types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { SecretField, getSecret } from "../../../services/SecretService"
-import { SessionToolOptions, createNeedsApprovalFunction } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { isValidEpochTimestamp } from "../../../utility/strings"
 
 /**
  * Tool for sending messages to Slack channels or DMs.
  * Messages are sent as the bot or as the connected user depending on workspace token type.
  */
-const slackSendMessageParameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Slack workspace to use."),
-    channelId: z.string().describe("Slack channel or DM channel ID from the configured output destinations."),
-    message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
-    thread_ts: z
-        .string()
-        .nullable()
-        .optional()
-        .describe(
-            "Thread timestamp to reply to existing thread. If sending a message to a thread, this should be the timestamp of the thread to reply to. If sending an unthreaded message, this should be set to null."
-        ),
-    blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
-})
-
-export const slackSendMessageTool: SessionToolOptions<typeof slackSendMessageParameters, typeof ToolName.SLACK_SEND_MESSAGE> = {
-    name: ToolName.SLACK_SEND_MESSAGE,
+export const slackSendMessageTool = defineSessionTool({
+    name: "slack_send_message",
     description: `Send message to a Slack channel or DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). Use a channel ID from the configured output destinations (channels and DM channel IDs for configured users).`,
-    parameters: slackSendMessageParameters,
-    execute: async ({ integrationId, channelId, message, thread_ts, blocks: blocksJson }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, channelId, message, thread_ts, blocks: blocksJson }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -130,7 +110,7 @@ export const slackSendMessageTool: SessionToolOptions<typeof slackSendMessagePar
                 channel: channelId,
                 text: message,
                 blocks: blocks,
-                thread_ts: thread_ts || undefined,
+                thread_ts: validThreadTs,
                 unfurl_links: true,
                 unfurl_media: true,
                 metadata: {
@@ -193,7 +173,7 @@ export const slackSendMessageTool: SessionToolOptions<typeof slackSendMessagePar
                 success: true,
                 message_ts: result.ts,
                 channel: channelName,
-                thread_ts: thread_ts || result.ts,
+                thread_ts: validThreadTs || result.ts,
                 summary: `${messageType} message sent to ${channelName}: "${messagePreview}"`,
                 has_blocks: !!blocks,
                 actions: [action]
@@ -216,4 +196,4 @@ export const slackSendMessageTool: SessionToolOptions<typeof slackSendMessagePar
             throw new Error(`Failed to send Slack message: ${error.message || error}`)
         }
     }
-}
+})

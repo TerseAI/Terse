@@ -1,33 +1,16 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, listCommits, parseRepoFullName } from "../githubApiClient"
 
 /**
  * Tool for listing commits in GitHub repositories within a time window.
  */
-const listGitHubCommitsParameters = z.object({
-    repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-    since: z
-        .union([z.string(), z.null()])
-        .describe('Start of time window (ISO date string, e.g., "2024-01-01" or "2024-01-15T00:00:00Z"). Only commits after this date are included. Use null for no start filter.'),
-    until: z.string().nullable().optional().describe("End of time window (ISO date string). Only commits before this date are included. Use null for no end filter."),
-    branch: z.string().nullable().optional().describe('Branch name to list commits from (e.g., "main", "develop"). Use null for the repository\'s default branch.'),
-    path: z.string().nullable().optional().describe('Only include commits that affect this file or directory path (e.g., "src/components" or "package.json"). Use null for all paths.'),
-    author: z.string().nullable().optional().describe("Filter commits by author (GitHub username or email). Use null for all authors."),
-    perPage: z.number().describe("Number of results to return (default: 30, max: 100)")
-})
-
-export const listGitHubCommitsTool: SessionToolOptions<typeof listGitHubCommitsParameters, typeof ToolName.GITHUB_LIST_COMMITS> = {
-    name: ToolName.GITHUB_LIST_COMMITS,
+export const listGitHubCommitsTool = defineSessionTool({
+    name: "listGitHubCommits",
     description: `List commits in GitHub repositories within a time window. Use this to:
 - Review recent changes and development activity
 - Track what code was modified in a specific period
@@ -37,8 +20,7 @@ export const listGitHubCommitsTool: SessionToolOptions<typeof listGitHubCommitsP
 
 The tool returns commit details including message, author, date, and SHA.`,
     strict: true,
-    parameters: listGitHubCommitsParameters,
-    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -159,4 +141,4 @@ The tool returns commit details including message, author, date, and SHA.`,
             throw new Error(`${errorMessage}. If you're getting rate limit errors, try reducing perPage or narrowing the time window.`)
         }
     }
-}
+})

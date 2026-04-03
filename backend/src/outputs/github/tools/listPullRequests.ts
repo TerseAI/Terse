@@ -1,13 +1,8 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, listPullRequests, parseRepoFullName } from "../githubApiClient"
 
@@ -33,23 +28,8 @@ const calculateSummary = (prs: Array<{ merged: boolean; state: string }>) => {
     }
 }
 
-const listGitHubPullRequestsParameters = z.object({
-    repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-    state: z.enum(["open", "closed", "all"]).describe('Filter by PR state. Use "closed" to see merged PRs, "open" for in-progress, or "all" for both.'),
-    since: z
-        .union([z.string(), z.null()])
-        .describe('Start date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or after this date (starting at 00:00:00) are included. Use null for no start filter.'),
-    until: z
-        .union([z.string(), z.null()])
-        .describe('End date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or before this date (ending at 23:59:59) are included. Use null for no end filter.'),
-    perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
-    page: z
-        .union([z.number().int().min(1), z.null()])
-        .describe("Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
-})
-
-export const listGitHubPullRequestsTool: SessionToolOptions<typeof listGitHubPullRequestsParameters, typeof ToolName.GITHUB_LIST_PULL_REQUESTS> = {
-    name: ToolName.GITHUB_LIST_PULL_REQUESTS,
+export const listGitHubPullRequestsTool = defineSessionTool({
+    name: "listGitHubPullRequests",
     description: `List pull requests in GitHub repositories within a time window. Use this to:
 - Find recently merged PRs to understand recent changes
 - Review what work has been completed in a given period
@@ -59,8 +39,7 @@ export const listGitHubPullRequestsTool: SessionToolOptions<typeof listGitHubPul
 The tool returns PR details including title, description, author, merge status, and dates.
 Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is interpreted as the start of that day (00:00:00), and the until date is interpreted as the end of that day (23:59:59).`,
     strict: true,
-    parameters: listGitHubPullRequestsParameters,
-    execute: async ({ repository, state, since, until, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repository, state, since, until, perPage = 20, page }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -182,4 +161,4 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
             throw new Error(`${errorMessage}. If you're getting rate limit errors, try reducing perPage or narrowing the time window.`)
         }
     }
-}
+})
