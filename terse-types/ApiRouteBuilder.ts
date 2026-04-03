@@ -2,23 +2,9 @@ export { ApiRoutes } from "./ApiRoutes.generated"
 
 export type RouteParamValue = string | number
 
-type RouteDelimiter = "/" | "?" | "&"
+type ExtractParamName<T extends string> = T extends `${infer Param}/${string}` ? Param : T extends `${infer Param}?${string}` ? Param : T extends `${infer Param}&${string}` ? Param : T
 
-type ExtractParamName<T extends string> = T extends `${infer Param}/${string}`
-    ? Param
-    : T extends `${infer Param}?${string}`
-      ? Param
-      : T extends `${infer Param}&${string}`
-        ? Param
-        : T
-
-type ExtractRemainingPath<T extends string> = T extends `${string}/${infer Rest}`
-    ? Rest
-    : T extends `${string}?${infer Rest}`
-      ? Rest
-      : T extends `${string}&${infer Rest}`
-        ? Rest
-        : ""
+type ExtractRemainingPath<T extends string> = T extends `${string}/${infer Rest}` ? Rest : T extends `${string}?${infer Rest}` ? Rest : T extends `${string}&${infer Rest}` ? Rest : ""
 
 type RouteParamKeysInternal<T extends string> = T extends `${string}:${infer Rest}` ? ExtractParamName<Rest> | RouteParamKeysInternal<ExtractRemainingPath<Rest>> : never
 
