@@ -1,10 +1,15 @@
 /**
- * Frontend route path constants.
+ * Frontend route path constants
  *
- * Generated from JSON into TypeScript with `as const` so route strings remain
- * literal types and `buildRoute()` can infer required params like `:id`.
+ * These constants standardize frontend route paths across the application,
+ * preventing magic strings and making refactoring easier.
+ *
+ * Dynamic routes use route objects with both React Router patterns and URL builders
+ * to ensure consistency across navigation calls and route definitions.
  */
-export { FrontendRoutes } from "./FrontendRoutes.generated"
+import frontendRoutes from "./FrontendRoutes.json" with { type: "json" }
 
 /** Query param added when redirecting from Home/AgentBuilderLayout chat to agent page; AgentSetupTab clears session when present */
 export const FROM_SETUP_CHAT_PARAM = "fromSetupChat"
+
+export const FrontendRoutes = frontendRoutes
