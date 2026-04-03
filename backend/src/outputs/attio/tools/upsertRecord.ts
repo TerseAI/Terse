@@ -2,12 +2,12 @@ import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
 import type { AttioAttribute, AttioRecord } from "terse-types"
+import { ToolName } from "terse-types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
-import { ToolName } from "../../../tools/ToolNames"
 import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 

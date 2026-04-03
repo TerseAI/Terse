@@ -1,6 +1,8 @@
+import * as z from "zod"
+
 import { ConfigInstance, ConfigType } from "./Configs"
 import { IntegrationType } from "./Integrations"
-import { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
+import { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent, runHistoryActionBaseSchema } from "./RunHistoryTypes"
 import { Project, Ticket } from "./TicketSystem"
 
 export type Role = "admin" | "user"
@@ -786,18 +788,22 @@ export type SdkDeployResponseBody = {
     details?: string
 }
 
-export type ToolOutputBase = {
-    success: boolean
-    actions?: RunHistoryAction[]
-}
+export const toolOutputBaseSchema = z.object({
+    success: z.boolean(),
+    actions: z.array(runHistoryActionBaseSchema).optional()
+})
+export const toolOutputSuccessSchema = toolOutputBaseSchema.extend({
+    success: z.literal(true)
+})
+export const toolOutputFailureSchema = toolOutputBaseSchema.extend({
+    success: z.literal(false)
+})
 
-export type ToolOutputSuccessBase = Omit<ToolOutputBase, "success"> & {
-    success: true
-}
+export type ToolOutputBase = z.infer<typeof toolOutputBaseSchema>
 
-export type ToolOutputFailureBase = Omit<ToolOutputBase, "success"> & {
-    success: false
-}
+export type ToolOutputSuccessBase = z.infer<typeof toolOutputSuccessSchema>
+
+export type ToolOutputFailureBase = z.infer<typeof toolOutputFailureSchema>
 
 export type AttioUpsertError = {
     index: number

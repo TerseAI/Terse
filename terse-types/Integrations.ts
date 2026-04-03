@@ -1,3 +1,5 @@
+import * as z from "zod"
+
 // IMPORTANT: CHANGE THIS FOR NEW INTEGRATIONS. SHOULD MATCH PRISMA ENUM
 export enum IntegrationType {
     GITHUB = "github",
@@ -16,6 +18,7 @@ export enum IntegrationType {
     ATTIO = "attio",
     SNOWFLAKE = "snowflake"
 }
+export const integrationTypeEnum = z.enum(IntegrationType)
 
 // MARK: Integration Metadata
 export interface IntegrationDetails {

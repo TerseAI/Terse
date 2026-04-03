@@ -2,6 +2,7 @@ import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { google } from "googleapis"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -9,7 +10,6 @@ import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { SecretField, getSecret } from "../../../services/SecretService"
-import { ToolName } from "../../../tools/ToolNames"
 import { SessionToolOptions, createNeedsApprovalFunction } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 

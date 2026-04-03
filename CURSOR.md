@@ -264,62 +264,6 @@ Execute these steps **in order**, running builds after each major section:
 12. ❌ **Expecting users to type IDs or keys** - Always query the API and present selectable options (e.g., projects, environments) in Select dropdowns instead of text inputs
 13. ❌ **Showing IDs to users** - Always show human-readable names (token names, workspace names, project names) instead of integration IDs or database IDs
 
-### Key Reminders
-
-- **Tool descriptions should be concise** - Single-line descriptions for agent tools
-- **Avoid repetition between tools and system prompts** - Tool descriptions are already available to the LLM, so system instructions should focus on workflow/strategy, not re-describe tools
-- **Always return actions** - Every successful tool execution must return actions in the `actions` array of the return value
-- **Tool failures should throw** - For normal failures, throw `Error` with a clear message (do not return `{ success: false }`)
-- **Icons can be images** - Use JPEG/PNG in `public/` if SVG isn't available
-- **Type safety is critical** - TypeScript exhaustive checks will catch missing cases
-
-## Tool Error Handling Contract
-
-When designing or updating tools, follow this error handling contract:
-
-1. **Use exception-first failures**
-   - For normal failures (validation errors, auth errors, not found, API errors), throw `Error` with a clear, actionable message.
-   - Do not return `{ success: false, ... }` for these cases.
-
-2. **Keep successful returns explicit**
-   - Successful tool responses can return structured payloads and must include `actions` when an action occurred.
-   - Typical shape: `{ success: true, ..., actions: [...] }`.
-
-3. **Allow structured failure only for partial-result workflows**
-   - The only allowed exception is when partial progress must be returned in-band (for example, batch/multi-op tools like `notion_modify_blocks`).
-   - In those cases, returning `{ success: false, ... }` is acceptable only if partial progress data is included (for example: `failed_at_index`, `operations`, and accumulated `actions`).
-
-4. **Use `errorFunction` consistently**
-   - If a tool defines `errorFunction: formatError`, keep it.
-   - Prefer throwing errors in `catch` blocks rather than swallowing failures and returning failure payloads.
-
-This contract keeps run status reporting consistent and avoids false-success states when a terminal tool call fails.
-
-## Tool Name and Write Approval Validation
-
-When creating or modifying tools in the Terse codebase, you **MUST** comply with the following server-side validation checks. These validations run at server startup and will prevent the application from starting if violated.
-
-### Tool Name Requirements
-
-1. **All tool names must be defined in the ToolName enum**
-   - Location: `backend/src/tools/ToolNames.ts`
-   - Every tool's `name` property must use a value from the `ToolName` enum
-   - If you need a new tool name, you MUST add it to the enum first
-   - The validation function `validateAllToolNames()` will throw an error if any tool uses a name not in the enum
-
-2. **Tool names must be unique across all outputs**
-   - No two tools (across any output) can have the same name
-   - The validation will detect duplicates and prevent server startup
-   - If you need to reuse functionality, consider creating separate tools with distinct names
-
-### Write Tool Approval Requirements
-
-3. **All write tools (non-read-only) must have a `needsApproval` function**
-   - Write tools are tools where `isReadOnly === false`
-   - Every write tool MUST define a `needsApproval` function that determines if the tool requires approval
-   - Use `createNeedsApprovalFunction(ToolName.X)` helper to create the approval function
-   - The validation function `validateWriteToolsHaveNeedsApproval()` will throw an error if any write tool is missing this function
-
 ### Validation Location
 
 These validations are enforced in:

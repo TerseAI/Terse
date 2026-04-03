@@ -1,7 +1,7 @@
+import { ToolName } from "terse-types"
 import { z } from "zod"
 
 import { getWebSearchService } from "../../../services/webSearch"
-import { ToolName } from "../../../tools/ToolNames"
 import { TypedToolOptions } from "../../../tools/toolUtils"
 
 const parameters = z.object({

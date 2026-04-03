@@ -1,11 +1,11 @@
 import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { ToolName } from "../../../tools/ToolNames"
 import { SessionToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"

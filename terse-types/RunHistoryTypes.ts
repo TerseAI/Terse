@@ -1,5 +1,7 @@
-import { ConfigType } from "./Configs"
-import { IntegrationType } from "./Integrations"
+import * as z from "zod"
+
+import { ConfigType, configTypeEnum } from "./Configs"
+import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import type { ModelEvent } from "./ModelEvents"
 import type { User } from "./types"
 
@@ -16,30 +18,26 @@ export type RunHistoryDecisionAction = "processed" | "skipped"
 export const RUN_HISTORY_ACTION_TYPES = ["create", "update", "delete", "read", "approve", "error"] as const
 export type RunHistoryActionType = (typeof RUN_HISTORY_ACTION_TYPES)[number]
 
-export type RunHistoryAction = {
-    // What action was taken (free-text, e.g. "create database entry", "send notification")
-    action: string
-    // Which integration this action targeted (used for icons and grouping)
-    integration: IntegrationType
-    // The concrete target, e.g. database name, channel name, repo, inbox, etc.
-    target: string
-    // Justification for the action or extra details about why the AI did this.
-    details: string
-    // Link to the thing that got operated on.
-    url?: string
-    // The step_id of the tool call that generated this action
-    step_id?: string
-    // The type of action that was taken
-    type: RunHistoryActionType
-    // Whether this action was from a read-only tool (e.g., query) vs a write tool (e.g., create/update)
-    isReadOnly?: boolean
-    // Output item information for attribution tracking
-    // Array because one action can modify multiple output items (e.g., appending multiple blocks)
-    output_items?: Array<{
-        output_item_id: string
-        output_item_type: ConfigType
-    }>
-}
+export const runHistoryActionBaseSchema = z.object({
+    action: z.string(),
+    integration: integrationTypeEnum,
+    target: z.string(),
+    details: z.string(),
+    url: z.string().optional(),
+    step_id: z.string().optional(),
+    type: z.enum(RUN_HISTORY_ACTION_TYPES),
+    isReadOnly: z.boolean().optional(),
+    output_items: z
+        .array(
+            z.object({
+                output_item_id: z.string(),
+                output_item_type: configTypeEnum
+            })
+        )
+        .optional()
+})
+
+export type RunHistoryAction = z.infer<typeof runHistoryActionBaseSchema>
 
 export type RunHistoryActionWithId = RunHistoryAction & {
     id: string

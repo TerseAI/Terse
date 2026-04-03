@@ -1,11 +1,11 @@
 import { GoogleGenAI } from "@google/genai"
 import axios from "axios"
+import { ToolName } from "terse-types"
 import { z } from "zod"
 
 import { gemini } from "../../../config/settings"
 import logger from "../../../logger"
 import { assertInternalGcsBucketUrl, buildImageEditKey, ensureStoredWithMetadata } from "../../../services/FileStorageService"
-import { ToolName } from "../../../tools/ToolNames"
 import { SessionToolOptions } from "../../../tools/toolUtils"
 
 const parameters = z.object({

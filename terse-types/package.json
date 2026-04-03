@@ -38,5 +38,8 @@
     "devDependencies": {
         "tsc-esm-fix": "^3.1.2",
         "typescript": "^5.8.3"
+    },
+    "dependencies": {
+        "zod": "4.3.6"
     }
 }

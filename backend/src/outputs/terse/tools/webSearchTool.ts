@@ -1,9 +1,9 @@
+import { ToolName } from "terse-types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { ChatAgentContext } from "../../../agent/ChatAgent/ChatAgentContext"
 import { getWebSearchService } from "../../../services/webSearch"
-import { ToolName } from "../../../tools/ToolNames"
 import { TypedToolOptions } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 

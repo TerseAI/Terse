@@ -1,3 +1,5 @@
+import * as z from "zod"
+
 import { IntegrationType } from "./Integrations"
 
 export enum ConfigType {
@@ -23,6 +25,8 @@ export enum ConfigType {
     ATTIO_OUTPUT = "attio_output",
     SNOWFLAKE_OUTPUT = "snowflake_output"
 }
+
+export const configTypeEnum = z.enum(ConfigType)
 
 // MARK: Config Metadata
 export interface ConfigDetails {
