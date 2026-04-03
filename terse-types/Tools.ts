@@ -2212,6 +2212,19 @@ export const snowflakeExplainQueryInputSchema = z.object({
     query: z.string().describe("The SQL query to explain.")
 })
 
+export const webSearchResultItemSchema = z.object({
+    title: z.string(),
+    url: z.string(),
+    content: z.string(),
+    score: z.number()
+})
+
+export const webSearchOutputSchema = z.object({
+    query: z.string(),
+    answer: z.string().optional(),
+    results: z.array(webSearchResultItemSchema)
+})
+
 export const attioListObjectsTool = defineTool({
     name: "attio_list_objects",
     inputSchema: attioListObjectsInputSchema,
@@ -2328,18 +2341,7 @@ export const webSearchTool = defineTool({
         topic: z.enum(["general", "news"]).nullable().describe("'news' for recent news articles, 'general' for all web content (default 'general')"),
         time_range: z.enum(["day", "week", "month", "year"]).nullable().describe("Filter results by recency")
     }),
-    outputSchema: z.object({
-        query: z.string(),
-        answer: z.string().optional(),
-        results: z.array(
-            z.object({
-                title: z.string(),
-                url: z.string(),
-                content: z.string(),
-                score: z.number()
-            })
-        )
-    })
+    outputSchema: webSearchOutputSchema
 })
 
 export const ToolDefinitions = {

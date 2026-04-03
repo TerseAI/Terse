@@ -6,14 +6,6 @@ import { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } fro
 import { Project, Ticket } from "./TicketSystem"
 import {
     DefinedToolOutputByName,
-    ToolOutputBase,
-    ToolOutputFailureBase,
-    ToolOutputSuccessBase,
-    gitHubCodeGrepResultSchema,
-    gitHubCodeSearchResultSchema,
-    gitHubCommitSummarySchema,
-    gmailDraftSummarySchema,
-    gmailSendSummarySchema,
     confluenceBodyContentSchema,
     confluenceBodyRepresentationSchema,
     confluenceCommentPositionSchema,
@@ -22,18 +14,42 @@ import {
     confluencePageSpaceSchema,
     confluencePageVersionAuthorSchema,
     confluencePageVersionSchema,
+    datadogAggregationBucketComputeSchema,
+    datadogAggregationBucketSchema,
+    datadogAggregationMetaSchema,
+    datadogCursorPaginationSchema,
+    datadogLogEntrySchema,
+    datadogRumActionDetailsSchema,
+    datadogRumErrorDetailsSchema,
+    datadogRumEventSchema,
+    datadogRumLongTaskDetailsSchema,
+    datadogRumResourceDetailsSchema,
+    datadogRumSessionDetailsSchema,
+    datadogRumViewDetailsSchema,
+    gitHubCodeGrepResultSchema,
+    gitHubCodeSearchResultSchema,
+    gitHubCommitSummarySchema,
     gitHubDirectoryEntrySchema,
     gitHubFileEntrySchema,
     gitHubOtherEntrySchema,
     gitHubPaginationSchema,
     gitHubPullRequestRefSchema,
     gitHubPullRequestSummarySchema,
+    gmailDraftSummarySchema,
+    gmailSendSummarySchema,
+    imageEditOutputSchema,
+    imageEditSnippetSchema,
     jiraIssueAssigneeSchema,
     jiraIssueProjectRefSchema,
     jiraIssueStateSchema,
     jiraIssueSummarySchema,
     jiraIssueTypeRefSchema,
     jiraRichDescriptionSchema,
+    launchDarklyEnvironmentConfigSchema,
+    launchDarklyFlagMetadataSchema,
+    launchDarklyFlagSummarySchema,
+    launchDarklyHistoryEntrySchema,
+    launchDarklyHistoryResultSchema,
     linearCommentHandleSchema,
     linearIssueAssigneeSchema,
     linearIssueDetailSchema,
@@ -79,7 +95,16 @@ import {
     posthogSessionSummarySchema,
     slackChannelListItemSchema,
     slackConversationMessageSchema,
-    slackUserResponseSchema
+    slackUserResponseSchema,
+    webExtractOutputSchema,
+    webExtractResultItemSchema,
+    webResearchOutputSchema,
+    webResearchSourceSchema,
+    webSearchOutputSchema,
+    webSearchResultItemSchema,
+    workOSOrganizationSummarySchema,
+    workOSPaginationSchema,
+    workOSUserSummarySchema
 } from "./Tools"
 
 export type Role = "admin" | "user"
@@ -979,274 +1004,61 @@ export type PosthogSessionConsoleLog = z.infer<typeof posthogSessionConsoleLogSc
 
 export type PosthogSessionEventsSummary = z.infer<typeof posthogSessionEventsSummarySchema>
 
-export type LaunchDarklyFlagSummary = {
-    key: string
-    name: string
-    description: string
-    environments: Record<string, boolean>
-    url: string
-    environmentUrls: Record<string, string>
-}
+export type LaunchDarklyFlagSummary = z.infer<typeof launchDarklyFlagSummarySchema>
 
-export type LaunchDarklyFlagMetadata = {
-    key: string
-    name: string
-    description: string
-    kind: string
-    variations: Record<string, unknown>[]
-    tags: string[]
-    maintainerId: string | null
-}
+export type LaunchDarklyFlagMetadata = z.infer<typeof launchDarklyFlagMetadataSchema>
 
-export type LaunchDarklyEnvironmentConfig = {
-    on: boolean
-    targets: Record<string, unknown>[]
-    contextTargets: Record<string, unknown>[]
-    rules: Record<string, unknown>[]
-    fallthrough: Record<string, unknown> | null
-    offVariation: number | null
-    prerequisites: Record<string, unknown>[]
-}
+export type LaunchDarklyEnvironmentConfig = z.infer<typeof launchDarklyEnvironmentConfigSchema>
 
-export type LaunchDarklyHistoryEntry = {
-    id: string
-    timestamp: string
-    kind: string
-    key: string
-    name: string
-    description: string
-    member: Record<string, unknown> | null
-    changes: Record<string, unknown>[]
-}
+export type LaunchDarklyHistoryEntry = z.infer<typeof launchDarklyHistoryEntrySchema>
 
-export type LaunchDarklyHistoryResult = {
-    entries: LaunchDarklyHistoryEntry[]
-    totalEntries: number
-    url: string
-}
+export type LaunchDarklyHistoryResult = z.infer<typeof launchDarklyHistoryResultSchema>
 
-export type DatadogLogEntry = {
-    id: string
-    timestamp?: string
-    message?: string
-    host?: string
-    service?: string
-    status?: string
-    tags: string[]
-    customAttributes: Record<string, unknown>
-}
+export type DatadogLogEntry = z.infer<typeof datadogLogEntrySchema>
 
-export type DatadogCursorPagination = {
-    limit: number
-    cursor?: string | null
-    nextCursor: string | null
-    hasMore: boolean
-    showing: string
-}
+export type DatadogCursorPagination = z.infer<typeof datadogCursorPaginationSchema>
 
-export type DatadogRumSessionDetails = {
-    id?: string
-    type?: string
-    hasReplay?: boolean
-    duration?: number
-}
+export type DatadogRumSessionDetails = z.infer<typeof datadogRumSessionDetailsSchema>
 
-export type DatadogRumViewDetails = {
-    id?: string
-    name?: string
-    url?: string
-    loadTime?: number
-    timeSpent?: number
-}
+export type DatadogRumViewDetails = z.infer<typeof datadogRumViewDetailsSchema>
 
-export type DatadogRumActionDetails = {
-    id?: string
-    type?: string
-    target?: string
-    loadingTime?: number
-}
+export type DatadogRumActionDetails = z.infer<typeof datadogRumActionDetailsSchema>
 
-export type DatadogRumErrorDetails = {
-    id?: string
-    message?: string
-    source?: string
-    stack?: string
-    type?: string
-}
+export type DatadogRumErrorDetails = z.infer<typeof datadogRumErrorDetailsSchema>
 
-export type DatadogRumResourceDetails = {
-    id?: string
-    type?: string
-    url?: string
-    method?: string
-    statusCode?: number
-    duration?: number
-}
+export type DatadogRumResourceDetails = z.infer<typeof datadogRumResourceDetailsSchema>
 
-export type DatadogRumLongTaskDetails = {
-    id?: string
-    duration?: number
-}
+export type DatadogRumLongTaskDetails = z.infer<typeof datadogRumLongTaskDetailsSchema>
 
-export type DatadogRumEvent = {
-    id: string
-    type: string
-    timestamp?: string
-    session?: DatadogRumSessionDetails
-    view?: DatadogRumViewDetails | Record<string, unknown>
-    action?: DatadogRumActionDetails
-    error?: DatadogRumErrorDetails
-    resource?: DatadogRumResourceDetails
-    longTask?: DatadogRumLongTaskDetails
-    service?: string
-    version?: string
-    environment?: string
-    device?: Record<string, unknown>
-    os?: Record<string, unknown>
-    browser?: Record<string, unknown>
-    user?: Record<string, unknown>
-    tags: string[]
-    customAttributes: Record<string, unknown>
-}
+export type DatadogRumEvent = z.infer<typeof datadogRumEventSchema>
 
-export type DatadogAggregationBucketCompute = {
-    value: unknown
-    aggregation: string
-    metric: string
-}
+export type DatadogAggregationBucketCompute = z.infer<typeof datadogAggregationBucketComputeSchema>
 
-export type DatadogAggregationBucket = {
-    by: Record<string, unknown>
-    computes: Record<string, DatadogAggregationBucketCompute>
-}
+export type DatadogAggregationBucket = z.infer<typeof datadogAggregationBucketSchema>
 
-export type DatadogAggregationMeta = {
-    elapsed?: number
-    requestId?: string
-    status?: unknown
-}
+export type DatadogAggregationMeta = z.infer<typeof datadogAggregationMetaSchema>
 
-export type WorkOSUserSummary = {
-    id: string
-    email: string
-    emailVerified: boolean
-    firstName?: string | null
-    lastName?: string | null
-    profilePictureUrl?: string | null
-    createdAt: string
-    updatedAt: string
-}
+export type WorkOSUserSummary = z.infer<typeof workOSUserSummarySchema>
 
-export type WorkOSOrganizationSummary = {
-    id: string
-    name: string
-    externalId?: string | null
-    domains: string[]
-    createdAt: string
-    updatedAt: string
-}
+export type WorkOSOrganizationSummary = z.infer<typeof workOSOrganizationSummarySchema>
 
-export type WorkOSPagination = {
-    hasMore: boolean
-    after?: string | null
-}
+export type WorkOSPagination = z.infer<typeof workOSPaginationSchema>
 
-export type WebSearchResultItem = {
-    title: string
-    url: string
-    content: string
-    score: number
-}
+// TO DO manually define schemas here
+export type WebSearchResultItem = z.infer<typeof webSearchResultItemSchema>
 
-export type WebSearchOutput = {
-    query: string
-    answer: string | undefined
-    results: WebSearchResultItem[]
-}
+export type WebSearchOutput = z.infer<typeof webSearchOutputSchema>
 
-export type WebExtractResultItem = {
-    url: string
-    raw_content: string
-}
+export type WebExtractResultItem = z.infer<typeof webExtractResultItemSchema>
 
-export type WebExtractOutput = {
-    results: WebExtractResultItem[]
-    failed_results: unknown
-}
+export type WebExtractOutput = z.infer<typeof webExtractOutputSchema>
 
-export type WebResearchSource = {
-    title: string
-    url: string
-}
+export type WebResearchSource = z.infer<typeof webResearchSourceSchema>
 
-export type WebResearchOutput = ToolOutputBase & {
-    status: "completed"
-    request_id: string
-    content: string | undefined
-    sources: WebResearchSource[] | undefined
-}
+export type WebResearchOutput = z.infer<typeof webResearchOutputSchema>
 
-export type ImageEditSnippet = {
-    type: "image"
-    url: string
-}
+export type ImageEditSnippet = z.infer<typeof imageEditSnippetSchema>
 
-export type ImageEditOutput = ToolOutputBase & {
-    url: string
-    image_url: string
-    summary: string
-    snippets: ImageEditSnippet[]
-}
+export type ImageEditOutput = z.infer<typeof imageEditOutputSchema>
 
-type LegacyToolOutputByName = {
-    searchDatadogLogs: ToolOutputBase & {
-        query: string | null
-        indexes: string[]
-        totalLogs: number
-        logs: DatadogLogEntry[]
-        logsLink: string
-        pagination: DatadogCursorPagination
-        warnings: string | null
-        message: string
-    }
-    searchRumEvents: ToolOutputBase & {
-        query: string | null
-        totalEvents: number
-        events: DatadogRumEvent[]
-        eventsByType: Record<string, number>
-        rumLink: string
-        pagination: DatadogCursorPagination
-        warnings: string | null
-        message: string
-    }
-    listRumEvents: ToolOutputBase & {
-        query: string | null
-        totalEvents: number
-        events: DatadogRumEvent[]
-        eventsByType: Record<string, number>
-        rumLink: string
-        pagination: DatadogCursorPagination
-        warnings: string | null
-        message: string
-    }
-    aggregateRumEvents: ToolOutputBase & {
-        query: string | null
-        from: string
-        to: string | null
-        compute: string
-        groupBy: string
-        totalBuckets: number
-        buckets: DatadogAggregationBucket[]
-        rumLink: string
-        pagination: Omit<DatadogCursorPagination, "cursor">
-        warnings: string | null
-        meta: DatadogAggregationMeta
-        message: string
-    }
-    web_search: WebSearchOutput
-    web_extract: WebExtractOutput
-    web_research: WebResearchOutput
-    image_edit: ImageEditOutput
-}
-
-export type ToolOutputByName = DefinedToolOutputByName & LegacyToolOutputByName
+export type ToolOutputByName = DefinedToolOutputByName
