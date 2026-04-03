@@ -25,8 +25,8 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
         })
         return posthogIntegrations.map(pi => ({
             id: pi.id,
-            email: pi.user_email || null,
-            orgName: pi.org_name || null
+            email: pi.user_email || undefined,
+            orgName: pi.org_name || undefined
         }))
     }
 
@@ -71,8 +71,8 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
         })
         return posthogIntegrations.map(pi => ({
             id: pi.id,
-            email: pi.user_email || null,
-            orgName: pi.org_name || null
+            email: pi.user_email || undefined,
+            orgName: pi.org_name || undefined
         }))
     }
 

@@ -27,8 +27,8 @@ export class LaunchDarklyIntegrationManager
         })
         return launchdarklyIntegrations.map(li => ({
             id: li.id,
-            email: li.user_email || null,
-            tokenName: li.token_name || null
+            email: li.user_email || undefined,
+            tokenName: li.token_name || undefined
         }))
     }
 
@@ -89,8 +89,8 @@ export class LaunchDarklyIntegrationManager
         })
         return launchdarklyIntegrations.map(li => ({
             id: li.id,
-            email: li.user_email || null,
-            tokenName: li.token_name || null
+            email: li.user_email || undefined,
+            tokenName: li.token_name || undefined
         }))
     }
 

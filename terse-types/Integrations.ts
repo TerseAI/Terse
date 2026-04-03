@@ -171,9 +171,10 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
-export interface IntegrationInstance {
-    id: string
-}
+export const IntegrationInstanceSchema = z.object({
+    id: z.string()
+})
+export type IntegrationInstance = z.infer<typeof IntegrationInstanceSchema>
 
 export interface SlackInstallationOptions {
     isBotUser: boolean
@@ -205,90 +206,92 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T]
 
-export interface SlackIntegration extends IntegrationInstance {
-    id: string
-    teamId?: string
-    teamName?: string
-    isBotUser?: boolean
-}
+export const SlackIntegrationSchema = IntegrationInstanceSchema.extend({
+    teamId: z.string().optional(),
+    teamName: z.string().optional(),
+    isBotUser: z.boolean().optional()
+})
+export type SlackIntegration = z.infer<typeof SlackIntegrationSchema>
 
-export interface GmailIntegration extends IntegrationInstance {
-    id: string
-    email: string // User's Gmail address
-    historyId: string // For tracking changes since last sync
-    watchExpiration: Date // When the watch needs to be renewed (max 7 days)
-}
+export const GmailIntegrationSchema = IntegrationInstanceSchema.extend({
+    email: z.email(),
+    historyId: z.string().optional(),
+    watchExpiration: z.date().optional()
+})
+export type GmailIntegration = z.infer<typeof GmailIntegrationSchema>
 
-export interface FigmaIntegration extends IntegrationInstance {
-    id: string
-    handle: string
-    figma_user_id: string
-    token_expiry: Date
-}
+export const FigmaIntegrationSchema = IntegrationInstanceSchema.extend({
+    handle: z.string(),
+    figma_user_id: z.string(),
+    token_expiry: z.date()
+})
+export type FigmaIntegration = z.infer<typeof FigmaIntegrationSchema>
 
-export interface NotionIntegration extends IntegrationInstance {
-    id: string
-    workspaceId?: string
-    workspaceName?: string
-}
+export const NotionIntegrationSchema = IntegrationInstanceSchema.extend({
+    workspaceId: z.string().optional(),
+    workspaceName: z.string().optional()
+})
+export type NotionIntegration = z.infer<typeof NotionIntegrationSchema>
 
-export interface AtlassianIntegration extends IntegrationInstance {
-    id: string
-    baseUrl: string
-    email: string
-    siteName?: string
-    projectKey?: string
-    projectName?: string
-}
+export const AtlassianIntegrationSchema = IntegrationInstanceSchema.extend({
+    baseUrl: z.url(),
+    email: z.email(),
+    siteName: z.string().optional(),
+    projectKey: z.string().optional(),
+    projectName: z.string().optional()
+})
+export type AtlassianIntegration = z.infer<typeof AtlassianIntegrationSchema>
 
-export interface GithubIntegration extends IntegrationInstance {
-    id: string
-    installation_id: number
-    account_name?: string | null // GitHub username or organization name where the app was installed
-}
+export const GithubIntegrationSchema = IntegrationInstanceSchema.extend({
+    installation_id: z.number(),
+    account_name: z.string().optional()
+})
+export type GithubIntegration = z.infer<typeof GithubIntegrationSchema>
 
-export interface LinearIntegration extends IntegrationInstance {
-    id: string
-    workspaceName: string
-}
+export const LinearIntegrationSchema = IntegrationInstanceSchema.extend({
+    workspaceName: z.string()
+})
+export type LinearIntegration = z.infer<typeof LinearIntegrationSchema>
 
-export interface PosthogIntegration extends IntegrationInstance {
-    id: string
-    email: string | null
-    orgName: string | null
-}
+export const PosthogIntegrationSchema = IntegrationInstanceSchema.extend({
+    email: z.email().optional(),
+    orgName: z.string().optional()
+})
+export type PosthogIntegration = z.infer<typeof PosthogIntegrationSchema>
 
-export interface LaunchDarklyIntegration extends IntegrationInstance {
-    id: string
-    email: string | null
-    tokenName: string | null
-}
-export interface DatadogIntegration extends IntegrationInstance {
-    id: string
-    region: string
-}
+export const LaunchDarklyIntegrationSchema = IntegrationInstanceSchema.extend({
+    email: z.email().optional(),
+    tokenName: z.string().optional()
+})
+export type LaunchDarklyIntegration = z.infer<typeof LaunchDarklyIntegrationSchema>
 
-export interface WorkOSIntegration extends IntegrationInstance {
-    id: string
-    webhookUrl: string
-    environment: "live" | "test" | null
-}
+export const DatadogIntegrationSchema = IntegrationInstanceSchema.extend({
+    region: z.string()
+})
+export type DatadogIntegration = z.infer<typeof DatadogIntegrationSchema>
 
-export interface AttioIntegration extends IntegrationInstance {
-    id: string
-    workspaceName?: string
-}
+export const WorkOSIntegrationSchema = IntegrationInstanceSchema.extend({
+    webhookUrl: z.string(),
+    environment: z.enum(["live", "test"])
+})
+export type WorkOSIntegration = z.infer<typeof WorkOSIntegrationSchema>
 
-export interface SnowflakeIntegration extends IntegrationInstance {
-    id: string
-    accountIdentifier: string
-    username: string
-    warehouse: string
-    databaseName?: string | null
-    schemaName?: string | null
-}
+export const AttioIntegrationSchema = IntegrationInstanceSchema.extend({
+    workspaceName: z.string().optional()
+})
+export type AttioIntegration = z.infer<typeof AttioIntegrationSchema>
 
-export interface IntegrationWithStatus {
-    integrationType: IntegrationType
-    isActive: boolean
-}
+export const SnowflakeIntegrationSchema = IntegrationInstanceSchema.extend({
+    accountIdentifier: z.string(),
+    username: z.string(),
+    warehouse: z.string(),
+    databaseName: z.string().optional(),
+    schemaName: z.string().optional()
+})
+export type SnowflakeIntegration = z.infer<typeof SnowflakeIntegrationSchema>
+
+export const IntegrationWithStatusSchema = z.object({
+    integrationType: integrationTypeEnum,
+    isActive: z.boolean()
+})
+export type IntegrationWithStatus = z.infer<typeof IntegrationWithStatusSchema>

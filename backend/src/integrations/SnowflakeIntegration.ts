@@ -74,8 +74,8 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
             accountIdentifier: i.account_identifier,
             username: i.username,
             warehouse: i.warehouse,
-            databaseName: i.database_name,
-            schemaName: i.schema_name
+            databaseName: i.database_name || undefined,
+            schemaName: i.schema_name || undefined
         }))
     }
 
@@ -99,8 +99,8 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
             accountIdentifier: i.account_identifier,
             username: i.username,
             warehouse: i.warehouse,
-            databaseName: i.database_name,
-            schemaName: i.schema_name
+            databaseName: i.database_name || undefined,
+            schemaName: i.schema_name || undefined
         }))
     }
 

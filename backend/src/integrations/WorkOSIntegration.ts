@@ -264,10 +264,10 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
 
 // MARK: - WorkOS Helpers
 
-function parseWorkOSEnvironment(apiKey: string): "live" | "test" | null {
+function parseWorkOSEnvironment(apiKey: string): "live" | "test" {
     if (apiKey.startsWith("sk_live_")) return "live"
     if (apiKey.startsWith("sk_test_")) return "test"
-    return null
+    return "live"
 }
 
 // MARK: - WorkOS Events API
