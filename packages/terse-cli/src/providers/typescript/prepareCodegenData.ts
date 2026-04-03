@@ -6,7 +6,6 @@ import type {
     DatadogInstanceData,
     GitHubInstanceData,
     IntegrationInstanceData,
-    JsonSchema,
     LaunchDarklyInstanceData,
     LinearInstanceData,
     NotionInstanceData,
@@ -349,57 +348,6 @@ export function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integr
     return renderStringLiteralUnion(toolNames)
 }
 
-export function jsonSchemaToTs(schema: JsonSchema, indent: number): string {
-    if (!schema) return "unknown"
-
-    if (schema.enum) {
-        return schema.enum.map(value => (typeof value === "string" ? `"${escapeString(value)}"` : String(value))).join(" | ")
-    }
-
-    if (schema.anyOf) {
-        const nonNull = schema.anyOf.filter(child => child.type !== "null")
-        const hasNull = schema.anyOf.some(child => child.type === "null")
-        if (nonNull.length === 1 && hasNull) {
-            return `${jsonSchemaToTs(nonNull[0], indent)} | null`
-        }
-        return schema.anyOf.map(child => jsonSchemaToTs(child, indent)).join(" | ")
-    }
-
-    switch (schema.type) {
-        case "string":
-            return "string"
-        case "number":
-        case "integer":
-            return "number"
-        case "boolean":
-            return "boolean"
-        case "array":
-            if (schema.items) {
-                const itemType = jsonSchemaToTs(schema.items, indent)
-                return itemType.includes("|") ? `(${itemType})[]` : `${itemType}[]`
-            }
-            return "unknown[]"
-        case "object": {
-            if (!schema.properties || Object.keys(schema.properties).length === 0) {
-                return "Record<string, unknown>"
-            }
-            const requiredSet = new Set(schema.required || [])
-            const pad = " ".repeat(indent)
-            const innerPad = " ".repeat(indent + 4)
-            const entries = Object.entries(schema.properties).map(([key, prop]) => {
-                const isNullableAnyOf = Array.isArray(prop.anyOf) && prop.anyOf.some(child => child.type === "null")
-                const optional = requiredSet.has(key) && !isNullableAnyOf ? "" : "?"
-                const tsType = jsonSchemaToTs(prop, indent + 4)
-                const desc = prop.description ? ` /** ${prop.description} */\n${innerPad}` : ""
-                return `${desc}${key}${optional}: ${tsType}`
-            })
-            return `{\n${innerPad}${entries.join(`\n${innerPad}`)}\n${pad}}`
-        }
-        default:
-            return "unknown"
-    }
-}
-
 function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefinition[]): SectionContext<GitHubSectionContext> {
     if (instances.length === 0) return sectionData([])
 
@@ -691,7 +639,7 @@ function prepareSnowflakeSection(instances: SnowflakeInstanceData[], tools: Tool
 function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionContext<ToolsSectionContext> {
     if (tools.length === 0) return sectionData([])
 
-    const imports = new Set(["TerseAgent", "ToolOutputByName"])
+    const imports = new Set(["TerseAgent", "ToolInputByName", "ToolOutputByName"])
     const attioPreludeLines: string[] = []
 
     const instanceMap = new Map<string, { id: string; displayName: string }[]>()
@@ -764,17 +712,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     }
 
     const hasAutoFillId = (tool: ToolDefinition): boolean => tool.parameters.properties?.integrationId !== undefined
-
-    const omitIntegrationId = (schema: JsonSchema): JsonSchema => {
-        const cloned = { ...schema }
-        if (cloned.properties) {
-            cloned.properties = Object.fromEntries(Object.entries(cloned.properties).filter(([key]) => key !== "integrationId"))
-        }
-        if (cloned.required) {
-            cloned.required = cloned.required.filter(required => required !== "integrationId")
-        }
-        return cloned
-    }
 
     const normalizeGitHubReposParams = (toolName: string): string => {
         switch (toolName) {
@@ -977,11 +914,12 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     const paramTypes: ToolParamTypeContext[] = []
     for (const tool of tools) {
         if (isAttioTool(tool)) continue
-        const schema = hasAutoFillId(tool) ? omitIntegrationId(tool.parameters) : tool.parameters
+        const key = `"${escapeString(tool.name)}"`
+        const tsType = hasAutoFillId(tool) ? `Omit<ToolInputByName[${key}], "integrationId">` : `ToolInputByName[${key}]`
         paramTypes.push({
             description: tool.description || undefined,
             typeName: toolNameToInterfaceName(tool.name),
-            tsType: jsonSchemaToTs(schema, 0)
+            tsType
         })
     }
 

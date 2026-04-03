@@ -17,7 +17,7 @@ import type {
     SnowflakeIntegration,
     WorkOSIntegration
 } from "terse-types"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, isValidToolName } from "terse-types"
 import { ApiRoutes, buildRoute } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
@@ -85,6 +85,15 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         // Filter to only tools whose integration matches an active integration type
         const activeSet = new Set(activeTypes as string[])
         toolDefs = resp.tools.filter(t => activeSet.has(t.integration))
+        const skippedToolNames = [...new Set(toolDefs.filter(t => !isValidToolName(t.name)).map(t => t.name))].sort()
+        toolDefs = toolDefs.filter(t => isValidToolName(t.name))
+        if (skippedToolNames.length > 0) {
+            console.warn(
+                chalk.yellow(
+                    `\n  Skipped ${skippedToolNames.length} tool(s) absent from terse-types ToolDefinitions: ${skippedToolNames.join(", ")}\n`
+                )
+            )
+        }
     } catch {
         // Non-fatal: proceed without tool definitions
     }
