@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { IntegrationType } from "./Integrations"
+import { IntegrationType, integrationTypeEnum } from "./Integrations"
 
 export enum ConfigType {
     GMAIL = "gmail",
@@ -303,25 +303,47 @@ export enum WorkOSEventType {
     INVITATION_REVOKED = "invitation.revoked"
 }
 
-export interface ConfigInstance {
-    integrationId: string
-    integrationType: IntegrationType
-    configType: ConfigType
+export const ConfigInstanceSchema = z.object({
+    integrationId: z.string(),
+    integrationType: integrationTypeEnum,
+    configType: configTypeEnum
+})
+export type ConfigInstanceType = z.infer<typeof ConfigInstanceSchema>
+export type ConfigInstance = ConfigInstanceType & ConfigBehavior
+
+export type ConfigBehavior = {
     isComplete(): boolean
     formatForAgent(): string
 }
 
-export class GmailConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.GMAIL
-    configType: ConfigType = ConfigType.GMAIL
-
+abstract class BaseConfigInstance<TIntegrationType extends IntegrationType, TConfigType extends ConfigType, TIntegrationId extends string = string> implements ConfigInstance, ConfigBehavior {
     constructor(
-        public integrationId: string,
-        public eventTypes?: GmailEventType[]
+        public readonly integrationId: TIntegrationId,
+        public readonly integrationType: TIntegrationType,
+        public readonly configType: TConfigType
     ) {}
 
+    abstract isComplete(): boolean
+    abstract formatForAgent(): string
+}
+
+export const GmailConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.GMAIL),
+    configType: z.literal(ConfigType.GMAIL),
+    eventTypes: z.array(z.enum(GmailEventType)).optional()
+})
+export type GmailConfigData = z.infer<typeof GmailConfigSchema>
+export type GmailConfigInstance = GmailConfigData & ConfigBehavior
+
+export class GmailConfig extends BaseConfigInstance<IntegrationType.GMAIL, ConfigType.GMAIL> implements GmailConfigInstance {
+    constructor(
+        integrationId: string,
+        public eventTypes?: GmailEventType[]
+    ) {
+        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL)
+    }
+
     isComplete(): boolean {
-        // Gmail only requires integrationId (base check handled in isInputComplete)
         return true
     }
 
@@ -330,17 +352,27 @@ export class GmailConfig implements ConfigInstance {
     }
 }
 
-export class FigmaConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.FIGMA
-    configType: ConfigType = ConfigType.FIGMA
+export const FigmaConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.FIGMA),
+    configType: z.literal(ConfigType.FIGMA),
+    fileKey: z.string(),
+    fileName: z.string(),
+    teamId: z.string(),
+    eventTypes: z.array(z.enum(FigmaEventType)).optional()
+})
+export type FigmaConfigData = z.infer<typeof FigmaConfigSchema>
+export type FigmaConfigInstance = FigmaConfigData & ConfigBehavior
 
+export class FigmaConfig extends BaseConfigInstance<IntegrationType.FIGMA, ConfigType.FIGMA> implements FigmaConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public fileKey: string,
         public fileName: string,
         public teamId: string,
         public eventTypes?: FigmaEventType[]
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.FIGMA, ConfigType.FIGMA)
+    }
 
     isComplete(): boolean {
         return !!(this.fileKey && this.teamId)
@@ -358,18 +390,29 @@ export class FigmaConfig implements ConfigInstance {
     }
 }
 
-export class SlackConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.SLACK
-    configType: ConfigType = ConfigType.SLACK
+export const SlackConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.SLACK),
+    configType: z.literal(ConfigType.SLACK),
+    channelId: z.string().optional(),
+    channelName: z.string().optional(),
+    listenToUserDms: z.boolean().default(false),
+    userIds: z.array(z.string()).optional(),
+    eventTypes: z.array(z.enum(SlackEventType)).optional()
+})
+export type SlackConfigData = z.infer<typeof SlackConfigSchema>
+export type SlackConfigInstance = SlackConfigData & ConfigBehavior
 
+export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, ConfigType.SLACK> implements SlackConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public channelId?: string,
         public channelName?: string,
         public listenToUserDms: boolean = false,
         public userIds?: string[],
         public eventTypes?: SlackEventType[]
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.SLACK, ConfigType.SLACK)
+    }
 
     isComplete(): boolean {
         // Slack is complete if either channelId is set OR listenToUserDms is true
@@ -395,18 +438,29 @@ export class SlackConfig implements ConfigInstance {
     }
 }
 
-export class SlackOutputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.SLACK
-    configType: ConfigType = ConfigType.SLACK_OUTPUT
+export const SlackOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.SLACK),
+    configType: z.literal(ConfigType.SLACK_OUTPUT),
+    channelId: z.string().optional(),
+    channelName: z.string().optional(),
+    userIds: z.array(z.string()).optional(),
+    userNames: z.array(z.string()).optional(),
+    listenToUserDms: z.boolean().default(false)
+})
+export type SlackOutputConfigData = z.infer<typeof SlackOutputConfigSchema>
+export type SlackOutputConfigInstance = SlackOutputConfigData & ConfigBehavior
 
+export class SlackOutputConfig extends BaseConfigInstance<IntegrationType.SLACK, ConfigType.SLACK_OUTPUT> implements SlackOutputConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public channelId?: string,
         public channelName?: string,
         public userIds?: string[],
         public userNames?: string[],
         public listenToUserDms: boolean = false
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.SLACK, ConfigType.SLACK_OUTPUT)
+    }
 
     isComplete(): boolean {
         // Slack output is complete if a channel is set, DM users are set, or "listen to user DMs" is enabled.
@@ -428,11 +482,17 @@ export class SlackOutputConfig implements ConfigInstance {
     }
 }
 
-export class GmailOutputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.GMAIL
-    configType: ConfigType = ConfigType.GMAIL_OUTPUT
+export const GmailOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.GMAIL),
+    configType: z.literal(ConfigType.GMAIL_OUTPUT)
+})
+export type GmailOutputConfigData = z.infer<typeof GmailOutputConfigSchema>
+export type GmailOutputConfigInstance = GmailOutputConfigData & ConfigBehavior
 
-    constructor(public integrationId: string) {}
+export class GmailOutputConfig extends BaseConfigInstance<IntegrationType.GMAIL, ConfigType.GMAIL_OUTPUT> implements GmailOutputConfigInstance {
+    constructor(integrationId: string) {
+        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL_OUTPUT)
+    }
 
     isComplete(): boolean {
         // Gmail output only requires integrationId
@@ -444,11 +504,17 @@ export class GmailOutputConfig implements ConfigInstance {
     }
 }
 
-export class GmailDraftOutputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.GMAIL
-    configType: ConfigType = ConfigType.GMAIL_DRAFT_OUTPUT
+export const GmailDraftOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.GMAIL),
+    configType: z.literal(ConfigType.GMAIL_DRAFT_OUTPUT)
+})
+export type GmailDraftOutputConfigData = z.infer<typeof GmailDraftOutputConfigSchema>
+export type GmailDraftOutputConfigInstance = GmailDraftOutputConfigData & ConfigBehavior
 
-    constructor(public integrationId: string) {}
+export class GmailDraftOutputConfig extends BaseConfigInstance<IntegrationType.GMAIL, ConfigType.GMAIL_DRAFT_OUTPUT> implements GmailDraftOutputConfigInstance {
+    constructor(integrationId: string) {
+        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL_DRAFT_OUTPUT)
+    }
 
     isComplete(): boolean {
         return true
@@ -459,17 +525,27 @@ export class GmailDraftOutputConfig implements ConfigInstance {
     }
 }
 
-export class NotionConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.NOTION
-    configType: ConfigType = ConfigType.NOTION
+export const NotionConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.NOTION),
+    configType: z.literal(ConfigType.NOTION),
+    databaseIds: z.array(z.string()).default([]),
+    databaseNames: z.array(z.string()).default([]),
+    pageIds: z.array(z.string()).default([]),
+    pageNames: z.array(z.string()).default([])
+})
+export type NotionConfigData = z.infer<typeof NotionConfigSchema>
+export type NotionConfigInstance = NotionConfigData & ConfigBehavior
 
+export class NotionConfig extends BaseConfigInstance<IntegrationType.NOTION, ConfigType.NOTION> implements NotionConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public databaseIds: string[] = [],
         public databaseNames: string[] = [],
         public pageIds: string[] = [],
         public pageNames: string[] = []
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.NOTION, ConfigType.NOTION)
+    }
 
     isComplete(): boolean {
         return (this.databaseIds?.length ?? 0) > 0 || (this.pageIds?.length ?? 0) > 0
@@ -491,16 +567,25 @@ export class NotionConfig implements ConfigInstance {
     }
 }
 
-export class LinearInputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.LINEAR
-    configType: ConfigType = ConfigType.LINEAR_INPUT
+export const LinearInputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.LINEAR),
+    configType: z.literal(ConfigType.LINEAR_INPUT),
+    projectId: z.string().optional(),
+    projectName: z.string().optional(),
+    eventTypes: z.array(z.enum(LinearEventType)).optional()
+})
+export type LinearInputConfigData = z.infer<typeof LinearInputConfigSchema>
+export type LinearInputConfigInstance = LinearInputConfigData & ConfigBehavior
 
+export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR, ConfigType.LINEAR_INPUT> implements LinearInputConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public projectId?: string,
         public projectName?: string,
         public eventTypes?: LinearEventType[]
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_INPUT)
+    }
 
     isComplete(): boolean {
         return true
@@ -517,17 +602,27 @@ export class LinearInputConfig implements ConfigInstance {
     }
 }
 
-export class LinearOutputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.LINEAR
-    configType: ConfigType = ConfigType.LINEAR_OUTPUT
+export const LinearOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.LINEAR),
+    configType: z.literal(ConfigType.LINEAR_OUTPUT),
+    teamId: z.string().optional(),
+    teamName: z.string().optional(),
+    projectId: z.string().optional(),
+    projectName: z.string().optional()
+})
+export type LinearOutputConfigData = z.infer<typeof LinearOutputConfigSchema>
+export type LinearOutputConfigInstance = LinearOutputConfigData & ConfigBehavior
 
+export class LinearOutputConfig extends BaseConfigInstance<IntegrationType.LINEAR, ConfigType.LINEAR_OUTPUT> implements LinearOutputConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public teamId?: string,
         public teamName?: string,
         public projectId?: string,
         public projectName?: string
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_OUTPUT)
+    }
 
     isComplete(): boolean {
         return !!this.integrationId
@@ -549,15 +644,23 @@ export class LinearOutputConfig implements ConfigInstance {
     }
 }
 
-export class GitHubConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.GITHUB
-    configType: ConfigType = ConfigType.GITHUB
+export const GitHubConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.GITHUB),
+    configType: z.literal(ConfigType.GITHUB),
+    repositoryIds: z.array(z.number()),
+    eventTypes: z.array(z.enum(GitHubEventType)).optional()
+})
+export type GitHubConfigData = z.infer<typeof GitHubConfigSchema>
+export type GitHubConfigInstance = GitHubConfigData & ConfigBehavior
 
+export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, ConfigType.GITHUB> implements GitHubConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public repositoryIds: number[],
         public eventTypes?: GitHubEventType[]
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.GITHUB, ConfigType.GITHUB)
+    }
 
     isComplete(): boolean {
         return (this.repositoryIds?.length ?? 0) > 0
@@ -572,16 +675,25 @@ export class GitHubConfig implements ConfigInstance {
     }
 }
 
-export class JiraConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.ATLASSIAN
-    configType: ConfigType = ConfigType.JIRA
+export const JiraConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.ATLASSIAN),
+    configType: z.literal(ConfigType.JIRA),
+    projectKey: z.string().optional(),
+    projectId: z.string().optional(),
+    eventTypes: z.array(z.enum(JiraEventType)).optional()
+})
+export type JiraConfigData = z.infer<typeof JiraConfigSchema>
+export type JiraConfigInstance = JiraConfigData & ConfigBehavior
 
+export class JiraConfig extends BaseConfigInstance<IntegrationType.ATLASSIAN, ConfigType.JIRA> implements JiraConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public projectKey?: string,
         public projectId?: string,
         public eventTypes?: JiraEventType[]
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.ATLASSIAN, ConfigType.JIRA)
+    }
 
     isComplete(): boolean {
         // Jira only requires integrationId (base check handled in isInputComplete)
@@ -599,17 +711,27 @@ export class JiraConfig implements ConfigInstance {
     }
 }
 
-export class ConfluenceConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.ATLASSIAN
-    configType: ConfigType = ConfigType.CONFLUENCE
+export const ConfluenceConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.ATLASSIAN),
+    configType: z.literal(ConfigType.CONFLUENCE),
+    spaceName: z.string(),
+    spaceId: z.string(),
+    pageId: z.string(),
+    pageName: z.string()
+})
+export type ConfluenceConfigData = z.infer<typeof ConfluenceConfigSchema>
+export type ConfluenceConfigInstance = ConfluenceConfigData & ConfigBehavior
 
+export class ConfluenceConfig extends BaseConfigInstance<IntegrationType.ATLASSIAN, ConfigType.CONFLUENCE> implements ConfluenceConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public spaceName: string,
         public spaceId: string,
         public pageId: string, // Page ID (required for outputs - specific page to write to)
         public pageName: string // Page display name (for UI, optional)
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.ATLASSIAN, ConfigType.CONFLUENCE)
+    }
 
     isComplete(): boolean {
         // Confluence only requires integrationId (base check handled in isInputComplete)
@@ -630,15 +752,23 @@ export class ConfluenceConfig implements ConfigInstance {
     }
 }
 
-export class PosthogConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.POSTHOG
-    configType: ConfigType = ConfigType.POSTHOG
+export const PosthogConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.POSTHOG),
+    configType: z.literal(ConfigType.POSTHOG),
+    projectId: z.string(),
+    projectName: z.string().optional()
+})
+export type PosthogConfigData = z.infer<typeof PosthogConfigSchema>
+export type PosthogConfigInstance = PosthogConfigData & ConfigBehavior
 
+export class PosthogConfig extends BaseConfigInstance<IntegrationType.POSTHOG, ConfigType.POSTHOG> implements PosthogConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public projectId: string,
         public projectName?: string
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.POSTHOG, ConfigType.POSTHOG)
+    }
 
     isComplete(): boolean {
         return !!this.projectId
@@ -656,14 +786,21 @@ export class PosthogConfig implements ConfigInstance {
     }
 }
 
-export class DatadogConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.DATADOG
-    configType: ConfigType = ConfigType.DATADOG
+export const DatadogConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.DATADOG),
+    configType: z.literal(ConfigType.DATADOG),
+    defaultIndexes: z.array(z.string()).default(["main"])
+})
+export type DatadogConfigData = z.infer<typeof DatadogConfigSchema>
+export type DatadogConfigInstance = DatadogConfigData & ConfigBehavior
 
+export class DatadogConfig extends BaseConfigInstance<IntegrationType.DATADOG, ConfigType.DATADOG> implements DatadogConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public defaultIndexes: string[] = ["main"]
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.DATADOG, ConfigType.DATADOG)
+    }
 
     isComplete(): boolean {
         return !!this.integrationId
@@ -678,13 +815,19 @@ export class DatadogConfig implements ConfigInstance {
     }
 }
 
-export class TimeTriggerConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.CRON_JOB
-    configType: ConfigType = ConfigType.TIME_TRIGGER
-    // System integration - no real integration ID needed
-    integrationId: string = "system"
+export const TimeTriggerConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.CRON_JOB),
+    configType: z.literal(ConfigType.TIME_TRIGGER),
+    cronExpression: z.string()
+})
+export type TimeTriggerConfigData = z.infer<typeof TimeTriggerConfigSchema>
+export type TimeTriggerConfigInstance = TimeTriggerConfigData & ConfigBehavior
 
-    constructor(public cronExpression: string) {}
+export class TimeTriggerConfig extends BaseConfigInstance<IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER, "system"> implements TimeTriggerConfigInstance {
+    constructor(public cronExpression: string) {
+        super("system", IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER)
+    }
 
     isComplete(): boolean {
         return !!this.cronExpression
@@ -699,15 +842,23 @@ export class TimeTriggerConfig implements ConfigInstance {
     }
 }
 
-export class LaunchDarklyConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY
-    configType: ConfigType = ConfigType.LAUNCHDARKLY
+export const LaunchDarklyConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.LAUNCHDARKLY),
+    configType: z.literal(ConfigType.LAUNCHDARKLY),
+    projectKey: z.string(),
+    environmentKeys: z.array(z.string())
+})
+export type LaunchDarklyConfigData = z.infer<typeof LaunchDarklyConfigSchema>
+export type LaunchDarklyConfigInstance = LaunchDarklyConfigData & ConfigBehavior
 
+export class LaunchDarklyConfig extends BaseConfigInstance<IntegrationType.LAUNCHDARKLY, ConfigType.LAUNCHDARKLY> implements LaunchDarklyConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public projectKey: string,
         public environmentKeys: string[] // ["production", "staging"]
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.LAUNCHDARKLY, ConfigType.LAUNCHDARKLY)
+    }
 
     isComplete(): boolean {
         return !!(this.projectKey && this.environmentKeys.length > 0)
@@ -725,12 +876,18 @@ export class LaunchDarklyConfig implements ConfigInstance {
     }
 }
 
-export class TerseConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.TERSE
-    configType: ConfigType = ConfigType.TERSE
-    integrationId: string = "system"
+export const TerseConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.TERSE),
+    configType: z.literal(ConfigType.TERSE)
+})
+export type TerseConfigData = z.infer<typeof TerseConfigSchema>
+export type TerseConfigInstance = TerseConfigData & ConfigBehavior
 
-    constructor() {}
+export class TerseConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.TERSE, "system"> implements TerseConfigInstance {
+    constructor() {
+        super("system", IntegrationType.TERSE, ConfigType.TERSE)
+    }
 
     isComplete(): boolean {
         return true
@@ -741,14 +898,21 @@ export class TerseConfig implements ConfigInstance {
     }
 }
 
-export class WorkOSInputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.WORKOS
-    configType: ConfigType = ConfigType.WORKOS_INPUT
+export const WorkOSInputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.WORKOS),
+    configType: z.literal(ConfigType.WORKOS_INPUT),
+    eventTypes: z.array(z.enum(WorkOSEventType)).default([])
+})
+export type WorkOSInputConfigData = z.infer<typeof WorkOSInputConfigSchema>
+export type WorkOSInputConfigInstance = WorkOSInputConfigData & ConfigBehavior
 
+export class WorkOSInputConfig extends BaseConfigInstance<IntegrationType.WORKOS, ConfigType.WORKOS_INPUT> implements WorkOSInputConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public eventTypes: WorkOSEventType[] = []
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.WORKOS, ConfigType.WORKOS_INPUT)
+    }
 
     isComplete(): boolean {
         return this.eventTypes.length > 0
@@ -759,11 +923,17 @@ export class WorkOSInputConfig implements ConfigInstance {
     }
 }
 
-export class WorkOSOutputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.WORKOS
-    configType: ConfigType = ConfigType.WORKOS_OUTPUT
+export const WorkOSOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.WORKOS),
+    configType: z.literal(ConfigType.WORKOS_OUTPUT)
+})
+export type WorkOSOutputConfigData = z.infer<typeof WorkOSOutputConfigSchema>
+export type WorkOSOutputConfigInstance = WorkOSOutputConfigData & ConfigBehavior
 
-    constructor(public integrationId: string) {}
+export class WorkOSOutputConfig extends BaseConfigInstance<IntegrationType.WORKOS, ConfigType.WORKOS_OUTPUT> implements WorkOSOutputConfigInstance {
+    constructor(integrationId: string) {
+        super(integrationId, IntegrationType.WORKOS, ConfigType.WORKOS_OUTPUT)
+    }
 
     isComplete(): boolean {
         return !!this.integrationId
@@ -774,14 +944,21 @@ export class WorkOSOutputConfig implements ConfigInstance {
     }
 }
 
-export class AttioOutputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.ATTIO
-    configType: ConfigType = ConfigType.ATTIO_OUTPUT
+export const AttioOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.ATTIO),
+    configType: z.literal(ConfigType.ATTIO_OUTPUT),
+    objectSlug: z.string().optional()
+})
+export type AttioOutputConfigData = z.infer<typeof AttioOutputConfigSchema>
+export type AttioOutputConfigInstance = AttioOutputConfigData & ConfigBehavior
 
+export class AttioOutputConfig extends BaseConfigInstance<IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT> implements AttioOutputConfigInstance {
     constructor(
-        public integrationId: string,
+        integrationId: string,
         public objectSlug?: string
-    ) {}
+    ) {
+        super(integrationId, IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT)
+    }
 
     isComplete(): boolean {
         return !!this.objectSlug
@@ -796,11 +973,17 @@ export class AttioOutputConfig implements ConfigInstance {
     }
 }
 
-export class SnowflakeOutputConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.SNOWFLAKE
-    configType: ConfigType = ConfigType.SNOWFLAKE_OUTPUT
+export const SnowflakeOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.SNOWFLAKE),
+    configType: z.literal(ConfigType.SNOWFLAKE_OUTPUT)
+})
+export type SnowflakeOutputConfigData = z.infer<typeof SnowflakeOutputConfigSchema>
+export type SnowflakeOutputConfigInstance = SnowflakeOutputConfigData & ConfigBehavior
 
-    constructor(public integrationId: string) {}
+export class SnowflakeOutputConfig extends BaseConfigInstance<IntegrationType.SNOWFLAKE, ConfigType.SNOWFLAKE_OUTPUT> implements SnowflakeOutputConfigInstance {
+    constructor(integrationId: string) {
+        super(integrationId, IntegrationType.SNOWFLAKE, ConfigType.SNOWFLAKE_OUTPUT)
+    }
 
     isComplete(): boolean {
         return !!this.integrationId
