@@ -3,7 +3,7 @@ import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 import { ApiRoutes } from "terse-types"
 import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass, FigmaEventType } from "terse-types/Configs"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, FigmaIntegration, FigmaIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import {

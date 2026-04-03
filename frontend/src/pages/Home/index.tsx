@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowRight, ArrowUpRight, RotateCcw } from "lucide-react"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { ModelRequest, SendModelRequest } from "terse-types/ModelEvents"
 import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
 

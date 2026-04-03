@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom"
 
 import { AlertTriangleIcon, ArrowUpRight } from "lucide-react"
 import { ConfigType, SnowflakeOutputConfig } from "terse-types/Configs"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { SnowflakeIntegration as SnowflakeIntegrationType } from "terse-types/Integrations"
 
 import { useSnowflakeIntegrations } from "@/hooks/api/useSnowflakeIntegrations"

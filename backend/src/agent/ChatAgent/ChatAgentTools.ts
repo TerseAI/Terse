@@ -1,7 +1,7 @@
 import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
 import type { ConfigInstance } from "terse-types"
-import { ConfigType } from "terse-types"
+import { ConfigType, buildRoute } from "terse-types"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { RunHistoryStatus, TrackingParams } from "terse-types"
@@ -99,7 +99,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
                     const isCreate = !id
                     if (isCreate) {
-                        const path = FrontendRoutes.AGENTS.DETAIL(result.id)
+                        const path = buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: result.id })
                         await chatInterface.navigate(`${path}?${FROM_SETUP_CHAT_PARAM}=1`)
                     }
                     return `Agent applied successfully (${result.id})`
@@ -372,7 +372,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 const eventProcessor = new EventProcessor(inputEvent, user, { isManuallyTriggered: true })
                 const triggeredRun = await eventProcessor.triggerSingleAgent(agentId)
 
-                const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(triggeredRun.agentId, triggeredRun.runId)
+                const runHistoryPath = buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { agentId: triggeredRun.agentId, runId: triggeredRun.runId })
                 await chatInterface.buildButton("See progress", runHistoryPath)
 
                 logger.info("[triggerAgentRun] Triggered run", {
@@ -447,7 +447,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 const isComplete = runRecord.status !== RunHistoryStatus.IN_PROGRESS
                 const timedOut = !isComplete
-                const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(runRecord.automation_id, runRecord.id)
+                const runHistoryPath = buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { agentId: runRecord.automation_id, runId: runRecord.id })
 
                 return JSON.stringify({
                     runId: runRecord.id,

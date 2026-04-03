@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom"
 
 import { ChevronUp, User2 } from "lucide-react"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { useAuth } from "@/services/auth"
 import { User } from "@/types/User"

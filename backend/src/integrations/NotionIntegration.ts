@@ -1,7 +1,7 @@
 import { Client } from "@notionhq/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "terse-types/Integrations"
 import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
 

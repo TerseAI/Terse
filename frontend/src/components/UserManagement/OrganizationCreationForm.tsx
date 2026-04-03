@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AxiosError } from "axios"
 import { ImagePlus, Loader2, X } from "lucide-react"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import * as z from "zod"
 
 import { Button } from "@/components/ui/button"

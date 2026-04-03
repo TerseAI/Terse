@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom"
 
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import OrganizationCreationForm from "../components/UserManagement/OrganizationCreationForm"
 import { useAuth } from "../services/auth"

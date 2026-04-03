@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Check, ChevronsUpDown, Settings, Users } from "lucide-react"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { useUserOrganizations } from "@/hooks/api/useUserOrganizations"
 import { useAuth } from "@/services/auth"

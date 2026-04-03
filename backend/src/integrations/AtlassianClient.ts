@@ -1,5 +1,5 @@
 import { Api } from "confluence.js"
-import { ApiRoutes, buildApiRoute } from "terse-types"
+import { ApiRoutes, buildRoute } from "terse-types"
 import { AtlassianIntegration, IntegrationType } from "terse-types/Integrations"
 import type { ConfluencePage, User } from "terse-types/types"
 
@@ -328,7 +328,7 @@ export class AtlassianClient {
             "comment_updated", // Comments edited
             "comment_deleted" // Comments removed
         ]
-        const url = buildApiRoute(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID, { accountId })
+        const url = buildRoute(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID, { accountId })
         const webhookUrl = `${backendUrl}${url}`
 
         // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint

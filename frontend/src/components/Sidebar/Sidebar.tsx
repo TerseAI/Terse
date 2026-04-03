@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
 import { Activity, BarChart3, Bell, ChevronRight, Home, Plug, Plus, Terminal, Zap } from "lucide-react"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { buildRoute } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
 
 import { Button } from "@/components/ui/button"
@@ -207,12 +208,12 @@ interface AgentListItemProps {
 
 function AgentListItem({ agent }: AgentListItemProps) {
     const location = useLocation()
-    const isActive = location.pathname === FrontendRoutes.AGENTS.DETAIL(agent.id)
+    const isActive = location.pathname === buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: agent.id })
 
     return (
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
-                <Link to={FrontendRoutes.AGENTS.DETAIL(agent.id)} className="flex items-center gap-2">
+                <Link to={buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: agent.id })} className="flex items-center gap-2">
                     <span className={`size-2 rounded-full shrink-0 ${agent.isActive ? "bg-success" : "bg-muted-foreground"}`} />
                     <span className="truncate">{agent.name}</span>
                 </Link>

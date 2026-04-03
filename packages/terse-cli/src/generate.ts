@@ -18,7 +18,7 @@ import type {
     WorkOSIntegration
 } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ApiRoutes, buildApiRoute } from "terse-types"
+import { ApiRoutes, buildRoute } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
@@ -279,7 +279,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                 input.launchdarkly = await Promise.all(
                     instances.map(async (inst): Promise<LaunchDarklyInstanceData> => {
                         const resp = await fetchWithAuth<{ projects: Array<{ key: string; name: string }> }>(
-                            buildApiRoute(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, { integrationId: inst.id }),
+                            buildRoute(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, { integrationId: inst.id }),
                             apiKey
                         ).catch(() => ({ projects: [] }))
                         return { id: inst.id, displayName: inst.tokenName || inst.email || inst.id, projects: resp.projects || [] }
@@ -313,7 +313,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                                 plural_noun?: string
                                 attributes?: AttioAttributeData[]
                             }>
-                        >(buildApiRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId: inst.id }), apiKey).catch(
+                        >(buildRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId: inst.id }), apiKey).catch(
                             () =>
                                 [] as Array<{
                                     api_slug: string

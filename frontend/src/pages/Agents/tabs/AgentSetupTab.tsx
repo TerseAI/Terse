@@ -5,9 +5,9 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Bell, Check, ChevronRight, Copy, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
-import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "terse-types"
-import { FROM_SETUP_CHAT_PARAM } from "terse-types/FrontendRoutes"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { CONFIG_DETAILS, ConfigInstance, ConfigType, buildRoute } from "terse-types"
+import { FROM_SETUP_CHAT_PARAM } from "terse-types/FrontendRoutesBuilder"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
 import { Agent, AgentOutput, AgentPrompt, AgentTrigger } from "terse-types/types"
 import { v4 as uuidv4 } from "uuid"
@@ -151,7 +151,7 @@ function AgentOptionsMenu({
 
             if (result?.id) {
                 toast.success("Agent cloned successfully")
-                navigate(FrontendRoutes.AGENTS.DETAIL(result.id))
+                navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: result.id }))
             } else {
                 toast.error("Failed to clone agent: no ID returned")
             }
@@ -288,7 +288,7 @@ function SaveAgentButton({
                 const creation = await createAgent(agentData)
 
                 if (creation?.id) {
-                    navigate(FrontendRoutes.AGENTS.DETAIL(creation.id), { replace: true })
+                    navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { agentId: creation.id }), { replace: true })
                 }
             }
 

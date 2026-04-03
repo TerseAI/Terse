@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { FrontendRoutes } from "terse-types/FrontendRoutes"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 

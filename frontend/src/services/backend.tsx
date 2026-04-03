@@ -1,5 +1,5 @@
 import axios from "axios"
-import { ApiRoutes, buildApiRoute } from "terse-types"
+import { ApiRoutes, buildRoute } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AtlassianIntegration,
@@ -570,7 +570,7 @@ export const BackendProvider: BackendService = {
     },
 
     getUserById: (id: string) => {
-        const url = buildApiRoute(ApiRoutes.USERS.BY_ID, { id })
+        const url = buildRoute(ApiRoutes.USERS.BY_ID, { id })
         return axios
             .get<User>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -625,7 +625,7 @@ export const BackendProvider: BackendService = {
             params.append("state", stateToken)
         }
         const queryString = params.toString()
-        const apiUrl = buildApiRoute(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, { integrationType })
+        const apiUrl = buildRoute(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, { integrationType })
         const url = `${backendBaseUrl}${apiUrl}${queryString ? `?${queryString}` : ""}`
         return axios
             .get(url, { withCredentials: true })
@@ -870,7 +870,7 @@ export const BackendProvider: BackendService = {
     },
 
     getAttioObjects: (integrationId: string) => {
-        const url = buildApiRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId })
+        const url = buildRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId })
         return axios
             .get<AttioObjectWithAttributes[]>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -960,7 +960,7 @@ export const BackendProvider: BackendService = {
     },
 
     getLaunchDarklyProjects: (integrationId: string) => {
-        const url = buildApiRoute(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, { integrationId })
+        const url = buildRoute(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, { integrationId })
         return axios
             .get<LaunchDarklyProjectsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -971,7 +971,7 @@ export const BackendProvider: BackendService = {
     },
 
     getLaunchDarklyEnvironments: (integrationId: string, projectKey: string) => {
-        const url = buildApiRoute(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT, { integrationId, projectKey })
+        const url = buildRoute(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT, { integrationId, projectKey })
         return axios
             .get<LaunchDarklyEnvironmentsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -1161,7 +1161,7 @@ export const BackendProvider: BackendService = {
     },
 
     getAgentById: (id: string) => {
-        const url = buildApiRoute(ApiRoutes.AGENTS.BY_ID, { id })
+        const url = buildRoute(ApiRoutes.AGENTS.BY_ID, { id })
         return axios
             .get<Agent>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -1172,7 +1172,7 @@ export const BackendProvider: BackendService = {
     },
 
     getAgentImprovements: (agentId: string) => {
-        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, { agentId })
+        const url = buildRoute(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, { agentId })
         return axios
             .get<GetAgentImprovementsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -1183,7 +1183,7 @@ export const BackendProvider: BackendService = {
     },
 
     applyImprovement: (agentId: string, improvementId: string) => {
-        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.APPLY, { agentId, improvementId })
+        const url = buildRoute(ApiRoutes.IMPROVEMENTS.APPLY, { agentId, improvementId })
         return axios
             .post<ApplyImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
@@ -1194,7 +1194,7 @@ export const BackendProvider: BackendService = {
     },
 
     dismissImprovement: (agentId: string, improvementId: string) => {
-        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.DISMISS, { agentId, improvementId })
+        const url = buildRoute(ApiRoutes.IMPROVEMENTS.DISMISS, { agentId, improvementId })
         return axios
             .post<DismissImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
@@ -1205,7 +1205,7 @@ export const BackendProvider: BackendService = {
     },
 
     undoDismissImprovement: (agentId: string, improvementId: string) => {
-        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, { agentId, improvementId })
+        const url = buildRoute(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, { agentId, improvementId })
         return axios
             .post<{ success: boolean }>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
@@ -1216,7 +1216,7 @@ export const BackendProvider: BackendService = {
     },
 
     toggleImprovementsEnabled: (agentId: string, enabled: boolean) => {
-        const url = buildApiRoute(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, { agentId })
+        const url = buildRoute(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, { agentId })
         return axios
             .patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${url}`, { enabled }, { withCredentials: true })
             .then(response => response.data)
@@ -1237,7 +1237,7 @@ export const BackendProvider: BackendService = {
     },
 
     updateAgent: (id: string, data: AgentUpdate) => {
-        const url = buildApiRoute(ApiRoutes.AGENTS.BY_ID, { id })
+        const url = buildRoute(ApiRoutes.AGENTS.BY_ID, { id })
         return axios
             .patch<{ success: boolean; id: string }>(`${backendBaseUrl}${url}`, data, { withCredentials: true })
             .then(response => response.data)
@@ -1248,7 +1248,7 @@ export const BackendProvider: BackendService = {
     },
 
     deleteAgent: (id: string) => {
-        const url = buildApiRoute(ApiRoutes.AGENTS.BY_ID, { id })
+        const url = buildRoute(ApiRoutes.AGENTS.BY_ID, { id })
         return axios
             .delete<{ success: boolean; message: string }>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -1284,7 +1284,7 @@ export const BackendProvider: BackendService = {
         if (params.start) usp.append("start", params.start)
         if (params.end) usp.append("end", params.end)
         if (params.status && params.status.length) usp.append("status", params.status.join(","))
-        const apiUrl = buildApiRoute(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, { agentId })
+        const apiUrl = buildRoute(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, { agentId })
         const url = `${backendBaseUrl}${apiUrl}${usp.toString() ? `?${usp.toString()}` : ""}`
         return axios
             .get<GetRunHistoryResponse>(url, { withCredentials: true })
@@ -1296,7 +1296,7 @@ export const BackendProvider: BackendService = {
     },
 
     getChatHistory: runId => {
-        const apiUrl = buildApiRoute(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, { runId })
+        const apiUrl = buildRoute(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, { runId })
         const url = `${backendBaseUrl}${apiUrl}`
         return axios
             .get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: RunHistoryStatus }>(url, { withCredentials: true })
@@ -1308,7 +1308,7 @@ export const BackendProvider: BackendService = {
     },
 
     getBuilderChatHistory: sessionId => {
-        const apiUrl = buildApiRoute(ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID, { sessionId })
+        const apiUrl = buildRoute(ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID, { sessionId })
         const url = `${backendBaseUrl}${apiUrl}`
         return axios
             .get<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>(url, { withCredentials: true })
@@ -1346,7 +1346,7 @@ export const BackendProvider: BackendService = {
         const params = new URLSearchParams()
         params.append("page", page.toString())
         params.append("pageSize", pageSize.toString())
-        const apiUrl = buildApiRoute(ApiRoutes.SENT_NOTIFICATIONS.LIST, {})
+        const apiUrl = buildRoute(ApiRoutes.SENT_NOTIFICATIONS.LIST, {})
         const url = `${backendBaseUrl}${apiUrl}?${params.toString()}`
 
         return axios
@@ -1386,7 +1386,7 @@ export const BackendProvider: BackendService = {
     },
 
     updateNotificationDestination: (destination: NotificationDestination) => {
-        const url = buildApiRoute(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, { id: destination.id })
+        const url = buildRoute(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, { id: destination.id })
         return axios
             .put<NotificationDestination>(`${backendBaseUrl}${url}`, destination, { withCredentials: true })
             .then(response => response.data)
@@ -1397,7 +1397,7 @@ export const BackendProvider: BackendService = {
     },
 
     deleteNotificationDestination: (destination: NotificationDestination) => {
-        const url = buildApiRoute(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, { id: destination.id })
+        const url = buildRoute(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, { id: destination.id })
         return axios
             .delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -1428,7 +1428,7 @@ export const BackendProvider: BackendService = {
     },
 
     updateApiToken: (id: string, name: string) => {
-        const url = buildApiRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
+        const url = buildRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
         return axios
             .patch<ApiToken>(`${backendBaseUrl}${url}`, { name }, { withCredentials: true })
             .then(response => response.data)
@@ -1439,7 +1439,7 @@ export const BackendProvider: BackendService = {
     },
 
     deleteApiToken: (id: string) => {
-        const url = buildApiRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
+        const url = buildRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
         return axios
             .delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
@@ -1470,7 +1470,7 @@ export const BackendProvider: BackendService = {
     },
 
     triggerWithEvent: (automationId: string, event: SerializedEvent) => {
-        const url = buildApiRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { id: automationId })
+        const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { id: automationId })
         return axios
             .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event }, { withCredentials: true })
             .then(response => response.data)
@@ -1481,7 +1481,7 @@ export const BackendProvider: BackendService = {
     },
 
     triggerManually: (triggerId: string, context?: string) => {
-        const url = buildApiRoute(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, { id: triggerId })
+        const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, { id: triggerId })
         return axios
             .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { context }, { withCredentials: true })
             .then(response => response.data)
@@ -1624,7 +1624,7 @@ export const BackendProvider: BackendService = {
     },
 
     getOrgLogoUrl: (organizationId: string) => {
-        const url = buildApiRoute(ApiRoutes.ORGANIZATIONS.LOGO, { organizationId })
+        const url = buildRoute(ApiRoutes.ORGANIZATIONS.LOGO, { organizationId })
         return axios
             .get<{ logoUrl: string | null }>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data.logoUrl)
