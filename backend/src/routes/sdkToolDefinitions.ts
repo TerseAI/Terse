@@ -27,7 +27,6 @@ export async function handleToolDefinitions(req: Request, res: Response) {
             integration: string
             isReadOnly: boolean
             supportsApproval: boolean
-            parameters: Record<string, unknown>
         }> = []
 
         const seen = new Set<string>()
@@ -47,8 +46,7 @@ export async function handleToolDefinitions(req: Request, res: Response) {
                     description: ft.description ?? "",
                     integration: entry.integration,
                     isReadOnly: entry.isReadOnly,
-                    supportsApproval: entry.supportsApproval ?? false,
-                    parameters: ft.parameters as Record<string, unknown>
+                    supportsApproval: entry.supportsApproval ?? false
                 })
             }
         }
