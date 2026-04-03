@@ -7,8 +7,8 @@ import type { SdkAgentStreamEvent, SerializedEvent } from "terse-types"
 
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
-import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream"
-import { ensureUvAvailable, execUv, loadDotenv, withTempScript } from "../shared/shellUtils"
+import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
+import { ensureUvAvailable, execUv, loadDotenv, withTempScript } from "../shared/shellUtils.js"
 
 import { preparePythonTemplateContext } from "./preparePythonCodegenData.js"
 import { renderPythonGeneratedCode } from "./pythonTemplateEngine.js"
