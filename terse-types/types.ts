@@ -888,177 +888,175 @@ export type AttioUpsertError = {
     message: string
 }
 
-export type SlackChannelListItem = z.infer<typeof slackChannelListItemSchema>
+// export type SlackChannelListItem = z.infer<typeof slackChannelListItemSchema>
 
-export type SlackConversationMessage = z.infer<typeof slackConversationMessageSchema>
+// export type SlackConversationMessage = z.infer<typeof slackConversationMessageSchema>
 
-export type GitHubPagination = z.infer<typeof gitHubPaginationSchema>
-export type GitHubCodeSearchResult = z.infer<typeof gitHubCodeSearchResultSchema>
-export type GitHubCodeGrepResult = z.infer<typeof gitHubCodeGrepResultSchema>
-export type GitHubPullRequestSummary = z.infer<typeof gitHubPullRequestSummarySchema>
-export type GitHubDirectoryEntry = z.infer<typeof gitHubDirectoryEntrySchema>
-export type GitHubFileEntry = z.infer<typeof gitHubFileEntrySchema>
-export type GitHubOtherEntry = z.infer<typeof gitHubOtherEntrySchema>
-export type GitHubCommitSummary = z.infer<typeof gitHubCommitSummarySchema>
-export type GitHubPullRequestRef = z.infer<typeof gitHubPullRequestRefSchema>
+// export type GitHubPagination = z.infer<typeof gitHubPaginationSchema>
+// export type GitHubCodeSearchResult = z.infer<typeof gitHubCodeSearchResultSchema>
+// export type GitHubCodeGrepResult = z.infer<typeof gitHubCodeGrepResultSchema>
+// export type GitHubPullRequestSummary = z.infer<typeof gitHubPullRequestSummarySchema>
+// export type GitHubDirectoryEntry = z.infer<typeof gitHubDirectoryEntrySchema>
+// export type GitHubFileEntry = z.infer<typeof gitHubFileEntrySchema>
+// export type GitHubOtherEntry = z.infer<typeof gitHubOtherEntrySchema>
+// export type GitHubCommitSummary = z.infer<typeof gitHubCommitSummarySchema>
+// export type GitHubPullRequestRef = z.infer<typeof gitHubPullRequestRefSchema>
 
-export type SnowflakeQueryRow = Record<string, unknown>
+// export type SnowflakeQueryRow = Record<string, unknown>
 
-export type LinearIssueAssignee = z.infer<typeof linearIssueAssigneeSchema>
-export type LinearIssueTeam = z.infer<typeof linearIssueTeamSchema>
-export type LinearIssueProject = z.infer<typeof linearIssueProjectSchema>
-export type LinearIssueSummary = z.infer<typeof linearIssueSummarySchema>
-export type LinearIssueDetail = z.infer<typeof linearIssueDetailSchema>
-export type LinearIssueHandle = z.infer<typeof linearIssueHandleSchema>
-export type LinearCommentHandle = z.infer<typeof linearCommentHandleSchema>
-export type LinearStateSummary = z.infer<typeof linearStateSummarySchema>
-export type LinearLabelSummary = z.infer<typeof linearLabelSummarySchema>
-export type LinearProjectSummary = z.infer<typeof linearProjectSummarySchema>
-export type LinearUserSummary = z.infer<typeof linearUserSummarySchema>
-export type LinearSearchPagination = z.infer<typeof linearSearchPaginationSchema>
+// export type LinearIssueAssignee = z.infer<typeof linearIssueAssigneeSchema>
+// export type LinearIssueTeam = z.infer<typeof linearIssueTeamSchema>
+// export type LinearIssueProject = z.infer<typeof linearIssueProjectSchema>
+// export type LinearIssueSummary = z.infer<typeof linearIssueSummarySchema>
+// export type LinearIssueDetail = z.infer<typeof linearIssueDetailSchema>
+// export type LinearIssueHandle = z.infer<typeof linearIssueHandleSchema>
+// export type LinearCommentHandle = z.infer<typeof linearCommentHandleSchema>
+// export type LinearStateSummary = z.infer<typeof linearStateSummarySchema>
+// export type LinearLabelSummary = z.infer<typeof linearLabelSummarySchema>
+// export type LinearProjectSummary = z.infer<typeof linearProjectSummarySchema>
+// export type LinearUserSummary = z.infer<typeof linearUserSummarySchema>
+// export type LinearSearchPagination = z.infer<typeof linearSearchPaginationSchema>
 
-export type JiraIssueState = z.infer<typeof jiraIssueStateSchema>
-export type JiraIssueAssignee = z.infer<typeof jiraIssueAssigneeSchema>
-export type JiraIssueProjectRef = z.infer<typeof jiraIssueProjectRefSchema>
-export type JiraIssueTypeRef = z.infer<typeof jiraIssueTypeRefSchema>
-export type JiraRichDescription = z.infer<typeof jiraRichDescriptionSchema>
-export type JiraIssueSummary = z.infer<typeof jiraIssueSummarySchema>
+// export type JiraIssueState = z.infer<typeof jiraIssueStateSchema>
+// export type JiraIssueAssignee = z.infer<typeof jiraIssueAssigneeSchema>
+// export type JiraIssueProjectRef = z.infer<typeof jiraIssueProjectRefSchema>
+// export type JiraIssueTypeRef = z.infer<typeof jiraIssueTypeRefSchema>
+// export type JiraRichDescription = z.infer<typeof jiraRichDescriptionSchema>
+// export type JiraIssueSummary = z.infer<typeof jiraIssueSummarySchema>
 
-export type GmailSendSummary = z.infer<typeof gmailSendSummarySchema>
+// export type GmailSendSummary = z.infer<typeof gmailSendSummarySchema>
 
-export type GmailDraftSummary = z.infer<typeof gmailDraftSummarySchema>
+// export type GmailDraftSummary = z.infer<typeof gmailDraftSummarySchema>
 
-export type NotionUserReference = z.infer<typeof notionUserReferenceSchema>
+// export type NotionUserReference = z.infer<typeof notionUserReferenceSchema>
 
-export type NotionFileReference = z.infer<typeof notionFileReferenceSchema>
+// export type NotionFileReference = z.infer<typeof notionFileReferenceSchema>
 
-export type NotionDateReference = z.infer<typeof notionDateReferenceSchema>
+// export type NotionDateReference = z.infer<typeof notionDateReferenceSchema>
 
-export type NotionReadablePropertyValue = z.infer<typeof notionReadablePropertyValueSchema>
+// export type NotionReadablePropertyValue = z.infer<typeof notionReadablePropertyValueSchema>
 
-export type NotionPageBlock = z.infer<typeof notionPageBlockSchema>
+// export type NotionPageBlock = z.infer<typeof notionPageBlockSchema>
 
-export type NotionPageParent = z.infer<typeof notionPageParentSchema>
+// export type NotionPageParent = z.infer<typeof notionPageParentSchema>
 
-export type NotionPageQueryMetadata = z.infer<typeof notionPageQueryMetadataSchema>
+// export type NotionPageQueryMetadata = z.infer<typeof notionPageQueryMetadataSchema>
 
-export type NotionDatabaseRowMutationResult = z.infer<typeof notionDatabaseRowMutationResultSchema>
+// export type NotionDatabaseRowMutationResult = z.infer<typeof notionDatabaseRowMutationResultSchema>
 
-export type NotionSchemaProperty = z.infer<typeof notionSchemaPropertySchema>
+// export type NotionSchemaProperty = z.infer<typeof notionSchemaPropertySchema>
 
-export type NotionDatabaseQueryPage = z.infer<typeof notionDatabaseQueryPageSchema>
+// export type NotionDatabaseQueryPage = z.infer<typeof notionDatabaseQueryPageSchema>
 
-export type NotionQueryDatabaseFailure = z.infer<typeof notionQueryDatabaseFailureSchema>
+// export type NotionQueryDatabaseFailure = z.infer<typeof notionQueryDatabaseFailureSchema>
 
-export type NotionQueryDatabaseSuccess = z.infer<typeof notionQueryDatabaseSuccessSchema>
+// export type NotionQueryDatabaseSuccess = z.infer<typeof notionQueryDatabaseSuccessSchema>
 
-export type NotionModifyBlocksAppendResult = z.infer<typeof notionModifyBlocksAppendResultSchema>
+// export type NotionModifyBlocksAppendResult = z.infer<typeof notionModifyBlocksAppendResultSchema>
 
-export type NotionModifyBlocksUpdateResult = z.infer<typeof notionModifyBlocksUpdateResultSchema>
+// export type NotionModifyBlocksUpdateResult = z.infer<typeof notionModifyBlocksUpdateResultSchema>
 
-export type NotionModifyBlocksDeleteResult = z.infer<typeof notionModifyBlocksDeleteResultSchema>
+// export type NotionModifyBlocksDeleteResult = z.infer<typeof notionModifyBlocksDeleteResultSchema>
 
-export type NotionModifyBlocksOperationResult = z.infer<typeof notionModifyBlocksOperationResultSchema>
+// export type NotionModifyBlocksOperationResult = z.infer<typeof notionModifyBlocksOperationResultSchema>
 
-export type NotionModifyBlocksSuccess = z.infer<typeof notionModifyBlocksSuccessSchema>
+// export type NotionModifyBlocksSuccess = z.infer<typeof notionModifyBlocksSuccessSchema>
 
-export type NotionModifyBlocksFailure = z.infer<typeof notionModifyBlocksFailureSchema>
+// export type NotionModifyBlocksFailure = z.infer<typeof notionModifyBlocksFailureSchema>
 
-export type NotionWorkspaceUser = z.infer<typeof notionWorkspaceUserSchema>
+// export type NotionWorkspaceUser = z.infer<typeof notionWorkspaceUserSchema>
 
-export type ConfluencePageSpace = z.infer<typeof confluencePageSpaceSchema>
+// export type ConfluencePageSpace = z.infer<typeof confluencePageSpaceSchema>
 
-export type ConfluencePageVersionAuthor = z.infer<typeof confluencePageVersionAuthorSchema>
+// export type ConfluencePageVersionAuthor = z.infer<typeof confluencePageVersionAuthorSchema>
 
-export type ConfluencePageVersion = z.infer<typeof confluencePageVersionSchema>
+// export type ConfluencePageVersion = z.infer<typeof confluencePageVersionSchema>
 
-export type ConfluenceBodyRepresentation = z.infer<typeof confluenceBodyRepresentationSchema>
+// export type ConfluenceBodyRepresentation = z.infer<typeof confluenceBodyRepresentationSchema>
 
-export type ConfluenceBodyContent = z.infer<typeof confluenceBodyContentSchema>
+// export type ConfluenceBodyContent = z.infer<typeof confluenceBodyContentSchema>
 
-export type ConfluencePageRelation = z.infer<typeof confluencePageRelationSchema>
+// export type ConfluencePageRelation = z.infer<typeof confluencePageRelationSchema>
 
-export type ConfluencePageQueryResult = z.infer<typeof confluencePageQueryResultSchema>
+// export type ConfluencePageQueryResult = z.infer<typeof confluencePageQueryResultSchema>
 
-export type ConfluenceCommentPosition = z.infer<typeof confluenceCommentPositionSchema>
+// export type ConfluenceCommentPosition = z.infer<typeof confluenceCommentPositionSchema>
 
-export type PosthogSessionSummary = z.infer<typeof posthogSessionSummarySchema>
+// export type PosthogSessionSummary = z.infer<typeof posthogSessionSummarySchema>
 
-export type PosthogSearchSessionsPagination = z.infer<typeof posthogSearchSessionsPaginationSchema>
+// export type PosthogSearchSessionsPagination = z.infer<typeof posthogSearchSessionsPaginationSchema>
 
-export type PosthogSearchSessionsFound = z.infer<typeof posthogSearchSessionsFoundSchema>
+// export type PosthogSearchSessionsFound = z.infer<typeof posthogSearchSessionsFoundSchema>
 
-export type PosthogSearchSessionsNotFound = z.infer<typeof posthogSearchSessionsNotFoundSchema>
+// export type PosthogSearchSessionsNotFound = z.infer<typeof posthogSearchSessionsNotFoundSchema>
 
-export type PosthogLogEntry = z.infer<typeof posthogLogEntrySchema>
+// export type PosthogLogEntry = z.infer<typeof posthogLogEntrySchema>
 
-export type PosthogOffsetPagination = z.infer<typeof posthogOffsetPaginationSchema>
+// export type PosthogOffsetPagination = z.infer<typeof posthogOffsetPaginationSchema>
 
-export type PosthogEventCount = z.infer<typeof posthogEventCountSchema>
+// export type PosthogEventCount = z.infer<typeof posthogEventCountSchema>
 
-export type PosthogEventSummary = z.infer<typeof posthogEventSummarySchema>
+// export type PosthogEventSummary = z.infer<typeof posthogEventSummarySchema>
 
-export type PosthogSessionEvent = z.infer<typeof posthogSessionEventSchema>
+// export type PosthogSessionEvent = z.infer<typeof posthogSessionEventSchema>
 
-export type PosthogSessionConsoleLog = z.infer<typeof posthogSessionConsoleLogSchema>
+// export type PosthogSessionConsoleLog = z.infer<typeof posthogSessionConsoleLogSchema>
 
-export type PosthogSessionEventsSummary = z.infer<typeof posthogSessionEventsSummarySchema>
+// export type PosthogSessionEventsSummary = z.infer<typeof posthogSessionEventsSummarySchema>
 
-export type LaunchDarklyFlagSummary = z.infer<typeof launchDarklyFlagSummarySchema>
+// export type LaunchDarklyFlagSummary = z.infer<typeof launchDarklyFlagSummarySchema>
 
-export type LaunchDarklyFlagMetadata = z.infer<typeof launchDarklyFlagMetadataSchema>
+// export type LaunchDarklyFlagMetadata = z.infer<typeof launchDarklyFlagMetadataSchema>
 
-export type LaunchDarklyEnvironmentConfig = z.infer<typeof launchDarklyEnvironmentConfigSchema>
+// export type LaunchDarklyEnvironmentConfig = z.infer<typeof launchDarklyEnvironmentConfigSchema>
 
-export type LaunchDarklyHistoryEntry = z.infer<typeof launchDarklyHistoryEntrySchema>
+// export type LaunchDarklyHistoryEntry = z.infer<typeof launchDarklyHistoryEntrySchema>
 
-export type LaunchDarklyHistoryResult = z.infer<typeof launchDarklyHistoryResultSchema>
+// export type LaunchDarklyHistoryResult = z.infer<typeof launchDarklyHistoryResultSchema>
 
-export type DatadogLogEntry = z.infer<typeof datadogLogEntrySchema>
+// export type DatadogLogEntry = z.infer<typeof datadogLogEntrySchema>
 
-export type DatadogCursorPagination = z.infer<typeof datadogCursorPaginationSchema>
+// export type DatadogCursorPagination = z.infer<typeof datadogCursorPaginationSchema>
 
-export type DatadogRumSessionDetails = z.infer<typeof datadogRumSessionDetailsSchema>
+// export type DatadogRumSessionDetails = z.infer<typeof datadogRumSessionDetailsSchema>
 
-export type DatadogRumViewDetails = z.infer<typeof datadogRumViewDetailsSchema>
+// export type DatadogRumViewDetails = z.infer<typeof datadogRumViewDetailsSchema>
 
-export type DatadogRumActionDetails = z.infer<typeof datadogRumActionDetailsSchema>
+// export type DatadogRumActionDetails = z.infer<typeof datadogRumActionDetailsSchema>
 
-export type DatadogRumErrorDetails = z.infer<typeof datadogRumErrorDetailsSchema>
+// export type DatadogRumErrorDetails = z.infer<typeof datadogRumErrorDetailsSchema>
 
-export type DatadogRumResourceDetails = z.infer<typeof datadogRumResourceDetailsSchema>
+// export type DatadogRumResourceDetails = z.infer<typeof datadogRumResourceDetailsSchema>
 
-export type DatadogRumLongTaskDetails = z.infer<typeof datadogRumLongTaskDetailsSchema>
+// export type DatadogRumLongTaskDetails = z.infer<typeof datadogRumLongTaskDetailsSchema>
 
-export type DatadogRumEvent = z.infer<typeof datadogRumEventSchema>
+// export type DatadogRumEvent = z.infer<typeof datadogRumEventSchema>
 
-export type DatadogAggregationBucketCompute = z.infer<typeof datadogAggregationBucketComputeSchema>
+// export type DatadogAggregationBucketCompute = z.infer<typeof datadogAggregationBucketComputeSchema>
 
-export type DatadogAggregationBucket = z.infer<typeof datadogAggregationBucketSchema>
+// export type DatadogAggregationBucket = z.infer<typeof datadogAggregationBucketSchema>
 
-export type DatadogAggregationMeta = z.infer<typeof datadogAggregationMetaSchema>
+// export type DatadogAggregationMeta = z.infer<typeof datadogAggregationMetaSchema>
 
-export type WorkOSUserSummary = z.infer<typeof workOSUserSummarySchema>
+// export type WorkOSUserSummary = z.infer<typeof workOSUserSummarySchema>
 
-export type WorkOSOrganizationSummary = z.infer<typeof workOSOrganizationSummarySchema>
+// export type WorkOSOrganizationSummary = z.infer<typeof workOSOrganizationSummarySchema>
 
-export type WorkOSPagination = z.infer<typeof workOSPaginationSchema>
+// export type WorkOSPagination = z.infer<typeof workOSPaginationSchema>
 
-// TO DO manually define schemas here
-export type WebSearchResultItem = z.infer<typeof webSearchResultItemSchema>
+// // TO DO manually define schemas here
+// export type WebSearchResultItem = z.infer<typeof webSearchResultItemSchema>
 
-export type WebSearchOutput = z.infer<typeof webSearchOutputSchema>
+// export type WebSearchOutput = z.infer<typeof webSearchOutputSchema>
 
-export type WebExtractResultItem = z.infer<typeof webExtractResultItemSchema>
+// export type WebExtractResultItem = z.infer<typeof webExtractResultItemSchema>
 
-export type WebExtractOutput = z.infer<typeof webExtractOutputSchema>
+// export type WebExtractOutput = z.infer<typeof webExtractOutputSchema>
 
-export type WebResearchSource = z.infer<typeof webResearchSourceSchema>
+// export type WebResearchSource = z.infer<typeof webResearchSourceSchema>
 
-export type WebResearchOutput = z.infer<typeof webResearchOutputSchema>
+// export type WebResearchOutput = z.infer<typeof webResearchOutputSchema>
 
-export type ImageEditSnippet = z.infer<typeof imageEditSnippetSchema>
+// export type ImageEditSnippet = z.infer<typeof imageEditSnippetSchema>
 
-export type ImageEditOutput = z.infer<typeof imageEditOutputSchema>
-
-export type ToolOutputByName = DefinedToolOutputByName
+// export type ImageEditOutput = z.infer<typeof imageEditOutputSchema>

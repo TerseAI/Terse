@@ -2425,6 +2425,8 @@ export type DefinedToolOutputByName = {
     [K in ToolName]: z.infer<ToolOutputSchemaByName[K]>
 }
 
+export type ToolOutputByName = DefinedToolOutputByName
+
 export function isValidToolName(name: string): name is ToolName {
     return name in ToolDefinitions
 }
