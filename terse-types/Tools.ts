@@ -2427,6 +2427,13 @@ export type DefinedToolOutputByName = {
 
 export type ToolOutputByName = DefinedToolOutputByName
 
+export const toolsWithIntegrationId: ReadonlySet<ToolName> = new Set(
+    (Object.entries(ToolDefinitions) as [ToolName, (typeof ToolDefinitions)[ToolName]][]).filter(([, def]) => {
+        const shape = def.inputSchema instanceof z.ZodObject ? (def.inputSchema as z.ZodObject<z.ZodRawShape>).shape : undefined
+        return shape?.integrationId !== undefined
+    }).map(([name]) => name)
+)
+
 export function isValidToolName(name: string): name is ToolName {
     return name in ToolDefinitions
 }

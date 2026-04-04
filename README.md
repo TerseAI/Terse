@@ -275,6 +275,60 @@ export TERSE_BACKEND_URL="http://localhost:3001"
 
 then run the terse commands right after
 
+## Testing with Local SDK/CLI
+
+When you run `terse init` to scaffold a test project, it installs `terse-sdk` from the npm registry. To test against your local changes instead, you need to link the local packages into the test environment.
+
+### 1. Start the watchers
+
+From the repo root, run the TypeScript watchers so changes to source files rebuild `dist/` immediately:
+
+```bash
+pnpm run dev
+```
+
+### 2. Scaffold a test environment
+
+```bash
+export TERSE_BACKEND_URL="http://localhost:3001"
+terse init my-test-env
+cd my-test-env
+```
+
+### 3. Link local packages
+
+The test env needs both `terse-sdk` and its transitive dependency `terse-types` linked locally. From the test env directory, run:
+
+```bash
+npm install <path-to-repo>/packages/terse-sdk <path-to-repo>/terse-types
+```
+
+For example:
+
+```bash
+npm install ../../projects/Terse/packages/terse-sdk ../../projects/Terse/terse-types
+```
+
+This uses the `file:` protocol to symlink both packages into `node_modules/`. Since the watchers are running, any source changes in `terse-sdk`, `terse-types`, or `terse-cli` will be reflected immediately.
+
+> **Note:** Use `npm install` (not `pnpm add`) from the test env. If you previously used pnpm to link, the `package.json` will contain `link:` protocol entries that npm cannot resolve. In that case, re-run the `npm install` command above to fix it.
+
+### 4. Point CLI to local backend
+
+Make sure each shell session that runs terse commands has the backend URL set:
+
+```bash
+export TERSE_BACKEND_URL="http://localhost:3001"
+```
+
+### 5. Authenticate against local WorkOS
+
+If the CLI fails with a JWKS/key error during `terse login`, the CLI's WorkOS client ID may not match your backend. Set it to match `WORKOS_CLIENT_ID` in `backend/.env`:
+
+```bash
+export TERSE_WORKOS_CLIENT_ID="<client_id from backend/.env>"
+```
+
 ## Documentation
 
 We use Mintlify. Look at Mintlify docs for usage instructions.
