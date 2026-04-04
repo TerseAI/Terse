@@ -88,11 +88,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         const skippedToolNames = [...new Set(toolDefs.filter(t => !isValidToolName(t.name)).map(t => t.name))].sort()
         toolDefs = toolDefs.filter(t => isValidToolName(t.name))
         if (skippedToolNames.length > 0) {
-            console.warn(
-                chalk.yellow(
-                    `\n  Skipped ${skippedToolNames.length} tool(s) absent from terse-types ToolDefinitions: ${skippedToolNames.join(", ")}\n`
-                )
-            )
+            console.warn(chalk.yellow(`\n  Skipped ${skippedToolNames.length} tool(s) absent from terse-types ToolDefinitions: ${skippedToolNames.join(", ")}\n`))
         }
     } catch {
         // Non-fatal: proceed without tool definitions

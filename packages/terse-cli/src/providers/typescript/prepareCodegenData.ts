@@ -1,3 +1,5 @@
+import { toolsWithIntegrationId } from "terse-types"
+
 import type {
     AtlassianInstanceData,
     AttioAttributeData,
@@ -711,7 +713,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         byIntegration.get(key)!.push(tool)
     }
 
-    const hasAutoFillId = (tool: ToolDefinition): boolean => tool.parameters.properties?.integrationId !== undefined
+    const hasAutoFillId = (tool: ToolDefinition): boolean => (toolsWithIntegrationId as ReadonlySet<string>).has(tool.name)
 
     const normalizeGitHubReposParams = (toolName: string): string => {
         switch (toolName) {
