@@ -1,3 +1,5 @@
+import { toolsWithIntegrationId } from "terse-types"
+
 import type {
     AtlassianInstanceData,
     AttioAttributeData,
@@ -14,7 +16,6 @@ import type {
     SnowflakeInstanceData,
     ToolDefinition
 } from "../codegenTypes.js"
-import { toolsWithIntegrationId } from "terse-types"
 
 interface ResourceFieldMapping {
     classField: string
