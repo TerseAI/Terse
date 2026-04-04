@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { ConfigType, configTypeEnum } from "./Configs"
+import { configTypeEnum } from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import type { ModelEvent } from "./ModelEvents"
 import type { User } from "./types"

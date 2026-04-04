@@ -1,299 +1,200 @@
 import * as z from "zod"
 
-import { ConfigInstance, ConfigType } from "./Configs"
-import { IntegrationType } from "./Integrations"
-import { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
-import { Project, Ticket } from "./TicketSystem"
+import { type ConfigInstance, ConfigInstanceSchema, ConfigType, configTypeEnum } from "./Configs"
+import { IntegrationType, integrationTypeEnum } from "./Integrations"
+import type { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
 import {
-    DefinedToolOutputByName,
-    confluenceBodyContentSchema,
-    confluenceBodyRepresentationSchema,
-    confluenceCommentPositionSchema,
-    confluencePageQueryResultSchema,
-    confluencePageRelationSchema,
-    confluencePageSpaceSchema,
-    confluencePageVersionAuthorSchema,
-    confluencePageVersionSchema,
-    datadogAggregationBucketComputeSchema,
-    datadogAggregationBucketSchema,
-    datadogAggregationMetaSchema,
-    datadogCursorPaginationSchema,
-    datadogLogEntrySchema,
-    datadogRumActionDetailsSchema,
-    datadogRumErrorDetailsSchema,
-    datadogRumEventSchema,
-    datadogRumLongTaskDetailsSchema,
-    datadogRumResourceDetailsSchema,
-    datadogRumSessionDetailsSchema,
-    datadogRumViewDetailsSchema,
-    gitHubCodeGrepResultSchema,
-    gitHubCodeSearchResultSchema,
-    gitHubCommitSummarySchema,
-    gitHubDirectoryEntrySchema,
-    gitHubFileEntrySchema,
-    gitHubOtherEntrySchema,
-    gitHubPaginationSchema,
-    gitHubPullRequestRefSchema,
-    gitHubPullRequestSummarySchema,
-    gmailDraftSummarySchema,
-    gmailSendSummarySchema,
-    imageEditOutputSchema,
-    imageEditSnippetSchema,
-    jiraIssueAssigneeSchema,
-    jiraIssueProjectRefSchema,
-    jiraIssueStateSchema,
-    jiraIssueSummarySchema,
-    jiraIssueTypeRefSchema,
-    jiraRichDescriptionSchema,
-    launchDarklyEnvironmentConfigSchema,
-    launchDarklyFlagMetadataSchema,
-    launchDarklyFlagSummarySchema,
-    launchDarklyHistoryEntrySchema,
-    launchDarklyHistoryResultSchema,
-    linearCommentHandleSchema,
-    linearIssueAssigneeSchema,
-    linearIssueDetailSchema,
-    linearIssueHandleSchema,
-    linearIssueProjectSchema,
-    linearIssueSummarySchema,
-    linearIssueTeamSchema,
-    linearLabelSummarySchema,
-    linearProjectSummarySchema,
-    linearSearchPaginationSchema,
-    linearStateSummarySchema,
+    attioAttributeSchema,
+    attioObjectSchema,
+    attioObjectWithAttributesSchema,
+    attioRecordIdentifierSchema,
+    attioRecordSchema,
+    attioUpsertErrorSchema,
     linearTeamSchema,
-    linearUserSummarySchema,
-    notionDatabaseQueryPageSchema,
-    notionDatabaseRowMutationResultSchema,
-    notionDateReferenceSchema,
-    notionFileReferenceSchema,
-    notionModifyBlocksAppendResultSchema,
-    notionModifyBlocksDeleteResultSchema,
-    notionModifyBlocksFailureSchema,
-    notionModifyBlocksOperationResultSchema,
-    notionModifyBlocksSuccessSchema,
-    notionModifyBlocksUpdateResultSchema,
-    notionPageBlockSchema,
-    notionPageParentSchema,
-    notionPageQueryMetadataSchema,
-    notionQueryDatabaseFailureSchema,
-    notionQueryDatabaseSuccessSchema,
-    notionReadablePropertyValueSchema,
-    notionSchemaPropertySchema,
-    notionUserReferenceSchema,
-    notionWorkspaceUserSchema,
-    posthogEventCountSchema,
-    posthogEventSummarySchema,
-    posthogLogEntrySchema,
-    posthogOffsetPaginationSchema,
-    posthogSearchSessionsFoundSchema,
-    posthogSearchSessionsNotFoundSchema,
-    posthogSearchSessionsPaginationSchema,
-    posthogSessionConsoleLogSchema,
-    posthogSessionEventSchema,
-    posthogSessionEventsSummarySchema,
-    posthogSessionSummarySchema,
-    slackChannelListItemSchema,
-    slackConversationMessageSchema,
-    slackUserResponseSchema,
-    webExtractOutputSchema,
-    webExtractResultItemSchema,
-    webResearchOutputSchema,
-    webResearchSourceSchema,
-    webSearchOutputSchema,
-    webSearchResultItemSchema,
-    workOSOrganizationSummarySchema,
-    workOSPaginationSchema,
-    workOSUserSummarySchema
+    slackUserResponseSchema
 } from "./Tools"
 
-export type Role = "admin" | "user"
+const pointSchema = z.object({
+    x: z.number(),
+    y: z.number()
+})
 
-export type User = {
-    id: string
-    workosId: string
-    organizationId: string
-    organizationName: string
-    email: string
-    displayName: string
-    firstName: string | null
-    lastName: string | null
-    displayPhotoUrl: string
-    roles: Role[]
-}
+const unknownRecordSchema = z.record(z.string(), z.unknown())
 
-export type UserNoOrganization = Omit<User, "organizationId" | "organizationName" | "roles">
+export const roleSchema = z.enum(["admin", "user"])
+export type Role = z.infer<typeof roleSchema>
 
-export type SubActivity = {
-    summary: string
-    commits: CommitAssociation[]
-}
+export const userSchema = z.object({
+    id: z.string(),
+    workosId: z.string(),
+    organizationId: z.string(),
+    organizationName: z.string(),
+    email: z.string(),
+    displayName: z.string(),
+    firstName: z.string().nullable(),
+    lastName: z.string().nullable(),
+    displayPhotoUrl: z.string(),
+    roles: z.array(roleSchema)
+})
+export type User = z.infer<typeof userSchema>
 
-export type CommitAssociation = {
-    sha: string
-    message: string
-    url: string
-}
+export const userNoOrganizationSchema = userSchema.omit({
+    organizationId: true,
+    organizationName: true,
+    roles: true
+})
+export type UserNoOrganization = z.infer<typeof userNoOrganizationSchema>
 
-export type ActivityEvent = {
-    event_type: string
-    title: string
-    github_repository_owner_id: string
-    github_repository_name: string
-    created_at: Date
-    sub_activities: SubActivity[]
-}
+export const commitAssociationSchema = z.object({
+    sha: z.string(),
+    message: z.string(),
+    url: z.string()
+})
+export type CommitAssociation = z.infer<typeof commitAssociationSchema>
 
-export type TicketActivityEvent = {
-    ticket: Ticket
-    event_type: string
-    title: string
-}
+export const subActivitySchema = z.object({
+    summary: z.string(),
+    commits: z.array(commitAssociationSchema)
+})
+export type SubActivity = z.infer<typeof subActivitySchema>
 
-export type ProjectActivityEvent = {
-    project: Project
-    event_type: string
-    title: string
-}
+export const activityEventSchema = z.object({
+    event_type: z.string(),
+    title: z.string(),
+    github_repository_owner_id: z.string(),
+    github_repository_name: z.string(),
+    created_at: z.date(),
+    sub_activities: z.array(subActivitySchema)
+})
+export type ActivityEvent = z.infer<typeof activityEventSchema>
 
 export type LinearTeam = z.infer<typeof linearTeamSchema>
+export type AttioObject = z.infer<typeof attioObjectSchema>
+export type AttioAttribute = z.infer<typeof attioAttributeSchema>
+export type AttioObjectWithAttributes = z.infer<typeof attioObjectWithAttributesSchema>
+export type AttioRecordIdentifier = z.infer<typeof attioRecordIdentifierSchema>
+export type AttioRecord = z.infer<typeof attioRecordSchema>
 
-export type AttioObject = {
-    api_slug: string
-    singular_noun: string
-    plural_noun: string
-}
+export const linearWorkspaceSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+export type LinearWorkspace = z.infer<typeof linearWorkspaceSchema>
 
-export type AttioAttribute = {
-    api_slug?: string
-    title?: string
-    type?: string
-    is_required?: boolean
-    is_unique?: boolean
-    [key: string]: unknown
-}
+export const jiraProjectSchema = z.object({
+    id: z.string(),
+    key: z.string(),
+    name: z.string()
+})
+export type JiraProject = z.infer<typeof jiraProjectSchema>
 
-export type AttioObjectWithAttributes = AttioObject & {
-    attributes?: AttioAttribute[]
-}
+export const jiraCredentialsValidationResponseSchema = z.object({
+    valid: z.boolean(),
+    projects: z.array(jiraProjectSchema).optional(),
+    error: z.string().optional()
+})
+export type JiraCredentialsValidationResponse = z.infer<typeof jiraCredentialsValidationResponseSchema>
 
-export type AttioRecordIdentifier = {
-    workspace_id?: string
-    object_id?: string
-    record_id?: string
-    [key: string]: unknown
-}
+export const notionResourceTypeSchema = z.enum(["database", "page"])
+export type NotionResourceType = z.infer<typeof notionResourceTypeSchema>
 
-export type AttioRecord = {
-    id?: AttioRecordIdentifier
-    values?: Record<string, unknown>
-    web_url?: string
-    created_at?: string
-    [key: string]: unknown
-}
+export const notionResourceSchema = z.object({
+    id: z.string(),
+    title: z.string(),
+    url: z.string(),
+    type: notionResourceTypeSchema
+})
+export type NotionResource = z.infer<typeof notionResourceSchema>
 
-export type LinearWorkspace = {
-    id: string
-    name: string
-}
+export const notionResourcesResponseSchema = z.object({
+    resources: z.array(notionResourceSchema)
+})
+export type NotionResourcesResponse = z.infer<typeof notionResourcesResponseSchema>
 
-export type JiraProject = {
-    id: string
-    key: string
-    name: string
-}
+export const posthogProjectSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    organization_id: z.string().optional()
+})
+export type PosthogProject = z.infer<typeof posthogProjectSchema>
 
-export type JiraCredentialsValidationResponse = {
-    valid: boolean
-    projects?: JiraProject[]
-    error?: string
-}
+export const posthogProjectsResponseSchema = z.object({
+    projects: z.array(posthogProjectSchema)
+})
+export type PosthogProjectsResponse = z.infer<typeof posthogProjectsResponseSchema>
 
-export type NotionResourceType = "database" | "page"
-export type NotionResource = {
-    id: string
-    title: string
-    url: string
-    type: NotionResourceType
-}
+export const launchDarklyProjectSchema = z.object({
+    key: z.string(),
+    name: z.string()
+})
+export type LaunchDarklyProject = z.infer<typeof launchDarklyProjectSchema>
 
-export type NotionResourcesResponse = {
-    resources: NotionResource[]
-}
+export const launchDarklyProjectsResponseSchema = z.object({
+    projects: z.array(launchDarklyProjectSchema)
+})
+export type LaunchDarklyProjectsResponse = z.infer<typeof launchDarklyProjectsResponseSchema>
 
-export type PosthogProject = {
-    id: string
-    name: string
-    organization_id?: string
-}
+export const launchDarklyEnvironmentSchema = z.object({
+    key: z.string(),
+    name: z.string()
+})
+export type LaunchDarklyEnvironment = z.infer<typeof launchDarklyEnvironmentSchema>
 
-export type PosthogProjectsResponse = {
-    projects: PosthogProject[]
-}
+export const launchDarklyEnvironmentsResponseSchema = z.object({
+    environments: z.array(launchDarklyEnvironmentSchema)
+})
+export type LaunchDarklyEnvironmentsResponse = z.infer<typeof launchDarklyEnvironmentsResponseSchema>
 
-export type LaunchDarklyProject = {
-    key: string
-    name: string
-}
+export const datadogIndexSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    isEnabled: z.boolean(),
+    dailyLimit: z.number().optional(),
+    retentionDays: z.number().optional()
+})
+export type DatadogIndex = z.infer<typeof datadogIndexSchema>
 
-export type LaunchDarklyProjectsResponse = {
-    projects: LaunchDarklyProject[]
-}
+export const datadogIndexesResponseSchema = z.object({
+    indexes: z.array(datadogIndexSchema)
+})
+export type DatadogIndexesResponse = z.infer<typeof datadogIndexesResponseSchema>
 
-export type LaunchDarklyEnvironment = {
-    key: string
-    name: string
-}
+export const slackChannelSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    isPrivate: z.boolean(),
+    isArchived: z.boolean(),
+    isMPIM: z.boolean()
+})
+export type SlackChannel = z.infer<typeof slackChannelSchema>
 
-export type LaunchDarklyEnvironmentsResponse = {
-    environments: LaunchDarklyEnvironment[]
-}
-
-export type DatadogIndex = {
-    id: string
-    name: string
-    isEnabled: boolean
-    dailyLimit?: number
-    retentionDays?: number
-}
-
-export type DatadogIndexesResponse = {
-    indexes: DatadogIndex[]
-}
-
-export type SlackChannel = {
-    id: string
-    name: string
-    isPrivate: boolean
-    isArchived: boolean
-    isMPIM: boolean
-}
-
-export type SlackChannelsResponse = {
-    channels: SlackChannel[]
-    selectedChannelId: string | null
-}
+export const slackChannelsResponseSchema = z.object({
+    channels: z.array(slackChannelSchema),
+    selectedChannelId: z.string().nullable()
+})
+export type SlackChannelsResponse = z.infer<typeof slackChannelsResponseSchema>
 
 export type SlackUserResponse = z.infer<typeof slackUserResponseSchema>
 
-export type SlackUsersResponse = {
-    users: SlackUserResponse[]
-}
+export const slackUsersResponseSchema = z.object({
+    users: z.array(slackUserResponseSchema)
+})
+export type SlackUsersResponse = z.infer<typeof slackUsersResponseSchema>
 
 export const TERSE_AGENT_MESSAGE_EVENT_TYPE = "terse_agent_message" as const
 
-export type TerseAgentMessageMetadata = {
-    event_type: typeof TERSE_AGENT_MESSAGE_EVENT_TYPE
-    event_payload: {
-        run_id: string
-        automation_id: string
-        organization_id: string
-    }
-}
+export const terseAgentMessageEventPayloadSchema = z.object({
+    run_id: z.string(),
+    automation_id: z.string(),
+    organization_id: z.string()
+})
 
-/**
- * Slack channel type enum
- */
+export const terseAgentMessageMetadataSchema = z.object({
+    event_type: z.literal(TERSE_AGENT_MESSAGE_EVENT_TYPE),
+    event_payload: terseAgentMessageEventPayloadSchema
+})
+export type TerseAgentMessageMetadata = z.infer<typeof terseAgentMessageMetadataSchema>
+
 export enum SlackChannelType {
     CHANNEL = "channel",
     GROUP = "group",
@@ -301,279 +202,301 @@ export enum SlackChannelType {
     IM = "im"
 }
 
-export type ConfluencePage = {
-    id: string
-    title: string
-    spaceId: string
-    spaceName: string
-    url: string
-    status: string
-    version: number
-}
+export const slackChannelTypeSchema = z.enum(SlackChannelType)
 
-export type ConfluencePagesQuery = {
-    integrationId: string // Jira integration ID (required)
-    spaceId?: string // Space ID (optional, but either spaceId or spaceKey is required)
-    spaceKey?: string // Space key (optional, but either spaceId or spaceKey is required)
-}
+export const confluencePageSchema = z.object({
+    id: z.string(),
+    title: z.string(),
+    spaceId: z.string(),
+    spaceName: z.string(),
+    url: z.string(),
+    status: z.string(),
+    version: z.number()
+})
+export type ConfluencePage = z.infer<typeof confluencePageSchema>
 
-export type ConfluencePagesResponse = {
-    pages: ConfluencePage[]
-    spaceId: string
-    total: number
-}
+export const confluencePagesQuerySchema = z
+    .object({
+        integrationId: z.string(),
+        spaceId: z.string().optional(),
+        spaceKey: z.string().optional()
+    })
+    .refine(({ spaceId, spaceKey }) => spaceId != null || spaceKey != null, {
+        message: "Either spaceId or spaceKey is required"
+    })
+export type ConfluencePagesQuery = z.infer<typeof confluencePagesQuerySchema>
 
-export type ConfluenceResourcesResponse = {
-    resources: ConfluencePage[]
-    spaceId: string
-    total: number
-}
+export const confluencePagesResponseSchema = z.object({
+    pages: z.array(confluencePageSchema),
+    spaceId: z.string(),
+    total: z.number()
+})
+export type ConfluencePagesResponse = z.infer<typeof confluencePagesResponseSchema>
 
-export type JiraResourcesResponse = {
-    success: boolean
-    resources: {
-        projects: Array<{
-            id: string
-            key: string
-            name: string
-            projectTypeKey: string
-        }>
-        baseUrl: string
-        cloudId: string
-    }
-}
+export const confluenceResourcesResponseSchema = z.object({
+    resources: z.array(confluencePageSchema),
+    spaceId: z.string(),
+    total: z.number()
+})
+export type ConfluenceResourcesResponse = z.infer<typeof confluenceResourcesResponseSchema>
 
-export type UseConfluenceResourcesReturn<MutateType = any> = {
-    resources: ConfluencePage[]
-    response: ConfluenceResourcesResponse | undefined
-    isLoading: boolean
-    isError: boolean
-    error: unknown
-    isValidating: boolean
+export const jiraResourceProjectSchema = z.object({
+    id: z.string(),
+    key: z.string(),
+    name: z.string(),
+    projectTypeKey: z.string()
+})
+
+export const jiraResourcesResponseSchema = z.object({
+    success: z.boolean(),
+    resources: z.object({
+        projects: z.array(jiraResourceProjectSchema),
+        baseUrl: z.string(),
+        cloudId: z.string()
+    })
+})
+export type JiraResourcesResponse = z.infer<typeof jiraResourcesResponseSchema>
+
+export const useConfluenceResourcesReturnBaseSchema = z.object({
+    resources: z.array(confluencePageSchema),
+    response: confluenceResourcesResponseSchema.optional(),
+    isLoading: z.boolean(),
+    isError: z.boolean(),
+    error: z.unknown(),
+    isValidating: z.boolean()
+})
+
+export const createUseConfluenceResourcesReturnSchema = <TMutate extends z.ZodTypeAny>(mutateSchema: TMutate) =>
+    useConfluenceResourcesReturnBaseSchema.extend({
+        mutate: mutateSchema
+    })
+
+export type UseConfluenceResourcesReturn<MutateType = any> = z.infer<typeof useConfluenceResourcesReturnBaseSchema> & {
     mutate: MutateType
 }
 
-// Figma webhook and API types
 export enum FigmaEventTypes {
     FILE_COMMENT = "FILE_COMMENT"
 }
 
-/**
- * Figma webhook event user object
- */
-export interface FigmaWebhookUser {
-    id: string
-    handle: string
-    email: string
-    img_url: string
-}
+export const figmaEventTypesSchema = z.enum(FigmaEventTypes)
 
-/**
- * Figma webhook comment object (from webhook payload)
- */
-export interface FigmaWebhookComment {
-    id: string
-    message: string
-    client_meta: FigmaClientMeta
-    user: FigmaWebhookUser
-    created_at: string
-    resolved_at: string | null
-}
+export const figmaWebhookUserSchema = z.object({
+    id: z.string(),
+    handle: z.string(),
+    email: z.string(),
+    img_url: z.string()
+})
+export type FigmaWebhookUser = z.infer<typeof figmaWebhookUserSchema>
 
-/**
- * Figma comment image URLs
- * Extracted images for visual context of comments
- */
-export interface FigmaCommentImageUrls {
-    nodeImage?: string // Image of the specific node the comment is on
-    fullFrame?: string // Full frame/page image
-}
+export const figmaCommentImageUrlsSchema = z.object({
+    nodeImage: z.string().optional(),
+    fullFrame: z.string().optional()
+})
+export type FigmaCommentImageUrls = z.infer<typeof figmaCommentImageUrlsSchema>
 
-/**
- * Figma positioning data structures
- * Represents the position and type of a comment in a Figma file
- */
-export type FigmaVectorData = {
-    x: number
-    y: number
-}
+export const figmaVectorDataSchema = pointSchema
+export type FigmaVectorData = z.infer<typeof figmaVectorDataSchema>
 
-export type FigmaFrameOffsetData = {
-    node_id: string
-    node_offset: { x: number; y: number }
-}
+export const figmaFrameOffsetDataSchema = z.object({
+    node_id: z.string(),
+    node_offset: pointSchema
+})
+export type FigmaFrameOffsetData = z.infer<typeof figmaFrameOffsetDataSchema>
 
-export type FigmaRegionData = {
-    x: number
-    y: number
-    width: number
-    height: number
-}
+export const figmaRegionDataSchema = z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number()
+})
+export type FigmaRegionData = z.infer<typeof figmaRegionDataSchema>
 
-export type FigmaFrameOffsetRegionData = {
-    node_id: string
-    node_offset: { x: number; y: number }
-    x: number
-    y: number
-    width: number
-    height: number
-}
+export const figmaFrameOffsetRegionDataSchema = z.object({
+    node_id: z.string(),
+    node_offset: pointSchema,
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number()
+})
+export type FigmaFrameOffsetRegionData = z.infer<typeof figmaFrameOffsetRegionDataSchema>
 
-export type FigmaPositioningData =
-    | { type: "Vector"; data: FigmaVectorData }
-    | { type: "FrameOffset"; data: FigmaFrameOffsetData }
-    | { type: "Region"; data: FigmaRegionData }
-    | { type: "FrameOffsetRegion"; data: FigmaFrameOffsetRegionData }
+export const figmaPositioningDataSchema = z.discriminatedUnion("type", [
+    z.object({ type: z.literal("Vector"), data: figmaVectorDataSchema }),
+    z.object({ type: z.literal("FrameOffset"), data: figmaFrameOffsetDataSchema }),
+    z.object({ type: z.literal("Region"), data: figmaRegionDataSchema }),
+    z.object({ type: z.literal("FrameOffsetRegion"), data: figmaFrameOffsetRegionDataSchema })
+])
+export type FigmaPositioningData = z.infer<typeof figmaPositioningDataSchema>
 
-/**
- * Figma client_meta structure
- * Represents the raw positioning metadata from Figma comment client_meta
- * Can be one of several positioning formats
- */
-export type FigmaClientMeta = {
-    // Vector: point coordinates
-    x: number
-    y: number
-    // Region: rectangular area
-    width: number
-    height: number
-    // FrameOffset: node with offset
-    node_id: string
-    node_offset: { x: number; y: number }
-}
+export const figmaClientMetaSchema = z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    node_id: z.string(),
+    node_offset: pointSchema
+})
+export type FigmaClientMeta = z.infer<typeof figmaClientMetaSchema>
 
-/**
- * Figma API comment response structure
- */
-export interface FigmaApiComment {
-    id: string
-    message: string
-    client_meta: FigmaClientMeta | null
-    user: FigmaWebhookUser
-    created_at: string
-    resolved_at: string | null
-    parent_id?: string | null
-    order_id?: string
-    mentions?: unknown[]
-    reactions?: unknown[]
-}
+export const figmaWebhookCommentSchema = z.object({
+    id: z.string(),
+    message: z.string(),
+    client_meta: figmaClientMetaSchema,
+    user: figmaWebhookUserSchema,
+    created_at: z.string(),
+    resolved_at: z.string().nullable()
+})
+export type FigmaWebhookComment = z.infer<typeof figmaWebhookCommentSchema>
 
-export interface FigmaCommentThreadEntry {
-    id: string
-    message: string
-    author: FigmaWebhookUser
-    createdAt: string
-    resolvedAt: string | null
-    parentId: string | null
-    orderId?: string
-    isRoot?: boolean
-}
+export const figmaApiCommentSchema = z.object({
+    id: z.string(),
+    message: z.string(),
+    client_meta: figmaClientMetaSchema.nullable(),
+    user: figmaWebhookUserSchema,
+    created_at: z.string(),
+    resolved_at: z.string().nullable(),
+    parent_id: z.string().nullable().optional(),
+    order_id: z.string().optional(),
+    mentions: z.array(z.unknown()).optional(),
+    reactions: z.array(z.unknown()).optional()
+})
+export type FigmaApiComment = z.infer<typeof figmaApiCommentSchema>
 
-/**
- * Figma comment event data
- * Processed/enriched comment data used for automation events
- * This combines data from webhook, API, and enriched context
- */
-export interface FigmaCommentEventData {
-    integrationId: string
-    commentId: string
-    fileKey: string
-    fileUrl: string
-    nodeId?: string // Node ID the comment is attached to (if any)
-    message: string
-    author: FigmaWebhookUser
-    createdAt: string
-    resolved?: boolean
-    thread?: FigmaCommentThreadEntry[]
-    // Enriched context (optional - added during processing)
-    fileMetadata?: any
-    // Positioning and visual context (optional - added during enrichment)
-    positioningData?: FigmaPositioningData
-    matchedNodeIds?: string[]
-    imageUrls?: FigmaCommentImageUrls
-}
+export const figmaCommentThreadEntrySchema = z.object({
+    id: z.string(),
+    message: z.string(),
+    author: figmaWebhookUserSchema,
+    createdAt: z.string(),
+    resolvedAt: z.string().nullable(),
+    parentId: z.string().nullable(),
+    orderId: z.string().optional(),
+    isRoot: z.boolean().optional()
+})
+export type FigmaCommentThreadEntry = z.infer<typeof figmaCommentThreadEntrySchema>
 
-export type ApiToken = {
-    id: string
-    name: string
-    tokenPrefix: string
-    createdAt: string
-    lastUsedAt: string | null
-}
+export const figmaFileMetadataSchema = z
+    .object({
+        name: z.string().optional(),
+        folder_name: z.string().optional(),
+        url: z.string().optional()
+    })
+    .passthrough()
+export type FigmaFileMetadata = z.infer<typeof figmaFileMetadataSchema>
 
-export type ApiTokenCreateResponse = {
-    token: ApiToken
-    rawToken: string
-}
+export const figmaCommentEventDataSchema = z.object({
+    integrationId: z.string(),
+    commentId: z.string(),
+    fileKey: z.string(),
+    fileUrl: z.string(),
+    nodeId: z.string().optional(),
+    message: z.string(),
+    author: figmaWebhookUserSchema,
+    createdAt: z.string(),
+    resolved: z.boolean().optional(),
+    thread: z.array(figmaCommentThreadEntrySchema).optional(),
+    fileMetadata: figmaFileMetadataSchema.optional(),
+    positioningData: figmaPositioningDataSchema.optional(),
+    matchedNodeIds: z.array(z.string()).optional(),
+    imageUrls: figmaCommentImageUrlsSchema.optional()
+})
+export type FigmaCommentEventData = z.infer<typeof figmaCommentEventDataSchema>
 
-export type DeviceTokenExchangeResponse = {
-    apiKey: string
-    user: {
-        email: string
-        firstName: string | null
-        displayName: string | null
-    }
-}
+export const apiTokenSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    tokenPrefix: z.string(),
+    createdAt: z.string(),
+    lastUsedAt: z.string().nullable()
+})
+export type ApiToken = z.infer<typeof apiTokenSchema>
 
-export type AgentTrigger = {
-    id: string
-    config: ConfigInstance
-}
+export const apiTokenCreateResponseSchema = z.object({
+    token: apiTokenSchema,
+    rawToken: z.string()
+})
+export type ApiTokenCreateResponse = z.infer<typeof apiTokenCreateResponseSchema>
 
-export type AgentOutput = {
-    id: string
-    config: ConfigInstance
-}
+export const deviceTokenExchangeUserSchema = z.object({
+    email: z.string(),
+    firstName: z.string().nullable(),
+    displayName: z.string().nullable()
+})
 
-export type AgentPrompt = {
-    text: string
-}
+export const deviceTokenExchangeResponseSchema = z.object({
+    apiKey: z.string(),
+    user: deviceTokenExchangeUserSchema
+})
+export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResponseSchema>
 
-export type TransientAgentTrigger = {
-    id: string
-    config?: ConfigInstance
-    configType: ConfigType
-}
+const configInstanceDataSchema = ConfigInstanceSchema
 
-export type TransientAgentOutput = {
-    id: string
-    config?: ConfigInstance
-    configType: ConfigType
-}
+export const agentTriggerSchema = z.object({
+    id: z.string(),
+    config: configInstanceDataSchema
+})
+export type AgentTrigger = z.infer<typeof agentTriggerSchema> & { config: ConfigInstance }
 
-// Template types - simplified config references without integrationId
-export type TemplateConfigRef = {
-    configType: ConfigType
-    integrationType: IntegrationType
-}
+export const agentOutputSchema = z.object({
+    id: z.string(),
+    config: configInstanceDataSchema
+})
+export type AgentOutput = z.infer<typeof agentOutputSchema> & { config: ConfigInstance }
 
-export type TemplateTrigger = {
-    config: TemplateConfigRef
-}
+export const agentPromptSchema = z.object({
+    text: z.string()
+})
+export type AgentPrompt = z.infer<typeof agentPromptSchema>
 
-export type TemplateOutput = {
-    config: TemplateConfigRef
-}
+export const transientAgentTriggerSchema = z.object({
+    id: z.string(),
+    config: configInstanceDataSchema.optional(),
+    configType: configTypeEnum
+})
+export type TransientAgentTrigger = z.infer<typeof transientAgentTriggerSchema> & { config?: ConfigInstance }
 
-export type TemplateCategory =
-    | "ship" // Ship Faster
-    | "users" // Understand Users
-    | "sync" // Stay in Sync
-    | "track" // Track Everything
+export const transientAgentOutputSchema = z.object({
+    id: z.string(),
+    config: configInstanceDataSchema.optional(),
+    configType: configTypeEnum
+})
+export type TransientAgentOutput = z.infer<typeof transientAgentOutputSchema> & { config?: ConfigInstance }
 
-export type AgentTemplate = {
-    id: string
-    category: TemplateCategory
-    name: string
-    description: string
-    chatPrompt: string // Short prompt to pre-fill chat input when template is selected
-    prompt: AgentPrompt
-    triggers: TemplateTrigger[]
-    outputs: TemplateOutput[]
-    requireApproval: boolean
-    isActive: boolean
-}
+export const templateConfigRefSchema = z.object({
+    configType: configTypeEnum,
+    integrationType: integrationTypeEnum
+})
+export type TemplateConfigRef = z.infer<typeof templateConfigRefSchema>
 
+export const templateTriggerSchema = z.object({
+    config: templateConfigRefSchema
+})
+export type TemplateTrigger = z.infer<typeof templateTriggerSchema>
+
+export const templateOutputSchema = z.object({
+    config: templateConfigRefSchema
+})
+export type TemplateOutput = z.infer<typeof templateOutputSchema>
+
+export const templateCategorySchema = z.enum(["ship", "users", "sync", "track"])
+export type TemplateCategory = z.infer<typeof templateCategorySchema>
+
+export const agentTemplateSchema = z.object({
+    id: z.string(),
+    category: templateCategorySchema,
+    name: z.string(),
+    description: z.string(),
+    chatPrompt: z.string(),
+    prompt: agentPromptSchema,
+    triggers: z.array(templateTriggerSchema),
+    outputs: z.array(templateOutputSchema),
+    requireApproval: z.boolean(),
+    isActive: z.boolean()
+})
+export type AgentTemplate = z.infer<typeof agentTemplateSchema>
+
+// Left as TS-only for now because they depend on RunHistoryTypes.
 export type Agent = {
     id: string
     name: string
@@ -620,223 +543,257 @@ export type RecentAgent = Agent & {
     lastEventProcessedAt: string | null
 }
 
-export type AgentImprovementStatus = "PENDING" | "APPLIED" | "DISMISSED"
+export const agentImprovementStatusSchema = z.enum(["PENDING", "APPLIED", "DISMISSED"])
+export type AgentImprovementStatus = z.infer<typeof agentImprovementStatusSchema>
 
-export type AgentImprovementTargetArea = "prompt" | "trigger_config" | "output_config" | "general" | "code"
+export const agentImprovementTargetAreaSchema = z.enum(["prompt", "trigger_config", "output_config", "general", "code"])
+export type AgentImprovementTargetArea = z.infer<typeof agentImprovementTargetAreaSchema>
 
-export type AgentReview = {
-    id: string
-    automationId: string
-    title: string
-    summary: string
-    runsAnalyzed: number
-    reviewPeriodStart: string
-    reviewPeriodEnd: string
-    createdAt: string
-}
+export const agentReviewSchema = z.object({
+    id: z.string(),
+    automationId: z.string(),
+    title: z.string(),
+    summary: z.string(),
+    runsAnalyzed: z.number(),
+    reviewPeriodStart: z.string(),
+    reviewPeriodEnd: z.string(),
+    createdAt: z.string()
+})
+export type AgentReview = z.infer<typeof agentReviewSchema>
 
-export type AgentImprovement = {
-    id: string
-    reviewId: string
-    automationId: string
-    title: string
-    description: string
-    targetArea: AgentImprovementTargetArea
-    confidence: number
-    status: AgentImprovementStatus
-    suggestedPatch?: string
-    appliedPrompt?: string
-    appliedAt?: string
-    dismissedAt?: string
-    createdAt: string
-    updatedAt: string
-}
+export const agentImprovementSchema = z.object({
+    id: z.string(),
+    reviewId: z.string(),
+    automationId: z.string(),
+    title: z.string(),
+    description: z.string(),
+    targetArea: agentImprovementTargetAreaSchema,
+    confidence: z.number(),
+    status: agentImprovementStatusSchema,
+    suggestedPatch: z.string().optional(),
+    appliedPrompt: z.string().optional(),
+    appliedAt: z.string().optional(),
+    dismissedAt: z.string().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string()
+})
+export type AgentImprovement = z.infer<typeof agentImprovementSchema>
 
-export type GetAgentImprovementsResponse = {
-    review: AgentReview | null
-    improvements: AgentImprovement[]
-    improvementsEnabled: boolean
-}
+export const getAgentImprovementsResponseSchema = z.object({
+    review: agentReviewSchema.nullable(),
+    improvements: z.array(agentImprovementSchema),
+    improvementsEnabled: z.boolean()
+})
+export type GetAgentImprovementsResponse = z.infer<typeof getAgentImprovementsResponseSchema>
 
-export type ApplyImprovementResponse = {
-    success: boolean
-    appliedPrompt: string
-}
+export const applyImprovementResponseSchema = z.object({
+    success: z.boolean(),
+    appliedPrompt: z.string()
+})
+export type ApplyImprovementResponse = z.infer<typeof applyImprovementResponseSchema>
 
-export type DismissImprovementResponse = {
-    success: boolean
-}
+export const dismissImprovementResponseSchema = z.object({
+    success: z.boolean()
+})
+export type DismissImprovementResponse = z.infer<typeof dismissImprovementResponseSchema>
 
-export type ToggleImprovementsEnabledResponse = {
-    success: boolean
-    improvementsEnabled: boolean
-}
+export const toggleImprovementsEnabledResponseSchema = z.object({
+    success: z.boolean(),
+    improvementsEnabled: z.boolean()
+})
+export type ToggleImprovementsEnabledResponse = z.infer<typeof toggleImprovementsEnabledResponseSchema>
 
-export type GithubAppInstallationCallbackRequest = {
-    name: string
-    email: string
-    username: string
-    installationId: number
-    accountName: string | null
-    repositories: Repository[]
-}
+export const repositorySchema = z.object({
+    name: z.string(),
+    owner: z.string(),
+    id: z.number()
+})
+export type Repository = z.infer<typeof repositorySchema>
 
-export type Repository = {
-    name: string
-    owner: string
-    id: number // This is the official id from github! Not to be confused with the id from github_repositories table in the DB!!!
-}
+export const githubAppInstallationCallbackRequestSchema = z.object({
+    name: z.string(),
+    email: z.string(),
+    username: z.string(),
+    installationId: z.number(),
+    accountName: z.string().nullable(),
+    repositories: z.array(repositorySchema)
+})
+export type GithubAppInstallationCallbackRequest = z.infer<typeof githubAppInstallationCallbackRequestSchema>
 
-export type GetGithubRepositoriesForIntegrationRequest = {}
+export const getGithubRepositoriesForIntegrationRequestSchema = z.object({})
+export type GetGithubRepositoriesForIntegrationRequest = z.infer<typeof getGithubRepositoriesForIntegrationRequestSchema>
 
-export type GetGithubRepositoriesForIntegrationResponse = {
-    repositories: Repository[]
-}
+export const getGithubRepositoriesForIntegrationResponseSchema = z.object({
+    repositories: z.array(repositorySchema)
+})
+export type GetGithubRepositoriesForIntegrationResponse = z.infer<typeof getGithubRepositoriesForIntegrationResponseSchema>
 
-export type OAuthInstallationDetails = {
-    oauthUrl: string
-}
+export const oauthInstallationDetailsSchema = z.object({
+    oauthUrl: z.string()
+})
+export type OAuthInstallationDetails = z.infer<typeof oauthInstallationDetailsSchema>
 
-// ─── Integration field definitions ───────────────────────────────────────────
+export const formFieldTypeSchema = z.enum(["text", "password", "textarea"])
+export type FormFieldType = z.infer<typeof formFieldTypeSchema>
 
-export type FormFieldType = "text" | "password" | "textarea"
+export const formFieldDefinitionSchema = z.object({
+    name: z.string(),
+    type: formFieldTypeSchema,
+    label: z.string(),
+    placeholder: z.string().optional(),
+    required: z.boolean().optional(),
+    hint: z.string().optional()
+})
+export type FormFieldDefinition = z.infer<typeof formFieldDefinitionSchema>
 
-export interface FormFieldDefinition {
-    name: string
-    type: FormFieldType
-    label: string
-    placeholder?: string
-    required?: boolean
-    hint?: string
-}
+export const configurationFieldTypeSchema = z.enum(["radio", "select"])
+export type ConfigurationFieldType = z.infer<typeof configurationFieldTypeSchema>
 
-export type ConfigurationFieldType = "radio" | "select"
+export const configurationOptionSchema = z.object({
+    label: z.string(),
+    value: z.string()
+})
+export type ConfigurationOption = z.infer<typeof configurationOptionSchema>
 
-export interface ConfigurationOption {
-    label: string
-    value: string
-}
+export const configurationFieldDefinitionSchema = z.object({
+    name: z.string(),
+    type: configurationFieldTypeSchema,
+    label: z.string(),
+    options: z.array(configurationOptionSchema),
+    required: z.boolean().optional(),
+    hint: z.string().optional()
+})
+export type ConfigurationFieldDefinition = z.infer<typeof configurationFieldDefinitionSchema>
 
-export interface ConfigurationFieldDefinition {
-    name: string
-    type: ConfigurationFieldType
-    label: string
-    options: ConfigurationOption[]
-    required?: boolean
-    hint?: string
-}
+export const integrationFieldsResponseSchema = z.object({
+    installationType: z.enum(["form", "oauth"]),
+    fields: z.union([z.array(formFieldDefinitionSchema), z.array(configurationFieldDefinitionSchema)])
+})
+export type IntegrationFieldsResponse = z.infer<typeof integrationFieldsResponseSchema>
 
-export interface IntegrationFieldsResponse {
-    installationType: "form" | "oauth"
-    fields: FormFieldDefinition[] | ConfigurationFieldDefinition[]
-}
+export const statsIntervalSchema = z.enum(["1h", "24h", "7d", "1mo", "3mo", "1y"])
+export type StatsInterval = z.infer<typeof statsIntervalSchema>
 
-export type StatsInterval = "1h" | "24h" | "7d" | "1mo" | "3mo" | "1y"
+export const dailyEventCountSchema = z.object({
+    date: z.string(),
+    events: z.number()
+})
+export type DailyEventCount = z.infer<typeof dailyEventCountSchema>
 
-export interface DailyEventCount {
-    date: string
-    events: number
-}
-
-export interface RecentAction {
+export type RecentAction = {
     action: string
-    integration: IntegrationType // IntegrationType as string
+    integration: IntegrationType
     target: string
     details: string
     url?: string
-    timestamp: string // ISO date string
+    timestamp: string
     agentName: string
     type: RunHistoryActionType
 }
 
-export interface AgentActivityItem {
-    agentId: string
-    agentName: string
-    runCount: number
-}
+export const agentActivityItemSchema = z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    runCount: z.number()
+})
+export type AgentActivityItem = z.infer<typeof agentActivityItemSchema>
 
-export interface CountByString {
-    label: string
-    count: number
-}
+export const countByStringSchema = z.object({
+    label: z.string(),
+    count: z.number()
+})
+export type CountByString = z.infer<typeof countByStringSchema>
 
-export interface StatsResponse {
+export type StatsResponse = {
     totalEventsProcessed: number
-    totalEventsProcessedChange: string // Percentage change from previous period
+    totalEventsProcessedChange: string
     actionsTaken: number
-    actionsTakenChange: string // Percentage change from previous period
+    actionsTakenChange: string
     numberOfAgents: number
-    numberOfAgentsChange: string // Absolute change (e.g., "+2")
-    dailyEvents: DailyEventCount[] // Events per day for the selected period
-    recentActions: RecentAction[] // Recent actions (last 10)
-    recentRuns: RunHistoryRecordWithAgent[] // Recent non-filtered run history records (last 20)
-    timezone: string // Timezone used for daily events grouping (e.g., "America/New_York" or "UTC")
-    // Insight data
-    agentActivity: AgentActivityItem[] // Top 10 agents by run count (current period)
-    statusBreakdown: CountByString[] // Run counts grouped by status (current period)
-    triggerIntegrations: CountByString[] // Run counts grouped by trigger integration (current period)
-    actionIntegrations: CountByString[] // Action counts grouped by integration (current period, write-only)
-    actionTypes: CountByString[] // Action counts grouped by type (current period, write-only)
+    numberOfAgentsChange: string
+    dailyEvents: DailyEventCount[]
+    recentActions: RecentAction[]
+    recentRuns: RunHistoryRecordWithAgent[]
+    timezone: string
+    agentActivity: AgentActivityItem[]
+    statusBreakdown: CountByString[]
+    triggerIntegrations: CountByString[]
+    actionIntegrations: CountByString[]
+    actionTypes: CountByString[]
 }
 
-export interface TriggerPayload {
-    integrationId: string
-    integrationType: IntegrationType
-    config: Record<string, unknown>
-}
+export const triggerPayloadSchema = z.object({
+    integrationId: z.string(),
+    integrationType: integrationTypeEnum,
+    config: unknownRecordSchema
+})
+export type TriggerPayload = z.infer<typeof triggerPayloadSchema>
 
-export interface SerializedEvent {
-    integrationType: IntegrationType
-    eventType?: string
-    formattedContent: string
-    debugLog: string
-    metadata?: Record<string, unknown>
-}
+export const serializedEventSchema = z.object({
+    integrationType: integrationTypeEnum,
+    eventType: z.string().optional(),
+    formattedContent: z.string(),
+    debugLog: z.string(),
+    metadata: unknownRecordSchema.optional()
+})
+export type SerializedEvent = z.infer<typeof serializedEventSchema>
 
-export type SdkAgentRunEventPayload = {
-    integrationType: IntegrationType
-    formattedContent: string
-    debugLog: string
-}
+export const sdkAgentRunEventPayloadSchema = z.object({
+    integrationType: integrationTypeEnum,
+    formattedContent: z.string(),
+    debugLog: z.string()
+})
+export type SdkAgentRunEventPayload = z.infer<typeof sdkAgentRunEventPayloadSchema>
 
-export type SdkAgentSkillPayload = {
-    configType: ConfigType
-    config: Record<string, unknown>
-}
+export const sdkAgentSkillPayloadSchema = z.object({
+    configType: configTypeEnum,
+    config: unknownRecordSchema
+})
+export type SdkAgentSkillPayload = z.infer<typeof sdkAgentSkillPayloadSchema>
 
-export type SdkAgentRunOptionsPayload = {
-    maxTurns?: number
-    requireApproval?: boolean
-}
+export const sdkAgentRunOptionsPayloadSchema = z.object({
+    maxTurns: z.number().optional(),
+    requireApproval: z.boolean().optional()
+})
+export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayloadSchema>
 
-export type SdkAgentRunRequestBody = {
-    prompt?: string
-    event?: Partial<SdkAgentRunEventPayload>
-    skills?: SdkAgentSkillPayload[]
-    options?: SdkAgentRunOptionsPayload
-    toolApprovals?: string[]
-}
+export const sdkAgentRunRequestBodySchema = z.object({
+    prompt: z.string().optional(),
+    event: sdkAgentRunEventPayloadSchema.partial().optional(),
+    skills: z.array(sdkAgentSkillPayloadSchema).optional(),
+    options: sdkAgentRunOptionsPayloadSchema.optional(),
+    toolApprovals: z.array(z.string()).optional()
+})
+export type SdkAgentRunRequestBody = z.infer<typeof sdkAgentRunRequestBodySchema>
 
-export type SdkAgentRunResponseBody = {
-    success: boolean
-    error?: string
-    details?: string[]
-    contract?: {
-        responseMode: "streaming"
-        supportsInterruptions: boolean
-    }
-    normalizedRequest?: {
-        prompt: string
-        event: SdkAgentRunEventPayload
-        skills: SdkAgentSkillPayload[]
-        toolApprovals: string[]
-        options: {
-            maxTurns: number
-            requireApproval: boolean
-        }
-    }
-}
+export const sdkAgentRunResponseContractSchema = z.object({
+    responseMode: z.literal("streaming"),
+    supportsInterruptions: z.boolean()
+})
 
+export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
+    maxTurns: z.number(),
+    requireApproval: z.boolean()
+})
+
+export const sdkAgentRunNormalizedRequestSchema = z.object({
+    prompt: z.string(),
+    event: sdkAgentRunEventPayloadSchema,
+    skills: z.array(sdkAgentSkillPayloadSchema),
+    toolApprovals: z.array(z.string()),
+    options: sdkAgentRunNormalizedRequestOptionsSchema
+})
+
+export const sdkAgentRunResponseBodySchema = z.object({
+    success: z.boolean(),
+    error: z.string().optional(),
+    details: z.array(z.string()).optional(),
+    contract: sdkAgentRunResponseContractSchema.optional(),
+    normalizedRequest: sdkAgentRunNormalizedRequestSchema.optional()
+})
+export type SdkAgentRunResponseBody = z.infer<typeof sdkAgentRunResponseBodySchema>
+
+// Left as TS-only for now because it depends on RunHistoryAction.
 export type SdkAgentStreamEvent =
     | { type: "run_started"; runId: string }
     | { type: "text"; text: string }
@@ -856,207 +813,51 @@ export type SdkAgentStreamEvent =
     | { type: "error"; message: string }
     | { type: "done" }
 
-export type SdkApprovalDecisionRequestBody = {
-    runId: string
-    stepId: string
-    approved: boolean
-}
+export const sdkApprovalDecisionRequestBodySchema = z.object({
+    runId: z.string(),
+    stepId: z.string(),
+    approved: z.boolean()
+})
+export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionRequestBodySchema>
 
-export type SdkDeployJob = {
-    jobName: string
+export const sdkDeployJobSchema = z.object({
+    jobName: z.string(),
+    triggers: z.array(agentTriggerSchema),
+    outputs: z.array(agentOutputSchema),
+    toolApprovals: z.array(z.string()),
+    webhookURL: z.string().optional()
+})
+export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema> & {
     triggers: AgentTrigger[]
     outputs: AgentOutput[]
-    toolApprovals: string[]
-    webhookURL?: string
 }
 
-export type SdkDeployRequestBody = {
+export const sdkDeployRequestBodySchema = z.object({
+    jobs: z.array(sdkDeployJobSchema),
+    sourceZipBase64: z.string()
+})
+export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema> & {
     jobs: SdkDeployJob[]
-    sourceZipBase64: string
 }
 
-export type SdkDeployResponseBody = {
-    success: boolean
-    results: { jobName: string; automationId: string; isUpdate: boolean }[]
-    removed: { id: string; name: string }[]
-    error?: string
-    details?: string
-}
-
-export type AttioUpsertError = {
-    index: number
-    message: string
-}
-
-// export type SlackChannelListItem = z.infer<typeof slackChannelListItemSchema>
-
-// export type SlackConversationMessage = z.infer<typeof slackConversationMessageSchema>
-
-// export type GitHubPagination = z.infer<typeof gitHubPaginationSchema>
-// export type GitHubCodeSearchResult = z.infer<typeof gitHubCodeSearchResultSchema>
-// export type GitHubCodeGrepResult = z.infer<typeof gitHubCodeGrepResultSchema>
-// export type GitHubPullRequestSummary = z.infer<typeof gitHubPullRequestSummarySchema>
-// export type GitHubDirectoryEntry = z.infer<typeof gitHubDirectoryEntrySchema>
-// export type GitHubFileEntry = z.infer<typeof gitHubFileEntrySchema>
-// export type GitHubOtherEntry = z.infer<typeof gitHubOtherEntrySchema>
-// export type GitHubCommitSummary = z.infer<typeof gitHubCommitSummarySchema>
-// export type GitHubPullRequestRef = z.infer<typeof gitHubPullRequestRefSchema>
-
-// export type SnowflakeQueryRow = Record<string, unknown>
-
-// export type LinearIssueAssignee = z.infer<typeof linearIssueAssigneeSchema>
-// export type LinearIssueTeam = z.infer<typeof linearIssueTeamSchema>
-// export type LinearIssueProject = z.infer<typeof linearIssueProjectSchema>
-// export type LinearIssueSummary = z.infer<typeof linearIssueSummarySchema>
-// export type LinearIssueDetail = z.infer<typeof linearIssueDetailSchema>
-// export type LinearIssueHandle = z.infer<typeof linearIssueHandleSchema>
-// export type LinearCommentHandle = z.infer<typeof linearCommentHandleSchema>
-// export type LinearStateSummary = z.infer<typeof linearStateSummarySchema>
-// export type LinearLabelSummary = z.infer<typeof linearLabelSummarySchema>
-// export type LinearProjectSummary = z.infer<typeof linearProjectSummarySchema>
-// export type LinearUserSummary = z.infer<typeof linearUserSummarySchema>
-// export type LinearSearchPagination = z.infer<typeof linearSearchPaginationSchema>
-
-// export type JiraIssueState = z.infer<typeof jiraIssueStateSchema>
-// export type JiraIssueAssignee = z.infer<typeof jiraIssueAssigneeSchema>
-// export type JiraIssueProjectRef = z.infer<typeof jiraIssueProjectRefSchema>
-// export type JiraIssueTypeRef = z.infer<typeof jiraIssueTypeRefSchema>
-// export type JiraRichDescription = z.infer<typeof jiraRichDescriptionSchema>
-// export type JiraIssueSummary = z.infer<typeof jiraIssueSummarySchema>
-
-// export type GmailSendSummary = z.infer<typeof gmailSendSummarySchema>
-
-// export type GmailDraftSummary = z.infer<typeof gmailDraftSummarySchema>
-
-// export type NotionUserReference = z.infer<typeof notionUserReferenceSchema>
-
-// export type NotionFileReference = z.infer<typeof notionFileReferenceSchema>
-
-// export type NotionDateReference = z.infer<typeof notionDateReferenceSchema>
-
-// export type NotionReadablePropertyValue = z.infer<typeof notionReadablePropertyValueSchema>
-
-// export type NotionPageBlock = z.infer<typeof notionPageBlockSchema>
-
-// export type NotionPageParent = z.infer<typeof notionPageParentSchema>
-
-// export type NotionPageQueryMetadata = z.infer<typeof notionPageQueryMetadataSchema>
-
-// export type NotionDatabaseRowMutationResult = z.infer<typeof notionDatabaseRowMutationResultSchema>
-
-// export type NotionSchemaProperty = z.infer<typeof notionSchemaPropertySchema>
-
-// export type NotionDatabaseQueryPage = z.infer<typeof notionDatabaseQueryPageSchema>
-
-// export type NotionQueryDatabaseFailure = z.infer<typeof notionQueryDatabaseFailureSchema>
-
-// export type NotionQueryDatabaseSuccess = z.infer<typeof notionQueryDatabaseSuccessSchema>
-
-// export type NotionModifyBlocksAppendResult = z.infer<typeof notionModifyBlocksAppendResultSchema>
-
-// export type NotionModifyBlocksUpdateResult = z.infer<typeof notionModifyBlocksUpdateResultSchema>
-
-// export type NotionModifyBlocksDeleteResult = z.infer<typeof notionModifyBlocksDeleteResultSchema>
-
-// export type NotionModifyBlocksOperationResult = z.infer<typeof notionModifyBlocksOperationResultSchema>
-
-// export type NotionModifyBlocksSuccess = z.infer<typeof notionModifyBlocksSuccessSchema>
-
-// export type NotionModifyBlocksFailure = z.infer<typeof notionModifyBlocksFailureSchema>
-
-// export type NotionWorkspaceUser = z.infer<typeof notionWorkspaceUserSchema>
-
-// export type ConfluencePageSpace = z.infer<typeof confluencePageSpaceSchema>
-
-// export type ConfluencePageVersionAuthor = z.infer<typeof confluencePageVersionAuthorSchema>
-
-// export type ConfluencePageVersion = z.infer<typeof confluencePageVersionSchema>
-
-// export type ConfluenceBodyRepresentation = z.infer<typeof confluenceBodyRepresentationSchema>
-
-// export type ConfluenceBodyContent = z.infer<typeof confluenceBodyContentSchema>
-
-// export type ConfluencePageRelation = z.infer<typeof confluencePageRelationSchema>
-
-// export type ConfluencePageQueryResult = z.infer<typeof confluencePageQueryResultSchema>
-
-// export type ConfluenceCommentPosition = z.infer<typeof confluenceCommentPositionSchema>
-
-// export type PosthogSessionSummary = z.infer<typeof posthogSessionSummarySchema>
-
-// export type PosthogSearchSessionsPagination = z.infer<typeof posthogSearchSessionsPaginationSchema>
-
-// export type PosthogSearchSessionsFound = z.infer<typeof posthogSearchSessionsFoundSchema>
-
-// export type PosthogSearchSessionsNotFound = z.infer<typeof posthogSearchSessionsNotFoundSchema>
-
-// export type PosthogLogEntry = z.infer<typeof posthogLogEntrySchema>
-
-// export type PosthogOffsetPagination = z.infer<typeof posthogOffsetPaginationSchema>
-
-// export type PosthogEventCount = z.infer<typeof posthogEventCountSchema>
-
-// export type PosthogEventSummary = z.infer<typeof posthogEventSummarySchema>
-
-// export type PosthogSessionEvent = z.infer<typeof posthogSessionEventSchema>
-
-// export type PosthogSessionConsoleLog = z.infer<typeof posthogSessionConsoleLogSchema>
-
-// export type PosthogSessionEventsSummary = z.infer<typeof posthogSessionEventsSummarySchema>
-
-// export type LaunchDarklyFlagSummary = z.infer<typeof launchDarklyFlagSummarySchema>
-
-// export type LaunchDarklyFlagMetadata = z.infer<typeof launchDarklyFlagMetadataSchema>
-
-// export type LaunchDarklyEnvironmentConfig = z.infer<typeof launchDarklyEnvironmentConfigSchema>
-
-// export type LaunchDarklyHistoryEntry = z.infer<typeof launchDarklyHistoryEntrySchema>
-
-// export type LaunchDarklyHistoryResult = z.infer<typeof launchDarklyHistoryResultSchema>
-
-// export type DatadogLogEntry = z.infer<typeof datadogLogEntrySchema>
-
-// export type DatadogCursorPagination = z.infer<typeof datadogCursorPaginationSchema>
-
-// export type DatadogRumSessionDetails = z.infer<typeof datadogRumSessionDetailsSchema>
-
-// export type DatadogRumViewDetails = z.infer<typeof datadogRumViewDetailsSchema>
-
-// export type DatadogRumActionDetails = z.infer<typeof datadogRumActionDetailsSchema>
-
-// export type DatadogRumErrorDetails = z.infer<typeof datadogRumErrorDetailsSchema>
-
-// export type DatadogRumResourceDetails = z.infer<typeof datadogRumResourceDetailsSchema>
-
-// export type DatadogRumLongTaskDetails = z.infer<typeof datadogRumLongTaskDetailsSchema>
-
-// export type DatadogRumEvent = z.infer<typeof datadogRumEventSchema>
-
-// export type DatadogAggregationBucketCompute = z.infer<typeof datadogAggregationBucketComputeSchema>
-
-// export type DatadogAggregationBucket = z.infer<typeof datadogAggregationBucketSchema>
-
-// export type DatadogAggregationMeta = z.infer<typeof datadogAggregationMetaSchema>
-
-// export type WorkOSUserSummary = z.infer<typeof workOSUserSummarySchema>
-
-// export type WorkOSOrganizationSummary = z.infer<typeof workOSOrganizationSummarySchema>
-
-// export type WorkOSPagination = z.infer<typeof workOSPaginationSchema>
-
-// // TO DO manually define schemas here
-// export type WebSearchResultItem = z.infer<typeof webSearchResultItemSchema>
-
-// export type WebSearchOutput = z.infer<typeof webSearchOutputSchema>
-
-// export type WebExtractResultItem = z.infer<typeof webExtractResultItemSchema>
-
-// export type WebExtractOutput = z.infer<typeof webExtractOutputSchema>
-
-// export type WebResearchSource = z.infer<typeof webResearchSourceSchema>
-
-// export type WebResearchOutput = z.infer<typeof webResearchOutputSchema>
-
-// export type ImageEditSnippet = z.infer<typeof imageEditSnippetSchema>
-
-// export type ImageEditOutput = z.infer<typeof imageEditOutputSchema>
+export const sdkDeployResultSchema = z.object({
+    jobName: z.string(),
+    automationId: z.string(),
+    isUpdate: z.boolean()
+})
+
+export const sdkDeployRemovedSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+
+export const sdkDeployResponseBodySchema = z.object({
+    success: z.boolean(),
+    results: z.array(sdkDeployResultSchema),
+    removed: z.array(sdkDeployRemovedSchema),
+    error: z.string().optional(),
+    details: z.string().optional()
+})
+export type SdkDeployResponseBody = z.infer<typeof sdkDeployResponseBodySchema>
+
+export type AttioUpsertError = z.infer<typeof attioUpsertErrorSchema>
