@@ -2,6 +2,7 @@ import * as z from "zod"
 
 import { type ConfigInstance, ConfigInstanceSchema, ConfigType, configTypeEnum } from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
+import { RUN_HISTORY_ACTION_TYPES, RunHistoryStatus, runHistoryActionBaseSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
 import {
     attioAttributeSchema,
@@ -496,52 +497,91 @@ export const agentTemplateSchema = z.object({
 })
 export type AgentTemplate = z.infer<typeof agentTemplateSchema>
 
-// Left as TS-only for now because they depend on RunHistoryTypes.
-export type Agent = {
-    id: string
-    name: string
-    isActive: boolean
-    requireApproval: boolean
-    prompt: AgentPrompt
-    triggers: AgentTrigger[]
-    outputs: AgentOutput[]
-    createdByUserId: string
-    notificationSettings?: AgentNotificationSettings
-    toolApprovals?: string[]
-    updatedAt?: string
-    source?: "WEB_UI" | "SDK"
-}
+const runHistoryActionTypeSchema = z.enum(RUN_HISTORY_ACTION_TYPES)
+const runHistoryStatusSchema = z.enum(RunHistoryStatus)
 
-export type AgentNotificationSettings = {
-    enabled: boolean
-    actionTypes: RunHistoryActionType[]
-}
+const runHistoryTriggerSchema = z.object({
+    event: z.string(),
+    integration: integrationTypeEnum,
+    source: z.string(),
+    title: z.string().optional(),
+    subheader: z.string().optional(),
+    url: z.string().optional()
+})
 
-export type AgentUpdate = {
-    name?: string
-    triggers?: AgentTrigger[]
-    outputs?: AgentOutput[]
-    prompt?: AgentPrompt
-    isActive?: boolean
-    requireApproval?: boolean
-    notificationSettings?: AgentNotificationSettings
-    toolApprovals?: string[]
-}
+const runHistoryDecisionSchema = z.object({
+    action: z.enum(["processed", "skipped"]),
+    reasoning: z.string()
+})
 
-export type AgentsResponse = {
-    agents: Agent[]
-    pagination: {
-        page: number
-        limit: number
-        total: number
-        totalPages: number
-    }
-}
+const runHistoryRecordSchema = z.object({
+    id: z.string(),
+    agentId: z.string(),
+    timestamp: z.string(),
+    trigger: runHistoryTriggerSchema,
+    filtered: z.boolean(),
+    decision: runHistoryDecisionSchema,
+    actions: z.array(runHistoryActionBaseSchema).optional(),
+    status: runHistoryStatusSchema,
+    isManuallyTriggered: z.boolean()
+})
 
-export type RecentAgent = Agent & {
-    updatedAt: string
-    lastEventProcessedAt: string | null
-}
+const runHistoryRecordWithAgentSchema = runHistoryRecordSchema.extend({
+    agentName: z.string()
+})
+
+export const agentNotificationSettingsSchema = z.object({
+    enabled: z.boolean(),
+    actionTypes: z.array(runHistoryActionTypeSchema)
+})
+export type AgentNotificationSettings = z.infer<typeof agentNotificationSettingsSchema>
+
+export const agentSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    isActive: z.boolean(),
+    requireApproval: z.boolean(),
+    prompt: agentPromptSchema,
+    triggers: z.array(agentTriggerSchema),
+    outputs: z.array(agentOutputSchema),
+    createdByUserId: z.string(),
+    notificationSettings: agentNotificationSettingsSchema.optional(),
+    toolApprovals: z.array(z.string()).optional(),
+    updatedAt: z.string().optional(),
+    source: z.enum(["WEB_UI", "SDK"]).optional()
+})
+export type Agent = z.infer<typeof agentSchema>
+
+export const agentUpdateSchema = z.object({
+    name: z.string().optional(),
+    triggers: z.array(agentTriggerSchema).optional(),
+    outputs: z.array(agentOutputSchema).optional(),
+    prompt: agentPromptSchema.optional(),
+    isActive: z.boolean().optional(),
+    requireApproval: z.boolean().optional(),
+    notificationSettings: agentNotificationSettingsSchema.optional(),
+    toolApprovals: z.array(z.string()).optional()
+})
+export type AgentUpdate = z.infer<typeof agentUpdateSchema>
+
+export const paginationSchema = z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number(),
+    totalPages: z.number()
+})
+
+export const agentsResponseSchema = z.object({
+    agents: z.array(agentSchema),
+    pagination: paginationSchema
+})
+export type AgentsResponse = z.infer<typeof agentsResponseSchema>
+
+export const recentAgentSchema = agentSchema.extend({
+    updatedAt: z.string(),
+    lastEventProcessedAt: z.string().nullable()
+})
+export type RecentAgent = z.infer<typeof recentAgentSchema>
 
 export const agentImprovementStatusSchema = z.enum(["PENDING", "APPLIED", "DISMISSED"])
 export type AgentImprovementStatus = z.infer<typeof agentImprovementStatusSchema>
@@ -680,16 +720,17 @@ export const dailyEventCountSchema = z.object({
 })
 export type DailyEventCount = z.infer<typeof dailyEventCountSchema>
 
-export type RecentAction = {
-    action: string
-    integration: IntegrationType
-    target: string
-    details: string
-    url?: string
-    timestamp: string
-    agentName: string
-    type: RunHistoryActionType
-}
+export const recentActionSchema = z.object({
+    action: z.string(),
+    integration: integrationTypeEnum,
+    target: z.string(),
+    details: z.string(),
+    url: z.string().optional(),
+    timestamp: z.string(),
+    agentName: z.string(),
+    type: runHistoryActionTypeSchema
+})
+export type RecentAction = z.infer<typeof recentActionSchema>
 
 export const agentActivityItemSchema = z.object({
     agentId: z.string(),
@@ -704,22 +745,25 @@ export const countByStringSchema = z.object({
 })
 export type CountByString = z.infer<typeof countByStringSchema>
 
-export type StatsResponse = {
-    totalEventsProcessed: number
-    totalEventsProcessedChange: string
-    actionsTaken: number
-    actionsTakenChange: string
-    numberOfAgents: number
-    numberOfAgentsChange: string
-    dailyEvents: DailyEventCount[]
-    recentActions: RecentAction[]
+export const statsResponseSchema = z.object({
+    totalEventsProcessed: z.number(),
+    totalEventsProcessedChange: z.string(),
+    actionsTaken: z.number(),
+    actionsTakenChange: z.string(),
+    numberOfAgents: z.number(),
+    numberOfAgentsChange: z.string(),
+    dailyEvents: z.array(dailyEventCountSchema),
+    recentActions: z.array(recentActionSchema),
+    recentRuns: z.array(runHistoryRecordWithAgentSchema),
+    timezone: z.string(),
+    agentActivity: z.array(agentActivityItemSchema),
+    statusBreakdown: z.array(countByStringSchema),
+    triggerIntegrations: z.array(countByStringSchema),
+    actionIntegrations: z.array(countByStringSchema),
+    actionTypes: z.array(countByStringSchema)
+})
+export type StatsResponse = z.infer<typeof statsResponseSchema> & {
     recentRuns: RunHistoryRecordWithAgent[]
-    timezone: string
-    agentActivity: AgentActivityItem[]
-    statusBreakdown: CountByString[]
-    triggerIntegrations: CountByString[]
-    actionIntegrations: CountByString[]
-    actionTypes: CountByString[]
 }
 
 export const triggerPayloadSchema = z.object({
@@ -793,25 +837,30 @@ export const sdkAgentRunResponseBodySchema = z.object({
 })
 export type SdkAgentRunResponseBody = z.infer<typeof sdkAgentRunResponseBodySchema>
 
-// Left as TS-only for now because it depends on RunHistoryAction.
-export type SdkAgentStreamEvent =
-    | { type: "run_started"; runId: string }
-    | { type: "text"; text: string }
-    | { type: "final_output"; finalOutput: string }
-    | { type: "tool_call_params"; toolCallParams: string }
-    | { type: "tool_call_started"; toolCallStarted: string }
-    | { type: "tool_call_completed"; toolCallCompleted: string }
-    | {
-          type: "tool_approval_requested"
-          toolApprovalRequested: {
-              stepId: string
-              toolName: string
-              arguments: string
-          }
-      }
-    | { type: "action"; action: RunHistoryAction }
-    | { type: "error"; message: string }
-    | { type: "done" }
+export const toolApprovalRequestedPayloadSchema = z.object({
+    stepId: z.string(),
+    toolName: z.string(),
+    arguments: z.string()
+})
+
+export const sdkAgentStreamEventSchema = z.discriminatedUnion("type", [
+    z.object({ type: z.literal("run_started"), runId: z.string() }),
+    z.object({ type: z.literal("text"), text: z.string() }),
+    z.object({ type: z.literal("final_output"), finalOutput: z.string() }),
+    z.object({ type: z.literal("tool_call_params"), toolCallParams: z.string() }),
+    z.object({ type: z.literal("tool_call_started"), toolCallStarted: z.string() }),
+    z.object({ type: z.literal("tool_call_completed"), toolCallCompleted: z.string() }),
+    z.object({
+        type: z.literal("tool_approval_requested"),
+        toolApprovalRequested: toolApprovalRequestedPayloadSchema
+    }),
+    z.object({ type: z.literal("action"), action: runHistoryActionBaseSchema }),
+    z.object({ type: z.literal("error"), message: z.string() }),
+    z.object({ type: z.literal("done") })
+])
+export type SdkAgentStreamEvent = z.infer<typeof sdkAgentStreamEventSchema> & {
+    action?: RunHistoryAction
+}
 
 export const sdkApprovalDecisionRequestBodySchema = z.object({
     runId: z.string(),
