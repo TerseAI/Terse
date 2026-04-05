@@ -1,4 +1,5 @@
 import { DonatedState } from "terse-types/DonatedState"
+import { formatConfigForAgent } from "terse-types/Configs"
 import { AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
 
 import { SetupSection } from "../pages/Agents/tabs/AgentSetupTab"
@@ -60,7 +61,7 @@ export class AgentInputsDonatedState extends DonatedState {
 
     toJSON(): Record<string, unknown> {
         return {
-            inputs: this.inputs.map(input => input.config?.formatForAgent() || `Type: ${input.configType}`)
+            inputs: this.inputs.map(input => (input.config ? formatConfigForAgent(input.config) : `Type: ${input.configType}`))
         }
     }
 }
@@ -76,7 +77,7 @@ export class AgentOutputsDonatedState extends DonatedState {
 
     toJSON(): Record<string, unknown> {
         return {
-            outputs: this.outputs.map(output => output.config?.formatForAgent() || `Type: ${output.configType}`)
+            outputs: this.outputs.map(output => (output.config ? formatConfigForAgent(output.config) : `Type: ${output.configType}`))
         }
     }
 }

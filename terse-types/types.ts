@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { type ConfigInstance, ConfigInstanceSchema, ConfigType, configTypeEnum } from "./Configs"
+import { ConfigType, configDataSchema, configTypeEnum } from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { RUN_HISTORY_ACTION_TYPES, RunHistoryStatus, runHistoryActionBaseSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
@@ -431,19 +431,19 @@ export const deviceTokenExchangeResponseSchema = z.object({
 })
 export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResponseSchema>
 
-const configInstanceDataSchema = ConfigInstanceSchema
+const configInstanceDataSchema = configDataSchema
 
 export const agentTriggerSchema = z.object({
     id: z.string(),
     config: configInstanceDataSchema
 })
-export type AgentTrigger = z.infer<typeof agentTriggerSchema> & { config: ConfigInstance }
+export type AgentTrigger = z.infer<typeof agentTriggerSchema>
 
 export const agentOutputSchema = z.object({
     id: z.string(),
     config: configInstanceDataSchema
 })
-export type AgentOutput = z.infer<typeof agentOutputSchema> & { config: ConfigInstance }
+export type AgentOutput = z.infer<typeof agentOutputSchema>
 
 export const agentPromptSchema = z.object({
     text: z.string()
@@ -455,14 +455,14 @@ export const transientAgentTriggerSchema = z.object({
     config: configInstanceDataSchema.optional(),
     configType: configTypeEnum
 })
-export type TransientAgentTrigger = z.infer<typeof transientAgentTriggerSchema> & { config?: ConfigInstance }
+export type TransientAgentTrigger = z.infer<typeof transientAgentTriggerSchema>
 
 export const transientAgentOutputSchema = z.object({
     id: z.string(),
     config: configInstanceDataSchema.optional(),
     configType: configTypeEnum
 })
-export type TransientAgentOutput = z.infer<typeof transientAgentOutputSchema> & { config?: ConfigInstance }
+export type TransientAgentOutput = z.infer<typeof transientAgentOutputSchema>
 
 export const templateConfigRefSchema = z.object({
     configType: configTypeEnum,

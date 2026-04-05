@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Bell, Check, ChevronRight, Copy, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
-import { CONFIG_DETAILS, ConfigInstance, ConfigType, buildRoute } from "terse-types"
+import { CONFIG_DETAILS, ConfigData, ConfigType, buildRoute, isConfigComplete } from "terse-types"
 import { FROM_SETUP_CHAT_PARAM } from "terse-types/FrontendRoutesBuilder"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
@@ -253,9 +253,9 @@ function SaveAgentButton({
     // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => i != null && i.config != null && i.config.isComplete()) &&
+        inputs.every(i => i != null && isConfigComplete(i.config)) &&
         outputs.length > 0 &&
-        outputs.every(o => o != null && o.config != null && o.config.isComplete()) &&
+        outputs.every(o => o != null && isConfigComplete(o.config)) &&
         !!prompt?.text // Ensure prompt is not empty
 
     const isEditMode = !!agentId
@@ -383,9 +383,9 @@ export default function AgentSetupTab({
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null)
 
-    const triggersIncomplete = inputs.length === 0 || inputs.some(i => !i || !i.config || !i.config.isComplete())
+    const triggersIncomplete = inputs.length === 0 || inputs.some(i => !i || !isConfigComplete(i.config))
     const promptIncomplete = !prompt?.text || prompt.text.trim() === ""
-    const skillsIncomplete = outputs.length === 0 || outputs.some(o => !o || !o.config || !o.config.isComplete())
+    const skillsIncomplete = outputs.length === 0 || outputs.some(o => !o || !isConfigComplete(o.config))
 
     // Step definitions for the builder flow
     const steps = [
@@ -672,12 +672,12 @@ function InputCard({
     setInputs: (inputs: TransientAgentTrigger[]) => void
     handleRemove: (id: string) => void
 }) {
-    const needsConfiguration = !input.config || !input.config.isComplete()
+    const needsConfiguration = !isConfigComplete(input.config)
     const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config)
+    const [draftConfig, setDraftConfig] = useState<ConfigData | undefined>(input.config)
 
     const draftInput = { ...input, config: draftConfig }
-    const isDraftValid = draftConfig?.isComplete() ?? false
+    const isDraftValid = isConfigComplete(draftConfig)
 
     const handleOpenDialog = () => {
         setDraftConfig(input.config)
@@ -813,11 +813,11 @@ function SkillCard({
     handleRemove: (id: string) => void
 }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-    const needsConfiguration = !output.config || !output.config.isComplete()
-    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(output.config)
+    const needsConfiguration = !isConfigComplete(output.config)
+    const [draftConfig, setDraftConfig] = useState<ConfigData | undefined>(output.config)
 
     const draftOutput = { ...output, config: draftConfig }
-    const isDraftValid = draftConfig?.isComplete() ?? false
+    const isDraftValid = isConfigComplete(draftConfig)
 
     const handleOpenDialog = () => {
         setDraftConfig(output.config)
