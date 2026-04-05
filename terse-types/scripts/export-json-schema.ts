@@ -18,36 +18,8 @@ const SCHEMA_NAME_OVERRIDES: Record<string, string> = {
     slackUserResponseSchema: "SlackUserSummary",
     runHistoryActionBaseSchema: "RunHistoryAction",
     // GitHub capitalization fix
-    GithubIntegrationSchema: "GitHubIntegrationInstance",
+    GithubIntegrationSchema: "GitHubIntegrationInstance"
 }
-
-/**
- * Schemas that require custom resolution from module exports.
- * These can't be auto-discovered because they involve runtime transformations.
- */
-interface DerivedSchema {
-    name: string
-    resolve: (moduleExports: ExportModule) => z.ZodTypeAny
-}
-
-const DERIVED_SCHEMAS: DerivedSchema[] = [
-    {
-        name: "OutputItem",
-        resolve(moduleExports) {
-            const schema = getSchema(moduleExports.runHistoryActionBaseSchema, "runHistoryActionBaseSchema")
-            const outputItems = (schema as { shape?: Record<string, unknown> }).shape?.output_items
-            const unwrapped = unwrapSchema(outputItems, "runHistoryActionBaseSchema.shape.output_items")
-            return getArrayElementSchema(unwrapped, "runHistoryActionBaseSchema.shape.output_items") as z.ZodTypeAny
-        }
-    },
-    {
-        name: "PartialSdkAgentRunEventPayload",
-        resolve(moduleExports) {
-            const schema = getSchema(moduleExports.sdkAgentRunEventPayloadSchema, "sdkAgentRunEventPayloadSchema")
-            return schema.partial()
-        }
-    }
-]
 
 function isZodSchema(value: unknown): value is z.ZodTypeAny {
     return !!value && typeof value === "object" && "_zod" in value
@@ -82,35 +54,6 @@ function deriveSchemaName(exportKey: string): string {
 
 function capitalize(value: string): string {
     return value.charAt(0).toUpperCase() + value.slice(1)
-}
-
-function getSchema(value: unknown, label: string): z.ZodTypeAny {
-    if (!value || typeof value !== "object" || !("_zod" in value)) {
-        throw new Error(`Resolved "${label}" is not a Zod schema.`)
-    }
-    return value as z.ZodTypeAny
-}
-
-function unwrapSchema(value: unknown, label: string): unknown {
-    if (!value || typeof value !== "object") {
-        throw new Error(`Resolved "${label}" is not a wrapped Zod schema.`)
-    }
-    const maybeWrapped = value as { unwrap?: () => unknown }
-    if (typeof maybeWrapped.unwrap === "function") {
-        return maybeWrapped.unwrap()
-    }
-    return value
-}
-
-function getArrayElementSchema(value: unknown, label: string): unknown {
-    if (!value || typeof value !== "object") {
-        throw new Error(`Resolved "${label}" is not a Zod array schema.`)
-    }
-    const maybeArray = value as { element?: unknown }
-    if (!maybeArray.element) {
-        throw new Error(`Resolved "${label}" is missing an array element schema.`)
-    }
-    return maybeArray.element
 }
 
 function rewriteRecursiveRefs(schemaName: string, value: unknown): unknown {
@@ -155,13 +98,6 @@ async function main() {
             schemaRegistry.set(value, name)
             standaloneCount++
         }
-    }
-
-    // Add derived schemas
-    for (const derived of DERIVED_SCHEMAS) {
-        const schema = derived.resolve(moduleExports)
-        schemasToExport.set(derived.name, schema)
-        schemaRegistry.set(schema, derived.name)
     }
 
     // Phase 2: Convert to JSON Schema with $ref resolution for named sub-schemas
@@ -233,7 +169,7 @@ async function main() {
     )
 
     console.log(`Wrote ${Object.keys(defs).length} schemas to ${outputPath}`)
-    console.log(`  tools=${toolCount} (${toolCount * 2} input+output schemas), standalone=${standaloneCount}, derived=${DERIVED_SCHEMAS.length}`)
+    console.log(`  tools=${toolCount} (${toolCount * 2} input+output schemas), standalone=${standaloneCount}`)
 }
 
 void main().catch(error => {

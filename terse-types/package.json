@@ -21,7 +21,8 @@
     },
     "scripts": {
         "build": "tsc -p tsconfig.build.json && node --input-type=module -e \"import { fix } from 'tsc-esm-fix'; await fix({ cwd: process.cwd(), target: ['dist'], ext: '.js' })\"",
-        "build:json-schema": "tsx scripts/export-json-schema.ts",
+        "check:schema": "node --import tsx scripts/check-schema-compat.ts",
+        "build:json-schema": "node --import tsx scripts/export-json-schema.ts",
         "clean": "rm -rf dist",
         "dev": "node ../scripts/tsc-watch-and-fix.mjs tsconfig.build.json dist",
         "dev:python-types": "node scripts/dev-with-codegen.mjs",

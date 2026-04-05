@@ -18,6 +18,12 @@ export type RunHistoryDecisionAction = "processed" | "skipped"
 export const RUN_HISTORY_ACTION_TYPES = ["create", "update", "delete", "read", "approve", "error"] as const
 export type RunHistoryActionType = (typeof RUN_HISTORY_ACTION_TYPES)[number]
 
+export const outputItemSchema = z.object({
+    output_item_id: z.string(),
+    output_item_type: configTypeEnum
+})
+export type OutputItem = z.infer<typeof outputItemSchema>
+
 export const runHistoryActionBaseSchema = z.object({
     action: z.string(),
     integration: integrationTypeEnum,
@@ -27,14 +33,7 @@ export const runHistoryActionBaseSchema = z.object({
     step_id: z.string().optional(),
     type: z.enum(RUN_HISTORY_ACTION_TYPES),
     isReadOnly: z.boolean().optional(),
-    output_items: z
-        .array(
-            z.object({
-                output_item_id: z.string(),
-                output_item_type: configTypeEnum
-            })
-        )
-        .optional()
+    output_items: z.array(outputItemSchema).optional()
 })
 
 export type RunHistoryAction = z.infer<typeof runHistoryActionBaseSchema>

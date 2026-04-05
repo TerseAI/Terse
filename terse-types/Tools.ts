@@ -257,6 +257,18 @@ export const gitHubCommitSummarySchema = z.object({
     url: z.string()
 })
 
+export const gitHubPullRequestListSummarySchema = z.object({
+    total: z.number().int(),
+    merged: z.number().int(),
+    open: z.number().int(),
+    closed: z.number().int()
+})
+
+export const gitHubCommitListSummarySchema = z.object({
+    total: z.number().int(),
+    byAuthor: z.record(z.string(), z.number().int())
+})
+
 export const gitHubPullRequestRefSchema = z.object({
     number: z.number().int(),
     title: z.string(),
@@ -648,18 +660,25 @@ export const posthogSessionEventsSummarySchema = z.object({
     consoleLogsReturned: z.number().int()
 })
 
+export const posthogSessionEventsTimeWindowSchema = z.object({
+    startSeconds: z.number(),
+    endSeconds: z.number().nullable()
+})
+
+export const linearCreateTicketPayloadSchema = z.object({
+    title: z.string(),
+    teamId: z.string(),
+    description: z.string().nullable().optional(),
+    stateId: z.string().nullable().optional(),
+    priority: z.number().int().nullable().optional(),
+    projectId: z.string().nullable().optional(),
+    labelIds: z.array(z.string()).nullable().optional(),
+    assigneeId: z.string().nullable().optional()
+})
+
 export const linearCreateTicketInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
-    ticket: z.object({
-        title: z.string(),
-        teamId: z.string(),
-        description: z.string().nullable().optional(),
-        stateId: z.string().nullable().optional(),
-        priority: z.number().int().nullable().optional(),
-        projectId: z.string().nullable().optional(),
-        labelIds: z.array(z.string()).nullable().optional(),
-        assigneeId: z.string().nullable().optional()
-    })
+    ticket: linearCreateTicketPayloadSchema
 })
 
 export const linearUpdateTicketUpdatesSchema = z.object({
@@ -1503,12 +1522,7 @@ export const listGitHubPullRequestsTool = defineTool({
     outputSchema: toolOutputBaseSchema.extend({
         repository: z.string(),
         timeWindow: z.string(),
-        summary: z.object({
-            total: z.number().int(),
-            merged: z.number().int(),
-            open: z.number().int(),
-            closed: z.number().int()
-        }),
+        summary: gitHubPullRequestListSummarySchema,
         pagination: gitHubPaginationSchema,
         pullRequests: z.array(gitHubPullRequestSummarySchema),
         message: z.string()
@@ -1522,10 +1536,7 @@ export const listGitHubCommitsTool = defineTool({
         repository: z.string(),
         timeWindow: z.string(),
         filters: z.string(),
-        summary: z.object({
-            total: z.number().int(),
-            byAuthor: z.record(z.string(), z.number().int())
-        }),
+        summary: gitHubCommitListSummarySchema,
         commits: z.array(gitHubCommitSummarySchema),
         message: z.string(),
         tip: z.string()
@@ -1672,10 +1683,7 @@ export const getPosthogSessionEventsTool = defineTool({
         sessionUrl: z.string(),
         startTime: z.string(),
         duration: z.number().optional(),
-        timeWindow: z.object({
-            startSeconds: z.number(),
-            endSeconds: z.number().nullable()
-        }),
+        timeWindow: posthogSessionEventsTimeWindowSchema,
         summary: posthogSessionEventsSummarySchema,
         events: z.array(posthogSessionEventSchema),
         consoleLogs: z.array(posthogSessionConsoleLogSchema),
@@ -1728,6 +1736,8 @@ export const datadogCursorPaginationSchema = z.object({
     hasMore: z.boolean(),
     showing: z.string()
 })
+
+export const datadogPagePaginationSchema = datadogCursorPaginationSchema.omit({ cursor: true })
 
 export const datadogRumSessionDetailsSchema = z.object({
     id: z.string().optional(),
@@ -1811,6 +1821,18 @@ export const datadogAggregationMetaSchema = z.object({
     status: z.unknown().optional()
 })
 
+export const datadogAggregationComputeSchema = z.object({
+    aggregation: z.enum(["count", "pc90", "pc95", "pc99", "avg", "sum", "min", "max", "cardinality"]).describe("Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"),
+    metric: z.string().describe('Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
+    type: z.enum(["total", "timeseries"]).default("total").describe('Computation type: "total" (overall) or "timeseries" (time-bucketed)')
+})
+
+export const datadogAggregationGroupBySchema = z.object({
+    facet: z.string().describe("Facet to group by (e.g., @view.name, @service, @browser.name)"),
+    limit: z.number().int().default(10).describe("Maximum number of groups to return (default: 10)"),
+    total: z.boolean().default(false).describe('Include "total" group with all events combined (default: false)')
+})
+
 // Datadog input schemas
 export const searchDatadogLogsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
@@ -1855,27 +1877,8 @@ export const aggregateRumEventsInputSchema = z.object({
     query: z.string().nullable().optional().describe("Datadog RUM search query to filter events before aggregation (e.g., @type:view)"),
     from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
     to: z.string().nullable().optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
-    compute: z
-        .array(
-            z.object({
-                aggregation: z.enum(["count", "pc90", "pc95", "pc99", "avg", "sum", "min", "max", "cardinality"]).describe("Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"),
-                metric: z.string().describe('Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
-                type: z.enum(["total", "timeseries"]).default("total").describe('Computation type: "total" (overall) or "timeseries" (time-bucketed)')
-            })
-        )
-        .describe("Array of metrics to compute. At least one required."),
-    groupBy: z
-        .union([
-            z.array(
-                z.object({
-                    facet: z.string().describe("Facet to group by (e.g., @view.name, @service, @browser.name)"),
-                    limit: z.number().int().default(10).describe("Maximum number of groups to return (default: 10)"),
-                    total: z.boolean().default(false).describe('Include "total" group with all events combined (default: false)')
-                })
-            ),
-            z.null()
-        ])
-        .describe("Facets to group results by"),
+    compute: z.array(datadogAggregationComputeSchema).describe("Array of metrics to compute. At least one required."),
+    groupBy: z.union([z.array(datadogAggregationGroupBySchema), z.null()]).describe("Facets to group results by"),
     timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")'),
     pageLimit: z.number().int().default(25).describe("Maximum number of buckets to return (default: 25)"),
     integrationId: z.string().describe("The integration ID of the Datadog skill to use.")
@@ -1989,7 +1992,7 @@ export const aggregateRumEventsTool = defineTool({
         totalBuckets: z.number().int(),
         buckets: z.array(datadogAggregationBucketSchema),
         rumLink: z.string(),
-        pagination: datadogCursorPaginationSchema.omit({ cursor: true }),
+        pagination: datadogPagePaginationSchema,
         warnings: z.string().nullable(),
         meta: datadogAggregationMetaSchema,
         message: z.string()

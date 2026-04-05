@@ -66,20 +66,6 @@ class AgentReview(TerseModel):
     created_at: str
 
 
-class AggregateRumEventsToolInput(TerseModel):
-    query: str | None = None
-    from_: str = Field(alias="from")
-    to: str | None = None
-    compute: list[dict[str, Any]]
-    group_by: list[dict[str, Any]] | None
-    timezone: str
-    page_limit: int
-    integration_id: str
-
-
-AggregateRumEventsInput = AggregateRumEventsToolInput
-
-
 class ApiToken(TerseModel):
     id: str
     name: str
@@ -355,6 +341,32 @@ class DatadogAggregationBucket(TerseModel):
     computes: dict[str, DatadogAggregationBucketCompute]
 
 
+class DatadogAggregationCompute(TerseModel):
+    aggregation: Literal["count", "pc90", "pc95", "pc99", "avg", "sum", "min", "max", "cardinality"]
+    metric: str
+    type: Literal["total", "timeseries"]
+
+
+class DatadogAggregationGroupBy(TerseModel):
+    facet: str
+    limit: int
+    total: bool
+
+
+class AggregateRumEventsToolInput(TerseModel):
+    query: str | None = None
+    from_: str = Field(alias="from")
+    to: str | None = None
+    compute: list[DatadogAggregationCompute]
+    group_by: list[DatadogAggregationGroupBy] | None
+    timezone: str
+    page_limit: int
+    integration_id: str
+
+
+AggregateRumEventsInput = AggregateRumEventsToolInput
+
+
 class DatadogAggregationMeta(TerseModel):
     elapsed: float | None = None
     request_id: str | None = None
@@ -402,6 +414,13 @@ class DatadogLogEntry(TerseModel):
     status: str | None = None
     tags: list[str]
     custom_attributes: dict[str, Any]
+
+
+class DatadogPagePagination(TerseModel):
+    limit: int
+    next_cursor: str | None
+    has_more: bool
+    showing: str
 
 
 class DatadogRumActionDetails(TerseModel):
@@ -523,6 +542,11 @@ class FigmaRegionData(TerseModel):
     height: float
 
 
+class FigmaRegionPositioning(TerseModel):
+    type: Literal["Region"]
+    data: FigmaRegionData
+
+
 class FigmaVectorData(TerseModel):
     x: float
     y: float
@@ -542,6 +566,11 @@ class FigmaFrameOffsetData(TerseModel):
     node_offset: FigmaVectorData
 
 
+class FigmaFrameOffsetPositioning(TerseModel):
+    type: Literal["FrameOffset"]
+    data: FigmaFrameOffsetData
+
+
 class FigmaFrameOffsetRegionData(TerseModel):
     node_id: str
     node_offset: FigmaVectorData
@@ -551,7 +580,30 @@ class FigmaFrameOffsetRegionData(TerseModel):
     height: float
 
 
-FigmaPositioningData = dict[str, Any] | dict[str, Any] | dict[str, Any] | dict[str, Any]
+class FigmaFrameOffsetRegionPositioning(TerseModel):
+    type: Literal["FrameOffsetRegion"]
+    data: FigmaFrameOffsetRegionData
+
+
+class FigmaVectorPositioning(TerseModel):
+    type: Literal["Vector"]
+    data: FigmaVectorData
+
+
+class FigmaPositioningData(
+    RootModel[
+        FigmaVectorPositioning
+        | FigmaFrameOffsetPositioning
+        | FigmaRegionPositioning
+        | FigmaFrameOffsetRegionPositioning
+    ]
+):
+    root: (
+        FigmaVectorPositioning
+        | FigmaFrameOffsetPositioning
+        | FigmaRegionPositioning
+        | FigmaFrameOffsetRegionPositioning
+    )
 
 
 class FigmaWebhookUser(TerseModel):
@@ -686,6 +738,11 @@ class GitHubCodeSearchResult(TerseModel):
     snippets: str
 
 
+class GitHubCommitListSummary(TerseModel):
+    total: int
+    by_author: dict[str, int]
+
+
 class GitHubCommitSummary(TerseModel):
     sha: str
     full_sha: str
@@ -739,6 +796,13 @@ class GitHubPagination(TerseModel):
     page: int
     per_page: int
     has_more: bool
+
+
+class GitHubPullRequestListSummary(TerseModel):
+    total: int
+    merged: int
+    open: int
+    closed: int
 
 
 class GitHubPullRequestRef(TerseModel):
@@ -969,9 +1033,15 @@ class JiraResourceProject(TerseModel):
     project_type_key: str
 
 
+class JiraResourcesPayload(TerseModel):
+    projects: list[JiraResourceProject]
+    base_url: str
+    cloud_id: str
+
+
 class JiraResourcesResponse(TerseModel):
     success: bool
-    resources: dict[str, Any]
+    resources: JiraResourcesPayload
 
 
 JiraRichDescription = str | dict[str, Any]
@@ -1118,9 +1188,20 @@ class LinearCommentHandle(TerseModel):
     updated_at: str | str | None = None
 
 
+class LinearCreateTicketPayload(TerseModel):
+    title: str
+    team_id: str
+    description: str | None = None
+    state_id: str | None = None
+    priority: int | None = None
+    project_id: str | None = None
+    label_ids: list[str] | None = None
+    assignee_id: str | None = None
+
+
 class LinearCreateTicketToolInput(TerseModel):
     integration_id: str
-    ticket: dict[str, Any]
+    ticket: LinearCreateTicketPayload
 
 
 LinearCreateTicketInput = LinearCreateTicketToolInput
@@ -1762,6 +1843,11 @@ class PosthogSessionEventsSummary(TerseModel):
     console_logs_returned: int
 
 
+class PosthogSessionEventsTimeWindow(TerseModel):
+    start_seconds: float
+    end_seconds: float | None
+
+
 class PosthogSessionSummary(TerseModel):
     id: str
     start_time: str | None = None
@@ -1837,7 +1923,7 @@ class AggregateRumEventsToolOutput(TerseModel):
     total_buckets: int
     buckets: list[DatadogAggregationBucket]
     rum_link: str
-    pagination: dict[str, Any]
+    pagination: DatadogPagePagination
     warnings: str | None
     meta: DatadogAggregationMeta
     message: str
@@ -1917,7 +2003,7 @@ class GetPosthogSessionEventsToolOutput(TerseModel):
     session_url: str
     start_time: str
     duration: float | None = None
-    time_window: dict[str, Any]
+    time_window: PosthogSessionEventsTimeWindow
     summary: PosthogSessionEventsSummary
     events: list[PosthogSessionEvent]
     console_logs: list[PosthogSessionConsoleLog]
@@ -2069,7 +2155,7 @@ class ListGitHubCommitsToolOutput(TerseModel):
     repository: str
     time_window: str
     filters: str
-    summary: dict[str, Any]
+    summary: GitHubCommitListSummary
     commits: list[GitHubCommitSummary]
     message: str
     tip: str
@@ -2095,7 +2181,7 @@ class ListGitHubPullRequestsToolOutput(TerseModel):
     actions: list[RunHistoryAction] | None = None
     repository: str
     time_window: str
-    summary: dict[str, Any]
+    summary: GitHubPullRequestListSummary
     pagination: GitHubPagination
     pull_requests: list[GitHubPullRequestSummary]
     message: str
@@ -2353,7 +2439,7 @@ class SdkAgentRunNormalizedRequest(TerseModel):
 
 class SdkAgentRunRequestBody(TerseModel):
     prompt: str | None = None
-    event: dict[str, Any] | None = None
+    event: PartialSdkAgentRunEventPayload | None = None
     skills: list[SdkAgentSkillPayload] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: list[str] | None = None

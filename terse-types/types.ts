@@ -247,13 +247,16 @@ export const jiraResourceProjectSchema = z.object({
     projectTypeKey: z.string()
 })
 
+export const jiraResourcesPayloadSchema = z.object({
+    projects: z.array(jiraResourceProjectSchema),
+    baseUrl: z.string(),
+    cloudId: z.string()
+})
+export type JiraResourcesPayload = z.infer<typeof jiraResourcesPayloadSchema>
+
 export const jiraResourcesResponseSchema = z.object({
     success: z.boolean(),
-    resources: z.object({
-        projects: z.array(jiraResourceProjectSchema),
-        baseUrl: z.string(),
-        cloudId: z.string()
-    })
+    resources: jiraResourcesPayloadSchema
 })
 export type JiraResourcesResponse = z.infer<typeof jiraResourcesResponseSchema>
 
@@ -322,11 +325,23 @@ export const figmaFrameOffsetRegionDataSchema = z.object({
 })
 export type FigmaFrameOffsetRegionData = z.infer<typeof figmaFrameOffsetRegionDataSchema>
 
+export const figmaVectorPositioningSchema = z.object({ type: z.literal("Vector"), data: figmaVectorDataSchema })
+export type FigmaVectorPositioning = z.infer<typeof figmaVectorPositioningSchema>
+
+export const figmaFrameOffsetPositioningSchema = z.object({ type: z.literal("FrameOffset"), data: figmaFrameOffsetDataSchema })
+export type FigmaFrameOffsetPositioning = z.infer<typeof figmaFrameOffsetPositioningSchema>
+
+export const figmaRegionPositioningSchema = z.object({ type: z.literal("Region"), data: figmaRegionDataSchema })
+export type FigmaRegionPositioning = z.infer<typeof figmaRegionPositioningSchema>
+
+export const figmaFrameOffsetRegionPositioningSchema = z.object({ type: z.literal("FrameOffsetRegion"), data: figmaFrameOffsetRegionDataSchema })
+export type FigmaFrameOffsetRegionPositioning = z.infer<typeof figmaFrameOffsetRegionPositioningSchema>
+
 export const figmaPositioningDataSchema = z.discriminatedUnion("type", [
-    z.object({ type: z.literal("Vector"), data: figmaVectorDataSchema }),
-    z.object({ type: z.literal("FrameOffset"), data: figmaFrameOffsetDataSchema }),
-    z.object({ type: z.literal("Region"), data: figmaRegionDataSchema }),
-    z.object({ type: z.literal("FrameOffsetRegion"), data: figmaFrameOffsetRegionDataSchema })
+    figmaVectorPositioningSchema,
+    figmaFrameOffsetPositioningSchema,
+    figmaRegionPositioningSchema,
+    figmaFrameOffsetRegionPositioningSchema
 ])
 export type FigmaPositioningData = z.infer<typeof figmaPositioningDataSchema>
 
@@ -745,6 +760,9 @@ export const sdkAgentRunEventPayloadSchema = z.object({
 })
 export type SdkAgentRunEventPayload = z.infer<typeof sdkAgentRunEventPayloadSchema>
 
+export const partialSdkAgentRunEventPayloadSchema = sdkAgentRunEventPayloadSchema.partial()
+export type PartialSdkAgentRunEventPayload = z.infer<typeof partialSdkAgentRunEventPayloadSchema>
+
 export const sdkAgentSkillPayloadSchema = z.object({
     configType: configTypeEnum,
     config: unknownRecordSchema
@@ -759,7 +777,7 @@ export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayload
 
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
-    event: sdkAgentRunEventPayloadSchema.partial().optional(),
+    event: partialSdkAgentRunEventPayloadSchema.optional(),
     skills: z.array(sdkAgentSkillPayloadSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
