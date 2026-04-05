@@ -61,42 +61,7 @@ async function runPipeline() {
 
         await runCommand(pnpmCommand, ["exec", "tsx", "scripts/export-json-schema.ts"])
 
-        await runCommand(
-            uvCommand,
-            [
-                "run",
-                "datamodel-codegen",
-                "--input",
-                "terse-types/dist/json-schema/terse-types.schema.json",
-                "--input-file-type",
-                "jsonschema",
-                "--output",
-                "packages/terse-python-sdk/src/terse_sdk/types/_generated.py",
-                "--output-model-type",
-                "pydantic_v2.BaseModel",
-                "--base-class",
-                "terse_sdk.types._base.TerseModel",
-                "--snake-case-field",
-                "--no-alias",
-                "--use-annotated",
-                "--field-constraints",
-                "--target-python-version",
-                "3.11",
-                "--collapse-root-models",
-                "--use-standard-collections"
-                ,
-                "--disable-timestamp",
-                "--reuse-model",
-                "--reuse-scope",
-                "module",
-                "--collapse-reuse-models",
-                "--naming-strategy",
-                "parent-prefixed"
-            ],
-            repoRoot
-        )
-
-        await runCommand(uvCommand, ["run", "python", "scripts/postprocess-generated-types.py"], repoRoot)
+        await runCommand(uvCommand, ["run", "python", "scripts/generate-pydantic-from-schema.py"], repoRoot)
     } catch (error) {
         console.error("[dev:python-types] Failed to regenerate Python types.", error)
     } finally {

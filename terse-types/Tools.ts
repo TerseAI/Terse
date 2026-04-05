@@ -1683,29 +1683,30 @@ export const getPosthogSessionEventsTool = defineTool({
     })
 })
 
+export const searchPosthogEventsCountSummarySchema = toolOutputSuccessSchema.extend({
+    countByEventNameOnly: z.literal(true),
+    customEventsOnly: z.boolean(),
+    eventCounts: z.array(posthogEventCountSchema),
+    totalEventTypes: z.number().int(),
+    eventsLink: z.string(),
+    message: z.string()
+})
+
+export const searchPosthogEventsEventListSchema = toolOutputSuccessSchema.extend({
+    userEmail: z.string().nullable(),
+    eventName: z.string().nullable(),
+    projectId: z.string(),
+    totalEvents: z.number().int(),
+    events: z.array(posthogEventSummarySchema),
+    eventsLink: z.string(),
+    pagination: posthogOffsetPaginationSchema,
+    message: z.string()
+})
+
 export const searchPosthogEventsTool = defineTool({
     name: "searchPosthogEvents",
     inputSchema: searchPosthogEventsInputSchema,
-    outputSchema: z.union([
-        toolOutputSuccessSchema.extend({
-            countByEventNameOnly: z.literal(true),
-            customEventsOnly: z.boolean(),
-            eventCounts: z.array(posthogEventCountSchema),
-            totalEventTypes: z.number().int(),
-            eventsLink: z.string(),
-            message: z.string()
-        }),
-        toolOutputSuccessSchema.extend({
-            userEmail: z.string().nullable(),
-            eventName: z.string().nullable(),
-            projectId: z.string(),
-            totalEvents: z.number().int(),
-            events: z.array(posthogEventSummarySchema),
-            eventsLink: z.string(),
-            pagination: posthogOffsetPaginationSchema,
-            message: z.string()
-        })
-    ])
+    outputSchema: z.union([searchPosthogEventsCountSummarySchema, searchPosthogEventsEventListSchema])
 })
 
 // Datadog schemas
