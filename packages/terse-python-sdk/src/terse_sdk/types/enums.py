@@ -67,6 +67,8 @@ class IntegrationType(StrEnum):
 JiraEventType: TypeAlias = Literal["issue.created", "issue.updated"]
 LinearEventType: TypeAlias = Literal["issue.created", "issue.updated", "comment.created"]
 NotificationDestinationType: TypeAlias = Literal["email", "slack"]
+
+
 class RunHistoryActionType(StrEnum):
     CREATE = "create"
     UPDATE = "update"
@@ -74,6 +76,8 @@ class RunHistoryActionType(StrEnum):
     READ = "read"
     APPROVE = "approve"
     ERROR = "error"
+
+
 RunHistoryDecisionAction: TypeAlias = Literal["processed", "skipped"]
 RunHistoryStatus: TypeAlias = Literal["success", "failed", "cancelled", "skipped", "in_progress", "awaiting_approval"]
 SlackEventType: TypeAlias = Literal["message", "app_mention", "reaction_added"]
