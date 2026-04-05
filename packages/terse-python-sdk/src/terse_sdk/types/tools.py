@@ -2,43 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
-from ._base import _CamelModel
-from .attio import AttioObjectWithAttributes, AttioRecord, AttioRecordIdentifier
-from .run_history import RunHistoryAction
+from ._generated import (
+    AttioListObjectsToolOutput,
+    AttioQueryRecordsToolOutput,
+    AttioUpsertError,
+    AttioUpsertRecordToolOutput,
+    SlackChannelListItem,
+    SlackConversationMessage,
+    SlackListChannelsToolOutput,
+    SlackListUsersToolOutput,
+    SlackReadConversationToolOutput,
+    SlackSendMessageToolOutput,
+    SlackUserSummary,
+    SnowflakeExecuteQueryToolOutput,
+    SnowflakeExplainQueryToolOutput,
+    ToolOutputBase,
+)
+from .attio import AttioRecordIdentifier
 
 _TValues = TypeVar("_TValues")
-
-
-class ToolOutputBase(_CamelModel):
-    actions: list[RunHistoryAction] | None = None
-    success: bool
-
-
-class AttioListObjectsToolOutput(ToolOutputBase):
-    count: float
-    objects: list[AttioObjectWithAttributes]
-
-
-class AttioQueryRecordsToolOutput(ToolOutputBase):
-    count: float
-    records: list[AttioRecord]
-
-
-class AttioUpsertError(_CamelModel):
-    index: int
-    message: str
-
-
-class AttioUpsertRecordToolOutput(ToolOutputBase):
-    records: list[AttioRecord] | None = None
-    count: float | None = None
-    requestedCount: float | None = None
-    successCount: float | None = None
-    failureCount: float | None = None
-    partial: bool | None = None
-    errors: list[AttioUpsertError] | None = None
 
 
 # --- Generic typed wrappers for per-object return types ---
@@ -111,69 +95,6 @@ class AttioTypedUpsertResult(Generic[_TValues]):
         self.failure_count = failure_count
         self.partial = partial
         self.errors = errors or []
-
-
-class SnowflakeExecuteQueryToolOutput(ToolOutputBase):
-    columns: list[str]
-    rowCount: float
-    rows: list[dict[str, Any]]
-
-
-class SnowflakeExplainQueryToolOutput(ToolOutputBase):
-    columns: list[str]
-    explainPlan: list[dict[str, Any]]
-    rowCount: float
-
-
-class SlackSendMessageToolOutput(ToolOutputBase):
-    message_ts: str | None = None
-    channel: str
-    thread_ts: str | None = None
-    summary: str
-    has_blocks: bool
-
-
-class SlackChannelListItem(_CamelModel):
-    id: str | None = None
-    name: str
-    is_private: bool = False
-    is_im: bool = False
-    is_mpim: bool = False
-    user_id: str | None = None
-
-
-class SlackListChannelsToolOutput(ToolOutputBase):
-    channels: list[SlackChannelListItem]
-    count: int
-    next_cursor: str | None = None
-    has_more: bool
-
-
-class SlackUserSummary(_CamelModel):
-    id: str
-    name: str
-
-
-class SlackListUsersToolOutput(ToolOutputBase):
-    users: list[SlackUserSummary]
-    count: int
-
-
-class SlackConversationMessage(_CamelModel):
-    user_id: str | None = None
-    user_name: str | None = None
-    text: str
-    timestamp: str | None = None
-    thread_ts: str | None = None
-
-
-class SlackReadConversationToolOutput(ToolOutputBase):
-    channel_id: str
-    channel_name: str | None = None
-    messages: list[SlackConversationMessage]
-    count: int
-    has_more: bool
-    next_cursor: str | None = None
 
 
 __all__ = [

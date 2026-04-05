@@ -229,11 +229,13 @@ class TerseAgent:
             {
                 "prompt": prompt,
                 "event": _serialize_run_event(event or _manual_event()),
-                "skills": [_serialize_skill_config(skill).model_dump(exclude_none=True) for skill in self.skills],
+                "skills": [
+                    _serialize_skill_config(skill).model_dump(exclude_none=True, by_alias=True) for skill in self.skills
+                ],
                 "toolApprovals": self.tool_approvals,
             }
         )
-        request_payload = request_body.model_dump(exclude_none=True)
+        request_payload = request_body.model_dump(exclude_none=True, by_alias=True)
         headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id)
         _debug_log_request(LOGGER, "POST", f"{self.backend_url}/sdk/agent-run", headers, request_payload)
         failed_tool_calls: list[str] = []
@@ -364,7 +366,7 @@ def deserialize_input_event(
     """Convert a serialized backend event into the best matching SDK event model."""
 
     if isinstance(value, SerializedEvent):
-        payload = value.model_dump(exclude_none=True)
+        payload = value.model_dump(exclude_none=True, by_alias=True)
     elif isinstance(value, str):
         parsed = json.loads(value)
         if not isinstance(parsed, dict):

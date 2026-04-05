@@ -2,26 +2,20 @@
 
 from __future__ import annotations
 
-from ._base import _CamelModel
+from ._base import TerseModel
+from ._generated import OutputItem, RunHistoryAction
 from .enums import (
     ApprovalActionType,
     ApprovalRequestStatus,
     ChangeEventType,
-    ConfigType,
     EntityType,
     IntegrationType,
-    RunHistoryActionType,
     RunHistoryDecisionAction,
     RunHistoryStatus,
 )
 
 
-class OutputItem(_CamelModel):
-    output_item_id: str
-    output_item_type: ConfigType
-
-
-class RunHistoryTrigger(_CamelModel):
+class RunHistoryTrigger(TerseModel):
     event: str
     integration: IntegrationType
     source: str
@@ -30,54 +24,42 @@ class RunHistoryTrigger(_CamelModel):
     url: str | None = None
 
 
-class ApprovalAction(_CamelModel):
-    deepLink: str
+class ApprovalAction(TerseModel):
+    deep_link: str
     label: str
     type: ApprovalActionType
 
 
-class ApprovalRequest(_CamelModel):
+class ApprovalRequest(TerseModel):
     actions: list[ApprovalAction]
-    agentId: str
+    agent_id: str
     icon: IntegrationType
     id: str
-    runId: str
+    run_id: str
     status: ApprovalRequestStatus
     subheader: str
     timestamp: str
     title: str
 
 
-class ChangedItem(_CamelModel):
+class ChangedItem(TerseModel):
     change_event_type: ChangeEventType
     id: str
     type_name: EntityType
 
 
-class RunHistoryAction(_CamelModel):
-    action: str
-    details: str
-    integration: IntegrationType
-    isReadOnly: bool | None = None
-    output_items: list[OutputItem] | None = None
-    step_id: str | None = None
-    target: str
-    type: RunHistoryActionType
-    url: str | None = None
-
-
-class RunHistoryDecision(_CamelModel):
+class RunHistoryDecision(TerseModel):
     action: RunHistoryDecisionAction
     reasoning: str
 
 
-class RunHistoryRecord(_CamelModel):
+class RunHistoryRecord(TerseModel):
     actions: list[RunHistoryAction] | None = None
-    agentId: str
+    agent_id: str
     decision: RunHistoryDecision
     filtered: bool
     id: str
-    isManuallyTriggered: bool
+    is_manually_triggered: bool
     status: RunHistoryStatus
     timestamp: str
     trigger: RunHistoryTrigger

@@ -647,7 +647,7 @@ export class LinearOutputConfig extends BaseConfigInstance<IntegrationType.LINEA
 export const GitHubConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.GITHUB),
     configType: z.literal(ConfigType.GITHUB),
-    repositoryIds: z.array(z.number()),
+    repositoryIds: z.array(z.number().int()),
     eventTypes: z.array(z.enum(GitHubEventType)).optional()
 })
 export type GitHubConfigData = z.infer<typeof GitHubConfigSchema>

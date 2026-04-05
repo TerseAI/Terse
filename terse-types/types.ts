@@ -149,8 +149,8 @@ export const datadogIndexSchema = z.object({
     id: z.string(),
     name: z.string(),
     isEnabled: z.boolean(),
-    dailyLimit: z.number().optional(),
-    retentionDays: z.number().optional()
+    dailyLimit: z.number().int().optional(),
+    retentionDays: z.number().int().optional()
 })
 export type DatadogIndex = z.infer<typeof datadogIndexSchema>
 
@@ -211,7 +211,7 @@ export const confluencePageSchema = z.object({
     spaceName: z.string(),
     url: z.string(),
     status: z.string(),
-    version: z.number()
+    version: z.number().int()
 })
 export type ConfluencePage = z.infer<typeof confluencePageSchema>
 
@@ -229,14 +229,14 @@ export type ConfluencePagesQuery = z.infer<typeof confluencePagesQuerySchema>
 export const confluencePagesResponseSchema = z.object({
     pages: z.array(confluencePageSchema),
     spaceId: z.string(),
-    total: z.number()
+    total: z.number().int()
 })
 export type ConfluencePagesResponse = z.infer<typeof confluencePagesResponseSchema>
 
 export const confluenceResourcesResponseSchema = z.object({
     resources: z.array(confluencePageSchema),
     spaceId: z.string(),
-    total: z.number()
+    total: z.number().int()
 })
 export type ConfluenceResourcesResponse = z.infer<typeof confluenceResourcesResponseSchema>
 
@@ -554,7 +554,7 @@ export const agentReviewSchema = z.object({
     automationId: z.string(),
     title: z.string(),
     summary: z.string(),
-    runsAnalyzed: z.number(),
+    runsAnalyzed: z.number().int(),
     reviewPeriodStart: z.string(),
     reviewPeriodEnd: z.string(),
     createdAt: z.string()
@@ -606,7 +606,7 @@ export type ToggleImprovementsEnabledResponse = z.infer<typeof toggleImprovement
 export const repositorySchema = z.object({
     name: z.string(),
     owner: z.string(),
-    id: z.number()
+    id: z.number().int()
 })
 export type Repository = z.infer<typeof repositorySchema>
 
@@ -614,7 +614,7 @@ export const githubAppInstallationCallbackRequestSchema = z.object({
     name: z.string(),
     email: z.string(),
     username: z.string(),
-    installationId: z.number(),
+    installationId: z.number().int(),
     accountName: z.string().nullable(),
     repositories: z.array(repositorySchema)
 })
@@ -676,7 +676,7 @@ export type StatsInterval = z.infer<typeof statsIntervalSchema>
 
 export const dailyEventCountSchema = z.object({
     date: z.string(),
-    events: z.number()
+    events: z.number().int()
 })
 export type DailyEventCount = z.infer<typeof dailyEventCountSchema>
 
@@ -694,13 +694,13 @@ export type RecentAction = {
 export const agentActivityItemSchema = z.object({
     agentId: z.string(),
     agentName: z.string(),
-    runCount: z.number()
+    runCount: z.number().int()
 })
 export type AgentActivityItem = z.infer<typeof agentActivityItemSchema>
 
 export const countByStringSchema = z.object({
     label: z.string(),
-    count: z.number()
+    count: z.number().int()
 })
 export type CountByString = z.infer<typeof countByStringSchema>
 
@@ -752,7 +752,7 @@ export const sdkAgentSkillPayloadSchema = z.object({
 export type SdkAgentSkillPayload = z.infer<typeof sdkAgentSkillPayloadSchema>
 
 export const sdkAgentRunOptionsPayloadSchema = z.object({
-    maxTurns: z.number().optional(),
+    maxTurns: z.number().int().optional(),
     requireApproval: z.boolean().optional()
 })
 export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayloadSchema>
@@ -772,7 +772,7 @@ export const sdkAgentRunResponseContractSchema = z.object({
 })
 
 export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
-    maxTurns: z.number(),
+    maxTurns: z.number().int(),
     requireApproval: z.boolean()
 })
 

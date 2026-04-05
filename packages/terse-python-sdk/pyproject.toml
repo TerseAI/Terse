@@ -17,6 +17,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "email-validator>=2.3.0",
     "httpx>=0.28.1",
     "httpx-sse>=0.4,<0.5",
     "pydantic>=2.12.5",
