@@ -1,6 +1,6 @@
 import type { KnownBlock } from "@slack/types"
 import { IntegrationType } from "terse-types"
-import type { ConfigData, ConfigInstance } from "terse-types"
+import type { ConfigData } from "terse-types"
 import type { SerializedEvent } from "terse-types"
 import type { WorkOSEventType } from "terse-types"
 
