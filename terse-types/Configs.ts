@@ -23,7 +23,8 @@ export enum ConfigType {
     WORKOS_INPUT = "workos_input",
     WORKOS_OUTPUT = "workos_output",
     ATTIO_OUTPUT = "attio_output",
-    SNOWFLAKE_OUTPUT = "snowflake_output"
+    SNOWFLAKE_OUTPUT = "snowflake_output",
+    WEBHOOK_INPUT = "webhook_input"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -228,6 +229,15 @@ export const SnowflakeOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const WebhookInputConfigMetadata = {
+    configType: ConfigType.WEBHOOK_INPUT,
+    name: "Webhook",
+    description: "Trigger via an external HTTP request to a generated URL",
+    integrationType: IntegrationType.WEBHOOK,
+    isInput: true,
+    isOutput: false
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -251,7 +261,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
-    [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata
+    [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata,
+    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -995,6 +1006,28 @@ export class SnowflakeOutputConfig extends BaseConfigInstance<IntegrationType.SN
     }
 }
 
+export const WebhookInputConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.WEBHOOK),
+    configType: z.literal(ConfigType.WEBHOOK_INPUT)
+})
+export type WebhookInputConfigData = z.infer<typeof WebhookInputConfigSchema>
+export type WebhookInputConfigInstance = WebhookInputConfigData & ConfigBehavior
+
+export class WebhookInputConfig extends BaseConfigInstance<IntegrationType.WEBHOOK, ConfigType.WEBHOOK_INPUT, "system"> implements WebhookInputConfigInstance {
+    constructor() {
+        super("system", IntegrationType.WEBHOOK, ConfigType.WEBHOOK_INPUT)
+    }
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return "Type: Webhook Trigger"
+    }
+}
+
 export const configDataSchema = z.union([
     GmailConfigSchema,
     FigmaConfigSchema,
@@ -1016,7 +1049,8 @@ export const configDataSchema = z.union([
     WorkOSInputConfigSchema,
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
-    SnowflakeOutputConfigSchema
+    SnowflakeOutputConfigSchema,
+    WebhookInputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1033,6 +1067,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.JIRA:
         case ConfigType.CONFLUENCE:
         case ConfigType.TERSE:
+        case ConfigType.WEBHOOK_INPUT:
             return true
         case ConfigType.FIGMA:
             return !!(config.fileKey && config.teamId)
@@ -1193,6 +1228,8 @@ export function formatConfigForAgent(config: ConfigData): string {
         }
         case ConfigType.SNOWFLAKE_OUTPUT:
             return `Type: Snowflake Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.WEBHOOK_INPUT:
+            return "Type: Webhook Trigger"
         default: {
             const _exhaustive: never = config
             return _exhaustive
@@ -1225,6 +1262,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.WORKOS_OUTPUT]: typeof WorkOSOutputConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
     [ConfigType.SNOWFLAKE_OUTPUT]: typeof SnowflakeOutputConfig
+    [ConfigType.WEBHOOK_INPUT]: typeof WebhookInputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1248,5 +1286,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
-    [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig
+    [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
+    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig
 } as const satisfies ConfigMetadataMap

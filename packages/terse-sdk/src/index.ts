@@ -29,6 +29,8 @@ export {
     isWorkOSInvitationEvent,
     isWorkOSOrganizationEvent,
     SlackMessageEvent,
+    WebhookInputEvent,
+    isWebhookEvent,
     deserializeInputEvent
 } from "./types.js"
 export type { GithubRepository, GithubUser, GithubFileDiff, GithubCommit, GithubPRData, WorkOSEventUser, WorkOSEventMembership, WorkOSEventInvitation, WorkOSEventOrganization } from "./types.js"
@@ -72,6 +74,7 @@ export {
     WorkOSOutputConfig,
     AttioOutputConfig,
     SnowflakeOutputConfig,
+    WebhookInputConfig,
     SlackEventType,
     GitHubEventType,
     LinearEventType,

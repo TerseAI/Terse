@@ -63,6 +63,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.ATTIO
         case IntegrationType.SNOWFLAKE:
             return PrismaIntegrationType.SNOWFLAKE
+        case IntegrationType.WEBHOOK:
+            return PrismaIntegrationType.WEBHOOK
         default:
             throw integrationType satisfies never
     }
@@ -104,6 +106,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.ATTIO
         case PrismaIntegrationType.SNOWFLAKE:
             return IntegrationType.SNOWFLAKE
+        case PrismaIntegrationType.WEBHOOK:
+            return IntegrationType.WEBHOOK
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -145,6 +149,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.ATTIO
         case IntegrationType.SNOWFLAKE:
             return PrismaIntegrationType.SNOWFLAKE
+        case IntegrationType.WEBHOOK:
+            return PrismaIntegrationType.WEBHOOK
         default:
             throw integrationType satisfies never
     }
@@ -187,6 +193,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.ATTIO
         case PrismaIntegrationType.SNOWFLAKE:
             return IntegrationType.SNOWFLAKE
+        case PrismaIntegrationType.WEBHOOK:
+            return IntegrationType.WEBHOOK
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -282,6 +290,7 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         case InputConfigType.POSTHOG:
         case InputConfigType.TIME_TRIGGER:
         case InputConfigType.WORKOS_INPUT:
+        case InputConfigType.WEBHOOK_INPUT:
             break
         default:
             throw channelInput.config_type satisfies never
@@ -427,6 +436,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.TIME_TRIGGER
         case ConfigType.WORKOS_INPUT:
             return InputConfigType.WORKOS_INPUT
+        case ConfigType.WEBHOOK_INPUT:
+            return InputConfigType.WEBHOOK_INPUT
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error("SLACK_OUTPUT is an output type, not an input type")
@@ -477,6 +488,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.TIME_TRIGGER
         case InputConfigType.WORKOS_INPUT:
             return ConfigType.WORKOS_INPUT
+        case InputConfigType.WEBHOOK_INPUT:
+            return ConfigType.WEBHOOK_INPUT
         default:
             throw inputConfigType satisfies never
     }

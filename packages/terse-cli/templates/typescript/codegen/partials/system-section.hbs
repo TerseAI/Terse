@@ -7,6 +7,15 @@ export const Schedule = {
     },
 }
 
+{{sectionHeader "Webhook"}}
+
+export const Webhook = {
+    /** Use in `triggers[]` — trigger via an external HTTP request to a generated URL */
+    onRequest(): TypedTrigger<WebhookInputEvent> {
+        return new WebhookInputConfig() as TypedTrigger<WebhookInputEvent>
+    },
+}
+
 {{sectionHeader "Terse"}}
 
 export const Terse = {

@@ -57,6 +57,8 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <AttioIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.SNOWFLAKE:
             return <SnowflakeIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.WEBHOOK:
+            return null
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw integration satisfies never
