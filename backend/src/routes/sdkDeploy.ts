@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
+import type { ConfigData } from "terse-types"
 import { User } from "terse-types/types"
 import { sdkDeployRequestBodySchema } from "terse-types/types"
-import type { ConfigData } from "terse-types"
 
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
