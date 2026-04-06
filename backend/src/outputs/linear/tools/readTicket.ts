@@ -1,30 +1,18 @@
 import { LinearClient } from "@linear/sdk"
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
+import { IntegrationType } from "terse-types"
 import { validate as isValidUuid } from "uuid"
-import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-    issueId: z.string().describe("The Linear issue ID (UUID) or identifier (e.g. 'PROJ-123')."),
-    includeComments: z.boolean().nullable().optional().describe("Whether to include comments. Defaults to true.")
-})
-
-export const linearReadTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_READ_TICKET> = {
-    name: ToolName.LINEAR_READ_TICKET,
+export const linearReadTicketTool = defineSessionTool({
+    name: "linear_read_ticket",
     description: `Read detailed information about a Linear issue/ticket including title, description, state, assignee, and optionally all comments.
 Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this after searching for tickets to get full details.`,
-    parameters: parameters,
-    execute: async ({ integrationId, issueId, includeComments = true }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, issueId, includeComments = true }, runContext) => {
         logger.debug("🛠️ Executing linear_read_ticket tool", { integrationId, issueId, includeComments })
 
         if (!runContext?.context) {
@@ -113,4 +101,4 @@ Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this afte
             throw new Error(`${errorMessage}. Check that the access token is valid and the issue ID or identifier is correct.`)
         }
     }
-}
+})

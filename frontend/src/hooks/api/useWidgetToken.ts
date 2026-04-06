@@ -1,7 +1,7 @@
 import useSWR from "swr"
+import { widgetTokenKey } from "terse-types/InvalidationKeys"
 
 import { BackendProvider } from "@/services/backend"
-import { widgetTokenKey } from "@/shared/InvalidationKeys"
 
 type WidgetTokenData = { token: string; expiresAt: string }
 

@@ -1,6 +1,11 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunToolApprovalItem, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
+import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
+import { IntegrationType } from "terse-types"
+import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
+import { RunHistoryAction } from "terse-types"
+import { SdkAgentStreamEvent, User } from "terse-types"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
@@ -9,13 +14,8 @@ import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
-import { CONFIG_DETAILS, ConfigInstance } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
-import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "../../shared/ModelEvents"
-import { RunHistoryAction } from "../../shared/RunHistoryTypes"
-import { SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "../../shared/types"
 import { Session } from "../../types/session"
-import { convertConfigTypeToOutputConfigType, convertPlainObjectToConfigInstance } from "../../utility/typeConverters"
+import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
@@ -31,7 +31,7 @@ type SdkAgentRunnerParams = {
     runId: string
     user: User
     prompt: string
-    skills: SdkAgentSkillPayload[]
+    skills: ConfigData[]
     tools: Tool<SdkRunnerSession>[]
     toolApprovals: string[]
     toolToIntegrationMap: Map<string, string>
@@ -84,7 +84,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly sdkRunId: string
     private readonly user: User
     private readonly prompt: string
-    private readonly outputs: Output<ConfigInstance>[]
+    private readonly outputs: Output<ConfigData>[]
     private readonly tools: Tool<SdkRunnerSession>[]
     private readonly maxTurns: number
     private readonly toolApprovals: string[]
@@ -103,7 +103,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.sdkRunId = params.runId
         this.user = params.user
         this.prompt = params.prompt
-        const skillConfigs = params.skills.map(skill => convertPlainObjectToConfigInstance(skill.config))
+        const skillConfigs = params.skills
         this.outputs = this.buildOutputsFromConfigs(skillConfigs)
         this.tools = params.tools
         this.maxTurns = params.maxTurns
@@ -288,13 +288,13 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
 
     override async buildAgent(_params: {
         name: string
-        systemPromptDeps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigInstance>
+        systemPromptDeps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData>
         runContext: RunContext
         model: string
         tools: Tool<SdkRunnerSession>[]
         modelSettings?: ModelSettings
     }): Promise<Agent<SdkRunnerSession, AgentOutputType>> {
-        const instructions = await new BaseSystemPromptBuilder<SdkRunnerSession, ConfigInstance>(_params.systemPromptDeps, _params.runContext)
+        const instructions = await new BaseSystemPromptBuilder<SdkRunnerSession, ConfigData>(_params.systemPromptDeps, _params.runContext)
             .withStandardSections()
             .withSection(() => ({
                 header: "SDK USER INSTRUCTIONS",
@@ -313,7 +313,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     }
 
     protected getAgentInitializationParams() {
-        const deps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigInstance> = {
+        const deps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData> = {
             session: this.getToolContext(),
             agent: {
                 id: SDK_AGENT_ID,
@@ -364,8 +364,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return `Tool call failures: ${summarized.join("; ")}${suffix}`
     }
 
-    private buildOutputsFromConfigs(configs: ConfigInstance[]): Output<ConfigInstance>[] {
-        const grouped = new Map<OutputConfigType, ConfigInstance[]>()
+    private buildOutputsFromConfigs(configs: ConfigData[]): Output<ConfigData>[] {
+        const grouped = new Map<OutputConfigType, ConfigData[]>()
         for (const config of configs) {
             const details = CONFIG_DETAILS[config.configType]
             if (!details.isOutput) continue
@@ -375,7 +375,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             grouped.set(outputType, existing)
         }
 
-        const outputs: Output<ConfigInstance>[] = []
+        const outputs: Output<ConfigData>[] = []
         for (const [outputType, configs] of grouped.entries()) {
             const output = OutputFactory.createOutput(outputType)
             if (!output) continue

@@ -23,9 +23,9 @@
             _flatten_attio_record(obj.api_slug, r))
             for r in (raw.records or [])],
             count=int(raw.count or 0),
-            requested_count=int(raw.requestedCount or 0),
-            success_count=int(raw.successCount or 0),
-            failure_count=int(raw.failureCount or 0),
+            requested_count=int(raw.requested_count or 0),
+            success_count=int(raw.success_count or 0),
+            failure_count=int(raw.failure_count or 0),
             partial=raw.partial or False,
             errors=raw.errors or [],
         )

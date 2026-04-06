@@ -1,0 +1,1028 @@
+import * as z from "zod"
+
+import { ConfigType, configDataSchema, configTypeEnum } from "./Configs"
+import { IntegrationType, integrationTypeEnum } from "./Integrations"
+import { RUN_HISTORY_ACTION_TYPES, RunHistoryStatus, runHistoryActionBaseSchema } from "./RunHistoryTypes"
+import type { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
+import {
+    attioAttributeSchema,
+    attioObjectSchema,
+    attioObjectWithAttributesSchema,
+    attioRecordIdentifierSchema,
+    attioRecordSchema,
+    attioUpsertErrorSchema,
+    linearTeamSchema,
+    slackUserResponseSchema
+} from "./Tools"
+
+const pointSchema = z.object({
+    x: z.number(),
+    y: z.number()
+})
+
+const unknownRecordSchema = z.record(z.string(), z.unknown())
+
+export const roleSchema = z.enum(["admin", "user"])
+export type Role = z.infer<typeof roleSchema>
+
+export const userSchema = z.object({
+    id: z.string(),
+    workosId: z.string(),
+    organizationId: z.string(),
+    organizationName: z.string(),
+    email: z.string(),
+    displayName: z.string(),
+    firstName: z.string().nullable(),
+    lastName: z.string().nullable(),
+    displayPhotoUrl: z.string(),
+    roles: z.array(roleSchema)
+})
+export type User = z.infer<typeof userSchema>
+
+export const userNoOrganizationSchema = userSchema.omit({
+    organizationId: true,
+    organizationName: true,
+    roles: true
+})
+export type UserNoOrganization = z.infer<typeof userNoOrganizationSchema>
+
+export const commitAssociationSchema = z.object({
+    sha: z.string(),
+    message: z.string(),
+    url: z.string()
+})
+export type CommitAssociation = z.infer<typeof commitAssociationSchema>
+
+export const subActivitySchema = z.object({
+    summary: z.string(),
+    commits: z.array(commitAssociationSchema)
+})
+export type SubActivity = z.infer<typeof subActivitySchema>
+
+export const activityEventSchema = z.object({
+    event_type: z.string(),
+    title: z.string(),
+    github_repository_owner_id: z.string(),
+    github_repository_name: z.string(),
+    created_at: z.date(),
+    sub_activities: z.array(subActivitySchema)
+})
+export type ActivityEvent = z.infer<typeof activityEventSchema>
+
+export type LinearTeam = z.infer<typeof linearTeamSchema>
+export type AttioObject = z.infer<typeof attioObjectSchema>
+export type AttioAttribute = z.infer<typeof attioAttributeSchema>
+export type AttioObjectWithAttributes = z.infer<typeof attioObjectWithAttributesSchema>
+export type AttioRecordIdentifier = z.infer<typeof attioRecordIdentifierSchema>
+export type AttioRecord = z.infer<typeof attioRecordSchema>
+
+export const linearWorkspaceSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+export type LinearWorkspace = z.infer<typeof linearWorkspaceSchema>
+
+export const jiraProjectSchema = z.object({
+    id: z.string(),
+    key: z.string(),
+    name: z.string()
+})
+export type JiraProject = z.infer<typeof jiraProjectSchema>
+
+export const jiraCredentialsValidationResponseSchema = z.object({
+    valid: z.boolean(),
+    projects: z.array(jiraProjectSchema).optional(),
+    error: z.string().optional()
+})
+export type JiraCredentialsValidationResponse = z.infer<typeof jiraCredentialsValidationResponseSchema>
+
+export const notionResourceTypeSchema = z.enum(["database", "page"])
+export type NotionResourceType = z.infer<typeof notionResourceTypeSchema>
+
+export const notionResourceSchema = z.object({
+    id: z.string(),
+    title: z.string(),
+    url: z.string(),
+    type: notionResourceTypeSchema
+})
+export type NotionResource = z.infer<typeof notionResourceSchema>
+
+export const notionResourcesResponseSchema = z.object({
+    resources: z.array(notionResourceSchema)
+})
+export type NotionResourcesResponse = z.infer<typeof notionResourcesResponseSchema>
+
+export const posthogProjectSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    organization_id: z.string().optional()
+})
+export type PosthogProject = z.infer<typeof posthogProjectSchema>
+
+export const posthogProjectsResponseSchema = z.object({
+    projects: z.array(posthogProjectSchema)
+})
+export type PosthogProjectsResponse = z.infer<typeof posthogProjectsResponseSchema>
+
+export const launchDarklyProjectSchema = z.object({
+    key: z.string(),
+    name: z.string()
+})
+export type LaunchDarklyProject = z.infer<typeof launchDarklyProjectSchema>
+
+export const launchDarklyProjectsResponseSchema = z.object({
+    projects: z.array(launchDarklyProjectSchema)
+})
+export type LaunchDarklyProjectsResponse = z.infer<typeof launchDarklyProjectsResponseSchema>
+
+export const launchDarklyEnvironmentSchema = z.object({
+    key: z.string(),
+    name: z.string()
+})
+export type LaunchDarklyEnvironment = z.infer<typeof launchDarklyEnvironmentSchema>
+
+export const launchDarklyEnvironmentsResponseSchema = z.object({
+    environments: z.array(launchDarklyEnvironmentSchema)
+})
+export type LaunchDarklyEnvironmentsResponse = z.infer<typeof launchDarklyEnvironmentsResponseSchema>
+
+export const datadogIndexSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    isEnabled: z.boolean(),
+    dailyLimit: z.number().int().optional(),
+    retentionDays: z.number().int().optional()
+})
+export type DatadogIndex = z.infer<typeof datadogIndexSchema>
+
+export const datadogIndexesResponseSchema = z.object({
+    indexes: z.array(datadogIndexSchema)
+})
+export type DatadogIndexesResponse = z.infer<typeof datadogIndexesResponseSchema>
+
+export const slackChannelSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    isPrivate: z.boolean(),
+    isArchived: z.boolean(),
+    isMPIM: z.boolean()
+})
+export type SlackChannel = z.infer<typeof slackChannelSchema>
+
+export const slackChannelsResponseSchema = z.object({
+    channels: z.array(slackChannelSchema),
+    selectedChannelId: z.string().nullable()
+})
+export type SlackChannelsResponse = z.infer<typeof slackChannelsResponseSchema>
+
+export type SlackUserResponse = z.infer<typeof slackUserResponseSchema>
+
+export const slackUsersResponseSchema = z.object({
+    users: z.array(slackUserResponseSchema)
+})
+export type SlackUsersResponse = z.infer<typeof slackUsersResponseSchema>
+
+export const TERSE_AGENT_MESSAGE_EVENT_TYPE = "terse_agent_message" as const
+
+export const terseAgentMessageEventPayloadSchema = z.object({
+    run_id: z.string(),
+    automation_id: z.string(),
+    organization_id: z.string()
+})
+
+export const terseAgentMessageMetadataSchema = z.object({
+    event_type: z.literal(TERSE_AGENT_MESSAGE_EVENT_TYPE),
+    event_payload: terseAgentMessageEventPayloadSchema
+})
+export type TerseAgentMessageMetadata = z.infer<typeof terseAgentMessageMetadataSchema>
+
+export enum SlackChannelType {
+    CHANNEL = "channel",
+    GROUP = "group",
+    MPIM = "mpim",
+    IM = "im"
+}
+
+export const slackChannelTypeSchema = z.enum(SlackChannelType)
+
+export const confluencePageSchema = z.object({
+    id: z.string(),
+    title: z.string(),
+    spaceId: z.string(),
+    spaceName: z.string(),
+    url: z.string(),
+    status: z.string(),
+    version: z.number().int()
+})
+export type ConfluencePage = z.infer<typeof confluencePageSchema>
+
+export const confluencePagesQuerySchema = z
+    .object({
+        integrationId: z.string(),
+        spaceId: z.string().optional(),
+        spaceKey: z.string().optional()
+    })
+    .refine(({ spaceId, spaceKey }) => spaceId != null || spaceKey != null, {
+        message: "Either spaceId or spaceKey is required"
+    })
+export type ConfluencePagesQuery = z.infer<typeof confluencePagesQuerySchema>
+
+export const confluencePagesResponseSchema = z.object({
+    pages: z.array(confluencePageSchema),
+    spaceId: z.string(),
+    total: z.number().int()
+})
+export type ConfluencePagesResponse = z.infer<typeof confluencePagesResponseSchema>
+
+export const confluenceResourcesResponseSchema = z.object({
+    resources: z.array(confluencePageSchema),
+    spaceId: z.string(),
+    total: z.number().int()
+})
+export type ConfluenceResourcesResponse = z.infer<typeof confluenceResourcesResponseSchema>
+
+export const jiraResourceProjectSchema = z.object({
+    id: z.string(),
+    key: z.string(),
+    name: z.string(),
+    projectTypeKey: z.string()
+})
+
+export const jiraResourcesPayloadSchema = z.object({
+    projects: z.array(jiraResourceProjectSchema),
+    baseUrl: z.string(),
+    cloudId: z.string()
+})
+export type JiraResourcesPayload = z.infer<typeof jiraResourcesPayloadSchema>
+
+export const jiraResourcesResponseSchema = z.object({
+    success: z.boolean(),
+    resources: jiraResourcesPayloadSchema
+})
+export type JiraResourcesResponse = z.infer<typeof jiraResourcesResponseSchema>
+
+export const useConfluenceResourcesReturnBaseSchema = z.object({
+    resources: z.array(confluencePageSchema),
+    response: confluenceResourcesResponseSchema.optional(),
+    isLoading: z.boolean(),
+    isError: z.boolean(),
+    error: z.unknown(),
+    isValidating: z.boolean()
+})
+
+export const createUseConfluenceResourcesReturnSchema = <TMutate extends z.ZodTypeAny>(mutateSchema: TMutate) =>
+    useConfluenceResourcesReturnBaseSchema.extend({
+        mutate: mutateSchema
+    })
+
+export type UseConfluenceResourcesReturn<MutateType = any> = z.infer<typeof useConfluenceResourcesReturnBaseSchema> & {
+    mutate: MutateType
+}
+
+export enum FigmaEventTypes {
+    FILE_COMMENT = "FILE_COMMENT"
+}
+
+export const figmaEventTypesSchema = z.enum(FigmaEventTypes)
+
+export const figmaWebhookUserSchema = z.object({
+    id: z.string(),
+    handle: z.string(),
+    email: z.string(),
+    img_url: z.string()
+})
+export type FigmaWebhookUser = z.infer<typeof figmaWebhookUserSchema>
+
+export const figmaCommentImageUrlsSchema = z.object({
+    nodeImage: z.string().optional(),
+    fullFrame: z.string().optional()
+})
+export type FigmaCommentImageUrls = z.infer<typeof figmaCommentImageUrlsSchema>
+
+export const figmaVectorDataSchema = pointSchema
+export type FigmaVectorData = z.infer<typeof figmaVectorDataSchema>
+
+export const figmaFrameOffsetDataSchema = z.object({
+    node_id: z.string(),
+    node_offset: pointSchema
+})
+export type FigmaFrameOffsetData = z.infer<typeof figmaFrameOffsetDataSchema>
+
+export const figmaRegionDataSchema = z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number()
+})
+export type FigmaRegionData = z.infer<typeof figmaRegionDataSchema>
+
+export const figmaFrameOffsetRegionDataSchema = z.object({
+    node_id: z.string(),
+    node_offset: pointSchema,
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number()
+})
+export type FigmaFrameOffsetRegionData = z.infer<typeof figmaFrameOffsetRegionDataSchema>
+
+export const figmaVectorPositioningSchema = z.object({ type: z.literal("Vector"), data: figmaVectorDataSchema })
+export type FigmaVectorPositioning = z.infer<typeof figmaVectorPositioningSchema>
+
+export const figmaFrameOffsetPositioningSchema = z.object({ type: z.literal("FrameOffset"), data: figmaFrameOffsetDataSchema })
+export type FigmaFrameOffsetPositioning = z.infer<typeof figmaFrameOffsetPositioningSchema>
+
+export const figmaRegionPositioningSchema = z.object({ type: z.literal("Region"), data: figmaRegionDataSchema })
+export type FigmaRegionPositioning = z.infer<typeof figmaRegionPositioningSchema>
+
+export const figmaFrameOffsetRegionPositioningSchema = z.object({ type: z.literal("FrameOffsetRegion"), data: figmaFrameOffsetRegionDataSchema })
+export type FigmaFrameOffsetRegionPositioning = z.infer<typeof figmaFrameOffsetRegionPositioningSchema>
+
+export const figmaPositioningDataSchema = z.discriminatedUnion("type", [
+    figmaVectorPositioningSchema,
+    figmaFrameOffsetPositioningSchema,
+    figmaRegionPositioningSchema,
+    figmaFrameOffsetRegionPositioningSchema
+])
+export type FigmaPositioningData = z.infer<typeof figmaPositioningDataSchema>
+
+export const figmaClientMetaSchema = z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    node_id: z.string(),
+    node_offset: pointSchema
+})
+export type FigmaClientMeta = z.infer<typeof figmaClientMetaSchema>
+
+export const figmaWebhookCommentSchema = z.object({
+    id: z.string(),
+    message: z.string(),
+    client_meta: figmaClientMetaSchema,
+    user: figmaWebhookUserSchema,
+    created_at: z.string(),
+    resolved_at: z.string().nullable()
+})
+export type FigmaWebhookComment = z.infer<typeof figmaWebhookCommentSchema>
+
+export const figmaApiCommentSchema = z.object({
+    id: z.string(),
+    message: z.string(),
+    client_meta: figmaClientMetaSchema.nullable(),
+    user: figmaWebhookUserSchema,
+    created_at: z.string(),
+    resolved_at: z.string().nullable(),
+    parent_id: z.string().nullable().optional(),
+    order_id: z.string().optional(),
+    mentions: z.array(z.unknown()).optional(),
+    reactions: z.array(z.unknown()).optional()
+})
+export type FigmaApiComment = z.infer<typeof figmaApiCommentSchema>
+
+export const figmaCommentThreadEntrySchema = z.object({
+    id: z.string(),
+    message: z.string(),
+    author: figmaWebhookUserSchema,
+    createdAt: z.string(),
+    resolvedAt: z.string().nullable(),
+    parentId: z.string().nullable(),
+    orderId: z.string().optional(),
+    isRoot: z.boolean().optional()
+})
+export type FigmaCommentThreadEntry = z.infer<typeof figmaCommentThreadEntrySchema>
+
+export const figmaFileMetadataSchema = z
+    .object({
+        name: z.string().optional(),
+        folder_name: z.string().optional(),
+        url: z.string().optional()
+    })
+    .passthrough()
+export type FigmaFileMetadata = z.infer<typeof figmaFileMetadataSchema>
+
+export const figmaCommentEventDataSchema = z.object({
+    integrationId: z.string(),
+    commentId: z.string(),
+    fileKey: z.string(),
+    fileUrl: z.string(),
+    nodeId: z.string().optional(),
+    message: z.string(),
+    author: figmaWebhookUserSchema,
+    createdAt: z.string(),
+    resolved: z.boolean().optional(),
+    thread: z.array(figmaCommentThreadEntrySchema).optional(),
+    fileMetadata: figmaFileMetadataSchema.optional(),
+    positioningData: figmaPositioningDataSchema.optional(),
+    matchedNodeIds: z.array(z.string()).optional(),
+    imageUrls: figmaCommentImageUrlsSchema.optional()
+})
+export type FigmaCommentEventData = z.infer<typeof figmaCommentEventDataSchema>
+
+export const apiTokenSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    tokenPrefix: z.string(),
+    createdAt: z.string(),
+    lastUsedAt: z.string().nullable()
+})
+export type ApiToken = z.infer<typeof apiTokenSchema>
+
+export const apiTokenCreateResponseSchema = z.object({
+    token: apiTokenSchema,
+    rawToken: z.string()
+})
+export type ApiTokenCreateResponse = z.infer<typeof apiTokenCreateResponseSchema>
+
+export const deviceTokenExchangeUserSchema = z.object({
+    email: z.string(),
+    firstName: z.string().nullable(),
+    displayName: z.string().nullable()
+})
+
+export const deviceTokenExchangeResponseSchema = z.object({
+    apiKey: z.string(),
+    user: deviceTokenExchangeUserSchema
+})
+export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResponseSchema>
+
+const configInstanceDataSchema = configDataSchema
+
+export const agentTriggerSchema = z.object({
+    id: z.string(),
+    config: configInstanceDataSchema
+})
+export type AgentTrigger = z.infer<typeof agentTriggerSchema>
+
+export const agentOutputSchema = z.object({
+    id: z.string(),
+    config: configInstanceDataSchema
+})
+export type AgentOutput = z.infer<typeof agentOutputSchema>
+
+export const agentPromptSchema = z.object({
+    text: z.string()
+})
+export type AgentPrompt = z.infer<typeof agentPromptSchema>
+
+export const transientAgentTriggerSchema = z.object({
+    id: z.string(),
+    config: configInstanceDataSchema.optional(),
+    configType: configTypeEnum
+})
+export type TransientAgentTrigger = z.infer<typeof transientAgentTriggerSchema>
+
+export const transientAgentOutputSchema = z.object({
+    id: z.string(),
+    config: configInstanceDataSchema.optional(),
+    configType: configTypeEnum
+})
+export type TransientAgentOutput = z.infer<typeof transientAgentOutputSchema>
+
+export const templateConfigRefSchema = z.object({
+    configType: configTypeEnum,
+    integrationType: integrationTypeEnum
+})
+export type TemplateConfigRef = z.infer<typeof templateConfigRefSchema>
+
+export const templateTriggerSchema = z.object({
+    config: templateConfigRefSchema
+})
+export type TemplateTrigger = z.infer<typeof templateTriggerSchema>
+
+export const templateOutputSchema = z.object({
+    config: templateConfigRefSchema
+})
+export type TemplateOutput = z.infer<typeof templateOutputSchema>
+
+export const templateCategorySchema = z.enum(["ship", "users", "sync", "track"])
+export type TemplateCategory = z.infer<typeof templateCategorySchema>
+
+export const agentTemplateSchema = z.object({
+    id: z.string(),
+    category: templateCategorySchema,
+    name: z.string(),
+    description: z.string(),
+    chatPrompt: z.string(),
+    prompt: agentPromptSchema,
+    triggers: z.array(templateTriggerSchema),
+    outputs: z.array(templateOutputSchema),
+    requireApproval: z.boolean(),
+    isActive: z.boolean()
+})
+export type AgentTemplate = z.infer<typeof agentTemplateSchema>
+
+const runHistoryActionTypeSchema = z.enum(RUN_HISTORY_ACTION_TYPES)
+const runHistoryStatusSchema = z.enum(RunHistoryStatus)
+
+const runHistoryTriggerSchema = z.object({
+    event: z.string(),
+    integration: integrationTypeEnum,
+    source: z.string(),
+    title: z.string().optional(),
+    subheader: z.string().optional(),
+    url: z.string().optional()
+})
+
+const runHistoryDecisionSchema = z.object({
+    action: z.enum(["processed", "skipped"]),
+    reasoning: z.string()
+})
+
+const runHistoryRecordSchema = z.object({
+    id: z.string(),
+    agentId: z.string(),
+    timestamp: z.string(),
+    trigger: runHistoryTriggerSchema,
+    filtered: z.boolean(),
+    decision: runHistoryDecisionSchema,
+    actions: z.array(runHistoryActionBaseSchema).optional(),
+    status: runHistoryStatusSchema,
+    isManuallyTriggered: z.boolean()
+})
+
+const runHistoryRecordWithAgentSchema = runHistoryRecordSchema.extend({
+    agentName: z.string()
+})
+
+export const agentNotificationSettingsSchema = z.object({
+    enabled: z.boolean(),
+    actionTypes: z.array(runHistoryActionTypeSchema)
+})
+export type AgentNotificationSettings = z.infer<typeof agentNotificationSettingsSchema>
+
+export const agentSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    isActive: z.boolean(),
+    requireApproval: z.boolean(),
+    prompt: agentPromptSchema,
+    triggers: z.array(agentTriggerSchema),
+    outputs: z.array(agentOutputSchema),
+    createdByUserId: z.string(),
+    notificationSettings: agentNotificationSettingsSchema.nullable(),
+    toolApprovals: z.array(z.string()).nullable(),
+    updatedAt: z.string().nullable(),
+    source: z.enum(["WEB_UI", "SDK"]).nullable()
+})
+export type Agent = z.infer<typeof agentSchema>
+
+export const agentUpdateSchema = z.object({
+    name: z.string().optional(),
+    triggers: z.array(agentTriggerSchema).optional(),
+    outputs: z.array(agentOutputSchema).optional(),
+    prompt: agentPromptSchema.optional(),
+    isActive: z.boolean().optional(),
+    requireApproval: z.boolean().optional(),
+    notificationSettings: agentNotificationSettingsSchema.nullable().optional(),
+    toolApprovals: z.array(z.string()).nullable().optional()
+})
+export type AgentUpdate = z.infer<typeof agentUpdateSchema>
+
+export const agentCreateSchema = agentSchema.omit({
+    id: true,
+    createdByUserId: true,
+    source: true,
+    updatedAt: true
+})
+export type AgentCreate = z.infer<typeof agentCreateSchema>
+
+export const agentDraftSchema = agentCreateSchema.extend({
+    id: z.string().nullable(),
+    createdByUserId: z.string()
+})
+export type AgentDraft = z.infer<typeof agentDraftSchema>
+
+export const paginationSchema = z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number(),
+    totalPages: z.number()
+})
+
+export const agentsResponseSchema = z.object({
+    agents: z.array(agentSchema),
+    pagination: paginationSchema
+})
+export type AgentsResponse = z.infer<typeof agentsResponseSchema>
+
+export const recentAgentSchema = agentSchema.extend({
+    updatedAt: z.string(),
+    lastEventProcessedAt: z.string().nullable()
+})
+export type RecentAgent = z.infer<typeof recentAgentSchema>
+
+export const agentImprovementStatusSchema = z.enum(["PENDING", "APPLIED", "DISMISSED"])
+export type AgentImprovementStatus = z.infer<typeof agentImprovementStatusSchema>
+
+export const agentImprovementTargetAreaSchema = z.enum(["prompt", "trigger_config", "output_config", "general", "code"])
+export type AgentImprovementTargetArea = z.infer<typeof agentImprovementTargetAreaSchema>
+
+export const agentReviewSchema = z.object({
+    id: z.string(),
+    automationId: z.string(),
+    title: z.string(),
+    summary: z.string(),
+    runsAnalyzed: z.number().int(),
+    reviewPeriodStart: z.string(),
+    reviewPeriodEnd: z.string(),
+    createdAt: z.string()
+})
+export type AgentReview = z.infer<typeof agentReviewSchema>
+
+export const agentImprovementSchema = z.object({
+    id: z.string(),
+    reviewId: z.string(),
+    automationId: z.string(),
+    title: z.string(),
+    description: z.string(),
+    targetArea: agentImprovementTargetAreaSchema,
+    confidence: z.number(),
+    status: agentImprovementStatusSchema,
+    suggestedPatch: z.string().optional(),
+    appliedPrompt: z.string().optional(),
+    appliedAt: z.string().optional(),
+    dismissedAt: z.string().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string()
+})
+export type AgentImprovement = z.infer<typeof agentImprovementSchema>
+
+export const getAgentImprovementsResponseSchema = z.object({
+    review: agentReviewSchema.nullable(),
+    improvements: z.array(agentImprovementSchema),
+    improvementsEnabled: z.boolean()
+})
+export type GetAgentImprovementsResponse = z.infer<typeof getAgentImprovementsResponseSchema>
+
+export const applyImprovementResponseSchema = z.object({
+    success: z.boolean(),
+    appliedPrompt: z.string()
+})
+export type ApplyImprovementResponse = z.infer<typeof applyImprovementResponseSchema>
+
+export const dismissImprovementResponseSchema = z.object({
+    success: z.boolean()
+})
+export type DismissImprovementResponse = z.infer<typeof dismissImprovementResponseSchema>
+
+export const toggleImprovementsEnabledResponseSchema = z.object({
+    success: z.boolean(),
+    improvementsEnabled: z.boolean()
+})
+export type ToggleImprovementsEnabledResponse = z.infer<typeof toggleImprovementsEnabledResponseSchema>
+
+export const repositorySchema = z.object({
+    name: z.string(),
+    owner: z.string(),
+    id: z.number().int()
+})
+export type Repository = z.infer<typeof repositorySchema>
+
+export const githubAppInstallationCallbackRequestSchema = z.object({
+    name: z.string(),
+    email: z.string(),
+    username: z.string(),
+    installationId: z.number().int(),
+    accountName: z.string().nullable(),
+    repositories: z.array(repositorySchema)
+})
+export type GithubAppInstallationCallbackRequest = z.infer<typeof githubAppInstallationCallbackRequestSchema>
+
+export const getGithubRepositoriesForIntegrationRequestSchema = z.object({})
+export type GetGithubRepositoriesForIntegrationRequest = z.infer<typeof getGithubRepositoriesForIntegrationRequestSchema>
+
+export const getGithubRepositoriesForIntegrationResponseSchema = z.object({
+    repositories: z.array(repositorySchema)
+})
+export type GetGithubRepositoriesForIntegrationResponse = z.infer<typeof getGithubRepositoriesForIntegrationResponseSchema>
+
+export const oauthInstallationDetailsSchema = z.object({
+    oauthUrl: z.string()
+})
+export type OAuthInstallationDetails = z.infer<typeof oauthInstallationDetailsSchema>
+
+export const formFieldTypeSchema = z.enum(["text", "password", "textarea"])
+export type FormFieldType = z.infer<typeof formFieldTypeSchema>
+
+export const formFieldDefinitionSchema = z.object({
+    name: z.string(),
+    type: formFieldTypeSchema,
+    label: z.string(),
+    placeholder: z.string().optional(),
+    required: z.boolean().optional(),
+    hint: z.string().optional()
+})
+export type FormFieldDefinition = z.infer<typeof formFieldDefinitionSchema>
+
+export const configurationFieldTypeSchema = z.enum(["radio", "select"])
+export type ConfigurationFieldType = z.infer<typeof configurationFieldTypeSchema>
+
+export const configurationOptionSchema = z.object({
+    label: z.string(),
+    value: z.string()
+})
+export type ConfigurationOption = z.infer<typeof configurationOptionSchema>
+
+export const configurationFieldDefinitionSchema = z.object({
+    name: z.string(),
+    type: configurationFieldTypeSchema,
+    label: z.string(),
+    options: z.array(configurationOptionSchema),
+    required: z.boolean().optional(),
+    hint: z.string().optional()
+})
+export type ConfigurationFieldDefinition = z.infer<typeof configurationFieldDefinitionSchema>
+
+export const integrationFieldsResponseSchema = z.object({
+    installationType: z.enum(["form", "oauth"]),
+    fields: z.union([z.array(formFieldDefinitionSchema), z.array(configurationFieldDefinitionSchema)])
+})
+export type IntegrationFieldsResponse = z.infer<typeof integrationFieldsResponseSchema>
+
+export const statsIntervalSchema = z.enum(["1h", "24h", "7d", "1mo", "3mo", "1y"])
+export type StatsInterval = z.infer<typeof statsIntervalSchema>
+
+export const dailyEventCountSchema = z.object({
+    date: z.string(),
+    events: z.number().int()
+})
+export type DailyEventCount = z.infer<typeof dailyEventCountSchema>
+
+export const recentActionSchema = z.object({
+    action: z.string(),
+    integration: integrationTypeEnum,
+    target: z.string(),
+    details: z.string(),
+    url: z.string().optional(),
+    timestamp: z.string(),
+    agentName: z.string(),
+    type: runHistoryActionTypeSchema
+})
+export type RecentAction = z.infer<typeof recentActionSchema>
+
+export const agentActivityItemSchema = z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    runCount: z.number().int()
+})
+export type AgentActivityItem = z.infer<typeof agentActivityItemSchema>
+
+export const countByStringSchema = z.object({
+    label: z.string(),
+    count: z.number().int()
+})
+export type CountByString = z.infer<typeof countByStringSchema>
+
+export const statsResponseSchema = z.object({
+    totalEventsProcessed: z.number(),
+    totalEventsProcessedChange: z.string(),
+    actionsTaken: z.number(),
+    actionsTakenChange: z.string(),
+    numberOfAgents: z.number(),
+    numberOfAgentsChange: z.string(),
+    dailyEvents: z.array(dailyEventCountSchema),
+    recentActions: z.array(recentActionSchema),
+    recentRuns: z.array(runHistoryRecordWithAgentSchema),
+    timezone: z.string(),
+    agentActivity: z.array(agentActivityItemSchema),
+    statusBreakdown: z.array(countByStringSchema),
+    triggerIntegrations: z.array(countByStringSchema),
+    actionIntegrations: z.array(countByStringSchema),
+    actionTypes: z.array(countByStringSchema)
+})
+export type StatsResponse = z.infer<typeof statsResponseSchema> & {
+    recentRuns: RunHistoryRecordWithAgent[]
+}
+
+export const triggerPayloadSchema = z.object({
+    integrationId: z.string(),
+    integrationType: integrationTypeEnum,
+    config: configDataSchema
+})
+export type TriggerPayload = z.infer<typeof triggerPayloadSchema>
+
+export const serializedEventSchema = z.object({
+    integrationType: integrationTypeEnum,
+    eventType: z.string().optional(),
+    formattedContent: z.string(),
+    debugLog: z.string(),
+    metadata: unknownRecordSchema.optional()
+})
+export type SerializedEvent = z.infer<typeof serializedEventSchema>
+
+export const sdkAgentRunEventPayloadSchema = z.object({
+    integrationType: integrationTypeEnum,
+    formattedContent: z.string(),
+    debugLog: z.string()
+})
+export type SdkAgentRunEventPayload = z.infer<typeof sdkAgentRunEventPayloadSchema>
+
+export const partialSdkAgentRunEventPayloadSchema = sdkAgentRunEventPayloadSchema.partial()
+export type PartialSdkAgentRunEventPayload = z.infer<typeof partialSdkAgentRunEventPayloadSchema>
+
+export const sdkAgentRunOptionsPayloadSchema = z.object({
+    maxTurns: z.number().int().optional(),
+    requireApproval: z.boolean().optional()
+})
+export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayloadSchema>
+
+export const sdkAgentRunRequestBodySchema = z.object({
+    prompt: z.string().optional(),
+    event: partialSdkAgentRunEventPayloadSchema.optional(),
+    skills: z.array(configDataSchema).optional(),
+    options: sdkAgentRunOptionsPayloadSchema.optional(),
+    toolApprovals: z.array(z.string()).optional()
+})
+export type SdkAgentRunRequestBody = z.infer<typeof sdkAgentRunRequestBodySchema>
+
+export const sdkAgentRunResponseContractSchema = z.object({
+    responseMode: z.literal("streaming"),
+    supportsInterruptions: z.boolean()
+})
+
+export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
+    maxTurns: z.number().int(),
+    requireApproval: z.boolean()
+})
+
+export const sdkAgentRunNormalizedRequestSchema = z.object({
+    prompt: z.string(),
+    event: sdkAgentRunEventPayloadSchema,
+    skills: z.array(configDataSchema),
+    toolApprovals: z.array(z.string()),
+    options: sdkAgentRunNormalizedRequestOptionsSchema
+})
+
+export const sdkAgentRunResponseBodySchema = z.object({
+    success: z.boolean(),
+    error: z.string().optional(),
+    details: z.array(z.string()).optional(),
+    contract: sdkAgentRunResponseContractSchema.optional(),
+    normalizedRequest: sdkAgentRunNormalizedRequestSchema.optional()
+})
+export type SdkAgentRunResponseBody = z.infer<typeof sdkAgentRunResponseBodySchema>
+
+export const toolApprovalRequestedPayloadSchema = z.object({
+    stepId: z.string(),
+    toolName: z.string(),
+    arguments: z.string()
+})
+
+export const sdkAgentStreamEventSchema = z.discriminatedUnion("type", [
+    z.object({ type: z.literal("run_started"), runId: z.string() }),
+    z.object({ type: z.literal("text"), text: z.string() }),
+    z.object({ type: z.literal("final_output"), finalOutput: z.string() }),
+    z.object({ type: z.literal("tool_call_params"), toolCallParams: z.string() }),
+    z.object({ type: z.literal("tool_call_started"), toolCallStarted: z.string() }),
+    z.object({ type: z.literal("tool_call_completed"), toolCallCompleted: z.string() }),
+    z.object({
+        type: z.literal("tool_approval_requested"),
+        toolApprovalRequested: toolApprovalRequestedPayloadSchema
+    }),
+    z.object({ type: z.literal("action"), action: runHistoryActionBaseSchema }),
+    z.object({ type: z.literal("error"), message: z.string() }),
+    z.object({ type: z.literal("done") })
+])
+export type SdkAgentStreamEvent = z.infer<typeof sdkAgentStreamEventSchema> & {
+    action?: RunHistoryAction
+}
+
+export const sdkApprovalDecisionRequestBodySchema = z.object({
+    runId: z.string(),
+    stepId: z.string(),
+    approved: z.boolean()
+})
+export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionRequestBodySchema>
+
+export const sdkDeployJobSchema = z.object({
+    jobName: z.string(),
+    triggers: z.array(configDataSchema),
+    outputs: z.array(configDataSchema),
+    toolApprovals: z.array(z.string()),
+    webhookURL: z.string().optional()
+})
+export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
+
+export const sdkDeployRequestBodySchema = z.object({
+    jobs: z.array(sdkDeployJobSchema),
+    sourceZipBase64: z.string()
+})
+export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>
+
+export const sdkDeployResultSchema = z.object({
+    jobName: z.string(),
+    automationId: z.string(),
+    isUpdate: z.boolean()
+})
+
+export const sdkDeployRemovedSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+
+export const sdkDeployResponseBodySchema = z.object({
+    success: z.boolean(),
+    results: z.array(sdkDeployResultSchema),
+    removed: z.array(sdkDeployRemovedSchema),
+    error: z.string().optional(),
+    details: z.string().optional()
+})
+export type SdkDeployResponseBody = z.infer<typeof sdkDeployResponseBodySchema>
+
+export type AttioUpsertError = z.infer<typeof attioUpsertErrorSchema>
+
+// ─── Request / param schemas ─────────────────────────────────────────
+
+export const agentIdParamsSchema = z.object({
+    agentId: z.string()
+})
+
+export const agentAndImprovementParamsSchema = z.object({
+    agentId: z.string(),
+    id: z.string()
+})
+
+export const manualTriggerParamsSchema = z.object({
+    inputId: z.string()
+})
+
+export const triggerWithEventParamsSchema = z.object({
+    automationId: z.string()
+})
+
+export const logoUploadUrlQuerySchema = z.object({
+    contentType: z.string()
+})
+
+export const logoParamsSchema = z.object({
+    organizationId: z.string()
+})
+
+export const webhookWorkOSTriggerParamsSchema = z.object({
+    integrationId: z.string()
+})
+
+export const organizationCreateRequestSchema = z.object({
+    name: z.string(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional()
+})
+export type OrganizationCreateRequest = z.infer<typeof organizationCreateRequestSchema>
+
+export const organizationSwitchRequestSchema = z.object({
+    organizationId: z.string()
+})
+export type OrganizationSwitchRequest = z.infer<typeof organizationSwitchRequestSchema>
+
+export const organizationUpdateRequestSchema = z.object({
+    name: z.string()
+})
+export type OrganizationUpdateRequest = z.infer<typeof organizationUpdateRequestSchema>
+
+export const apiTokenCreateRequestSchema = z.object({
+    name: z.string().max(100)
+})
+export type ApiTokenCreateRequest = z.infer<typeof apiTokenCreateRequestSchema>
+
+export const apiTokenUpdateRequestSchema = z.object({
+    name: z.string().max(100)
+})
+export type ApiTokenUpdateRequest = z.infer<typeof apiTokenUpdateRequestSchema>
+
+export const deviceTokenExchangeRequestSchema = z.object({
+    accessToken: z.string()
+})
+export type DeviceTokenExchangeRequest = z.infer<typeof deviceTokenExchangeRequestSchema>
+
+export const sdkToolExecuteRequestSchema = z.object({
+    toolName: z.string(),
+    params: z.record(z.string(), z.unknown()).optional()
+})
+export type SdkToolExecuteRequest = z.infer<typeof sdkToolExecuteRequestSchema>
+
+export const manualTriggerRequestSchema = z.object({
+    context: z.string().optional()
+})
+export type ManualTriggerRequest = z.infer<typeof manualTriggerRequestSchema>
+
+export const toggleImprovementsEnabledRequestSchema = z.object({
+    enabled: z.boolean()
+})
+export type ToggleImprovementsEnabledRequest = z.infer<typeof toggleImprovementsEnabledRequestSchema>
+
+export const workosWebhookSecretUpdateRequestSchema = z.object({
+    webhookSecret: z.string(),
+    state: z.string().optional()
+})
+export type WorkosWebhookSecretUpdateRequest = z.infer<typeof workosWebhookSecretUpdateRequestSchema>
+
+export const sdkSampleEventsRequestSchema = z.object({
+    triggers: z.array(triggerPayloadSchema).min(1)
+})
+export type SdkSampleEventsRequest = z.infer<typeof sdkSampleEventsRequestSchema>
+
+export const triggerWithEventRequestSchema = z.object({
+    event: serializedEventSchema
+})
+export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSchema>

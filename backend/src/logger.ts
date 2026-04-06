@@ -5,9 +5,9 @@ import { BatchLogRecordProcessor } from "@opentelemetry/sdk-logs"
 import { NodeSDK } from "@opentelemetry/sdk-node"
 import { AsyncLocalStorage } from "async_hooks"
 import chalk from "chalk"
+import { User } from "terse-types"
 
 import { settings } from "./config/settings"
-import { User } from "./shared/types"
 import { extractErrorMessage } from "./utility/strings"
 
 const config: LoggerConfig = {

@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { NotionIntegration } from "terse-types/Integrations"
+import { notionIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { NotionIntegration } from "@/shared/Integrations"
-import { notionIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseNotionIntegrationsReturn = {
     integrations: NotionIntegration[]

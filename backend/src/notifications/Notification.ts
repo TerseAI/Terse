@@ -1,11 +1,11 @@
 import { NotificationDestinationType, RunHistoryActionType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
+import { sentNotificationsKey } from "terse-types/InvalidationKeys"
+import { RunHistoryAction } from "terse-types/RunHistoryTypes"
+import { User } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
-import { sentNotificationsKey } from "../shared/InvalidationKeys"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
-import { User } from "../shared/types"
 import { Agent, AutomationNotificationSettings, UserNotificationDestination } from "../types/prisma"
 
 import { sendEmailApprovalRequest, sendEmailNotification, sendEmailRunFailure } from "./channels/emailNotifications"

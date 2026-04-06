@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { SnowflakeIntegration } from "terse-types/Integrations"
+import { snowflakeIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { BackendProvider } from "@/services/backend"
-import type { SnowflakeIntegration } from "@/shared/Integrations"
-import { snowflakeIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseSnowflakeIntegrationsReturn = {
     integrations: SnowflakeIntegration[]

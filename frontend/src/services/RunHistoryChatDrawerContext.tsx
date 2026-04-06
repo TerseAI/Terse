@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import { RunHistoryRecord } from "terse-types/RunHistoryTypes"
+
 import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
-import { RunHistoryRecord } from "@/shared/RunHistoryTypes"
 
 const RUN_ID_PARAM = "runId"
 

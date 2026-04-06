@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AxiosError } from "axios"
 import { ImagePlus, Loader2, X } from "lucide-react"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import * as z from "zod"
 
 import { Button } from "@/components/ui/button"
@@ -14,7 +15,6 @@ import { Input } from "@/components/ui/input"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "@/constants/storageKeys"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
 
 export default function OrganizationCreationForm() {
     const [isLoading, setIsLoading] = useState(false)

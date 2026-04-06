@@ -1,16 +1,17 @@
 import { useEffect } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { isConfigComplete } from "terse-types"
+import { JiraConfig } from "terse-types"
+import { ConfigType } from "terse-types"
+import { AtlassianIntegration, IntegrationType } from "terse-types/Integrations"
 
 import { useJiraIntegrations } from "@/hooks/api/useJiraIntegrations"
 import { useJiraResources } from "@/hooks/api/useJiraResources"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { AtlassianIntegration, IntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { JiraConfig } from "../../shared/Configs"
-import { ConfigType } from "../../shared/Configs"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
@@ -99,7 +100,7 @@ export function JiraIntegration({ input, variant, setConfig }: InputConfigSelect
 
     // Card variant: compact view
     if (variant === "card") {
-        const isComplete = currentConfig?.isComplete()
+        const isComplete = isConfigComplete(currentConfig)
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">

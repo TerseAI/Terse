@@ -1,10 +1,10 @@
 import { Server } from "socket.io"
+import { ModelEvent } from "terse-types"
+import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams } from "terse-types"
+import { SocketEvents, SocketRooms } from "terse-types"
+import { User } from "terse-types"
 
 import logger from "../../logger"
-import { ModelEvent } from "../../shared/ModelEvents"
-import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams } from "../../shared/RunHistoryTypes"
-import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
-import { User } from "../../shared/types"
 import { randomString } from "../../utility/strings"
 
 export class StreamEventEmitter {

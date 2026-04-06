@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
+import { confluenceResourcesKey } from "terse-types/InvalidationKeys"
+import type { ConfluenceResourcesResponse, UseConfluenceResourcesReturn } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { confluenceResourcesKey } from "@/shared/InvalidationKeys"
-import type { ConfluenceResourcesResponse, UseConfluenceResourcesReturn } from "@/shared/types"
 
 export function useConfluenceResources(integrationId: string | null | undefined, search: string | null | undefined): UseConfluenceResourcesReturn<KeyedMutator<ConfluenceResourcesResponse>> {
     const shouldFetch = Boolean(integrationId)

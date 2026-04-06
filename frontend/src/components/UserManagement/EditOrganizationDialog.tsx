@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react"
 
 import { ImagePlus, Loader2, X } from "lucide-react"
 import { useSWRConfig } from "swr"
+import { orgLogoKey, userOrganizationsKey } from "terse-types/InvalidationKeys"
 
 import { useOrgLogo } from "@/hooks/api/useOrgLogo"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
-import { orgLogoKey, userOrganizationsKey } from "@/shared/InvalidationKeys"
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Button } from "../ui/button"

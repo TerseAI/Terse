@@ -1,6 +1,8 @@
 import { useState } from "react"
 
 import { AlertTriangleIcon, Eye, EyeOff, Info, Plus } from "lucide-react"
+import { DatadogConfig } from "terse-types/Configs"
+import type { DatadogIndex } from "terse-types/types"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -12,8 +14,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useDatadogIndexes } from "@/hooks/api/useDatadogIndexes"
 import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations"
 import { BackendProvider } from "@/services/backend"
-import { DatadogConfig } from "@/shared/Configs"
-import type { DatadogIndex } from "@/shared/types"
 
 import { InputConfigSelectorProps } from "./types"
 

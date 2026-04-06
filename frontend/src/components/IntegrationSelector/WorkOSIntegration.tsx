@@ -1,8 +1,8 @@
 import { AlertTriangleIcon, CheckIcon } from "lucide-react"
+import { WorkOSEventType, WorkOSInputConfig } from "terse-types/Configs"
 
 import { WorkOSIcon } from "@/components/icons/IntegrationIcons"
 import { useWorkOSIntegrations } from "@/hooks/api/useWorkOSIntegrations"
-import { WorkOSEventType, WorkOSInputConfig } from "@/shared/Configs"
 
 import { Checkbox } from "../ui/checkbox"
 import { Label } from "../ui/label"

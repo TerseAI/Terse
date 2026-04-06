@@ -1,26 +1,14 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { getWorkOSApiKeyByIntegrationId, listWorkOSOrganizations } from "../workosApiClient"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
-    limit: z.number().default(20).describe("Maximum number of organizations to return (default: 20, max: 100)."),
-    after: z.string().nullable().optional().describe("Optional pagination cursor. Use the 'after' value from a previous response to get the next page.")
-})
-
-export const listWorkOSOrganizationsTool: SessionToolOptions<typeof parameters, typeof ToolName.WORKOS_LIST_ORGANIZATIONS> = {
-    name: ToolName.WORKOS_LIST_ORGANIZATIONS,
+export const listWorkOSOrganizationsTool = defineSessionTool({
+    name: "listWorkOSOrganizations",
     description: "List organizations from the customer's WorkOS account. Returns organization names, domains, external IDs, and timestamps. Use pagination (after cursor) for large organization sets.",
-    parameters,
-    execute: async ({ integrationId, limit = 20, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, limit = 20, after }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -69,4 +57,4 @@ export const listWorkOSOrganizationsTool: SessionToolOptions<typeof parameters, 
             throw new Error(`Failed to list WorkOS organizations: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

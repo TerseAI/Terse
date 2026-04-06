@@ -1,13 +1,13 @@
+import type { ConfigData } from "terse-types"
+import type { RunHistoryAction } from "terse-types"
+import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
+import { IntegrationType } from "terse-types"
+import { ApiRoutes } from "terse-types"
+
+import type { InferEvents, InferToolApprovals, InputEvent, TypedSkill, TypedTrigger } from "./types.js"
+
 declare const process: { env: Record<string, string | undefined> }
 
-import type { InputEvent, TypedTrigger, TypedSkill, InferEvents, InferToolApprovals } from "./types.js"
-import { CONFIG_DETAILS } from "./shared/Configs.js"
-import type { ConfigInstance } from "./shared/Configs.js"
-import type { RunHistoryAction } from "./shared/RunHistoryTypes.js"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkApprovalDecisionRequestBody, SdkAgentSkillPayload, SdkAgentStreamEvent } from "./shared/types.js"
-
-import { IntegrationType } from "./shared/Integrations.js"
-import { ApiRoutes } from "./shared/ApiRoutes.js"
 // Re-export SDK-specific types
 export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 export {
@@ -31,17 +31,7 @@ export {
     SlackMessageEvent,
     deserializeInputEvent
 } from "./types.js"
-export type {
-    GithubRepository,
-    GithubUser,
-    GithubFileDiff,
-    GithubCommit,
-    GithubPRData,
-    WorkOSEventUser,
-    WorkOSEventMembership,
-    WorkOSEventInvitation,
-    WorkOSEventOrganization
-} from "./types.js"
+export type { GithubRepository, GithubUser, GithubFileDiff, GithubCommit, GithubPRData, WorkOSEventUser, WorkOSEventMembership, WorkOSEventInvitation, WorkOSEventOrganization } from "./types.js"
 
 // Mock event for CLI's `terse run` command
 export class MockInputEvent implements InputEvent {
@@ -89,36 +79,18 @@ export {
     FigmaEventType,
     GmailEventType,
     WorkOSEventType
-} from "./shared/Configs.js"
+} from "terse-types"
 
-export type {
-    SdkAgentRunEventPayload,
-    SdkAgentSkillPayload,
-    SdkAgentRunOptionsPayload,
-    SdkAgentRunRequestBody,
-    SdkAgentRunResponseBody,
-    SdkAgentStreamEvent,
-    ToolOutputByName
-} from "./shared/types.js"
+export type { SdkAgentRunEventPayload, SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
+export { IntegrationType } from "terse-types"
 
-export { IntegrationType } from "./shared/Integrations.js"
-
-export {
-    RunHistoryAction,
-    RunHistoryStatus,
-    RunHistoryTrigger,
-    RunHistoryDecision,
-    RunHistoryRecord
-} from "./shared/RunHistoryTypes.js"
+export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
 
 // SDK types
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<
-    TTriggers extends readonly TypedTrigger[] = TypedTrigger[],
-    TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]
-> = {
+export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[], TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> = {
     name: string
     triggers: [...TTriggers]
     skills: [...TSkills]
@@ -150,8 +122,8 @@ export type ApprovalRequestInfo = {
 }
 
 export class TerseAgent {
-    readonly skills: readonly ConfigInstance[]
-    manualToolConfigs?: readonly ConfigInstance[]
+    readonly skills: ConfigData[]
+    manualToolConfigs?: readonly ConfigData[]
     readonly toolApprovals: string[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
@@ -164,7 +136,7 @@ export class TerseAgent {
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    constructor(skills: readonly ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
+    constructor(skills: ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
         this.sessionId = sessionId
@@ -182,7 +154,7 @@ export class TerseAgent {
                 formattedContent: resolvedEvent.formatForAgentRunner(),
                 debugLog: resolvedEvent.debugLog()
             },
-            skills: this.serializeSkills(),
+            skills: this.skills
         }
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
@@ -262,13 +234,6 @@ export class TerseAgent {
         return headers
     }
 
-    private serializeSkills(): SdkAgentSkillPayload[] {
-        return this.skills.map(skill => ({
-            configType: skill.configType,
-            config: serializeSkillConfig(skill)
-        }))
-    }
-
     private async *consumeSseStream(res: Response): AsyncGenerator<TerseAgentResult> {
         if (!res.body) {
             throw new Error("Stream did not provide a response body.")
@@ -307,18 +272,6 @@ export class TerseAgent {
             yield mapStreamEventToResult(parsed)
         }
     }
-}
-
-function serializeSkillConfig(skill: ConfigInstance): Record<string, unknown> {
-    const serialized: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(skill as unknown as Record<string, unknown>)) {
-        if (typeof value === "function" || value === undefined) continue
-        serialized[key] = value
-    }
-    const details = CONFIG_DETAILS[skill.configType]
-    serialized.integrationType = details.integrationType
-    serialized.configType = skill.configType
-    return serialized
 }
 
 export enum EventType {

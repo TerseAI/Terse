@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import { RunHistoryRecord, RunHistoryStatus } from "terse-types"
+
 import { useRunHistory } from "../../hooks/api/useRunHistory"
 import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
 import { BackendProvider } from "../../services/backend"
-import { RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes"
 
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryItem from "./RunHistoryItem"

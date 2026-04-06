@@ -1,62 +1,17 @@
 import { LinearClient } from "@linear/sdk"
 import type { IssueFilter, IssuesQueryVariables, PaginationOrderBy as PaginationOrderByType, SearchIssuesQueryVariables } from "@linear/sdk/dist/_generated_documents"
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { LinearStateName } from "../../../shared/TicketSystem"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const linearStateNameValues = Object.values(LinearStateName)
-
-const DateFilterField = z.enum(["updatedAt", "createdAt"])
-
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Linear integration to use."),
-    searchTerm: z
-        .string()
-        .optional()
-        .default("")
-        .describe(
-            `Plain-text keyword search (matched against titles, descriptions, etc.).
-            Do NOT include operators or field filters. Use dedicated parameters instead.
-            ✓ "block kit"
-            ✗ "team:TER state:Done updated:>2026-02-04 block kit"`
-        ),
-    stateNames: z
-        .array(z.nativeEnum(LinearStateName))
-        .nullable()
-        .optional()
-        .describe(`Filter to only include issues with these state names. Available states: ${linearStateNameValues.join(", ")}.`),
-    dateFilterField: DateFilterField.nullable()
-        .optional()
-        .describe("Which date field to filter on. Required if using dateAfter or dateBefore. Options: 'updatedAt' (when issue was last modified) or 'createdAt' (when issue was created)."),
-    dateAfter: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("Filter to only include issues where the dateFilterField is on or after this date. ISO 8601 format (e.g., '2026-01-01' or '2026-01-01T00:00:00Z')."),
-    dateBefore: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("Filter to only include issues where the dateFilterField is on or before this date. ISO 8601 format (e.g., '2026-02-01' or '2026-02-01T23:59:59Z')."),
-    limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
-    after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
-})
-
-export const linearSearchTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_SEARCH_TICKET> = {
-    name: ToolName.LINEAR_SEARCH_TICKET,
+export const linearSearchTicketTool = defineSessionTool({
+    name: "linear_search_ticket",
     description: `Searches Linear issues by keyword, state filter, and/or date range filters. Use this before reading individual tickets. Results are ordered by most recently updated first. Use 'after' cursor to paginate.`,
-    parameters: parameters,
-    execute: async ({ integrationId, searchTerm, stateNames, dateFilterField, dateAfter, dateBefore, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, searchTerm, stateNames, dateFilterField, dateAfter, dateBefore, limit = 10, after }, runContext) => {
         logger.debug("🛠️ Executing linear_search_ticket tool", {
             integrationId,
             searchTerm,
@@ -196,4 +151,4 @@ export const linearSearchTicketTool: SessionToolOptions<typeof parameters, typeo
             throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }
     }
-}
+})

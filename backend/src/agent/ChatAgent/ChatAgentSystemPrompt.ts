@@ -1,6 +1,7 @@
+import { INTEGRATION_METADATA, IntegrationInstance, IntegrationType } from "terse-types"
+
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../../integrations/abstract/IntegrationRegistry"
 import { db } from "../../prismaClient"
-import { INTEGRATION_METADATA, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
 import { AgentWithRelations } from "../../types/prisma"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getUserForOrg } from "../../utility/workos"

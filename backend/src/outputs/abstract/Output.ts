@@ -1,13 +1,14 @@
-import { ToolOptions } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { ConfigData } from "terse-types"
+import { IntegrationType } from "terse-types"
 
-import { ConfigInstance } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
-import { SessionToolOptions } from "../../tools/toolUtils"
+import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
+import { TypedToolOptions } from "../../tools/toolUtils"
 import { PrismaTransaction } from "../../types/prisma"
+import { Session } from "../../types/session"
 
 export interface ToolboxEntry {
-    tool: SessionToolOptions<any, any> | ToolOptions<any, any>
+    tool: TypedToolOptions<any, SessionWithTracking<Session>>
     isReadOnly: boolean
     integration: IntegrationType
     displayName: string
@@ -19,7 +20,7 @@ export interface RuntimeSystemInstructionsContext {
     userId: string
 }
 
-export abstract class Output<TConfig extends ConfigInstance> {
+export abstract class Output<TConfig extends ConfigData> {
     integration: OutputConfigType
     readonly toolbox: readonly ToolboxEntry[]
     configs: TConfig[] = []

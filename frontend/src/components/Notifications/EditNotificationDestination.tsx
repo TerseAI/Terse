@@ -1,4 +1,5 @@
-import { NotificationDestination } from "../../shared/Notifications"
+import { NotificationDestination } from "terse-types"
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 
 import { NotificationDestinationForm } from "./NotificationDestinationForm"

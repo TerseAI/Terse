@@ -1,7 +1,8 @@
+import type { Cancelled, ChatSnippet, Thinking } from "terse-types/ModelEvents"
+import { FilterResult, ModelEvent, RunError, TextDelta, ToolApprovalRequest, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "terse-types/ModelEvents"
+
 import { Turn } from "@/components/chat/Turn"
 import { filterOutThinkingOnlyTurns } from "@/components/chat/utils/turnUtils"
-import type { Cancelled, ChatSnippet, Thinking } from "@/shared/ModelEvents"
-import { FilterResult, ModelEvent, RunError, TextDelta, ToolApprovalRequest, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "@/shared/ModelEvents"
 
 type FunctionCallEvent = Turn["function_calls"][number]
 

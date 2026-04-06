@@ -1,43 +1,43 @@
+import chalk from "chalk"
 import fs from "node:fs"
 import path from "node:path"
-import chalk from "chalk"
 import ora from "ora"
-
-import { assertProjectRoot } from "./assertProjectRoot.js"
-import {
-    type CodegenInput,
-    type GitHubInstanceData,
-    type SlackInstanceData,
-    type LinearInstanceData,
-    type NotionInstanceData,
-    type AtlassianInstanceData,
-    type PosthogInstanceData,
-    type DatadogInstanceData,
-    type LaunchDarklyInstanceData,
-    type AttioInstanceData,
-    type AttioAttributeData,
-    type ToolDefinition,
-} from "./providers/codegenTypes.js"
-import type { LanguageProvider } from "./providers/LanguageProvider.js"
-import { resolveProvider } from "./providers/resolveProvider.js"
 import type {
-    GithubIntegration,
-    SlackIntegration,
-    GmailIntegration,
-    FigmaIntegration,
-    LinearIntegration,
     AtlassianIntegration,
+    AttioIntegration,
+    DatadogIntegration,
+    FigmaIntegration,
+    GithubIntegration,
+    GmailIntegration,
+    LaunchDarklyIntegration,
+    LinearIntegration,
     NotionIntegration,
     PosthogIntegration,
-    DatadogIntegration,
-    LaunchDarklyIntegration,
-    WorkOSIntegration,
-    AttioIntegration,
+    SlackIntegration,
     SnowflakeIntegration,
-} from "./shared/Integrations.js"
-import { IntegrationType } from "./shared/Integrations.js"
-import { ApiRoutes } from "./shared/ApiRoutes.js"
+    WorkOSIntegration
+} from "terse-types"
+import { IntegrationType, isValidToolName } from "terse-types"
+import { ApiRoutes, buildRoute } from "terse-types"
+
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
+import { assertProjectRoot } from "./assertProjectRoot.js"
+import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import {
+    type AtlassianInstanceData,
+    type AttioAttributeData,
+    type AttioInstanceData,
+    type CodegenInput,
+    type DatadogInstanceData,
+    type GitHubInstanceData,
+    type LaunchDarklyInstanceData,
+    type LinearInstanceData,
+    type NotionInstanceData,
+    type PosthogInstanceData,
+    type SlackInstanceData,
+    type ToolDefinition
+} from "./providers/codegenTypes.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
 
 // ── Main ──────────────────────────────────────────────────────────────
 
@@ -69,10 +69,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
             message.toLowerCase().includes("forbidden")
 
         if (isAuthError) {
-            console.error(
-                chalk.red("\n  Authentication failed: your TERSE_API_KEY was rejected.\n") +
-                chalk.dim("  Update TERSE_API_KEY in .env and try again.\n")
-            )
+            console.error(chalk.red("\n  Authentication failed: your TERSE_API_KEY was rejected.\n") + chalk.dim("  Update TERSE_API_KEY in .env and try again.\n"))
         } else {
             console.error(chalk.red(`\n  ${message}\n`))
         }
@@ -88,6 +85,11 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         // Filter to only tools whose integration matches an active integration type
         const activeSet = new Set(activeTypes as string[])
         toolDefs = resp.tools.filter(t => activeSet.has(t.integration))
+        const skippedToolNames = [...new Set(toolDefs.filter(t => !isValidToolName(t.name)).map(t => t.name))].sort()
+        toolDefs = toolDefs.filter(t => isValidToolName(t.name))
+        if (skippedToolNames.length > 0) {
+            console.warn(chalk.yellow(`\n  Skipped ${skippedToolNames.length} tool(s) absent from terse-types ToolDefinitions: ${skippedToolNames.join(", ")}\n`))
+        }
     } catch {
         // Non-fatal: proceed without tool definitions
     }
@@ -96,11 +98,20 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
     spinner.text = "Fetching integration details..."
 
     const input: CodegenInput = {
-        github: [], slack: [], gmail: [], figma: [],
-        linear: [], atlassian: [], notion: [],
-        posthog: [], datadog: [], launchdarkly: [],
-        workos: [], attio: [], snowflake: [],
-        tools: toolDefs,
+        github: [],
+        slack: [],
+        gmail: [],
+        figma: [],
+        linear: [],
+        atlassian: [],
+        notion: [],
+        posthog: [],
+        datadog: [],
+        launchdarkly: [],
+        workos: [],
+        attio: [],
+        snowflake: [],
+        tools: toolDefs
     }
 
     const has = (t: IntegrationType) => activeTypes.includes(t)
@@ -108,186 +119,245 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
 
     // ── GitHub (special: also fetches repositories per instance) ──
     if (has(IntegrationType.GITHUB)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<GithubIntegration[]>(ApiRoutes.GITHUB.INTEGRATIONS, apiKey)
-            input.github = await Promise.all(instances.map(async (inst): Promise<GitHubInstanceData> => {
-                const data = await fetchWithAuth<{ repositories: Array<{ id: number; name: string; owner: string }> }>(
-                    `${ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION}?installation_id=${encodeURIComponent(inst.installation_id)}`,
-                    apiKey
-                ).catch(() => ({ repositories: [] }))
-                return { integration: inst, repositories: data.repositories || [] }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<GithubIntegration[]>(ApiRoutes.GITHUB.INTEGRATIONS, apiKey)
+                input.github = await Promise.all(
+                    instances.map(async (inst): Promise<GitHubInstanceData> => {
+                        const data = await fetchWithAuth<{ repositories: Array<{ id: number; name: string; owner: string }> }>(
+                            `${ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION}?installation_id=${encodeURIComponent(inst.installation_id)}`,
+                            apiKey
+                        ).catch(() => ({ repositories: [] }))
+                        return { integration: inst, repositories: data.repositories || [] }
+                    })
+                )
+            })
+        )
     }
 
     // ── Gmail (no resources) ──
     if (has(IntegrationType.GMAIL)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<GmailIntegration[]>(ApiRoutes.GMAIL.INTEGRATIONS, apiKey)
-            input.gmail = instances.map(inst => ({ id: inst.id, displayName: inst.email || inst.id }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<GmailIntegration[]>(ApiRoutes.GMAIL.INTEGRATIONS, apiKey)
+                input.gmail = instances.map(inst => ({ id: inst.id, displayName: inst.email || inst.id }))
+            })
+        )
     }
 
     // ── Slack (fetches channels per instance) ──
     if (has(IntegrationType.SLACK)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<SlackIntegration[]>(ApiRoutes.SLACK.INTEGRATIONS, apiKey)
-            input.slack = await Promise.all(instances.map(async (inst): Promise<SlackInstanceData> => {
-                const resp = await fetchWithAuth<{ channels: Array<{ id: string; name: string }> }>(
-                    `${ApiRoutes.SLACK.CHANNELS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey
-                ).catch(() => ({ channels: [] }))
-                return { id: inst.id, displayName: inst.teamName || inst.id, channels: resp.channels || [] }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<SlackIntegration[]>(ApiRoutes.SLACK.INTEGRATIONS, apiKey)
+                input.slack = await Promise.all(
+                    instances.map(async (inst): Promise<SlackInstanceData> => {
+                        const resp = await fetchWithAuth<{ channels: Array<{ id: string; name: string }> }>(`${ApiRoutes.SLACK.CHANNELS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(
+                            () => ({ channels: [] })
+                        )
+                        return { id: inst.id, displayName: inst.teamName || inst.id, channels: resp.channels || [] }
+                    })
+                )
+            })
+        )
     }
 
     // ── Figma (no resources) ──
     if (has(IntegrationType.FIGMA)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<FigmaIntegration[]>(ApiRoutes.FIGMA.INTEGRATIONS, apiKey)
-            input.figma = instances.map(inst => ({ id: inst.id, displayName: inst.handle || inst.id }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<FigmaIntegration[]>(ApiRoutes.FIGMA.INTEGRATIONS, apiKey)
+                input.figma = instances.map(inst => ({ id: inst.id, displayName: inst.handle || inst.id }))
+            })
+        )
     }
 
     // ── Linear (fetches teams per instance) ──
     if (has(IntegrationType.LINEAR)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<LinearIntegration[]>(ApiRoutes.LINEAR.INTEGRATIONS, apiKey)
-            input.linear = await Promise.all(instances.map(async (inst): Promise<LinearInstanceData> => {
-                const teams = await fetchWithAuth<Array<{ id: string; name: string; key: string }>>(
-                    `${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey
-                ).catch(() => [] as Array<{ id: string; name: string; key: string }>)
-                return { id: inst.id, displayName: inst.workspaceName || inst.id, teams: Array.isArray(teams) ? teams : [] }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<LinearIntegration[]>(ApiRoutes.LINEAR.INTEGRATIONS, apiKey)
+                input.linear = await Promise.all(
+                    instances.map(async (inst): Promise<LinearInstanceData> => {
+                        const teams = await fetchWithAuth<Array<{ id: string; name: string; key: string }>>(`${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(
+                            () => [] as Array<{ id: string; name: string; key: string }>
+                        )
+                        return { id: inst.id, displayName: inst.workspaceName || inst.id, teams: Array.isArray(teams) ? teams : [] }
+                    })
+                )
+            })
+        )
     }
 
     // ── Atlassian — fetches Jira projects + Confluence pages per instance ──
     if (has(IntegrationType.ATLASSIAN)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<AtlassianIntegration[]>(ApiRoutes.ATLASSIAN.INTEGRATIONS, apiKey)
-            input.atlassian = await Promise.all(instances.map(async (inst): Promise<AtlassianInstanceData> => {
-                const [jiraResp, confResp] = await Promise.all([
-                    fetchWithAuth<{ resources: { projects: Array<{ id: string; key: string; name: string }> } }>(
-                        `${ApiRoutes.JIRA.RESOURCES}?integrationId=${encodeURIComponent(inst.id)}`, apiKey
-                    ).catch(() => null),
-                    fetchWithAuth<{ resources: Array<{ id: string; title: string; spaceId: string; spaceName: string }> }>(
-                        `${ApiRoutes.CONFLUENCE.RESOURCES}?integrationId=${encodeURIComponent(inst.id)}`, apiKey
-                    ).catch(() => null),
-                ])
-                return {
-                    id: inst.id,
-                    displayName: inst.siteName || inst.email || inst.id,
-                    jiraProjects: jiraResp?.resources?.projects || [],
-                    confluencePages: confResp?.resources || [],
-                }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<AtlassianIntegration[]>(ApiRoutes.ATLASSIAN.INTEGRATIONS, apiKey)
+                input.atlassian = await Promise.all(
+                    instances.map(async (inst): Promise<AtlassianInstanceData> => {
+                        const [jiraResp, confResp] = await Promise.all([
+                            fetchWithAuth<{ resources: { projects: Array<{ id: string; key: string; name: string }> } }>(
+                                `${ApiRoutes.JIRA.RESOURCES}?integrationId=${encodeURIComponent(inst.id)}`,
+                                apiKey
+                            ).catch(() => null),
+                            fetchWithAuth<{ resources: Array<{ id: string; title: string; spaceId: string; spaceName: string }> }>(
+                                `${ApiRoutes.CONFLUENCE.RESOURCES}?integrationId=${encodeURIComponent(inst.id)}`,
+                                apiKey
+                            ).catch(() => null)
+                        ])
+                        return {
+                            id: inst.id,
+                            displayName: inst.siteName || inst.email || inst.id,
+                            jiraProjects: jiraResp?.resources?.projects || [],
+                            confluencePages: confResp?.resources || []
+                        }
+                    })
+                )
+            })
+        )
     }
 
     // ── Notion (fetches databases + pages per instance) ──
     if (has(IntegrationType.NOTION)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<NotionIntegration[]>(ApiRoutes.NOTION.INTEGRATIONS, apiKey)
-            input.notion = await Promise.all(instances.map(async (inst): Promise<NotionInstanceData> => {
-                const resp = await fetchWithAuth<{ resources: Array<{ id: string; title: string; type: string }> }>(
-                    `${ApiRoutes.NOTION.RESOURCES}?integrationId=${encodeURIComponent(inst.id)}`, apiKey
-                ).catch(() => ({ resources: [] }))
-                const resources = resp.resources || []
-                return {
-                    id: inst.id,
-                    displayName: inst.workspaceName || inst.id,
-                    databases: resources.filter(r => r.type === "database"),
-                    pages: resources.filter(r => r.type === "page"),
-                }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<NotionIntegration[]>(ApiRoutes.NOTION.INTEGRATIONS, apiKey)
+                input.notion = await Promise.all(
+                    instances.map(async (inst): Promise<NotionInstanceData> => {
+                        const resp = await fetchWithAuth<{ resources: Array<{ id: string; title: string; type: string }> }>(
+                            `${ApiRoutes.NOTION.RESOURCES}?integrationId=${encodeURIComponent(inst.id)}`,
+                            apiKey
+                        ).catch(() => ({ resources: [] }))
+                        const resources = resp.resources || []
+                        return {
+                            id: inst.id,
+                            displayName: inst.workspaceName || inst.id,
+                            databases: resources.filter(r => r.type === "database"),
+                            pages: resources.filter(r => r.type === "page")
+                        }
+                    })
+                )
+            })
+        )
     }
 
     // ── PostHog (fetches projects per instance) ──
     if (has(IntegrationType.POSTHOG)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<PosthogIntegration[]>(ApiRoutes.POSTHOG.INTEGRATIONS, apiKey)
-            input.posthog = await Promise.all(instances.map(async (inst): Promise<PosthogInstanceData> => {
-                const resp = await fetchWithAuth<{ projects: Array<{ id: string; name: string }> }>(
-                    `${ApiRoutes.POSTHOG.PROJECTS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey
-                ).catch(() => ({ projects: [] }))
-                return { id: inst.id, displayName: inst.orgName || inst.email || inst.id, projects: resp.projects || [] }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<PosthogIntegration[]>(ApiRoutes.POSTHOG.INTEGRATIONS, apiKey)
+                input.posthog = await Promise.all(
+                    instances.map(async (inst): Promise<PosthogInstanceData> => {
+                        const resp = await fetchWithAuth<{ projects: Array<{ id: string; name: string }> }>(`${ApiRoutes.POSTHOG.PROJECTS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(
+                            () => ({ projects: [] })
+                        )
+                        return { id: inst.id, displayName: inst.orgName || inst.email || inst.id, projects: resp.projects || [] }
+                    })
+                )
+            })
+        )
     }
 
     // ── Datadog (fetches indexes per instance) ──
     if (has(IntegrationType.DATADOG)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<DatadogIntegration[]>(ApiRoutes.DATADOG.INTEGRATIONS, apiKey)
-            input.datadog = await Promise.all(instances.map(async (inst): Promise<DatadogInstanceData> => {
-                const resp = await fetchWithAuth<{ indexes: Array<{ name: string }> }>(
-                    `${ApiRoutes.DATADOG.INDEXES}?integrationId=${encodeURIComponent(inst.id)}`, apiKey
-                ).catch(() => ({ indexes: [] }))
-                return { id: inst.id, displayName: inst.region || inst.id, indexes: resp.indexes || [] }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<DatadogIntegration[]>(ApiRoutes.DATADOG.INTEGRATIONS, apiKey)
+                input.datadog = await Promise.all(
+                    instances.map(async (inst): Promise<DatadogInstanceData> => {
+                        const resp = await fetchWithAuth<{ indexes: Array<{ name: string }> }>(`${ApiRoutes.DATADOG.INDEXES}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(() => ({
+                            indexes: []
+                        }))
+                        return { id: inst.id, displayName: inst.region || inst.id, indexes: resp.indexes || [] }
+                    })
+                )
+            })
+        )
     }
 
     // ── LaunchDarkly (fetches projects per instance — URL path param) ──
     if (has(IntegrationType.LAUNCHDARKLY)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<LaunchDarklyIntegration[]>(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, apiKey)
-            input.launchdarkly = await Promise.all(instances.map(async (inst): Promise<LaunchDarklyInstanceData> => {
-                const resp = await fetchWithAuth<{ projects: Array<{ key: string; name: string }> }>(
-                    ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.build(inst.id), apiKey
-                ).catch(() => ({ projects: [] }))
-                return { id: inst.id, displayName: inst.tokenName || inst.email || inst.id, projects: resp.projects || [] }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<LaunchDarklyIntegration[]>(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, apiKey)
+                input.launchdarkly = await Promise.all(
+                    instances.map(async (inst): Promise<LaunchDarklyInstanceData> => {
+                        const resp = await fetchWithAuth<{ projects: Array<{ key: string; name: string }> }>(
+                            buildRoute(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, { integrationId: inst.id }),
+                            apiKey
+                        ).catch(() => ({ projects: [] }))
+                        return { id: inst.id, displayName: inst.tokenName || inst.email || inst.id, projects: resp.projects || [] }
+                    })
+                )
+            })
+        )
     }
 
     // ── WorkOS (no resources) ──
     if (has(IntegrationType.WORKOS)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<WorkOSIntegration[]>(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, apiKey)
-            input.workos = instances.map(inst => ({ id: inst.id, displayName: inst.environment || inst.id }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<WorkOSIntegration[]>(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, apiKey)
+                input.workos = instances.map(inst => ({ id: inst.id, displayName: inst.environment || inst.id }))
+            })
+        )
     }
 
     // ── Attio (fetches objects per instance — URL path param) ──
     if (has(IntegrationType.ATTIO)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<AttioIntegration[]>(ApiRoutes.ATTIO.INTEGRATIONS, apiKey)
-            input.attio = await Promise.all(instances.map(async (inst): Promise<AttioInstanceData> => {
-                const objects = await fetchWithAuth<Array<{
-                    api_slug: string
-                    singular_noun: string
-                    plural_noun?: string
-                    attributes?: AttioAttributeData[]
-                }>>(
-                    ApiRoutes.ATTIO.OBJECTS.build(inst.id), apiKey
-                ).catch(() => [] as Array<{
-                    api_slug: string
-                    singular_noun: string
-                    plural_noun?: string
-                    attributes?: AttioAttributeData[]
-                }>)
-                return { id: inst.id, displayName: inst.workspaceName || inst.id, objects: Array.isArray(objects) ? objects : [] }
-            }))
-        }))
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<AttioIntegration[]>(ApiRoutes.ATTIO.INTEGRATIONS, apiKey)
+                input.attio = await Promise.all(
+                    instances.map(async (inst): Promise<AttioInstanceData> => {
+                        const objects = await fetchWithAuth<
+                            Array<{
+                                api_slug: string
+                                singular_noun: string
+                                plural_noun?: string
+                                attributes?: AttioAttributeData[]
+                            }>
+                        >(buildRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId: inst.id }), apiKey).catch(
+                            () =>
+                                [] as Array<{
+                                    api_slug: string
+                                    singular_noun: string
+                                    plural_noun?: string
+                                    attributes?: AttioAttributeData[]
+                                }>
+                        )
+                        return { id: inst.id, displayName: inst.workspaceName || inst.id, objects: Array.isArray(objects) ? objects : [] }
+                    })
+                )
+            })
+        )
     }
 
-    if(has(IntegrationType.SNOWFLAKE)) {
-        promises.push(safely(async () => {
-            const instances = await fetchWithAuth<SnowflakeIntegration[]>(ApiRoutes.SNOWFLAKE.INTEGRATIONS, apiKey)
-            input.snowflake = instances.map(inst => ({ id: inst.id, name: inst.accountIdentifier }))
-        }))
+    if (has(IntegrationType.SNOWFLAKE)) {
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<SnowflakeIntegration[]>(ApiRoutes.SNOWFLAKE.INTEGRATIONS, apiKey)
+                input.snowflake = instances.map(inst => ({ id: inst.id, name: inst.accountIdentifier }))
+            })
+        )
     }
 
     await Promise.all(promises)
 
     const integrationCount =
-        input.github.length + input.slack.length + input.gmail.length + input.figma.length +
-        input.linear.length + input.atlassian.length + input.notion.length +
-        input.posthog.length + input.datadog.length + input.launchdarkly.length +
-        input.workos.length + input.attio.length
+        input.github.length +
+        input.slack.length +
+        input.gmail.length +
+        input.figma.length +
+        input.linear.length +
+        input.atlassian.length +
+        input.notion.length +
+        input.posthog.length +
+        input.datadog.length +
+        input.launchdarkly.length +
+        input.workos.length +
+        input.attio.length
 
     spinner.succeed(`Fetched ${integrationCount} integration(s)`)
 
@@ -318,7 +388,11 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
 // ── Helpers ───────────────────────────────────────────────────────────
 
 async function safely(fn: () => Promise<void>): Promise<void> {
-    try { await fn() } catch { /* skip failed integrations */ }
+    try {
+        await fn()
+    } catch {
+        /* skip failed integrations */
+    }
 }
 
 function writeOutput(code: string, provider: LanguageProvider): void {

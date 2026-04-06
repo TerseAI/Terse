@@ -3,6 +3,8 @@ import { useParams, useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
 import { Clock, Lightbulb, MessageSquare, Settings, X } from "lucide-react"
+import { FROM_SETUP_CHAT_PARAM } from "terse-types"
+import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { BuilderChat, BuilderChatHandle } from "../../components/chat/BuilderChat"
@@ -18,8 +20,6 @@ import { useTemplateHydration } from "../../hooks/useTemplateHydration"
 import { safeStorageGet, safeStorageSet } from "../../lib/storage"
 import { cn } from "../../lib/utils"
 import { useModelContext } from "../../services/ModelContextProvider"
-import { FROM_SETUP_CHAT_PARAM } from "../../shared/FrontendRoutes"
-import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "../../shared/types"
 import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 

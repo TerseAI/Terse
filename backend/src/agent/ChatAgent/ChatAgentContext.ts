@@ -1,4 +1,4 @@
-import { User } from "../../shared/types"
+import { User } from "terse-types"
 
 import type ChatInterface from "./ChatInterfaces/ChatInterface"
 

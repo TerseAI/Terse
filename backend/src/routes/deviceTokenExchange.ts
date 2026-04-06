@@ -1,9 +1,10 @@
 import { Request, Response } from "express"
 import { jwtVerify } from "jose"
+import { DeviceTokenExchangeResponse } from "terse-types/types"
+import { deviceTokenExchangeRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { DeviceTokenExchangeResponse } from "../shared/types"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { workos } from "../utility/workos"
@@ -20,11 +21,7 @@ const featureFlagService = FeatureFlagService.getInstance()
  * No auth middleware required — the WorkOS JWT in the body IS the auth.
  */
 export async function deviceTokenExchange(req: Request, res: Response) {
-    const { accessToken } = req.body
-
-    if (!accessToken || typeof accessToken !== "string") {
-        return res.status(400).json({ error: "accessToken is required" })
-    }
+    const { accessToken } = deviceTokenExchangeRequestSchema.parse(req.body)
 
     try {
         const jwks = await workos.userManagement.getJWKS()

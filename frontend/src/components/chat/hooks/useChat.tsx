@@ -1,4 +1,5 @@
-import { type ModelRequest, type ToolCall, type ToolCallComplete } from "../../../shared/ModelEvents"
+import { type ModelRequest, type ToolCall, type ToolCallComplete } from "terse-types"
+
 import { Turn } from "../Turn"
 
 import { useChatInput } from "./useChatInput"

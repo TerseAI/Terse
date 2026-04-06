@@ -1,18 +1,16 @@
+import chalk from "chalk"
 import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
-import chalk from "chalk"
-import type { LanguageProvider } from "./providers/LanguageProvider.js"
-import { resolveProvider } from "./providers/resolveProvider.js"
-import { renderTemplate } from "./providers/templateUtils.js"
+
 import { loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
+import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
+import { renderTemplate } from "./providers/templateUtils.js"
 
-export async function init(
-    projectName?: string,
-    provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" })
-): Promise<void> {
+export async function init(projectName?: string, provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" })): Promise<void> {
     const targetDir = projectName ? path.resolve(process.cwd(), projectName) : process.cwd()
     const resolvedName = projectName ?? path.basename(process.cwd())
 

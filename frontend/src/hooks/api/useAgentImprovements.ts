@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { agentImprovementsKey } from "terse-types/InvalidationKeys"
+import { GetAgentImprovementsResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { agentImprovementsKey } from "@/shared/InvalidationKeys"
-import { GetAgentImprovementsResponse } from "@/shared/types"
 
 export function useAgentImprovements(agentId: string | null) {
     const key = agentImprovementsKey(agentId)

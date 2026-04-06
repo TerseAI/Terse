@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { jiraResourcesKey } from "terse-types/InvalidationKeys"
+import type { JiraResourcesResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { jiraResourcesKey } from "@/shared/InvalidationKeys"
-import type { JiraResourcesResponse } from "@/shared/types"
 
 type UseJiraResourcesReturn = {
     projects: Array<{ id: string; key: string; name: string; projectTypeKey: string }>

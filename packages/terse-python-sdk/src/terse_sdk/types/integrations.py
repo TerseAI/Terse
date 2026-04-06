@@ -2,167 +2,68 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any
 
-from pydantic import Discriminator, Field, Tag
+from pydantic import Discriminator, Tag
 
-from ._base import _CamelModel
+from ._base import TerseModel
+from ._generated import (
+    AttioOutputConfigInstance,
+    ConfluenceConfigInstance,
+    DatadogConfigInstance,
+    FigmaConfigInstance,
+    GitHubConfigInstance,
+    GmailConfigInstance,
+    GmailDraftOutputConfigInstance,
+    GmailOutputConfigInstance,
+    JiraConfigInstance,
+    LaunchDarklyConfigInstance,
+    LinearInputConfigInstance,
+    LinearOutputConfigInstance,
+    NotionConfigInstance,
+    PosthogConfigInstance,
+    SlackConfigInstance,
+    SlackOutputConfigInstance,
+    SnowflakeOutputConfigInstance,
+    TerseConfigInstance,
+    TimeTriggerConfigInstance,
+    WorkOSInputConfigInstance,
+    WorkOSOutputConfigInstance,
+)
 from .enums import (
     ConfigType,
-    GitHubEventType,
     IntegrationType,
     RunHistoryActionType,
-    SlackEventType,
-    WorkOSEventType,
 )
 
 
-class IntegrationDetails(_CamelModel):
+def _config_type_discriminator(value: Any) -> str | None:
+    if isinstance(value, dict):
+        raw_value = value.get("configType", value.get("config_type"))
+    else:
+        raw_value = getattr(value, "config_type", getattr(value, "configType", None))
+
+    if raw_value is None:
+        return None
+
+    return str(raw_value)
+
+
+class IntegrationDetails(TerseModel):
     description: str
-    isInput: bool | None = None
-    isOutput: bool | None = None
+    is_input: bool | None = None
+    is_output: bool | None = None
     name: str
     type: IntegrationType
 
 
-class ConfigDetails(_CamelModel):
-    configType: ConfigType
+class ConfigDetails(TerseModel):
+    config_type: ConfigType
     description: str
-    integrationType: IntegrationType
-    isInput: bool
-    isOutput: bool
+    integration_type: IntegrationType
+    is_input: bool
+    is_output: bool
     name: str
-
-
-# --- Per-config-type models (discriminated on configType) ---
-
-
-class _BaseConfig(_CamelModel):
-    integrationId: str
-    integrationType: IntegrationType
-
-
-class GmailConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.GMAIL] = ConfigType.GMAIL
-
-
-class GmailOutputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.GMAIL_OUTPUT] = ConfigType.GMAIL_OUTPUT
-
-
-class GmailDraftOutputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.GMAIL_DRAFT_OUTPUT] = ConfigType.GMAIL_DRAFT_OUTPUT
-
-
-class FigmaConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.FIGMA] = ConfigType.FIGMA
-    fileKey: str
-    fileName: str | None = None
-    teamId: str
-
-
-class SlackConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.SLACK] = ConfigType.SLACK
-    channelId: str | None = None
-    channelName: str | None = None
-    listenToUserDms: bool | None = None
-    userIds: list[str] | None = None
-    eventTypes: list[SlackEventType] | None = None
-
-
-class SlackOutputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.SLACK_OUTPUT] = ConfigType.SLACK_OUTPUT
-    channelId: str | None = None
-    channelName: str | None = None
-    listenToUserDms: bool | None = None
-    userIds: list[str] | None = None
-    userNames: list[str] | None = None
-
-
-class NotionConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.NOTION] = ConfigType.NOTION
-    databaseIds: list[str] = Field(default_factory=list)
-    databaseNames: list[str] = Field(default_factory=list)
-    pageIds: list[str] = Field(default_factory=list)
-    pageNames: list[str] = Field(default_factory=list)
-
-
-class LinearInputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.LINEAR_INPUT] = ConfigType.LINEAR_INPUT
-    projectId: str | None = None
-    projectName: str | None = None
-
-
-class LinearOutputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.LINEAR_OUTPUT] = ConfigType.LINEAR_OUTPUT
-    teamId: str | None = None
-    teamName: str | None = None
-    projectId: str | None = None
-    projectName: str | None = None
-
-
-class GitHubConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.GITHUB] = ConfigType.GITHUB
-    repositoryIds: list[int]
-    eventTypes: list[GitHubEventType] | None = None
-
-
-class JiraConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.JIRA] = ConfigType.JIRA
-    projectKey: str | None = None
-    projectId: str | None = None
-
-
-class ConfluenceConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.CONFLUENCE] = ConfigType.CONFLUENCE
-    spaceName: str
-    spaceId: str
-    pageId: str
-    pageName: str
-
-
-class PosthogConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.POSTHOG] = ConfigType.POSTHOG
-    projectId: str
-    projectName: str | None = None
-
-
-class DatadogConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.DATADOG] = ConfigType.DATADOG
-    defaultIndexes: list[str] = Field(default_factory=lambda: ["main"])
-
-
-class TimeTriggerConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.TIME_TRIGGER] = ConfigType.TIME_TRIGGER
-    cronExpression: str
-
-
-class LaunchDarklyConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.LAUNCHDARKLY] = ConfigType.LAUNCHDARKLY
-    projectKey: str
-    environmentKeys: list[str]
-
-
-class TerseConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.TERSE] = ConfigType.TERSE
-
-
-class WorkOSInputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.WORKOS_INPUT] = ConfigType.WORKOS_INPUT
-    eventTypes: list[WorkOSEventType] = Field(default_factory=list)
-
-
-class WorkOSOutputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.WORKOS_OUTPUT] = ConfigType.WORKOS_OUTPUT
-
-
-class AttioOutputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.ATTIO_OUTPUT] = ConfigType.ATTIO_OUTPUT
-    objectSlug: str | None = None
-
-
-class SnowflakeOutputConfigInstance(_BaseConfig):
-    configType: Literal[ConfigType.SNOWFLAKE_OUTPUT] = ConfigType.SNOWFLAKE_OUTPUT
 
 
 ConfigInstance = Annotated[
@@ -187,14 +88,14 @@ ConfigInstance = Annotated[
     | Annotated[WorkOSOutputConfigInstance, Tag(ConfigType.WORKOS_OUTPUT)]
     | Annotated[AttioOutputConfigInstance, Tag(ConfigType.ATTIO_OUTPUT)]
     | Annotated[SnowflakeOutputConfigInstance, Tag(ConfigType.SNOWFLAKE_OUTPUT)],
-    Discriminator(lambda v: v.get("configType") if isinstance(v, dict) else getattr(v, "configType", None)),
+    Discriminator(_config_type_discriminator),
 ]
 
 
-class NotificationSettings(_CamelModel):
-    agentDefaultNotifications: list[RunHistoryActionType]
+class NotificationSettings(TerseModel):
+    agent_default_notifications: list[RunHistoryActionType]
     id: str
-    weeklyAgentImprovements: bool
+    weekly_agent_improvements: bool
 
 
 __all__ = [

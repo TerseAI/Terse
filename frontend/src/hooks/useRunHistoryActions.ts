@@ -1,7 +1,7 @@
 import useSWR from "swr"
+import { RunHistoryActionWithId } from "terse-types/RunHistoryTypes"
 
 import { BackendProvider } from "../services/backend"
-import { RunHistoryActionWithId } from "../shared/RunHistoryTypes"
 
 const fetcher = (ids: string[]) => BackendProvider.getRunHistoryActions(ids)
 

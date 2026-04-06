@@ -1,11 +1,8 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { GmailDraftOutputConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
-import { GmailDraftOutputConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
-import { GmailDraftOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { gmailCreateDraftTool } from "./tools/createDraft"
@@ -20,9 +17,7 @@ export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
         return new GmailDraftOutputConfig("example")
     }
 
-    async validateConfig(output: GmailDraftOutputConfig, _userId: string): Promise<void> {
-        GmailDraftOutputConfigSchema.parse(stripConfigForValidation(output))
-    }
+    async validateConfig(output: GmailDraftOutputConfig, _userId: string): Promise<void> {}
 
     async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, _output: GmailDraftOutputConfig): Promise<void> {
         await tx.automation_gmail_configs.create({

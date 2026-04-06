@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react"
 
-import { v4 as uuidv4 } from "uuid"
-
 import {
     type Cancelled,
     type ChatSnippet,
@@ -15,7 +13,9 @@ import {
     type ToolCall,
     type ToolCallComplete,
     type ToolCallGenerating
-} from "../../../shared/ModelEvents"
+} from "terse-types"
+import { v4 as uuidv4 } from "uuid"
+
 import { type Turn } from "../Turn"
 import { filterOutThinkingOnlyTurns } from "../utils/turnUtils"
 

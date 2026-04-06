@@ -1,28 +1,13 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
+import type { AttioRecord } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import type { AttioRecord } from "../../../shared/types"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-const attioQueryRecordsParams = z.object({
-    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
-    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
-    filter: z
-        .string()
-        .nullable()
-        .describe('Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators.'),
-    limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
-})
-
-export const attioQueryRecordsTool: SessionToolOptions<typeof attioQueryRecordsParams, typeof ToolName.ATTIO_QUERY_RECORDS> = {
-    name: ToolName.ATTIO_QUERY_RECORDS,
+export const attioQueryRecordsTool = defineSessionTool({
+    name: "attio_query_records",
     description: `Query records from an Attio object. Use this to search for existing records before creating or updating them. Supports optional filtering.
 
 Filter syntax uses shorthand or verbose form:
@@ -32,8 +17,7 @@ Filter syntax uses shorthand or verbose form:
 - Domains: {"domains": "example.com"} or {"domains": {"domain": {"$contains": "example"}}}
 - Operators: $eq, $contains, $starts_with, $ends_with
 - Combine with $and/$or: {"$and": [{"name": "John"}, {"email_addresses": "john@example.com"}]}`,
-    parameters: attioQueryRecordsParams,
-    execute: async ({ integrationId, objectSlug, filter, limit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, objectSlug, filter, limit }, runContext) => {
         logger.debug("Executing attio_query_records tool", { integrationId, objectSlug })
 
         if (!runContext?.context) {
@@ -93,4 +77,4 @@ Filter syntax uses shorthand or verbose form:
             throw new Error(errorMessage)
         }
     }
-}
+})

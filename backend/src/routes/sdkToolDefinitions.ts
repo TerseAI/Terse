@@ -1,10 +1,10 @@
 import { FunctionTool, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
+import { User } from "terse-types/types"
 
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { IntegrationType } from "../shared/Integrations"
-import { User } from "../shared/types"
 import { extractErrorMessage } from "../utility/strings"
 
 /**
@@ -27,7 +27,6 @@ export async function handleToolDefinitions(req: Request, res: Response) {
             integration: string
             isReadOnly: boolean
             supportsApproval: boolean
-            parameters: Record<string, unknown>
         }> = []
 
         const seen = new Set<string>()
@@ -47,8 +46,7 @@ export async function handleToolDefinitions(req: Request, res: Response) {
                     description: ft.description ?? "",
                     integration: entry.integration,
                     isReadOnly: entry.isReadOnly,
-                    supportsApproval: entry.supportsApproval ?? false,
-                    parameters: ft.parameters as Record<string, unknown>
+                    supportsApproval: entry.supportsApproval ?? false
                 })
             }
         }

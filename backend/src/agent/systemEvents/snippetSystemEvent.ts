@@ -1,7 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
+import type { ChatSnippet } from "terse-types"
 import { z } from "zod"
 
-import type { ChatSnippet } from "../../shared/ModelEvents"
 import { randomString } from "../../utility/strings"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"

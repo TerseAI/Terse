@@ -1,7 +1,7 @@
 import useSWR from "swr"
+import type { RunHistoryModelEvent, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { BackendProvider } from "@/services/backend"
-import type { RunHistoryModelEvent, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 
 type ChatHistoryResponse = {
     events: Array<RunHistoryModelEvent>

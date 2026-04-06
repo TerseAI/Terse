@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { GithubIntegration } from "terse-types/Integrations"
+import { githubIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { GithubIntegration } from "@/shared/Integrations"
-import { githubIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseGithubIntegrationsReturn = {
     integrations: GithubIntegration[]

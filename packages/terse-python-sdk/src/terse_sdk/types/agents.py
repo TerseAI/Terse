@@ -5,27 +5,13 @@ from __future__ import annotations
 from typing import Literal
 
 from ._base import _CamelModel
+from ._generated import AgentOutput, AgentPrompt, AgentTrigger
 from .enums import RunHistoryActionType
-from .integrations import ConfigInstance
-
-
-class AgentPrompt(_CamelModel):
-    text: str
 
 
 class AgentNotificationSettings(_CamelModel):
     actionTypes: list[RunHistoryActionType]
     enabled: bool
-
-
-class AgentOutput(_CamelModel):
-    config: ConfigInstance
-    id: str
-
-
-class AgentTrigger(_CamelModel):
-    config: ConfigInstance
-    id: str
 
 
 class AgentUpdate(_CamelModel):

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef } from "react"
 
-import { DonatedState } from "../shared/DonatedState"
+import { DonatedState } from "terse-types/DonatedState"
 
 interface ModelContextType {
     donate: (key: string, state: DonatedState) => void

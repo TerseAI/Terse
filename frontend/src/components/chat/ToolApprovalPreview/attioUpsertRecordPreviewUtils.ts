@@ -1,4 +1,4 @@
-import type { AttioAttribute } from "@/shared/types"
+import type { AttioAttribute } from "terse-types/types"
 
 export interface AttioUpsertRecordParams {
     integrationId?: string

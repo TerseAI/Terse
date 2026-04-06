@@ -1,11 +1,11 @@
 import { AgentInputItem } from "@openai/agents-core"
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
+import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { getRunHistoryModelEventsWithActions } from "../agent/runHistoryModelEvents"
 import logger from "../logger"
 import { PrismaClient, db } from "../prismaClient"
-import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes"
 import { parsePageParams } from "../utility/pagination"
 import { extractErrorMessage } from "../utility/strings"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"

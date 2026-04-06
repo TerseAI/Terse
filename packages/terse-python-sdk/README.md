@@ -74,6 +74,31 @@ def example(event: CronJobInputEvent, agent: TerseAgent) -> None:
     print(result)
 ```
 
+## Local Development
+
+To test local changes to the SDK in a Terse project, you need to add a uv source override so the resolver uses your local copy instead of PyPI.
+
+From your project directory, run:
+
+```bash
+link-terse-py
+```
+
+This adds a `[tool.uv.sources]` entry to your `pyproject.toml` pointing at the local SDK and runs `uv sync`:
+
+```toml
+[tool.uv.sources]
+terse-sdk = { path = "/path/to/Terse/packages/terse-python-sdk", editable = true }
+```
+
+To revert back to the published PyPI version:
+
+```bash
+unlink-terse-py
+```
+
+> **Why not `uv pip install -e`?** uv manages dependencies declaratively from `pyproject.toml` + `uv.lock`. An imperative `uv pip install -e` gets overwritten the next time `uv sync` or `uv run` re-resolves from the lockfile. The source override tells uv's resolver itself to use the local path, so it persists across syncs.
+
 ## Environment Variables
 
 - `TERSE_API_KEY`: required for agent runs and deterministic tool execution

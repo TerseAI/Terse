@@ -1,11 +1,12 @@
 import { KnownBlock, LogLevel, WebClient } from "@slack/web-api"
+import { buildRoute } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import { settings } from "../config/settings"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "../integrations/SlackClient"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers"
 
@@ -164,7 +165,7 @@ export function formatNotificationMessage(runAction: RunHistoryAction, context: 
 }
 
 export function formatRunFailureNotificationMessage(context: RunFailureNotificationContext): SlackMessage {
-    const runHistoryLink = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(context.agentId, context.runId)}` : undefined
+    const runHistoryLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: context.agentId, runId: context.runId })}` : undefined
     const errorSummary = context.errorMessage.length > 300 ? `${context.errorMessage.slice(0, 297)}...` : context.errorMessage
     const text = `Run failed in ${context.agentName}: ${errorSummary}`
 
@@ -207,7 +208,7 @@ export async function sendSlackApprovalMessage(
     let runHistoryLink: string | undefined
     if (automationId) {
         const frontendUrl = settings.urls.frontend
-        runHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(automationId, runId)}`
+        runHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: automationId, runId })}`
     }
 
     const blocks = createApprovalMessage({
@@ -332,7 +333,7 @@ export async function updateSlackApprovalMessage(
     let runHistoryLink: string | undefined
     if (automationId && runId) {
         const frontendUrl = settings.urls.frontend
-        runHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(automationId, runId)}`
+        runHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: automationId, runId })}`
     }
 
     const blocks = createUpdatedApprovalMessage({

@@ -6,6 +6,11 @@ import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
+import { ConfigData, ConfigType, SlackConfigSchema, SlackEventType } from "terse-types/Configs"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse, SlackUserResponse, SlackUsersResponse } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { jwt as jwtConfig, slack as slackConfig, urls } from "../config/settings"
@@ -14,11 +19,6 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass, SlackEventType } from "../shared/Configs"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
-import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse, SlackUserResponse, SlackUsersResponse } from "../shared/types"
 import { SlackAttachment, SlackFile, SlackMessageImage, extractImagesFromMessage, extractTextFromAttachments, extractTextFromBlocks, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { HydratorType } from "../types/rag"
@@ -531,11 +531,11 @@ export class SlackIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.SLACK) {
             return []
         }
-        const slackConfig = triggerConfig as SlackConfigClass
+        const slackConfig = SlackConfigSchema.parse(triggerConfig)
 
         const limit = Math.min(options?.limit ?? 5, 10)
         const prisma = db()

@@ -1,10 +1,10 @@
 import { RunToolApprovalItem } from "@openai/agents"
 import { Prisma } from "@prisma/client"
+import { pendingApprovalsKey } from "terse-types"
+import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger } from "terse-types"
 
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
-import { pendingApprovalsKey } from "../../shared/InvalidationKeys"
-import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger } from "../../shared/RunHistoryTypes"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
 

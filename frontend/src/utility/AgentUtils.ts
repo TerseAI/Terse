@@ -1,4 +1,4 @@
-import { AgentOutput, AgentTrigger, TransientAgentOutput, TransientAgentTrigger } from "@/shared/types"
+import { AgentOutput, AgentTrigger, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
 
 export function getDefaultAgentName(totalCount: number = 0): string {
     // Generate "Automation #x"

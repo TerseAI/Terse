@@ -1,5 +1,7 @@
 import { useState } from "react"
 
+import { type RunHistoryRecordWithAgent, RunHistoryStatus } from "terse-types/RunHistoryTypes"
+
 import DateRangePicker from "@/components/RunHistory/DatePicker"
 import RunHistoryEmptyState from "@/components/RunHistory/RunHistoryEmptyState"
 import RunHistoryPagination from "@/components/RunHistory/RunHistoryPagination"
@@ -9,7 +11,6 @@ import StatusFilter from "@/components/RunHistory/StatusFilter"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAllRunHistory } from "@/hooks/api/useAllRunHistory"
-import { type RunHistoryRecordWithAgent, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 
 import { useRunHistoryChatDrawer } from "../../services/RunHistoryChatDrawerContext"
 

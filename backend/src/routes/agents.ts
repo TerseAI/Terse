@@ -1,4 +1,9 @@
 import { Request, Response } from "express"
+import { isValidToolName } from "terse-types"
+import { ConfigData } from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
+import { Agent, AgentDraft, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
+import { agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
@@ -6,19 +11,13 @@ import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
-import { ConfigInstance } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
-import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "../shared/types"
-import { isValidToolName } from "../tools/ToolNames"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { trackAgentCreated } from "../utility/analytics"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
-import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters"
-
-export type AgentDraft = Omit<Agent, "id"> & { id?: string }
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
 
 export function isUuidV4(s: string): boolean {
     return validateUuid(s) && uuidVersion(s) === 4
@@ -37,7 +36,7 @@ export async function createTriggerConfig(tx: PrismaTransaction, triggerId: stri
     await trigger.addTriggerToAgent(tx, triggerId, config.config)
 }
 
-export async function createOutputConfig(tx: PrismaTransaction, outputId: string, config: ConfigInstance, userId: string): Promise<void> {
+export async function createOutputConfig(tx: PrismaTransaction, outputId: string, config: ConfigData, userId: string): Promise<void> {
     const output = OutputFactory.OUTPUT_REGISTRY.get(convertConfigTypeToOutputConfigType(config.configType))
     if (!output) {
         throw new Error(`Output not found for integration type: ${config.configType}`)
@@ -59,7 +58,7 @@ export async function validateUserOwnsIntegration(organizationId: string, integr
     return instances.some(instance => instance.id === integrationId)
 }
 
-async function upsertNotificationSettings(tx: PrismaTransaction, automationId: string, userId: string, settings: AgentNotificationSettings | undefined): Promise<void> {
+async function upsertNotificationSettings(tx: PrismaTransaction, automationId: string, userId: string, settings: AgentNotificationSettings | null): Promise<void> {
     let enabled
     let actionTypes
     if (!settings) {
@@ -104,12 +103,12 @@ export function validateAndDeduplicateToolApprovals(toolApprovals: string[]): st
     return uniqueToolApprovals
 }
 
-export async function persistToolApprovals(tx: PrismaTransaction, automationId: string, toolApprovals: string[] | undefined, options?: { replaceExisting?: boolean }): Promise<void> {
+export async function persistToolApprovals(tx: PrismaTransaction, automationId: string, toolApprovals: string[] | null, options?: { replaceExisting?: boolean }): Promise<void> {
     if (toolApprovals === undefined) {
         return
     }
 
-    const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals)
+    const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals ?? [])
 
     if (options?.replaceExisting) {
         await tx.automation_tool_approvals.deleteMany({
@@ -179,9 +178,6 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
         // Create triggers
         for (const trigger of triggers) {
             const integrationType = trigger.config.integrationType
-            if (!integrationType) {
-                throw new Error(`Unknown integration type: ${trigger.config.integrationType}`)
-            }
 
             // Validate that user owns the integration (system integrations skip validation)
             const integrationId = trigger.config.integrationId
@@ -350,9 +346,6 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             // Create new triggers
             for (const trigger of triggers) {
                 const integrationType = trigger.config.integrationType
-                if (!integrationType) {
-                    throw new Error(`Unknown integration type: ${trigger.config.integrationType}`)
-                }
 
                 // Validate that user owns the integration (system integrations skip validation)
                 const integrationId = trigger.config.integrationId
@@ -389,9 +382,6 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             // Create new outputs
             for (const output of outputs) {
                 const outputIntegrationType = output.config.integrationType
-                if (!outputIntegrationType) {
-                    throw new Error(`Unknown integration type: ${output.config.integrationType}`)
-                }
 
                 const outputConfigType = output.config.configType
                 const outputIntegrationId = output.config.integrationId
@@ -418,7 +408,7 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             }
         }
 
-        await upsertNotificationSettings(tx, agentId, userId, notificationSettings)
+        await upsertNotificationSettings(tx, agentId, userId, notificationSettings ?? null)
 
         // Update tool approvals if provided
         if (toolApprovals !== undefined) {
@@ -645,10 +635,11 @@ export async function createAgent(req: Request, res: Response) {
 
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
-    const { name, triggers, outputs, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = req.body as Agent
+    const { name, triggers, outputs, prompt, isActive, requireApproval, notificationSettings, toolApprovals } = agentCreateSchema.parse({ isActive: true, requireApproval: false, ...req.body })
 
     try {
         const { id } = await applyAgentForUser(userId, organizationId, {
+            id: null,
             name,
             triggers,
             outputs,
@@ -682,7 +673,7 @@ export async function updateAgent(req: Request, res: Response) {
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
     const agentId = req.params.id
-    const update = req.body as Partial<AgentUpdate>
+    const update = agentUpdateSchema.parse(req.body)
 
     try {
         const { id } = await updateAgentForUser(userId, organizationId, agentId, update)
@@ -772,18 +763,18 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         prompt: agent.prompt ? { text: agent.prompt.content } : { text: "" },
         triggers: agent.inputs.map(trigger => ({
             id: trigger.id,
-            config: convertPrismaConfigToConfigInstance(trigger)
+            config: convertPrismaConfigToConfigData(trigger)
         })),
         outputs: (agent.outputs ?? []).map(output => ({
             id: output.id,
-            config: convertPrismaOutputConfigToConfigInstance(output)
+            config: convertPrismaOutputConfigToConfigData(output)
         })),
         notificationSettings: agent.notification_settings
             ? {
                   enabled: agent.notification_settings.enabled,
                   actionTypes: agent.notification_settings.action_types
               }
-            : undefined,
+            : null,
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
         createdByUserId: agent.user_id,
         updatedAt: agent.updated_at.toISOString(),
@@ -794,9 +785,9 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
 export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
     for (const trigger of agent.inputs) {
         try {
-            // Convert prisma config to shared config instance to get integration type
-            const configInstance = convertPrismaConfigToConfigInstance(trigger)
-            const integrationType = configInstance.integrationType
+            // Convert prisma config to shared config data to get integration type
+            const configData = convertPrismaConfigToConfigData(trigger)
+            const integrationType = configData.integrationType
 
             // Find the integration from the registry
             const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)
@@ -828,9 +819,9 @@ export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Prom
 export async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
     for (const trigger of agent.inputs) {
         try {
-            // Convert prisma config to shared config instance to get integration type
-            const configInstance = convertPrismaConfigToConfigInstance(trigger)
-            const integrationType = configInstance.integrationType
+            // Convert prisma config to shared config data to get integration type
+            const configData = convertPrismaConfigToConfigData(trigger)
+            const integrationType = configData.integrationType
 
             // Find the integration from the registry
             const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)

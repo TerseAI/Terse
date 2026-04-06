@@ -1,8 +1,8 @@
 import { Request, Response } from "express"
+import { Role, User } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { Role, User } from "../shared/types"
 import { workos } from "../utility/workos"
 
 function isRole(role: string): role is Role {

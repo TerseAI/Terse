@@ -3,6 +3,11 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { gmail_v1, google } from "googleapis"
+import { ConfigData, ConfigType, GmailConfigSchema, GmailEventType } from "terse-types/Configs"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { OAuthInstallationDetails } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, gmail as gmailConfig, urls } from "../config/settings"
@@ -11,11 +16,6 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, GmailEventType } from "../shared/Configs"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
-import { OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
@@ -519,7 +519,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GMAIL) {
             return []
         }

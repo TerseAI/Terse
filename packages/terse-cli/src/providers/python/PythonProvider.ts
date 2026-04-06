@@ -1,19 +1,21 @@
+import chalk from "chalk"
 import { execFileSync, spawn } from "node:child_process"
 import os from "node:os"
 import path from "node:path"
-import chalk from "chalk"
 import type { CreateJobParameters } from "terse-sdk"
+import type { SdkAgentStreamEvent, SerializedEvent } from "terse-types"
+
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
-import type { SerializedEvent, SdkAgentStreamEvent } from "../../shared/types.js"
-import { ensureUvAvailable, execUv, loadDotenv, withTempScript } from "../shared/shellUtils.js"
 import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
+import { ensureUvAvailable, execUv, loadDotenv, withTempScript } from "../shared/shellUtils.js"
+
 import { preparePythonTemplateContext } from "./preparePythonCodegenData.js"
 import { renderPythonGeneratedCode } from "./pythonTemplateEngine.js"
 
 const JOB_REGISTRY_MARKER = "__TERSE_JOB_REGISTRY__="
 const JOB_SKIPPED_MARKER = "__TERSE_SKIPPED__"
-const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.8"
+const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.10"
 
 type PythonSerializedConfig = {
     integrationId: string
@@ -41,13 +43,13 @@ export class PythonProvider implements LanguageProvider {
     readonly displayName = "Python"
     readonly projectMarkers = {
         requiredFiles: ["pyproject.toml", "src/main.py"],
-        description: "Python Terse project",
+        description: "Python Terse project"
     }
     readonly entryFile = "src/main.py"
     readonly generatedCodePath = "src/terse_generated.py"
     readonly deployExclusions = {
         dirs: new Set([".venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".git"]),
-        files: new Set([".env", ".DS_Store"]),
+        files: new Set([".env", ".DS_Store"])
     }
 
     scaffoldFiles(): Array<{ template: string; output: string }> {
@@ -57,22 +59,19 @@ export class PythonProvider implements LanguageProvider {
             { template: "python/init/.python-version.hbs", output: ".python-version" },
             { template: "python/init/env.example.hbs", output: ".env.example" },
             { template: "python/init/gitignore.hbs", output: ".gitignore" },
-            { template: "python/init/README.md.hbs", output: "README.md" },
+            { template: "python/init/README.md.hbs", output: "README.md" }
         ]
     }
 
     buildInitTemplateContext(projectName: string): Record<string, unknown> {
         return {
             projectName,
-            sdkDependency: PYTHON_SDK_DEPENDENCY,
+            sdkDependency: PYTHON_SDK_DEPENDENCY
         }
     }
 
     getPostInitSteps(_packageManager: string): string[] {
-        return [
-            "uv run ty check  Type-check the project",
-            "terse test       Run a sample event locally",
-        ]
+        return ["uv run ty check  Type-check the project", "terse test       Run a sample event locally"]
     }
 
     detectPackageManager(): string {
@@ -82,7 +81,7 @@ export class PythonProvider implements LanguageProvider {
     async installDependencies(targetDir: string): Promise<void> {
         const env = {
             ...loadDotenv(targetDir),
-            UV_CACHE_DIR: path.join(os.tmpdir(), "terse-uv-cache"),
+            UV_CACHE_DIR: path.join(os.tmpdir(), "terse-uv-cache")
         }
         await execUv(["sync"], { cwd: targetDir, env })
     }
@@ -110,11 +109,7 @@ export class PythonProvider implements LanguageProvider {
                 }
 
                 if (registry.size === 0) {
-                    console.error(
-                        chalk.red(
-                            `No jobs found. Make sure your ${this.entryFile} registers at least one job with @app.job(...).`
-                        )
-                    )
+                    console.error(chalk.red(`No jobs found. Make sure your ${this.entryFile} registers at least one job with @app.job(...).`))
                     process.exit(1)
                 }
 
@@ -127,16 +122,12 @@ export class PythonProvider implements LanguageProvider {
         }
     }
 
-    async executeJob(
-        job: CreateJobParameters,
-        event: SerializedEvent,
-        opts?: { verbose?: boolean }
-    ): Promise<void> {
+    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
         const cwd = process.cwd()
         const env: NodeJS.ProcessEnv = {
             ...loadDotenv(cwd),
             TERSE_JOB_NAME: job.name,
-            TERSE_EVENT_JSON: JSON.stringify(event),
+            TERSE_EVENT_JSON: JSON.stringify(event)
         }
         const isVerbose = opts?.verbose ?? false
         const isSandbox = !!process.env.TERSE_RUN_ID
@@ -149,9 +140,7 @@ export class PythonProvider implements LanguageProvider {
                 const session = await openSessionStream(apiKey, {
                     verbose: isVerbose,
                     isPaused: () => approvalState.paused,
-                    onEvent: !isSandbox
-                        ? createApprovalHandler(apiKey, approvalState)
-                        : undefined,
+                    onEvent: !isSandbox ? createApprovalHandler(apiKey, approvalState) : undefined
                 })
                 closeSession = session.close
                 env.TERSE_SESSION_ID = session.sessionId
@@ -180,15 +169,15 @@ function createJobParametersFromPython(data: PythonJobData): CreateJobParameters
         triggers: data.triggers.map(reconstructPythonConfig),
         skills: data.skills.map(reconstructPythonConfig),
         toolApprovals: data.toolApprovals ?? [],
-        webhookURL: data.webhookURL,
+        webhookURL: data.webhookURL ?? undefined,
         onTrigger: async () => {
             throw new Error("Python job execution must go through provider.executeJob()")
         },
         filter: data.hasFilter
             ? async () => {
-                throw new Error("Python filter execution must go through provider.executeJob()")
-            }
-            : undefined,
+                  throw new Error("Python filter execution must go through provider.executeJob()")
+              }
+            : undefined
     } as CreateJobParameters
 }
 
@@ -196,7 +185,7 @@ function reconstructPythonConfig(config: PythonSerializedConfig) {
     return {
         ...config,
         isComplete: () => true,
-        formatForAgent: () => JSON.stringify(config),
+        formatForAgent: () => JSON.stringify(config)
     }
 }
 
@@ -317,7 +306,7 @@ function createApprovalHandler(apiKey: string, state: ApprovalState) {
             await submitApprovalDecision(apiKey, {
                 runId: state.runId,
                 stepId: info.stepId,
-                approved,
+                approved
             })
         } finally {
             state.paused = false
@@ -325,17 +314,12 @@ function createApprovalHandler(apiKey: string, state: ApprovalState) {
     }
 }
 
-async function runStreamingPython(
-    cwd: string,
-    env: NodeJS.ProcessEnv,
-    scriptPath: string,
-    jobName: string
-): Promise<void> {
+async function runStreamingPython(cwd: string, env: NodeJS.ProcessEnv, scriptPath: string, jobName: string): Promise<void> {
     await new Promise<void>((resolve, reject) => {
         const child = spawn("uv", ["run", "python", scriptPath], {
             cwd,
             env,
-            stdio: ["ignore", "pipe", "pipe"],
+            stdio: ["ignore", "pipe", "pipe"]
         })
 
         let skipped = false
@@ -396,22 +380,16 @@ function flushStdoutBuffer(buffer: string, onLine: (line: string) => void): stri
 function validatePythonSyntax(code: string): void {
     for (const executable of ["python3", "python"]) {
         try {
-            execFileSync(
-                executable,
-                ["-c", "import sys; compile(sys.stdin.read(), 'terse_generated.py', 'exec')"],
-                {
-                    input: code,
-                    stdio: ["pipe", "ignore", "pipe"],
-                }
-            )
+            execFileSync(executable, ["-c", "import sys; compile(sys.stdin.read(), 'terse_generated.py', 'exec')"], {
+                input: code,
+                stdio: ["pipe", "ignore", "pipe"]
+            })
             return
         } catch (error) {
             const code = (error as NodeJS.ErrnoException).code
             if (code === "ENOENT") continue
 
-            const stderr = Buffer.isBuffer((error as { stderr?: unknown }).stderr)
-                ? ((error as { stderr: Buffer }).stderr.toString().trim())
-                : ""
+            const stderr = Buffer.isBuffer((error as { stderr?: unknown }).stderr) ? (error as { stderr: Buffer }).stderr.toString().trim() : ""
             if (stderr) {
                 console.warn(chalk.yellow(`Warning: generated Python did not pass syntax validation.\n${stderr}`))
             } else {

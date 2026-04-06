@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react"
 
 import { Search } from "lucide-react"
+import { CONFIG_DETAILS, ConfigType } from "terse-types/Configs"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { CONFIG_DETAILS, ConfigType } from "@/shared/Configs"
 
 import { IconForConfigType } from "../components/Integration"
 

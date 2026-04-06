@@ -1,8 +1,9 @@
+import { IntegrationType } from "terse-types"
+import { User } from "terse-types"
+
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
-import { IntegrationType } from "../../shared/Integrations"
-import { User } from "../../shared/types"
 
 /**
  * Get LaunchDarkly API key by integration ID

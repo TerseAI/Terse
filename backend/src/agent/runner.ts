@@ -1,6 +1,5 @@
 import { Runner } from "@openai/agents-core"
-
-import { User } from "../shared/types"
+import { User } from "terse-types/types"
 
 export enum AgentType {
     AGENT_RUNNER = "agent_runner",

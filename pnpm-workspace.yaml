@@ -1,0 +1,6 @@
+packages:
+  - packages/terse-sdk
+  - packages/terse-cli
+  - frontend
+  - backend
+  - terse-types

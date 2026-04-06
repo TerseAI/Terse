@@ -1,10 +1,10 @@
 import { Request, Response } from "express"
+import { InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "terse-types/Integrations"
+import { OAuthInstallationDetails } from "terse-types/types"
 
 import { Integration, isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
-import { InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "../shared/Integrations"
-import { OAuthInstallationDetails } from "../shared/types"
 import { decodeOAuthStateToken } from "../utility/oauth"
 
 export const getIntegrationInstallationDetails = async (req: Request, res: Response) => {

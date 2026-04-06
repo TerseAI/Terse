@@ -1,30 +1,26 @@
-import { FunctionCallItem, RunConfig, RunContext, ToolExecuteArgument, ToolInputParameters, ToolOptions, UnknownContext } from "@openai/agents"
+import { RunContext, ToolOptions, UnknownContext } from "@openai/agents"
+import { ToolDefinitions, ToolInputByName, ToolInputSchemaByName, ToolName, ToolOutputByName } from "terse-types"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import logger from "../logger"
-import type { ToolOutputByName } from "../shared/types"
 import { Session } from "../types/session"
 
-export type ToolCallDetails = {
-    toolCall?: FunctionCallItem
-    resumeState?: string
-    signal?: AbortSignal
-    parentRunConfig?: Partial<RunConfig>
-}
-type ToolExecuteFunction<TParameters extends ToolInputParameters, Context = UnknownContext, TOutput = unknown> = (
-    input: ToolExecuteArgument<TParameters>,
-    context?: RunContext<Context>,
-    details?: ToolCallDetails
-) => Promise<TOutput> | TOutput
-
-export type SessionToolOptions<T extends ToolInputParameters, TName extends keyof ToolOutputByName> = Omit<ToolOptions<T, SessionWithTracking<Session>>, "execute" | "name"> & {
+// Extend OpenAI's ToolOptions — override execute to enforce output type
+export type TypedToolOptions<TName extends ToolName, Context = UnknownContext> = Omit<ToolOptions<ToolInputSchemaByName[TName], Context>, "execute" | "name" | "parameters" | "strict"> & {
     name: TName
-    execute: ToolExecuteFunction<T, SessionWithTracking<Session>, ToolOutputByName[TName]>
+    parameters: ToolInputSchemaByName[TName]
+    strict?: true
+    execute: (input: ToolInputByName[TName], context?: RunContext<Context>) => Promise<ToolOutputByName[TName]> | ToolOutputByName[TName]
 }
 
-export type TypedToolOptions<T extends ToolInputParameters, TName extends keyof ToolOutputByName, Context = UnknownContext> = ToolOptions<T, Context> & {
-    name: TName
-    execute: ToolExecuteFunction<T, Context, ToolOutputByName[TName]>
+type ToolDefinitionInput<TName extends ToolName, Context = UnknownContext> = Omit<TypedToolOptions<TName, Context>, "parameters">
+
+export function defineTool<TName extends ToolName, Context = UnknownContext>(tool: ToolDefinitionInput<TName, Context>): TypedToolOptions<TName, Context> {
+    return { ...tool, parameters: ToolDefinitions[tool.name].inputSchema, strict: true } as TypedToolOptions<TName, Context>
+}
+
+export function defineSessionTool<TName extends ToolName, Context = SessionWithTracking<Session>>(tool: ToolDefinitionInput<TName, Context>): TypedToolOptions<TName, Context> {
+    return defineTool(tool)
 }
 
 // MARK: - Error Handling

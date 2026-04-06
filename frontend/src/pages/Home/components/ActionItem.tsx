@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react"
+import { RunHistoryAction } from "terse-types"
 
-import { RunHistoryAction } from "../../../shared/RunHistoryTypes"
 import { IconForIntegration } from "../../Agents/components/Integration"
 
 export interface ActionItemProps {

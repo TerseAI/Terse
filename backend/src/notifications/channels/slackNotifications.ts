@@ -1,5 +1,6 @@
+import { RunHistoryAction } from "terse-types"
+
 import logger from "../../logger"
-import { RunHistoryAction } from "../../shared/RunHistoryTypes"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
 import { formatNotificationMessage, formatRunFailureNotificationMessage, resolveSlackChannelIdForDestination, sendSlackApprovalMessage, sendSlackMessage } from "../../utility/slack"
 import { formatApprovalNotificationFor } from "../utils"

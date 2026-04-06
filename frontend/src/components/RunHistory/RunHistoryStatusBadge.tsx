@@ -1,6 +1,6 @@
 import { Ban, CheckCircle2, Clock, Filter, XCircle } from "lucide-react"
+import { RunHistoryStatus } from "terse-types"
 
-import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import StatusBadge from "../StatusBadge"
 import { Spinner } from "../ui/spinner"
 

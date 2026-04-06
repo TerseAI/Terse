@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
+import { slackChannelsKey } from "terse-types/InvalidationKeys"
+import type { SlackChannel, SlackChannelsResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { slackChannelsKey } from "@/shared/InvalidationKeys"
-import type { SlackChannel, SlackChannelsResponse } from "@/shared/types"
 
 type UseSlackChannelsReturn = {
     channels: SlackChannel[]

@@ -2,11 +2,11 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Check, ChevronsUpDown, Settings, Users } from "lucide-react"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { useUserOrganizations } from "@/hooks/api/useUserOrganizations"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
 
 import { EditOrganizationDialog } from "../UserManagement/EditOrganizationDialog"
 import { OrgLogo } from "../ui/OrgLogo"

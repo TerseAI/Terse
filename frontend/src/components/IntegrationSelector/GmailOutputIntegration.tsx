@@ -1,12 +1,12 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { ConfigType, GmailDraftOutputConfig, GmailOutputConfig } from "terse-types"
+import { GmailIntegration as GmailIntegrationType, IntegrationType } from "terse-types/Integrations"
 
 import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { GmailIntegration as GmailIntegrationType, IntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { ConfigType, GmailDraftOutputConfig, GmailOutputConfig } from "../../shared/Configs"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"
 import { Button } from "../ui/button"

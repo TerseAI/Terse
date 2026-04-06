@@ -1,4 +1,4 @@
-import { CONFIG_DETAILS, ConfigType } from "@/shared/Configs"
+import { CONFIG_DETAILS, ConfigType } from "terse-types/Configs"
 
 import { IconForConfigType } from "./Integration"
 

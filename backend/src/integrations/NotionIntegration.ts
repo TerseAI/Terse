@@ -1,15 +1,15 @@
 import { Client } from "@notionhq/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "terse-types/Integrations"
+import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
 
 import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations"
-import { NotionResource, OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 

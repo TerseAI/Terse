@@ -1,11 +1,10 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { AttioOutputConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
-import { AttioOutputConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
-import { AttioOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { attioListObjectsTool } from "./tools/listObjects"
@@ -27,7 +26,6 @@ export class AttioOutput extends Output<AttioOutputConfig> {
     }
 
     async validateConfig(output: AttioOutputConfig, _userId: string): Promise<void> {
-        AttioOutputConfigSchema.parse(stripConfigForValidation(output))
         if (!output.objectSlug) {
             throw new Error("Invalid output config for attio_output: missing objectSlug")
         }

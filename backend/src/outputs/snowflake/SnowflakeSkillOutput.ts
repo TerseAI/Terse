@@ -1,10 +1,9 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { SnowflakeOutputConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
-import { SnowflakeOutputConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
-import { SnowflakeOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { snowflakeExecuteQueryTool } from "./tools/executeQuery"
@@ -24,9 +23,7 @@ export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
         return new SnowflakeOutputConfig("example")
     }
 
-    async validateConfig(output: SnowflakeOutputConfig, _userId: string): Promise<void> {
-        SnowflakeOutputConfigSchema.parse(stripConfigForValidation(output))
-    }
+    async validateConfig(output: SnowflakeOutputConfig, _userId: string): Promise<void> {}
 
     async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: SnowflakeOutputConfig): Promise<void> {
         await tx.automation_snowflake_configs.create({

@@ -1,6 +1,7 @@
 import { useState } from "react"
 
 import { AlertTriangleIcon, Eye, EyeOff, Info, Plus } from "lucide-react"
+import { PosthogConfig } from "terse-types/Configs"
 
 import { PosthogProjectSelector } from "@/components/PosthogProjectSelector"
 import { Button } from "@/components/ui/button"
@@ -11,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePosthogIntegrations } from "@/hooks/api/usePosthogIntegrations"
 import { BackendProvider } from "@/services/backend"
-import { PosthogConfig } from "@/shared/Configs"
 
 import { InputConfigSelectorProps } from "./types"
 

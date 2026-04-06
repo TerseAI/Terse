@@ -1,14 +1,14 @@
 import { Agent, AgentOutputType } from "@openai/agents"
 import { tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
+import { ConfigData } from "terse-types"
+import { User } from "terse-types"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
-import { ConfigInstance } from "../../shared/Configs"
-import { User } from "../../shared/types"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
@@ -372,7 +372,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                     agentId: automation.id
                 }
 
-                const instructions = await new SystemPromptBuilder<SessionWithTracking<Session>, ConfigInstance>(
+                const instructions = await new SystemPromptBuilder<SessionWithTracking<Session>, ConfigData>(
                     {
                         session: context,
                         agent: automation as AgentWithRelations,

@@ -1,13 +1,8 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
@@ -15,19 +10,8 @@ import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubA
  * Tool for grep-style exact text search in GitHub repositories.
  * Uses GitHub's Code Search API with exact match patterns.
  */
-const grepGitHubCodeParameters = z.object({
-    repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
-    pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
-    fileExtension: z.string().nullable().optional().describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
-    path: z.string().nullable().optional().describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
-    perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
-    page: z
-        .union([z.number().int().min(1), z.null()])
-        .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
-})
-
-export const grepGitHubCodeTool: SessionToolOptions<typeof grepGitHubCodeParameters, typeof ToolName.GITHUB_GREP_CODE> = {
-    name: ToolName.GITHUB_GREP_CODE,
+export const grepGitHubCodeTool = defineSessionTool({
+    name: "grepGitHubCode",
     description: `Search GitHub repositories for EXACT TEXT MATCHES (like grep). Use this when you KNOW the exact string you're looking for.
 
 Use grepGitHubCode for:
@@ -46,8 +30,7 @@ Examples:
 - ❌ "state management" → Use searchGitHubCode for concepts
 
 This is more precise than semantic search - use it when you know exactly what text to find.`,
-    parameters: grepGitHubCodeParameters,
-    execute: async ({ repositoryNames, pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repositoryNames, pattern, fileExtension, path, perPage = 20, page }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -187,4 +170,4 @@ This is more precise than semantic search - use it when you know exactly what te
             throw new Error(`${errorMessage}. If searching for special characters, they may need to be escaped. Try simplifying the pattern.`)
         }
     }
-}
+})

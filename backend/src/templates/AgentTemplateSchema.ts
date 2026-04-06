@@ -1,24 +1,6 @@
+import { configDataSchema } from "terse-types/Configs"
+import { agentNotificationSettingsSchema, templateCategorySchema } from "terse-types/types"
 import { z } from "zod"
-
-import {
-    ConfluenceConfigSchema,
-    DatadogConfigSchema,
-    FigmaConfigSchema,
-    GitHubConfigSchema,
-    GmailConfigSchema,
-    GmailDraftOutputConfigSchema,
-    GmailOutputConfigSchema,
-    JiraConfigSchema,
-    LaunchDarklyConfigSchema,
-    LinearInputConfigSchema,
-    LinearOutputConfigSchema,
-    NotionConfigSchema,
-    PosthogConfigSchema,
-    SlackConfigSchema,
-    SlackOutputConfigSchema,
-    TimeTriggerConfigSchema,
-    WorkOSInputConfigSchema
-} from "../utility/configSchemas"
 
 function asTemplateConfigSchema<T extends z.ZodObject<any>>(schema: T) {
     const shape = schema.shape as Record<string, z.ZodTypeAny>
@@ -30,74 +12,39 @@ function asTemplateConfigSchema<T extends z.ZodObject<any>>(schema: T) {
     }
 
     return schema.partial().extend({
-        // Preserve discriminants while still allowing templates to omit unresolved values.
         configType: configTypeSchema,
         integrationType: integrationTypeSchema,
         integrationId: z.string().optional()
     })
 }
 
-// Union of all config schemas
-export const ConfigTemplateSchema = z.union([
-    asTemplateConfigSchema(GmailConfigSchema),
-    asTemplateConfigSchema(GmailOutputConfigSchema),
-    asTemplateConfigSchema(GmailDraftOutputConfigSchema),
-    asTemplateConfigSchema(FigmaConfigSchema),
-    asTemplateConfigSchema(SlackConfigSchema),
-    asTemplateConfigSchema(SlackOutputConfigSchema),
-    asTemplateConfigSchema(NotionConfigSchema),
-    asTemplateConfigSchema(LinearInputConfigSchema),
-    asTemplateConfigSchema(LinearOutputConfigSchema),
-    asTemplateConfigSchema(GitHubConfigSchema),
-    asTemplateConfigSchema(JiraConfigSchema),
-    asTemplateConfigSchema(ConfluenceConfigSchema),
-    asTemplateConfigSchema(PosthogConfigSchema),
-    asTemplateConfigSchema(LaunchDarklyConfigSchema),
-    asTemplateConfigSchema(DatadogConfigSchema),
-    asTemplateConfigSchema(WorkOSInputConfigSchema),
-    asTemplateConfigSchema(TimeTriggerConfigSchema)
-])
+export const ConfigTemplateSchema = z.union(configDataSchema.options.map(schema => asTemplateConfigSchema(schema as z.ZodObject<any>)) as unknown as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]])
 
-// Agent prompt schema
 const AgentPromptSchema = z
     .object({
         text: z.string().min(1, "Prompt text is required and cannot be empty")
     })
     .strict()
 
-// Agent notification settings schema
-const AgentNotificationSettingsSchema = z
-    .object({
-        enabled: z.boolean(),
-        actionTypes: z.array(z.enum(["create", "update", "delete", "read"] as const))
-    })
-    .optional()
-
-// Agent trigger template schema
 const AgentTriggerTemplateSchema = z
     .object({
-        id: z.string().optional(), // Optional in templates
+        id: z.string().optional(),
         config: ConfigTemplateSchema
     })
     .strict()
 
-// Agent output template schema
 const AgentOutputTemplateSchema = z
     .object({
-        id: z.string().optional(), // Optional in templates
+        id: z.string().optional(),
         readOnly: z.boolean().optional().default(false),
         config: ConfigTemplateSchema
     })
     .strict()
 
-// Template category schema
-const TemplateCategorySchema = z.enum(["ship", "users", "sync", "track"])
-
-// Main Agent template schema
 export const AgentTemplateSchema = z
     .object({
         id: z.string().min(1, "Template id is required"),
-        category: TemplateCategorySchema,
+        category: templateCategorySchema,
         name: z.string().min(1, "Template name is required"),
         description: z.string().min(1, "Template description is required"),
         prompt: AgentPromptSchema,
@@ -106,14 +53,12 @@ export const AgentTemplateSchema = z
         requireApproval: z.boolean().optional().default(false),
         chatPrompt: z.string().min(1, "Template chatPrompt is required"),
         isActive: z.boolean().optional().default(true),
-        notificationSettings: AgentNotificationSettingsSchema
+        notificationSettings: agentNotificationSettingsSchema.optional()
     })
-    .strict() // Strict mode: no extra properties allowed
+    .strict()
 
-// Schema for the templates.json file (array of templates)
 export const AgentTemplatesSchema = z.array(AgentTemplateSchema).min(1, "At least one template is required")
 
-// Type exports
 export type AgentTemplate = z.infer<typeof AgentTemplateSchema>
 export type ConfigTemplate = z.infer<typeof ConfigTemplateSchema>
 export type AgentTemplates = z.infer<typeof AgentTemplatesSchema>

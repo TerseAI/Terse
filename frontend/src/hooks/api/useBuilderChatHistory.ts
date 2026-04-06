@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { builderChatHistoryKey } from "terse-types/InvalidationKeys"
+import type { RunHistoryModelEvent } from "terse-types/RunHistoryTypes"
 
 import { BackendProvider } from "@/services/backend"
-import { builderChatHistoryKey } from "@/shared/InvalidationKeys"
-import type { RunHistoryModelEvent } from "@/shared/RunHistoryTypes"
 
 type BuilderChatHistoryResponse = {
     events: Array<RunHistoryModelEvent>

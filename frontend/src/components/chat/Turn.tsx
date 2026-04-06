@@ -2,8 +2,8 @@ import { useState } from "react"
 
 import { CheckCircleIcon, CheckIcon, DocumentDuplicateIcon, HandThumbDownIcon, HandThumbUpIcon, XCircleIcon } from "@heroicons/react/24/outline"
 import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandThumbUpFilledIcon } from "@heroicons/react/24/solid"
+import { ChangedItem, type ChatSnippet, SharedErrorContext } from "terse-types"
 
-import { ChangedItem, type ChatSnippet, SharedErrorContext } from "../../shared/ModelEvents"
 import type { ToolApprovalResponseOptions } from "../../socket"
 
 import FunctionCallItem from "./FunctionCallItem"

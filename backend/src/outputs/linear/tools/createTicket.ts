@@ -1,39 +1,17 @@
 import { LinearClient } from "@linear/sdk"
 import { IssueCreateInput } from "@linear/sdk/dist/_generated_documents"
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const createTicketInputSchema = z.object({
-    title: z.string().describe("The title of the ticket."),
-    teamId: z.string().describe("The ID of the team to create the ticket in. Use linear_get_teams to find available teams."),
-    description: z.string().nullable().optional().describe("The description of the ticket."),
-    stateId: z.string().nullable().optional().describe("The ID of the state to create the ticket in. Use linear_get_states to find available states."),
-    priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
-    projectId: z.string().nullable().optional().describe("The ID of the project to create the ticket in. Use linear_get_projects to find available projects."),
-    labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels."),
-    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
-})
-
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
-    ticket: createTicketInputSchema
-})
-
-export const linearCreateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_CREATE_TICKET> = {
-    name: ToolName.LINEAR_CREATE_TICKET,
-    description: `Create a new Linear issue/ticket.`,
-    parameters: parameters,
-    execute: async ({ integrationId, ticket }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+export const linearCreateTicketTool = defineSessionTool({
+    name: "linear_create_ticket",
+    description: "Create a new Linear issue/ticket.",
+    execute: async ({ integrationId, ticket }, runContext) => {
         logger.debug("🛠️ Executing linear_create_ticket tool", { integrationId })
 
         if (!runContext?.context) {
@@ -48,24 +26,15 @@ export const linearCreateTicketTool: SessionToolOptions<typeof parameters, typeo
                 title: ticket.title,
                 teamId: ticket.teamId
             }
-            if (ticket.description) {
-                createTicketInput.description = ticket.description
-            }
-            if (ticket.stateId) {
-                createTicketInput.stateId = ticket.stateId
-            }
-            if (ticket.projectId) {
-                createTicketInput.projectId = ticket.projectId
-            }
-            if (ticket.labelIds) {
-                createTicketInput.labelIds = ticket.labelIds
-            }
+
+            if (ticket.description) createTicketInput.description = ticket.description
+            if (ticket.stateId) createTicketInput.stateId = ticket.stateId
+            if (ticket.projectId) createTicketInput.projectId = ticket.projectId
+            if (ticket.labelIds) createTicketInput.labelIds = ticket.labelIds
             if (ticket.priority !== undefined && ticket.priority !== null) {
                 createTicketInput.priority = ticket.priority
             }
-            if (ticket.assigneeId) {
-                createTicketInput.assigneeId = ticket.assigneeId
-            }
+            if (ticket.assigneeId) createTicketInput.assigneeId = ticket.assigneeId
 
             const payload = await client.createIssue(createTicketInput)
 
@@ -73,6 +42,7 @@ export const linearCreateTicketTool: SessionToolOptions<typeof parameters, typeo
             if (!createdIssue?.id) {
                 throw new Error("Failed to create ticket")
             }
+
             const ticketData = await client.issue(createdIssue.id)
 
             const action = {
@@ -83,15 +53,27 @@ export const linearCreateTicketTool: SessionToolOptions<typeof parameters, typeo
                 type: RunHistoryActionType.create,
                 url: ticketData.url
             }
+
             return {
                 success: true,
-                issue: ticketData,
+                issue: {
+                    id: ticketData.id,
+                    identifier: ticketData.identifier,
+                    title: ticketData.title,
+                    description: ticketData.description ?? null,
+                    url: ticketData.url,
+                    createdAt: ticketData.createdAt,
+                    updatedAt: ticketData.updatedAt
+                },
                 actions: [action]
             }
         } catch (error: unknown) {
             const errorMessage = extractErrorMessage(error)
-            logger.error("❌ Error creating Linear ticket", { error: errorMessage, integrationId })
+            logger.error("❌ Error creating Linear ticket", {
+                error: errorMessage,
+                integrationId
+            })
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }
     }
-}
+})

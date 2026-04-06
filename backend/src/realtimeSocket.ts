@@ -3,6 +3,10 @@ import { Server as HttpServer } from "http"
 import { jwtVerify } from "jose"
 import { createClient } from "redis"
 import { Server, Socket } from "socket.io"
+import { ConfigData } from "terse-types"
+import { SendModelRequest, ToolApprovalResponse } from "terse-types"
+import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "terse-types"
+import { SocketEvents, SocketRooms } from "terse-types"
 
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
@@ -20,10 +24,6 @@ import { db } from "./prismaClient"
 import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
-import { ConfigInstance } from "./shared/Configs"
-import { SendModelRequest, ToolApprovalResponse } from "./shared/ModelEvents"
-import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "./shared/RunHistoryTypes"
-import { SocketEvents, SocketRooms } from "./shared/SocketEvents"
 import { CancelAckResponse, USER_CANCELLED_REASON } from "./socketHandlers/activeExecution"
 import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
@@ -208,7 +208,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             // Create outputs from agent configuration
-            let outputs: Output<ConfigInstance>[]
+            let outputs: Output<ConfigData>[]
             try {
                 outputs = OutputFactory.createOutputsFromAgent(agent)
             } catch (error) {

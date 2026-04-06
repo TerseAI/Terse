@@ -1,9 +1,9 @@
 import { Agent, FunctionCallResultItem, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
+import { IntegrationType } from "terse-types/Integrations"
+import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
+import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import logger from "../logger"
-import { IntegrationType } from "../shared/Integrations"
-import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "../shared/ModelEvents"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"

@@ -1,11 +1,11 @@
 import { useState } from "react"
 
 import { Eye, EyeOff, Flag } from "lucide-react"
+import { INTEGRATION_METADATA, IntegrationType, LaunchDarklyIntegration } from "terse-types/Integrations"
 
 import { useLaunchdarklyIntegrations } from "@/hooks/api/useLaunchdarklyIntegrations"
 import { cn } from "@/lib/utils"
 import { BackendProvider } from "@/services/backend"
-import { INTEGRATION_METADATA, IntegrationType, LaunchDarklyIntegration } from "@/shared/Integrations"
 
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter } from "../ui/card"

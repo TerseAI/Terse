@@ -1,10 +1,10 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { ConfigType, GmailConfig, isConfigComplete } from "terse-types/Configs"
+import { GmailIntegration as GmailIntegrationType, IntegrationType } from "terse-types/Integrations"
 
 import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { ConfigType, GmailConfig } from "@/shared/Configs"
-import { GmailIntegration as GmailIntegrationType, IntegrationType } from "@/shared/Integrations"
 
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"
@@ -71,7 +71,7 @@ export function GmailIntegration({ input, variant, setConfig }: InputConfigSelec
 
     // Card variant: compact view
     if (variant === "card") {
-        const isComplete = currentConfig?.isComplete()
+        const isComplete = isConfigComplete(currentConfig)
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">

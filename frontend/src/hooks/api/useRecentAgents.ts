@@ -1,8 +1,8 @@
 import useSWR, { KeyedMutator } from "swr"
+import { recentAgentsKey } from "terse-types/InvalidationKeys"
+import type { RecentAgent } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { recentAgentsKey } from "@/shared/InvalidationKeys"
-import type { RecentAgent } from "@/shared/types"
 
 export type UseRecentAgentsReturn = {
     agents: RecentAgent[]

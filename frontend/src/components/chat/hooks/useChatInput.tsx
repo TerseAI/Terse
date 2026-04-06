@@ -1,8 +1,7 @@
 import { useState } from "react"
 
+import { type ModelRequest } from "terse-types"
 import { v4 as uuidv4 } from "uuid"
-
-import { type ModelRequest } from "../../../shared/ModelEvents"
 
 interface UseChatInputOptions {
     sendMessage: (message: ModelRequest) => void

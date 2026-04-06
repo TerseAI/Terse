@@ -1,12 +1,12 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { ConfigType, LinearOutputConfig } from "terse-types"
+import { IntegrationType, LinearIntegration as LinearIntegrationType } from "terse-types/Integrations"
 
 import { useLinearIntegrations } from "@/hooks/api/useLinearIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { IntegrationType, LinearIntegration as LinearIntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { ConfigType, LinearOutputConfig } from "../../shared/Configs"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
 
@@ -120,7 +120,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
                     <LinearTeamSelector
                         integrationId={selectedIntegrationId}
-                        selectedTeamId={currentConfig?.teamId}
+                        selectedTeamId={currentConfig?.teamId ?? null}
                         onSelect={(teamId: string, teamName: string) => {
                             const updatedConfig = new LinearOutputConfig(selectedIntegrationId, teamId, teamName, currentConfig?.projectId, currentConfig?.projectName)
                             setConfig(updatedConfig)

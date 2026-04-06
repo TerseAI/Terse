@@ -1,6 +1,7 @@
+import { ChatSnippet, ToolCallExecutionStatus } from "terse-types/ModelEvents"
+import { RunHistoryAction } from "terse-types/RunHistoryTypes"
+
 import logger from "../logger"
-import { ChatSnippet, ToolCallExecutionStatus } from "../shared/ModelEvents"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
 import { ErrorContext, detectSerializedError, parseSerializedError } from "../tools/toolUtils"
 
 import { chatSnippetPayloadSchema } from "./systemEvents/snippetSystemEvent"

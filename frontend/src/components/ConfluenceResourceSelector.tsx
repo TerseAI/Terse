@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { Check, ChevronsUpDown, FileText, Loader2 } from "lucide-react"
+import { ConfluencePage } from "terse-types/types"
 
 import { cn } from "@/lib/utils"
 
 import { useConfluenceResources } from "../hooks/api/useConfluenceResources"
-import { ConfluencePage } from "../shared/types"
 
 import { Button } from "./ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command"

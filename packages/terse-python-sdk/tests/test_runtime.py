@@ -27,7 +27,6 @@ from terse_sdk import (
     SdkAgentStreamEventToolCallCompleted,
     SdkAgentToolApprovalRequest,
     SerializedEventInputEvent,
-    SkillConfig,
     SlackChannelType,
     SlackInputEvent,
     SlackListChannelsToolOutput,
@@ -205,7 +204,12 @@ def test_deserialize_input_event_enriches_slack_metadata() -> None:
                 "teamId": "T123",
                 "permalink": "https://slack.example/message",
                 "channelType": "im",
-                "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}],
+                "blocks": [
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": "Deploy finished"},
+                    }
+                ],
                 "attachments": [
                     {
                         "fallback": "fallback text",
@@ -332,7 +336,11 @@ def test_agent_execute_tool_includes_session_and_run_headers() -> None:
     )
 
     with (
-        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key", "TERSE_RUN_ID": "run_123"}, clear=False),
+        patch.dict(
+            os.environ,
+            {"TERSE_API_KEY": "terse_test_key", "TERSE_RUN_ID": "run_123"},
+            clear=False,
+        ),
         patch("terse_sdk.runtime.httpx.Client", return_value=fake_client),
     ):
         result = TerseAgent(session_id="session_123").execute_tool("demo_tool", {"value": 1})
@@ -517,41 +525,6 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
     assert captured["json"]["event"]["formattedContent"] == "Scheduled event"
 
 
-def test_agent_run_serializes_missing_attio_object_slug_as_null() -> None:
-    captured: dict[str, object] = {}
-    stream = _FakeEventSource([json.dumps({"type": "done"})])
-
-    def fake_connect_sse(
-        client: object,
-        method: str,
-        url: str,
-        *,
-        headers: dict[str, str],
-        json: dict[str, object],
-    ) -> _FakeEventSource:
-        captured.update({"method": method, "url": url, "headers": headers, "json": json})
-        return stream
-
-    with (
-        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
-        patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
-    ):
-        list(
-            TerseAgent(
-                skills=[
-                    SkillConfig(
-                        integration_id="cm_attio",
-                        integration_type="attio",
-                        config_type="attio_output",
-                        config={},
-                    )
-                ]
-            ).run("hello")
-        )
-
-    assert captured["json"]["skills"][0]["config"]["objectSlug"] is None
-
-
 def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
     captured: dict[str, object] = {}
     stream = _FakeEventSource([json.dumps({"type": "done"})])
@@ -665,7 +638,10 @@ def test_assert_sse_response_reads_streaming_error_detail_on_http_error() -> Non
 def test_assert_sse_response_reads_streaming_error_details_list_on_http_error() -> None:
     response = _streaming_json_response(
         400,
-        {"error": "Invalid request body", "details": ["`skills[0].config.objectSlug` is required"]},
+        {
+            "error": "Invalid request body",
+            "details": ["`skills[0].config.objectSlug` is required"],
+        },
         path="/sdk/agent-run",
     )
 

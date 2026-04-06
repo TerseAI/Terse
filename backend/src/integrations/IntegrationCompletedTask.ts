@@ -1,4 +1,5 @@
-import { IntegrationType } from "../shared/Integrations"
+import { IntegrationType } from "terse-types/Integrations"
+
 import { Task } from "../tasks/abstract/tasks"
 import { OAuthStatePayload } from "../utility/oauth"
 

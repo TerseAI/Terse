@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { PosthogIntegration } from "terse-types/Integrations"
+import { posthogIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { PosthogIntegration } from "@/shared/Integrations"
-import { posthogIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UsePosthogIntegrationsReturn = {
     integrations: PosthogIntegration[]

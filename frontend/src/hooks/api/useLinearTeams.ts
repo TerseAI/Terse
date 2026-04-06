@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
+import { linearTeamsKey } from "terse-types/InvalidationKeys"
+import type { LinearTeam } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { linearTeamsKey } from "@/shared/InvalidationKeys"
-import type { LinearTeam } from "@/shared/types"
 
 type UseLinearTeamsReturn = {
     teams: LinearTeam[]

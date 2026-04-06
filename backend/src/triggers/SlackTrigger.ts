@@ -1,7 +1,7 @@
+import { ConfigType, SlackConfig } from "terse-types/Configs"
+
 import { SlackIntegrationManager, getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../integrations/SlackIntegration"
-import { ConfigType, SlackConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
-import { SlackConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -14,7 +14,6 @@ export class SlackTrigger implements Trigger<SlackConfig> {
     }
 
     async validateConfig(trigger: SlackConfig, _userId: string): Promise<void> {
-        SlackConfigSchema.parse(stripConfigForValidation(trigger))
         if (!trigger.channelId && !trigger.listenToUserDms) {
             throw new Error("Invalid trigger config for slack: requires channelId or listenToUserDms=true")
         }

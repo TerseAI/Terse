@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { Check, ChevronsUpDown, FolderIcon, Loader2 } from "lucide-react"
+import { PosthogProject } from "terse-types/types"
 
 import { usePosthogProjects } from "@/hooks/api/usePosthogProjects"
 import { cn } from "@/lib/utils"
-
-import { PosthogProject } from "../shared/types"
 
 import { Button } from "./ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command"
@@ -14,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 interface PosthogProjectSelectorProps {
     integrationId: string
     selectedProjectId?: string
-    selectedProjectName?: string
+    selectedProjectName: string | null
     onSelect: (projectId: string, projectName: string) => void
 }
 

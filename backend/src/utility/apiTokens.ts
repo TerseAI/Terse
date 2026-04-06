@@ -1,7 +1,7 @@
 import crypto from "crypto"
+import { ApiToken, ApiTokenCreateResponse } from "terse-types/types"
 
 import { db } from "../prismaClient"
-import { ApiToken, ApiTokenCreateResponse } from "../shared/types"
 
 export function hashToken(rawToken: string): string {
     return crypto.createHash("sha256").update(rawToken).digest("hex")

@@ -1,9 +1,9 @@
 import { Agent } from "@openai/agents"
+import { IntegrationType } from "terse-types"
+import { User } from "terse-types"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
-import { IntegrationType } from "../../shared/Integrations"
-import { User } from "../../shared/types"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { buildUserMessage } from "../userMessage"
 

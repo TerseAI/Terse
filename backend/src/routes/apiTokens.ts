@@ -1,10 +1,11 @@
 import { Request, Response } from "express"
+import { apiTokensKey } from "terse-types/InvalidationKeys"
+import { ApiToken } from "terse-types/types"
+import { apiTokenCreateRequestSchema, apiTokenUpdateRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
-import { apiTokensKey } from "../shared/InvalidationKeys"
-import { ApiToken } from "../shared/types"
 import { createApiToken as createToken, getApiTokensForUser } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 
@@ -55,17 +56,7 @@ export async function createApiToken(req: Request, res: Response) {
 
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
-    const { name } = req.body
-
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-        res.status(400).json({ error: "Token name is required" })
-        return
-    }
-
-    if (name.trim().length > 100) {
-        res.status(400).json({ error: "Token name must be 100 characters or less" })
-        return
-    }
+    const { name } = apiTokenCreateRequestSchema.parse(req.body)
 
     try {
         const response = await createToken(userId, organizationId, name)
@@ -92,17 +83,7 @@ export async function updateApiToken(req: Request, res: Response) {
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
     const tokenId = req.params.id
-    const { name } = req.body
-
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-        res.status(400).json({ error: "Token name is required" })
-        return
-    }
-
-    if (name.trim().length > 100) {
-        res.status(400).json({ error: "Token name must be 100 characters or less" })
-        return
-    }
+    const { name } = apiTokenUpdateRequestSchema.parse(req.body)
 
     try {
         const existing = await db().api_tokens.findFirst({

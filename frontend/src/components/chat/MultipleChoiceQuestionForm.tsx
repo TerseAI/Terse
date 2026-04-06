@@ -1,13 +1,13 @@
 import { useState } from "react"
 
 import { CheckIcon } from "@heroicons/react/24/solid"
+import type { MultipleChoiceOption } from "terse-types/Survey"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import type { MultipleChoiceOption } from "@/shared/Survey"
 
 export type MultipleChoiceQuestionFormProps = {
     questionId: string

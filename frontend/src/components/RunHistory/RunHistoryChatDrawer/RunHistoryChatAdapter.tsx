@@ -1,13 +1,14 @@
 import { useMemo } from "react"
 
+import { ModelRequest } from "terse-types/ModelEvents"
+import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
+import type { RunHistoryModelSocketEvent } from "terse-types/RunHistoryTypes"
+
 import { AwaitingResponseAnimation } from "@/components/chat/AwaitingResponseAnimation"
 import { Chat } from "@/components/chat/Chat"
 import { Turn } from "@/components/chat/Turn"
 import { type ChatEventSubscription } from "@/components/chat/hooks/useCompletionSocket"
 import { useChatHistory } from "@/hooks/api/useChatHistory"
-import { ModelRequest } from "@/shared/ModelEvents"
-import { RunHistoryStatus } from "@/shared/RunHistoryTypes"
-import type { RunHistoryModelSocketEvent } from "@/shared/RunHistoryTypes"
 import { cancelAgentChatRun, sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
 
 import { convertRunHistoryEventsToTurns } from "./runHistoryEventsToTurns"

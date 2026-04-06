@@ -1,7 +1,7 @@
 import useSWR from "swr"
+import type { AgentTemplate } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import type { AgentTemplate } from "@/shared/types"
 
 export function useTemplates() {
     const { data, error, isValidating } = useSWR<AgentTemplate[]>(

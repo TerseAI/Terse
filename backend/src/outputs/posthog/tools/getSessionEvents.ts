@@ -1,36 +1,22 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 
 import { PostHogSessionService, SessionEventsResult } from "./eventDecoder"
-
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
-    projectId: z.string().describe("The PostHog project ID."),
-    sessionId: z.string().uuid().describe("The PostHog session ID (UUID format) to fetch events for. You can get this from searchPosthogSessions."),
-    startSeconds: z.number().nullable().optional().describe("Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning."),
-    endSeconds: z.number().nullable().optional().describe("Optional: End time in seconds from the beginning of the session. If not provided, goes until the end.")
-})
 
 /**
  * Tool for fetching and decoding PostHog session replay events.
  * Returns summarized meaningful events (clicks, inputs, console logs, etc.)
  * that can be analyzed by the AI directly.
  */
-export const getSessionEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.POSTHOG_GET_SESSION_EVENTS> = {
-    name: ToolName.POSTHOG_GET_SESSION_EVENTS,
+export const getSessionEventsTool = defineSessionTool({
+    name: "getPosthogSessionEvents",
     description:
         "Fetch and decode session replay events from PostHog. Returns summarized meaningful events (clicks, inputs, scroll, console logs, network errors, navigation) within a specified time window. Use this to investigate what a user did during a session - what they clicked, what they typed, any errors that occurred, etc. The events are decoded and summarized for easy analysis.",
-    parameters: parameters,
-    execute: async ({ integrationId, projectId, sessionId, startSeconds, endSeconds }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, projectId, sessionId, startSeconds, endSeconds }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -65,7 +51,7 @@ export const getSessionEventsTool: SessionToolOptions<typeof parameters, typeof 
 
             // Format the response for the AI
             const response = {
-                success: true,
+                success: true as const,
                 sessionId: result.sessionId,
                 sessionUrl: result.sessionUrl,
                 startTime: result.startTime,
@@ -115,4 +101,4 @@ export const getSessionEventsTool: SessionToolOptions<typeof parameters, typeof 
             throw new Error(`Failed to fetch PostHog session events: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

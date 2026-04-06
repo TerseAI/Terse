@@ -1,8 +1,8 @@
+import { ConfigType } from "terse-types/Configs"
+import { AgentNotificationSettings, AgentPrompt, TemplateOutput, TemplateTrigger, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
 import { v4 as uuidv4 } from "uuid"
 
 import { AgentTemplate } from "../hooks/api/useTemplates"
-import { ConfigType } from "../shared/Configs"
-import { AgentNotificationSettings, AgentPrompt, TemplateOutput, TemplateTrigger, TransientAgentOutput, TransientAgentTrigger } from "../shared/types"
 
 export interface HydratedTemplateState {
     name: string | null

@@ -1,11 +1,11 @@
 import { useState } from "react"
 
 import { BarChart3, Eye, EyeOff } from "lucide-react"
+import { DatadogIntegration, INTEGRATION_METADATA, IntegrationType } from "terse-types/Integrations"
 
 import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations"
 import { cn } from "@/lib/utils"
 import { BackendProvider } from "@/services/backend"
-import { DatadogIntegration, INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
 
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter } from "../ui/card"

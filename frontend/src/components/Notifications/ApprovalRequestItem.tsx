@@ -1,11 +1,11 @@
 import { Ban, Check, MessageSquare } from "lucide-react"
+import { RunHistoryStatus } from "terse-types"
+import type { ApprovalAction, ApprovalActionType, ApprovalRequest } from "terse-types/ApprovalTypes"
 
 import { Button } from "@/components/ui/button"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
-import type { ApprovalAction, ApprovalActionType, ApprovalRequest } from "@/shared/ApprovalTypes"
 import { formatRelativeTime } from "@/utility/timeUtils"
 
-import { RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import RunHistoryStatusBadge from "../RunHistory/RunHistoryStatusBadge"
 
 type ApprovalRequestItemProps = {

@@ -1,7 +1,7 @@
 import useSWR from "swr"
+import { userOrganizationsKey } from "terse-types/InvalidationKeys"
 
 import { BackendProvider } from "@/services/backend"
-import { userOrganizationsKey } from "@/shared/InvalidationKeys"
 
 type Organization = { id: string; name: string }
 

@@ -1,8 +1,8 @@
 import { Agent, AgentOutputType, RunStreamEvent } from "@openai/agents"
+import { User } from "terse-types"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
-import { User } from "../../shared/types"
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { buildUserMessage } from "../userMessage"

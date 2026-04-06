@@ -1,7 +1,8 @@
+import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent } from "terse-types"
+import { SocketEvents, SocketRooms } from "terse-types"
+
 import logger from "../../logger"
 import { getSocketIO, invalidateRunAndChatHistory } from "../../services/CacheInvalidationService"
-import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent } from "../../shared/RunHistoryTypes"
-import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { randomString } from "../../utility/strings"
 import { markRunCancelled } from "../AgentRunner/runHistory"

@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
+import { notionResourcesKey } from "terse-types/InvalidationKeys"
+import type { NotionResource, NotionResourceType, NotionResourcesResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { notionResourcesKey } from "@/shared/InvalidationKeys"
-import type { NotionResource, NotionResourceType, NotionResourcesResponse } from "@/shared/types"
 
 type UseNotionResourcesReturn = {
     resources: NotionResource[]

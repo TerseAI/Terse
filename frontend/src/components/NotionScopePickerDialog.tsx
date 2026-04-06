@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
 
 import { DatabaseIcon, FileIcon, LayoutGrid, Loader2, Search, X } from "lucide-react"
+import type { NotionResource, NotionResourceType } from "terse-types/types"
 
 import { useNotionResources } from "@/hooks/api/useNotionResources"
 import { cn } from "@/lib/utils"
-import type { NotionResource, NotionResourceType } from "@/shared/types"
 
 import { Checkbox } from "./ui/checkbox"
 import { Input } from "./ui/input"

@@ -1,14 +1,13 @@
 import { client, v2 } from "@datadog/datadog-api-client"
 import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
+import { IntegrationType } from "terse-types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
 
@@ -48,10 +47,9 @@ const parameters = z.object({
  * averages, sums, etc. on RUM events. Use this to analyze performance trends, error rates,
  * user behavior patterns, or any aggregated metrics over RUM events.
  */
-export const aggregateRumEventsTool: SessionToolOptions<typeof parameters, typeof ToolName.DATADOG_AGGREGATE_RUM_EVENTS> = {
-    name: ToolName.DATADOG_AGGREGATE_RUM_EVENTS,
+export const aggregateRumEventsTool = defineSessionTool({
+    name: "aggregateRumEvents",
     description: "Aggregate Datadog RUM events into metrics. Compute percentiles, averages, sums, etc. Group by facets for breakdowns. Use for performance trends and error rates.",
-    parameters: parameters,
     execute: async ({ integrationId, query, from, to, compute, groupBy, timezone, pageLimit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
@@ -320,4 +318,4 @@ export const aggregateRumEventsTool: SessionToolOptions<typeof parameters, typeo
             throw new Error(`Failed to aggregate Datadog RUM events: ${error.message || "Unknown error"}`)
         }
     }
-}
+})

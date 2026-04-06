@@ -1,4 +1,4 @@
-import { INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
+import { INTEGRATION_METADATA, IntegrationType } from "terse-types/Integrations"
 
 import { IconForIntegration } from "./Integration"
 

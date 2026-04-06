@@ -1,12 +1,12 @@
 import { useState } from "react"
 
 import { Hash, MessageSquare } from "lucide-react"
+import { IntegrationType, SlackIntegration } from "terse-types/Integrations"
 
 import { useSlackChannels } from "@/hooks/api/useSlackChannels"
 import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations"
 import { cn } from "@/lib/utils"
 import { BackendProvider } from "@/services/backend"
-import { IntegrationType, SlackIntegration } from "@/shared/Integrations"
 
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"

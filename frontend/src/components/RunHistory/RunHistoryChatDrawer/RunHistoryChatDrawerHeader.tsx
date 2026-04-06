@@ -1,9 +1,9 @@
 import { ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2 } from "lucide-react"
+import { RunHistoryStatus, RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { RunHistoryRecord } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
-import { RunHistoryStatus, RunHistoryTrigger } from "@/shared/RunHistoryTypes"
-import { RunHistoryRecord } from "@/shared/RunHistoryTypes"
 
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
 

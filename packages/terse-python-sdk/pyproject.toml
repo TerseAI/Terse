@@ -1,6 +1,6 @@
 [project]
 name = "terse-sdk"
-version = "0.1.8"
+version = "0.1.10"
 description = "Python SDK for building jobs on the Terse platform."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "email-validator>=2.3.0",
     "httpx>=0.28.1",
     "httpx-sse>=0.4,<0.5",
     "pydantic>=2.12.5",
