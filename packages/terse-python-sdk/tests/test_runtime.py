@@ -27,7 +27,6 @@ from terse_sdk import (
     SdkAgentStreamEventToolCallCompleted,
     SdkAgentToolApprovalRequest,
     SerializedEventInputEvent,
-    SkillConfig,
     SlackChannelType,
     SlackInputEvent,
     SlackListChannelsToolOutput,
