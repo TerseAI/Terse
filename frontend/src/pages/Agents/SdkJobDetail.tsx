@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom"
 import { Tab, TabGroup, TabList } from "@headlessui/react"
 import { Clock, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
-import { CONFIG_DETAILS } from "terse-types"
+import { CONFIG_DETAILS, ConfigType } from "terse-types"
 import { FrontendRoutes } from "terse-types"
-import type { SerializedEvent } from "terse-types"
+import type { AgentTrigger, SerializedEvent } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { Badge } from "../../components/ui/badge"
@@ -19,6 +19,7 @@ import { useSampleEvents } from "../../hooks/api/useSampleEvents"
 import { BackendProvider } from "../../services/backend"
 
 import { IconForConfigType } from "./components/Integration"
+import { WebhookTriggerCard } from "./components/WebhookTriggerCard"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 
@@ -305,7 +306,7 @@ function SampleEventsDialog({
     )
 }
 
-function OverviewTab({ triggers, updatedAt, isActive }: { triggers: { id: string; config: { configType: string } }[]; updatedAt: string | null; isActive: boolean }) {
+function OverviewTab({ triggers, updatedAt, isActive }: { triggers: AgentTrigger[]; updatedAt: string | null; isActive: boolean }) {
     return (
         <div className="p-4 space-y-6 max-w-2xl">
             {/* Status */}
@@ -323,6 +324,11 @@ function OverviewTab({ triggers, updatedAt, isActive }: { triggers: { id: string
                     <div className="space-y-2">
                         {triggers.map(trigger => {
                             const configType = trigger.config.configType
+
+                            if (configType === ConfigType.WEBHOOK_INPUT) {
+                                return <WebhookTriggerCard key={trigger.id} trigger={trigger} />
+                            }
+
                             const details = CONFIG_DETAILS[configType as keyof typeof CONFIG_DETAILS]
                             return (
                                 <div key={trigger.id} className="flex items-center gap-2 rounded-md border border-input p-2.5">

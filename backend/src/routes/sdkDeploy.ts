@@ -1,8 +1,10 @@
 import { Request, Response } from "express"
+import { ApiRoutes, buildRoute } from "terse-types"
 import type { ConfigData } from "terse-types"
 import { User } from "terse-types/types"
 import { sdkDeployRequestBodySchema } from "terse-types/types"
 
+import { settings } from "../config/settings"
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -38,7 +40,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const gcsKey = await uploadSdkDeployZip(zipBuffer)
         const prisma = db()
 
-        const results: { jobName: string; automationId: string; isUpdate: boolean }[] = []
+        const results: { jobName: string; automationId: string; isUpdate: boolean; triggers: { id: string; metadata: { webhookUrl: string } }[] }[] = []
 
         for (const job of jobs) {
             const { outputs, toolApprovals } = job
@@ -59,7 +61,14 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             await setupAgentTriggers(agent)
 
-            results.push({ jobName: job.jobName, automationId: agent.id, isUpdate })
+            const triggers = agent.inputs
+                .filter(input => input.webhook_config)
+                .map(input => ({
+                    id: input.id,
+                    metadata: { webhookUrl: `${settings.urls.backend}${buildRoute(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, { webhookToken: input.webhook_config!.webhook_token })}` }
+                }))
+
+            results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: triggers.length > 0 ? triggers : [] })
 
             logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
                 automationId: agent.id,

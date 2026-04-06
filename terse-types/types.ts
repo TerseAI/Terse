@@ -448,9 +448,15 @@ export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResp
 
 const configInstanceDataSchema = configDataSchema
 
+export const triggerMetadataSchema = z.object({
+    webhookUrl: z.string().optional()
+})
+export type TriggerMetadata = z.infer<typeof triggerMetadataSchema>
+
 export const agentTriggerSchema = z.object({
     id: z.string(),
-    config: configInstanceDataSchema
+    config: configInstanceDataSchema,
+    metadata: triggerMetadataSchema.optional()
 })
 export type AgentTrigger = z.infer<typeof agentTriggerSchema>
 
@@ -913,7 +919,11 @@ export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>
 export const sdkDeployResultSchema = z.object({
     jobName: z.string(),
     automationId: z.string(),
-    isUpdate: z.boolean()
+    isUpdate: z.boolean(),
+    triggers: z.array(z.object({
+        id: z.string(),
+        metadata: triggerMetadataSchema.optional()
+    })).optional()
 })
 
 export const sdkDeployRemovedSchema = z.object({

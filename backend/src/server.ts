@@ -44,6 +44,7 @@ import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent } from "./routes/schedule"
+import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
 import { handleSdkDeploy } from "./routes/sdkDeploy"
 import { handleSdkIntegrationFields, handleSdkIntegrationFormSubmit } from "./routes/sdkIntegrations"
@@ -252,6 +253,10 @@ app.post(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID, async (req, res) => {
 
 app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, async (req, res) => {
     handleScheduleWebhook(req, res)
+})
+
+app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, async (req, res) => {
+    handleWebhookTrigger(req, res)
 })
 
 app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {

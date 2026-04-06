@@ -1,11 +1,12 @@
 import { Request, Response } from "express"
-import { isValidToolName } from "terse-types"
+import { ApiRoutes, buildRoute, isValidToolName } from "terse-types"
 import { ConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { Agent, AgentDraft, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
 import { agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
+import { settings } from "../config/settings"
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
@@ -753,6 +754,14 @@ export async function deleteAgent(req: Request, res: Response) {
     }
 }
 
+function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { metadata?: { webhookUrl: string } } {
+    if (trigger.webhook_config) {
+        const webhookUrl = `${settings.urls.backend}${buildRoute(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, { webhookToken: trigger.webhook_config.webhook_token })}`
+        return { metadata: { webhookUrl } }
+    }
+    return {}
+}
+
 // Helper function to transform AgentWithRelations to frontend Agent format
 function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<AgentWithNotificationSettingsRelations>): Agent {
     return {
@@ -763,7 +772,8 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         prompt: agent.prompt ? { text: agent.prompt.content } : { text: "" },
         triggers: agent.inputs.map(trigger => ({
             id: trigger.id,
-            config: convertPrismaConfigToConfigData(trigger)
+            config: convertPrismaConfigToConfigData(trigger),
+            ...buildTriggerMetadata(trigger)
         })),
         outputs: (agent.outputs ?? []).map(output => ({
             id: output.id,

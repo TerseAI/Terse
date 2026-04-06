@@ -80,6 +80,9 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
         case ConfigType.SNOWFLAKE_OUTPUT:
             return <SnowflakeOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
+        case ConfigType.WEBHOOK_INPUT:
+            return null
+
         default:
             throw new Error(`Unsupported config type: ${props.input.configType}`)
     }
