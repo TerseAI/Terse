@@ -22,6 +22,7 @@ import {
     SnowflakeOutputConfig,
     TerseConfig,
     TimeTriggerConfig,
+    WebhookInputConfig,
     WorkOSEventType,
     WorkOSInputConfig,
     WorkOSOutputConfig
@@ -274,6 +275,10 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
 
     if (channelInput.workos_config) {
         return new WorkOSInputConfig(integrationId, (channelInput.workos_config.event_types || []) as WorkOSEventType[])
+    }
+
+    if (channelInput.webhook_config) {
+        return new WebhookInputConfig()
     }
 
     // Type guard to ensure we implement conversion here
