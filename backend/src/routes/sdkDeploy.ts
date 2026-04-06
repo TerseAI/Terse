@@ -13,8 +13,8 @@ import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
-import { buildWebhookUrl } from "../utility/webhookUrl"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
+import { buildWebhookUrl } from "../utility/webhookUrl"
 
 import { createOutputConfig, createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
 
