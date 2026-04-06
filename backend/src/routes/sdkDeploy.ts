@@ -1,6 +1,8 @@
 import { Request, Response } from "express"
 import { ApiRoutes, buildRoute } from "terse-types"
 import type { ConfigData } from "terse-types"
+import { ConfigType } from "terse-types"
+import type { SdkDeployJob } from "terse-types/types"
 import { User } from "terse-types/types"
 import { sdkDeployRequestBodySchema } from "terse-types/types"
 
@@ -43,6 +45,11 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const results: { jobName: string; automationId: string; isUpdate: boolean; triggers: { id: string; metadata: { webhookUrl: string } }[] }[] = []
 
         for (const job of jobs) {
+            const validationError = validateJobTriggers(job)
+            if (validationError) {
+                return res.status(400).json({ success: false, error: validationError })
+            }
+
             const { outputs, toolApprovals } = job
 
             const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
@@ -255,6 +262,14 @@ async function createOutputsForAutomation(tx: PrismaTransaction, automationId: s
 
         await createOutputConfig(tx, newOutput.id, output, userId)
     }
+}
+
+function validateJobTriggers(job: SdkDeployJob): string | null {
+    const webhookCount = job.triggers.filter(t => t.configType === ConfigType.WEBHOOK_INPUT).length
+    if (webhookCount > 1) {
+        return `Job "${job.jobName}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`
+    }
+    return null
 }
 
 async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>): Promise<{ id: string; name: string }[]> {
