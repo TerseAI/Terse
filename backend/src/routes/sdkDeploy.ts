@@ -1,9 +1,9 @@
 import { Request, Response } from "express"
 import { AgentOutput, AgentTrigger, User } from "terse-types/types"
+import { sdkDeployRequestBodySchema } from "terse-types/types"
 
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
-import { sdkDeployRequestBodySchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"

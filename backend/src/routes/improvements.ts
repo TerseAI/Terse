@@ -1,9 +1,9 @@
 import { AgentImprovementStatus } from "@prisma/client"
 import { Request, Response } from "express"
 import { AgentImprovement, AgentReview, ApplyImprovementResponse, DismissImprovementResponse, GetAgentImprovementsResponse, ToggleImprovementsEnabledResponse } from "terse-types/types"
+import { agentAndImprovementParamsSchema, agentIdParamsSchema, toggleImprovementsEnabledRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
-import { agentAndImprovementParamsSchema, agentIdParamsSchema, toggleImprovementsEnabledRequestSchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 

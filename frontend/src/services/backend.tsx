@@ -1210,7 +1210,7 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    createAgent: (data: Agent) => {
+    createAgent: (data: AgentUpdate) => {
         return axios
             .post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true })
             .then(response => response.data)

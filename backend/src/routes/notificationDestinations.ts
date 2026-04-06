@@ -1,15 +1,11 @@
 import { NotificationDestinationType } from "@prisma/client"
 import { Request, Response } from "express"
 import { notificationDestinationsKey } from "terse-types/InvalidationKeys"
-import {
-    EmailNotificationDestination,
-    NotificationDestinationType as SharedNotificationDestinationType,
-    SlackNotificationDestination
-} from "terse-types/Notifications"
+import { EmailNotificationDestination, NotificationDestinationType as SharedNotificationDestinationType, SlackNotificationDestination } from "terse-types/Notifications"
+import { createNotificationDestinationRequestSchema, updateNotificationDestinationRequestSchema } from "terse-types/Notifications"
 
 import { initializeSlackWebClient } from "../integrations/SlackClient"
 import logger from "../logger"
-import { createNotificationDestinationRequestSchema, updateNotificationDestinationRequestSchema } from "terse-types/Notifications"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { UserNotificationDestination, UserSlackIntegrationWithUser } from "../types/prisma"

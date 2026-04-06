@@ -1,9 +1,9 @@
 import { Request, Response } from "express"
 import { apiTokensKey } from "terse-types/InvalidationKeys"
 import { ApiToken } from "terse-types/types"
+import { apiTokenCreateRequestSchema, apiTokenUpdateRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
-import { apiTokenCreateRequestSchema, apiTokenUpdateRequestSchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { createApiToken as createToken, getApiTokensForUser } from "../utility/apiTokens"

@@ -56,7 +56,7 @@ export type AgentSetupTabProps = {
     isLoading: boolean
     mutate: KeyedMutator<Agent>
     agentCreator: string | undefined
-    updatedAt?: string
+    updatedAt: string | null | undefined
 }
 
 function DeleteAgentDialog({ isOpen, onClose, onConfirm, agentName, isDeleting }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; agentName: string; isDeleting: boolean }) {
@@ -252,11 +252,7 @@ function SaveAgentButton({
     // Validation: all required fields must be present
     // Each integration reports its own completeness
     const isComplete =
-        inputs.length > 0 &&
-        inputs.every(i => i != null && isConfigComplete(i.config)) &&
-        outputs.length > 0 &&
-        outputs.every(o => o != null && isConfigComplete(o.config)) &&
-        !!prompt?.text // Ensure prompt is not empty
+        inputs.length > 0 && inputs.every(i => i != null && isConfigComplete(i.config)) && outputs.length > 0 && outputs.every(o => o != null && isConfigComplete(o.config)) && !!prompt?.text // Ensure prompt is not empty
 
     const isEditMode = !!agentId
 

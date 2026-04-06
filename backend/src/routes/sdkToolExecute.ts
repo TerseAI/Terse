@@ -1,10 +1,10 @@
 import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import { User } from "terse-types/types"
+import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
-import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import {
     type DeterministicToolCallRunContext,

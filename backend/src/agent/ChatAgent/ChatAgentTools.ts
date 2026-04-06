@@ -69,7 +69,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 try {
                     const notificationSettings = agent.notificationSettings ?? (await getDefaultNotificationSettings(user.id))
-                    const draft: AgentDraft = { ...agent, createdByUserId: user.id, notificationSettings }
+                    const draft: AgentDraft = { ...agent, createdByUserId: user.id, notificationSettings, source: "WEB_UI" }
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
@@ -91,7 +91,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "Prompt for an integration. This tool shows a prompt (OAuth button or form) and blocks until the user completes the integration or the request times out (about 2 minutes). You can call it again in the same turn if you need multiple integrations; each call will wait for its own completion. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
             parameters: z.object({
-                integration: z.nativeEnum(IntegrationType).describe("The integration to prompt for")
+                integration: z.enum(IntegrationType).describe("The integration to prompt for")
             }),
             execute: async ({ integration }: { integration: IntegrationType }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 return await chatInterface.promptForIntegration(integration)

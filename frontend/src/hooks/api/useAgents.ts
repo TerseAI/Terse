@@ -42,12 +42,7 @@ export function useAgents(params: AgentListArgs = {}) {
 export function useAgent(id: string | null) {
     const key = agentDetailKey(id)
 
-    const { data, error, isValidating, mutate } = useSWR<Agent>(
-        key,
-        id
-            ? async () => BackendProvider.getAgentById(id)
-            : null
-    )
+    const { data, error, isValidating, mutate } = useSWR<Agent>(key, id ? async () => BackendProvider.getAgentById(id) : null)
 
     return {
         agent: data,

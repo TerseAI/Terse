@@ -1,11 +1,11 @@
 import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
+import { webhookWorkOSTriggerParamsSchema, workosWebhookSecretUpdateRequestSchema } from "terse-types/types"
 
 import { WorkOSIntegrationManager } from "../integrations/WorkOSIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
-import { webhookWorkOSTriggerParamsSchema, workosWebhookSecretUpdateRequestSchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { workos } from "../utility/workos"

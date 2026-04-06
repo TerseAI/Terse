@@ -3,9 +3,9 @@ import { isValidToolName } from "terse-types"
 import { ConfigData, ConfigInstance } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
+import { agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
-import { agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
@@ -60,7 +60,7 @@ export async function validateUserOwnsIntegration(organizationId: string, integr
     return instances.some(instance => instance.id === integrationId)
 }
 
-async function upsertNotificationSettings(tx: PrismaTransaction, automationId: string, userId: string, settings: AgentNotificationSettings | undefined): Promise<void> {
+async function upsertNotificationSettings(tx: PrismaTransaction, automationId: string, userId: string, settings: AgentNotificationSettings | null): Promise<void> {
     let enabled
     let actionTypes
     if (!settings) {
@@ -105,12 +105,12 @@ export function validateAndDeduplicateToolApprovals(toolApprovals: string[]): st
     return uniqueToolApprovals
 }
 
-export async function persistToolApprovals(tx: PrismaTransaction, automationId: string, toolApprovals: string[] | undefined, options?: { replaceExisting?: boolean }): Promise<void> {
+export async function persistToolApprovals(tx: PrismaTransaction, automationId: string, toolApprovals: string[] | null, options?: { replaceExisting?: boolean }): Promise<void> {
     if (toolApprovals === undefined) {
         return
     }
 
-    const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals)
+    const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals ?? [])
 
     if (options?.replaceExisting) {
         await tx.automation_tool_approvals.deleteMany({
@@ -775,7 +775,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
                   enabled: agent.notification_settings.enabled,
                   actionTypes: agent.notification_settings.action_types
               }
-            : undefined,
+            : null,
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
         createdByUserId: agent.user_id,
         updatedAt: agent.updated_at.toISOString(),

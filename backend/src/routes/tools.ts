@@ -1,8 +1,8 @@
 import { Request, Response } from "express"
 import type { GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
+import { getToolsThatRequireApprovalsRequestSchema } from "terse-types/ToolsTypes"
 
 import logger from "../logger"
-import { getToolsThatRequireApprovalsRequestSchema } from "terse-types/ToolsTypes"
 import { getToolsThatRequireApprovals } from "../tools/availableTools"
 
 export async function toolsThatRequireApprovalsRoute(req: Request, res: Response) {

@@ -1,5 +1,5 @@
-import { DonatedState } from "terse-types/DonatedState"
 import { formatConfigForAgent } from "terse-types/Configs"
+import { DonatedState } from "terse-types/DonatedState"
 import { AgentPrompt, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
 
 import { SetupSection } from "../pages/Agents/tabs/AgentSetupTab"

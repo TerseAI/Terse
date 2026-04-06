@@ -41,7 +41,7 @@ export interface SlackNotificationDestination extends NotificationDestination {
 
 export const createNotificationDestinationRequestSchema = z.object({
     type: z.enum(NotificationDestinationType),
-    email: z.string().email().optional(),
+    email: z.email().optional(),
     integrationId: z.string().optional(),
     slackChannelId: z.string().optional(),
     slackChannelName: z.string().optional(),

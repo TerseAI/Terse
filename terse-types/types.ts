@@ -545,10 +545,10 @@ export const agentSchema = z.object({
     triggers: z.array(agentTriggerSchema),
     outputs: z.array(agentOutputSchema),
     createdByUserId: z.string(),
-    notificationSettings: agentNotificationSettingsSchema.optional(),
-    toolApprovals: z.array(z.string()).optional(),
-    updatedAt: z.string().optional(),
-    source: z.enum(["WEB_UI", "SDK"]).optional()
+    notificationSettings: agentNotificationSettingsSchema.nullable(),
+    toolApprovals: z.array(z.string()).nullable(),
+    updatedAt: z.string().nullable(),
+    source: z.enum(["WEB_UI", "SDK"]).nullable()
 })
 export type Agent = z.infer<typeof agentSchema>
 
