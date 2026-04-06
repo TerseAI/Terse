@@ -573,7 +573,7 @@ export const agentCreateSchema = agentSchema.omit({
 export type AgentCreate = z.infer<typeof agentCreateSchema>
 
 export const agentDraftSchema = agentCreateSchema.extend({
-    id: z.string().optional(),
+    id: z.string().nullable(),
     createdByUserId: z.string()
 })
 export type AgentDraft = z.infer<typeof agentDraftSchema>
