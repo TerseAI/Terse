@@ -80,7 +80,7 @@ Recommended wrapper scripts:
 ```bash
 npm run python:setup
 npm run python:check
-npm run python:test
+pnpm run python:test
 npm run python:dist:check
 npm run python:build
 ```
