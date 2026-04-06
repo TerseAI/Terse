@@ -5,7 +5,7 @@ import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
 import { RunHistoryAction } from "terse-types"
-import { SdkAgentSkillPayload, SdkAgentStreamEvent, User } from "terse-types"
+import { SdkAgentStreamEvent, User } from "terse-types"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
@@ -31,7 +31,7 @@ type SdkAgentRunnerParams = {
     runId: string
     user: User
     prompt: string
-    skills: SdkAgentSkillPayload[]
+    skills: ConfigData[]
     tools: Tool<SdkRunnerSession>[]
     toolApprovals: string[]
     toolToIntegrationMap: Map<string, string>
@@ -103,7 +103,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.sdkRunId = params.runId
         this.user = params.user
         this.prompt = params.prompt
-        const skillConfigs = params.skills.map(skill => configDataSchema.parse(skill.config))
+        const skillConfigs = params.skills
         this.outputs = this.buildOutputsFromConfigs(skillConfigs)
         this.tools = params.tools
         this.maxTurns = params.maxTurns

@@ -1,7 +1,6 @@
-import { CONFIG_DETAILS } from "terse-types"
 import type { ConfigData } from "terse-types"
 import type { RunHistoryAction } from "terse-types"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
+import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ApiRoutes } from "terse-types"
 
@@ -82,16 +81,7 @@ export {
     WorkOSEventType
 } from "terse-types"
 
-export type {
-    SdkAgentRunEventPayload,
-    SdkAgentSkillPayload,
-    SdkAgentRunOptionsPayload,
-    SdkAgentRunRequestBody,
-    SdkAgentRunResponseBody,
-    SdkAgentStreamEvent,
-    ToolInputByName,
-    ToolOutputByName
-} from "terse-types"
+export type { SdkAgentRunEventPayload, SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
 export { IntegrationType } from "terse-types"
 
 export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
@@ -132,7 +122,7 @@ export type ApprovalRequestInfo = {
 }
 
 export class TerseAgent {
-    readonly skills: readonly ConfigData[]
+    readonly skills: ConfigData[]
     manualToolConfigs?: readonly ConfigData[]
     readonly toolApprovals: string[]
     private readonly apiBaseUrl: string
@@ -146,7 +136,7 @@ export class TerseAgent {
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    constructor(skills: readonly ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
+    constructor(skills: ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
         this.sessionId = sessionId
@@ -164,7 +154,7 @@ export class TerseAgent {
                 formattedContent: resolvedEvent.formatForAgentRunner(),
                 debugLog: resolvedEvent.debugLog()
             },
-            skills: this.serializeSkills()
+            skills: this.skills
         }
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
@@ -242,13 +232,6 @@ export class TerseAgent {
         const runId = process.env.TERSE_RUN_ID
         if (runId) headers["X-Terse-Run-Id"] = runId
         return headers
-    }
-
-    private serializeSkills(): SdkAgentSkillPayload[] {
-        return this.skills.map(skill => ({
-            configType: skill.configType,
-            config: skill
-        }))
     }
 
     private async *consumeSseStream(res: Response): AsyncGenerator<TerseAgentResult> {

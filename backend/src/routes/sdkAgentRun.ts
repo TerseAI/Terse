@@ -1,9 +1,9 @@
-import { RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
+import { Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import { Request, Response } from "express"
-import { CONFIG_DETAILS, ConfigType } from "terse-types/Configs"
+import { CONFIG_DETAILS, ConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
-import { SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
+import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
@@ -53,7 +53,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             formattedContent: data.event?.formattedContent ?? "Manual trigger from terse run",
             debugLog: data.event?.debugLog ?? "[MockInputEvent] Manual trigger via SDK"
         },
-        skills: (data.skills ?? []).map(normalizeSkillConfig),
+        skills: data.skills ?? [],
         toolApprovals: data.toolApprovals ?? [],
         options: {
             maxTurns: data.options?.maxTurns ?? 50,
@@ -180,7 +180,7 @@ function createSdkRunner(params: {
     runId: string
     user: User
     prompt: string
-    skills: SdkAgentSkillPayload[]
+    skills: ConfigData[]
     toolApprovals: string[]
     send: (event: SdkAgentStreamEvent) => void
     sandboxRunId: string | undefined
@@ -201,26 +201,6 @@ function createSdkRunner(params: {
         send: params.send,
         isProductionRun: !!params.sandboxRunId
     })
-}
-
-function normalizeSkillConfig(skill: SdkAgentSkillPayload): SdkAgentSkillPayload {
-    const integrationType = CONFIG_DETAILS[skill.configType].integrationType
-    const usesSystemIntegration = skill.configType === ConfigType.TIME_TRIGGER || skill.configType === ConfigType.TERSE
-
-    const config: Record<string, unknown> = {
-        ...skill.config,
-        integrationType,
-        configType: skill.configType,
-        ...(usesSystemIntegration ? { integrationId: "system" } : {})
-    }
-
-    // Older/generated Python clients omit objectSlug entirely when Attio.skill()
-    // is used without selecting an object.
-    if (skill.configType === ConfigType.ATTIO_OUTPUT && !("objectSlug" in config)) {
-        config.objectSlug = null
-    }
-
-    return { configType: skill.configType, config }
 }
 
 function buildToolsForSkills(skillIntegrationTypes: IntegrationType[]): {

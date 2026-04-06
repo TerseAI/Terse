@@ -821,12 +821,6 @@ export type SdkAgentRunEventPayload = z.infer<typeof sdkAgentRunEventPayloadSche
 export const partialSdkAgentRunEventPayloadSchema = sdkAgentRunEventPayloadSchema.partial()
 export type PartialSdkAgentRunEventPayload = z.infer<typeof partialSdkAgentRunEventPayloadSchema>
 
-export const sdkAgentSkillPayloadSchema = z.object({
-    configType: configTypeEnum,
-    config: unknownRecordSchema
-})
-export type SdkAgentSkillPayload = z.infer<typeof sdkAgentSkillPayloadSchema>
-
 export const sdkAgentRunOptionsPayloadSchema = z.object({
     maxTurns: z.number().int().optional(),
     requireApproval: z.boolean().optional()
@@ -836,7 +830,7 @@ export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayload
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
     event: partialSdkAgentRunEventPayloadSchema.optional(),
-    skills: z.array(sdkAgentSkillPayloadSchema).optional(),
+    skills: z.array(configDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
 })
@@ -855,7 +849,7 @@ export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
 export const sdkAgentRunNormalizedRequestSchema = z.object({
     prompt: z.string(),
     event: sdkAgentRunEventPayloadSchema,
-    skills: z.array(sdkAgentSkillPayloadSchema),
+    skills: z.array(configDataSchema),
     toolApprovals: z.array(z.string()),
     options: sdkAgentRunNormalizedRequestOptionsSchema
 })
