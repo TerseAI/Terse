@@ -1,12 +1,11 @@
 import { Request, Response } from "express"
-import { ApiRoutes, buildRoute, isValidToolName } from "terse-types"
+import { isValidToolName } from "terse-types"
 import { ConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { Agent, AgentDraft, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
 import { agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
-import { settings } from "../config/settings"
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
@@ -18,6 +17,7 @@ import { trackAgentCreated } from "../utility/analytics"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
+import { buildWebhookUrl } from "../utility/webhookUrl"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
 
 export function isUuidV4(s: string): boolean {
@@ -756,8 +756,7 @@ export async function deleteAgent(req: Request, res: Response) {
 
 function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { metadata?: { webhookUrl: string } } {
     if (trigger.webhook_config) {
-        const webhookUrl = `${settings.urls.backend}${buildRoute(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, { webhookToken: trigger.webhook_config.webhook_token })}`
-        return { metadata: { webhookUrl } }
+        return { metadata: { webhookUrl: buildWebhookUrl(trigger.webhook_config.webhook_token) } }
     }
     return {}
 }

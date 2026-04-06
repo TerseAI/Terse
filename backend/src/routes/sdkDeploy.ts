@@ -1,12 +1,10 @@
 import { Request, Response } from "express"
-import { ApiRoutes, buildRoute } from "terse-types"
 import type { ConfigData } from "terse-types"
 import { ConfigType } from "terse-types"
 import type { SdkDeployJob } from "terse-types/types"
 import { User } from "terse-types/types"
 import { sdkDeployRequestBodySchema } from "terse-types/types"
 
-import { settings } from "../config/settings"
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -15,6 +13,7 @@ import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
+import { buildWebhookUrl } from "../utility/webhookUrl"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 
 import { createOutputConfig, createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
@@ -72,7 +71,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 .filter(input => input.webhook_config)
                 .map(input => ({
                     id: input.id,
-                    metadata: { webhookUrl: `${settings.urls.backend}${buildRoute(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, { webhookToken: input.webhook_config!.webhook_token })}` }
+                    metadata: { webhookUrl: buildWebhookUrl(input.webhook_config!.webhook_token) }
                 }))
 
             results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: triggers.length > 0 ? triggers : [] })
