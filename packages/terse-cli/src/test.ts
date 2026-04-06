@@ -1,7 +1,8 @@
 import { select } from "@inquirer/prompts"
 import chalk from "chalk"
 import ora from "ora"
-import { ConfigInstance, IntegrationType } from "terse-sdk"
+import { IntegrationType, TypedTrigger } from "terse-sdk"
+import { ConfigData } from "terse-types"
 import { ApiRoutes } from "terse-types"
 import type { SerializedEvent } from "terse-types"
 
@@ -22,8 +23,8 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     })
 
     // Split triggers into time-based and integration-based
-    const timeTriggers = job.triggers.filter((t: ConfigInstance) => t.integrationType === IntegrationType.CRON_JOB)
-    const integrationTriggers = job.triggers.filter((t: ConfigInstance) => t.integrationType !== IntegrationType.CRON_JOB)
+    const timeTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.CRON_JOB)
+    const integrationTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB)
 
     let events: SerializedEvent[] = []
 
@@ -35,7 +36,7 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
                 ApiRoutes.SDK.SAMPLE_EVENTS,
                 apiKey,
                 {
-                    triggers: integrationTriggers.map((trigger: ConfigInstance) => ({
+                    triggers: integrationTriggers.map(trigger => ({
                         integrationId: trigger.integrationId,
                         integrationType: trigger.integrationType,
                         config: trigger

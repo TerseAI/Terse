@@ -1,6 +1,6 @@
 import type { KnownBlock } from "@slack/types"
 import { IntegrationType } from "terse-types"
-import type { ConfigInstance } from "terse-types"
+import type { ConfigData, ConfigInstance } from "terse-types"
 import type { SerializedEvent } from "terse-types"
 import type { WorkOSEventType } from "terse-types"
 
@@ -26,10 +26,10 @@ export interface ToolboxEntry {
 }
 
 // ---------------------------------------------------------------------------
-// TypedTrigger – phantom-typed ConfigInstance for generic event inference
+// TypedTrigger – phantom-typed ConfigData for generic event inference
 // ---------------------------------------------------------------------------
 
-export interface TypedTrigger<TEvent extends InputEvent = InputEvent> extends ConfigInstance {
+export type TypedTrigger<TEvent extends InputEvent = InputEvent> = ConfigData & {
     readonly __eventType?: TEvent
 }
 
@@ -37,10 +37,10 @@ export type InferEvent<T> = T extends TypedTrigger<infer E> ? E : InputEvent
 export type InferEvents<T extends readonly unknown[]> = InferEvent<T[number]>
 
 // ---------------------------------------------------------------------------
-// TypedSkill – phantom-typed ConfigInstance for skill tool inference
+// TypedSkill – phantom-typed ConfigData for skill tool inference
 // ---------------------------------------------------------------------------
 
-export interface TypedSkill<TToolName extends string = never> extends ConfigInstance {
+export type TypedSkill<TToolName extends string = never> = ConfigData & {
     readonly __toolApprovalNames?: TToolName
 }
 

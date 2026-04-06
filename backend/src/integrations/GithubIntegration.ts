@@ -4,7 +4,7 @@ import { InputConfigType } from "@prisma/client"
 import axios, { AxiosResponse } from "axios"
 import * as cheerio from "cheerio"
 import { Request, Response } from "express"
-import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass, GitHubEventType } from "terse-types/Configs"
+import { ConfigData, ConfigType, GitHubConfigSchema, GitHubEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -354,11 +354,11 @@ export class GithubIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GITHUB) {
             return []
         }
-        const githubConfig = triggerConfig as GitHubConfigClass
+        const githubConfig = GitHubConfigSchema.parse(triggerConfig)
 
         const maxEvents = Math.min(options?.limit ?? 6, 10)
 

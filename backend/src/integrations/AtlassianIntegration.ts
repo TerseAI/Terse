@@ -1,11 +1,10 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass, JiraEventType } from "terse-types/Configs"
+import { ConfigData, ConfigType, JiraConfig as JiraConfigClass, JiraConfigData, JiraConfigSchema, JiraEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
-import { User } from "terse-types/types"
 import { OAuthInstallationDetails } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
@@ -638,11 +637,11 @@ export class AtlassianIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.JIRA) {
             return []
         }
-        const jiraConfig = triggerConfig as JiraConfigClass
+        const jiraConfig = JiraConfigSchema.parse(triggerConfig)
 
         const limit = Math.min(options?.limit ?? 5, 10)
         await this.refreshToken(integrationId)

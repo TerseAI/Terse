@@ -785,9 +785,9 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
 export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
     for (const trigger of agent.inputs) {
         try {
-            // Convert prisma config to shared config instance to get integration type
-            const configInstance = convertPrismaConfigToConfigData(trigger)
-            const integrationType = configInstance.integrationType
+            // Convert prisma config to shared config data to get integration type
+            const configData = convertPrismaConfigToConfigData(trigger)
+            const integrationType = configData.integrationType
 
             // Find the integration from the registry
             const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)
@@ -819,9 +819,9 @@ export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Prom
 export async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
     for (const trigger of agent.inputs) {
         try {
-            // Convert prisma config to shared config instance to get integration type
-            const configInstance = convertPrismaConfigToConfigData(trigger)
-            const integrationType = configInstance.integrationType
+            // Convert prisma config to shared config data to get integration type
+            const configData = convertPrismaConfigToConfigData(trigger)
+            const integrationType = configData.integrationType
 
             // Find the integration from the registry
             const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)

@@ -1,5 +1,5 @@
 import { CONFIG_DETAILS } from "terse-types"
-import type { ConfigInstance } from "terse-types"
+import type { ConfigData } from "terse-types"
 import type { RunHistoryAction } from "terse-types"
 import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
 import { IntegrationType } from "terse-types"
@@ -132,8 +132,8 @@ export type ApprovalRequestInfo = {
 }
 
 export class TerseAgent {
-    readonly skills: readonly ConfigInstance[]
-    manualToolConfigs?: readonly ConfigInstance[]
+    readonly skills: readonly ConfigData[]
+    manualToolConfigs?: readonly ConfigData[]
     readonly toolApprovals: string[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
@@ -146,7 +146,7 @@ export class TerseAgent {
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    constructor(skills: readonly ConfigInstance[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
+    constructor(skills: readonly ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
         this.sessionId = sessionId
@@ -247,7 +247,7 @@ export class TerseAgent {
     private serializeSkills(): SdkAgentSkillPayload[] {
         return this.skills.map(skill => ({
             configType: skill.configType,
-            config: serializeSkillConfig(skill)
+            config: skill
         }))
     }
 
@@ -289,18 +289,6 @@ export class TerseAgent {
             yield mapStreamEventToResult(parsed)
         }
     }
-}
-
-function serializeSkillConfig(skill: ConfigInstance): Record<string, unknown> {
-    const serialized: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(skill as unknown as Record<string, unknown>)) {
-        if (typeof value === "function" || value === undefined) continue
-        serialized[key] = value
-    }
-    const details = CONFIG_DETAILS[skill.configType]
-    serialized.integrationType = details.integrationType
-    serialized.configType = skill.configType
-    return serialized
 }
 
 export enum EventType {

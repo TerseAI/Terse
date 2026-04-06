@@ -1,5 +1,5 @@
 import { InputConfigType } from "@prisma/client"
-import { ConfigInstance, ConfigType, WorkOSEventType, WorkOSInputConfig } from "terse-types/Configs"
+import { ConfigData, ConfigType, WorkOSEventType, WorkOSInputConfigSchema } from "terse-types/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
@@ -235,7 +235,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         integrationId: string,
         organizationId: string,
         _userId: string,
-        triggerConfig: ConfigInstance,
+        triggerConfig: ConfigData,
         options?: {
             limit?: number
         }
@@ -243,7 +243,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         if (triggerConfig.configType !== ConfigType.WORKOS_INPUT) {
             return []
         }
-        const workosConfig = triggerConfig as WorkOSInputConfig
+        const workosConfig = WorkOSInputConfigSchema.parse(triggerConfig)
 
         const limit = Math.min(options?.limit ?? 5, 10)
         const workosIntegration = await db().workos_integrations.findUnique({

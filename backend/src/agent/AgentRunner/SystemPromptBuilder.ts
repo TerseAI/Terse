@@ -1,6 +1,6 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { RunHistoryStatus } from "@prisma/client"
-import { ConfigData, ConfigInstance, buildRoute } from "terse-types"
+import { ConfigData, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"

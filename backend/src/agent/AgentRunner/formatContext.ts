@@ -77,21 +77,21 @@ export function formatAgentForSystemPrompt(agent: AgentWithRelations): string {
 
 export function formatAgentTriggerForAgent(input: AgentTrigger | AgentTriggerWithConfigs): string {
     try {
-        const configInstance = convertPrismaConfigToConfigData(input as AgentTriggerWithConfigs)
+        const configData = convertPrismaConfigToConfigData(input as AgentTriggerWithConfigs)
 
-        return formatConfigForAgent(configInstance)
+        return formatConfigForAgent(configData)
     } catch (error) {
-        logger.warn("Failed to convert channel input to ConfigInstance", { error, configType: input.config_type, inputId: input.id })
+        logger.warn("Failed to convert channel input to ConfigData", { error, configType: input.config_type, inputId: input.id })
         return `Type: ${input.config_type}`
     }
 }
 
 export function formatAgentOutputForAgent(output: AgentOutput | AgentOutputWithConfigs): string {
     try {
-        const configInstance = convertPrismaOutputConfigToConfigData(output as AgentOutputWithConfigs)
-        return formatConfigForAgent(configInstance)
+        const configData = convertPrismaOutputConfigToConfigData(output as AgentOutputWithConfigs)
+        return formatConfigForAgent(configData)
     } catch (error) {
-        logger.warn("Failed to convert channel output to ConfigInstance", { error, configType: output.config_type, outputId: output.id })
+        logger.warn("Failed to convert channel output to ConfigData", { error, configType: output.config_type, outputId: output.id })
         return `Type: ${output.config_type}`
     }
 }

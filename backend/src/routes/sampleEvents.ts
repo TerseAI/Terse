@@ -9,21 +9,6 @@ import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"
 import logger from "../logger"
 import { extractErrorMessage } from "../utility/strings"
 
-/**
- * Wraps a plain config object into something that satisfies ConfigInstance
- * for the integration manager's getSampleEvents() call.
- */
-function toConfigInstance(config: Record<string, unknown>) {
-    return {
-        ...config,
-        integrationId: (config.integrationId as string) ?? "",
-        integrationType: (config.integrationType as IntegrationType) ?? IntegrationType.TERSE,
-        configType: (config.configType as ConfigType) ?? ConfigType.TERSE,
-        isComplete: () => true,
-        formatForAgent: () => ""
-    }
-}
-
 export async function handleSampleEvents(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
     if (!user) {
@@ -43,13 +28,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
         }
 
         try {
-            const configInstance = toConfigInstance({
-                ...config,
-                integrationId,
-                integrationType
-            })
-
-            const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, user.id, { limit: 5 })
+            const inputEvents = await fetchSampleEvents(integrationId, integrationType, config, user.organizationId, user.id, { limit: 5 })
 
             for (const evt of inputEvents) {
                 events.push({

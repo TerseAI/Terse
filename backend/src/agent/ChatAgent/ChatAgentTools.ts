@@ -1,7 +1,6 @@
 import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
-import type { ConfigInstance } from "terse-types"
-import { buildRoute } from "terse-types"
+import { ConfigData, buildRoute } from "terse-types"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { RunHistoryStatus, TrackingParams } from "terse-types"
@@ -182,8 +181,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User is required to fetch sample events")
                 }
 
-                const configInstance = toConfigInstance(triggerConfig.config)
-                const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, user.id, { limit })
+                const inputEvents = await fetchSampleEvents(integrationId, integrationType, triggerConfig.config, user.organizationId, user.id, { limit })
 
                 if (!agentId) {
                     throw new Error("Agent ID is required to get sample events")
@@ -444,14 +442,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigInstance {
-    return {
-        ...config,
-        isComplete: () => true,
-        formatForAgent: () => ""
-    } as T & ConfigInstance
 }
 
 async function fetchResourcesForIntegrationType(integrationType: IntegrationType, organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<string> {

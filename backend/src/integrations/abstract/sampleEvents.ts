@@ -1,4 +1,4 @@
-import type { ConfigInstance } from "terse-types"
+import type { ConfigData } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import logger from "../../logger"
@@ -14,7 +14,7 @@ import { INTEGRATION_REGISTRY } from "./IntegrationRegistry"
 export async function fetchSampleEvents(
     integrationId: string,
     integrationType: IntegrationType,
-    triggerConfig: ConfigInstance,
+    triggerConfig: ConfigData,
     organizationId: string,
     userId: string,
     options?: { limit?: number }

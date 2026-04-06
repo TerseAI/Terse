@@ -1,7 +1,6 @@
 import { Request, Response } from "express"
-import { ConfigInstance } from "terse-types"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
-import type { ConfigurationFieldDefinition, ConfigurationFieldType, ConfigurationOption, FormFieldDefinition, FormFieldType } from "terse-types"
+import type { ConfigData, ConfigurationFieldDefinition, ConfigurationFieldType, ConfigurationOption, FormFieldDefinition, FormFieldType } from "terse-types"
 import { OAuthInstallationDetails } from "terse-types"
 
 import { AgentTriggerWithConfigs } from "../../types/prisma"
@@ -33,7 +32,7 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
         integrationId: string,
         organizationId: string,
         userId: string,
-        triggerConfig: ConfigInstance,
+        triggerConfig: ConfigData,
         options?: {
             limit?: number
         }

@@ -28,7 +28,7 @@ export function useSampleEvents(triggers: AgentTrigger[], automationId?: string)
                 integrationTriggers.map(t => ({
                     integrationId: t.config.integrationId,
                     integrationType: t.config.integrationType,
-                    config: t.config as unknown as Record<string, unknown>
+                    config: t.config
                 }))
             )
             setEvents(result.events)

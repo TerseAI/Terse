@@ -1,5 +1,5 @@
 import { OutputConfigType } from "@prisma/client"
-import { ConfigData, ConfigInstance } from "terse-types"
+import { ConfigData } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"

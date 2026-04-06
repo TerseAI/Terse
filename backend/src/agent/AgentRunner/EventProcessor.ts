@@ -1,5 +1,5 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
-import { ConfigData, ConfigInstance } from "terse-types"
+import { ConfigData } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { SerializedEvent, User } from "terse-types"
 

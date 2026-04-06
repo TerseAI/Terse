@@ -1,6 +1,6 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool, tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
-import { ConfigData, ConfigInstance } from "terse-types"
+import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 

@@ -1,6 +1,5 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, protocol, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { ConfigInstance } from "terse-types"
 import { EntityType } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ChangeEventType, ChangedItem, ModelEvent } from "terse-types"

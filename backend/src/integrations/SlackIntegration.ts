@@ -6,7 +6,7 @@ import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { ConfigInstance, ConfigType, SlackConfig as SlackConfigClass, SlackEventType } from "terse-types/Configs"
+import { ConfigData, ConfigType, SlackConfigSchema, SlackEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -531,11 +531,11 @@ export class SlackIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.SLACK) {
             return []
         }
-        const slackConfig = triggerConfig as SlackConfigClass
+        const slackConfig = SlackConfigSchema.parse(triggerConfig)
 
         const limit = Math.min(options?.limit ?? 5, 10)
         const prisma = db()

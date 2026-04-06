@@ -1,7 +1,7 @@
 import { Agent, AgentOutputType } from "@openai/agents"
 import { tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
-import { ConfigData, ConfigInstance } from "terse-types"
+import { ConfigData } from "terse-types"
 import { User } from "terse-types"
 import { z } from "zod"
 

@@ -798,7 +798,7 @@ export type StatsResponse = z.infer<typeof statsResponseSchema> & {
 export const triggerPayloadSchema = z.object({
     integrationId: z.string(),
     integrationType: integrationTypeEnum,
-    config: unknownRecordSchema
+    config: configDataSchema
 })
 export type TriggerPayload = z.infer<typeof triggerPayloadSchema>
 

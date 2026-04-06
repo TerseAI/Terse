@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { gmail_v1, google } from "googleapis"
-import { ConfigInstance, ConfigType, GmailEventType } from "terse-types/Configs"
+import { ConfigData, ConfigType, GmailConfigSchema, GmailEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -519,7 +519,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GMAIL) {
             return []
         }

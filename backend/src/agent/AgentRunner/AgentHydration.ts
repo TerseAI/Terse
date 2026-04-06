@@ -1,4 +1,4 @@
-import { ConfigData, ConfigInstance } from "terse-types"
+import { ConfigData } from "terse-types"
 import { User } from "terse-types"
 
 import { Output } from "../../outputs/abstract/Output"
