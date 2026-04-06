@@ -1,7 +1,7 @@
 import useSWR, { type KeyedMutator } from "swr"
+import { userByIdKey } from "terse-types/InvalidationKeys"
 
 import { BackendProvider } from "@/services/backend"
-import { userByIdKey } from "@/shared/InvalidationKeys"
 import type { User } from "@/types/User"
 
 type UseUserReturn = {

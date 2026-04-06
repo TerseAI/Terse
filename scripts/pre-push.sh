@@ -1,28 +1,24 @@
 #!/usr/bin/env zsh
 set -e
 
+# Run all format scripts
+pnpm run format
 
+# Ensure prisma client is up to date
+pnpm --filter backend exec prisma format
+pnpm --filter backend exec prisma generate client
 
-cd backend && pnpm run format && cd ..
-cd frontend && pnpm run format && cd ..
+# Run all build scripts
+pnpm run build
 
-# Run build in backend
-pnpm --prefix backend run build
-
-# Run build in frontend
-pnpm --prefix frontend run build
-
-cd backend && npx prisma format && cd ..
+# Run backend prisma format script
 
 echo "Installing workspace dependencies..."
-npm install
+pnpm install
 
 echo "Running Python validation..."
-npm run python:check
+pnpm run python:check
 
-# Install terse-sdk and terse-cli globally from the workspace
-npm run install-global -w terse-sdk
-npm run install-global -w terse-cli
 
 if [[ -d docs ]]; then
   if ! command -v mint >/dev/null 2>&1; then

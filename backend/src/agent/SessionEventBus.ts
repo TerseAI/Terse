@@ -1,4 +1,5 @@
-import { SdkAgentStreamEvent } from "../shared/types"
+import { SdkAgentStreamEvent } from "terse-types/types"
+
 import { EventEmitterTaskQueue } from "../tasks/abstract/eventEmitterTasks"
 import { Task } from "../tasks/abstract/tasks"
 

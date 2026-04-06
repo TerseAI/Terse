@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { runHistoryKey } from "terse-types/InvalidationKeys"
+import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { BackendProvider } from "@/services/backend"
-import { runHistoryKey } from "@/shared/InvalidationKeys"
-import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "@/shared/RunHistoryTypes"
 
 type UseRunHistoryParams = {
     agentId: string | null | undefined

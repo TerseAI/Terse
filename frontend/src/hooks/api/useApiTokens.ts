@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { apiTokensKey } from "terse-types"
+import { ApiToken } from "terse-types"
 
 import { BackendProvider } from "../../services/backend"
-import { apiTokensKey } from "../../shared/InvalidationKeys"
-import { ApiToken } from "../../shared/types"
 
 export function useApiTokens() {
     const key = apiTokensKey()

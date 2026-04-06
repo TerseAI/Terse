@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { InstallationOptionsFor, IntegrationType } from "@/shared/Integrations"
+import { InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 
 import { BackendProvider } from "../services/backend"
 

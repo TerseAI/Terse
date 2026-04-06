@@ -1,9 +1,9 @@
 import { Mail } from "lucide-react"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { cn } from "@/lib/utils"
-import { IntegrationType } from "@/shared/Integrations"
 
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"

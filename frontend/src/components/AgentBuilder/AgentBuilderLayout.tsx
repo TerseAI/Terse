@@ -4,6 +4,8 @@ import { useSearchParams } from "react-router-dom"
 import { AnimatePresence, Easing, motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
 import { FileText, MessageCircle, Rocket, RotateCcw, Users } from "lucide-react"
+import { ModelRequest, SendModelRequest } from "terse-types/ModelEvents"
+import { AgentTemplate, TemplateCategory } from "terse-types/types"
 
 import { TemplateCard } from "@/components/Agents/TemplateCard"
 import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
@@ -14,8 +16,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
 import { useTemplates } from "@/hooks/api/useTemplates"
 import { useBuilderSession } from "@/hooks/useBuilderSession"
-import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
-import { AgentTemplate, TemplateCategory } from "@/shared/types"
 import { cancelBuilderChatSession, sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
 
 const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: LucideIcon }[] = [

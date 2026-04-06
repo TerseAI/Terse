@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { FigmaIntegration } from "terse-types/Integrations"
+import { figmaIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { FigmaIntegration } from "@/shared/Integrations"
-import { figmaIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseFigmaIntegrationsReturn = {
     integrations: FigmaIntegration[]

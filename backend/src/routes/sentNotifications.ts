@@ -1,9 +1,9 @@
 import { NotificationDestinationType, SentNotificationEventType as PrismaSentNotificationEventType, SentNotificationStatus as PrismaSentNotificationStatus } from "@prisma/client"
 import { Request, Response } from "express"
+import { GetSentNotificationsResponse, SentNotificationEventType, SentNotificationStatus } from "terse-types/SentNotifications"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { GetSentNotificationsResponse, SentNotificationEventType, SentNotificationStatus } from "../shared/SentNotifications"
 import { parsePageParams } from "../utility/pagination"
 
 function convertPrismaEventTypeToShared(value: PrismaSentNotificationEventType): SentNotificationEventType {

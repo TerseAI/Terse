@@ -654,7 +654,7 @@
         "description": "Alert when another team's changes might break your integrations",
         "chatPrompt": "Build an agent that monitors merged PRs in another team's GitHub repo and alerts you in Slack when there are breaking changes to APIs, schemas, or exports you depend on.",
         "prompt": {
-            "text": "Monitor merged PRs in another team's repo for breaking changes. Alert on Slack when changes affect your dependencies.\n\nDependencies to watch (configure these):\n- API endpoints: [/api/v1/users, etc.]\n- Schemas/Types: [UserSchema, etc.]\n- Exported functions: [validateUser, etc.]\n- File paths: [src/shared/*, etc.]\n\nBreaking changes include: removed/renamed endpoints, changed response shapes, removed fields, changed function signatures, removed exports.\n\nAlert format: PR link, what changed, which dependencies are affected, recommended action. Classify as Breaking (requires action) or Potentially Breaking (review recommended)."
+            "text": "Monitor merged PRs in another team's repo for breaking changes. Alert on Slack when changes affect your dependencies.\n\nDependencies to watch (configure these):\n- API endpoints: [/api/v1/users, etc.]\n- Schemas/Types: [UserSchema, etc.]\n- Exported functions: [validateUser, etc.]\n- Package exports or file paths: [terse-types/*, src/api/*, etc.]\n\nBreaking changes include: removed/renamed endpoints, changed response shapes, removed fields, changed function signatures, removed exports.\n\nAlert format: PR link, what changed, which dependencies are affected, recommended action. Classify as Breaking (requires action) or Potentially Breaking (review recommended)."
         },
         "triggers": [
             {

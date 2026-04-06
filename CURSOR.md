@@ -51,15 +51,6 @@ pnpm run build
 
 Always run `pnpm run build` after making changes to verify nothing is broken.
 
-### Shared Types
-
-Types shared between frontend and backend are defined in the `/shared` folder. After modifying shared types:
-
-```bash
-# From root
-node scripts/copy-shared.js
-```
-
 This copies types to both `frontend/src/shared/` and `backend/src/shared/`.
 
 Key shared files:
@@ -169,7 +160,6 @@ Execute these steps **in order**, running builds after each major section:
 - [ ] Update `CONFIG_DETAILS` map
 - [ ] Create `{Integration}Config` class extending `ConfigInstance`
 - [ ] Update `CONFIG_METADATA` map
-- [ ] **Run `node scripts/copy-shared.js` from root** (CRITICAL - don't skip!)
 
 #### 3. Backend Integration Manager (`backend/src/integrations/`)
 
@@ -258,25 +248,6 @@ Execute these steps **in order**, running builds after each major section:
 - [ ] Add case to `IconForConfigType` switch
 - [ ] Add case to `IconForIntegration` switch
 
-### Verification Steps
-
-After completing all steps, **always run these verification commands**:
-
-```bash
-# 1. Copy shared types (if you modified shared/)
-node scripts/copy-shared.js
-
-# 2. Generate Prisma client (if you modified schema)
-cd backend && pnpm exec prisma generate
-
-# 3. Build backend
-cd backend && pnpm run build
-
-# 4. Build frontend
-cd frontend && pnpm run build
-```
-
-**Do not skip the build steps!** They catch type errors that would otherwise cause runtime failures.
 
 ### Common Mistakes to Avoid
 
@@ -292,62 +263,6 @@ cd frontend && pnpm run build
 11. ❌ **Not following existing patterns** - Study PostHog/GitHub implementations first
 12. ❌ **Expecting users to type IDs or keys** - Always query the API and present selectable options (e.g., projects, environments) in Select dropdowns instead of text inputs
 13. ❌ **Showing IDs to users** - Always show human-readable names (token names, workspace names, project names) instead of integration IDs or database IDs
-
-### Key Reminders
-
-- **Tool descriptions should be concise** - Single-line descriptions for agent tools
-- **Avoid repetition between tools and system prompts** - Tool descriptions are already available to the LLM, so system instructions should focus on workflow/strategy, not re-describe tools
-- **Always return actions** - Every successful tool execution must return actions in the `actions` array of the return value
-- **Tool failures should throw** - For normal failures, throw `Error` with a clear message (do not return `{ success: false }`)
-- **Icons can be images** - Use JPEG/PNG in `public/` if SVG isn't available
-- **Type safety is critical** - TypeScript exhaustive checks will catch missing cases
-
-## Tool Error Handling Contract
-
-When designing or updating tools, follow this error handling contract:
-
-1. **Use exception-first failures**
-   - For normal failures (validation errors, auth errors, not found, API errors), throw `Error` with a clear, actionable message.
-   - Do not return `{ success: false, ... }` for these cases.
-
-2. **Keep successful returns explicit**
-   - Successful tool responses can return structured payloads and must include `actions` when an action occurred.
-   - Typical shape: `{ success: true, ..., actions: [...] }`.
-
-3. **Allow structured failure only for partial-result workflows**
-   - The only allowed exception is when partial progress must be returned in-band (for example, batch/multi-op tools like `notion_modify_blocks`).
-   - In those cases, returning `{ success: false, ... }` is acceptable only if partial progress data is included (for example: `failed_at_index`, `operations`, and accumulated `actions`).
-
-4. **Use `errorFunction` consistently**
-   - If a tool defines `errorFunction: formatError`, keep it.
-   - Prefer throwing errors in `catch` blocks rather than swallowing failures and returning failure payloads.
-
-This contract keeps run status reporting consistent and avoids false-success states when a terminal tool call fails.
-
-## Tool Name and Write Approval Validation
-
-When creating or modifying tools in the Terse codebase, you **MUST** comply with the following server-side validation checks. These validations run at server startup and will prevent the application from starting if violated.
-
-### Tool Name Requirements
-
-1. **All tool names must be defined in the ToolName enum**
-   - Location: `backend/src/tools/ToolNames.ts`
-   - Every tool's `name` property must use a value from the `ToolName` enum
-   - If you need a new tool name, you MUST add it to the enum first
-   - The validation function `validateAllToolNames()` will throw an error if any tool uses a name not in the enum
-
-2. **Tool names must be unique across all outputs**
-   - No two tools (across any output) can have the same name
-   - The validation will detect duplicates and prevent server startup
-   - If you need to reuse functionality, consider creating separate tools with distinct names
-
-### Write Tool Approval Requirements
-
-3. **All write tools (non-read-only) must have a `needsApproval` function**
-   - Write tools are tools where `isReadOnly === false`
-   - Every write tool MUST define a `needsApproval` function that determines if the tool requires approval
-   - Use `createNeedsApprovalFunction(ToolName.X)` helper to create the approval function
-   - The validation function `validateWriteToolsHaveNeedsApproval()` will throw an error if any write tool is missing this function
 
 ### Validation Location
 
@@ -512,81 +427,3 @@ export async function getUserChannels(req: Request, res: Response) {
 10. ❌ Stray strings allowed UNLESS absolutely necessary (e.g., `const tokenType = authed_user?.token_type || 'user';` where `'user'` is outputted from an API and could be an enum type)
 11. ❌ Defining variables as `false` or `true` where you could just use a not operator (e.g., `const actualIsBotUser = isUserType && authed_user.access_token ? false : true;` should be `const actualIsBotUser = !(isUserType && authed_user.access_token);`)
 12. ❌ Non-exhaustive maps—when defining maps, ensure they're exhaustive using TypeScript's type system (see `shared/Configs.ts` lines 401-427 for an example with `ConfigMetadataMap`)
-
-## URL and Socket Event Standards
-
-**CRITICAL: Always use centralized constants for URLs and socket events. Never use magic strings.**
-
-### API Routes
-
-All backend API routes must use constants from `shared/ApiRoutes.ts`:
-
-- **Backend route definitions**: Use `.pattern` for Express routes
-  ```typescript
-  app.get(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, handler);
-  ```
-
-- **Frontend API calls**: Use `.build(...)` for actual URLs
-  ```typescript
-  axios.get(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`);
-  ```
-
-- **Dynamic routes**: Use route objects with both `pattern` and `build` functions
-  ```typescript
-  ApiRoutes.AGENTS.BY_ID.pattern  // '/agents/:id' for Express
-  ApiRoutes.AGENTS.BY_ID.build(id)  // '/agents/123' for actual URL
-  ```
-
-### Frontend Routes
-
-All frontend routes must use constants from `shared/FrontendRoutes.ts`:
-
-- **React Router definitions**: Use route constants
-  ```typescript
-  <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
-  ```
-
-- **Navigation calls**: Use route builders
-  ```typescript
-  navigate(FrontendRoutes.AGENTS.DETAIL(agentId));
-  ```
-
-- **Deep links in backend**: Combine with `urls.frontend`
-  ```typescript
-  const link = `${urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`;
-  ```
-
-### Socket Events
-
-All socket event names must use constants from `shared/SocketEvents.ts`:
-
-- **Event names**: Use `SocketEvents` constants
-  ```typescript
-  socket.on(SocketEvents.AGENT_CHAT_EVENT, handler);
-  socket.emit(SocketEvents.AGENT_CHAT_MESSAGE, payload);
-  ```
-
-- **Socket rooms**: Use `SocketRooms` helpers
-  ```typescript
-  io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key });
-  ```
-
-### OAuth Redirects
-
-OAuth redirect URLs must use `FrontendRoutes`:
-
-```typescript
-res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
-res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
-```
-
-### Webhook URLs
-
-Webhook URLs must use `ApiRoutes.WEBHOOKS`:
-
-```typescript
-const webhookUrl = `${urls.backend}${ApiRoutes.WEBHOOKS.FIGMA}`;
-const webhookUrl = `${urls.backend}${ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.build(inputId)}`;
-```
-
-**Why**: This ensures frontend and backend stay in sync, prevents typos, enables easy refactoring, and provides type safety.

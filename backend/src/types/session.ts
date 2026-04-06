@@ -1,5 +1,5 @@
-import { User as TicketUser } from "../shared/TicketSystem"
-import { User } from "../shared/types"
+import { User as TicketUser } from "terse-types/TicketSystem"
+import { User } from "terse-types/types"
 
 export type Session = {
     user: User

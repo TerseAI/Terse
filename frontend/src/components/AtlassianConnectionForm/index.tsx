@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { IntegrationType } from "@/shared/Integrations"
 
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"

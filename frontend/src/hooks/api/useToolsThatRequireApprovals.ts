@@ -1,7 +1,7 @@
 import useSWR from "swr"
+import type { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse, TerseTool } from "terse-types/ToolsTypes"
 
 import { BackendProvider } from "@/services/backend"
-import type { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse, TerseTool } from "@/shared/ToolsTypes"
 
 const toolsKey = (request: GetToolsThatRequireApprovalsRequest | null): readonly [string, GetToolsThatRequireApprovalsRequest] | null => {
     if (!request || request.skills.length === 0) {

@@ -1,10 +1,10 @@
+import type { ChatSnippet } from "terse-types"
+import type { RunHistoryModelEvent, RunHistoryModelSocketEvent } from "terse-types"
+import { SocketEvents, SocketRooms } from "terse-types"
 import { z } from "zod"
 
 import logger from "../../logger"
 import { getSocketIO } from "../../services/CacheInvalidationService"
-import type { ChatSnippet } from "../../shared/ModelEvents"
-import type { RunHistoryModelEvent, RunHistoryModelSocketEvent } from "../../shared/RunHistoryTypes"
-import { SocketEvents, SocketRooms } from "../../shared/SocketEvents"
 import { randomString } from "../../utility/strings"
 
 import { appendSnippetSystemEvent, buildSnippetSystemEventId, chatSnippetPayloadSchema } from "./snippetSystemEvent"

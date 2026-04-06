@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { AtlassianIntegration } from "terse-types/Integrations"
+import { atlassianIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { AtlassianIntegration } from "@/shared/Integrations"
-import { atlassianIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseJiraIntegrationsReturn = {
     integrations: AtlassianIntegration[]

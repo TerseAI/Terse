@@ -1,7 +1,7 @@
 import { Server } from "socket.io"
+import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
 import logger from "../logger"
-import { SocketEvents, SocketRooms } from "../shared/SocketEvents"
 
 type SocketGetter = () => Server | null
 let getSocket: SocketGetter | null = null

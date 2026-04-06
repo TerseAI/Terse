@@ -1,26 +1,16 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
 import { LinearAdapter } from "../../../ticketing/linear"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Linear integration to use.")
-})
-
-export const linearGetUsersTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_GET_USERS> = {
-    name: ToolName.LINEAR_GET_USERS,
+export const linearGetUsersTool = defineSessionTool({
+    name: "linear_get_users",
     description: `List users in the Linear workspace. Use to pick assigneeId or subscriberIds when creating or updating issues.`,
-    parameters: parameters,
-    execute: async ({ integrationId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId }, runContext) => {
         logger.debug("🛠️ Executing linear_get_users tool", { integrationId })
 
         if (!runContext?.context) {
@@ -52,4 +42,4 @@ export const linearGetUsersTool: SessionToolOptions<typeof parameters, typeof To
             throw new Error(`${errorMessage}. Check that the access token is valid and has the necessary permissions.`)
         }
     }
-}
+})

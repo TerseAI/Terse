@@ -1,13 +1,13 @@
 import { Client } from "@notionhq/client"
 import { SearchResponse } from "@notionhq/client/build/src/api-endpoints"
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
+import { NotionResource, NotionResourcesResponse } from "terse-types/types"
 
 import { NotionIntegrationManager } from "../integrations/NotionIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, getSecret } from "../services/SecretService"
-import { IntegrationType } from "../shared/Integrations"
-import { NotionResource, NotionResourcesResponse } from "../shared/types"
 import { extractPageTitle } from "../utility/notion"
 
 export async function getNotionIntegrations(req: Request, res: Response) {

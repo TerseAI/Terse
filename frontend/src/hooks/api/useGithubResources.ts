@@ -1,8 +1,8 @@
 import useSWR, { type KeyedMutator } from "swr"
+import { githubRepositoriesKey } from "terse-types/InvalidationKeys"
+import type { GetGithubRepositoriesForIntegrationResponse, Repository } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { githubRepositoriesKey } from "@/shared/InvalidationKeys"
-import type { GetGithubRepositoriesForIntegrationResponse, Repository } from "@/shared/types"
 
 type UseGithubResourcesReturn = {
     repositories: Repository[]

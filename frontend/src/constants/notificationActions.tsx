@@ -1,6 +1,5 @@
 import { Check, Eye, Pencil, Plus, Trash2, XCircle } from "lucide-react"
-
-import type { RunHistoryActionType } from "@/shared/RunHistoryTypes"
+import type { RunHistoryActionType } from "terse-types/RunHistoryTypes"
 
 export type NotificationActionOption = {
     value: RunHistoryActionType

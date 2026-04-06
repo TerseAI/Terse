@@ -1,6 +1,6 @@
-import { ConfigType, TimeTriggerConfig } from "../shared/Configs"
+import { ConfigType, TimeTriggerConfig } from "terse-types/Configs"
+
 import { PrismaTransaction } from "../types/prisma"
-import { TimeTriggerConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -9,9 +9,7 @@ export class ScheduleTrigger implements Trigger<TimeTriggerConfig> {
 
     constructor() {}
 
-    async validateConfig(trigger: TimeTriggerConfig, _userId: string): Promise<void> {
-        TimeTriggerConfigSchema.parse(stripConfigForValidation(trigger))
-    }
+    async validateConfig(trigger: TimeTriggerConfig, _userId: string): Promise<void> {}
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: TimeTriggerConfig): Promise<void> {
         await tx.automation_time_trigger_configs.create({

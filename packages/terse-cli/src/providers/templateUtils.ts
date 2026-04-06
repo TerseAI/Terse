@@ -1,7 +1,7 @@
+import Handlebars from "handlebars"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import Handlebars from "handlebars"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -22,11 +22,7 @@ export function readTemplateFile(relativePath: string): string {
     return fs.readFileSync(path.join(getTemplatesRoot(), relativePath), "utf-8")
 }
 
-export function renderTemplate(
-    relativePath: string,
-    context: Record<string, unknown>,
-    handlebars: typeof Handlebars = Handlebars
-): string {
+export function renderTemplate(relativePath: string, context: Record<string, unknown>, handlebars: typeof Handlebars = Handlebars): string {
     const source = readTemplateFile(relativePath)
     return handlebars.compile(source, { noEscape: true })(context)
 }

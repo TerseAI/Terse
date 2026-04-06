@@ -1,9 +1,10 @@
+import { IntegrationType, PosthogIntegration, PosthogIntegrationMetadata } from "terse-types/Integrations"
+import { PosthogProject } from "terse-types/types"
+
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchPosthogProjects } from "../routes/posthog"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { IntegrationType, PosthogIntegration, PosthogIntegrationMetadata } from "../shared/Integrations"
-import { PosthogProject } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
@@ -24,8 +25,8 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
         })
         return posthogIntegrations.map(pi => ({
             id: pi.id,
-            email: pi.user_email || null,
-            orgName: pi.org_name || null
+            email: pi.user_email || undefined,
+            orgName: pi.org_name || undefined
         }))
     }
 
@@ -70,8 +71,8 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
         })
         return posthogIntegrations.map(pi => ({
             id: pi.id,
-            email: pi.user_email || null,
-            orgName: pi.org_name || null
+            email: pi.user_email || undefined,
+            orgName: pi.org_name || undefined
         }))
     }
 

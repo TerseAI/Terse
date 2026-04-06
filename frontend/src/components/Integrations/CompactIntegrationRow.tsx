@@ -1,9 +1,9 @@
 import { BadgeCheckIcon } from "lucide-react"
+import { IntegrationType } from "terse-types/Integrations"
+import { INTEGRATION_METADATA } from "terse-types/Integrations"
 
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
-import { IntegrationType } from "@/shared/Integrations"
-import { INTEGRATION_METADATA } from "@/shared/Integrations"
 
 import { Button } from "../ui/button"
 

@@ -4,6 +4,9 @@ import { useNavigate } from "react-router-dom"
 import { Tab, TabGroup, TabList } from "@headlessui/react"
 import { Clock, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
+import { CONFIG_DETAILS } from "terse-types"
+import { FrontendRoutes } from "terse-types"
+import type { SerializedEvent } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { Badge } from "../../components/ui/badge"
@@ -14,9 +17,6 @@ import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent, useAgentMutations } from "../../hooks/api/useAgents"
 import { useSampleEvents } from "../../hooks/api/useSampleEvents"
 import { BackendProvider } from "../../services/backend"
-import { CONFIG_DETAILS } from "../../shared/Configs"
-import { FrontendRoutes } from "../../shared/FrontendRoutes"
-import type { SerializedEvent } from "../../shared/types"
 
 import { IconForConfigType } from "./components/Integration"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
@@ -305,7 +305,7 @@ function SampleEventsDialog({
     )
 }
 
-function OverviewTab({ triggers, updatedAt, isActive }: { triggers: { id: string; config: { configType: string } }[]; updatedAt?: string; isActive: boolean }) {
+function OverviewTab({ triggers, updatedAt, isActive }: { triggers: { id: string; config: { configType: string } }[]; updatedAt: string | null; isActive: boolean }) {
     return (
         <div className="p-4 space-y-6 max-w-2xl">
             {/* Status */}

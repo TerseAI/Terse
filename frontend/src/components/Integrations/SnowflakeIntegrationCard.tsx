@@ -1,11 +1,11 @@
 import { useState } from "react"
 
 import { Database } from "lucide-react"
+import { INTEGRATION_METADATA, IntegrationType, SnowflakeIntegration } from "terse-types/Integrations"
 
 import { useSnowflakeIntegrations } from "@/hooks/api/useSnowflakeIntegrations"
 import { cn } from "@/lib/utils"
 import { BackendProvider } from "@/services/backend"
-import { INTEGRATION_METADATA, IntegrationType, SnowflakeIntegration } from "@/shared/Integrations"
 
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter } from "../ui/card"

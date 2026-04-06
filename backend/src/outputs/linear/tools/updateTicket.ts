@@ -1,39 +1,17 @@
 import { LinearClient } from "@linear/sdk"
 import { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents"
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const updateTicketInputSchema = z.object({
-    title: z.string().nullable().optional().describe("The updated title of the ticket."),
-    description: z.string().nullable().optional().describe("The updated description of the ticket."),
-    stateId: z.string().nullable().optional().describe("The ID of the state to set. Use linear_get_states to find available states."),
-    priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
-    projectId: z.string().nullable().optional().describe("The ID of the project to associate with the ticket. Use linear_get_projects to find available projects."),
-    labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels."),
-    assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
-})
-
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
-    issueId: z.string().describe("The ID of the Linear issue to update. Use linear_search_ticket to find the issue ID."),
-    updates: updateTicketInputSchema
-})
-
-export const linearUpdateTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_UPDATE_TICKET> = {
-    name: ToolName.LINEAR_UPDATE_TICKET,
+export const linearUpdateTicketTool = defineSessionTool({
+    name: "linear_update_ticket",
     description: `Update an existing Linear issue/ticket. Use linear_search_ticket to find the issue ID, and linear_get_states, linear_get_users, linear_get_projects, linear_get_teams to find valid IDs for each field.`,
-    parameters: parameters,
-    execute: async ({ integrationId, issueId, updates }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, issueId, updates }, runContext) => {
         logger.debug("🛠️ Executing linear_update_ticket tool", { integrationId, issueId })
 
         if (!runContext?.context) {
@@ -87,7 +65,15 @@ export const linearUpdateTicketTool: SessionToolOptions<typeof parameters, typeo
             }
             return {
                 success: true,
-                issue: ticketData,
+                issue: {
+                    id: ticketData.id,
+                    identifier: ticketData.identifier,
+                    title: ticketData.title,
+                    description: ticketData.description ?? null,
+                    url: ticketData.url,
+                    createdAt: ticketData.createdAt,
+                    updatedAt: ticketData.updatedAt
+                },
                 actions: [action]
             }
         } catch (error: unknown) {
@@ -96,4 +82,4 @@ export const linearUpdateTicketTool: SessionToolOptions<typeof parameters, typeo
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }
     }
-}
+})

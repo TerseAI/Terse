@@ -1,7 +1,11 @@
 import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
+import { ConfigData, buildRoute } from "terse-types"
+import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
+import { IntegrationType } from "terse-types"
+import { RunHistoryStatus, TrackingParams } from "terse-types"
+import { AgentDraft, AgentNotificationSettings, User, agentCreateSchema, agentTriggerSchema } from "terse-types"
 import { z } from "zod"
-import { uuidv4 } from "zod/v4"
 
 import { filterEvent } from "../../agent/AgentRunner/EventFilter"
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
@@ -16,41 +20,10 @@ import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
 import { chatWebSearchTool, webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
-import type { AgentDraft } from "../../routes/agents"
 import { applyAgentForUser, isUuidV4, updateAgentForUser, validateUserOwnsIntegration } from "../../routes/agents"
-import type { ConfigInstance } from "../../shared/Configs"
-import { ConfigType } from "../../shared/Configs"
-import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "../../shared/FrontendRoutes"
-import { IntegrationType } from "../../shared/Integrations"
-import { RunHistoryStatus, TrackingParams } from "../../shared/RunHistoryTypes"
-import { AgentNotificationSettings, User } from "../../shared/types"
 import { formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
 import { HydratorType, requireHydratorType } from "../../types/rag"
-import {
-    AttioOutputConfigSchema,
-    ConfluenceConfigSchema,
-    DatadogConfigSchema,
-    FigmaConfigSchema,
-    GitHubConfigSchema,
-    GmailConfigSchema,
-    GmailDraftOutputConfigSchema,
-    GmailOutputConfigSchema,
-    JiraConfigSchema,
-    LaunchDarklyConfigSchema,
-    LinearInputConfigSchema,
-    LinearOutputConfigSchema,
-    NonEmptyString,
-    NotionConfigSchema,
-    PosthogConfigSchema,
-    SlackConfigSchema,
-    SlackOutputConfigSchema,
-    SnowflakeOutputConfigSchema,
-    TimeTriggerConfigSchema,
-    WorkOSInputConfigSchema,
-    WorkOSOutputConfigSchema,
-    enforceNonSystemIntegrationId
-} from "../../utility/configSchemas"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { extractErrorMessage } from "../../utility/strings"
 import { randomString } from "../../utility/strings"
@@ -76,13 +49,13 @@ async function getDefaultNotificationSettings(userId: string): Promise<AgentNoti
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         tool({ ...chatWebSearchTool, errorFunction: formatError }),
-        tool({ ...webExtractTool, errorFunction: formatError }),
+        //tool({ ...webExtractTool, errorFunction: formatError }),
         tool({
             name: "applyAgent",
             description:
                 "Once you have all the information you need, you can use this tool to persist and apply the automation. You can use this to create and update agents. If you are creating, just leave the id empty.",
             parameters: z.object({
-                agent: AgentSchema,
+                agent: agentCreateSchema,
                 id: z.string().nullable().describe("The ID of the agent to update. If not provided, a new agent will be created.")
             }),
             execute: async ({ agent, id }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
@@ -93,13 +66,14 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 }
 
                 try {
-                    const draft = await toAgentDraft(agent, user.id)
+                    const notificationSettings = agent.notificationSettings ?? (await getDefaultNotificationSettings(user.id))
+                    const draft: AgentDraft = { ...agent, id: id ?? null, createdByUserId: user.id, notificationSettings }
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
                     const isCreate = !id
                     if (isCreate) {
-                        const path = FrontendRoutes.AGENTS.DETAIL(result.id)
+                        const path = buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: result.id })
                         await chatInterface.navigate(`${path}?${FROM_SETUP_CHAT_PARAM}=1`)
                     }
                     return `Agent applied successfully (${result.id})`
@@ -115,7 +89,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "Prompt for an integration. This tool shows a prompt (OAuth button or form) and blocks until the user completes the integration or the request times out (about 2 minutes). You can call it again in the same turn if you need multiple integrations; each call will wait for its own completion. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
             parameters: z.object({
-                integration: z.nativeEnum(IntegrationType).describe("The integration to prompt for")
+                integration: z.enum(IntegrationType).describe("The integration to prompt for")
             }),
             execute: async ({ integration }: { integration: IntegrationType }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 return await chatInterface.promptForIntegration(integration)
@@ -127,7 +101,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "Call this when you need to see what configs you have access to. It returns display names and canonical IDs you can use for the Agent object in applyAgent. IMPORTANT: Do not add integrations unless the user explicitly asked for them.",
             parameters: z.object({
-                integrationType: z.nativeEnum(IntegrationType).describe("The integration type to fetch resources for"),
+                integrationType: z.enum(IntegrationType).describe("The integration type to fetch resources for"),
                 query: z.string().nullable().describe("Optional query to filter resources by name/title"),
                 options: FetchResourcesOptionsSchema.describe("Optional integration-specific filtering options")
             }),
@@ -184,8 +158,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 "Fetch sample events to test your agent. Returns event references (entityType + entityId) and AI-generated summaries. Use triggerAgentRun with the entityType and entityId to run a specific event. For cron/scheduled agents, trigger immediately with triggerAgentRun and only agentId (no need to call getSampleEvents first).",
             parameters: z.object({
                 integrationId: z.string().describe("The integration ID to fetch sample events for"),
-                integrationType: z.nativeEnum(IntegrationType).describe("The integration type"),
-                triggerConfig: AgentTriggerSchema.describe("The trigger config to fetch sample events for"),
+                integrationType: z.enum(IntegrationType).describe("The integration type"),
+                triggerConfig: agentTriggerSchema.omit({ id: true }).describe("The trigger config to fetch sample events for"),
                 agentId: z.string().nullable().describe("Optional agent ID to preview filter results against"),
                 options: z
                     .object({
@@ -207,8 +181,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User is required to fetch sample events")
                 }
 
-                const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
-                const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, user.id, { limit })
+                const inputEvents = await fetchSampleEvents(integrationId, integrationType, triggerConfig.config, user.organizationId, user.id, { limit })
 
                 if (!agentId) {
                     throw new Error("Agent ID is required to get sample events")
@@ -303,7 +276,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents. This returns quickly with runId while the run continues in the background.",
             parameters: z.object({
-                entityType: z.nativeEnum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
+                entityType: z.enum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
                 agentId: z.string().describe("The agent ID to test the sample event against"),
                 manualContext: z
@@ -372,7 +345,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 const eventProcessor = new EventProcessor(inputEvent, user, { isManuallyTriggered: true })
                 const triggeredRun = await eventProcessor.triggerSingleAgent(agentId)
 
-                const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(triggeredRun.agentId, triggeredRun.runId)
+                const runHistoryPath = buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: triggeredRun.agentId, runId: triggeredRun.runId })
                 await chatInterface.buildButton("See progress", runHistoryPath)
 
                 logger.info("[triggerAgentRun] Triggered run", {
@@ -447,7 +420,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 const isComplete = runRecord.status !== RunHistoryStatus.IN_PROGRESS
                 const timedOut = !isComplete
-                const runHistoryPath = FrontendRoutes.AGENTS.RUN_HISTORY(runRecord.automation_id, runRecord.id)
+                const runHistoryPath = buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: runRecord.automation_id, runId: runRecord.id })
 
                 return JSON.stringify({
                     runId: runRecord.id,
@@ -469,119 +442,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-// eventTypes is omitted for ChatAgent because OpenAI structured outputs
-// doesn't support .optional() without .nullable(). eventTypes is SDK-only.
-const ChatAgentGitHubConfigSchema = GitHubConfigSchema.omit({ eventTypes: true })
-
-const InputConfigSchema = z
-    .union([GmailConfigSchema, FigmaConfigSchema, SlackConfigSchema, LinearInputConfigSchema, ChatAgentGitHubConfigSchema, JiraConfigSchema, TimeTriggerConfigSchema, WorkOSInputConfigSchema])
-    .superRefine((value, ctx) => {
-        enforceNonSystemIntegrationId(value, ctx)
-        if (value.configType === ConfigType.SLACK) {
-            const hasChannel = typeof value.channelId === "string" && value.channelId.trim().length > 0
-            const listensToDms = value.listenToUserDms === true
-            if (!hasChannel && !listensToDms) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Slack input requires a channelId or listenToUserDms=true."
-                })
-            }
-        }
-    })
-
-const OutputConfigSchema = z
-    .union([
-        SlackOutputConfigSchema,
-        NotionConfigSchema,
-        LinearOutputConfigSchema,
-        JiraConfigSchema,
-        ConfluenceConfigSchema,
-        GmailOutputConfigSchema,
-        GmailDraftOutputConfigSchema,
-        AttioOutputConfigSchema,
-        ChatAgentGitHubConfigSchema,
-        PosthogConfigSchema,
-        LaunchDarklyConfigSchema,
-        DatadogConfigSchema,
-        WorkOSOutputConfigSchema,
-        SnowflakeOutputConfigSchema
-    ])
-    .superRefine((value, ctx) => {
-        enforceNonSystemIntegrationId(value, ctx)
-    })
-
-const AgentTriggerSchema = z
-    .object({
-        config: InputConfigSchema
-    })
-    .strict()
-
-const AgentOutputSchema = z
-    .object({
-        config: OutputConfigSchema
-    })
-    .strict()
-
-const AgentPromptSchema = z
-    .object({
-        text: NonEmptyString
-    })
-    .strict()
-
-export const AgentSchema = z
-    .object({
-        name: NonEmptyString,
-        isActive: z.boolean(),
-        requireApproval: z.boolean(),
-        prompt: AgentPromptSchema,
-        triggers: z.array(AgentTriggerSchema).min(1),
-        outputs: z.array(AgentOutputSchema).min(1),
-        updatedAt: z.string().nullable()
-    })
-    .strict()
-
-type AgentSchemaInput = z.infer<typeof AgentSchema>
-
-function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigInstance {
-    return {
-        ...config,
-        isComplete: () => true,
-        formatForAgent: () => ""
-    } as T & ConfigInstance
-}
-
-function normalizeConfig<T extends Record<string, any>>(config: T): T {
-    if (config.configType === ConfigType.TIME_TRIGGER) {
-        return {
-            ...config,
-            integrationId: "system",
-            integrationType: IntegrationType.CRON_JOB,
-            configType: ConfigType.TIME_TRIGGER
-        } as T
-    }
-    return config
-}
-
-async function toAgentDraft(agent: AgentSchemaInput, userId: string): Promise<AgentDraft> {
-    const notificationSettings: AgentNotificationSettings = await getDefaultNotificationSettings(userId)
-    return {
-        ...agent,
-        triggers: agent.triggers.map(trigger => ({
-            id: uuidv4().toString(),
-            ...trigger,
-            config: toConfigInstance(normalizeConfig(trigger.config))
-        })),
-        outputs: agent.outputs.map(output => ({
-            id: uuidv4().toString(),
-            ...output,
-            config: toConfigInstance(normalizeConfig(output.config))
-        })),
-        notificationSettings: notificationSettings ?? undefined,
-        createdByUserId: userId,
-        updatedAt: agent.updatedAt ?? undefined
-    }
 }
 
 async function fetchResourcesForIntegrationType(integrationType: IntegrationType, organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<string> {

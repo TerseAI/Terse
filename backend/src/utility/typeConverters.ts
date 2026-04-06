@@ -1,8 +1,7 @@
 import { InputConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
-
 import {
     AttioOutputConfig,
-    ConfigInstance,
+    ConfigData,
     ConfigType,
     ConfluenceConfig,
     DatadogConfig,
@@ -26,9 +25,10 @@ import {
     WorkOSEventType,
     WorkOSInputConfig,
     WorkOSOutputConfig
-} from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
-import { RunHistoryStatus as SharedRunHistoryStatus } from "../shared/RunHistoryTypes"
+} from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
+import { RunHistoryStatus as SharedRunHistoryStatus } from "terse-types/RunHistoryTypes"
+
 import { AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -211,10 +211,10 @@ export const convertPrismaRunHistoryStatusToShared = (status: PrismaRunHistorySt
     }
 }
 
-export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWithConfigs): ConfigInstance => {
+export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithConfigs): ConfigData => {
     const integrationId = channelInput.integration_id
 
-    // Determine which config is present and create the appropriate ConfigInstance
+    // Determine which config is present and create the appropriate ConfigData
     if (channelInput.gmail_config) {
         return new GmailConfig(integrationId)
     }
@@ -291,13 +291,13 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
 }
 
 /**
- * Converts a ChannelOutput with configs to a ConfigInstance.
- * Similar to convertPrismaConfigToConfigInstance but for outputs.
+ * Converts a ChannelOutput with configs to a ConfigData.
+ * Similar to convertPrismaConfigToConfigData but for outputs.
  */
-export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOutputWithConfigs): ConfigInstance => {
+export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutputWithConfigs): ConfigData => {
     const integrationId = channelOutput.integration_id
 
-    // Determine which config is present and create the appropriate ConfigInstance
+    // Determine which config is present and create the appropriate ConfigData
     if (channelOutput.notion_config) {
         const nc = channelOutput.notion_config
         return new NotionConfig(integrationId, nc.database_ids ?? [], nc.database_names ?? [], nc.page_ids ?? [], nc.page_names ?? [])
@@ -519,174 +519,5 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.SNOWFLAKE
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type.`)
-    }
-}
-
-/**
- * Converts OutputConfigType to ConfigType (for outputs that have a ConfigType in CONFIG_DETAILS).
- */
-export const convertOutputConfigTypeToConfigType = (outputConfigType: OutputConfigType): ConfigType => {
-    switch (outputConfigType) {
-        case OutputConfigType.NOTION:
-            return ConfigType.NOTION
-        case OutputConfigType.CONFLUENCE:
-            return ConfigType.CONFLUENCE
-        case OutputConfigType.LINEAR_TICKET:
-            return ConfigType.LINEAR_OUTPUT
-        case OutputConfigType.JIRA_TICKET:
-            return ConfigType.JIRA
-        case OutputConfigType.SLACK_CHANNEL:
-            return ConfigType.SLACK_OUTPUT
-        case OutputConfigType.GMAIL:
-            return ConfigType.GMAIL_OUTPUT
-        case OutputConfigType.GITHUB:
-            return ConfigType.GITHUB
-        case OutputConfigType.POSTHOG:
-            return ConfigType.POSTHOG
-        case OutputConfigType.DATADOG:
-            return ConfigType.DATADOG
-        case OutputConfigType.LAUNCHDARKLY:
-            return ConfigType.LAUNCHDARKLY
-        case OutputConfigType.GMAIL_DRAFT:
-            return ConfigType.GMAIL_DRAFT_OUTPUT
-        case OutputConfigType.TERSE:
-            return ConfigType.TERSE
-        case OutputConfigType.ATTIO:
-            return ConfigType.ATTIO_OUTPUT
-        case OutputConfigType.WORKOS:
-            return ConfigType.WORKOS_OUTPUT
-        case OutputConfigType.SNOWFLAKE:
-            return ConfigType.SNOWFLAKE_OUTPUT
-        default:
-            throw outputConfigType satisfies never
-    }
-}
-
-/**
- * Converts OutputConfigType to IntegrationType.
- * Maps output configuration types to their corresponding integration types.
- */
-export const convertOutputConfigTypeToIntegrationType = (outputConfigType: OutputConfigType): IntegrationType => {
-    switch (outputConfigType) {
-        case OutputConfigType.NOTION:
-            return IntegrationType.NOTION
-        case OutputConfigType.CONFLUENCE:
-            return IntegrationType.ATLASSIAN
-        case OutputConfigType.LINEAR_TICKET:
-            return IntegrationType.LINEAR
-        case OutputConfigType.JIRA_TICKET:
-            return IntegrationType.ATLASSIAN
-        case OutputConfigType.SLACK_CHANNEL:
-            return IntegrationType.SLACK
-        case OutputConfigType.GMAIL:
-            return IntegrationType.GMAIL
-        case OutputConfigType.GITHUB:
-            return IntegrationType.GITHUB
-        case OutputConfigType.POSTHOG:
-            return IntegrationType.POSTHOG
-        case OutputConfigType.DATADOG:
-            return IntegrationType.DATADOG
-        case OutputConfigType.LAUNCHDARKLY:
-            return IntegrationType.LAUNCHDARKLY
-        case OutputConfigType.GMAIL_DRAFT:
-            return IntegrationType.GMAIL
-        case OutputConfigType.TERSE:
-            return IntegrationType.TERSE
-        case OutputConfigType.ATTIO:
-            return IntegrationType.ATTIO
-        case OutputConfigType.WORKOS:
-            return IntegrationType.WORKOS
-        case OutputConfigType.SNOWFLAKE:
-            return IntegrationType.SNOWFLAKE
-        default:
-            throw outputConfigType satisfies never
-    }
-}
-
-/**
- * Converts a plain object config (e.g. from AgentTriggerSchema / InputConfigSchema) to a ConfigInstance.
- * Used by getSampleEvents so sample events can be tested without creating an agent/database record.
- */
-export const convertPlainObjectToInputConfigInstance = (config: any): ConfigInstance => {
-    if (typeof config.isComplete === "function") {
-        return config as ConfigInstance
-    }
-
-    switch (config.configType) {
-        case ConfigType.GMAIL:
-            return new GmailConfig(config.integrationId)
-        case ConfigType.FIGMA:
-            return new FigmaConfig(config.integrationId, config.fileKey, config.fileName || "", config.teamId || "")
-        case ConfigType.SLACK:
-            return new SlackConfig(config.integrationId, config.channelId, config.channelName, config.listenToUserDms ?? false, config.userIds)
-        case ConfigType.LINEAR_INPUT:
-            return new LinearInputConfig(config.integrationId, config.projectId, config.projectName)
-        case ConfigType.GITHUB:
-            return new GitHubConfig(config.integrationId, config.repositoryIds || [])
-        case ConfigType.JIRA:
-            return new JiraConfig(config.integrationId, config.projectKey, config.projectId)
-        case ConfigType.TIME_TRIGGER:
-            return new TimeTriggerConfig(config.cronExpression || "")
-        case ConfigType.WORKOS_INPUT:
-            return new WorkOSInputConfig(config.integrationId, (config.eventTypes || []) as WorkOSEventType[])
-        default:
-            throw new Error(`Unsupported input config type: ${config.configType}`)
-    }
-}
-
-/**
- * Converts a plain object config to a ConfigInstance.
- * Supports both input and output config types.
- */
-export const convertPlainObjectToConfigInstance = (config: any): ConfigInstance => {
-    if (typeof config.isComplete === "function") {
-        return config as ConfigInstance
-    }
-
-    switch (config.configType) {
-        case ConfigType.GMAIL:
-            return new GmailConfig(config.integrationId)
-        case ConfigType.FIGMA:
-            return new FigmaConfig(config.integrationId, config.fileKey, config.fileName || "", config.teamId || "")
-        case ConfigType.SLACK:
-            return new SlackConfig(config.integrationId, config.channelId, config.channelName, config.listenToUserDms ?? false, config.userIds)
-        case ConfigType.NOTION:
-            return new NotionConfig(config.integrationId, config.databaseIds ?? [], config.databaseNames ?? [], config.pageIds ?? [], config.pageNames ?? [])
-        case ConfigType.LINEAR_INPUT:
-            return new LinearInputConfig(config.integrationId, config.projectId, config.projectName)
-        case ConfigType.LINEAR_OUTPUT:
-            return new LinearOutputConfig(config.integrationId, config.teamId, config.teamName, config.projectId, config.projectName)
-        case ConfigType.GITHUB:
-            return new GitHubConfig(config.integrationId, config.repositoryIds || [])
-        case ConfigType.JIRA:
-            return new JiraConfig(config.integrationId, config.projectKey, config.projectId)
-        case ConfigType.CONFLUENCE:
-            return new ConfluenceConfig(config.integrationId, config.spaceName ?? "", config.spaceId ?? "", config.pageId ?? "", config.pageName ?? "")
-        case ConfigType.POSTHOG:
-            return new PosthogConfig(config.integrationId, config.projectId ?? "", config.projectName)
-        case ConfigType.DATADOG:
-            return new DatadogConfig(config.integrationId, config.defaultIndexes || ["main"])
-        case ConfigType.TIME_TRIGGER:
-            return new TimeTriggerConfig(config.cronExpression || "")
-        case ConfigType.SLACK_OUTPUT:
-            return new SlackOutputConfig(config.integrationId, config.channelId, config.channelName, config.userIds, config.userNames, config.listenToUserDms ?? false)
-        case ConfigType.GMAIL_OUTPUT:
-            return new GmailOutputConfig(config.integrationId)
-        case ConfigType.GMAIL_DRAFT_OUTPUT:
-            return new GmailDraftOutputConfig(config.integrationId)
-        case ConfigType.LAUNCHDARKLY:
-            return new LaunchDarklyConfig(config.integrationId, config.projectKey ?? "", config.environmentKeys || [])
-        case ConfigType.TERSE:
-            return new TerseConfig()
-        case ConfigType.WORKOS_INPUT:
-            return new WorkOSInputConfig(config.integrationId, (config.eventTypes || []) as WorkOSEventType[])
-        case ConfigType.WORKOS_OUTPUT:
-            return new WorkOSOutputConfig(config.integrationId)
-        case ConfigType.ATTIO_OUTPUT:
-            return new AttioOutputConfig(config.integrationId, config.objectSlug)
-        case ConfigType.SNOWFLAKE_OUTPUT:
-            return new SnowflakeOutputConfig(config.integrationId)
-        default:
-            throw new Error(`Unsupported config type: ${config.configType}`)
     }
 }

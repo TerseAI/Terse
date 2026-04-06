@@ -1,8 +1,8 @@
 import useSWR, { KeyedMutator } from "swr"
+import { statsKey } from "terse-types/InvalidationKeys"
+import { StatsInterval, StatsResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { statsKey } from "@/shared/InvalidationKeys"
-import { StatsInterval, StatsResponse } from "@/shared/types"
 
 export type UseStatsReturn = {
     stats: StatsResponse | null

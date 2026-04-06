@@ -16,8 +16,7 @@ export const Slack = {
         return new SlackConfig("{{escape id}}", opts?.channel?.channelId, opts?.channel?.name, opts?.listenToUserDms, opts?.userIds, opts?.eventTypes)
     },
     /** Use in `skills[]` */
-    skill(opts?: { channel?: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<{{{skillToolType}}}> {
-        return new SlackOutputConfig("{{escape id}}", opts?.channel?.channelId, opts?.channel?.name, opts?.userIds, opts?.userNames, opts?.listenToUserDms) as TypedSkill<{{{skillToolType}}}>
+    skill(opts: { channel: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<{{{skillToolType}}}> {
+        return new SlackOutputConfig("{{escape id}}", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? null, opts.userNames ?? null, opts.listenToUserDms)
     },
 }
-

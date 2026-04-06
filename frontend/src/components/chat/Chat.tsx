@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
 
-import { type ModelRequest } from "../../shared/ModelEvents"
+import { type ModelRequest } from "terse-types"
+
 import type { ToolApprovalResponseOptions } from "../../socket"
 
 import { type CTAChip, ChatLayout, type ChatLayoutHandle } from "./ChatLayout"

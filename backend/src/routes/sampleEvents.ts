@@ -1,27 +1,13 @@
 import { Request, Response } from "express"
+import { ConfigType } from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
+import type { User } from "terse-types/types"
+import type { SerializedEvent, TriggerPayload } from "terse-types/types"
+import { sdkSampleEventsRequestSchema } from "terse-types/types"
 
 import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"
 import logger from "../logger"
-import { ConfigType } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
-import type { User } from "../shared/types"
-import type { SerializedEvent, TriggerPayload } from "../shared/types"
 import { extractErrorMessage } from "../utility/strings"
-
-/**
- * Wraps a plain config object into something that satisfies ConfigInstance
- * for the integration manager's getSampleEvents() call.
- */
-function toConfigInstance(config: Record<string, unknown>) {
-    return {
-        ...config,
-        integrationId: (config.integrationId as string) ?? "",
-        integrationType: (config.integrationType as IntegrationType) ?? IntegrationType.TERSE,
-        configType: (config.configType as ConfigType) ?? ConfigType.TERSE,
-        isComplete: () => true,
-        formatForAgent: () => ""
-    }
-}
 
 export async function handleSampleEvents(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -29,12 +15,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    console.log("🔍 Sample events request body:", req.body)
-
-    const { triggers } = req.body as { triggers?: TriggerPayload[] }
-    if (!triggers || !Array.isArray(triggers) || triggers.length === 0) {
-        return res.status(400).json({ error: "Request body must include a non-empty `triggers` array" })
-    }
+    const { triggers } = sdkSampleEventsRequestSchema.parse(req.body)
 
     const events: SerializedEvent[] = []
 
@@ -47,13 +28,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
         }
 
         try {
-            const configInstance = toConfigInstance({
-                ...config,
-                integrationId,
-                integrationType
-            })
-
-            const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, user.id, { limit: 5 })
+            const inputEvents = await fetchSampleEvents(integrationId, integrationType, config, user.organizationId, user.id, { limit: 5 })
 
             for (const evt of inputEvents) {
                 events.push({

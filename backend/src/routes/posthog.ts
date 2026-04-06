@@ -1,4 +1,6 @@
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
+import { PosthogProjectsResponse } from "terse-types/types"
 
 import { PosthogIntegrationManager } from "../integrations/PosthogIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
@@ -6,8 +8,6 @@ import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helper
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, getSecret } from "../services/SecretService"
-import { IntegrationType } from "../shared/Integrations"
-import { PosthogProjectsResponse } from "../shared/types"
 
 export async function getPosthogIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

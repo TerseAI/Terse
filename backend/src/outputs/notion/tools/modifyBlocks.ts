@@ -1,15 +1,10 @@
 import { Client } from "@notionhq/client"
-import { RunContext } from "@openai/agents"
-import { z } from "zod"
+import { ConfigType } from "terse-types"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
-import { ConfigType } from "../../../shared/Configs"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../utility/notion"
 import { extractErrorMessage } from "../../../utility/strings"
 
@@ -26,16 +21,8 @@ function getBlockDeepLinkUrl(pageUrl: string | undefined, blockId: string | unde
     return `${pageUrl}?source=copy_link#${blockIdWithoutHyphens}`
 }
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-    pageId: z.string().describe("The Notion page ID to modify."),
-    operation_json: z.string().describe(`JSON string: a single operation object OR an array of operation objects (executed in order).
-Each operation: operation ("append"|"update"|"delete"); for append: blocks (array), optional parent_block_id, optional after_block_id; for update: block_id, block; for delete: block_id.
-Append with after_block_id inserts after that block; omit for end of page/parent.`)
-})
-
-export const notionModifyBlocksTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_MODIFY_BLOCKS> = {
-    name: ToolName.NOTION_MODIFY_BLOCKS,
+export const notionModifyBlocksTool = defineSessionTool({
+    name: "notion_modify_blocks",
     description: `Add, update, or delete blocks in page content. Use this to modify page content (paragraphs, headings, lists, etc.).
 
 Accepts a single operation object (backwards compatible) OR an array of operation objects executed sequentially. One approval covers the whole batch.
@@ -62,8 +49,7 @@ Examples — batch (array):
 [{"operation": "append", "blocks": [...]}, {"operation": "update", "block_id": "abc", "block": {...}}, {"operation": "delete", "block_id": "def"}]
 
 Error recovery: If Notion returns an error that suggests JSON/body/validation incompatibility, retry. First fix the specific issue mentioned in the error; if that is unclear or still failing, retry with a simpler payload (fewer blocks, simpler block types like plain paragraphs).`,
-    parameters: parameters,
-    execute: async ({ integrationId, pageId, operation_json }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, pageId, operation_json }, runContext) => {
         type Op = {
             operation: "append" | "update" | "delete"
             blocks?: any[]
@@ -307,4 +293,4 @@ Error recovery: If Notion returns an error that suggests JSON/body/validation in
             total_operations: ops.length
         }
     }
-}
+})

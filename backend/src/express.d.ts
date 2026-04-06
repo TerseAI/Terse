@@ -1,5 +1,5 @@
 // Define a session type that matches what we're actually using in auth
-import { User } from "./shared/types"
+import type { User } from "terse-types/types"
 
 export type Session = {
     user: User

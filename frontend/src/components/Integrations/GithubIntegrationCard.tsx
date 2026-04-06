@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react"
 
 import { ExternalLink, Github } from "lucide-react"
+import { IntegrationType } from "terse-types/Integrations"
+import { Repository } from "terse-types/types"
 
 import { useGithubIntegrations } from "@/hooks/api/useGithubIntegrations"
 import { useGithubResources } from "@/hooks/api/useGithubResources"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { cn } from "@/lib/utils"
-import { IntegrationType } from "@/shared/Integrations"
-import { Repository } from "@/shared/types"
 
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"

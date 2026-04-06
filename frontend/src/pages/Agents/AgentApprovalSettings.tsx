@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react"
-
-import { TerseTool } from "@/shared/ToolsTypes"
-import { TransientAgentOutput } from "@/shared/types"
+import { isConfigComplete } from "terse-types/Configs"
+import { TerseTool } from "terse-types/ToolsTypes"
+import { TransientAgentOutput } from "terse-types/types"
 
 import { MultiSelect, type MultiSelectOption } from "../../components/MultiSelect"
 import { Badge } from "../../components/ui/badge"
@@ -32,7 +32,7 @@ function toolToOption(tool: TerseTool): MultiSelectOption {
 }
 
 function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }: AgentApprovalSettingsProps) {
-    const outputConfigTypes = outputs.filter(output => output.config && output.config.isComplete()).map(output => output.configType)
+    const outputConfigTypes = outputs.filter(output => isConfigComplete(output.config)).map(output => output.configType)
 
     const request = outputConfigTypes.length > 0 ? { skills: outputConfigTypes } : null
 

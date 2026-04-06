@@ -1,6 +1,11 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
+import { ConfigData, ConfigType, JiraConfig as JiraConfigClass, JiraConfigData, JiraConfigSchema, JiraEventType } from "terse-types/Configs"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { OAuthInstallationDetails } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { settings, urls } from "../config/settings"
@@ -9,12 +14,6 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { StoredFile } from "../services/FileStorageService"
 import { SecretField, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, JiraConfig as JiraConfigClass, JiraEventType } from "../shared/Configs"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { AdditionalStateParams, AtlassianIntegration, AtlassianIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
-import { User } from "../shared/types"
-import { OAuthInstallationDetails } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload"
@@ -638,11 +637,11 @@ export class AtlassianIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.JIRA) {
             return []
         }
-        const jiraConfig = triggerConfig as JiraConfigClass
+        const jiraConfig = JiraConfigSchema.parse(triggerConfig)
 
         const limit = Math.min(options?.limit ?? 5, 10)
         await this.refreshToken(integrationId)

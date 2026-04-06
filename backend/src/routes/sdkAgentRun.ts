@@ -1,5 +1,10 @@
-import { RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
+import { Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import { Request, Response } from "express"
+import { CONFIG_DETAILS, ConfigData } from "terse-types/Configs"
+import { IntegrationType } from "terse-types/Integrations"
+import { RunHistoryAction } from "terse-types/RunHistoryTypes"
+import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
+import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
@@ -7,15 +12,10 @@ import { appendRunAction } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { CONFIG_DETAILS } from "../shared/Configs"
-import { IntegrationType } from "../shared/Integrations"
-import { RunHistoryAction } from "../shared/RunHistoryTypes"
-import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, User } from "../shared/types"
 import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { extractErrorMessage } from "../utility/strings"
 
-import { validateAndNormalizeSdkAgentRunBody } from "./sdkAgentRunValidation"
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
 
 /**
@@ -25,24 +25,27 @@ import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalG
  * the stream stays open while we wait for a decision via POST /sdk/approval-decision.
  * On receiving the decision, the agent resumes and continues streaming.
  */
+const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({
+    prompt: z.string().min(1)
+})
+
 export async function handleSdkAgentRun(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
     if (!user) {
         return res.status(401).json({ success: false, error: "Unauthorized" })
     }
 
-    const body = req.body as SdkAgentRunRequestBody
-    const validation = validateAndNormalizeSdkAgentRunBody(body)
-    if (!validation.ok) {
+    const parsed = sdkAgentRunInputSchema.safeParse(req.body)
+    if (!parsed.success) {
         const response: SdkAgentRunResponseBody = {
             success: false,
             error: "Invalid request body",
-            details: validation.errors
+            details: parsed.error.issues.map(i => i.message)
         }
         return res.status(400).json(response)
     }
 
-    const normalized = validation.normalized
+    const { data } = parsed
     const { send, sandboxRunId } = initSseStream(req, res)
 
     try {
@@ -50,17 +53,17 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         const sdkRunner = createSdkRunner({
             runId,
             user,
-            prompt: normalized.prompt,
-            skills: normalized.skills,
-            toolApprovals: normalized.toolApprovals,
+            prompt: data.prompt,
+            skills: data.skills ?? [],
+            toolApprovals: data.toolApprovals ?? [],
             send,
             sandboxRunId,
-            options: normalized.options
+            options: data.options
         })
 
         send({ type: "run_started", runId })
 
-        const eventText = ["", `Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
+        const eventText = ["", `Integration Type: ${data.event?.integrationType}`, `Event Content:`, data.event?.formattedContent ?? "", ``, `Debug Log: ${data.event?.debugLog ?? ""}`].join("\n")
 
         let result = await sdkRunner.run(eventText)
 
@@ -99,12 +102,12 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
         return res.status(401).json({ success: false, error: "Unauthorized" })
     }
 
-    const body = req.body as SdkApprovalDecisionRequestBody
-    if (!body.runId || !body.stepId || typeof body.approved !== "boolean") {
+    const parsed = sdkApprovalDecisionRequestBodySchema.safeParse(req.body)
+    if (!parsed.success) {
         return res.status(400).json({ success: false, error: "Missing required fields: runId, stepId, approved" })
     }
 
-    resolveApprovalDecision(body.runId, body.stepId, { approved: body.approved })
+    resolveApprovalDecision(parsed.data.runId, parsed.data.stepId, { approved: parsed.data.approved })
 
     return res.status(200).json({ success: true })
 }
@@ -163,7 +166,7 @@ function createSdkRunner(params: {
     runId: string
     user: User
     prompt: string
-    skills: SdkAgentSkillPayload[]
+    skills: ConfigData[]
     toolApprovals: string[]
     send: (event: SdkAgentStreamEvent) => void
     sandboxRunId: string | undefined

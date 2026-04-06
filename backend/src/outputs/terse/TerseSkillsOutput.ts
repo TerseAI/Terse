@@ -1,8 +1,7 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { ConfigData, TerseConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
-import { ConfigInstance, TerseConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
@@ -11,7 +10,7 @@ import { webExtractTool } from "./tools/webExtractTool"
 import { webResearchTool } from "./tools/webResearchTool"
 import { runHistoryWebSearchTool } from "./tools/webSearchTool"
 
-export class TerseSkillsOutput extends Output<ConfigInstance> {
+export class TerseSkillsOutput extends Output<ConfigData> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
@@ -42,19 +41,19 @@ export class TerseSkillsOutput extends Output<ConfigInstance> {
         super(OutputConfigType.TERSE, toolbox)
     }
 
-    async validateConfig(_output: ConfigInstance, _userId: string): Promise<void> {
+    async validateConfig(_output: ConfigData, _userId: string): Promise<void> {
         // No validation needed - this output has no config
     }
 
-    async addOutputToAgent(_tx: PrismaTransaction, _agentOutputId: string, _output: ConfigInstance): Promise<void> {
+    async addOutputToAgent(_tx: PrismaTransaction, _agentOutputId: string, _output: ConfigData): Promise<void> {
         // No database records needed - this is always available
     }
 
-    protected getDummyConfigForCapability(): ConfigInstance {
+    protected getDummyConfigForCapability(): ConfigData {
         return new TerseConfig()
     }
 
-    protected getSystemInstructionsForConfigs(_configs: ConfigInstance[]): string {
+    protected getSystemInstructionsForConfigs(_configs: ConfigData[]): string {
         return ""
     }
 }

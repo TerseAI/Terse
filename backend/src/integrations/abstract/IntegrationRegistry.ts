@@ -1,4 +1,5 @@
-import { IntegrationDetails, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
+import { IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
+
 import { AtlassianIntegrationManager } from "../AtlassianIntegration"
 import { AttioIntegrationManager } from "../AttioIntegration"
 import { CronJobIntegrationManager } from "../CronJobIntegration"

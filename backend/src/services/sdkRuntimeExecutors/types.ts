@@ -1,6 +1,6 @@
 import type { Sandbox } from "modal"
+import { SandboxStage } from "terse-types"
 
-import { SandboxStage } from "../../shared/ModelEvents"
 import { extractErrorMessage } from "../../utility/strings"
 
 export { SandboxStage }

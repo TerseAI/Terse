@@ -5,6 +5,11 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Bell, Check, ChevronRight, Copy, FileText, MoreVertical, Pause, Play, PlusIcon, Trash2, Wrench, XIcon, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
+import { CONFIG_DETAILS, ConfigData, ConfigType, buildRoute, isConfigComplete } from "terse-types"
+import { FROM_SETUP_CHAT_PARAM } from "terse-types/FrontendRoutesBuilder"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
+import { Agent, AgentOutput, AgentPrompt, AgentTrigger } from "terse-types/types"
 import { v4 as uuidv4 } from "uuid"
 
 import { Button } from "@/components/ui/button"
@@ -13,10 +18,6 @@ import { useAgentCount } from "@/hooks/api/useAgentCount"
 import { useAgentMutations } from "@/hooks/api/useAgents"
 import { useUser } from "@/hooks/api/useUser"
 import { useBuilderSession } from "@/hooks/useBuilderSession"
-import { FROM_SETUP_CHAT_PARAM } from "@/shared/FrontendRoutes"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "@/shared/types"
-import { Agent, AgentOutput, AgentPrompt, AgentTrigger } from "@/shared/types"
 import { getDefaultAgentName, toAgentOutput, toAgentTrigger } from "@/utility/AgentUtils"
 
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector"
@@ -25,7 +26,6 @@ import { Badge } from "../../../components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
 import { cn } from "../../../lib/utils"
 import { useModelContext } from "../../../services/ModelContextProvider"
-import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs"
 import { AgentSetUpPageContext } from "../../../utility/AgentModelDonation"
 import AgentApprovalSettings from "../AgentApprovalSettings"
 import AgentNotificationSettings from "../AgentNotificationSettings"
@@ -56,7 +56,7 @@ export type AgentSetupTabProps = {
     isLoading: boolean
     mutate: KeyedMutator<Agent>
     agentCreator: string | undefined
-    updatedAt?: string
+    updatedAt: string | null | undefined
 }
 
 function DeleteAgentDialog({ isOpen, onClose, onConfirm, agentName, isDeleting }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; agentName: string; isDeleting: boolean }) {
@@ -151,7 +151,7 @@ function AgentOptionsMenu({
 
             if (result?.id) {
                 toast.success("Agent cloned successfully")
-                navigate(FrontendRoutes.AGENTS.DETAIL(result.id))
+                navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: result.id }))
             } else {
                 toast.error("Failed to clone agent: no ID returned")
             }
@@ -252,11 +252,7 @@ function SaveAgentButton({
     // Validation: all required fields must be present
     // Each integration reports its own completeness
     const isComplete =
-        inputs.length > 0 &&
-        inputs.every(i => i != null && i.config != null && i.config.isComplete()) &&
-        outputs.length > 0 &&
-        outputs.every(o => o != null && o.config != null && o.config.isComplete()) &&
-        !!prompt?.text // Ensure prompt is not empty
+        inputs.length > 0 && inputs.every(i => i != null && isConfigComplete(i.config)) && outputs.length > 0 && outputs.every(o => o != null && isConfigComplete(o.config)) && !!prompt?.text // Ensure prompt is not empty
 
     const isEditMode = !!agentId
 
@@ -288,7 +284,7 @@ function SaveAgentButton({
                 const creation = await createAgent(agentData)
 
                 if (creation?.id) {
-                    navigate(FrontendRoutes.AGENTS.DETAIL(creation.id), { replace: true })
+                    navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: creation.id }), { replace: true })
                 }
             }
 
@@ -383,9 +379,9 @@ export default function AgentSetupTab({
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null)
 
-    const triggersIncomplete = inputs.length === 0 || inputs.some(i => !i || !i.config || !i.config.isComplete())
+    const triggersIncomplete = inputs.length === 0 || inputs.some(i => !i || !isConfigComplete(i.config))
     const promptIncomplete = !prompt?.text || prompt.text.trim() === ""
-    const skillsIncomplete = outputs.length === 0 || outputs.some(o => !o || !o.config || !o.config.isComplete())
+    const skillsIncomplete = outputs.length === 0 || outputs.some(o => !o || !isConfigComplete(o.config))
 
     // Step definitions for the builder flow
     const steps = [
@@ -672,12 +668,12 @@ function InputCard({
     setInputs: (inputs: TransientAgentTrigger[]) => void
     handleRemove: (id: string) => void
 }) {
-    const needsConfiguration = !input.config || !input.config.isComplete()
+    const needsConfiguration = !isConfigComplete(input.config)
     const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(input.config)
+    const [draftConfig, setDraftConfig] = useState<ConfigData | undefined>(input.config)
 
     const draftInput = { ...input, config: draftConfig }
-    const isDraftValid = draftConfig?.isComplete() ?? false
+    const isDraftValid = isConfigComplete(draftConfig)
 
     const handleOpenDialog = () => {
         setDraftConfig(input.config)
@@ -813,11 +809,11 @@ function SkillCard({
     handleRemove: (id: string) => void
 }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-    const needsConfiguration = !output.config || !output.config.isComplete()
-    const [draftConfig, setDraftConfig] = useState<ConfigInstance | undefined>(output.config)
+    const needsConfiguration = !isConfigComplete(output.config)
+    const [draftConfig, setDraftConfig] = useState<ConfigData | undefined>(output.config)
 
     const draftOutput = { ...output, config: draftConfig }
-    const isDraftValid = draftConfig?.isComplete() ?? false
+    const isDraftValid = isConfigComplete(draftConfig)
 
     const handleOpenDialog = () => {
         setDraftConfig(output.config)

@@ -1,10 +1,10 @@
 import { Request, Response } from "express"
+import { Repository } from "terse-types"
 
 import { githubApp } from "../../config/settings"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
-import { Repository } from "../../shared/types"
 import { GithubRepository, User } from "../../types/prisma"
 
 import { processGithubEvent } from "./githubEventProcessor"

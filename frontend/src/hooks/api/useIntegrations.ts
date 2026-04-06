@@ -1,8 +1,8 @@
 import useSWR from "swr"
+import { IntegrationType, IntegrationWithStatus } from "terse-types/Integrations"
+import { integrationsKey } from "terse-types/InvalidationKeys"
 
 import { BackendProvider } from "@/services/backend"
-import { IntegrationType, IntegrationWithStatus } from "@/shared/Integrations"
-import { integrationsKey } from "@/shared/InvalidationKeys"
 
 export function useIntegrations({ showOnlyForUI = false }: { showOnlyForUI?: boolean }) {
     const key = integrationsKey()

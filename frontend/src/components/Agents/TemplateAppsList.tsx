@@ -1,7 +1,6 @@
 import { ChevronRight } from "lucide-react"
-
-import { IntegrationType } from "@/shared/Integrations"
-import { AgentTemplate } from "@/shared/types"
+import { IntegrationType } from "terse-types/Integrations"
+import { AgentTemplate } from "terse-types/types"
 
 import { capitalize } from "../../lib/utils"
 import { IconForIntegration } from "../../pages/Agents/components/Integration"

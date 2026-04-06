@@ -1,4 +1,7 @@
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEventParamsSchema, triggerWithEventRequestSchema } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { cloudScheduler } from "../config/settings"
@@ -6,9 +9,6 @@ import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
 import { InputEvent } from "../integrations/abstract/InputEvent"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
-import { IntegrationType } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
-import { SerializedEvent } from "../shared/types"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
@@ -59,8 +59,8 @@ class SyntheticEvent extends InputEvent {
 }
 
 export async function handleManualTrigger(req: Request, res: Response) {
-    const { inputId } = req.params
-    const { context } = req.body as ManualTriggerRequest
+    const { inputId } = manualTriggerParamsSchema.parse(req.params)
+    const { context } = manualTriggerRequestSchema.parse(req.body)
     const session = req.session
     if (!session?.user) {
         res.status(401).json({ error: "Unauthorized" })
@@ -68,12 +68,6 @@ export async function handleManualTrigger(req: Request, res: Response) {
     }
 
     logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, hasContext: !!context })
-
-    if (!inputId) {
-        logger.warn("⚠️  Manual trigger missing inputId")
-        res.status(400).json({ error: "Missing inputId" })
-        return
-    }
 
     // Acknowledge immediately
     res.status(200).json({ received: true, message: "Manual trigger initiated" })
@@ -132,17 +126,13 @@ export async function handleScheduleWebhook(req: Request, res: Response) {
 }
 
 export async function handleTriggerWithEvent(req: Request, res: Response) {
-    const { automationId } = req.params
+    const { automationId } = triggerWithEventParamsSchema.parse(req.params)
     const session = req.session
     if (!session?.user) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const { event } = req.body as { event: SerializedEvent }
-
-    if (!automationId || !event?.integrationType || !event?.formattedContent) {
-        return res.status(400).json({ error: "Missing automationId or event payload" })
-    }
+    const { event } = triggerWithEventRequestSchema.parse(req.body)
 
     const prisma = db()
     const automation = await prisma.automations.findFirst({

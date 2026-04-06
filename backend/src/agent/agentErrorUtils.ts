@@ -1,4 +1,4 @@
-import type { ModelEvent } from "../shared/ModelEvents"
+import type { ModelEvent } from "terse-types/ModelEvents"
 
 /**
  * Normalizes thrown agent/runner errors and returns a stable message plus optional code

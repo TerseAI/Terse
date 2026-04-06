@@ -1,19 +1,11 @@
 import { InputConfigType, figma_integrations } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-
-import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, figma as figmaConfig, jwt as jwtConfig, nodeEnv, urls } from "../config/settings"
-import logger, { runWithUserContext } from "../logger"
-import { db } from "../prismaClient"
-import { Identifiable } from "../rag/Hydrator"
-import { FileCategory, StoredFile } from "../services/FileStorageService"
-import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { ApiRoutes } from "../shared/ApiRoutes"
-import { ConfigInstance, ConfigType, FigmaConfig as FigmaConfigClass, FigmaEventType } from "../shared/Configs"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { AdditionalStateParams, FigmaIntegration, FigmaIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
+import { ApiRoutes } from "terse-types"
+import { ConfigData, ConfigType, FigmaConfigSchema, FigmaEventType } from "terse-types/Configs"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { AdditionalStateParams, FigmaIntegration, FigmaIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import {
     FigmaApiComment,
     FigmaCommentEventData,
@@ -24,7 +16,15 @@ import {
     FigmaWebhookUser,
     OAuthInstallationDetails,
     User as SessionUser
-} from "../shared/types"
+} from "terse-types/types"
+
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
+import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, figma as figmaConfig, jwt as jwtConfig, nodeEnv, urls } from "../config/settings"
+import logger, { runWithUserContext } from "../logger"
+import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
+import { FileCategory, StoredFile } from "../services/FileStorageService"
+import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { createOAuthStateToken } from "../utility/oauth"
@@ -747,11 +747,11 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.FIGMA) {
             return []
         }
-        const figmaConfig = triggerConfig as FigmaConfigClass
+        const figmaConfig = FigmaConfigSchema.parse(triggerConfig)
 
         const limit = Math.min(options?.limit ?? 5, 10)
         const fileKey = figmaConfig.fileKey

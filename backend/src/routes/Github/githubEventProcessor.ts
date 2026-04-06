@@ -1,10 +1,10 @@
 import { Request, Response } from "express"
+import { GetGithubRepositoriesForIntegrationResponse, User } from "terse-types"
 
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
 import { GithubEvent } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { GetGithubRepositoriesForIntegrationResponse, User } from "../../shared/types"
 import { GithubAppUnifiedEventRequest } from "../GithubTypes"
 import { resolveUserForGithubInstallation } from "../github"
 

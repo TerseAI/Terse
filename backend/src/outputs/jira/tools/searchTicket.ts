@@ -1,32 +1,12 @@
-import { RunContext, tool } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getAtlassianIntegrationContextForOrganization } from "../../../integrations/AtlassianClient"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, formatError } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
-    jql: z.string().nullable().optional().describe("JQL (Jira Query Language) query to search for issues. If not provided, will search all issues."),
-    text: z.string().nullable().optional().describe('Text to search for in issue titles and descriptions. If provided, will be converted to JQL: text ~ "search term"'),
-    projectKey: z.string().nullable().optional().describe('Filter by Jira project key (e.g., "PROJ", "TEAM")'),
-    assigneeEmail: z.string().nullable().optional().describe("Filter by assignee email address"),
-    status: z.string().nullable().optional().describe('Filter by status name (e.g., "In Progress", "Done", "To Do")'),
-    limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 50 if not provided."),
-    nextPageToken: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.")
-})
-
-export const jiraSearchTicketTool: SessionToolOptions<typeof parameters, typeof ToolName.JIRA_SEARCH_TICKET> = {
-    name: ToolName.JIRA_SEARCH_TICKET,
+export const jiraSearchTicketTool = defineSessionTool({
+    name: "jira_search_ticket",
     description: `Search for Jira issues/tickets using JQL (Jira Query Language) or text search. Returns issues that match the search criteria.
 
 Use this tool to find existing Jira issues before creating new ones or to look up ticket information.
@@ -40,8 +20,7 @@ JQL EXAMPLES:
 - By assignee: "assignee = user@example.com"
 - By status: "status = 'In Progress'"
 - Combined: "project = PROJ AND status = 'In Progress' AND text ~ 'bug'"`,
-    parameters: parameters,
-    execute: async ({ integrationId, jql, text, projectKey, assigneeEmail, status, limit = 50, nextPageToken }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, jql, text, projectKey, assigneeEmail, status, limit = 50, nextPageToken }, runContext) => {
         logger.debug("🛠️ Executing jira_search_ticket tool", {
             integrationId,
             jql,
@@ -236,4 +215,4 @@ JQL EXAMPLES:
             throw new Error(errorMessage)
         }
     }
-}
+})

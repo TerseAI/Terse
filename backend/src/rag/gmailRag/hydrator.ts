@@ -1,4 +1,5 @@
 import { google } from "googleapis"
+import { IntegrationType } from "terse-types"
 
 import { GmailEvent, fetchAndParseEmail, getOAuth2Client } from "../../integrations/GmailIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
@@ -6,7 +7,6 @@ import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationReg
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
-import { IntegrationType } from "../../shared/Integrations"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 

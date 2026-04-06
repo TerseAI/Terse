@@ -1,8 +1,8 @@
 import { Request, Response } from "express"
 import crypto from "node:crypto"
+import { User } from "terse-types/types"
 
 import { onSessionEvent } from "../agent/SessionEventBus"
-import { User } from "../shared/types"
 
 export function handleSessionEvents(req: Request, res: Response) {
     const user = req.session?.user as User | undefined

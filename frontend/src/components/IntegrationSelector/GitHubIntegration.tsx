@@ -1,11 +1,11 @@
 import { AlertTriangleIcon, Info, Plus } from "lucide-react"
+import { GitHubConfig } from "terse-types/Configs"
+import { ConfigType } from "terse-types/Configs"
+import { GithubIntegration as GithubIntegrationType, IntegrationType } from "terse-types/Integrations"
 
 import { useGithubIntegrations } from "@/hooks/api/useGithubIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { GitHubConfig } from "@/shared/Configs"
-import { ConfigType } from "@/shared/Configs"
-import { GithubIntegration as GithubIntegrationType, IntegrationType } from "@/shared/Integrations"
 
 import { GithubResourceSelector } from "../GithubResourceSelector"
 import DropdownSelect from "../ui/DropdownSelect"

@@ -1,6 +1,8 @@
+import { formatConfigForAgent } from "terse-types"
+
 import logger from "../../logger"
 import { AgentOutput, AgentOutputWithConfigs, AgentTrigger, AgentTriggerWithConfigs, AgentWithRelations } from "../../types/prisma"
-import { convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../../utility/typeConverters"
+import { convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../../utility/typeConverters"
 
 type RunTriggerContextMessageInput = {
     userContext?: string
@@ -75,20 +77,21 @@ export function formatAgentForSystemPrompt(agent: AgentWithRelations): string {
 
 export function formatAgentTriggerForAgent(input: AgentTrigger | AgentTriggerWithConfigs): string {
     try {
-        const configInstance = convertPrismaConfigToConfigInstance(input as AgentTriggerWithConfigs)
-        return configInstance.formatForAgent()
+        const configData = convertPrismaConfigToConfigData(input as AgentTriggerWithConfigs)
+
+        return formatConfigForAgent(configData)
     } catch (error) {
-        logger.warn("Failed to convert channel input to ConfigInstance", { error, configType: input.config_type, inputId: input.id })
+        logger.warn("Failed to convert channel input to ConfigData", { error, configType: input.config_type, inputId: input.id })
         return `Type: ${input.config_type}`
     }
 }
 
 export function formatAgentOutputForAgent(output: AgentOutput | AgentOutputWithConfigs): string {
     try {
-        const configInstance = convertPrismaOutputConfigToConfigInstance(output as AgentOutputWithConfigs)
-        return configInstance.formatForAgent()
+        const configData = convertPrismaOutputConfigToConfigData(output as AgentOutputWithConfigs)
+        return formatConfigForAgent(configData)
     } catch (error) {
-        logger.warn("Failed to convert channel output to ConfigInstance", { error, configType: output.config_type, outputId: output.id })
+        logger.warn("Failed to convert channel output to ConfigData", { error, configType: output.config_type, outputId: output.id })
         return `Type: ${output.config_type}`
     }
 }

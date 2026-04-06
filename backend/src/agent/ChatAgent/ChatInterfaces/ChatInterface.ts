@@ -1,11 +1,11 @@
 import { RunStreamEvent } from "@openai/agents"
+import { ConfigType } from "terse-types"
+import { IntegrationType } from "terse-types"
+import type { MultipleChoiceQuestion } from "terse-types"
 
 import { INTEGRATION_COMPLETED_TASK_NAME, type IntegrationCompletedTask } from "../../../integrations/IntegrationCompletedTask"
 import { INTEGRATION_FORM_COMPLETED_TASK_NAME, type IntegrationFormCompletedTask } from "../../../integrations/IntegrationFormCompletedTask"
 import { integrationFormTaskQueue, integrationTaskQueue } from "../../../integrations/IntegrationTaskQueues"
-import { ConfigType } from "../../../shared/Configs"
-import { IntegrationType } from "../../../shared/Integrations"
-import type { MultipleChoiceQuestion } from "../../../shared/Survey"
 import { SURVEY_ANSWER_TASK_NAME, type SurveyAnswerTask } from "../SurveyAnswerTask"
 import { surveyAnswerTaskQueue } from "../SurveyAnswerTaskQueue"
 

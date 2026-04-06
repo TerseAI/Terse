@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+
 import type { LanguageProvider } from "./LanguageProvider.js"
 import { pythonProvider } from "./python/PythonProvider.js"
 import { typeScriptProvider } from "./typescript/TypeScriptProvider.js"
@@ -10,14 +11,10 @@ const LANGUAGE_ALIASES: Record<string, LanguageProvider["language"]> = {
     ts: "typescript",
     typescript: "typescript",
     py: "python",
-    python: "python",
+    python: "python"
 }
 
-export function resolveProvider(opts?: {
-    command?: string
-    language?: string
-    cwd?: string
-}): LanguageProvider {
+export function resolveProvider(opts?: { command?: string; language?: string; cwd?: string }): LanguageProvider {
     if (opts?.command === "init") {
         return resolveProviderByLanguage(opts.language ?? "ts")
     }
@@ -30,17 +27,13 @@ export function resolveProvider(opts?: {
     }
 
     if (matches.length > 1) {
-        console.error(
-            `Error: Multiple Terse project types detected: ${matches.map(provider => provider.displayName).join(", ")}.`
-        )
+        console.error(`Error: Multiple Terse project types detected: ${matches.map(provider => provider.displayName).join(", ")}.`)
         process.exit(1)
     }
 
     console.error("Error: Could not detect Terse project language in the current directory.")
     for (const provider of PROVIDERS) {
-        console.error(
-            `  ${provider.displayName}: ${provider.projectMarkers.requiredFiles.join(", ")}`
-        )
+        console.error(`  ${provider.displayName}: ${provider.projectMarkers.requiredFiles.join(", ")}`)
     }
     process.exit(1)
 }
@@ -62,7 +55,5 @@ export function resolveProviderByLanguage(language: string): LanguageProvider {
 }
 
 function matchesProjectMarkers(provider: LanguageProvider, cwd: string): boolean {
-    return provider.projectMarkers.requiredFiles.every(relativePath =>
-        fs.existsSync(path.join(cwd, relativePath))
-    )
+    return provider.projectMarkers.requiredFiles.every(relativePath => fs.existsSync(path.join(cwd, relativePath)))
 }

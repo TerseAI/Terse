@@ -1,7 +1,7 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { PosthogProject, PosthogProjectsResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import type { PosthogProject, PosthogProjectsResponse } from "@/shared/types"
 
 type UsePosthogProjectsReturn = {
     projects: PosthogProject[]

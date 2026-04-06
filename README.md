@@ -66,8 +66,10 @@ This will:
 For CLI work, use the TypeScript package directly:
 
 - `packages/terse-cli` for the CLI implementation
-- `npm run build:packages` from the repo root to build `terse-sdk` and `terse-cli`
-- `npm run link:cli` if you want a globally linked `terse` binary during development
+- `packages/terse-sdk` for the runtime SDK used by the CLI
+- `pnpm install` from the repo root to install workspace dependencies
+- `pnpm run install-global` from the repo root to build and globally link `terse-sdk` and `terse-cli`
+- `pnpm run dev` from the repo root to start the full workspace watch mode for `terse-types`, `terse-sdk`, `terse-cli`, `frontend`, and `backend`
 
 ### Astral Tooling
 
@@ -78,7 +80,7 @@ Recommended wrapper scripts:
 ```bash
 npm run python:setup
 npm run python:check
-npm run python:test
+pnpm run python:test
 npm run python:dist:check
 npm run python:build
 ```
@@ -136,21 +138,6 @@ uv tree
 uv tree --package terse-sdk
 ```
 
-Shared-type sync only:
-
-```bash
-npm run sync:shared
-```
-
-### Python SDK Models
-
-The Python SDK request/response models are maintained by hand under `packages/terse-python-sdk/src/terse_sdk/types/`.
-
-If you only need to sync the repo-level shared TypeScript definitions for the JavaScript/TypeScript packages and the Python SDK models, run:
-
-```bash
-npm run sync:shared
-```
 
 ### Recommended Python Dev Loop
 
@@ -206,6 +193,36 @@ npm run python:publish
 
 The `python:publish` script first runs `npm run python:dist:check` and then uploads `dist/terse_sdk-*` with `twine`.
 
+### Publishing the npm Packages
+
+The repo includes a publish script that handles version bumping, building, and publishing for `terse-types`, `terse-sdk`, and `terse-cli`.
+
+Preview what will be published (no changes made):
+
+```bash
+pnpm run publish:npm -- --dry-run
+```
+
+Publish with npm 2FA:
+
+```bash
+pnpm run publish:npm -- --otp <code>
+```
+
+Publish without 2FA (if using an automation token):
+
+```bash
+pnpm run publish:npm
+```
+
+The script will:
+
+1. Verify you are logged into npm
+2. Prompt you to select a version bump for each package (`skip` / `patch` / `minor` / `major`)
+3. Build all packages in dependency order (`terse-types` -> `terse-sdk` -> `terse-cli`)
+4. Publish only the bumped packages
+5. Commit the version changes to git
+
 ## Code Formatting
 
 We use **Prettier** for consistent code formatting across the team.
@@ -244,8 +261,9 @@ That's it! The repo includes:
   ```
 ## Local Dev
 
-you will need to make an ngrok account and get a dedicated dev url + access token. Then set the following env variables in backend/.env
+If you want webhook-compatible local dev, make an ngrok account and set these env variables in `backend/.env`:
 
+DEV_TUNNEL=1
 NGROK_AUTH_TOKEN=38Zg3QagX6X9AnYc6WKqwedwefdGCY21_2nVjhcyeynHFNmnr7ijBw
 NGROK_DOMAIN=abbie-smoking-yetta.ngrok-free.dev
 
@@ -255,7 +273,7 @@ Then, install ngrok with brew
 brew install ngrok
 ```
 
-After that, simply run pnpm run dev:tunnel and the rest will be taken care of.
+After that, run `pnpm run dev` from the repo root. The backend dev script will detect the tunnel config, start ngrok automatically, update `BACKEND_URL`, and then start the backend watcher.
 
 Make sure to set your test apps (Slack github etc...) to the ngrok url.
 
@@ -286,6 +304,78 @@ export TERSE_BACKEND_URL="http://localhost:3001"
 ```
 
 then run the terse commands right after
+
+## Testing with Local SDK/CLI
+
+When you run `terse init` to scaffold a test project, it installs `terse-sdk` from the npm registry. To test against your local changes instead, you need to link the local packages into the test environment.
+
+### 1. Start the watchers
+
+From the repo root, run the TypeScript watchers so changes to source files rebuild `dist/` immediately:
+
+```bash
+pnpm run dev
+```
+
+### 2. Scaffold a test environment
+
+```bash
+export TERSE_BACKEND_URL="http://localhost:3001"
+terse init my-test-env
+cd my-test-env
+```
+
+### 3. Link local packages
+
+The test env needs both `terse-sdk` and its transitive dependency `terse-types` linked locally. From the test env directory, run:
+
+```bash
+npm install <path-to-repo>/packages/terse-sdk <path-to-repo>/terse-types
+```
+
+For example:
+
+```bash
+npm install ../../projects/Terse/packages/terse-sdk ../../projects/Terse/terse-types
+```
+
+This uses the `file:` protocol to symlink both packages into `node_modules/`. Since the watchers are running, any source changes in `terse-sdk`, `terse-types`, or `terse-cli` will be reflected immediately.
+
+> **Note:** Use `npm install` (not `pnpm add`) from the test env. If you previously used pnpm to link, the `package.json` will contain `link:` protocol entries that npm cannot resolve. In that case, re-run the `npm install` command above to fix it.
+
+#### Python
+
+For Python test projects, install the local SDK in editable mode using `uv` from the test project directory:
+
+```bash
+uv pip install -e <path-to-repo>/packages/terse-python-sdk
+```
+
+For example:
+
+```bash
+uv pip install -e ../../projects/Terse/packages/terse-python-sdk
+```
+
+This installs the local SDK in editable mode, so any changes you make to the SDK source are reflected immediately without reinstalling.
+
+> **Note:** Running `uv sync` will revert to the PyPI version of `terse-sdk`. Re-run the `uv pip install -e` command above after any `uv sync`.
+
+### 4. Point CLI to local backend
+
+Make sure each shell session that runs terse commands has the backend URL set:
+
+```bash
+export TERSE_BACKEND_URL="http://localhost:3001"
+```
+
+### 5. Authenticate against local WorkOS
+
+If the CLI fails with a JWKS/key error during `terse login`, the CLI's WorkOS client ID may not match your backend. Set it to match `WORKOS_CLIENT_ID` in `backend/.env`:
+
+```bash
+export TERSE_WORKOS_CLIENT_ID="<client_id from backend/.env>"
+```
 
 ## Documentation
 

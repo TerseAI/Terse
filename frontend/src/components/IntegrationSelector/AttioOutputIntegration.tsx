@@ -1,13 +1,13 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { AttioOutputConfig, ConfigType } from "terse-types"
+import { AttioIntegration as AttioIntegrationType, IntegrationType } from "terse-types/Integrations"
 
 import { useAttioIntegrations } from "@/hooks/api/useAttioIntegrations"
 import { useAttioObjects } from "@/hooks/api/useAttioObjects"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { AttioIntegration as AttioIntegrationType, IntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { AttioOutputConfig, ConfigType } from "../../shared/Configs"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
 

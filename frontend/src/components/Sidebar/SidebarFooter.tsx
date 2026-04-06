@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom"
 
 import { ChevronUp, User2 } from "lucide-react"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { useAuth } from "@/services/auth"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
 import { User } from "@/types/User"
 
 import { useTheme } from "../theme-provider"

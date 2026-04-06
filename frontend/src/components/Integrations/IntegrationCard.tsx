@@ -1,4 +1,4 @@
-import { IntegrationType } from "@/shared/Integrations"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"

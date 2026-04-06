@@ -1,20 +1,18 @@
+import { select } from "@inquirer/prompts"
 import chalk from "chalk"
 import ora from "ora"
-import { select } from "@inquirer/prompts"
-import { ConfigInstance, IntegrationType } from "terse-sdk"
+import { IntegrationType, TypedTrigger } from "terse-sdk"
+import { ConfigData } from "terse-types"
+import { ApiRoutes } from "terse-types"
+import type { SerializedEvent } from "terse-types"
+
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
-import { ApiRoutes } from "./shared/ApiRoutes.js"
-import type { SerializedEvent } from "./shared/types.js"
 import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
-export async function test(
-    jobName?: string,
-    verbose?: boolean,
-    provider: LanguageProvider = resolveProvider()
-): Promise<void> {
+export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider()): Promise<void> {
     assertProjectRoot(provider)
 
     const { job } = await loadJob(provider, jobName)
@@ -25,8 +23,8 @@ export async function test(
     })
 
     // Split triggers into time-based and integration-based
-    const timeTriggers = job.triggers.filter((t: ConfigInstance) => t.integrationType === IntegrationType.CRON_JOB)
-    const integrationTriggers = job.triggers.filter((t: ConfigInstance) => t.integrationType !== IntegrationType.CRON_JOB)
+    const timeTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.CRON_JOB)
+    const integrationTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB)
 
     let events: SerializedEvent[] = []
 
@@ -34,13 +32,18 @@ export async function test(
     if (integrationTriggers.length > 0) {
         const spinner = ora("Fetching sample events").start()
         try {
-            const result = await fetchWithAuth<{ events: SerializedEvent[] }>(ApiRoutes.SDK.SAMPLE_EVENTS, apiKey, {
-                triggers: integrationTriggers.map((trigger: ConfigInstance) => ({
-                    integrationId: trigger.integrationId,
-                    integrationType: trigger.integrationType,
-                    config: trigger
-                }))
-            }, "POST")
+            const result = await fetchWithAuth<{ events: SerializedEvent[] }>(
+                ApiRoutes.SDK.SAMPLE_EVENTS,
+                apiKey,
+                {
+                    triggers: integrationTriggers.map(trigger => ({
+                        integrationId: trigger.integrationId,
+                        integrationType: trigger.integrationType,
+                        config: trigger
+                    }))
+                },
+                "POST"
+            )
             events = result.events
             spinner.succeed(`Sample events fetched. Found ${events.length} events.`)
         } catch (err) {
@@ -66,8 +69,8 @@ export async function test(
         message: "Select sample event:",
         choices: events.map((event, index) => ({
             name: `${event.integrationType} - ${event.debugLog}`,
-            value: index,
-        })),
+            value: index
+        }))
     })
 
     await provider.executeJob(job, events[choice], { verbose: !!verbose })

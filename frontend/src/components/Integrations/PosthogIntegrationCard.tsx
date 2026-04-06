@@ -1,11 +1,11 @@
 import { useState } from "react"
 
 import { Eye, EyeOff, Palette } from "lucide-react"
+import { INTEGRATION_METADATA, IntegrationType, PosthogIntegration } from "terse-types/Integrations"
 
 import { usePosthogIntegrations } from "@/hooks/api/usePosthogIntegrations"
 import { cn } from "@/lib/utils"
 import { BackendProvider } from "@/services/backend"
-import { INTEGRATION_METADATA, IntegrationType, PosthogIntegration } from "@/shared/Integrations"
 
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter } from "../ui/card"

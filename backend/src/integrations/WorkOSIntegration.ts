@@ -1,4 +1,7 @@
 import { InputConfigType } from "@prisma/client"
+import { ConfigData, ConfigType, WorkOSEventType, WorkOSInputConfigSchema } from "terse-types/Configs"
+import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
@@ -7,9 +10,6 @@ import { WorkOSUserResponse, getWorkOSUser } from "../outputs/workos/workosApiCl
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, WorkOSEventType, WorkOSInputConfig } from "../shared/Configs"
-import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"
@@ -235,7 +235,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         integrationId: string,
         organizationId: string,
         _userId: string,
-        triggerConfig: ConfigInstance,
+        triggerConfig: ConfigData,
         options?: {
             limit?: number
         }
@@ -243,7 +243,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         if (triggerConfig.configType !== ConfigType.WORKOS_INPUT) {
             return []
         }
-        const workosConfig = triggerConfig as WorkOSInputConfig
+        const workosConfig = WorkOSInputConfigSchema.parse(triggerConfig)
 
         const limit = Math.min(options?.limit ?? 5, 10)
         const workosIntegration = await db().workos_integrations.findUnique({
@@ -264,10 +264,10 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
 
 // MARK: - WorkOS Helpers
 
-function parseWorkOSEnvironment(apiKey: string): "live" | "test" | null {
+function parseWorkOSEnvironment(apiKey: string): "live" | "test" {
     if (apiKey.startsWith("sk_live_")) return "live"
     if (apiKey.startsWith("sk_test_")) return "test"
-    return null
+    return "live"
 }
 
 // MARK: - WorkOS Events API

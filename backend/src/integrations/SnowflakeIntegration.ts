@@ -1,8 +1,9 @@
+import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "terse-types/Integrations"
+
 import logger from "../logger"
 import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
 import { db } from "../prismaClient"
 import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/SecretService"
-import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "../shared/Integrations"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 
@@ -73,8 +74,8 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
             accountIdentifier: i.account_identifier,
             username: i.username,
             warehouse: i.warehouse,
-            databaseName: i.database_name,
-            schemaName: i.schema_name
+            databaseName: i.database_name || undefined,
+            schemaName: i.schema_name || undefined
         }))
     }
 
@@ -98,8 +99,8 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
             accountIdentifier: i.account_identifier,
             username: i.username,
             warehouse: i.warehouse,
-            databaseName: i.database_name,
-            schemaName: i.schema_name
+            databaseName: i.database_name || undefined,
+            schemaName: i.schema_name || undefined
         }))
     }
 

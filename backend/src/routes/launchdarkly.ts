@@ -1,4 +1,5 @@
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { LaunchDarklyIntegrationManager } from "../integrations/LaunchDarklyIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
@@ -6,7 +7,6 @@ import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helper
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, getSecret } from "../services/SecretService"
-import { IntegrationType } from "../shared/Integrations"
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

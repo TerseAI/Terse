@@ -1,5 +1,6 @@
+import { Agent } from "terse-types/types"
+
 import { SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubItem } from "@/components/ui/sidebar"
-import { Agent } from "@/shared/types"
 
 import { SdkJobListItem } from "./SdkJobListItem"
 

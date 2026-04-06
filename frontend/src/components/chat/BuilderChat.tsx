@@ -1,11 +1,11 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 
 import { Bot, MessageSquare, Plug, Settings } from "lucide-react"
+import { ModelRequest, SendModelRequest } from "terse-types/ModelEvents"
 import { v4 as uuidv4 } from "uuid"
 
 import { convertRunHistoryEventsToTurns } from "@/components/RunHistory/RunHistoryChatDrawer/runHistoryEventsToTurns"
 import { useBuilderChatHistory } from "@/hooks/api/useBuilderChatHistory"
-import { ModelRequest, SendModelRequest } from "@/shared/ModelEvents"
 import { cancelBuilderChatSession, sendBuilderMessage, sendBuilderMultipleChoiceAnswer, subscribeToBuilderChat } from "@/socket"
 
 import { Chat, ChatHandle } from "./Chat"

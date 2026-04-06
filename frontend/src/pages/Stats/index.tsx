@@ -4,6 +4,9 @@ import { useNavigate } from "react-router-dom"
 import { BarChart3, Clock } from "lucide-react"
 import { DateTime } from "luxon"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts"
+import { buildRoute } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import type { AgentActivityItem, CountByString, StatsInterval } from "terse-types/types"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -11,8 +14,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Skeleton } from "@/components/ui/skeleton"
 import { useStats } from "@/hooks/api/useStats"
 import { cn } from "@/lib/utils"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import type { AgentActivityItem, CountByString, StatsInterval } from "@/shared/types"
 import { formatNumber, getTrend } from "@/utility/timeUtils"
 
 // ---------------------------------------------------------------------------
@@ -201,7 +202,7 @@ function AgentLeaderboard({ agents }: { agents: AgentActivityItem[] }) {
                             <div key={agent.agentId} className="group">
                                 <div className="flex items-center justify-between mb-1">
                                     <button
-                                        onClick={() => navigate(FrontendRoutes.AGENTS.DETAIL(agent.agentId))}
+                                        onClick={() => navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: agent.agentId }))}
                                         className="text-sm font-medium text-foreground hover:underline underline-offset-4 transition-colors truncate max-w-[200px]"
                                     >
                                         {agent.agentName}

@@ -1,5 +1,6 @@
+import { AgentTemplate } from "terse-types/types"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AgentTemplate } from "@/shared/types"
 
 import { TemplateAppsList } from "./TemplateAppsList"
 

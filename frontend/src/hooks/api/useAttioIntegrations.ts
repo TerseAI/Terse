@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { AttioIntegration } from "terse-types/Integrations"
+import { attioIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { AttioIntegration } from "@/shared/Integrations"
-import { attioIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseAttioIntegrationsReturn = {
     integrations: AttioIntegration[]

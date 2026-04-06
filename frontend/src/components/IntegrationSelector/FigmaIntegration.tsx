@@ -1,12 +1,12 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { FigmaConfig, isConfigComplete } from "terse-types"
+import { ConfigType } from "terse-types"
+import { FigmaIntegration as FigmaIntegrationType, IntegrationType } from "terse-types/Integrations"
 
 import { useFigmaIntegrations } from "@/hooks/api/useFigmaIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { FigmaIntegration as FigmaIntegrationType, IntegrationType } from "@/shared/Integrations"
 
-import { FigmaConfig } from "../../shared/Configs"
-import { ConfigType } from "../../shared/Configs"
 import { FigmaFileSelector } from "../FigmaFileSelector"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"
@@ -72,7 +72,7 @@ export function FigmaIntegration({ input, variant, setConfig }: InputConfigSelec
 
     // Card variant: compact view
     if (variant === "card") {
-        const isComplete = currentConfig?.isComplete()
+        const isComplete = isConfigComplete(currentConfig)
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -100,7 +100,7 @@ export function FigmaIntegration({ input, variant, setConfig }: InputConfigSelec
             {/* Figma-specific file selector */}
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border">
-                    {!currentConfig?.isComplete() && <p className="text-sm text-muted-foreground mb-3">Select a Figma file to continue</p>}
+                    {!isConfigComplete(currentConfig) && <p className="text-sm text-muted-foreground mb-3">Select a Figma file to continue</p>}
                     <FigmaFileSelector
                         selectedFileKey={currentConfig?.fileKey}
                         selectedFileName={currentConfig?.fileName}

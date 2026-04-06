@@ -1,5 +1,5 @@
-import { SerializedEvent } from "./shared/types.js"
-import { deserializeInputEvent, type InputEvent } from "terse-sdk"
+import { type InputEvent, deserializeInputEvent } from "terse-sdk"
+import { SerializedEvent } from "terse-types"
 
 export function convertSerializedEventToInputEvent(serializedEvent: SerializedEvent): InputEvent {
     return deserializeInputEvent(serializedEvent)

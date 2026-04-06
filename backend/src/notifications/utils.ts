@@ -1,4 +1,4 @@
-import { getReadableFallbackName } from "../shared/ToolDisplayUtils"
+import { getReadableFallbackName } from "terse-types/ToolDisplayUtils"
 
 export function formatApprovalNotificationFor(action: string | undefined): string {
     if (!action || action.trim() === "") {

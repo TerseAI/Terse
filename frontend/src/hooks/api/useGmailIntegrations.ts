@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { GmailIntegration } from "terse-types/Integrations"
+import { gmailIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { GmailIntegration } from "@/shared/Integrations"
-import { gmailIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseGmailIntegrationsReturn = {
     integrations: GmailIntegration[]

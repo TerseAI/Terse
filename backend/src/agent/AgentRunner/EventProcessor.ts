@@ -1,4 +1,7 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
+import { ConfigData } from "terse-types"
+import { RunHistoryAction } from "terse-types"
+import { SerializedEvent, User } from "terse-types"
 
 import { InputEvent } from "../../integrations/abstract/InputEvent"
 import logger from "../../logger"
@@ -8,9 +11,6 @@ import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRunFailedAndInvalidate } from "../../realtimeSocket"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
-import { ConfigInstance } from "../../shared/Configs"
-import { RunHistoryAction } from "../../shared/RunHistoryTypes"
-import { SerializedEvent, User } from "../../shared/types"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -254,7 +254,7 @@ export class EventProcessor {
         }
 
         // Create outputs from agent configuration
-        let outputs: Output<ConfigInstance>[]
+        let outputs: Output<ConfigData>[]
         try {
             outputs = OutputFactory.createOutputsFromAgent(agent)
         } catch (error) {

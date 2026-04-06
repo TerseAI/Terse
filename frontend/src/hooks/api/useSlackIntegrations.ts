@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { SlackIntegration } from "terse-types/Integrations"
+import { slackIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { SlackIntegration } from "@/shared/Integrations"
-import { slackIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseSlackIntegrationsReturn = {
     integrations: SlackIntegration[]

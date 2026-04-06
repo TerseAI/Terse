@@ -1,0 +1,179 @@
+import { mkdir, writeFile } from "node:fs/promises"
+import { dirname } from "node:path"
+import { fileURLToPath } from "node:url"
+import * as z from "zod"
+
+type ExportModule = Record<string, unknown>
+
+/**
+ * Name overrides for exports where the default derivation doesn't produce the desired name.
+ * Default derivation: strip trailing "Schema", capitalize first letter, then apply
+ * *Config -> *ConfigInstance and *Integration -> *IntegrationInstance patterns.
+ */
+const SCHEMA_NAME_OVERRIDES: Record<string, string> = {
+    // Base types that need "Base" prefix
+    ConfigInstanceSchema: "BaseConfigInstance",
+    IntegrationInstanceSchema: "BaseIntegrationInstance",
+    // Name differs from export key
+    slackUserResponseSchema: "SlackUserSummary",
+    runHistoryActionBaseSchema: "RunHistoryAction",
+    // GitHub capitalization fix
+    GithubIntegrationSchema: "GitHubIntegrationInstance"
+}
+
+function isZodSchema(value: unknown): value is z.ZodTypeAny {
+    return !!value && typeof value === "object" && "_zod" in value
+}
+
+function isToolDefinition(value: unknown): value is { name: string; inputSchema: z.ZodTypeAny; outputSchema: z.ZodTypeAny } {
+    if (!value || typeof value === "function" || typeof value !== "object") return false
+    const obj = value as Record<string, unknown>
+    return typeof obj.name === "string" && isZodSchema(obj.inputSchema) && isZodSchema(obj.outputSchema)
+}
+
+function deriveSchemaName(exportKey: string): string {
+    if (SCHEMA_NAME_OVERRIDES[exportKey]) {
+        return SCHEMA_NAME_OVERRIDES[exportKey]
+    }
+
+    let name = exportKey.replace(/Schema$/, "")
+    name = name.charAt(0).toUpperCase() + name.slice(1)
+
+    // Pattern: *Config -> *ConfigInstance (e.g., GmailConfig -> GmailConfigInstance)
+    if (/[a-z]Config$/.test(name)) {
+        name += "Instance"
+    }
+
+    // Pattern: *Integration -> *IntegrationInstance (but not IntegrationWithStatus)
+    if (/[a-z]Integration$/.test(name) && !name.includes("With")) {
+        name += "Instance"
+    }
+
+    return name
+}
+
+function capitalize(value: string): string {
+    return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function rewriteRecursiveRefs(schemaName: string, value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(item => rewriteRecursiveRefs(schemaName, item))
+    }
+    if (!value || typeof value !== "object") {
+        return value
+    }
+    return Object.fromEntries(
+        Object.entries(value).map(([key, v]) => {
+            if (key === "$ref" && v === "#") {
+                return [key, `#/$defs/${schemaName}`]
+            }
+            return [key, rewriteRecursiveRefs(schemaName, v)]
+        })
+    )
+}
+
+async function main() {
+    const moduleExports = (await import(new URL("../dist/index.js", import.meta.url).href)) as ExportModule
+
+    // Phase 1: Discover all schemas and build identity registry
+    const schemaRegistry = new Map<z.ZodTypeAny, string>()
+    const schemasToExport = new Map<string, z.ZodTypeAny>()
+    let toolCount = 0
+    let standaloneCount = 0
+
+    for (const [key, value] of Object.entries(moduleExports)) {
+        if (isToolDefinition(value)) {
+            const baseName = capitalize(key.replace(/Tool$/, ""))
+            const inputName = `${baseName}ToolInput`
+            const outputName = `${baseName}ToolOutput`
+            schemasToExport.set(inputName, value.inputSchema)
+            schemasToExport.set(outputName, value.outputSchema)
+            schemaRegistry.set(value.inputSchema, inputName)
+            schemaRegistry.set(value.outputSchema, outputName)
+            toolCount++
+        } else if (isZodSchema(value)) {
+            const name = deriveSchemaName(key)
+            schemasToExport.set(name, value)
+            schemaRegistry.set(value, name)
+            standaloneCount++
+        }
+    }
+
+    // Phase 2: Convert to JSON Schema with $ref resolution for named sub-schemas
+    const defs: Record<string, unknown> = {}
+    const converting = new Set<string>()
+
+    function convertSchema(name: string, schema: z.ZodTypeAny): unknown {
+        if (converting.has(name)) {
+            return { $ref: `#/$defs/${name}` }
+        }
+        converting.add(name)
+
+        const jsonSchema = z.toJSONSchema(schema, {
+            target: "draft-2020-12",
+            unrepresentable: "any",
+            cycles: "ref",
+            override: ({ zodSchema, jsonSchema: js }) => {
+                // Handle date types -> ISO string
+                const defType = (zodSchema as { _zod?: { def?: { type?: string } } })._zod?.def?.type
+                if (defType === "date" && js && typeof js === "object") {
+                    Object.assign(js, { type: "string", format: "date-time" })
+                    return
+                }
+
+                // Emit $ref for known sub-schemas instead of inlining
+                const registeredName = schemaRegistry.get(zodSchema)
+                if (registeredName && registeredName !== name && js && typeof js === "object") {
+                    if (!defs[registeredName]) {
+                        defs[registeredName] = convertSchema(registeredName, zodSchema)
+                    }
+                    // Mutate jsonSchema in-place (Zod ignores return values from override)
+                    for (const key of Object.keys(js)) {
+                        delete (js as Record<string, unknown>)[key]
+                    }
+                    ;(js as Record<string, unknown>).$ref = `#/$defs/${registeredName}`
+                }
+            }
+        })
+
+        converting.delete(name)
+
+        // Strip $schema from individual entries
+        if (jsonSchema && typeof jsonSchema === "object" && "$schema" in jsonSchema) {
+            delete (jsonSchema as { $schema?: string }).$schema
+        }
+
+        return rewriteRecursiveRefs(name, jsonSchema)
+    }
+
+    for (const [name, schema] of schemasToExport) {
+        if (!defs[name]) {
+            defs[name] = convertSchema(name, schema)
+        }
+    }
+
+    // Phase 3: Write output
+    const outputPath = fileURLToPath(new URL("../dist/json-schema/terse-types.schema.json", import.meta.url))
+    await mkdir(dirname(outputPath), { recursive: true })
+    await writeFile(
+        outputPath,
+        `${JSON.stringify(
+            {
+                $schema: "https://json-schema.org/draft/2020-12/schema",
+                $defs: defs
+            },
+            null,
+            2
+        )}\n`
+    )
+
+    console.log(`Wrote ${Object.keys(defs).length} schemas to ${outputPath}`)
+    console.log(`  tools=${toolCount} (${toolCount * 2} input+output schemas), standalone=${standaloneCount}`)
+}
+
+void main().catch(error => {
+    console.error("[export-json-schema] Failed to export JSON Schema.")
+    console.error(error)
+    process.exitCode = 1
+})

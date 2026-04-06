@@ -1,7 +1,8 @@
+import { IntegrationType } from "terse-types"
+import { RunHistoryTrigger } from "terse-types"
+
 import { Identifiable } from "../../rag/Hydrator"
 import { StoredFile } from "../../services/FileStorageService"
-import { IntegrationType } from "../../shared/Integrations"
-import { RunHistoryTrigger } from "../../shared/RunHistoryTypes"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 export abstract class InputEvent {

@@ -1,10 +1,10 @@
 import { Check, MessageSquare } from "lucide-react"
+import { RunHistoryRecord } from "terse-types"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { formatTimestamp } from "@/utility/timeUtils"
 
-import { RunHistoryRecord } from "../../../shared/RunHistoryTypes"
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
 
 import RunHistoryItemHeader from "./RunHistoryItemHeader"

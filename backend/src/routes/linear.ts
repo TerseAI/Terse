@@ -1,11 +1,11 @@
 import crypto from "crypto"
 import { Request, Response } from "express"
+import { LinearTeam } from "terse-types/types"
 
 import { settings } from "../config/settings"
 import { LinearIntegrationManager } from "../integrations/LinearIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { LinearTeam } from "../shared/types"
 import { LinearAdapter } from "../ticketing/linear"
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload"
 

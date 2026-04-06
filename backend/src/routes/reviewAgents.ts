@@ -1,6 +1,10 @@
 import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
 import { AutomationSource } from "@prisma/client"
 import { Request, Response } from "express"
+import { buildRoute } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { sentNotificationsKey } from "terse-types/InvalidationKeys"
+import { User } from "terse-types/types"
 
 import { MAX_IMPROVEMENTS_PER_AGENT, evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
 import { fetchFullJudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
@@ -10,9 +14,6 @@ import { sendWeeklyReviewEmail } from "../notifications/channels/emailNotificati
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { SdkImprovementService } from "../services/SdkImprovementService"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { sentNotificationsKey } from "../shared/InvalidationKeys"
-import { User } from "../shared/types"
 import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { extractErrorMessage } from "../utility/strings"
@@ -187,7 +188,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 improvementsCreated += improvementRecords.length
 
                 if (improvementRecords.length > 0) {
-                    const improvementsPath = FrontendRoutes.AGENTS.IMPROVEMENTS(automation.id)
+                    const improvementsPath = buildRoute(FrontendRoutes.AGENTS.IMPROVEMENTS, { id: automation.id })
                     const improvementsUrl = settings.urls.frontend ? `${settings.urls.frontend}${improvementsPath}` : improvementsPath
                     const group = emailGroups.get(automation.user.id)!
                     group.agents.push({

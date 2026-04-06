@@ -1,8 +1,9 @@
+import { ConfigData } from "terse-types"
+import { User } from "terse-types"
+
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
-import { ConfigInstance } from "../../shared/Configs"
-import { User } from "../../shared/types"
 import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { getAgentHydrationInclude } from "../../utility/prismaIncludes"
@@ -23,7 +24,7 @@ export interface HydratedAgent {
     agent: AgentWithRelations
     user: User
     session: Session
-    outputs: Output<ConfigInstance>[]
+    outputs: Output<ConfigData>[]
 }
 
 /**
@@ -68,7 +69,7 @@ export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: 
     }
 
     // Create outputs from agent configuration
-    let outputs: Output<ConfigInstance>[]
+    let outputs: Output<ConfigData>[]
     try {
         outputs = OutputFactory.createOutputsFromAgent(agent)
     } catch (error) {
@@ -115,7 +116,7 @@ export async function hydrateAgentFromRecord(agent: AgentWithRelations, userId: 
 /**
  * Creates a fully configured AgentRunner from hydrated agent data.
  */
-export function createAgentRunner(hydrated: HydratedAgent, runContext: RunContext): AgentRunner<Session, ConfigInstance> {
+export function createAgentRunner(hydrated: HydratedAgent, runContext: RunContext): AgentRunner<Session, ConfigData> {
     return new AgentRunner(hydrated.session, hydrated.outputs, hydrated.agent, runContext)
 }
 
@@ -127,7 +128,7 @@ export async function hydrateAndCreateRunner(
     userId: string,
     organizationId: string,
     runContext: RunContext
-): Promise<{ success: true; runner: AgentRunner<Session, ConfigInstance>; hydrated: HydratedAgent } | { success: false; error: HydrationError }> {
+): Promise<{ success: true; runner: AgentRunner<Session, ConfigData>; hydrated: HydratedAgent } | { success: false; error: HydrationError }> {
     const result = await hydrateAgentById(agentId, userId, organizationId)
 
     if (!result.success) {

@@ -1,10 +1,10 @@
 import { ExternalLink } from "lucide-react"
+import { type RunHistoryAction, RunHistoryStatus } from "terse-types"
 
 import { cn } from "@/lib/utils"
 
 import { capitalize } from "../../lib/utils"
 import { IconForIntegration } from "../../pages/Agents/components/Integration"
-import { type RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion"
 
 type Props = {

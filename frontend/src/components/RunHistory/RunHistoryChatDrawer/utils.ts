@@ -1,5 +1,6 @@
+import { IntegrationType } from "terse-types/Integrations"
+
 import { capitalize } from "@/lib/utils"
-import { IntegrationType } from "@/shared/Integrations"
 
 // Helper function to parse tool name and extract integration/action info
 export function parseToolInfo(

@@ -1,14 +1,14 @@
 import { useEffect } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { ConfigType, NotionConfig, isConfigComplete } from "terse-types"
+import { IntegrationType, NotionIntegration as NotionIntegrationType } from "terse-types/Integrations"
 
 import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
 import { useOAuthConnection } from "@/hooks/useOAuthConnection"
-import { IntegrationType, NotionIntegration as NotionIntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
-import { ConfigType, NotionConfig } from "../../shared/Configs"
 import { type NotionScopeItem, NotionScopePicker } from "../NotionScopePickerDialog"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
@@ -78,7 +78,7 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
 
     const dbCount = currentConfig?.databaseIds?.length ?? 0
     const pageCount = currentConfig?.pageIds?.length ?? 0
-    const isComplete = currentConfig?.isComplete()
+    const isComplete = isConfigComplete(currentConfig)
 
     if (variant === "card") {
         if (!isComplete) {

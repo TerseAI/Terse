@@ -1,6 +1,6 @@
 {
   "name": "terse-sdk",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,14 +8,17 @@
     "dist"
   ],
   "scripts": {
-    "prebuild": "node ../../scripts/copy-shared.js",
     "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "format": "pnpm exec prettier --config ../../.prettierrc --write \"src/**/*.ts\"",
+    "format:check": "pnpm exec prettier --config ../../.prettierrc --check \"src/**/*.ts\"",
     "install-global": "npm run build && npm link"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@slack/types": "^2.20.1"
+    "@slack/types": "^2.20.1",
+    "terse-types": "workspace:*"
   }
 }

@@ -1,28 +1,16 @@
 import { LinearClient } from "@linear/sdk"
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
-    issueId: z.string().describe("The ID of the Linear issue to add the comment to. Use linear_search_ticket to find the issue ID."),
-    body: z.string().describe("The comment text to add to the issue.")
-})
-
-export const linearAddCommentTool: SessionToolOptions<typeof parameters, typeof ToolName.LINEAR_ADD_COMMENT> = {
-    name: ToolName.LINEAR_ADD_COMMENT,
+export const linearAddCommentTool = defineSessionTool({
+    name: "linear_add_comment",
     description: `Add a comment to an existing Linear issue. Use linear_search_ticket to find the issue ID.`,
-    parameters: parameters,
-    execute: async ({ integrationId, issueId, body }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, issueId, body }, runContext) => {
         logger.debug("🛠️ Executing linear_add_comment tool", { integrationId, issueId })
 
         if (!runContext?.context) {
@@ -55,7 +43,12 @@ export const linearAddCommentTool: SessionToolOptions<typeof parameters, typeof 
             }
             return {
                 success: true,
-                comment,
+                comment: {
+                    id: comment.id,
+                    body: comment.body,
+                    createdAt: comment.createdAt,
+                    updatedAt: comment.updatedAt
+                },
                 actions: [action]
             }
         } catch (error: unknown) {
@@ -64,4 +57,4 @@ export const linearAddCommentTool: SessionToolOptions<typeof parameters, typeof 
             throw new Error(`${errorMessage}. Please check all inputs and try again.`)
         }
     }
-}
+})

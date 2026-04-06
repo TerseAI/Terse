@@ -1,11 +1,10 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { SlackOutputConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
-import { SlackOutputConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
-import { SlackOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { slackListChannelsTool } from "./tools/listChannels"
@@ -29,7 +28,6 @@ export class SlackOutput extends Output<SlackOutputConfig> {
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
-        SlackOutputConfigSchema.parse(stripConfigForValidation(output))
         const hasChannel = !!(output.channelId && output.channelId.trim())
         const hasUsers = (output.userIds?.length ?? 0) > 0
         const hasDmScope = output.listenToUserDms === true

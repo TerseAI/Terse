@@ -1,7 +1,7 @@
 import useSWR from "swr"
+import { currentUserKey } from "terse-types/InvalidationKeys"
 
 import { BackendProvider } from "@/services/backend"
-import { currentUserKey } from "@/shared/InvalidationKeys"
 import type { User } from "@/types/User"
 
 const SESSION_REFRESH_INTERVAL_MS = Number(import.meta.env.VITE_SESSION_REFRESH_INTERVAL_MS) || 240000 // Default: 4 minutes (for 5-minute access token duration)

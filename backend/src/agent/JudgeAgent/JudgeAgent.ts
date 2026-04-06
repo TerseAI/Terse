@@ -1,10 +1,10 @@
 import { Agent } from "@openai/agents"
 import { AutomationSource } from "@prisma/client"
+import { User } from "terse-types"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
-import { User } from "../../shared/types"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 
 import { buildJudgeAgentTools } from "./JudgeAgentTools"

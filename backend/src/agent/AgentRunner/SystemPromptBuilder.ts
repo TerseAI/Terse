@@ -1,5 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { RunHistoryStatus } from "@prisma/client"
+import { ConfigData, buildRoute } from "terse-types"
+import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
@@ -8,15 +10,13 @@ import { Output } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
 import { extractConversationContent } from "../../rag/runHistoryRag/conversationExtractor"
 import { RunHistoryMemory } from "../../rag/runHistoryRag/indexer"
-import { ConfigInstance } from "../../shared/Configs"
-import { FrontendRoutes } from "../../shared/FrontendRoutes"
 import { Session } from "../../types/session"
 
 export interface RunContext {
     runId: string
 }
 
-export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance> {
+export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigData> {
     session: T
     agent: {
         id: string
@@ -32,7 +32,7 @@ interface Section {
 
 type SectionBuilder = () => Section | null | Promise<Section | null>
 
-export class BaseSystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> {
+export class BaseSystemPromptBuilder<T extends Session, TConfig extends ConfigData> {
     private sections: SectionBuilder[] = []
 
     constructor(
@@ -89,10 +89,9 @@ Use this information to understand temporal context.`
         const frontendUrl = settings.urls.frontend
         const agentId = this.deps.agent.id
         const runId = this.runContext.runId
-
-        const channelLink = `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(agentId)}`
-        const channelHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.HISTORY(agentId)}`
-        const specificRunLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`
+        const channelLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: agentId })}`
+        const channelHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.HISTORY, { id: agentId })}`
+        const specificRunLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agentId, runId })}`
 
         return {
             header: "DEEP LINKING TO TERSE APPLICATION",
@@ -104,18 +103,16 @@ The base URL is automatically determined from the environment (localhost for dev
 AVAILABLE LINK TYPES:
 
 1. Channel Detail Page:
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.DETAIL("{agentId}")}
-   Example: ${channelLink}
+   Link: ${channelLink}
    Use when: Referencing a specific automation/channel
 
 2. Run History (Channel Activity Tab):
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.HISTORY("{agentId}")}
-   Example: ${channelHistoryLink}
+   Link: ${channelHistoryLink}
+   Use when: Directing users to view all runs for a channel
    Use when: Directing users to view all runs for a channel
 
 3. Specific Run History:
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY("{agentId}", "{runId}")}
-   Example: ${specificRunLink}
+   Link: ${specificRunLink}
    Use when: Referencing a specific run execution
 
 CURRENT CONTEXT:
@@ -153,7 +150,7 @@ When explicitly asked by the user, include these links in your responses to help
     }
 }
 
-export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> extends BaseSystemPromptBuilder<T, TConfig> {
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigData> extends BaseSystemPromptBuilder<T, TConfig> {
     override withStandardSections(): this {
         return this.withSection(() => this.buildTimeSection())
             .withSection(() => this.buildCoreInstructions())
@@ -220,47 +217,6 @@ This is event #${eventPosition} processed by this automation.`
         return {
             header: "CORE INSTRUCTIONS",
             content: CORE_INSTRUCTIONS
-        }
-    }
-
-    protected buildDeepLinkingSection(): Section {
-        const frontendUrl = settings.urls.frontend
-        const agentId = this.deps.agent.id
-        const runId = this.runContext.runId
-
-        const channelLink = `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(agentId)}`
-        const channelHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.HISTORY(agentId)}`
-        const specificRunLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`
-
-        return {
-            header: "DEEP LINKING TO TERSE APPLICATION",
-            content: `You can create links to specific pages within the Terse application to help users navigate to relevant content.
-
-BASE URL: ${frontendUrl}
-The base URL is automatically determined from the environment (localhost for development, app.useterse.ai for production).
-
-AVAILABLE LINK TYPES:
-
-1. Channel Detail Page:
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.DETAIL("{agentId}")}
-   Example: ${channelLink}
-   Use when: Referencing a specific automation/channel
-
-2. Run History (Channel Activity Tab):
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.HISTORY("{agentId}")}
-   Example: ${channelHistoryLink}
-   Use when: Directing users to view all runs for a channel
-
-3. Specific Run History:
-   Format: ${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY("{agentId}", "{runId}")}
-   Example: ${specificRunLink}
-   Use when: Referencing a specific run execution
-
-CURRENT CONTEXT:
-- Channel ID: ${agentId}
-- Current Run ID: ${runId}
-
-When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
         }
     }
 

@@ -1,4 +1,4 @@
-import type { GithubIntegration } from "../shared/Integrations.js"
+import type { GithubIntegration } from "terse-types"
 
 export interface GitHubRepo {
     id: number
@@ -122,18 +122,6 @@ export interface ToolDefinition {
     integration: string
     isReadOnly: boolean
     supportsApproval: boolean
-    parameters: JsonSchema
-}
-
-export interface JsonSchema {
-    type?: string
-    properties?: Record<string, JsonSchema>
-    required?: string[]
-    items?: JsonSchema
-    enum?: Array<string | number | boolean>
-    anyOf?: JsonSchema[]
-    description?: string
-    [key: string]: unknown
 }
 
 export interface CodegenInput {

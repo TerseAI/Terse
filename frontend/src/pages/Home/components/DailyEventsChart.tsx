@@ -1,11 +1,11 @@
 import { BarChart3, Clock } from "lucide-react"
 import { DateTime } from "luxon"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { DailyEventCount } from "terse-types"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../../components/ui/chart"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty"
-import { DailyEventCount } from "../../../shared/types"
 
 interface DailyEventsChartProps {
     eventsPerDay: DailyEventCount[]

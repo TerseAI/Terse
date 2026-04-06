@@ -1,10 +1,9 @@
 import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
+import { GmailOutputConfig } from "terse-types"
+import { IntegrationType } from "terse-types"
 
-import { GmailOutputConfig } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
 import { PrismaTransaction } from "../../types/prisma"
-import { GmailOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { gmailSendEmailTool } from "./tools/sendEmail"
@@ -19,9 +18,7 @@ export class GmailOutput extends Output<GmailOutputConfig> {
         return new GmailOutputConfig("example")
     }
 
-    async validateConfig(output: GmailOutputConfig, _userId: string): Promise<void> {
-        GmailOutputConfigSchema.parse(stripConfigForValidation(output))
-    }
+    async validateConfig(output: GmailOutputConfig, _userId: string): Promise<void> {}
 
     async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, _output: GmailOutputConfig): Promise<void> {
         await tx.automation_gmail_configs.create({

@@ -1,15 +1,14 @@
 import { Request, Response } from "express"
+import { AdditionalStateParams, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
+import type { ConfigData, ConfigurationFieldDefinition, ConfigurationFieldType, ConfigurationOption, FormFieldDefinition, FormFieldType } from "terse-types"
+import { OAuthInstallationDetails } from "terse-types"
 
-import { ConfigInstance } from "../../shared/Configs"
-import { AdditionalStateParams, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "../../shared/Integrations"
-import type { ConfigurationFieldDefinition, ConfigurationFieldType, ConfigurationOption, FormFieldDefinition, FormFieldType } from "../../shared/types"
-import { OAuthInstallationDetails } from "../../shared/types"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 import type { FetchResourcesOptions } from "./FetchResourcesOptions"
 import type { InputEvent } from "./InputEvent"
 
-export type { FormFieldDefinition, ConfigurationFieldDefinition, ConfigurationOption, ConfigurationFieldType, FormFieldType } from "../../shared/types"
+export type { FormFieldDefinition, ConfigurationFieldDefinition, ConfigurationOption, ConfigurationFieldType, FormFieldType } from "terse-types"
 
 export interface IntegrationWithResources<T extends IntegrationInstance, R> {
     integration: T
@@ -33,7 +32,7 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
         integrationId: string,
         organizationId: string,
         userId: string,
-        triggerConfig: ConfigInstance,
+        triggerConfig: ConfigData,
         options?: {
             limit?: number
         }

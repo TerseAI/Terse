@@ -1,7 +1,7 @@
+import { ConfigType, FigmaConfig } from "terse-types/Configs"
+
 import { FigmaIntegrationManager, validateFigmaFileExists } from "../integrations/FigmaIntegration"
-import { ConfigType, FigmaConfig } from "../shared/Configs"
 import { PrismaTransaction } from "../types/prisma"
-import { FigmaConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -14,7 +14,6 @@ export class FigmaTrigger implements Trigger<FigmaConfig> {
     }
 
     async validateConfig(trigger: FigmaConfig, _userId: string): Promise<void> {
-        FigmaConfigSchema.parse(stripConfigForValidation(trigger))
         await validateFigmaFileExists(trigger.integrationId, trigger.fileKey)
     }
 

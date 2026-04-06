@@ -1,7 +1,7 @@
 import { Copy, ExternalLink } from "lucide-react"
+import type { RunHistoryRecord } from "terse-types"
 
 import { IconForIntegration } from "../../../pages/Agents/components/Integration"
-import type { RunHistoryRecord } from "../../../shared/RunHistoryTypes"
 
 type Props = {
     run: RunHistoryRecord

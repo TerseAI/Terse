@@ -4,6 +4,11 @@ import { InputConfigType } from "@prisma/client"
 import axios, { AxiosResponse } from "axios"
 import * as cheerio from "cheerio"
 import { Request, Response } from "express"
+import { ConfigData, ConfigType, GitHubConfigSchema, GitHubEventType } from "terse-types/Configs"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { OAuthInstallationDetails, Repository } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { githubApp, urls } from "../config/settings"
@@ -22,11 +27,6 @@ import {
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
-import { ConfigInstance, ConfigType, GitHubConfig as GitHubConfigClass, GitHubEventType } from "../shared/Configs"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
-import { OAuthInstallationDetails, Repository } from "../shared/types"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
@@ -119,7 +119,7 @@ export class GithubIntegrationManager
         return userGithubInstallations.map(ugi => ({
             id: ugi.id,
             installation_id: ugi.installation_id,
-            account_name: ugi.account_name || null
+            account_name: ugi.account_name || "Unknown Account Name"
         }))
     }
 
@@ -354,11 +354,11 @@ export class GithubIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigInstance, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
         if (triggerConfig.configType !== ConfigType.GITHUB) {
             return []
         }
-        const githubConfig = triggerConfig as GitHubConfigClass
+        const githubConfig = GitHubConfigSchema.parse(triggerConfig)
 
         const maxEvents = Math.min(options?.limit ?? 6, 10)
 

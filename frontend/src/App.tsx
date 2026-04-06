@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useNavigate } from "react-router-dom"
 
 import { AnimatePresence } from "framer-motion"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import BreadCrumb from "./components/BreadCrumb"
 import { AppSidebar } from "./components/Sidebar/Sidebar"
@@ -25,7 +26,6 @@ import StatsPage from "./pages/Stats"
 import { ModelContextProvider } from "./services/ModelContextProvider"
 import { RunHistoryChatDrawerProvider } from "./services/RunHistoryChatDrawerContext"
 import { AuthProvider, useAuth } from "./services/auth"
-import { FrontendRoutes } from "./shared/FrontendRoutes"
 import { disconnectSocket, initializeSocket } from "./socket"
 
 function App() {
@@ -41,8 +41,8 @@ function App() {
                             <Route path="agents" element={<AgentsList />} />
                             <Route path="agents/setup" element={<AgentSetup />} />
                             <Route path="agents/new" element={<AgentDetail />} />
-                            <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE.pattern} element={<AgentDetail />} />
-                            <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
+                            <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
+                            <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
                             <Route path="activity" element={<ActivityPage />} />
                             <Route path="stats" element={<StatsPage />} />
                             <Route path="integrations" element={<IntegrationPage />} />

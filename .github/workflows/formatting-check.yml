@@ -4,7 +4,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'shared/**'
+      - 'terse-types/**'
       - '.prettierrc'
       - '.github/workflows/formatting-check.yml'
 jobs:
@@ -19,13 +19,9 @@ jobs:
         with:
           node-version: '22.19.0'
           cache: 'pnpm'
-          cache-dependency-path: |
-            backend/pnpm-lock.yaml
-            frontend/pnpm-lock.yaml
-      - name: Install backend dependencies
-        run: cd backend && pnpm install --frozen-lockfile
-      - name: Install frontend dependencies
-        run: cd frontend && pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - name: Check backend formatting
         run: cd backend && pnpm run format:check
       - name: Check frontend formatting

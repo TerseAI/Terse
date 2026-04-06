@@ -1,10 +1,10 @@
 import chalk from "chalk"
 import JiraClient from "jira-client"
+import { ApiRoutes, buildRoute } from "terse-types"
+import { CommitAssociation, CreateTicketInput, Organization, Project, Team, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext } from "terse-types/TicketSystem"
 
 import { urls } from "../config/settings"
 import { SearchItem } from "../search/SearchItem"
-import { ApiRoutes } from "../shared/ApiRoutes"
-import { CommitAssociation, CreateTicketInput, Organization, Project, Team, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext } from "../shared/TicketSystem"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
 import { StructuredSearchOptions } from "./StructuredSearchOptions"
@@ -287,10 +287,11 @@ export class JiraAdapter {
 
         const webhookSecret = this.generateWebhookSecret()
         const backendUrl = urls.backend
+        const url = buildRoute(`${backendUrl}${ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID}`, { accountId: user.accountId })
 
         const webhook = await this.client.registerWebhook({
             name: "Vectra AI",
-            url: `${backendUrl}${ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.build(user.accountId)}`,
+            url: url,
             secret: webhookSecret,
             events: ["jira:issue_created", "jira:issue_updated", "jira:issue_deleted"]
         })

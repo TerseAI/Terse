@@ -1,34 +1,17 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
-import { RunContext } from "@openai/agents"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions, createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 
-const parameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-    databaseId: z.string().describe("The Notion database ID (data source ID)."),
-    page_id: z.string().nullable().describe("The ID of the row to update (from notion_query_database). MUST be null to create a new row. Provide a valid page ID to update an existing row."),
-    properties_json: z
-        .string()
-        .describe(
-            'JSON string with property names and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'
-        )
-})
-
-export const notionCreateOrUpdateDatabaseRowTool: SessionToolOptions<typeof parameters, typeof ToolName.NOTION_CREATE_OR_UPDATE_DATABASE_ROW> = {
-    name: ToolName.NOTION_CREATE_OR_UPDATE_DATABASE_ROW,
+export const notionCreateOrUpdateDatabaseRowTool = defineSessionTool({
+    name: "notion_create_or_update_database_row",
     description: `Create or update a **row** (entry) in a Notion database. Use with databaseId and properties_json. Not for standalone pages — use notion_create_or_update_page for those.
 
 Use notion_get_schema first to understand property names and types. Use notion_query_database to find page_id for updates. Provide page_id null to create a new row, or a valid page_id to update. Property format: Title, Rich Text, Select, Status, etc. per notion_get_schema.`,
-    parameters: parameters,
-    execute: async ({ integrationId, databaseId, page_id, properties_json }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, databaseId, page_id, properties_json }, runContext) => {
         logger.debug("Executing notion_create_or_update_database_row", { pageId: page_id ?? "(new row)", databaseId })
 
         let properties: Record<string, any>
@@ -124,4 +107,4 @@ Use notion_get_schema first to understand property names and types. Use notion_q
             throw new Error(`${error.message || "Unknown error"}. ${hint}`)
         }
     }
-}
+})

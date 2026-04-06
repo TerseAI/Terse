@@ -1,31 +1,18 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 
-const slackReadConversationParameters = z.object({
-    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
-    channelId: z.string().describe("The Slack channel ID to read (from slack_list_channels)."),
-    limit: z.number().min(1).max(200).nullable().optional().default(50).describe("Maximum number of messages to return."),
-    cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
-})
-
-export const slackReadConversationTool: SessionToolOptions<typeof slackReadConversationParameters, typeof ToolName.SLACK_READ_CONVERSATION> = {
-    name: ToolName.SLACK_READ_CONVERSATION,
+export const slackReadConversationTool = defineSessionTool({
+    name: "slack_read_conversation",
     description: `Read message history from a Slack channel or DM.
 Use the channel ID from slack_list_channels. Supports public channels, private channels, and DMs.
 Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more messages.`,
-    parameters: slackReadConversationParameters,
-    execute: async ({ integrationId, channelId, limit = 50, cursor }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ integrationId, channelId, limit = 50, cursor }, runContext) => {
         logger.debug("🛠️ Executing slack_read_conversation tool", { integrationId, channelId, limit })
 
         if (!runContext?.context) {
@@ -136,4 +123,4 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
             throw new Error(`${errorMessage}. ${hint}`)
         }
     }
-}
+})

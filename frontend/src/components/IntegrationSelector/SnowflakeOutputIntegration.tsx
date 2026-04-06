@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom"
 
 import { AlertTriangleIcon, ArrowUpRight } from "lucide-react"
+import { ConfigType, SnowflakeOutputConfig } from "terse-types/Configs"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { SnowflakeIntegration as SnowflakeIntegrationType } from "terse-types/Integrations"
 
 import { useSnowflakeIntegrations } from "@/hooks/api/useSnowflakeIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
-import { ConfigType, SnowflakeOutputConfig } from "@/shared/Configs"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { SnowflakeIntegration as SnowflakeIntegrationType } from "@/shared/Integrations"
 
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
 import DropdownSelect from "../ui/DropdownSelect"

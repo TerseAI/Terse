@@ -1,9 +1,8 @@
-import { TransientAgentTrigger } from "@/shared/types"
-
-import { ConfigInstance } from "../../shared/Configs"
+import { ConfigData } from "terse-types"
+import { TransientAgentTrigger } from "terse-types/types"
 
 export interface InputConfigSelectorProps {
     input: TransientAgentTrigger
     variant: "card" | "dialog"
-    setConfig: (config: ConfigInstance) => void
+    setConfig: (config: ConfigData) => void
 }

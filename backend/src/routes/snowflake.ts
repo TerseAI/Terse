@@ -1,10 +1,10 @@
 import { Request, Response } from "express"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { SnowflakeIntegrationManager } from "../integrations/SnowflakeIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
-import { IntegrationType } from "../shared/Integrations"
 
 export async function getSnowflakeIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

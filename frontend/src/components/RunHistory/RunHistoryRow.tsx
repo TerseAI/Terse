@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router-dom"
 
 import { ExternalLink, MessageSquare, Zap } from "lucide-react"
+import { buildRoute } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
-import { FrontendRoutes } from "@/shared/FrontendRoutes"
-import { RunHistoryRecordWithAgent } from "@/shared/RunHistoryTypes"
 import { formatTimestamp } from "@/utility/timeUtils"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
@@ -48,7 +49,7 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                     <button
-                        onClick={() => navigate(FrontendRoutes.AGENTS.DETAIL(run.agentId))}
+                        onClick={() => navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: run.agentId }))}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[160px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                         title={run.agentName}
                     >

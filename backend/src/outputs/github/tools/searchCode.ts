@@ -1,13 +1,8 @@
-import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { z } from "zod"
+import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import logger from "../../../logger"
-import { IntegrationType } from "../../../shared/Integrations"
-import { ToolName } from "../../../tools/ToolNames"
-import { SessionToolOptions } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
@@ -15,20 +10,8 @@ import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubA
  * Tool for semantic code search in GitHub repositories.
  * Uses GitHub's Code Search API to find code by meaning, function names, classes, etc.
  */
-const searchGitHubCodeParameters = z.object({
-    repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
-    query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
-    language: z.string().nullable().optional().describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
-    filename: z.string().nullable().optional().describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
-    path: z.string().nullable().optional().describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
-    perPage: z.number().describe("Number of results to return (default: 10, max: 100)"),
-    page: z
-        .union([z.number().int().min(1), z.null()])
-        .describe("Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.")
-})
-
-export const searchGitHubCodeTool: SessionToolOptions<typeof searchGitHubCodeParameters, typeof ToolName.GITHUB_SEARCH_CODE> = {
-    name: ToolName.GITHUB_SEARCH_CODE,
+export const searchGitHubCodeTool = defineSessionTool({
+    name: "searchGitHubCode",
     description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
 
 Use searchGitHubCode for:
@@ -50,8 +33,7 @@ Tips:
 - Use natural language or domain terms
 - Combine multiple terms for more specific results`,
     strict: true,
-    parameters: searchGitHubCodeParameters,
-    execute: async ({ repositoryNames, query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repositoryNames, query, language, filename, path, perPage = 10, page }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -188,4 +170,4 @@ Tips:
             throw new Error(`${errorMessage}. If the search query is too complex, try simplifying it. Use specific function names or class names.`)
         }
     }
-}
+})

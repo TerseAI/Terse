@@ -1,8 +1,8 @@
 import { RunStreamEvent } from "@openai/agents"
+import { ConfigType } from "terse-types"
+import { IntegrationType } from "terse-types"
+import { MultipleChoiceQuestion } from "terse-types"
 
-import { ConfigType } from "../../shared/Configs"
-import { IntegrationType } from "../../shared/Integrations"
-import { MultipleChoiceQuestion } from "../../shared/Survey"
 import ChatInterface from "../ChatAgent/ChatInterfaces/ChatInterface"
 
 class HeadlessChatInterface extends ChatInterface {

@@ -1,9 +1,9 @@
 import { AlertTriangleIcon } from "lucide-react"
+import { ConfigType, WorkOSOutputConfig } from "terse-types/Configs"
+import { WorkOSIntegration as WorkOSIntegrationType } from "terse-types/Integrations"
 
 import { useWorkOSIntegrations } from "@/hooks/api/useWorkOSIntegrations"
 import { useIntegrationId } from "@/hooks/useIntegrationId"
-import { ConfigType, WorkOSOutputConfig } from "@/shared/Configs"
-import { WorkOSIntegration as WorkOSIntegrationType } from "@/shared/Integrations"
 
 import { Label } from "../ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"

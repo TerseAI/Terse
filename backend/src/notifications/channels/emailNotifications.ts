@@ -1,12 +1,12 @@
 import fs from "fs/promises"
 import path from "path"
 import { Resend } from "resend"
+import { FrontendRoutes, buildRoute } from "terse-types"
+import { RunHistoryAction } from "terse-types"
+import { User } from "terse-types"
 import { fileURLToPath } from "url"
 
 import { settings } from "../../config/settings"
-import { FrontendRoutes } from "../../shared/FrontendRoutes"
-import { RunHistoryAction } from "../../shared/RunHistoryTypes"
-import { User } from "../../shared/types"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
 import { loadTemplate } from "../emails/templating"
 import { formatApprovalNotificationFor } from "../utils"
@@ -49,7 +49,7 @@ async function getEmailBranding(): Promise<EmailBranding> {
 }
 
 export async function sendEmailNotification(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, agent: Agent) {
-    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.ALERTS(agent.id)}` : undefined
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 
@@ -63,8 +63,8 @@ export async function sendEmailNotification(notificationDestination: UserNotific
 }
 
 export async function sendEmailApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: User) {
-    const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(agent.id, runId)}` : undefined
-    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.ALERTS(agent.id)}` : undefined
+    const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agent.id, runId })}` : undefined
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
     const notificationFor = formatApprovalNotificationFor(runAction.action)
@@ -79,8 +79,8 @@ export async function sendEmailApprovalRequest(notificationDestination: UserNoti
 }
 
 export async function sendEmailRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string) {
-    const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(agent.id, runId)}` : undefined
-    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.AGENTS.ALERTS(agent.id)}` : undefined
+    const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agent.id, runId })}` : undefined
+    const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 

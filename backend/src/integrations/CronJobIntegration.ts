@@ -1,13 +1,13 @@
 import { InputConfigType } from "@prisma/client"
+import { ApiRoutes, buildRoute } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { settings } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
-import { ApiRoutes } from "../shared/ApiRoutes"
-import { FrontendRoutes } from "../shared/FrontendRoutes"
-import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "../shared/Integrations"
-import { RunHistoryTrigger } from "../shared/RunHistoryTypes"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { SchedulerClient, createSchedulerClient } from "../utility/schedulerClient"
 import { getUserForOrg } from "../utility/workos"
@@ -231,7 +231,8 @@ export class CronJobIntegrationManager
 
     private getWebhookUrl(inputId: string): string {
         const baseUrl = settings.urls.backend
-        return `${baseUrl}${ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.build(inputId)}`
+        const webhookUrl = buildRoute(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, { inputId })
+        return `${baseUrl}${webhookUrl}`
     }
 }
 
@@ -294,7 +295,7 @@ export class CronJobEvent extends InputEvent {
             source: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             title: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             subheader: isManualTrigger ? "Triggered manually by user" : "Scheduled Job",
-            url: FrontendRoutes.AGENTS.BY_ID_RELATIVE(this.data.inputId)
+            url: buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: this.data.inputId })
         }
     }
 }

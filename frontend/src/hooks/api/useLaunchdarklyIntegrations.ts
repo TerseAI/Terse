@@ -1,9 +1,9 @@
 import useSWR, { type KeyedMutator } from "swr"
+import type { LaunchDarklyIntegration } from "terse-types/Integrations"
+import { launchdarklyIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { useOAuthSuccessListener } from "@/hooks/useOAuthSuccessListener"
 import { BackendProvider } from "@/services/backend"
-import type { LaunchDarklyIntegration } from "@/shared/Integrations"
-import { launchdarklyIntegrationsKey } from "@/shared/InvalidationKeys"
 
 type UseLaunchdarklyIntegrationsReturn = {
     integrations: LaunchDarklyIntegration[]

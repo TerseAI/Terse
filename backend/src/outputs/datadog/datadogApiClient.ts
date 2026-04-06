@@ -1,7 +1,8 @@
+import { IntegrationType } from "terse-types"
+
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
-import { IntegrationType } from "../../shared/Integrations"
 
 /**
  * Get Datadog credentials by integration ID

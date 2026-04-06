@@ -4,6 +4,8 @@ import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver
 import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js"
 import { AppMentionEvent, GenericMessageEvent, ModalView } from "@slack/types"
 import jwt from "jsonwebtoken"
+import { IntegrationType } from "terse-types/Integrations"
+import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata, User } from "terse-types/types"
 
 import ChatAgent from "../agent/ChatAgent/ChatAgent"
 import SlackChatInterface from "../agent/ChatAgent/ChatInterfaces/SlackChatInterface"
@@ -19,8 +21,6 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { SecretField, getSecret } from "../services/SecretService"
-import { IntegrationType } from "../shared/Integrations"
-import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata, User } from "../shared/types"
 import { OAuthStatePayload, createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
