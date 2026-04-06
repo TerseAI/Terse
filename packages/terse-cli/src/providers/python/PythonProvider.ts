@@ -15,7 +15,7 @@ import { renderPythonGeneratedCode } from "./pythonTemplateEngine.js"
 
 const JOB_REGISTRY_MARKER = "__TERSE_JOB_REGISTRY__="
 const JOB_SKIPPED_MARKER = "__TERSE_SKIPPED__"
-const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.9"
+const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.10"
 
 type PythonSerializedConfig = {
     integrationId: string
@@ -169,7 +169,7 @@ function createJobParametersFromPython(data: PythonJobData): CreateJobParameters
         triggers: data.triggers.map(reconstructPythonConfig),
         skills: data.skills.map(reconstructPythonConfig),
         toolApprovals: data.toolApprovals ?? [],
-        webhookURL: data.webhookURL,
+        webhookURL: data.webhookURL ?? undefined,
         onTrigger: async () => {
             throw new Error("Python job execution must go through provider.executeJob()")
         },
