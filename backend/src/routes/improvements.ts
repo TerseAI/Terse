@@ -3,7 +3,7 @@ import { Request, Response } from "express"
 import { AgentImprovement, AgentReview, ApplyImprovementResponse, DismissImprovementResponse, GetAgentImprovementsResponse, ToggleImprovementsEnabledResponse } from "terse-types/types"
 
 import logger from "../logger"
-import { agentAndImprovementParams, agentIdParams, toggleImprovementsEnabledBody } from "../middleware/schemas"
+import { agentAndImprovementParamsSchema, agentIdParamsSchema, toggleImprovementsEnabledRequestSchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 
@@ -92,7 +92,7 @@ export async function getAgentImprovements(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const { agentId } = agentIdParams.parse(req.params)
+    const { agentId } = agentIdParamsSchema.parse(req.params)
 
     try {
         const automation = await db().automations.findFirst({
@@ -148,7 +148,7 @@ export async function applyImprovement(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const { agentId, id: improvementId } = agentAndImprovementParams.parse(req.params)
+    const { agentId, id: improvementId } = agentAndImprovementParamsSchema.parse(req.params)
 
     try {
         const improvement = await db().agent_improvements.findFirst({
@@ -208,7 +208,7 @@ export async function dismissImprovement(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const { agentId, id: improvementId } = agentAndImprovementParams.parse(req.params)
+    const { agentId, id: improvementId } = agentAndImprovementParamsSchema.parse(req.params)
 
     try {
         const improvement = await db().agent_improvements.findFirst({
@@ -261,7 +261,7 @@ export async function undoDismissImprovement(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const { agentId, id: improvementId } = agentAndImprovementParams.parse(req.params)
+    const { agentId, id: improvementId } = agentAndImprovementParamsSchema.parse(req.params)
 
     try {
         const improvement = await db().agent_improvements.findFirst({
@@ -310,8 +310,8 @@ export async function toggleImprovementsEnabled(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const { agentId } = agentIdParams.parse(req.params)
-    const { enabled } = toggleImprovementsEnabledBody.parse(req.body)
+    const { agentId } = agentIdParamsSchema.parse(req.params)
+    const { enabled } = toggleImprovementsEnabledRequestSchema.parse(req.body)
 
     try {
         const result = await db().automations.updateMany({

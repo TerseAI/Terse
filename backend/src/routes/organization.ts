@@ -2,13 +2,7 @@ import { Request, Response } from "express"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
-import {
-    createOrganizationBody,
-    getLogoParams,
-    getLogoUploadUrlQuery,
-    switchOrganizationBody,
-    updateOrganizationBody
-} from "../middleware/schemas"
+import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSchema, organizationSwitchRequestSchema, organizationUpdateRequestSchema } from "terse-types/types"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../services/FileStorageService"
 import { workos } from "../utility/workos"
 
@@ -19,7 +13,7 @@ export async function createOrganization(req: Request, res: Response) {
     if (!user) {
         return res.status(401).json({ error: "Unauthorized" })
     }
-    const { name, firstName, lastName } = createOrganizationBody.parse(req.body)
+    const { name, firstName, lastName } = organizationCreateRequestSchema.parse(req.body)
 
     try {
         if (firstName || lastName) {
@@ -164,7 +158,7 @@ export async function switchOrganization(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const { organizationId } = switchOrganizationBody.parse(req.body)
+    const { organizationId } = organizationSwitchRequestSchema.parse(req.body)
 
     const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
     if (!sealedSessionData) {
@@ -219,7 +213,7 @@ export async function getLogoUploadUrl(req: Request, res: Response) {
         return res.status(400).json({ error: "No organization" })
     }
 
-    const { contentType } = getLogoUploadUrlQuery.parse(req.query)
+    const { contentType } = logoUploadUrlQuerySchema.parse(req.query)
     if (!contentType.startsWith("image/")) {
         return res.status(400).json({ error: "Invalid content type. Must be an image." })
     }
@@ -246,7 +240,7 @@ export async function getLogoUrl(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const { organizationId } = getLogoParams.parse(req.params)
+    const { organizationId } = logoParamsSchema.parse(req.params)
 
     try {
         const logoUrl = await getOrgLogoDownloadUrl(organizationId)
@@ -276,7 +270,7 @@ export async function updateOrganization(req: Request, res: Response) {
         return res.status(400).json({ error: "No organization" })
     }
 
-    const { name } = updateOrganizationBody.parse(req.body)
+    const { name } = organizationUpdateRequestSchema.parse(req.body)
 
     try {
         const organization = await workos.organizations.updateOrganization({

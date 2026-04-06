@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import type { GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 
 import logger from "../logger"
-import { toolsThatRequireApprovalsBody } from "../middleware/schemas"
+import { getToolsThatRequireApprovalsRequestSchema } from "terse-types/ToolsTypes"
 import { getToolsThatRequireApprovals } from "../tools/availableTools"
 
 export async function toolsThatRequireApprovalsRoute(req: Request, res: Response) {
@@ -12,7 +12,7 @@ export async function toolsThatRequireApprovalsRoute(req: Request, res: Response
             return res.status(401).json({ error: "Unauthorized" })
         }
 
-        const { skills } = toolsThatRequireApprovalsBody.parse(req.body)
+        const { skills } = getToolsThatRequireApprovalsRequestSchema.parse(req.body)
 
         const tools = getToolsThatRequireApprovals(skills)
         const response: GetToolsThatRequireApprovalsResponse = { tools }

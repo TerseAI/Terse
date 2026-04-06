@@ -6,7 +6,7 @@ import type { SerializedEvent, TriggerPayload } from "terse-types/types"
 
 import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"
 import logger from "../logger"
-import { sdkSampleEventsBody } from "../middleware/schemas"
+import { sdkSampleEventsRequestSchema } from "terse-types/types"
 import { extractErrorMessage } from "../utility/strings"
 
 /**
@@ -30,7 +30,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const { triggers } = sdkSampleEventsBody.parse(req.body)
+    const { triggers } = sdkSampleEventsRequestSchema.parse(req.body)
 
     const events: SerializedEvent[] = []
 

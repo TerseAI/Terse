@@ -5,7 +5,7 @@ import { WorkOSIntegrationManager } from "../integrations/WorkOSIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
-import { updateWorkOSWebhookSecretBody, webhookWorkOSTriggerParams } from "../middleware/schemas"
+import { webhookWorkOSTriggerParamsSchema, workosWebhookSecretUpdateRequestSchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { workos } from "../utility/workos"
@@ -58,7 +58,7 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
         return
     }
 
-    const { webhookSecret, state: stateToken } = updateWorkOSWebhookSecretBody.parse(req.body)
+    const { webhookSecret, state: stateToken } = workosWebhookSecretUpdateRequestSchema.parse(req.body)
 
     try {
         const integration = await db().workos_integrations.findFirst({
@@ -85,7 +85,7 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
 }
 
 export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
-    const { integrationId } = webhookWorkOSTriggerParams.parse(req.params)
+    const { integrationId } = webhookWorkOSTriggerParamsSchema.parse(req.params)
 
     try {
         // Look up the integration

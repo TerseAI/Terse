@@ -3,7 +3,7 @@ import { jwtVerify } from "jose"
 import { DeviceTokenExchangeResponse } from "terse-types/types"
 
 import logger from "../logger"
-import { deviceTokenExchangeBody } from "../middleware/schemas"
+import { deviceTokenExchangeRequestSchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
@@ -21,7 +21,7 @@ const featureFlagService = FeatureFlagService.getInstance()
  * No auth middleware required — the WorkOS JWT in the body IS the auth.
  */
 export async function deviceTokenExchange(req: Request, res: Response) {
-    const { accessToken } = deviceTokenExchangeBody.parse(req.body)
+    const { accessToken } = deviceTokenExchangeRequestSchema.parse(req.body)
 
     try {
         const jwks = await workos.userManagement.getJWKS()

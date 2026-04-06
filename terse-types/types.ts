@@ -917,3 +917,98 @@ export const sdkDeployResponseBodySchema = z.object({
 export type SdkDeployResponseBody = z.infer<typeof sdkDeployResponseBodySchema>
 
 export type AttioUpsertError = z.infer<typeof attioUpsertErrorSchema>
+
+// ─── Request / param schemas ─────────────────────────────────────────
+
+export const agentIdParamsSchema = z.object({
+    agentId: z.string()
+})
+
+export const agentAndImprovementParamsSchema = z.object({
+    agentId: z.string(),
+    id: z.string()
+})
+
+export const manualTriggerParamsSchema = z.object({
+    inputId: z.string()
+})
+
+export const triggerWithEventParamsSchema = z.object({
+    automationId: z.string()
+})
+
+export const logoUploadUrlQuerySchema = z.object({
+    contentType: z.string()
+})
+
+export const logoParamsSchema = z.object({
+    organizationId: z.string()
+})
+
+export const webhookWorkOSTriggerParamsSchema = z.object({
+    integrationId: z.string()
+})
+
+export const organizationCreateRequestSchema = z.object({
+    name: z.string(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional()
+})
+export type OrganizationCreateRequest = z.infer<typeof organizationCreateRequestSchema>
+
+export const organizationSwitchRequestSchema = z.object({
+    organizationId: z.string()
+})
+export type OrganizationSwitchRequest = z.infer<typeof organizationSwitchRequestSchema>
+
+export const organizationUpdateRequestSchema = z.object({
+    name: z.string()
+})
+export type OrganizationUpdateRequest = z.infer<typeof organizationUpdateRequestSchema>
+
+export const apiTokenCreateRequestSchema = z.object({
+    name: z.string().max(100)
+})
+export type ApiTokenCreateRequest = z.infer<typeof apiTokenCreateRequestSchema>
+
+export const apiTokenUpdateRequestSchema = z.object({
+    name: z.string().max(100)
+})
+export type ApiTokenUpdateRequest = z.infer<typeof apiTokenUpdateRequestSchema>
+
+export const deviceTokenExchangeRequestSchema = z.object({
+    accessToken: z.string()
+})
+export type DeviceTokenExchangeRequest = z.infer<typeof deviceTokenExchangeRequestSchema>
+
+export const sdkToolExecuteRequestSchema = z.object({
+    toolName: z.string(),
+    params: z.record(z.string(), z.unknown()).optional()
+})
+export type SdkToolExecuteRequest = z.infer<typeof sdkToolExecuteRequestSchema>
+
+export const manualTriggerRequestSchema = z.object({
+    context: z.string().optional()
+})
+export type ManualTriggerRequest = z.infer<typeof manualTriggerRequestSchema>
+
+export const toggleImprovementsEnabledRequestSchema = z.object({
+    enabled: z.boolean()
+})
+export type ToggleImprovementsEnabledRequest = z.infer<typeof toggleImprovementsEnabledRequestSchema>
+
+export const workosWebhookSecretUpdateRequestSchema = z.object({
+    webhookSecret: z.string(),
+    state: z.string().optional()
+})
+export type WorkosWebhookSecretUpdateRequest = z.infer<typeof workosWebhookSecretUpdateRequestSchema>
+
+export const sdkSampleEventsRequestSchema = z.object({
+    triggers: z.array(triggerPayloadSchema).min(1)
+})
+export type SdkSampleEventsRequest = z.infer<typeof sdkSampleEventsRequestSchema>
+
+export const triggerWithEventRequestSchema = z.object({
+    event: serializedEventSchema
+})
+export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSchema>

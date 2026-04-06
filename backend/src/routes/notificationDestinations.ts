@@ -9,7 +9,7 @@ import {
 
 import { initializeSlackWebClient } from "../integrations/SlackClient"
 import logger from "../logger"
-import { createNotificationDestinationBody, updateNotificationDestinationBody } from "../middleware/schemas"
+import { createNotificationDestinationRequestSchema, updateNotificationDestinationRequestSchema } from "terse-types/Notifications"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { UserNotificationDestination, UserSlackIntegrationWithUser } from "../types/prisma"
@@ -62,7 +62,7 @@ export async function createNotificationDestination(req: Request, res: Response)
     }
 
     const userId = req.session.user.id
-    const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName } = createNotificationDestinationBody.parse(req.body)
+    const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName } = createNotificationDestinationRequestSchema.parse(req.body)
 
     try {
         const prisma = db()
@@ -140,7 +140,7 @@ export async function updateNotificationDestination(req: Request, res: Response)
 
     const userId = req.session.user.id
     const destinationId = req.params.id
-    const requestBody = updateNotificationDestinationBody.parse(req.body)
+    const requestBody = updateNotificationDestinationRequestSchema.parse(req.body)
     const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName, isActive } = requestBody
 
     try {

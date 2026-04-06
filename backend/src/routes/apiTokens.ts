@@ -3,7 +3,7 @@ import { apiTokensKey } from "terse-types/InvalidationKeys"
 import { ApiToken } from "terse-types/types"
 
 import logger from "../logger"
-import { createApiTokenBody, updateApiTokenBody } from "../middleware/schemas"
+import { apiTokenCreateRequestSchema, apiTokenUpdateRequestSchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { createApiToken as createToken, getApiTokensForUser } from "../utility/apiTokens"
@@ -56,7 +56,7 @@ export async function createApiToken(req: Request, res: Response) {
 
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
-    const { name } = createApiTokenBody.parse(req.body)
+    const { name } = apiTokenCreateRequestSchema.parse(req.body)
 
     try {
         const response = await createToken(userId, organizationId, name)
@@ -83,7 +83,7 @@ export async function updateApiToken(req: Request, res: Response) {
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
     const tokenId = req.params.id
-    const { name } = updateApiTokenBody.parse(req.body)
+    const { name } = apiTokenUpdateRequestSchema.parse(req.body)
 
     try {
         const existing = await db().api_tokens.findFirst({

@@ -3,7 +3,7 @@ import { AgentOutput, AgentTrigger, User } from "terse-types/types"
 
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
-import { sdkDeployBody } from "../middleware/schemas"
+import { sdkDeployRequestBodySchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
@@ -24,7 +24,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const organizationId = user.organizationId
 
     try {
-        const { jobs, sourceZipBase64 } = sdkDeployBody.parse(req.body)
+        const { jobs, sourceZipBase64 } = sdkDeployRequestBodySchema.parse(req.body)
 
         const zipBuffer = Buffer.from(sourceZipBase64, "base64")
         if (zipBuffer.length === 0) {
@@ -40,8 +40,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const results: { jobName: string; automationId: string; isUpdate: boolean }[] = []
 
         for (const job of jobs) {
-            const outputs = job.outputs ?? []
-            const toolApprovals = job.toolApprovals ?? []
+            const { outputs, toolApprovals } = job
 
             const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
                 where: {
