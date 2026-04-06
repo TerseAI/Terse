@@ -193,6 +193,36 @@ npm run python:publish
 
 The `python:publish` script first runs `npm run python:dist:check` and then uploads `dist/terse_sdk-*` with `twine`.
 
+### Publishing the npm Packages
+
+The repo includes a publish script that handles version bumping, building, and publishing for `terse-types`, `terse-sdk`, and `terse-cli`.
+
+Preview what will be published (no changes made):
+
+```bash
+pnpm run publish:npm -- --dry-run
+```
+
+Publish with npm 2FA:
+
+```bash
+pnpm run publish:npm -- --otp <code>
+```
+
+Publish without 2FA (if using an automation token):
+
+```bash
+pnpm run publish:npm
+```
+
+The script will:
+
+1. Verify you are logged into npm
+2. Prompt you to select a version bump for each package (`skip` / `patch` / `minor` / `major`)
+3. Build all packages in dependency order (`terse-types` -> `terse-sdk` -> `terse-cli`)
+4. Publish only the bumped packages
+5. Commit the version changes to git
+
 ## Code Formatting
 
 We use **Prettier** for consistent code formatting across the team.
