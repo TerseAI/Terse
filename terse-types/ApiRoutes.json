@@ -110,7 +110,8 @@
     "AGENTS": {
         "LIST": "/agents",
         "RECENT": "/agents/recent",
-        "BY_ID": "/agents/:id"
+        "BY_ID": "/agents/:id",
+        "WEBHOOK_URL": "/agents/:agentId/webhook-url"
     },
     "IMPROVEMENTS": {
         "BY_AGENT_ID": "/agents/:agentId/improvements",
@@ -166,7 +167,8 @@
         "JIRA_BY_ACCOUNT_ID": "/webhooks/jira/:accountId",
         "LINEAR_BY_USER_ID": "/webhooks/linear/:userId",
         "SCHEDULE_BY_INPUT_ID": "/webhooks/schedule/:inputId",
-        "WORKOS_TRIGGER_BY_INTEGRATION_ID": "/webhooks/workos-trigger/:integrationId"
+        "WORKOS_TRIGGER_BY_INTEGRATION_ID": "/webhooks/workos-trigger/:integrationId",
+        "WEBHOOK_TRIGGER_BY_TOKEN": "/webhooks/trigger/:webhookToken"
     },
     "SCHEDULE": {
         "TRIGGER_BY_INPUT_ID": "/schedule/trigger/:inputId",

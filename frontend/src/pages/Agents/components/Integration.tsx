@@ -1,3 +1,4 @@
+import { WebhookIcon } from "lucide-react"
 import { ConfigType } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 
@@ -60,6 +61,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <AttioIcon />
         case ConfigType.SNOWFLAKE_OUTPUT:
             return <SnowflakeIcon />
+        case ConfigType.WEBHOOK_INPUT:
+            return <WebhookIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -85,6 +88,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
         case IntegrationType.TERSE:
         case IntegrationType.CRON_JOB:
             return <CalendarClockIcon />
+        case IntegrationType.WEBHOOK:
+            return <WebhookIcon />
         case IntegrationType.POSTHOG:
             return <PosthogIcon />
         case IntegrationType.LAUNCHDARKLY:

@@ -84,6 +84,7 @@ export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
         figma_config: true
         time_trigger_config: true
         workos_config: true
+        webhook_config: true
     }
 }>
 export type AgentTriggerWithConfigs = AutomationInputWithConfigs // Alias for rebranding (formerly ChannelInputWithConfigs)
@@ -139,6 +140,7 @@ export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
                 figma_config: true
                 time_trigger_config: true
                 workos_config: true
+                webhook_config: true
             }
         }
     }

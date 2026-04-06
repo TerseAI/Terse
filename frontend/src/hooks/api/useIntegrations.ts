@@ -18,8 +18,8 @@ export function useIntegrations({ showOnlyForUI = false }: { showOnlyForUI?: boo
 
     // Don't show TERSE and CRON_JOB integrations in the UI
     if (showOnlyForUI) {
-        activeIntegrations = activeIntegrations.filter(integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB)
-        inactiveIntegrations = inactiveIntegrations.filter(integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB)
+        activeIntegrations = activeIntegrations.filter(integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB && integration !== IntegrationType.WEBHOOK)
+        inactiveIntegrations = inactiveIntegrations.filter(integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB && integration !== IntegrationType.WEBHOOK)
     }
 
     return {

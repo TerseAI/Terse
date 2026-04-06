@@ -57,6 +57,7 @@ import { getStats } from "./routes/stats"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
 import { getUserById } from "./routes/users"
+import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
@@ -252,6 +253,10 @@ app.post(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID, async (req, res) => {
 
 app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, async (req, res) => {
     handleScheduleWebhook(req, res)
+})
+
+app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, async (req, res) => {
+    handleWebhookTrigger(req, res)
 })
 
 app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {

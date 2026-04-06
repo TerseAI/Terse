@@ -16,7 +16,8 @@ export enum IntegrationType {
     LAUNCHDARKLY = "launchdarkly",
     WORKOS = "workos",
     ATTIO = "attio",
-    SNOWFLAKE = "snowflake"
+    SNOWFLAKE = "snowflake",
+    WEBHOOK = "webhook"
 }
 export const integrationTypeEnum = z.enum(IntegrationType)
 
@@ -150,6 +151,14 @@ export const SnowflakeIntegrationMetadata = {
     isOutput: true
 } as const satisfies IntegrationDetails
 
+export const WebhookIntegrationMetadata = {
+    type: IntegrationType.WEBHOOK,
+    name: "Webhook",
+    description: "Trigger via an external HTTP request to a generated URL",
+    isInput: true,
+    isOutput: false
+} as const satisfies IntegrationDetails
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails> // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -167,7 +176,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.LAUNCHDARKLY]: LaunchDarklyIntegrationMetadata,
     [IntegrationType.WORKOS]: WorkOSIntegrationMetadata,
     [IntegrationType.ATTIO]: AttioIntegrationMetadata,
-    [IntegrationType.SNOWFLAKE]: SnowflakeIntegrationMetadata
+    [IntegrationType.SNOWFLAKE]: SnowflakeIntegrationMetadata,
+    [IntegrationType.WEBHOOK]: WebhookIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -202,6 +212,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.WORKOS]: NoInstallationOptions
     [IntegrationType.ATTIO]: NoInstallationOptions
     [IntegrationType.SNOWFLAKE]: NoInstallationOptions
+    [IntegrationType.WEBHOOK]: NoInstallationOptions
 }>
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T]

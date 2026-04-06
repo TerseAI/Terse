@@ -1,5 +1,7 @@
 import { Request, Response } from "express"
 import type { ConfigData } from "terse-types"
+import { ConfigType } from "terse-types"
+import type { SdkDeployJob } from "terse-types/types"
 import { User } from "terse-types/types"
 import { sdkDeployRequestBodySchema } from "terse-types/types"
 
@@ -12,6 +14,7 @@ import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
+import { buildWebhookUrl } from "../utility/webhookUrl"
 
 import { createOutputConfig, createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
 
@@ -38,9 +41,14 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const gcsKey = await uploadSdkDeployZip(zipBuffer)
         const prisma = db()
 
-        const results: { jobName: string; automationId: string; isUpdate: boolean }[] = []
+        const results: { jobName: string; automationId: string; isUpdate: boolean; triggers: { id: string; metadata: { webhookUrl: string } }[] }[] = []
 
         for (const job of jobs) {
+            const validationError = validateJobTriggers(job)
+            if (validationError) {
+                return res.status(400).json({ success: false, error: validationError })
+            }
+
             const { outputs, toolApprovals } = job
 
             const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
@@ -59,7 +67,14 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             await setupAgentTriggers(agent)
 
-            results.push({ jobName: job.jobName, automationId: agent.id, isUpdate })
+            const triggers = agent.inputs
+                .filter(input => input.webhook_config)
+                .map(input => ({
+                    id: input.id,
+                    metadata: { webhookUrl: buildWebhookUrl(input.webhook_config!.webhook_token) }
+                }))
+
+            results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: triggers.length > 0 ? triggers : [] })
 
             logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
                 automationId: agent.id,
@@ -100,6 +115,9 @@ async function updateExistingAutomation(
 ): Promise<AgentWithTriggerRelations> {
     const automationId = existing.id
 
+    // Preserve webhook tokens so URLs stay stable across redeploys
+    const preservedWebhookTokens = existing.inputs.filter(input => input.webhook_config).map(input => input.webhook_config!.webhook_token)
+
     await tearDownAgentTriggers(existing)
 
     return prisma.$transaction(async tx => {
@@ -133,6 +151,21 @@ async function updateExistingAutomation(
 
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
         await createOutputsForAutomation(tx, automationId, outputs, organizationId, userId)
+
+        // This is a hack to preserve webhook tokens so URLs don't change on redeploy.
+        // The right way to do this is to have some stable ids for the triggers so we can upsert. But that's a bigger change.
+        // TODO: Figure out a way to upsert here and prevent this workaround.
+        if (preservedWebhookTokens.length > 0) {
+            const newWebhookConfigs = await tx.automation_webhook_configs.findMany({
+                where: { automation_input: { automation_id: automationId } }
+            })
+            for (let i = 0; i < newWebhookConfigs.length && i < preservedWebhookTokens.length; i++) {
+                await tx.automation_webhook_configs.update({
+                    where: { id: newWebhookConfigs[i].id },
+                    data: { webhook_token: preservedWebhookTokens[i] }
+                })
+            }
+        }
 
         return tx.automations.findFirstOrThrow({
             where: { id: automationId },
@@ -228,6 +261,14 @@ async function createOutputsForAutomation(tx: PrismaTransaction, automationId: s
 
         await createOutputConfig(tx, newOutput.id, output, userId)
     }
+}
+
+function validateJobTriggers(job: SdkDeployJob): string | null {
+    const webhookCount = job.triggers.filter(t => t.configType === ConfigType.WEBHOOK_INPUT).length
+    if (webhookCount > 1) {
+        return `Job "${job.jobName}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`
+    }
+    return null
 }
 
 async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>): Promise<{ id: string; name: string }[]> {
