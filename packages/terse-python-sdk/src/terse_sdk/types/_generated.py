@@ -2237,7 +2237,7 @@ class NotionGetSchemaToolOutput(TerseModel):
     actions: list[RunHistoryAction] | None = None
     data_source_id: str
     database_name: str
-    schema: dict[str, NotionSchemaProperty]
+    schema_: dict[str, NotionSchemaProperty] = Field(alias="schema")
     property_count: int
 
 

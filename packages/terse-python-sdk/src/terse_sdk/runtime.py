@@ -417,9 +417,7 @@ def execute_registered_job(
 
 
 def _serialize_skill_config(skill: SkillConfig[Any]) -> SdkAgentSkillPayload:
-    config = dict(skill.config)
-    if skill.config_type == ConfigType.ATTIO_OUTPUT and "objectSlug" not in config:
-        config["objectSlug"] = None
+    config = {k: v for k, v in skill.config.items() if v is not None}
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type

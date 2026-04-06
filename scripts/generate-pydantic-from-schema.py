@@ -43,6 +43,13 @@ _PYTHON_KEYWORDS = {
     "while", "with", "yield",
 }
 
+# Pydantic BaseModel attributes that shadow built-in methods/properties.
+# These need the same Field(alias=...) treatment as Python keywords.
+_PYDANTIC_RESERVED_ATTRS = {
+    "schema", "validate", "model_fields", "model_config",
+    "model_computed_fields", "model_extra", "model_fields_set",
+}
+
 
 def main() -> None:
     schema = json.loads(SCHEMA_FILE.read_text())
@@ -133,8 +140,8 @@ def emit_object_class(name: str, defn: dict[str, Any], all_defs: dict[str, Any],
         py_type = resolve_type(prop_schema, all_defs, imports)
         is_required = prop_name in required
 
-        # Handle Python reserved keywords as field names
-        if field_name in _PYTHON_KEYWORDS:
+        # Handle Python reserved keywords and Pydantic reserved attrs as field names
+        if field_name in _PYTHON_KEYWORDS or field_name in _PYDANTIC_RESERVED_ATTRS:
             imports.add("Field")
             safe_name = f"{field_name}_"
             if not is_required:
