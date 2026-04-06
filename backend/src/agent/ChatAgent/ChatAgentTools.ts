@@ -56,7 +56,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "Once you have all the information you need, you can use this tool to persist and apply the automation. You can use this to create and update agents. If you are creating, just leave the id empty.",
             parameters: z.object({
-                agent: AgentSchema,
+                agent: agentCreateSchema,
                 id: z.string().nullable().describe("The ID of the agent to update. If not provided, a new agent will be created.")
             }),
             execute: async ({ agent, id }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
@@ -68,7 +68,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 try {
                     const notificationSettings = agent.notificationSettings ?? (await getDefaultNotificationSettings(user.id))
-                    const draft: AgentDraft = { ...agent, createdByUserId: user.id, notificationSettings }
+                    const draft: AgentDraft = { ...agent, id: id ?? null, createdByUserId: user.id, notificationSettings }
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
@@ -445,8 +445,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
-
-export const AgentSchema = agentCreateSchema
 
 function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigInstance {
     return {
