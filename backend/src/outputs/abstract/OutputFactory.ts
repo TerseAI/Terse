@@ -1,7 +1,7 @@
 import { OutputConfigType } from "@prisma/client"
 import {
     AttioOutputConfig,
-    ConfigInstance,
+    ConfigData,
     ConfluenceConfig,
     DatadogConfig,
     GitHubConfig,
@@ -19,7 +19,7 @@ import {
 } from "terse-types"
 
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
-import { convertPrismaOutputConfigToConfigInstance } from "../../utility/typeConverters"
+import { convertPrismaOutputConfigToConfigData } from "../../utility/typeConverters"
 import { ConfluenceOutput } from "../ConfluenceOutput"
 import { AttioOutput } from "../attio/AttioOutput"
 import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
@@ -44,7 +44,7 @@ import { Output } from "./Output"
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigInstance>> = new Map<OutputConfigType, () => Output<ConfigInstance>>([
+    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigData>> = new Map<OutputConfigType, () => Output<ConfigData>>([
         [OutputConfigType.NOTION, () => new NotionOutput()],
         [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
         [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
@@ -62,7 +62,7 @@ export class OutputFactory {
         [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()]
     ])
 
-    static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {
+    static createOutput(integrationType: OutputConfigType): Output<ConfigData> | null {
         const factory = this.OUTPUT_REGISTRY.get(integrationType)
         if (!factory) {
             return null
@@ -70,7 +70,7 @@ export class OutputFactory {
         return factory()
     }
 
-    static createOutputWithConfigs(configType: OutputConfigType, configs: ConfigInstance[]): Output<ConfigInstance> | null {
+    static createOutputWithConfigs(configType: OutputConfigType, configs: ConfigData[]): Output<ConfigData> | null {
         const output = this.createOutput(configType)
         if (!output) {
             return null
@@ -127,9 +127,9 @@ export class OutputFactory {
         return output
     }
 
-    static createOutputsFromAgent(agent: AgentWithRelations): Output<ConfigInstance>[] {
+    static createOutputsFromAgent(agent: AgentWithRelations): Output<ConfigData>[] {
         // Group configs by type
-        const configsByType = new Map<OutputConfigType, ConfigInstance[]>()
+        const configsByType = new Map<OutputConfigType, ConfigData[]>()
         for (const outputIntegration of agent.outputs) {
             const configType = outputIntegration.config_type as OutputConfigType
             // Skip TERSE - it's always included automatically
@@ -139,11 +139,11 @@ export class OutputFactory {
             if (!configsByType.has(configType)) {
                 configsByType.set(configType, [])
             }
-            configsByType.get(configType)!.push(convertPrismaOutputConfigToConfigInstance(outputIntegration as AgentOutputWithConfigs))
+            configsByType.get(configType)!.push(convertPrismaOutputConfigToConfigData(outputIntegration as AgentOutputWithConfigs))
         }
 
         // Create one output instance per type with all configs of that type
-        const outputs: Output<ConfigInstance>[] = []
+        const outputs: Output<ConfigData>[] = []
         for (const [configType, configs] of configsByType.entries()) {
             const output = this.createOutputWithConfigs(configType, configs)
             if (!output) {

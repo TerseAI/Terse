@@ -1,7 +1,7 @@
 import { Agent, AgentOutputType } from "@openai/agents"
 import { tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
-import { ConfigInstance } from "terse-types"
+import { ConfigData, ConfigInstance } from "terse-types"
 import { User } from "terse-types"
 import { z } from "zod"
 
@@ -372,7 +372,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                     agentId: automation.id
                 }
 
-                const instructions = await new SystemPromptBuilder<SessionWithTracking<Session>, ConfigInstance>(
+                const instructions = await new SystemPromptBuilder<SessionWithTracking<Session>, ConfigData>(
                     {
                         session: context,
                         agent: automation as AgentWithRelations,

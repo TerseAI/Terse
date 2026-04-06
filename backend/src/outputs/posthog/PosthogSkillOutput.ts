@@ -5,8 +5,6 @@ import { IntegrationType } from "terse-types"
 
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { PosthogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { getSessionEventsTool } from "./tools/getSessionEvents"
@@ -31,7 +29,6 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
     }
 
     async validateConfig(output: PosthogConfig, _userId: string): Promise<void> {
-        PosthogConfigSchema.parse(stripConfigForValidation(output))
         await validatePosthogProjectExists(output.integrationId, output.projectId)
     }
 

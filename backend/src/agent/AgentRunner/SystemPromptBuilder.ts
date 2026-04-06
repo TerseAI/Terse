@@ -1,6 +1,6 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { RunHistoryStatus } from "@prisma/client"
-import { ConfigInstance, buildRoute } from "terse-types"
+import { ConfigData, ConfigInstance, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"
@@ -16,7 +16,7 @@ export interface RunContext {
     runId: string
 }
 
-export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance> {
+export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigData> {
     session: T
     agent: {
         id: string
@@ -32,7 +32,7 @@ interface Section {
 
 type SectionBuilder = () => Section | null | Promise<Section | null>
 
-export class BaseSystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> {
+export class BaseSystemPromptBuilder<T extends Session, TConfig extends ConfigData> {
     private sections: SectionBuilder[] = []
 
     constructor(
@@ -150,7 +150,7 @@ When explicitly asked by the user, include these links in your responses to help
     }
 }
 
-export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> extends BaseSystemPromptBuilder<T, TConfig> {
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigData> extends BaseSystemPromptBuilder<T, TConfig> {
     override withStandardSections(): this {
         return this.withSection(() => this.buildTimeSection())
             .withSection(() => this.buildCoreInstructions())

@@ -3,7 +3,7 @@ import { Server as HttpServer } from "http"
 import { jwtVerify } from "jose"
 import { createClient } from "redis"
 import { Server, Socket } from "socket.io"
-import { ConfigInstance } from "terse-types"
+import { ConfigData, ConfigInstance } from "terse-types"
 import { SendModelRequest, ToolApprovalResponse } from "terse-types"
 import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "terse-types"
 import { SocketEvents, SocketRooms } from "terse-types"
@@ -208,7 +208,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             // Create outputs from agent configuration
-            let outputs: Output<ConfigInstance>[]
+            let outputs: Output<ConfigData>[]
             try {
                 outputs = OutputFactory.createOutputsFromAgent(agent)
             } catch (error) {

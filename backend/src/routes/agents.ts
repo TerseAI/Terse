@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { isValidToolName } from "terse-types"
-import { ConfigInstance } from "terse-types/Configs"
+import { ConfigData, ConfigInstance } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
@@ -16,7 +16,7 @@ import { trackAgentCreated } from "../utility/analytics"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
-import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters"
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string }
 
@@ -37,7 +37,7 @@ export async function createTriggerConfig(tx: PrismaTransaction, triggerId: stri
     await trigger.addTriggerToAgent(tx, triggerId, config.config)
 }
 
-export async function createOutputConfig(tx: PrismaTransaction, outputId: string, config: ConfigInstance, userId: string): Promise<void> {
+export async function createOutputConfig(tx: PrismaTransaction, outputId: string, config: ConfigData, userId: string): Promise<void> {
     const output = OutputFactory.OUTPUT_REGISTRY.get(convertConfigTypeToOutputConfigType(config.configType))
     if (!output) {
         throw new Error(`Output not found for integration type: ${config.configType}`)
@@ -179,9 +179,6 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
         // Create triggers
         for (const trigger of triggers) {
             const integrationType = trigger.config.integrationType
-            if (!integrationType) {
-                throw new Error(`Unknown integration type: ${trigger.config.integrationType}`)
-            }
 
             // Validate that user owns the integration (system integrations skip validation)
             const integrationId = trigger.config.integrationId
@@ -350,9 +347,6 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             // Create new triggers
             for (const trigger of triggers) {
                 const integrationType = trigger.config.integrationType
-                if (!integrationType) {
-                    throw new Error(`Unknown integration type: ${trigger.config.integrationType}`)
-                }
 
                 // Validate that user owns the integration (system integrations skip validation)
                 const integrationId = trigger.config.integrationId
@@ -389,9 +383,6 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             // Create new outputs
             for (const output of outputs) {
                 const outputIntegrationType = output.config.integrationType
-                if (!outputIntegrationType) {
-                    throw new Error(`Unknown integration type: ${output.config.integrationType}`)
-                }
 
                 const outputConfigType = output.config.configType
                 const outputIntegrationId = output.config.integrationId
@@ -772,11 +763,11 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         prompt: agent.prompt ? { text: agent.prompt.content } : { text: "" },
         triggers: agent.inputs.map(trigger => ({
             id: trigger.id,
-            config: convertPrismaConfigToConfigInstance(trigger)
+            config: convertPrismaConfigToConfigData(trigger)
         })),
         outputs: (agent.outputs ?? []).map(output => ({
             id: output.id,
-            config: convertPrismaOutputConfigToConfigInstance(output)
+            config: convertPrismaOutputConfigToConfigData(output)
         })),
         notificationSettings: agent.notification_settings
             ? {
@@ -795,7 +786,7 @@ export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Prom
     for (const trigger of agent.inputs) {
         try {
             // Convert prisma config to shared config instance to get integration type
-            const configInstance = convertPrismaConfigToConfigInstance(trigger)
+            const configInstance = convertPrismaConfigToConfigData(trigger)
             const integrationType = configInstance.integrationType
 
             // Find the integration from the registry
@@ -829,7 +820,7 @@ export async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): P
     for (const trigger of agent.inputs) {
         try {
             // Convert prisma config to shared config instance to get integration type
-            const configInstance = convertPrismaConfigToConfigInstance(trigger)
+            const configInstance = convertPrismaConfigToConfigData(trigger)
             const integrationType = configInstance.integrationType
 
             // Find the integration from the registry

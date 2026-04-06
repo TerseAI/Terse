@@ -4,7 +4,6 @@ import { IntegrationType } from "terse-types"
 
 import { Output, ToolboxEntry } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
-import { WorkOSOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 
 import { getWorkOSUserTool } from "./tools/getUser"
 import { listWorkOSOrganizationsTool } from "./tools/listOrganizations"
@@ -25,9 +24,7 @@ export class WorkOSOutput extends Output<WorkOSOutputConfig> {
         return new WorkOSOutputConfig("example")
     }
 
-    async validateConfig(output: WorkOSOutputConfig, _userId: string): Promise<void> {
-        WorkOSOutputConfigSchema.parse(stripConfigForValidation(output))
-    }
+    async validateConfig(output: WorkOSOutputConfig, _userId: string): Promise<void> {}
 
     async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, _output: WorkOSOutputConfig): Promise<void> {
         await tx.automation_workos_output_configs.create({

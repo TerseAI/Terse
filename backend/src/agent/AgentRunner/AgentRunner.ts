@@ -4,7 +4,7 @@ import { ConfigInstance } from "terse-types"
 import { EntityType } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ChangeEventType, ChangedItem, ModelEvent } from "terse-types"
-import type { RunHistoryAction, TrackingParams } from "terse-types"
+import type { ConfigData, RunHistoryAction, TrackingParams } from "terse-types"
 
 import { settings } from "../../config/settings"
 import { InputEvent } from "../../integrations/abstract/InputEvent"
@@ -37,7 +37,7 @@ type AgentInputFile = protocol.InputFile
 
 type UserMessageContent = AgentInputText | AgentInputImage | AgentInputFile
 
-export class AgentRunner<T extends Session, TConfig extends ConfigInstance> extends BaseAgentRunner<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> {
+export class AgentRunner<T extends Session, TConfig extends ConfigData> extends BaseAgentRunner<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> {
     private session: T
     private inputEvent: InputEvent | null = null
     private agentConfig: AgentWithRelations
@@ -469,7 +469,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigInstance> exte
 
         return {
             name: "Automation Agent",
-            systemPromptDeps: deps as SystemPromptBuilderDependencies<SessionWithTracking<T>, ConfigInstance>,
+            systemPromptDeps: deps as SystemPromptBuilderDependencies<SessionWithTracking<T>, ConfigData>,
             runContext: this.runContext,
             model: this.chooseModel(),
             tools: this.tools,

@@ -5,8 +5,6 @@ import { IntegrationType } from "terse-types"
 
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { LaunchDarklyConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
@@ -27,7 +25,6 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
     }
 
     async validateConfig(output: LaunchDarklyConfig, _userId: string): Promise<void> {
-        LaunchDarklyConfigSchema.parse(stripConfigForValidation(output))
         const apiKey = await getLaunchDarklyAccessTokenOrThrow(output.integrationId)
         await validateLaunchDarklyProjectExists(apiKey, output.projectKey)
         await validateLaunchDarklyEnvironmentsExist(apiKey, output.projectKey, output.environmentKeys)

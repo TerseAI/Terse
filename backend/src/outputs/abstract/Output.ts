@@ -1,5 +1,5 @@
 import { OutputConfigType } from "@prisma/client"
-import { ConfigInstance } from "terse-types"
+import { ConfigData, ConfigInstance } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
@@ -20,7 +20,7 @@ export interface RuntimeSystemInstructionsContext {
     userId: string
 }
 
-export abstract class Output<TConfig extends ConfigInstance> {
+export abstract class Output<TConfig extends ConfigData> {
     integration: OutputConfigType
     readonly toolbox: readonly ToolboxEntry[]
     configs: TConfig[] = []

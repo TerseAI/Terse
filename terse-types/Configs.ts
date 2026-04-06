@@ -995,7 +995,7 @@ export class SnowflakeOutputConfig extends BaseConfigInstance<IntegrationType.SN
     }
 }
 
-export const configDataSchema = z.discriminatedUnion("configType", [
+export const configDataSchema = z.union([
     GmailConfigSchema,
     FigmaConfigSchema,
     SlackConfigSchema,

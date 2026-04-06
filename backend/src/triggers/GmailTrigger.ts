@@ -2,7 +2,6 @@ import { ConfigType, GmailConfig } from "terse-types/Configs"
 
 import { GmailIntegrationManager } from "../integrations/GmailIntegration"
 import { PrismaTransaction } from "../types/prisma"
-import { GmailConfigSchema, stripConfigForValidation } from "../utility/configSchemas"
 
 import { Trigger } from "./Trigger"
 
@@ -14,9 +13,7 @@ export class GmailTrigger implements Trigger<GmailConfig> {
         this.integrationManager = new GmailIntegrationManager()
     }
 
-    async validateConfig(trigger: GmailConfig, _userId: string): Promise<void> {
-        GmailConfigSchema.parse(stripConfigForValidation(trigger))
-    }
+    async validateConfig(trigger: GmailConfig, _userId: string): Promise<void> {}
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: GmailConfig): Promise<void> {
         await tx.automation_gmail_configs.create({

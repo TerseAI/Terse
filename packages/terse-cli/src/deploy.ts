@@ -4,7 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
 import { ApiRoutes } from "terse-types"
-import type { ConfigInstance } from "terse-types"
+import type { ConfigData, ConfigInstance } from "terse-types"
 import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
@@ -96,7 +96,7 @@ function collectFiles(dir: string, baseDir: string, provider: LanguageProvider):
 
 function serializeConfig(config: ConfigInstance): AgentTrigger | AgentOutput {
     const { isComplete, formatForAgent, ...rest } = config
-    return { id: "", config: rest as ConfigInstance }
+    return { id: "", config: rest as ConfigData }
 }
 
 function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {
