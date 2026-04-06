@@ -5,7 +5,7 @@ import { buildRoute } from "terse-types"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { RunHistoryStatus, TrackingParams } from "terse-types"
-import { AgentNotificationSettings, User, agentCreateSchema, agentTriggerSchema } from "terse-types"
+import { AgentDraft, AgentNotificationSettings, User, agentCreateSchema, agentTriggerSchema } from "terse-types"
 import { z } from "zod"
 
 import { filterEvent } from "../../agent/AgentRunner/EventFilter"
@@ -21,7 +21,6 @@ import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
 import { chatWebSearchTool, webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
-import type { AgentDraft } from "../../routes/agents"
 import { applyAgentForUser, isUuidV4, updateAgentForUser, validateUserOwnsIntegration } from "../../routes/agents"
 import { formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
@@ -69,7 +68,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 try {
                     const notificationSettings = agent.notificationSettings ?? (await getDefaultNotificationSettings(user.id))
-                    const draft: AgentDraft = { ...agent, createdByUserId: user.id, notificationSettings, source: "WEB_UI" }
+                    const draft: AgentDraft = { ...agent, createdByUserId: user.id, notificationSettings }
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)

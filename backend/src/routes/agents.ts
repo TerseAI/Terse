@@ -1,8 +1,8 @@
 import { Request, Response } from "express"
 import { isValidToolName } from "terse-types"
-import { ConfigData, ConfigInstance } from "terse-types/Configs"
+import { ConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
-import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
+import { Agent, AgentDraft, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
 import { agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
@@ -18,8 +18,6 @@ import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
-
-export type AgentDraft = Omit<Agent, "id"> & { id?: string }
 
 export function isUuidV4(s: string): boolean {
     return validateUuid(s) && uuidVersion(s) === 4
@@ -410,7 +408,7 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             }
         }
 
-        await upsertNotificationSettings(tx, agentId, userId, notificationSettings)
+        await upsertNotificationSettings(tx, agentId, userId, notificationSettings ?? null)
 
         // Update tool approvals if provided
         if (toolApprovals !== undefined) {

@@ -559,17 +559,24 @@ export const agentUpdateSchema = z.object({
     prompt: agentPromptSchema.optional(),
     isActive: z.boolean().optional(),
     requireApproval: z.boolean().optional(),
-    notificationSettings: agentNotificationSettingsSchema.optional(),
-    toolApprovals: z.array(z.string()).optional()
+    notificationSettings: agentNotificationSettingsSchema.nullable().optional(),
+    toolApprovals: z.array(z.string()).nullable().optional()
 })
 export type AgentUpdate = z.infer<typeof agentUpdateSchema>
 
 export const agentCreateSchema = agentSchema.omit({
     id: true,
     createdByUserId: true,
-    source: true
+    source: true,
+    updatedAt: true
 })
 export type AgentCreate = z.infer<typeof agentCreateSchema>
+
+export const agentDraftSchema = agentCreateSchema.extend({
+    id: z.string().optional(),
+    createdByUserId: z.string()
+})
+export type AgentDraft = z.infer<typeof agentDraftSchema>
 
 export const paginationSchema = z.object({
     page: z.number(),
