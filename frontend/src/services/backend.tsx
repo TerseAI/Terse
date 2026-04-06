@@ -58,7 +58,6 @@ import {
 
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
 import { User } from "../types/User"
-import { deserializeConfig } from "../utility/ConfigUtils"
 
 const backendBaseUrl = "/api"
 // For browser redirects (login/logout), we need the actual backend URL since window.location.href
@@ -1138,22 +1137,7 @@ export const BackendProvider: BackendService = {
 
         return axios
             .get<RecentAgent[]>(`${backendBaseUrl}${ApiRoutes.AGENTS.RECENT}?${params.toString()}`, { withCredentials: true })
-            .then(response => {
-                // Deserialize configs from JSON to class instances
-                return response.data.map(agent => ({
-                    ...agent,
-                    triggers: agent.triggers.map(trigger => ({
-                        ...trigger,
-                        config: deserializeConfig(trigger.config)
-                    })),
-                    outputs: agent.outputs
-                        ? agent.outputs.map(output => ({
-                              ...output,
-                              config: deserializeConfig(output.config)
-                          }))
-                        : []
-                }))
-            })
+            .then(response => response.data)
             .catch(error => {
                 console.error("Error getting recent agents:", error)
                 throw error
@@ -1226,7 +1210,7 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    createAgent: (data: Agent) => {
+    createAgent: (data: AgentUpdate) => {
         return axios
             .post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true })
             .then(response => response.data)

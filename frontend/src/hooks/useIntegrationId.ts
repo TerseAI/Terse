@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
 
-import { ConfigInstance, ConfigType } from "terse-types/Configs"
+import { ConfigData, ConfigType } from "terse-types/Configs"
 
 /**
  * Hook to manage integration ID state when switching between different integration types.
  * Prevents using stale integrationIds from previous config types.
  */
-export function useIntegrationId(currentConfig: ConfigInstance | undefined, expectedConfigTypes: ConfigType | ConfigType[]): [string | undefined, (value: string | undefined) => void] {
+export function useIntegrationId(currentConfig: ConfigData | undefined, expectedConfigTypes: ConfigType | ConfigType[]): [string | undefined, (value: string | undefined) => void] {
     // Normalize expectedConfigTypes to an array
     const expectedTypes = Array.isArray(expectedConfigTypes) ? expectedConfigTypes : [expectedConfigTypes]
 

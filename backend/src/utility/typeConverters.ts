@@ -1,6 +1,7 @@
 import { InputConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import {
     AttioOutputConfig,
+    ConfigData,
     ConfigInstance,
     ConfigType,
     ConfluenceConfig,
@@ -211,7 +212,7 @@ export const convertPrismaRunHistoryStatusToShared = (status: PrismaRunHistorySt
     }
 }
 
-export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWithConfigs): ConfigInstance => {
+export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithConfigs): ConfigData => {
     const integrationId = channelInput.integration_id
 
     // Determine which config is present and create the appropriate ConfigInstance
@@ -294,7 +295,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWi
  * Converts a ChannelOutput with configs to a ConfigInstance.
  * Similar to convertPrismaConfigToConfigInstance but for outputs.
  */
-export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOutputWithConfigs): ConfigInstance => {
+export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutputWithConfigs): ConfigData => {
     const integrationId = channelOutput.integration_id
 
     // Determine which config is present and create the appropriate ConfigInstance

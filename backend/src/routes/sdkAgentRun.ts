@@ -1,9 +1,10 @@
 import { RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import { Request, Response } from "express"
-import { CONFIG_DETAILS } from "terse-types/Configs"
+import { CONFIG_DETAILS, ConfigType } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
-import { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, User } from "terse-types/types"
+import { SdkAgentRunResponseBody, SdkAgentSkillPayload, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
+import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
@@ -15,7 +16,6 @@ import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { extractErrorMessage } from "../utility/strings"
 
-import { validateAndNormalizeSdkAgentRunBody } from "./sdkAgentRunValidation"
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
 
 /**
@@ -25,24 +25,41 @@ import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalG
  * the stream stays open while we wait for a decision via POST /sdk/approval-decision.
  * On receiving the decision, the agent resumes and continues streaming.
  */
+const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({
+    prompt: z.string().min(1)
+})
+
 export async function handleSdkAgentRun(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
     if (!user) {
         return res.status(401).json({ success: false, error: "Unauthorized" })
     }
 
-    const body = req.body as SdkAgentRunRequestBody
-    const validation = validateAndNormalizeSdkAgentRunBody(body)
-    if (!validation.ok) {
+    const parsed = sdkAgentRunInputSchema.safeParse(req.body)
+    if (!parsed.success) {
         const response: SdkAgentRunResponseBody = {
             success: false,
             error: "Invalid request body",
-            details: validation.errors
+            details: parsed.error.issues.map(i => i.message)
         }
         return res.status(400).json(response)
     }
 
-    const normalized = validation.normalized
+    const { data } = parsed
+    const normalized = {
+        prompt: data.prompt,
+        event: {
+            integrationType: data.event?.integrationType ?? IntegrationType.TERSE,
+            formattedContent: data.event?.formattedContent ?? "Manual trigger from terse run",
+            debugLog: data.event?.debugLog ?? "[MockInputEvent] Manual trigger via SDK"
+        },
+        skills: (data.skills ?? []).map(normalizeSkillConfig),
+        toolApprovals: data.toolApprovals ?? [],
+        options: {
+            maxTurns: data.options?.maxTurns ?? 50,
+            requireApproval: data.options?.requireApproval ?? true
+        }
+    }
     const { send, sandboxRunId } = initSseStream(req, res)
 
     try {
@@ -99,12 +116,12 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
         return res.status(401).json({ success: false, error: "Unauthorized" })
     }
 
-    const body = req.body as SdkApprovalDecisionRequestBody
-    if (!body.runId || !body.stepId || typeof body.approved !== "boolean") {
+    const parsed = sdkApprovalDecisionRequestBodySchema.safeParse(req.body)
+    if (!parsed.success) {
         return res.status(400).json({ success: false, error: "Missing required fields: runId, stepId, approved" })
     }
 
-    resolveApprovalDecision(body.runId, body.stepId, { approved: body.approved })
+    resolveApprovalDecision(parsed.data.runId, parsed.data.stepId, { approved: parsed.data.approved })
 
     return res.status(200).json({ success: true })
 }
@@ -184,6 +201,26 @@ function createSdkRunner(params: {
         send: params.send,
         isProductionRun: !!params.sandboxRunId
     })
+}
+
+function normalizeSkillConfig(skill: SdkAgentSkillPayload): SdkAgentSkillPayload {
+    const integrationType = CONFIG_DETAILS[skill.configType].integrationType
+    const usesSystemIntegration = skill.configType === ConfigType.TIME_TRIGGER || skill.configType === ConfigType.TERSE
+
+    const config: Record<string, unknown> = {
+        ...skill.config,
+        integrationType,
+        configType: skill.configType,
+        ...(usesSystemIntegration ? { integrationId: "system" } : {})
+    }
+
+    // Older/generated Python clients omit objectSlug entirely when Attio.skill()
+    // is used without selecting an object.
+    if (skill.configType === ConfigType.ATTIO_OUTPUT && !("objectSlug" in config)) {
+        config.objectSlug = null
+    }
+
+    return { configType: skill.configType, config }
 }
 
 function buildToolsForSkills(skillIntegrationTypes: IntegrationType[]): {

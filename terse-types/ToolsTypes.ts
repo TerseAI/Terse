@@ -1,4 +1,6 @@
-import { ConfigType } from "./Configs"
+import { z } from "zod"
+
+import { ConfigType, configTypeEnum } from "./Configs"
 
 export type TerseToolSource = "skill"
 
@@ -15,6 +17,10 @@ export interface TerseTool {
 export interface GetToolsThatRequireApprovalsRequest {
     skills: ConfigType[]
 }
+
+export const getToolsThatRequireApprovalsRequestSchema = z.object({
+    skills: z.array(configTypeEnum)
+})
 
 export interface GetToolsThatRequireApprovalsResponse {
     tools: TerseTool[]

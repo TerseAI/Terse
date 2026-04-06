@@ -1,6 +1,7 @@
 import { AgentImprovementStatus } from "@prisma/client"
 import { Request, Response } from "express"
 import { AgentImprovement, AgentReview, ApplyImprovementResponse, DismissImprovementResponse, GetAgentImprovementsResponse, ToggleImprovementsEnabledResponse } from "terse-types/types"
+import { agentAndImprovementParamsSchema, agentIdParamsSchema, toggleImprovementsEnabledRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -91,10 +92,7 @@ export async function getAgentImprovements(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const agentId = req.params.agentId?.trim()
-    if (!agentId) {
-        return res.status(400).json({ error: "agentId is required" })
-    }
+    const { agentId } = agentIdParamsSchema.parse(req.params)
 
     try {
         const automation = await db().automations.findFirst({
@@ -150,12 +148,7 @@ export async function applyImprovement(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const agentId = req.params.agentId?.trim()
-    const improvementId = req.params.id?.trim()
-
-    if (!agentId || !improvementId) {
-        return res.status(400).json({ error: "agentId and improvement id are required" })
-    }
+    const { agentId, id: improvementId } = agentAndImprovementParamsSchema.parse(req.params)
 
     try {
         const improvement = await db().agent_improvements.findFirst({
@@ -215,12 +208,7 @@ export async function dismissImprovement(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const agentId = req.params.agentId?.trim()
-    const improvementId = req.params.id?.trim()
-
-    if (!agentId || !improvementId) {
-        return res.status(400).json({ error: "agentId and improvement id are required" })
-    }
+    const { agentId, id: improvementId } = agentAndImprovementParamsSchema.parse(req.params)
 
     try {
         const improvement = await db().agent_improvements.findFirst({
@@ -273,12 +261,7 @@ export async function undoDismissImprovement(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const agentId = req.params.agentId?.trim()
-    const improvementId = req.params.id?.trim()
-
-    if (!agentId || !improvementId) {
-        return res.status(400).json({ error: "agentId and improvement id are required" })
-    }
+    const { agentId, id: improvementId } = agentAndImprovementParamsSchema.parse(req.params)
 
     try {
         const improvement = await db().agent_improvements.findFirst({
@@ -327,15 +310,8 @@ export async function toggleImprovementsEnabled(req: Request, res: Response) {
     const auth = requireAuth(req, res)
     if (!auth) return
 
-    const agentId = req.params.agentId?.trim()
-    if (!agentId) {
-        return res.status(400).json({ error: "agentId is required" })
-    }
-
-    const enabled = req.body?.enabled
-    if (typeof enabled !== "boolean") {
-        return res.status(400).json({ error: "enabled must be a boolean" })
-    }
+    const { agentId } = agentIdParamsSchema.parse(req.params)
+    const { enabled } = toggleImprovementsEnabledRequestSchema.parse(req.body)
 
     try {
         const result = await db().automations.updateMany({

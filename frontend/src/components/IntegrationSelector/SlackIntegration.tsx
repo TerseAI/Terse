@@ -1,6 +1,7 @@
 import { useState } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
+import { isConfigComplete } from "terse-types"
 import { SlackConfig } from "terse-types"
 import { ConfigType } from "terse-types"
 import { IntegrationType, SlackIntegration as SlackIntegrationType } from "terse-types/Integrations"
@@ -96,7 +97,7 @@ export function SlackIntegration({ input, variant, setConfig }: InputConfigSelec
 
     // Card variant: compact view
     if (variant === "card") {
-        const isComplete = currentConfig?.isComplete()
+        const isComplete = isConfigComplete(currentConfig)
         if (!isComplete) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0 max-w-full">

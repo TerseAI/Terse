@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
-import { ConfigType, NotionConfig } from "terse-types"
+import { ConfigType, NotionConfig, isConfigComplete } from "terse-types"
 import { IntegrationType, NotionIntegration as NotionIntegrationType } from "terse-types/Integrations"
 
 import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations"
@@ -78,7 +78,7 @@ export function NotionIntegration({ input, variant, setConfig }: InputConfigSele
 
     const dbCount = currentConfig?.databaseIds?.length ?? 0
     const pageCount = currentConfig?.pageIds?.length ?? 0
-    const isComplete = currentConfig?.isComplete()
+    const isComplete = isConfigComplete(currentConfig)
 
     if (variant === "card") {
         if (!isComplete) {

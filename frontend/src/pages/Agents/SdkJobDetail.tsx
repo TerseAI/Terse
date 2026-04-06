@@ -305,7 +305,7 @@ function SampleEventsDialog({
     )
 }
 
-function OverviewTab({ triggers, updatedAt, isActive }: { triggers: { id: string; config: { configType: string } }[]; updatedAt?: string; isActive: boolean }) {
+function OverviewTab({ triggers, updatedAt, isActive }: { triggers: { id: string; config: { configType: string } }[]; updatedAt: string | null; isActive: boolean }) {
     return (
         <div className="p-4 space-y-6 max-w-2xl">
             {/* Status */}

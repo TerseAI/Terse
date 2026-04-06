@@ -1,5 +1,5 @@
 import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
-import { ConfigInstance } from "terse-types/Configs"
+import { ConfigData, ConfigInstance } from "terse-types/Configs"
 import { pendingApprovalsKey } from "terse-types/InvalidationKeys"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
@@ -71,7 +71,7 @@ export class ApprovalService {
         return { runRecord, channel }
     }
 
-    private static createOutputs(channel: AgentWithRelations): Output<ConfigInstance>[] {
+    private static createOutputs(channel: AgentWithRelations): Output<ConfigData>[] {
         return OutputFactory.createOutputsFromAgent(channel)
     }
 

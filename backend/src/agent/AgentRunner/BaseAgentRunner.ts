@@ -1,6 +1,6 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool, tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
-import { ConfigInstance } from "terse-types"
+import { ConfigData, ConfigInstance } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 
@@ -34,7 +34,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         this.toolToIntegrationMap = params.toolToIntegrationMap
     }
 
-    protected static buildToolToIntegrationMap<TConfig extends ConfigInstance>(outputs: Output<TConfig>[]): Map<string, string> {
+    protected static buildToolToIntegrationMap<TConfig extends ConfigData>(outputs: Output<TConfig>[]): Map<string, string> {
         const map = new Map<string, string>()
         for (const output of outputs) {
             for (const entry of output.toolbox) {
@@ -64,7 +64,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async buildAgent(params: AgentInitializationParams<TSession>): Promise<TAgent> {
-        const builder = new SystemPromptBuilder<TSession, ConfigInstance>(params.systemPromptDeps, params.runContext).withStandardSections()
+        const builder = new SystemPromptBuilder<TSession, ConfigData>(params.systemPromptDeps, params.runContext).withStandardSections()
         const instructions = await builder.build()
         this.agent = new Agent<TSession, AgentOutputType>({
             name: params.name,
@@ -275,7 +275,7 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
 
 type AgentInitializationParams<TSession extends AppSession> = {
     name: string
-    systemPromptDeps: SystemPromptBuilderDependencies<TSession, ConfigInstance>
+    systemPromptDeps: SystemPromptBuilderDependencies<TSession, ConfigData>
     runContext: RunContext
     model: string
     tools: Tool<TSession>[]

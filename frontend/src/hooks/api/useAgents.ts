@@ -3,7 +3,6 @@ import { type AgentListArgs, agentDetailKey, agentListKey } from "terse-types/In
 import type { Agent, AgentUpdate, AgentsResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
-import { deserializeConfig } from "@/utility/ConfigUtils"
 
 type UpdateAgentArgs = {
     id: string
@@ -23,24 +22,7 @@ export function useAgents(params: AgentListArgs = {}) {
         key,
         async () => {
             const { page = 1, limit = 25, isActive, search } = params
-            const response = await BackendProvider.getUserAgents(page, limit, isActive, search)
-            // Deserialize configs from JSON to class instances
-            return {
-                ...response,
-                agents: response.agents.map(agent => ({
-                    ...agent,
-                    triggers: agent.triggers.map(trigger => ({
-                        ...trigger,
-                        config: deserializeConfig(trigger.config)
-                    })),
-                    outputs: agent.outputs
-                        ? agent.outputs.map(output => ({
-                              ...output,
-                              config: deserializeConfig(output.config)
-                          }))
-                        : []
-                }))
-            }
+            return BackendProvider.getUserAgents(page, limit, isActive, search)
         },
         {
             keepPreviousData: true
@@ -60,28 +42,7 @@ export function useAgents(params: AgentListArgs = {}) {
 export function useAgent(id: string | null) {
     const key = agentDetailKey(id)
 
-    const { data, error, isValidating, mutate } = useSWR<Agent>(
-        key,
-        id
-            ? async () => {
-                  const agent = await BackendProvider.getAgentById(id)
-                  // Deserialize configs from JSON to class instances
-                  return {
-                      ...agent,
-                      triggers: agent.triggers.map(trigger => ({
-                          ...trigger,
-                          config: deserializeConfig(trigger.config)
-                      })),
-                      outputs: agent.outputs
-                          ? agent.outputs.map(output => ({
-                                ...output,
-                                config: deserializeConfig(output.config)
-                            }))
-                          : []
-                  }
-              }
-            : null
-    )
+    const { data, error, isValidating, mutate } = useSWR<Agent>(key, id ? async () => BackendProvider.getAgentById(id) : null)
 
     return {
         agent: data,
@@ -136,24 +97,7 @@ export function useAgentMutations() {
                 async () => {
                     await BackendProvider.updateAgent(agent.id, { isActive: newStatus })
                     const { page = 1, limit = 25, isActive, search } = params
-                    const response = await BackendProvider.getUserAgents(page, limit, isActive, search)
-                    // Deserialize configs from JSON to class instances
-                    return {
-                        ...response,
-                        agents: response.agents.map(agent => ({
-                            ...agent,
-                            triggers: agent.triggers.map(trigger => ({
-                                ...trigger,
-                                config: deserializeConfig(trigger.config)
-                            })),
-                            outputs: agent.outputs
-                                ? agent.outputs.map(output => ({
-                                      ...output,
-                                      config: deserializeConfig(output.config)
-                                  }))
-                                : []
-                        }))
-                    }
+                    return BackendProvider.getUserAgents(page, limit, isActive, search)
                 },
                 {
                     optimisticData: (currentData?: AgentsResponse, displayedData?: AgentsResponse) => {

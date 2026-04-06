@@ -5,8 +5,6 @@ import { IntegrationType } from "terse-types"
 
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { NotionConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import {
@@ -40,7 +38,6 @@ export class NotionOutput extends Output<NotionConfig> {
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
-        NotionConfigSchema.parse(stripConfigForValidation(output))
         const hasDb = (output.databaseIds?.length ?? 0) > 0
         const hasPage = (output.pageIds?.length ?? 0) > 0
         if (!hasDb && !hasPage) {

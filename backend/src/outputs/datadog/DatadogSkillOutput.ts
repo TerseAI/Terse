@@ -5,8 +5,6 @@ import { IntegrationType } from "terse-types"
 
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { DatadogConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
@@ -31,7 +29,6 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
     }
 
     async validateConfig(output: DatadogConfig, _userId: string): Promise<void> {
-        DatadogConfigSchema.parse(stripConfigForValidation(output))
         const indexes = output.defaultIndexes?.length ? output.defaultIndexes : ["main"]
         await validateDatadogIndexesExist(output.integrationId, indexes)
     }

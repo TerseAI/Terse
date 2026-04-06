@@ -1,13 +1,12 @@
 import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
 import type { ConfigInstance } from "terse-types"
-import { ConfigType, buildRoute } from "terse-types"
+import { buildRoute } from "terse-types"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { RunHistoryStatus, TrackingParams } from "terse-types"
-import { AgentNotificationSettings, User } from "terse-types"
+import { AgentDraft, AgentNotificationSettings, User, agentCreateSchema, agentTriggerSchema } from "terse-types"
 import { z } from "zod"
-import { uuidv4 } from "zod/v4"
 
 import { filterEvent } from "../../agent/AgentRunner/EventFilter"
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
@@ -22,35 +21,10 @@ import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
 import { chatWebSearchTool, webSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
-import type { AgentDraft } from "../../routes/agents"
 import { applyAgentForUser, isUuidV4, updateAgentForUser, validateUserOwnsIntegration } from "../../routes/agents"
 import { formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
 import { HydratorType, requireHydratorType } from "../../types/rag"
-import {
-    AttioOutputConfigSchema,
-    ConfluenceConfigSchema,
-    DatadogConfigSchema,
-    FigmaConfigSchema,
-    GitHubConfigSchema,
-    GmailConfigSchema,
-    GmailDraftOutputConfigSchema,
-    GmailOutputConfigSchema,
-    JiraConfigSchema,
-    LaunchDarklyConfigSchema,
-    LinearInputConfigSchema,
-    LinearOutputConfigSchema,
-    NonEmptyString,
-    NotionConfigSchema,
-    PosthogConfigSchema,
-    SlackConfigSchema,
-    SlackOutputConfigSchema,
-    SnowflakeOutputConfigSchema,
-    TimeTriggerConfigSchema,
-    WorkOSInputConfigSchema,
-    WorkOSOutputConfigSchema,
-    enforceNonSystemIntegrationId
-} from "../../utility/configSchemas"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { extractErrorMessage } from "../../utility/strings"
 import { randomString } from "../../utility/strings"
@@ -93,7 +67,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 }
 
                 try {
-                    const draft = await toAgentDraft(agent, user.id)
+                    const notificationSettings = agent.notificationSettings ?? (await getDefaultNotificationSettings(user.id))
+                    const draft: AgentDraft = { ...agent, createdByUserId: user.id, notificationSettings }
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
@@ -115,7 +90,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "Prompt for an integration. This tool shows a prompt (OAuth button or form) and blocks until the user completes the integration or the request times out (about 2 minutes). You can call it again in the same turn if you need multiple integrations; each call will wait for its own completion. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.",
             parameters: z.object({
-                integration: z.nativeEnum(IntegrationType).describe("The integration to prompt for")
+                integration: z.enum(IntegrationType).describe("The integration to prompt for")
             }),
             execute: async ({ integration }: { integration: IntegrationType }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 return await chatInterface.promptForIntegration(integration)
@@ -185,7 +160,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             parameters: z.object({
                 integrationId: z.string().describe("The integration ID to fetch sample events for"),
                 integrationType: z.nativeEnum(IntegrationType).describe("The integration type"),
-                triggerConfig: AgentTriggerSchema.describe("The trigger config to fetch sample events for"),
+                triggerConfig: agentTriggerSchema.omit({ id: true }).describe("The trigger config to fetch sample events for"),
                 agentId: z.string().nullable().describe("Optional agent ID to preview filter results against"),
                 options: z
                     .object({
@@ -207,7 +182,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User is required to fetch sample events")
                 }
 
-                const configInstance = toConfigInstance(normalizeConfig(triggerConfig.config))
+                const configInstance = toConfigInstance(triggerConfig.config)
                 const inputEvents = await fetchSampleEvents(integrationId, integrationType, configInstance, user.organizationId, user.id, { limit })
 
                 if (!agentId) {
@@ -471,78 +446,7 @@ function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-// eventTypes is omitted for ChatAgent because OpenAI structured outputs
-// doesn't support .optional() without .nullable(). eventTypes is SDK-only.
-const ChatAgentGitHubConfigSchema = GitHubConfigSchema.omit({ eventTypes: true })
-
-const InputConfigSchema = z
-    .union([GmailConfigSchema, FigmaConfigSchema, SlackConfigSchema, LinearInputConfigSchema, ChatAgentGitHubConfigSchema, JiraConfigSchema, TimeTriggerConfigSchema, WorkOSInputConfigSchema])
-    .superRefine((value, ctx) => {
-        enforceNonSystemIntegrationId(value, ctx)
-        if (value.configType === ConfigType.SLACK) {
-            const hasChannel = typeof value.channelId === "string" && value.channelId.trim().length > 0
-            const listensToDms = value.listenToUserDms === true
-            if (!hasChannel && !listensToDms) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Slack input requires a channelId or listenToUserDms=true."
-                })
-            }
-        }
-    })
-
-const OutputConfigSchema = z
-    .union([
-        SlackOutputConfigSchema,
-        NotionConfigSchema,
-        LinearOutputConfigSchema,
-        JiraConfigSchema,
-        ConfluenceConfigSchema,
-        GmailOutputConfigSchema,
-        GmailDraftOutputConfigSchema,
-        AttioOutputConfigSchema,
-        ChatAgentGitHubConfigSchema,
-        PosthogConfigSchema,
-        LaunchDarklyConfigSchema,
-        DatadogConfigSchema,
-        WorkOSOutputConfigSchema,
-        SnowflakeOutputConfigSchema
-    ])
-    .superRefine((value, ctx) => {
-        enforceNonSystemIntegrationId(value, ctx)
-    })
-
-const AgentTriggerSchema = z
-    .object({
-        config: InputConfigSchema
-    })
-    .strict()
-
-const AgentOutputSchema = z
-    .object({
-        config: OutputConfigSchema
-    })
-    .strict()
-
-const AgentPromptSchema = z
-    .object({
-        text: NonEmptyString
-    })
-    .strict()
-
-export const AgentSchema = z
-    .object({
-        name: NonEmptyString,
-        isActive: z.boolean(),
-        requireApproval: z.boolean(),
-        prompt: AgentPromptSchema,
-        triggers: z.array(AgentTriggerSchema).min(1),
-        outputs: z.array(AgentOutputSchema).min(1),
-        updatedAt: z.string().nullable()
-    })
-    .strict()
-
-type AgentSchemaInput = z.infer<typeof AgentSchema>
+export const AgentSchema = agentCreateSchema
 
 function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigInstance {
     return {
@@ -550,38 +454,6 @@ function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigI
         isComplete: () => true,
         formatForAgent: () => ""
     } as T & ConfigInstance
-}
-
-function normalizeConfig<T extends Record<string, any>>(config: T): T {
-    if (config.configType === ConfigType.TIME_TRIGGER) {
-        return {
-            ...config,
-            integrationId: "system",
-            integrationType: IntegrationType.CRON_JOB,
-            configType: ConfigType.TIME_TRIGGER
-        } as T
-    }
-    return config
-}
-
-async function toAgentDraft(agent: AgentSchemaInput, userId: string): Promise<AgentDraft> {
-    const notificationSettings: AgentNotificationSettings = await getDefaultNotificationSettings(userId)
-    return {
-        ...agent,
-        triggers: agent.triggers.map(trigger => ({
-            id: uuidv4().toString(),
-            ...trigger,
-            config: toConfigInstance(normalizeConfig(trigger.config))
-        })),
-        outputs: agent.outputs.map(output => ({
-            id: uuidv4().toString(),
-            ...output,
-            config: toConfigInstance(normalizeConfig(output.config))
-        })),
-        notificationSettings: notificationSettings ?? undefined,
-        createdByUserId: userId,
-        updatedAt: agent.updatedAt ?? undefined
-    }
 }
 
 async function fetchResourcesForIntegrationType(integrationType: IntegrationType, organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<string> {

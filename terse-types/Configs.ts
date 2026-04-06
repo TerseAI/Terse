@@ -995,6 +995,211 @@ export class SnowflakeOutputConfig extends BaseConfigInstance<IntegrationType.SN
     }
 }
 
+export const configDataSchema = z.union([
+    GmailConfigSchema,
+    FigmaConfigSchema,
+    SlackConfigSchema,
+    SlackOutputConfigSchema,
+    GmailOutputConfigSchema,
+    GmailDraftOutputConfigSchema,
+    NotionConfigSchema,
+    LinearInputConfigSchema,
+    LinearOutputConfigSchema,
+    GitHubConfigSchema,
+    JiraConfigSchema,
+    ConfluenceConfigSchema,
+    PosthogConfigSchema,
+    DatadogConfigSchema,
+    TimeTriggerConfigSchema,
+    LaunchDarklyConfigSchema,
+    TerseConfigSchema,
+    WorkOSInputConfigSchema,
+    WorkOSOutputConfigSchema,
+    AttioOutputConfigSchema,
+    SnowflakeOutputConfigSchema
+])
+export type ConfigData = z.infer<typeof configDataSchema>
+
+export function isConfigComplete(config: ConfigData | undefined): boolean {
+    if (!config) {
+        return false
+    }
+
+    switch (config.configType) {
+        case ConfigType.GMAIL:
+        case ConfigType.GMAIL_OUTPUT:
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+        case ConfigType.LINEAR_INPUT:
+        case ConfigType.JIRA:
+        case ConfigType.CONFLUENCE:
+        case ConfigType.TERSE:
+            return true
+        case ConfigType.FIGMA:
+            return !!(config.fileKey && config.teamId)
+        case ConfigType.SLACK:
+            return !!(config.channelId || config.listenToUserDms)
+        case ConfigType.SLACK_OUTPUT:
+            return !!(config.channelId || (config.userIds?.length ?? 0) > 0 || config.listenToUserDms)
+        case ConfigType.NOTION:
+            return (config.databaseIds?.length ?? 0) > 0 || (config.pageIds?.length ?? 0) > 0
+        case ConfigType.LINEAR_OUTPUT:
+        case ConfigType.DATADOG:
+        case ConfigType.WORKOS_OUTPUT:
+        case ConfigType.SNOWFLAKE_OUTPUT:
+            return !!config.integrationId
+        case ConfigType.GITHUB:
+            return (config.repositoryIds?.length ?? 0) > 0
+        case ConfigType.POSTHOG:
+            return !!config.projectId
+        case ConfigType.TIME_TRIGGER:
+            return !!config.cronExpression
+        case ConfigType.LAUNCHDARKLY:
+            return !!(config.projectKey && config.environmentKeys.length > 0)
+        case ConfigType.WORKOS_INPUT:
+            return config.eventTypes.length > 0
+        case ConfigType.ATTIO_OUTPUT:
+            return !!config.objectSlug
+        default:
+            const _exhaustive: never = config
+            return _exhaustive
+    }
+}
+
+export function formatConfigForAgent(config: ConfigData): string {
+    switch (config.configType) {
+        case ConfigType.GMAIL:
+            return `Type: Gmail\nIntegration ID: ${config.integrationId}`
+        case ConfigType.FIGMA: {
+            const parts = [`Type: Figma`, `Integration ID: ${config.integrationId}`]
+            if (config.fileName) parts.push(`File: ${config.fileName}`)
+            if (config.fileKey) parts.push(`File Key: ${config.fileKey}`)
+            return parts.join("\n")
+        }
+        case ConfigType.SLACK: {
+            const parts = [`Type: Slack`, `Integration ID: ${config.integrationId}`]
+            if (config.channelName) {
+                parts.push(`Channel: ${config.channelName}`)
+            } else if (config.channelId) {
+                parts.push(`Channel ID: ${config.channelId}`)
+            }
+            if (config.listenToUserDms) parts.push(`Listening to user DMs: Yes`)
+            if (config.userIds) parts.push(`Users: ${config.userIds.join(", ")}`)
+            return parts.join("\n")
+        }
+        case ConfigType.SLACK_OUTPUT: {
+            const parts = [`Type: Slack Output`, `Integration ID: ${config.integrationId}`]
+            if (config.channelId) parts.push(`Channel ID: ${config.channelId}`)
+            if (config.listenToUserDms) parts.push(`Listen to user DMs: Yes`)
+            if (config.userIds?.length) parts.push(`DM user IDs: ${config.userIds.join(", ")}`)
+            return parts.join("\n")
+        }
+        case ConfigType.GMAIL_OUTPUT:
+            return `Type: Gmail Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return `Type: Gmail Draft Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.NOTION: {
+            const parts = [`Type: Notion`, `Integration ID: ${config.integrationId}`]
+            const dbIds = config.databaseIds ?? []
+            const dbNames = config.databaseNames ?? []
+            if (dbIds.length > 0) {
+                parts.push(`Databases: ${dbIds.map((id, i) => dbNames[i] || id).join(", ")}`)
+            }
+            const pageIds = config.pageIds ?? []
+            const pageNames = config.pageNames ?? []
+            if (pageIds.length > 0) {
+                parts.push(`Pages: ${pageIds.map((id, i) => pageNames[i] || id).join(", ")}`)
+            }
+            return parts.join("\n")
+        }
+        case ConfigType.LINEAR_INPUT: {
+            const parts = [`Type: Linear`, `Integration ID: ${config.integrationId}`]
+            if (config.projectName) {
+                parts.push(`Project: ${config.projectName}`)
+            } else if (config.projectId) {
+                parts.push(`Project ID: ${config.projectId}`)
+            }
+            return parts.join("\n")
+        }
+        case ConfigType.LINEAR_OUTPUT: {
+            const parts = [`Type: Linear`, `Integration ID: ${config.integrationId}`]
+            if (config.teamName) {
+                parts.push(`Team: ${config.teamName}`)
+            } else if (config.teamId) {
+                parts.push(`Team ID: ${config.teamId}`)
+            }
+            if (config.projectName) {
+                parts.push(`Project: ${config.projectName}`)
+            } else if (config.projectId) {
+                parts.push(`Project ID: ${config.projectId}`)
+            }
+            return parts.join("\n")
+        }
+        case ConfigType.GITHUB: {
+            const parts = [`Type: GitHub`, `Integration ID: ${config.integrationId}`]
+            if (config.repositoryIds.length > 0) parts.push(`Repositories: ${config.repositoryIds.join(", ")}`)
+            return parts.join("\n")
+        }
+        case ConfigType.JIRA: {
+            const parts = [`Type: Jira`, `Integration ID: ${config.integrationId}`]
+            if (config.projectKey) {
+                parts.push(`Project Key: ${config.projectKey}`)
+            } else if (config.projectId) {
+                parts.push(`Project ID: ${config.projectId}`)
+            }
+            return parts.join("\n")
+        }
+        case ConfigType.CONFLUENCE: {
+            const parts = [`Type: Confluence`, `Integration ID: ${config.integrationId}`]
+            if (config.spaceName) parts.push(`Space: ${config.spaceName}`)
+            if (config.pageName) {
+                parts.push(`Page: ${config.pageName}`)
+            } else if (config.pageId) {
+                parts.push(`Page ID: ${config.pageId}`)
+            }
+            return parts.join("\n")
+        }
+        case ConfigType.POSTHOG: {
+            const parts = [`Type: Posthog`, `Integration ID: ${config.integrationId}`]
+            if (config.projectId) parts.push(`Project ID: ${config.projectId}`)
+            if (config.projectName) parts.push(`Project: ${config.projectName}`)
+            return parts.join("\n")
+        }
+        case ConfigType.DATADOG: {
+            const parts = [`Type: Datadog`, `Integration ID: ${config.integrationId}`]
+            if (config.defaultIndexes?.length) parts.push(`Default indexes: ${config.defaultIndexes.join(", ")}`)
+            return parts.join("\n")
+        }
+        case ConfigType.TIME_TRIGGER: {
+            const parts = [`Type: Time Trigger`]
+            if (config.cronExpression) parts.push(`Schedule (UTC): ${config.cronExpression}`)
+            return parts.join("\n")
+        }
+        case ConfigType.LAUNCHDARKLY: {
+            const parts = [`Type: LaunchDarkly`, `Integration ID: ${config.integrationId}`]
+            if (config.projectKey) parts.push(`Project Key: ${config.projectKey}`)
+            if (config.environmentKeys.length > 0) parts.push(`Environments: ${config.environmentKeys.join(", ")}`)
+            return parts.join("\n")
+        }
+        case ConfigType.TERSE:
+            return "Type: Terse Skills"
+        case ConfigType.WORKOS_INPUT:
+            return `Type: WorkOS Events\nListening for: ${config.eventTypes.join(", ")}`
+        case ConfigType.WORKOS_OUTPUT:
+            return `Type: WorkOS Skill\nIntegration ID: ${config.integrationId}`
+        case ConfigType.ATTIO_OUTPUT: {
+            const parts = [`Type: Attio Output`, `Integration ID: ${config.integrationId}`]
+            if (config.objectSlug) parts.push(`Object: ${config.objectSlug}`)
+            return parts.join("\n")
+        }
+        case ConfigType.SNOWFLAKE_OUTPUT:
+            return `Type: Snowflake Output\nIntegration ID: ${config.integrationId}`
+        default: {
+            const _exhaustive: never = config
+            return _exhaustive
+        }
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T
 

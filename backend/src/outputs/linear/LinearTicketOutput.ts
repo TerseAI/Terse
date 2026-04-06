@@ -5,8 +5,6 @@ import { IntegrationType } from "terse-types"
 
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { LinearOutputConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
-import { convertOutputConfigTypeToConfigType } from "../../utility/typeConverters"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { linearAddCommentTool } from "./tools/addComment"
@@ -42,7 +40,6 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
     }
 
     async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {
-        LinearOutputConfigSchema.parse(stripConfigForValidation(output))
         if (output.teamId) {
             await validateLinearTeamExists(output.integrationId, output.teamId)
         }

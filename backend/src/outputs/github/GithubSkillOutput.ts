@@ -6,7 +6,6 @@ import { IntegrationType } from "terse-types"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
-import { GitHubConfigSchema, stripConfigForValidation } from "../../utility/configSchemas"
 import { Output, RuntimeSystemInstructionsContext, ToolboxEntry } from "../abstract/Output"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
@@ -34,7 +33,6 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
     }
 
     async validateConfig(output: GitHubConfig, userId: string): Promise<void> {
-        GitHubConfigSchema.parse(stripConfigForValidation(output))
         await validateGithubRepositoryIds({
             userId,
             integrationId: output.integrationId,

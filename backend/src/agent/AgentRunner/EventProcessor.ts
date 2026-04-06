@@ -1,5 +1,5 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
-import { ConfigInstance } from "terse-types"
+import { ConfigData, ConfigInstance } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { SerializedEvent, User } from "terse-types"
 
@@ -254,7 +254,7 @@ export class EventProcessor {
         }
 
         // Create outputs from agent configuration
-        let outputs: Output<ConfigInstance>[]
+        let outputs: Output<ConfigData>[]
         try {
             outputs = OutputFactory.createOutputsFromAgent(agent)
         } catch (error) {
