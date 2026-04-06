@@ -22,9 +22,10 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
         title: "Error: No API key found. Unable to fetch sample events. Add a TERSE_API_KEY to your .env file."
     })
 
-    // Split triggers into time-based and integration-based
+    // Split triggers into time-based, webhook, and integration-based
     const timeTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.CRON_JOB)
-    const integrationTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB)
+    const webhookTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK)
+    const integrationTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB && t.integrationType !== IntegrationType.WEBHOOK)
 
     let events: SerializedEvent[] = []
 
@@ -57,6 +58,16 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
             integrationType: IntegrationType.CRON_JOB,
             formattedContent: `This is a manually triggered event for a time trigger (schedule: ${(trigger as any).cronExpression ?? "unknown"}).`,
             debugLog: "Manual Trigger"
+        })
+    }
+
+    // Add a synthetic manual trigger event for each webhook trigger
+    for (const _trigger of webhookTriggers) {
+        events.push({
+            integrationType: IntegrationType.WEBHOOK,
+            formattedContent: "This is a manually triggered webhook event with an empty payload.",
+            debugLog: "Manual Webhook Trigger",
+            metadata: { body: {}, headers: {}, method: "POST" }
         })
     }
 

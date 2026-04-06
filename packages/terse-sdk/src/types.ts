@@ -410,6 +410,40 @@ export class SlackMessageEvent implements InputEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Webhook event classes
+// ---------------------------------------------------------------------------
+
+export class WebhookInputEvent implements InputEvent {
+    readonly integrationType = IntegrationType.WEBHOOK
+    readonly eventType = "webhook"
+    readonly body: Record<string, unknown>
+    readonly headers: Record<string, string>
+    readonly method: string
+    private readonly _formattedContent: string
+    private readonly _debugLog: string
+
+    constructor(opts: { body: Record<string, unknown>; headers: Record<string, string>; method: string; formattedContent: string; debugLog: string }) {
+        this.body = opts.body
+        this.headers = opts.headers
+        this.method = opts.method
+        this._formattedContent = opts.formattedContent
+        this._debugLog = opts.debugLog
+    }
+
+    formatForAgentRunner(): string {
+        return this._formattedContent
+    }
+
+    debugLog(): string {
+        return this._debugLog
+    }
+}
+
+export function isWebhookEvent(event: InputEvent): event is WebhookInputEvent {
+    return event instanceof WebhookInputEvent
+}
+
+// ---------------------------------------------------------------------------
 // Generic fallback for non-typed serialized events
 // ---------------------------------------------------------------------------
 
@@ -532,6 +566,22 @@ export function deserializeInputEvent(se: SerializedEvent): InputEvent {
             blocks: meta.blocks,
             attachments: meta.attachments,
             files: meta.files,
+            formattedContent: se.formattedContent,
+            debugLog: se.debugLog
+        })
+    }
+
+    if (se.integrationType === IntegrationType.WEBHOOK && se.metadata) {
+        const meta = se.metadata as {
+            body?: Record<string, unknown>
+            headers?: Record<string, string>
+            method?: string
+        }
+
+        return new WebhookInputEvent({
+            body: meta.body ?? {},
+            headers: meta.headers ?? {},
+            method: meta.method ?? "POST",
             formattedContent: se.formattedContent,
             debugLog: se.debugLog
         })

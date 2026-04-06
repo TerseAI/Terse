@@ -53,6 +53,13 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
         for (const r of result.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
             console.log(chalk.dim(`  ${verb} "${r.jobName}" (${r.automationId})`))
+            if (r.triggers) {
+                for (const t of r.triggers) {
+                    if (t.metadata?.webhookUrl) {
+                        console.log(chalk.cyan(`    Webhook URL: ${t.metadata.webhookUrl}`))
+                    }
+                }
+            }
         }
 
         console.log(chalk.dim(`  Files: ${fileCount}`))

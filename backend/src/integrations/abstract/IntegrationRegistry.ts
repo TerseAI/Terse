@@ -20,7 +20,7 @@ import { FormIntegrationInstallation, Integration, OAuthIntegrationInstallation 
 type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails, any> & (OAuthIntegrationInstallation<IntegrationType> | FormIntegrationInstallation<IntegrationType>)
 
 // System integrations that don't require user ownership validation
-const SYSTEM_INTEGRATION_TYPES: IntegrationType[] = [IntegrationType.TERSE, IntegrationType.CRON_JOB]
+const SYSTEM_INTEGRATION_TYPES: IntegrationType[] = [IntegrationType.TERSE, IntegrationType.CRON_JOB, IntegrationType.WEBHOOK]
 
 export function isSystemIntegration(integrationType: IntegrationType): boolean {
     return SYSTEM_INTEGRATION_TYPES.includes(integrationType)

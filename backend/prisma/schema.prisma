@@ -482,6 +482,7 @@ model automation_inputs {
   time_trigger_config automation_time_trigger_configs?
   workos_config       automation_workos_configs?
   attio_config        automation_attio_configs?
+  webhook_config      automation_webhook_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -837,6 +838,20 @@ model automation_workos_configs {
   automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
 }
 
+// Webhook Trigger Configuration
+model automation_webhook_configs {
+  id                  String @id @default(cuid())
+  automation_input_id String @unique
+  webhook_token       String @unique
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+
+  @@index([webhook_token])
+}
+
 model automation_workos_output_configs {
   id                   String   @id @default(cuid())
   automation_output_id String   @unique
@@ -874,6 +889,7 @@ enum IntegrationType {
   WORKOS
   ATTIO
   SNOWFLAKE
+  WEBHOOK
 }
 
 enum InputConfigType {
@@ -889,6 +905,7 @@ enum InputConfigType {
   POSTHOG
   TIME_TRIGGER
   WORKOS_INPUT
+  WEBHOOK_INPUT
 }
 
 enum OutputConfigType {

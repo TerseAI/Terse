@@ -18,6 +18,7 @@ import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
+import { buildWebhookUrl } from "../utility/webhookUrl"
 
 export function isUuidV4(s: string): boolean {
     return validateUuid(s) && uuidVersion(s) === 4
@@ -753,6 +754,13 @@ export async function deleteAgent(req: Request, res: Response) {
     }
 }
 
+function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { metadata?: { webhookUrl: string } } {
+    if (trigger.webhook_config) {
+        return { metadata: { webhookUrl: buildWebhookUrl(trigger.webhook_config.webhook_token) } }
+    }
+    return {}
+}
+
 // Helper function to transform AgentWithRelations to frontend Agent format
 function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<AgentWithNotificationSettingsRelations>): Agent {
     return {
@@ -763,7 +771,8 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         prompt: agent.prompt ? { text: agent.prompt.content } : { text: "" },
         triggers: agent.inputs.map(trigger => ({
             id: trigger.id,
-            config: convertPrismaConfigToConfigData(trigger)
+            config: convertPrismaConfigToConfigData(trigger),
+            ...buildTriggerMetadata(trigger)
         })),
         outputs: (agent.outputs ?? []).map(output => ({
             id: output.id,

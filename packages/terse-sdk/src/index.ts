@@ -29,6 +29,8 @@ export {
     isWorkOSInvitationEvent,
     isWorkOSOrganizationEvent,
     SlackMessageEvent,
+    WebhookInputEvent,
+    isWebhookEvent,
     deserializeInputEvent
 } from "./types.js"
 export type { GithubRepository, GithubUser, GithubFileDiff, GithubCommit, GithubPRData, WorkOSEventUser, WorkOSEventMembership, WorkOSEventInvitation, WorkOSEventOrganization } from "./types.js"
@@ -72,6 +74,7 @@ export {
     WorkOSOutputConfig,
     AttioOutputConfig,
     SnowflakeOutputConfig,
+    WebhookInputConfig,
     SlackEventType,
     GitHubEventType,
     LinearEventType,
@@ -111,6 +114,10 @@ export class Terse {
     }
 
     createJob<TTriggers extends readonly TypedTrigger[], TSkills extends readonly TypedSkill<string>[]>(params: CreateJobParameters<TTriggers, TSkills>) {
+        const webhookCount = params.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK).length
+        if (webhookCount > 1) {
+            throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
+        }
         _jobRegistry.set(params.name, params as unknown as CreateJobParameters)
     }
 }
