@@ -3,9 +3,8 @@ import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
-import { ApiRoutes } from "terse-types"
-import type { ConfigData, ConfigInstance } from "terse-types"
-import type { AgentOutput, AgentTrigger, SdkDeployResponseBody } from "terse-types"
+import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
+import type { SdkDeployResponseBody } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
@@ -28,21 +27,18 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
     const spinner = ora(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}...`).start()
 
     try {
-        const result = await fetchWithAuth<SdkDeployResponseBody>(
-            ApiRoutes.SDK.DEPLOY,
-            apiKey,
-            {
-                jobs: jobs.map(job => ({
-                    jobName: job.name,
-                    triggers: job.triggers.map(serializeConfig),
-                    outputs: job.skills?.map(serializeConfig) ?? [],
-                    toolApprovals: job.toolApprovals ?? [],
-                    webhookURL: job.webhookURL
-                })),
-                sourceZipBase64
-            },
-            "POST"
-        )
+        const body = sdkDeployRequestBodySchema.parse({
+            jobs: jobs.map(job => ({
+                jobName: job.name,
+                triggers: job.triggers,
+                outputs: job.skills ?? [],
+                toolApprovals: job.toolApprovals ?? [],
+                webhookURL: job.webhookURL
+            })),
+            sourceZipBase64
+        })
+
+        const result = await fetchWithAuth<SdkDeployResponseBody>(ApiRoutes.SDK.DEPLOY, apiKey, body, "POST")
 
         if (!result.success) {
             spinner.fail(chalk.red(`Deploy failed: ${result.error}`))
@@ -92,11 +88,6 @@ function collectFiles(dir: string, baseDir: string, provider: LanguageProvider):
     }
 
     return entries
-}
-
-function serializeConfig(config: ConfigInstance): AgentTrigger | AgentOutput {
-    const { isComplete, formatForAgent, ...rest } = config
-    return { id: "", config: rest as ConfigData }
 }
 
 function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {

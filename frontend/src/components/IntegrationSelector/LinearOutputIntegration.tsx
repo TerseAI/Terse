@@ -120,7 +120,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
                     <LinearTeamSelector
                         integrationId={selectedIntegrationId}
-                        selectedTeamId={currentConfig?.teamId}
+                        selectedTeamId={currentConfig?.teamId ?? null}
                         onSelect={(teamId: string, teamName: string) => {
                             const updatedConfig = new LinearOutputConfig(selectedIntegrationId, teamId, teamName, currentConfig?.projectId, currentConfig?.projectName)
                             setConfig(updatedConfig)

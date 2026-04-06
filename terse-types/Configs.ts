@@ -330,7 +330,7 @@ abstract class BaseConfigInstance<TIntegrationType extends IntegrationType, TCon
 export const GmailConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.GMAIL),
     configType: z.literal(ConfigType.GMAIL),
-    eventTypes: z.array(z.enum(GmailEventType)).optional()
+    eventTypes: z.array(z.enum(GmailEventType)).nullable()
 })
 export type GmailConfigData = z.infer<typeof GmailConfigSchema>
 export type GmailConfigInstance = GmailConfigData & ConfigBehavior
@@ -338,7 +338,7 @@ export type GmailConfigInstance = GmailConfigData & ConfigBehavior
 export class GmailConfig extends BaseConfigInstance<IntegrationType.GMAIL, ConfigType.GMAIL> implements GmailConfigInstance {
     constructor(
         integrationId: string,
-        public eventTypes?: GmailEventType[]
+        public eventTypes: GmailEventType[] | null = null
     ) {
         super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL)
     }
@@ -358,7 +358,7 @@ export const FigmaConfigSchema = ConfigInstanceSchema.extend({
     fileKey: z.string(),
     fileName: z.string(),
     teamId: z.string(),
-    eventTypes: z.array(z.enum(FigmaEventType)).optional()
+    eventTypes: z.array(z.enum(FigmaEventType)).nullable()
 })
 export type FigmaConfigData = z.infer<typeof FigmaConfigSchema>
 export type FigmaConfigInstance = FigmaConfigData & ConfigBehavior
@@ -369,7 +369,7 @@ export class FigmaConfig extends BaseConfigInstance<IntegrationType.FIGMA, Confi
         public fileKey: string,
         public fileName: string,
         public teamId: string,
-        public eventTypes?: FigmaEventType[]
+        public eventTypes: FigmaEventType[] | null = null
     ) {
         super(integrationId, IntegrationType.FIGMA, ConfigType.FIGMA)
     }
@@ -393,11 +393,11 @@ export class FigmaConfig extends BaseConfigInstance<IntegrationType.FIGMA, Confi
 export const SlackConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.SLACK),
     configType: z.literal(ConfigType.SLACK),
-    channelId: z.string().optional(),
-    channelName: z.string().optional(),
+    channelId: z.string().nullable(),
+    channelName: z.string().nullable(),
     listenToUserDms: z.boolean().default(false),
-    userIds: z.array(z.string()).optional(),
-    eventTypes: z.array(z.enum(SlackEventType)).optional()
+    userIds: z.array(z.string()).nullable(),
+    eventTypes: z.array(z.enum(SlackEventType)).nullable()
 })
 export type SlackConfigData = z.infer<typeof SlackConfigSchema>
 export type SlackConfigInstance = SlackConfigData & ConfigBehavior
@@ -405,11 +405,11 @@ export type SlackConfigInstance = SlackConfigData & ConfigBehavior
 export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, ConfigType.SLACK> implements SlackConfigInstance {
     constructor(
         integrationId: string,
-        public channelId?: string,
-        public channelName?: string,
+        public channelId: string | null = null,
+        public channelName: string | null = null,
         public listenToUserDms: boolean = false,
-        public userIds?: string[],
-        public eventTypes?: SlackEventType[]
+        public userIds: string[] | null = null,
+        public eventTypes: SlackEventType[] | null = null
     ) {
         super(integrationId, IntegrationType.SLACK, ConfigType.SLACK)
     }
@@ -441,10 +441,10 @@ export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, Confi
 export const SlackOutputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.SLACK),
     configType: z.literal(ConfigType.SLACK_OUTPUT),
-    channelId: z.string().optional(),
-    channelName: z.string().optional(),
-    userIds: z.array(z.string()).optional(),
-    userNames: z.array(z.string()).optional(),
+    channelId: z.string().nullable(),
+    channelName: z.string().nullable(),
+    userIds: z.array(z.string()).nullable(),
+    userNames: z.array(z.string()).nullable(),
     listenToUserDms: z.boolean().default(false)
 })
 export type SlackOutputConfigData = z.infer<typeof SlackOutputConfigSchema>
@@ -453,10 +453,10 @@ export type SlackOutputConfigInstance = SlackOutputConfigData & ConfigBehavior
 export class SlackOutputConfig extends BaseConfigInstance<IntegrationType.SLACK, ConfigType.SLACK_OUTPUT> implements SlackOutputConfigInstance {
     constructor(
         integrationId: string,
-        public channelId?: string,
-        public channelName?: string,
-        public userIds?: string[],
-        public userNames?: string[],
+        public channelId: string | null = null,
+        public channelName: string | null = null,
+        public userIds: string[] | null = null,
+        public userNames: string[] | null = null,
         public listenToUserDms: boolean = false
     ) {
         super(integrationId, IntegrationType.SLACK, ConfigType.SLACK_OUTPUT)
@@ -570,9 +570,9 @@ export class NotionConfig extends BaseConfigInstance<IntegrationType.NOTION, Con
 export const LinearInputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.LINEAR),
     configType: z.literal(ConfigType.LINEAR_INPUT),
-    projectId: z.string().optional(),
-    projectName: z.string().optional(),
-    eventTypes: z.array(z.enum(LinearEventType)).optional()
+    projectId: z.string().nullable(),
+    projectName: z.string().nullable(),
+    eventTypes: z.array(z.enum(LinearEventType)).nullable()
 })
 export type LinearInputConfigData = z.infer<typeof LinearInputConfigSchema>
 export type LinearInputConfigInstance = LinearInputConfigData & ConfigBehavior
@@ -580,9 +580,9 @@ export type LinearInputConfigInstance = LinearInputConfigData & ConfigBehavior
 export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR, ConfigType.LINEAR_INPUT> implements LinearInputConfigInstance {
     constructor(
         integrationId: string,
-        public projectId?: string,
-        public projectName?: string,
-        public eventTypes?: LinearEventType[]
+        public projectId: string | null = null,
+        public projectName: string | null = null,
+        public eventTypes: LinearEventType[] | null = null
     ) {
         super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_INPUT)
     }
@@ -605,10 +605,10 @@ export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR
 export const LinearOutputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.LINEAR),
     configType: z.literal(ConfigType.LINEAR_OUTPUT),
-    teamId: z.string().optional(),
-    teamName: z.string().optional(),
-    projectId: z.string().optional(),
-    projectName: z.string().optional()
+    teamId: z.string().nullable(),
+    teamName: z.string().nullable(),
+    projectId: z.string().nullable(),
+    projectName: z.string().nullable()
 })
 export type LinearOutputConfigData = z.infer<typeof LinearOutputConfigSchema>
 export type LinearOutputConfigInstance = LinearOutputConfigData & ConfigBehavior
@@ -616,10 +616,10 @@ export type LinearOutputConfigInstance = LinearOutputConfigData & ConfigBehavior
 export class LinearOutputConfig extends BaseConfigInstance<IntegrationType.LINEAR, ConfigType.LINEAR_OUTPUT> implements LinearOutputConfigInstance {
     constructor(
         integrationId: string,
-        public teamId?: string,
-        public teamName?: string,
-        public projectId?: string,
-        public projectName?: string
+        public teamId: string | null = null,
+        public teamName: string | null = null,
+        public projectId: string | null = null,
+        public projectName: string | null = null
     ) {
         super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_OUTPUT)
     }
@@ -648,7 +648,7 @@ export const GitHubConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.GITHUB),
     configType: z.literal(ConfigType.GITHUB),
     repositoryIds: z.array(z.number().int()),
-    eventTypes: z.array(z.enum(GitHubEventType)).optional()
+    eventTypes: z.array(z.enum(GitHubEventType)).nullable()
 })
 export type GitHubConfigData = z.infer<typeof GitHubConfigSchema>
 export type GitHubConfigInstance = GitHubConfigData & ConfigBehavior
@@ -657,7 +657,7 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
     constructor(
         integrationId: string,
         public repositoryIds: number[],
-        public eventTypes?: GitHubEventType[]
+        public eventTypes: GitHubEventType[] | null = null
     ) {
         super(integrationId, IntegrationType.GITHUB, ConfigType.GITHUB)
     }
@@ -678,9 +678,9 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
 export const JiraConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.ATLASSIAN),
     configType: z.literal(ConfigType.JIRA),
-    projectKey: z.string().optional(),
-    projectId: z.string().optional(),
-    eventTypes: z.array(z.enum(JiraEventType)).optional()
+    projectKey: z.string().nullable(),
+    projectId: z.string().nullable(),
+    eventTypes: z.array(z.enum(JiraEventType)).nullable()
 })
 export type JiraConfigData = z.infer<typeof JiraConfigSchema>
 export type JiraConfigInstance = JiraConfigData & ConfigBehavior
@@ -688,9 +688,9 @@ export type JiraConfigInstance = JiraConfigData & ConfigBehavior
 export class JiraConfig extends BaseConfigInstance<IntegrationType.ATLASSIAN, ConfigType.JIRA> implements JiraConfigInstance {
     constructor(
         integrationId: string,
-        public projectKey?: string,
-        public projectId?: string,
-        public eventTypes?: JiraEventType[]
+        public projectKey: string | null = null,
+        public projectId: string | null = null,
+        public eventTypes: JiraEventType[] | null = null
     ) {
         super(integrationId, IntegrationType.ATLASSIAN, ConfigType.JIRA)
     }
@@ -756,7 +756,7 @@ export const PosthogConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.POSTHOG),
     configType: z.literal(ConfigType.POSTHOG),
     projectId: z.string(),
-    projectName: z.string().optional()
+    projectName: z.string().nullable()
 })
 export type PosthogConfigData = z.infer<typeof PosthogConfigSchema>
 export type PosthogConfigInstance = PosthogConfigData & ConfigBehavior
@@ -765,7 +765,7 @@ export class PosthogConfig extends BaseConfigInstance<IntegrationType.POSTHOG, C
     constructor(
         integrationId: string,
         public projectId: string,
-        public projectName?: string
+        public projectName: string | null = null
     ) {
         super(integrationId, IntegrationType.POSTHOG, ConfigType.POSTHOG)
     }
@@ -947,7 +947,7 @@ export class WorkOSOutputConfig extends BaseConfigInstance<IntegrationType.WORKO
 export const AttioOutputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.ATTIO),
     configType: z.literal(ConfigType.ATTIO_OUTPUT),
-    objectSlug: z.string().optional()
+    objectSlug: z.string().nullable()
 })
 export type AttioOutputConfigData = z.infer<typeof AttioOutputConfigSchema>
 export type AttioOutputConfigInstance = AttioOutputConfigData & ConfigBehavior
@@ -955,7 +955,7 @@ export type AttioOutputConfigInstance = AttioOutputConfigData & ConfigBehavior
 export class AttioOutputConfig extends BaseConfigInstance<IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT> implements AttioOutputConfigInstance {
     constructor(
         integrationId: string,
-        public objectSlug?: string
+        public objectSlug: string | null = null
     ) {
         super(integrationId, IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT)
     }

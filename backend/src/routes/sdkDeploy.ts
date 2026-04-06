@@ -1,5 +1,6 @@
 import { Request, Response } from "express"
-import { AgentOutput, AgentTrigger, User } from "terse-types/types"
+import type { ConfigData } from "terse-types"
+import { User } from "terse-types/types"
 import { sdkDeployRequestBodySchema } from "terse-types/types"
 
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
@@ -90,8 +91,8 @@ async function updateExistingAutomation(
     prisma: ReturnType<typeof db>,
     existing: AgentWithTriggerRelations,
     jobName: string,
-    triggers: AgentTrigger[],
-    outputs: AgentOutput[],
+    triggers: ConfigData[],
+    outputs: ConfigData[],
     toolApprovals: string[],
     organizationId: string,
     userId: string,
@@ -143,8 +144,8 @@ async function updateExistingAutomation(
 async function createNewAutomation(
     prisma: ReturnType<typeof db>,
     jobName: string,
-    triggers: AgentTrigger[],
-    outputs: AgentOutput[],
+    triggers: ConfigData[],
+    outputs: ConfigData[],
     toolApprovals: string[],
     organizationId: string,
     userId: string,
@@ -182,50 +183,50 @@ async function createNewAutomation(
     })
 }
 
-async function createTriggersForAutomation(tx: PrismaTransaction, automationId: string, triggers: AgentTrigger[], organizationId: string, userId: string) {
+async function createTriggersForAutomation(tx: PrismaTransaction, automationId: string, triggers: ConfigData[], organizationId: string, userId: string) {
     for (const trigger of triggers) {
-        const integrationId = trigger.config.integrationId || "system"
+        const integrationId = trigger.integrationId || "system"
 
-        if (!isSystemIntegration(trigger.config.integrationType)) {
-            const isOwner = await validateUserOwnsIntegration(organizationId, trigger.config.integrationType, integrationId)
+        if (!isSystemIntegration(trigger.integrationType)) {
+            const isOwner = await validateUserOwnsIntegration(organizationId, trigger.integrationType, integrationId)
             if (!isOwner) {
-                throw new Error(`Integration ${trigger.config.integrationType} not found or not owned by user`)
+                throw new Error(`Integration ${trigger.integrationType} not found or not owned by user`)
             }
         }
 
         const newTrigger = await tx.automation_inputs.create({
             data: {
                 automation_id: automationId,
-                config_type: convertConfigTypeToInputConfigType(trigger.config.configType),
+                config_type: convertConfigTypeToInputConfigType(trigger.configType),
                 integration_id: integrationId
             }
         })
 
-        await createTriggerConfig(tx, newTrigger.id, { ...trigger, id: newTrigger.id }, userId)
+        await createTriggerConfig(tx, newTrigger.id, { id: newTrigger.id, config: trigger }, userId)
     }
 }
 
-async function createOutputsForAutomation(tx: PrismaTransaction, automationId: string, outputs: AgentOutput[], organizationId: string, userId: string) {
+async function createOutputsForAutomation(tx: PrismaTransaction, automationId: string, outputs: ConfigData[], organizationId: string, userId: string) {
     for (const output of outputs) {
-        const integrationId = output.config.integrationId
+        const integrationId = output.integrationId
         if (!integrationId) {
-            throw new Error(`Integration ID is required for ${output.config.integrationType}`)
+            throw new Error(`Integration ID is required for ${output.integrationType}`)
         }
 
-        const isOwner = await validateUserOwnsIntegration(organizationId, output.config.integrationType, integrationId)
+        const isOwner = await validateUserOwnsIntegration(organizationId, output.integrationType, integrationId)
         if (!isOwner) {
-            throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`)
+            throw new Error(`Integration ${output.integrationType} not found or not owned by user`)
         }
 
         const newOutput = await tx.automation_outputs.create({
             data: {
                 automation_id: automationId,
-                config_type: convertConfigTypeToOutputConfigType(output.config.configType),
+                config_type: convertConfigTypeToOutputConfigType(output.configType),
                 integration_id: integrationId
             }
         })
 
-        await createOutputConfig(tx, newOutput.id, output.config, userId)
+        await createOutputConfig(tx, newOutput.id, output, userId)
     }
 }
 

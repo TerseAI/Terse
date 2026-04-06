@@ -588,7 +588,7 @@ export const agentCreateSchema = agentSchema.omit({
 export type AgentCreate = z.infer<typeof agentCreateSchema>
 
 export const agentDraftSchema = agentCreateSchema.extend({
-    id: z.string().optional(),
+    id: z.string().nullable(),
     createdByUserId: z.string()
 })
 export type AgentDraft = z.infer<typeof agentDraftSchema>
@@ -903,23 +903,18 @@ export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionR
 
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
-    triggers: z.array(agentTriggerSchema),
-    outputs: z.array(agentOutputSchema),
+    triggers: z.array(configDataSchema),
+    outputs: z.array(configDataSchema),
     toolApprovals: z.array(z.string()),
     webhookURL: z.string().optional()
 })
-export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema> & {
-    triggers: AgentTrigger[]
-    outputs: AgentOutput[]
-}
+export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
 export const sdkDeployRequestBodySchema = z.object({
     jobs: z.array(sdkDeployJobSchema),
     sourceZipBase64: z.string()
 })
-export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema> & {
-    jobs: SdkDeployJob[]
-}
+export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>
 
 export const sdkDeployResultSchema = z.object({
     jobName: z.string(),
