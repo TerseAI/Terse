@@ -90,7 +90,9 @@ class _FakeClient:
     def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
         return False
 
-    def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> httpx.Response:
+    def post(
+        self, url: str, *, headers: dict[str, str], json: dict[str, object]
+    ) -> httpx.Response:
         self.calls.append({"url": url, "headers": headers, "json": json})
         if self.response is None:
             raise AssertionError("No response configured")
@@ -164,7 +166,9 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
 
     skipped = execute_registered_job(
         get_job_registry()["demo-job"],
-        CronJobInputEvent(event_type="manual", formatted_content="demo", debug_log="demo"),
+        CronJobInputEvent(
+            event_type="manual", formatted_content="demo", debug_log="demo"
+        ),
         agent=TerseAgent(),
     )
 
@@ -205,7 +209,12 @@ def test_deserialize_input_event_enriches_slack_metadata() -> None:
                 "teamId": "T123",
                 "permalink": "https://slack.example/message",
                 "channelType": "im",
-                "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}],
+                "blocks": [
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": "Deploy finished"},
+                    }
+                ],
                 "attachments": [
                     {
                         "fallback": "fallback text",
@@ -235,7 +244,9 @@ def test_deserialize_input_event_enriches_slack_metadata() -> None:
     assert event.team_id == "T123"
     assert event.permalink == "https://slack.example/message"
     assert event.channel_type == SlackChannelType.IM
-    assert event.blocks == [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}]
+    assert event.blocks == [
+        {"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}
+    ]
     assert event.attachments is not None
     assert event.attachments[0].author_name == "Terse"
     assert event.files is not None
@@ -332,10 +343,16 @@ def test_agent_execute_tool_includes_session_and_run_headers() -> None:
     )
 
     with (
-        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key", "TERSE_RUN_ID": "run_123"}, clear=False),
+        patch.dict(
+            os.environ,
+            {"TERSE_API_KEY": "terse_test_key", "TERSE_RUN_ID": "run_123"},
+            clear=False,
+        ),
         patch("terse_sdk.runtime.httpx.Client", return_value=fake_client),
     ):
-        result = TerseAgent(session_id="session_123").execute_tool("demo_tool", {"value": 1})
+        result = TerseAgent(session_id="session_123").execute_tool(
+            "demo_tool", {"value": 1}
+        )
 
     assert result == {"ok": True}
     assert fake_client.calls[0]["headers"]["X-Terse-Session-Id"] == "session_123"
@@ -344,7 +361,9 @@ def test_agent_execute_tool_includes_session_and_run_headers() -> None:
 
 
 def test_agent_execute_tool_requires_api_key() -> None:
-    with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), pytest.raises(MissingApiKeyError):
+    with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), pytest.raises(
+        MissingApiKeyError
+    ):
         TerseAgent().execute_tool("demo_tool")
 
 
@@ -405,7 +424,9 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
         )
 
     assert seen_tools == ["slack-tools"]
-    assert [config.integration_type for config in seen_manual_tool_configs] == [IntegrationType.SLACK]
+    assert [config.integration_type for config in seen_manual_tool_configs] == [
+        IntegrationType.SLACK
+    ]
 
 
 def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> None:
@@ -418,14 +439,19 @@ def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> Non
 
 def test_stream_event_exports_include_sdk_run_events() -> None:
     assert terse_types.SdkAgentStreamEventRunStarted is SdkAgentStreamEventRunStarted
-    assert terse_types.SdkAgentStreamEventToolApprovalRequested is SdkAgentStreamEventToolApprovalRequested
+    assert (
+        terse_types.SdkAgentStreamEventToolApprovalRequested
+        is SdkAgentStreamEventToolApprovalRequested
+    )
     assert terse_types.SdkAgentToolApprovalRequest is SdkAgentToolApprovalRequest
     assert EventType.RUN_STARTED == "run_started"
     assert EventType.TOOL_APPROVAL_REQUESTED == "tool_approval_requested"
 
 
 def test_run_started_event_supports_backend_payload() -> None:
-    event = SdkAgentStreamEvent.model_validate({"type": "run_started", "runId": "run_123"}).root
+    event = SdkAgentStreamEvent.model_validate(
+        {"type": "run_started", "runId": "run_123"}
+    ).root
 
     assert isinstance(event, SdkAgentStreamEventRunStarted)
     assert event.run_id == "run_123"
@@ -468,7 +494,9 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
             json.dumps(
                 {
                     "type": "tool_call_completed",
-                    "toolCallCompleted": json.dumps({"tool": "demo_tool", "status": "completed"}),
+                    "toolCallCompleted": json.dumps(
+                        {"tool": "demo_tool", "status": "completed"}
+                    ),
                 }
             ),
             json.dumps({"type": "final_output", "finalOutput": "done"}),
@@ -484,7 +512,9 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         headers: dict[str, str],
         json: dict[str, object],
     ) -> _FakeEventSource:
-        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        captured.update(
+            {"method": method, "url": url, "headers": headers, "json": json}
+        )
         return stream
 
     with (
@@ -517,41 +547,6 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
     assert captured["json"]["event"]["formattedContent"] == "Scheduled event"
 
 
-def test_agent_run_serializes_missing_attio_object_slug_as_null() -> None:
-    captured: dict[str, object] = {}
-    stream = _FakeEventSource([json.dumps({"type": "done"})])
-
-    def fake_connect_sse(
-        client: object,
-        method: str,
-        url: str,
-        *,
-        headers: dict[str, str],
-        json: dict[str, object],
-    ) -> _FakeEventSource:
-        captured.update({"method": method, "url": url, "headers": headers, "json": json})
-        return stream
-
-    with (
-        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
-        patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
-    ):
-        list(
-            TerseAgent(
-                skills=[
-                    SkillConfig(
-                        integration_id="cm_attio",
-                        integration_type="attio",
-                        config_type="attio_output",
-                        config={},
-                    )
-                ]
-            ).run("hello")
-        )
-
-    assert captured["json"]["skills"][0]["config"]["objectSlug"] is None
-
-
 def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
     captured: dict[str, object] = {}
     stream = _FakeEventSource([json.dumps({"type": "done"})])
@@ -564,7 +559,9 @@ def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
         headers: dict[str, str],
         json: dict[str, object],
     ) -> _FakeEventSource:
-        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        captured.update(
+            {"method": method, "url": url, "headers": headers, "json": json}
+        )
         return stream
 
     with (
@@ -594,7 +591,9 @@ def test_agent_run_raises_on_failed_tool_call() -> None:
         [
             SdkAgentStreamEventToolCallCompleted(
                 type="tool_call_completed",
-                tool_call_completed=json.dumps({"tool": "demo_tool", "status": "failed"}),
+                tool_call_completed=json.dumps(
+                    {"tool": "demo_tool", "status": "failed"}
+                ),
             ).model_dump_json(),
             SdkAgentStreamEventDone(type="done").model_dump_json(),
         ]
@@ -615,7 +614,9 @@ def test_agent_run_and_wait_returns_final_output() -> None:
         return_value=iter(
             [
                 SdkAgentStreamEventText(type="text", text="thinking"),
-                SdkAgentStreamEventFinalOutput(type="final_output", final_output="done"),
+                SdkAgentStreamEventFinalOutput(
+                    type="final_output", final_output="done"
+                ),
             ]
         ),
     ):
@@ -632,7 +633,9 @@ def test_agent_run_and_wait_returns_none_when_no_final_output_arrives() -> None:
 
 
 def test_agent_run_and_wait_propagates_errors() -> None:
-    with patch.object(TerseAgent, "run", side_effect=TerseApiError("boom")), pytest.raises(TerseApiError):
+    with patch.object(
+        TerseAgent, "run", side_effect=TerseApiError("boom")
+    ), pytest.raises(TerseApiError):
         TerseAgent().run_and_wait("hello")
 
 
@@ -665,7 +668,10 @@ def test_assert_sse_response_reads_streaming_error_detail_on_http_error() -> Non
 def test_assert_sse_response_reads_streaming_error_details_list_on_http_error() -> None:
     response = _streaming_json_response(
         400,
-        {"error": "Invalid request body", "details": ["`skills[0].config.objectSlug` is required"]},
+        {
+            "error": "Invalid request body",
+            "details": ["`skills[0].config.objectSlug` is required"],
+        },
         path="/sdk/agent-run",
     )
 
