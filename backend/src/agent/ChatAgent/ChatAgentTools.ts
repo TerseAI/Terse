@@ -56,7 +56,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "Once you have all the information you need, you can use this tool to persist and apply the automation. You can use this to create and update agents. If you are creating, just leave the id empty.",
             parameters: z.object({
-                agent: AgentSchema,
+                agent: agentCreateSchema,
                 id: z.string().nullable().describe("The ID of the agent to update. If not provided, a new agent will be created.")
             }),
             execute: async ({ agent, id }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
@@ -68,7 +68,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 try {
                     const notificationSettings = agent.notificationSettings ?? (await getDefaultNotificationSettings(user.id))
-                    const draft: AgentDraft = { ...agent, createdByUserId: user.id, notificationSettings }
+                    const draft: AgentDraft = { ...agent, id: id ?? null, createdByUserId: user.id, notificationSettings }
                     const sessionId = runContext?.context?.sessionId
                     const createWithId = !id && chatInterface.name === "Web" && sessionId && isUuidV4(sessionId) ? { createWithId: sessionId } : undefined
                     const result = id ? await updateAgentForUser(user.id, user.organizationId, id, draft) : await applyAgentForUser(user.id, user.organizationId, draft, createWithId)
@@ -102,7 +102,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "Call this when you need to see what configs you have access to. It returns display names and canonical IDs you can use for the Agent object in applyAgent. IMPORTANT: Do not add integrations unless the user explicitly asked for them.",
             parameters: z.object({
-                integrationType: z.nativeEnum(IntegrationType).describe("The integration type to fetch resources for"),
+                integrationType: z.enum(IntegrationType).describe("The integration type to fetch resources for"),
                 query: z.string().nullable().describe("Optional query to filter resources by name/title"),
                 options: FetchResourcesOptionsSchema.describe("Optional integration-specific filtering options")
             }),
@@ -159,7 +159,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 "Fetch sample events to test your agent. Returns event references (entityType + entityId) and AI-generated summaries. Use triggerAgentRun with the entityType and entityId to run a specific event. For cron/scheduled agents, trigger immediately with triggerAgentRun and only agentId (no need to call getSampleEvents first).",
             parameters: z.object({
                 integrationId: z.string().describe("The integration ID to fetch sample events for"),
-                integrationType: z.nativeEnum(IntegrationType).describe("The integration type"),
+                integrationType: z.enum(IntegrationType).describe("The integration type"),
                 triggerConfig: agentTriggerSchema.omit({ id: true }).describe("The trigger config to fetch sample events for"),
                 agentId: z.string().nullable().describe("Optional agent ID to preview filter results against"),
                 options: z
@@ -278,7 +278,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents. This returns quickly with runId while the run continues in the background.",
             parameters: z.object({
-                entityType: z.nativeEnum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
+                entityType: z.enum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
                 agentId: z.string().describe("The agent ID to test the sample event against"),
                 manualContext: z
@@ -445,8 +445,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
-
-export const AgentSchema = agentCreateSchema
 
 function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigInstance {
     return {

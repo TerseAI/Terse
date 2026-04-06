@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 
 interface LinearTeamSelectorProps {
     integrationId: string
-    selectedTeamId?: string
+    selectedTeamId: string | null
     onSelect: (teamId: string, teamName: string) => void
 }
 

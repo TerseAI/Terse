@@ -639,6 +639,7 @@ export async function createAgent(req: Request, res: Response) {
 
     try {
         const { id } = await applyAgentForUser(userId, organizationId, {
+            id: null,
             name,
             triggers,
             outputs,
