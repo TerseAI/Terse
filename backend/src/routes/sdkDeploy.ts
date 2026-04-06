@@ -1,8 +1,9 @@
 import { Request, Response } from "express"
-import { AgentOutput, AgentTrigger, SdkDeployRequestBody, User } from "terse-types/types"
+import { AgentOutput, AgentTrigger, User } from "terse-types/types"
 
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
+import { sdkDeployBody } from "../middleware/schemas"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
@@ -23,14 +24,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const organizationId = user.organizationId
 
     try {
-        const { jobs, sourceZipBase64 } = req.body as SdkDeployRequestBody
-
-        if (!jobs || jobs.length === 0 || !sourceZipBase64) {
-            return res.status(400).json({
-                success: false,
-                error: "Missing required fields: jobs and sourceZipBase64 are required"
-            })
-        }
+        const { jobs, sourceZipBase64 } = sdkDeployBody.parse(req.body)
 
         const zipBuffer = Buffer.from(sourceZipBase64, "base64")
         if (zipBuffer.length === 0) {
@@ -46,13 +40,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const results: { jobName: string; automationId: string; isUpdate: boolean }[] = []
 
         for (const job of jobs) {
-            if (!job.jobName || !job.triggers || job.triggers.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    error: `Invalid job entry: jobName and triggers are required (got "${job.jobName}")`
-                })
-            }
-
             const outputs = job.outputs ?? []
             const toolApprovals = job.toolApprovals ?? []
 

@@ -2,7 +2,6 @@ import { NotificationDestinationType } from "@prisma/client"
 import { Request, Response } from "express"
 import { notificationDestinationsKey } from "terse-types/InvalidationKeys"
 import {
-    CreateNotificationDestinationRequest,
     EmailNotificationDestination,
     NotificationDestinationType as SharedNotificationDestinationType,
     SlackNotificationDestination
@@ -10,16 +9,13 @@ import {
 
 import { initializeSlackWebClient } from "../integrations/SlackClient"
 import logger from "../logger"
+import { createNotificationDestinationBody, updateNotificationDestinationBody } from "../middleware/schemas"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { UserNotificationDestination, UserSlackIntegrationWithUser } from "../types/prisma"
 
 const EXACTLY_ONE_SLACK_TARGET_ERROR = "Exactly one Slack destination must be selected: either a channel or a user."
 const NOTIFICATION_DESTINATIONS_INVALIDATION_KEY = notificationDestinationsKey()[0]
-
-type UpdateNotificationDestinationRequest = Partial<CreateNotificationDestinationRequest> & {
-    isActive?: boolean
-}
 
 type SlackTargetSelection =
     | {
@@ -66,12 +62,7 @@ export async function createNotificationDestination(req: Request, res: Response)
     }
 
     const userId = req.session.user.id
-    const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName }: CreateNotificationDestinationRequest = req.body
-
-    if (!type) {
-        res.status(400).json({ error: "Invalid request: type is required" })
-        return
-    }
+    const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName } = createNotificationDestinationBody.parse(req.body)
 
     try {
         const prisma = db()
@@ -149,7 +140,7 @@ export async function updateNotificationDestination(req: Request, res: Response)
 
     const userId = req.session.user.id
     const destinationId = req.params.id
-    const requestBody = req.body as UpdateNotificationDestinationRequest & Record<string, unknown>
+    const requestBody = updateNotificationDestinationBody.parse(req.body)
     const { type, email, integrationId, slackChannelId, slackChannelName, slackUserId, slackUserName, isActive } = requestBody
 
     try {

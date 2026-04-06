@@ -5,6 +5,7 @@ import { WorkOSIntegrationManager } from "../integrations/WorkOSIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
+import { updateWorkOSWebhookSecretBody, webhookWorkOSTriggerParams } from "../middleware/schemas"
 import { db } from "../prismaClient"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { workos } from "../utility/workos"
@@ -57,11 +58,7 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
         return
     }
 
-    const { webhookSecret, state: stateToken } = req.body
-    if (!webhookSecret || typeof webhookSecret !== "string") {
-        res.status(400).json({ error: "Webhook secret is required" })
-        return
-    }
+    const { webhookSecret, state: stateToken } = updateWorkOSWebhookSecretBody.parse(req.body)
 
     try {
         const integration = await db().workos_integrations.findFirst({
@@ -78,7 +75,7 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
         logger.info("Updated WorkOS webhook secret", { integrationId: integration.id })
 
         const manager = new WorkOSIntegrationManager()
-        await emitIntegrationFormCompletedTaskIfNeeded(stateToken as string | undefined, manager, req.session.user.id, req.session.user.organizationId, IntegrationType.WORKOS)
+        await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, req.session.user.id, req.session.user.organizationId, IntegrationType.WORKOS)
 
         res.status(200).json({ success: true })
     } catch (error) {
@@ -88,12 +85,7 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
 }
 
 export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
-    const { integrationId } = req.params
-
-    if (!integrationId) {
-        res.status(400).json({ error: "Missing integrationId" })
-        return
-    }
+    const { integrationId } = webhookWorkOSTriggerParams.parse(req.params)
 
     try {
         // Look up the integration

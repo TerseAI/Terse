@@ -4,6 +4,7 @@ import { User } from "terse-types/types"
 import { z } from "zod"
 
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
+import { sdkToolExecuteBody } from "../middleware/schemas"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import {
     type DeterministicToolCallRunContext,
@@ -124,15 +125,7 @@ export async function handleToolExecute(req: Request, res: Response) {
         return res.status(401).json({ success: false, error: "Unauthorized" })
     }
 
-    const { toolName, params } = req.body
-
-    if (!toolName || typeof toolName !== "string") {
-        return res.status(400).json({ success: false, error: "toolName is required and must be a string" })
-    }
-
-    if (params !== undefined && (typeof params !== "object" || params === null || Array.isArray(params))) {
-        return res.status(400).json({ success: false, error: "params must be a plain object" })
-    }
+    const { toolName, params } = sdkToolExecuteBody.parse(req.body)
 
     const toolDescriptor = findToolByName(toolName)
     if (!toolDescriptor) {

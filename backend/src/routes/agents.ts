@@ -5,6 +5,7 @@ import { IntegrationType } from "terse-types/Integrations"
 import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
+import { createAgentBody, updateAgentBody } from "../middleware/schemas"
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
@@ -636,7 +637,7 @@ export async function createAgent(req: Request, res: Response) {
 
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
-    const { name, triggers, outputs, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = req.body as Agent
+    const { name, triggers, outputs, prompt, isActive, requireApproval, notificationSettings, toolApprovals } = createAgentBody.parse(req.body)
 
     try {
         const { id } = await applyAgentForUser(userId, organizationId, {
@@ -673,7 +674,7 @@ export async function updateAgent(req: Request, res: Response) {
     const userId = req.session.user.id
     const organizationId = req.session.user.organizationId
     const agentId = req.params.id
-    const update = req.body as Partial<AgentUpdate>
+    const update = updateAgentBody.parse(req.body)
 
     try {
         const { id } = await updateAgentForUser(userId, organizationId, agentId, update)

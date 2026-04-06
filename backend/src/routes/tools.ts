@@ -1,7 +1,8 @@
 import { Request, Response } from "express"
-import type { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
+import type { GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 
 import logger from "../logger"
+import { toolsThatRequireApprovalsBody } from "../middleware/schemas"
 import { getToolsThatRequireApprovals } from "../tools/availableTools"
 
 export async function toolsThatRequireApprovalsRoute(req: Request, res: Response) {
@@ -11,16 +12,9 @@ export async function toolsThatRequireApprovalsRoute(req: Request, res: Response
             return res.status(401).json({ error: "Unauthorized" })
         }
 
-        const body = req.body as GetToolsThatRequireApprovalsRequest
+        const { skills } = toolsThatRequireApprovalsBody.parse(req.body)
 
-        if (!Array.isArray(body.skills)) {
-            return res.status(400).json({
-                error: "Invalid request",
-                message: "skills must be an array"
-            })
-        }
-
-        const tools = getToolsThatRequireApprovals(body.skills)
+        const tools = getToolsThatRequireApprovals(skills)
         const response: GetToolsThatRequireApprovalsResponse = { tools }
         return res.status(200).json(response)
     } catch (error: unknown) {

@@ -6,6 +6,7 @@ import type { SerializedEvent, TriggerPayload } from "terse-types/types"
 
 import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"
 import logger from "../logger"
+import { sdkSampleEventsBody } from "../middleware/schemas"
 import { extractErrorMessage } from "../utility/strings"
 
 /**
@@ -29,12 +30,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    console.log("🔍 Sample events request body:", req.body)
-
-    const { triggers } = req.body as { triggers?: TriggerPayload[] }
-    if (!triggers || !Array.isArray(triggers) || triggers.length === 0) {
-        return res.status(400).json({ error: "Request body must include a non-empty `triggers` array" })
-    }
+    const { triggers } = sdkSampleEventsBody.parse(req.body)
 
     const events: SerializedEvent[] = []
 
