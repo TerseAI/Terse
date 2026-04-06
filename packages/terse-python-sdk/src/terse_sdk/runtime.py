@@ -23,7 +23,6 @@ from ._http_utils import (
     _read_response_detail,
 )
 from .types.config import TerseSettings
-from .types.enums import ConfigType
 from .types.events import (
     AnyInputEvent,
     AtlassianInputEvent,
@@ -184,7 +183,9 @@ class TerseAgent:
     ) -> None:
         settings = TerseSettings()
         self.skills = list(skills or [])
-        self.manual_tool_configs = list(manual_tool_configs) if manual_tool_configs is not None else None
+        self.manual_tool_configs = (
+            list(manual_tool_configs) if manual_tool_configs is not None else None
+        )
         self.backend_url = (backend_url or settings.backend_url).rstrip("/")
         self.session_id = session_id
         self._tools: object | None = None
@@ -221,7 +222,9 @@ class TerseAgent:
         self._tools = factory(self)
         return self._tools
 
-    def run(self, prompt: str, event: InputEvent | None = None) -> Generator[AgentStreamEvent, None, None]:
+    def run(
+        self, prompt: str, event: InputEvent | None = None
+    ) -> Generator[AgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
         api_key = _require_api_key()
@@ -230,14 +233,25 @@ class TerseAgent:
                 "prompt": prompt,
                 "event": _serialize_run_event(event or _manual_event()),
                 "skills": [
-                    _serialize_skill_config(skill).model_dump(exclude_none=True, by_alias=True) for skill in self.skills
+                    _serialize_skill_config(skill).model_dump(
+                        exclude_none=True, by_alias=True
+                    )
+                    for skill in self.skills
                 ],
                 "toolApprovals": self.tool_approvals,
             }
         )
         request_payload = request_body.model_dump(exclude_none=True, by_alias=True)
-        headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id)
-        _debug_log_request(LOGGER, "POST", f"{self.backend_url}/sdk/agent-run", headers, request_payload)
+        headers = _build_auth_headers(
+            api_key, accept="text/event-stream", session_id=self.session_id
+        )
+        _debug_log_request(
+            LOGGER,
+            "POST",
+            f"{self.backend_url}/sdk/agent-run",
+            headers,
+            request_payload,
+        )
         failed_tool_calls: list[str] = []
 
         try:
@@ -257,22 +271,34 @@ class TerseAgent:
                     if not sse.data:
                         continue
 
-                    stream_event = SdkAgentStreamEvent.model_validate_json(sse.data).root
+                    stream_event = SdkAgentStreamEvent.model_validate_json(
+                        sse.data
+                    ).root
                     if isinstance(stream_event, SdkAgentStreamEventDone):
                         if failed_tool_calls:
-                            raise TerseApiError(f"Run completed with failed tool calls: {'; '.join(failed_tool_calls)}")
+                            raise TerseApiError(
+                                f"Run completed with failed tool calls: {'; '.join(failed_tool_calls)}"
+                            )
                         return
                     if isinstance(stream_event, SdkAgentStreamEventError):
                         raise TerseApiError(stream_event.message)
                     if isinstance(stream_event, SdkAgentStreamEventToolCallCompleted):
-                        parsed = _parse_tool_call_completed(stream_event.tool_call_completed)
+                        parsed = _parse_tool_call_completed(
+                            stream_event.tool_call_completed
+                        )
                         if parsed.get("status") and parsed["status"] != "completed":
-                            failed_tool_calls.append(f"{parsed.get('tool', 'unknown_tool')}: {parsed['status']}")
+                            failed_tool_calls.append(
+                                f"{parsed.get('tool', 'unknown_tool')}: {parsed['status']}"
+                            )
                     yield cast(AgentStreamEvent, stream_event)
         except httpx.RequestError as exc:
-            raise TerseApiError(f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}") from exc
+            raise TerseApiError(
+                f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}"
+            ) from exc
         except ValidationError as exc:
-            raise TerseApiError(f"Received invalid agent stream payload.\n  {exc}") from exc
+            raise TerseApiError(
+                f"Received invalid agent stream payload.\n  {exc}"
+            ) from exc
 
     def run_and_wait(self, prompt: str, event: InputEvent | None = None) -> str | None:
         """Run the agent to completion and return the final output.
@@ -286,13 +312,21 @@ class TerseAgent:
                 final_output = chunk.final_output
         return final_output
 
-    def execute_tool(self, tool_name: str, params: Mapping[str, object] | None = None) -> object:
+    def execute_tool(
+        self, tool_name: str, params: Mapping[str, object] | None = None
+    ) -> object:
         """Execute a deterministic tool via the backend."""
 
         api_key = _require_api_key()
         headers = _build_auth_headers(api_key, session_id=self.session_id)
         request_payload = {"toolName": tool_name, "params": dict(params or {})}
-        _debug_log_request(LOGGER, "POST", f"{self.backend_url}/sdk/tool-execute", headers, request_payload)
+        _debug_log_request(
+            LOGGER,
+            "POST",
+            f"{self.backend_url}/sdk/tool-execute",
+            headers,
+            request_payload,
+        )
 
         try:
             with httpx.Client(timeout=20.0) as client:
@@ -302,7 +336,9 @@ class TerseAgent:
                     json=request_payload,
                 )
         except httpx.RequestError as exc:
-            raise TerseApiError(f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}") from exc
+            raise TerseApiError(
+                f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}"
+            ) from exc
 
         payload = _read_json_response(response, "/sdk/tool-execute")
         _debug_log_response_payload(LOGGER, "/sdk/tool-execute", payload)
@@ -339,7 +375,11 @@ class TerseAgent:
                     if brace != -1:
                         try:
                             embedded = json.loads(detail[brace:])
-                            detail = detail[:brace].rstrip() + "\n" + json.dumps(embedded, indent=2)
+                            detail = (
+                                detail[:brace].rstrip()
+                                + "\n"
+                                + json.dumps(embedded, indent=2)
+                            )
                         except (json.JSONDecodeError, ValueError):
                             pass
                 raise TerseApiError(f"Tool execution failed: {detail}")
@@ -421,7 +461,9 @@ def _serialize_skill_config(skill: SkillConfig[Any]) -> SdkAgentSkillPayload:
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type
-    return SdkAgentSkillPayload.model_validate({"configType": skill.config_type, "config": config})
+    return SdkAgentSkillPayload.model_validate(
+        {"configType": skill.config_type, "config": config}
+    )
 
 
 def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
@@ -432,7 +474,9 @@ def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
 
     for loaded_module in list(sys.modules.values()):
         module_file = getattr(loaded_module, "__file__", None)
-        if not isinstance(module_file, str) or not module_file.endswith("/terse_generated.py"):
+        if not isinstance(module_file, str) or not module_file.endswith(
+            "/terse_generated.py"
+        ):
             continue
         factory = getattr(loaded_module, "create_tools", None)
         if callable(factory):
@@ -483,7 +527,8 @@ def _assert_sse_response(response: httpx.Response, path: str) -> None:
         if detail:
             LOGGER.debug("Response detail from %s:\n%s", path, detail)
         raise TerseApiError(
-            f"{response.status_code} {response.reason_phrase} — {path}" + (f"\n  {detail}" if detail else "")
+            f"{response.status_code} {response.reason_phrase} — {path}"
+            + (f"\n  {detail}" if detail else "")
         )
 
     content_type = response.headers.get("Content-Type", "")
@@ -495,10 +540,16 @@ def _assert_sse_response(response: httpx.Response, path: str) -> None:
     if isinstance(payload, dict):
         response_body = SdkAgentRunResponseBody.model_validate(payload)
         if response_body.error:
-            details = f" ({'; '.join(response_body.details)})" if response_body.details else ""
+            details = (
+                f" ({'; '.join(response_body.details)})"
+                if response_body.details
+                else ""
+            )
             raise TerseApiError(f"{response_body.error}{details}")
 
-    raise TerseApiError(f"Expected text/event-stream from {path} but got {content_type or 'unknown content-type'}.")
+    raise TerseApiError(
+        f"Expected text/event-stream from {path} but got {content_type or 'unknown content-type'}."
+    )
 
 
 def _read_json_response(response: httpx.Response, path: str) -> object:
@@ -528,19 +579,35 @@ def _deserialize_slack_input_event(payload: Mapping[str, object]) -> SlackInputE
         {
             "integrationType": "slack",
             "eventType": payload.get("eventType", payload.get("event_type", "unknown")),
-            "formattedContent": payload.get("formattedContent", payload.get("formatted_content", "")),
+            "formattedContent": payload.get(
+                "formattedContent", payload.get("formatted_content", "")
+            ),
             "debugLog": payload.get("debugLog", payload.get("debug_log", "")),
             "metadata": metadata_dict or None,
-            "channelId": metadata_dict.get("channelId", payload.get("channelId", payload.get("channel_id", ""))),
-            "channelName": metadata_dict.get("channelName", payload.get("channelName", payload.get("channel_name"))),
-            "userId": metadata_dict.get("userId", payload.get("userId", payload.get("user_id", ""))),
-            "userName": metadata_dict.get("userName", payload.get("userName", payload.get("user_name"))),
+            "channelId": metadata_dict.get(
+                "channelId", payload.get("channelId", payload.get("channel_id", ""))
+            ),
+            "channelName": metadata_dict.get(
+                "channelName", payload.get("channelName", payload.get("channel_name"))
+            ),
+            "userId": metadata_dict.get(
+                "userId", payload.get("userId", payload.get("user_id", ""))
+            ),
+            "userName": metadata_dict.get(
+                "userName", payload.get("userName", payload.get("user_name"))
+            ),
             "text": metadata_dict.get("text", payload.get("text", "")),
             "timestamp": metadata_dict.get("timestamp", payload.get("timestamp", "")),
-            "threadTs": metadata_dict.get("threadTs", payload.get("threadTs", payload.get("thread_ts"))),
-            "teamId": metadata_dict.get("teamId", payload.get("teamId", payload.get("team_id", ""))),
+            "threadTs": metadata_dict.get(
+                "threadTs", payload.get("threadTs", payload.get("thread_ts"))
+            ),
+            "teamId": metadata_dict.get(
+                "teamId", payload.get("teamId", payload.get("team_id", ""))
+            ),
             "permalink": metadata_dict.get("permalink", payload.get("permalink")),
-            "channelType": metadata_dict.get("channelType", payload.get("channelType", payload.get("channel_type"))),
+            "channelType": metadata_dict.get(
+                "channelType", payload.get("channelType", payload.get("channel_type"))
+            ),
             "blocks": metadata_dict.get("blocks", payload.get("blocks")),
             "attachments": metadata_dict.get("attachments", payload.get("attachments")),
             "files": metadata_dict.get("files", payload.get("files")),
@@ -555,7 +622,9 @@ def _parse_tool_call_completed(raw: str) -> dict[str, str]:
         return {}
 
     if isinstance(payload, dict):
-        return {str(key): str(value) for key, value in payload.items() if value is not None}
+        return {
+            str(key): str(value) for key, value in payload.items() if value is not None
+        }
     return {}
 
 
