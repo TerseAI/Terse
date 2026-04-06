@@ -920,10 +920,14 @@ export const sdkDeployResultSchema = z.object({
     jobName: z.string(),
     automationId: z.string(),
     isUpdate: z.boolean(),
-    triggers: z.array(z.object({
-        id: z.string(),
-        metadata: triggerMetadataSchema.optional()
-    })).optional()
+    triggers: z
+        .array(
+            z.object({
+                id: z.string(),
+                metadata: triggerMetadataSchema.optional()
+            })
+        )
+        .optional()
 })
 
 export const sdkDeployRemovedSchema = z.object({

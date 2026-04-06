@@ -1,6 +1,6 @@
-import { Check, Copy, Webhook } from "lucide-react"
 import { useState } from "react"
 
+import { Check, Copy, Webhook } from "lucide-react"
 import type { AgentTrigger } from "terse-types"
 
 function CopyButton({ text }: { text: string }) {
@@ -55,9 +55,7 @@ export function WebhookTriggerCard({ trigger }: { trigger: AgentTrigger }) {
                         </div>
                     </div>
 
-                    <p className="text-xs text-muted-foreground">
-                        Send a POST request to this URL to trigger the agent. The request body will be available as the event payload.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Send a POST request to this URL to trigger the agent. The request body will be available as the event payload.</p>
                 </div>
             )}
         </div>
