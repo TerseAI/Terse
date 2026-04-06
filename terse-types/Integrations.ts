@@ -243,7 +243,7 @@ export const AtlassianIntegrationSchema = IntegrationInstanceSchema.extend({
 export type AtlassianIntegration = z.infer<typeof AtlassianIntegrationSchema>
 
 export const GithubIntegrationSchema = IntegrationInstanceSchema.extend({
-    installation_id: z.number(),
+    installation_id: z.number().int(),
     account_name: z.string().optional()
 })
 export type GithubIntegration = z.infer<typeof GithubIntegrationSchema>

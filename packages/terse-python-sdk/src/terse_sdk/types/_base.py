@@ -9,8 +9,8 @@ def to_camel(value: str) -> str:
 
 
 class TerseModel(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(alias_generator=to_camel, extra="forbid", populate_by_name=True, regex_engine="python-re")
 
 
 class _CamelModel(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(alias_generator=to_camel, extra="forbid", populate_by_name=True, regex_engine="python-re")

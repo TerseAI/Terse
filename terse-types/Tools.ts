@@ -54,7 +54,7 @@ export const linearIssueSummarySchema = z.object({
     title: z.string(),
     description: z.string().nullable().optional(),
     state: z.string(),
-    priority: z.number().nullable().optional(),
+    priority: z.number().int().nullable().optional(),
     assignee: linearIssueAssigneeSchema.nullable(),
     url: z.string(),
     createdAt: dateLikeSchema,
@@ -124,7 +124,7 @@ export const linearUserSummarySchema = z.object({
 export const linearSearchPaginationSchema = z.object({
     hasNextPage: z.boolean(),
     endCursor: z.string().nullable(),
-    limit: z.number().nullable()
+    limit: z.number().int().nullable()
 })
 
 export const slackUserResponseSchema = z.object({
@@ -180,7 +180,7 @@ export const jiraIssueSummarySchema = z.object({
     title: z.string().optional(),
     description: jiraRichDescriptionSchema.optional(),
     state: jiraIssueStateSchema.optional(),
-    priority: z.number().optional(),
+    priority: z.number().int().optional(),
     assignee: jiraIssueAssigneeSchema.nullable().optional(),
     labels: z.array(z.string()).optional(),
     dueDate: z.string().optional(),
@@ -192,13 +192,13 @@ export const jiraIssueSummarySchema = z.object({
 })
 
 export const gitHubPaginationSchema = z.object({
-    page: z.number(),
-    perPage: z.number(),
+    page: z.number().int(),
+    perPage: z.number().int(),
     hasMore: z.boolean()
 })
 
 export const gitHubCodeSearchResultSchema = z.object({
-    index: z.number(),
+    index: z.number().int(),
     repository: z.string(),
     path: z.string(),
     url: z.string(),
@@ -206,7 +206,7 @@ export const gitHubCodeSearchResultSchema = z.object({
 })
 
 export const gitHubCodeGrepResultSchema = z.object({
-    index: z.number(),
+    index: z.number().int(),
     repository: z.string(),
     file: z.string(),
     url: z.string(),
@@ -214,7 +214,7 @@ export const gitHubCodeGrepResultSchema = z.object({
 })
 
 export const gitHubPullRequestSummarySchema = z.object({
-    number: z.number(),
+    number: z.number().int(),
     title: z.string(),
     description: z.string(),
     author: z.string(),
@@ -239,7 +239,7 @@ export const gitHubFileEntrySchema = z.object({
     name: z.string().optional(),
     path: z.string(),
     type: z.literal("file").optional(),
-    size: z.number().optional()
+    size: z.number().int().optional()
 })
 
 export const gitHubOtherEntrySchema = z.object({
@@ -257,8 +257,20 @@ export const gitHubCommitSummarySchema = z.object({
     url: z.string()
 })
 
+export const gitHubPullRequestListSummarySchema = z.object({
+    total: z.number().int(),
+    merged: z.number().int(),
+    open: z.number().int(),
+    closed: z.number().int()
+})
+
+export const gitHubCommitListSummarySchema = z.object({
+    total: z.number().int(),
+    byAuthor: z.record(z.string(), z.number().int())
+})
+
 export const gitHubPullRequestRefSchema = z.object({
-    number: z.number(),
+    number: z.number().int(),
     title: z.string(),
     state: z.string(),
     merged: z.boolean(),
@@ -344,7 +356,7 @@ export const notionPageBlockSchema: z.ZodType<{
         checked: z.boolean().optional(),
         language: z.string().optional(),
         icon: notionLooseObjectSchema.optional(),
-        table_width: z.number().optional(),
+        table_width: z.number().int().optional(),
         has_column_header: z.boolean().optional(),
         has_row_header: z.boolean().optional(),
         caption: z.string().optional(),
@@ -405,7 +417,7 @@ export const notionQueryDatabaseFailureSchema = toolOutputFailureSchema.extend({
 
 export const notionQueryDatabaseSuccessSchema = toolOutputSuccessSchema.extend({
     pages: z.array(notionDatabaseQueryPageSchema),
-    total_returned: z.number(),
+    total_returned: z.number().int(),
     has_more: z.boolean(),
     next_cursor: z.string().nullable()
 })
@@ -414,7 +426,7 @@ export const notionModifyBlocksAppendResultSchema = z.object({
     operation: z.literal("append"),
     actions: z.array(runHistoryActionBaseSchema),
     block_ids: z.array(z.string()),
-    blocks_count: z.number()
+    blocks_count: z.number().int()
 })
 
 export const notionModifyBlocksUpdateResultSchema = z.object({
@@ -434,7 +446,7 @@ export const notionModifyBlocksOperationResultSchema = z.union([notionModifyBloc
 export const notionModifyBlocksAppendSuccessSchema = toolOutputSuccessSchema.extend({
     operation: z.literal("append"),
     block_ids: z.array(z.string()),
-    blocks_count: z.number()
+    blocks_count: z.number().int()
 })
 
 export const notionModifyBlocksSingleBlockSuccessSchema = toolOutputSuccessSchema.extend({
@@ -445,7 +457,7 @@ export const notionModifyBlocksSingleBlockSuccessSchema = toolOutputSuccessSchem
 export const notionModifyBlocksBatchSuccessSchema = toolOutputSuccessSchema.extend({
     operations: z.array(notionModifyBlocksOperationResultSchema),
     block_ids: z.array(z.string()),
-    total_operations: z.number()
+    total_operations: z.number().int()
 })
 
 export const notionModifyBlocksSuccessSchema = z.union([notionModifyBlocksAppendSuccessSchema, notionModifyBlocksSingleBlockSuccessSchema, notionModifyBlocksBatchSuccessSchema])
@@ -454,8 +466,8 @@ export const notionModifyBlocksFailureSchema = toolOutputFailureSchema.extend({
     error: z.string(),
     block_ids: z.array(z.string()),
     operations: z.array(notionModifyBlocksOperationResultSchema).optional(),
-    failed_at_index: z.number().optional(),
-    total_operations: z.number().optional(),
+    failed_at_index: z.number().int().optional(),
+    total_operations: z.number().int().optional(),
     hint: z.string().optional(),
     retry_instructions: z.string().optional()
 })
@@ -507,7 +519,7 @@ export const confluencePageVersionAuthorSchema = z.object({
 })
 
 export const confluencePageVersionSchema = z.object({
-    number: z.number(),
+    number: z.number().int(),
     when: z.string(),
     message: z.string().optional(),
     by: confluencePageVersionAuthorSchema.optional()
@@ -531,8 +543,8 @@ export const confluencePageRelationSchema = z.object({
 })
 
 export const confluenceCommentPositionSchema = z.object({
-    start: z.number(),
-    end: z.number()
+    start: z.number().int(),
+    end: z.number().int()
 })
 
 export const confluencePageQueryResultSchema = z.object({
@@ -549,8 +561,8 @@ export const confluencePageQueryResultSchema = z.object({
     body_text: z.string(),
     ancestors: z.array(confluencePageRelationSchema),
     descendants: z.array(confluencePageRelationSchema),
-    ancestors_count: z.number(),
-    descendants_count: z.number()
+    ancestors_count: z.number().int(),
+    descendants_count: z.number().int()
 })
 
 export const posthogSeverityLevelSchema = z.enum(["error", "warn", "info", "debug"])
@@ -560,19 +572,19 @@ export const posthogSessionSummarySchema = z.object({
     startTime: z.string().optional(),
     endTime: z.string().optional(),
     duration: z.number().optional(),
-    eventsCount: z.number(),
+    eventsCount: z.number().int(),
     sessionUrl: z.string(),
     personId: z.string(),
     distinctId: z.string()
 })
 
 export const posthogSearchSessionsPaginationSchema = z.object({
-    limit: z.number(),
-    offset: z.number(),
+    limit: z.number().int(),
+    offset: z.number().int(),
     hasNext: z.boolean(),
     hasPrevious: z.boolean(),
-    nextOffset: z.number().nullable(),
-    previousOffset: z.number().nullable()
+    nextOffset: z.number().int().nullable(),
+    previousOffset: z.number().int().nullable()
 })
 
 export const posthogSearchSessionsFoundSchema = toolOutputSuccessSchema.extend({
@@ -581,7 +593,7 @@ export const posthogSearchSessionsFoundSchema = toolOutputSuccessSchema.extend({
     personFound: z.literal(true),
     personId: z.string(),
     distinctId: z.string(),
-    totalSessions: z.number(),
+    totalSessions: z.number().int(),
     sessions: z.array(posthogSessionSummarySchema),
     sessionsLink: z.string(),
     pagination: posthogSearchSessionsPaginationSchema,
@@ -607,16 +619,16 @@ export const posthogLogEntrySchema = z.object({
 })
 
 export const posthogOffsetPaginationSchema = z.object({
-    limit: z.number(),
-    offset: z.number(),
+    limit: z.number().int(),
+    offset: z.number().int(),
     hasMore: z.boolean(),
-    nextOffset: z.number().nullable(),
+    nextOffset: z.number().int().nullable(),
     showing: z.string()
 })
 
 export const posthogEventCountSchema = z.object({
     eventName: z.string(),
-    count: z.number()
+    count: z.number().int()
 })
 
 export const posthogEventSummarySchema = z.object({
@@ -643,30 +655,37 @@ export const posthogSessionConsoleLogSchema = z.object({
 })
 
 export const posthogSessionEventsSummarySchema = z.object({
-    totalRawEvents: z.number(),
-    meaningfulEventsReturned: z.number(),
-    consoleLogsReturned: z.number()
+    totalRawEvents: z.number().int(),
+    meaningfulEventsReturned: z.number().int(),
+    consoleLogsReturned: z.number().int()
+})
+
+export const posthogSessionEventsTimeWindowSchema = z.object({
+    startSeconds: z.number(),
+    endSeconds: z.number().nullable()
+})
+
+export const linearCreateTicketPayloadSchema = z.object({
+    title: z.string(),
+    teamId: z.string(),
+    description: z.string().nullable().optional(),
+    stateId: z.string().nullable().optional(),
+    priority: z.number().int().nullable().optional(),
+    projectId: z.string().nullable().optional(),
+    labelIds: z.array(z.string()).nullable().optional(),
+    assigneeId: z.string().nullable().optional()
 })
 
 export const linearCreateTicketInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Linear workspace to use."),
-    ticket: z.object({
-        title: z.string(),
-        teamId: z.string(),
-        description: z.string().nullable().optional(),
-        stateId: z.string().nullable().optional(),
-        priority: z.number().nullable().optional(),
-        projectId: z.string().nullable().optional(),
-        labelIds: z.array(z.string()).nullable().optional(),
-        assigneeId: z.string().nullable().optional()
-    })
+    ticket: linearCreateTicketPayloadSchema
 })
 
 export const linearUpdateTicketUpdatesSchema = z.object({
     title: z.string().nullable().optional().describe("The updated title of the ticket."),
     description: z.string().nullable().optional().describe("The updated description of the ticket."),
     stateId: z.string().nullable().optional().describe("The ID of the state to set. Use linear_get_states to find available states."),
-    priority: z.number().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
+    priority: z.number().int().nullable().optional().describe("The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
     projectId: z.string().nullable().optional().describe("The ID of the project to associate with the ticket. Use linear_get_projects to find available projects."),
     labelIds: z.array(z.string()).nullable().optional().describe("The IDs of labels to add to the ticket. Use linear_get_labels to find available labels."),
     assigneeId: z.string().nullable().optional().describe("The ID of the user to assign the ticket to. Use linear_get_users to find available users and their IDs.")
@@ -717,7 +736,7 @@ export const linearSearchTicketInputSchema = z.object({
         .nullable()
         .optional()
         .describe("Filter to only include issues where the dateFilterField is on or before this date. ISO 8601 format (e.g., '2026-02-01' or '2026-02-01T23:59:59Z')."),
-    limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
+    limit: z.number().int().nullable().optional().describe("Maximum number of issues to return. Defaults to 10 if not provided."),
     after: z.string().nullable().optional().describe("Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.")
 })
 
@@ -769,7 +788,7 @@ export const slackListChannelsTypesSchema = z.enum(["public", "private", "im", "
 export const slackListChannelsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
     types: slackListChannelsTypesSchema.nullable().optional().describe("Filter by type: public (public channels), private (private channels), im (DMs), mpim (group DMs), or all. Defaults to all."),
-    limit: z.number().min(1).max(500).nullable().optional().default(100).describe("Maximum number of conversations to return."),
+    limit: z.number().int().min(1).max(500).nullable().optional().default(100).describe("Maximum number of conversations to return."),
     cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
 })
 
@@ -781,7 +800,7 @@ export const slackListUsersInputSchema = z.object({
 export const slackReadConversationInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
     channelId: z.string().describe("The Slack channel ID to read (from slack_list_channels)."),
-    limit: z.number().min(1).max(200).nullable().optional().default(50).describe("Maximum number of messages to return."),
+    limit: z.number().int().min(1).max(200).nullable().optional().default(50).describe("Maximum number of messages to return."),
     cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
 })
 
@@ -798,7 +817,7 @@ export const jiraCreateTicketInputSchema = z.object({
     projectKey: z.string().describe('The Jira project key (e.g., "PROJ", "TEAM"). This is required.'),
     issueType: z.string().nullable().optional().describe('The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")').default("Task"),
     assignee: jiraAssigneeInputSchema.optional().describe("The assignee of the ticket"),
-    priority: z.number().nullable().optional().describe("The priority of the ticket (number, typically 1-5)"),
+    priority: z.number().int().nullable().optional().describe("The priority of the ticket (number, typically 1-5)"),
     labels: z.array(z.string()).nullable().optional().describe("The labels for the ticket (array of label names)"),
     dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.')
 })
@@ -810,7 +829,7 @@ export const jiraUpdateTicketInputSchema = z.object({
     description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
     status: z.string().nullable().optional().describe('The status name to transition to (e.g., "In Progress", "Done", "To Do").'),
     assignee: jiraAssigneeInputSchema.optional().describe("The assignee of the ticket. Set to null to unassign."),
-    priority: z.number().nullable().optional().describe("The priority of the ticket (number, typically 1-5)."),
+    priority: z.number().int().nullable().optional().describe("The priority of the ticket (number, typically 1-5)."),
     labels: z.array(z.string()).nullable().optional().describe("The labels for the ticket (array of label names). This replaces all existing labels."),
     dueDate: z
         .string()
@@ -826,7 +845,7 @@ export const jiraSearchTicketInputSchema = z.object({
     projectKey: z.string().nullable().optional().describe('Filter by Jira project key (e.g., "PROJ", "TEAM")'),
     assigneeEmail: z.string().nullable().optional().describe("Filter by assignee email address"),
     status: z.string().nullable().optional().describe('Filter by status name (e.g., "In Progress", "Done", "To Do")'),
-    limit: z.number().nullable().optional().describe("Maximum number of issues to return. Defaults to 50 if not provided."),
+    limit: z.number().int().nullable().optional().describe("Maximum number of issues to return. Defaults to 50 if not provided."),
     nextPageToken: z
         .string()
         .nullable()
@@ -840,7 +859,7 @@ export const searchGitHubCodeInputSchema = z.object({
     language: z.string().nullable().optional().describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
     filename: z.string().nullable().optional().describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
     path: z.string().nullable().optional().describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
-    perPage: z.number().describe("Number of results to return (default: 10, max: 100)"),
+    perPage: z.number().int().describe("Number of results to return (default: 10, max: 100)"),
     page: z
         .number()
         .int()
@@ -854,7 +873,7 @@ export const grepGitHubCodeInputSchema = z.object({
     pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
     fileExtension: z.string().nullable().optional().describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
     path: z.string().nullable().optional().describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
-    perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
+    perPage: z.number().int().describe("Number of results to return (default: 20, max: 100)"),
     page: z
         .number()
         .int()
@@ -866,8 +885,8 @@ export const grepGitHubCodeInputSchema = z.object({
 export const readGitHubFileInputSchema = z.object({
     repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
     path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
-    startLine: z.number().nullable().optional().describe("Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning."),
-    endLine: z.number().nullable().optional().describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
+    startLine: z.number().int().nullable().optional().describe("Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning."),
+    endLine: z.number().int().nullable().optional().describe("Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.")
 })
 
 export const listGitHubDirectoryInputSchema = z.object({
@@ -884,7 +903,7 @@ export const listGitHubPullRequestsInputSchema = z.object({
         .nullable()
         .describe('Start date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or after this date (starting at 00:00:00) are included. Use null for no start filter.'),
     until: z.string().nullable().describe('End date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or before this date (ending at 23:59:59) are included. Use null for no end filter.'),
-    perPage: z.number().describe("Number of results to return (default: 20, max: 100)"),
+    perPage: z.number().int().describe("Number of results to return (default: 20, max: 100)"),
     page: z
         .number()
         .int()
@@ -903,12 +922,12 @@ export const listGitHubCommitsInputSchema = z.object({
     branch: z.string().nullable().optional().describe('Branch name to list commits from (e.g., "main", "develop"). Use null for the repository\'s default branch.'),
     path: z.string().nullable().optional().describe('Only include commits that affect this file or directory path (e.g., "src/components" or "package.json"). Use null for all paths.'),
     author: z.string().nullable().optional().describe("Filter commits by author (GitHub username or email). Use null for all authors."),
-    perPage: z.number().describe("Number of results to return (default: 30, max: 100)")
+    perPage: z.number().int().describe("Number of results to return (default: 30, max: 100)")
 })
 
 export const summarizeGitHubPullRequestDiffInputSchema = z.object({
     repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-    pullNumber: z.number().describe("The pull request number (e.g., 123 for PR #123)"),
+    pullNumber: z.number().int().describe("The pull request number (e.g., 123 for PR #123)"),
     page: z
         .number()
         .int()
@@ -1168,11 +1187,13 @@ export const confluenceAddCommentInputSchema = z.object({
         ),
     start_position: z
         .number()
+        .int()
         .nullable()
         .optional()
         .describe("Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided."),
     end_position: z
         .number()
+        .int()
         .nullable()
         .optional()
         .describe("Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.")
@@ -1182,8 +1203,8 @@ export const searchPosthogSessionsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
     projectId: z.string().describe("The PostHog project ID."),
     userEmail: z.string().describe("The email address of the user to query session recordings for. Must be a valid email address."),
-    limit: z.number().default(10).describe("Maximum number of session recordings to return (default: 10, max: 100)"),
-    offset: z.number().default(0).describe("Offset for pagination (default: 0)"),
+    limit: z.number().int().default(10).describe("Maximum number of session recordings to return (default: 10, max: 100)"),
+    offset: z.number().int().default(0).describe("Offset for pagination (default: 0)"),
     last7Days: z
         .boolean()
         .default(false)
@@ -1206,8 +1227,8 @@ export const searchPosthogLogsInputSchema = z.object({
         .union([z.array(posthogSeverityLevelSchema), z.null()])
         .describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
     messageSearch: z.string().nullable().optional().describe("Optional: Text to search for within log messages. Searches are case-insensitive and match partial text."),
-    limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50, max: 250)"),
-    offset: z.number().default(0).describe("Offset for pagination (default: 0). Use with limit to page through results. For example, offset=0 gets logs 1-50, offset=50 gets logs 51-100, etc."),
+    limit: z.number().int().default(50).describe("Maximum number of log entries to return (default: 50, max: 250)"),
+    offset: z.number().int().default(0).describe("Offset for pagination (default: 0). Use with limit to page through results. For example, offset=0 gets logs 1-50, offset=50 gets logs 51-100, etc."),
     last7Days: z
         .boolean()
         .default(false)
@@ -1254,8 +1275,8 @@ export const searchPosthogEventsInputSchema = z.object({
         .union([z.array(posthogPropertyFilterSchema), z.null()])
         .optional()
         .describe("Optional: Array of property filters to apply. Each filter has a key, value, and operator."),
-    limit: z.number().default(50).describe("Maximum number of events to return when countByEventNameOnly is false (default: 50, max: 100). Ignored when countByEventNameOnly is true."),
-    offset: z.number().default(0).describe("Offset for pagination when countByEventNameOnly is false (default: 0). Ignored when countByEventNameOnly is true."),
+    limit: z.number().int().default(50).describe("Maximum number of events to return when countByEventNameOnly is false (default: 50, max: 100). Ignored when countByEventNameOnly is true."),
+    offset: z.number().int().default(0).describe("Offset for pagination when countByEventNameOnly is false (default: 0). Ignored when countByEventNameOnly is true."),
     last7Days: z
         .boolean()
         .default(false)
@@ -1301,7 +1322,7 @@ export const linearSearchTicketTool = defineTool({
     inputSchema: linearSearchTicketInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         issues: z.array(linearIssueSummarySchema),
-        count: z.number(),
+        count: z.number().int(),
         query: z.string(),
         pagination: linearSearchPaginationSchema
     })
@@ -1373,7 +1394,7 @@ export const slackListChannelsTool = defineTool({
     inputSchema: slackListChannelsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         channels: z.array(slackChannelListItemSchema),
-        count: z.number(),
+        count: z.number().int(),
         nextCursor: z.string().nullable(),
         hasMore: z.boolean()
     })
@@ -1384,7 +1405,7 @@ export const slackListUsersTool = defineTool({
     inputSchema: slackListUsersInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         users: z.array(slackUserResponseSchema),
-        count: z.number()
+        count: z.number().int()
     })
 })
 
@@ -1395,7 +1416,7 @@ export const slackReadConversationTool = defineTool({
         channelId: z.string(),
         channelName: z.string().optional(),
         messages: z.array(slackConversationMessageSchema),
-        count: z.number(),
+        count: z.number().int(),
         hasMore: z.boolean(),
         nextCursor: z.string().nullable()
     })
@@ -1423,9 +1444,9 @@ export const jiraSearchTicketTool = defineTool({
     inputSchema: jiraSearchTicketInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         issues: z.array(jiraIssueSummarySchema),
-        count: z.number(),
-        total: z.number(),
-        maxResults: z.number(),
+        count: z.number().int(),
+        total: z.number().int(),
+        maxResults: z.number().int(),
         isLast: z.boolean(),
         nextPageToken: z.string().optional(),
         jql: z.string()
@@ -1436,8 +1457,8 @@ export const searchGitHubCodeTool = defineTool({
     name: "searchGitHubCode",
     inputSchema: searchGitHubCodeInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
-        totalCount: z.number(),
-        resultsReturned: z.number(),
+        totalCount: z.number().int(),
+        resultsReturned: z.number().int(),
         query: z.string(),
         repositories: z.array(z.string()),
         pagination: gitHubPaginationSchema,
@@ -1451,8 +1472,8 @@ export const grepGitHubCodeTool = defineTool({
     name: "grepGitHubCode",
     inputSchema: grepGitHubCodeInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
-        totalCount: z.number(),
-        resultsReturned: z.number(),
+        totalCount: z.number().int(),
+        resultsReturned: z.number().int(),
         pattern: z.string(),
         query: z.string(),
         repositories: z.array(z.string()),
@@ -1470,9 +1491,9 @@ export const readGitHubFileTool = defineTool({
         repository: z.string(),
         path: z.string(),
         url: z.string(),
-        totalLines: z.number(),
+        totalLines: z.number().int(),
         displayedLines: z.string(),
-        size: z.number(),
+        size: z.number().int(),
         content: z.string(),
         warning: z.string().optional()
     })
@@ -1485,7 +1506,7 @@ export const listGitHubDirectoryTool = defineTool({
         repository: z.string(),
         path: z.string(),
         recursive: z.boolean(),
-        totalItems: z.number(),
+        totalItems: z.number().int(),
         directories: z.array(z.union([gitHubDirectoryEntrySchema, z.string()])),
         files: z.array(gitHubFileEntrySchema),
         warning: z.string().optional(),
@@ -1501,12 +1522,7 @@ export const listGitHubPullRequestsTool = defineTool({
     outputSchema: toolOutputBaseSchema.extend({
         repository: z.string(),
         timeWindow: z.string(),
-        summary: z.object({
-            total: z.number(),
-            merged: z.number(),
-            open: z.number(),
-            closed: z.number()
-        }),
+        summary: gitHubPullRequestListSummarySchema,
         pagination: gitHubPaginationSchema,
         pullRequests: z.array(gitHubPullRequestSummarySchema),
         message: z.string()
@@ -1520,10 +1536,7 @@ export const listGitHubCommitsTool = defineTool({
         repository: z.string(),
         timeWindow: z.string(),
         filters: z.string(),
-        summary: z.object({
-            total: z.number(),
-            byAuthor: z.record(z.string(), z.number())
-        }),
+        summary: gitHubCommitListSummarySchema,
         commits: z.array(gitHubCommitSummarySchema),
         message: z.string(),
         tip: z.string()
@@ -1570,7 +1583,7 @@ export const notionQueryPageTool = defineTool({
         properties: z.record(z.string(), notionReadablePropertyValueSchema),
         properties_raw: z.record(z.string(), z.unknown()).optional(),
         blocks: z.array(notionPageBlockSchema),
-        blocks_count: z.number()
+        blocks_count: z.number().int()
     })
 })
 
@@ -1587,7 +1600,7 @@ export const notionGetSchemaTool = defineTool({
         data_source_id: z.string(),
         database_name: z.string(),
         schema: z.record(z.string(), notionSchemaPropertySchema),
-        property_count: z.number()
+        property_count: z.number().int()
     })
 })
 
@@ -1595,7 +1608,7 @@ export const notionFetchRelatedEventsTool = defineTool({
     name: "notion_fetch_related_events",
     inputSchema: notionFetchRelatedEventsInputSchema,
     outputSchema: toolOutputSuccessSchema.extend({
-        events_count: z.number(),
+        events_count: z.number().int(),
         events: z.string().optional(),
         message: z.string()
     })
@@ -1606,7 +1619,7 @@ export const notionListUsersTool = defineTool({
     inputSchema: notionListUsersInputSchema,
     outputSchema: toolOutputSuccessSchema.extend({
         users: z.array(notionWorkspaceUserSchema),
-        count: z.number()
+        count: z.number().int()
     })
 })
 
@@ -1654,7 +1667,7 @@ export const searchPosthogLogsTool = defineTool({
         severityLevels: z.array(posthogSeverityLevelSchema).nullable(),
         messageSearch: z.string().nullable(),
         projectId: z.string(),
-        totalLogs: z.number(),
+        totalLogs: z.number().int(),
         logs: z.array(posthogLogEntrySchema),
         logsLink: z.string(),
         pagination: posthogOffsetPaginationSchema,
@@ -1670,10 +1683,7 @@ export const getPosthogSessionEventsTool = defineTool({
         sessionUrl: z.string(),
         startTime: z.string(),
         duration: z.number().optional(),
-        timeWindow: z.object({
-            startSeconds: z.number(),
-            endSeconds: z.number().nullable()
-        }),
+        timeWindow: posthogSessionEventsTimeWindowSchema,
         summary: posthogSessionEventsSummarySchema,
         events: z.array(posthogSessionEventSchema),
         consoleLogs: z.array(posthogSessionConsoleLogSchema),
@@ -1681,29 +1691,30 @@ export const getPosthogSessionEventsTool = defineTool({
     })
 })
 
+export const searchPosthogEventsCountSummarySchema = toolOutputSuccessSchema.extend({
+    countByEventNameOnly: z.literal(true),
+    customEventsOnly: z.boolean(),
+    eventCounts: z.array(posthogEventCountSchema),
+    totalEventTypes: z.number().int(),
+    eventsLink: z.string(),
+    message: z.string()
+})
+
+export const searchPosthogEventsEventListSchema = toolOutputSuccessSchema.extend({
+    userEmail: z.string().nullable(),
+    eventName: z.string().nullable(),
+    projectId: z.string(),
+    totalEvents: z.number().int(),
+    events: z.array(posthogEventSummarySchema),
+    eventsLink: z.string(),
+    pagination: posthogOffsetPaginationSchema,
+    message: z.string()
+})
+
 export const searchPosthogEventsTool = defineTool({
     name: "searchPosthogEvents",
     inputSchema: searchPosthogEventsInputSchema,
-    outputSchema: z.union([
-        toolOutputSuccessSchema.extend({
-            countByEventNameOnly: z.literal(true),
-            customEventsOnly: z.boolean(),
-            eventCounts: z.array(posthogEventCountSchema),
-            totalEventTypes: z.number(),
-            eventsLink: z.string(),
-            message: z.string()
-        }),
-        toolOutputSuccessSchema.extend({
-            userEmail: z.string().nullable(),
-            eventName: z.string().nullable(),
-            projectId: z.string(),
-            totalEvents: z.number(),
-            events: z.array(posthogEventSummarySchema),
-            eventsLink: z.string(),
-            pagination: posthogOffsetPaginationSchema,
-            message: z.string()
-        })
-    ])
+    outputSchema: z.union([searchPosthogEventsCountSummarySchema, searchPosthogEventsEventListSchema])
 })
 
 // Datadog schemas
@@ -1719,12 +1730,14 @@ export const datadogLogEntrySchema = z.object({
 })
 
 export const datadogCursorPaginationSchema = z.object({
-    limit: z.number(),
+    limit: z.number().int(),
     cursor: z.string().nullable().optional(),
     nextCursor: z.string().nullable(),
     hasMore: z.boolean(),
     showing: z.string()
 })
+
+export const datadogPagePaginationSchema = datadogCursorPaginationSchema.omit({ cursor: true })
 
 export const datadogRumSessionDetailsSchema = z.object({
     id: z.string().optional(),
@@ -1761,7 +1774,7 @@ export const datadogRumResourceDetailsSchema = z.object({
     type: z.string().optional(),
     url: z.string().optional(),
     method: z.string().optional(),
-    statusCode: z.number().optional(),
+    statusCode: z.number().int().optional(),
     duration: z.number().optional()
 })
 
@@ -1808,6 +1821,18 @@ export const datadogAggregationMetaSchema = z.object({
     status: z.unknown().optional()
 })
 
+export const datadogAggregationComputeSchema = z.object({
+    aggregation: z.enum(["count", "pc90", "pc95", "pc99", "avg", "sum", "min", "max", "cardinality"]).describe("Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"),
+    metric: z.string().describe('Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
+    type: z.enum(["total", "timeseries"]).default("total").describe('Computation type: "total" (overall) or "timeseries" (time-bucketed)')
+})
+
+export const datadogAggregationGroupBySchema = z.object({
+    facet: z.string().describe("Facet to group by (e.g., @view.name, @service, @browser.name)"),
+    limit: z.number().int().default(10).describe("Maximum number of groups to return (default: 10)"),
+    total: z.boolean().default(false).describe('Include "total" group with all events combined (default: false)')
+})
+
 // Datadog input schemas
 export const searchDatadogLogsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Datadog skill to use."),
@@ -1822,7 +1847,7 @@ export const searchDatadogLogsInputSchema = z.object({
         .describe('Log indexes to search (e.g., ["main"]). Defaults to defaultIndexes if not provided.'),
     from: z.string().nullable().optional().describe('Start time (ISO8601 or relative like "now-1h")'),
     to: z.string().nullable().optional().describe("End time (ISO8601). Defaults to now if not provided."),
-    limit: z.number().default(50).describe("Maximum number of log entries to return (default: 50)"),
+    limit: z.number().int().default(50).describe("Maximum number of log entries to return (default: 50)"),
     cursor: z.string().nullable().optional().describe("Pagination cursor from previous response"),
     sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)')
 })
@@ -1832,7 +1857,7 @@ export const searchRumEventsInputSchema = z.object({
     query: z.string().nullable().optional().describe("Datadog RUM search query (e.g., @type:error AND @error.source:network)"),
     from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
     to: z.string().nullable().optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
-    limit: z.number().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
+    limit: z.number().int().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
     pageCursor: z.string().nullable().optional().describe("Pagination cursor from previous response"),
     sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")')
@@ -1843,7 +1868,7 @@ export const listRumEventsInputSchema = z.object({
     query: z.string().nullable().optional().describe("Datadog RUM search query to filter events (e.g., @type:view)"),
     from: z.string().nullable().optional().describe('Minimum timestamp (ISO8601 only, e.g., "2020-09-17T11:48:36+01:00")'),
     to: z.string().nullable().optional().describe("Maximum timestamp (ISO8601 only). Defaults to now if not provided."),
-    limit: z.number().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
+    limit: z.number().int().default(25).describe("Maximum number of RUM events to return (default: 25, max: 1000)"),
     pageCursor: z.string().nullable().optional().describe("Pagination cursor from previous response"),
     sort: z.enum(["timestamp", "-timestamp"]).default("timestamp").describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)')
 })
@@ -1852,29 +1877,10 @@ export const aggregateRumEventsInputSchema = z.object({
     query: z.string().nullable().optional().describe("Datadog RUM search query to filter events before aggregation (e.g., @type:view)"),
     from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
     to: z.string().nullable().optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
-    compute: z
-        .array(
-            z.object({
-                aggregation: z.enum(["count", "pc90", "pc95", "pc99", "avg", "sum", "min", "max", "cardinality"]).describe("Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"),
-                metric: z.string().describe('Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
-                type: z.enum(["total", "timeseries"]).default("total").describe('Computation type: "total" (overall) or "timeseries" (time-bucketed)')
-            })
-        )
-        .describe("Array of metrics to compute. At least one required."),
-    groupBy: z
-        .union([
-            z.array(
-                z.object({
-                    facet: z.string().describe("Facet to group by (e.g., @view.name, @service, @browser.name)"),
-                    limit: z.number().default(10).describe("Maximum number of groups to return (default: 10)"),
-                    total: z.boolean().default(false).describe('Include "total" group with all events combined (default: false)')
-                })
-            ),
-            z.null()
-        ])
-        .describe("Facets to group results by"),
+    compute: z.array(datadogAggregationComputeSchema).describe("Array of metrics to compute. At least one required."),
+    groupBy: z.union([z.array(datadogAggregationGroupBySchema), z.null()]).describe("Facets to group results by"),
     timezone: z.string().default("GMT").describe('Timezone for time-based queries (default: "GMT")'),
-    pageLimit: z.number().default(25).describe("Maximum number of buckets to return (default: 25)"),
+    pageLimit: z.number().int().default(25).describe("Maximum number of buckets to return (default: 25)"),
     integrationId: z.string().describe("The integration ID of the Datadog skill to use.")
 })
 
@@ -1935,7 +1941,7 @@ export const searchDatadogLogsTool = defineTool({
     outputSchema: toolOutputBaseSchema.extend({
         query: z.string().nullable(),
         indexes: z.array(z.string()),
-        totalLogs: z.number(),
+        totalLogs: z.number().int(),
         logs: z.array(datadogLogEntrySchema),
         logsLink: z.string(),
         pagination: datadogCursorPaginationSchema,
@@ -1949,9 +1955,9 @@ export const searchRumEventsTool = defineTool({
     inputSchema: searchRumEventsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         query: z.string().nullable(),
-        totalEvents: z.number(),
+        totalEvents: z.number().int(),
         events: z.array(datadogRumEventSchema),
-        eventsByType: z.record(z.string(), z.number()),
+        eventsByType: z.record(z.string(), z.number().int()),
         rumLink: z.string(),
         pagination: datadogCursorPaginationSchema,
         warnings: z.string().nullable(),
@@ -1964,9 +1970,9 @@ export const listRumEventsTool = defineTool({
     inputSchema: listRumEventsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         query: z.string().nullable(),
-        totalEvents: z.number(),
+        totalEvents: z.number().int(),
         events: z.array(datadogRumEventSchema),
-        eventsByType: z.record(z.string(), z.number()),
+        eventsByType: z.record(z.string(), z.number().int()),
         rumLink: z.string(),
         pagination: datadogCursorPaginationSchema,
         warnings: z.string().nullable(),
@@ -1983,10 +1989,10 @@ export const aggregateRumEventsTool = defineTool({
         to: z.string().nullable(),
         compute: z.string(),
         groupBy: z.string(),
-        totalBuckets: z.number(),
+        totalBuckets: z.number().int(),
         buckets: z.array(datadogAggregationBucketSchema),
         rumLink: z.string(),
-        pagination: datadogCursorPaginationSchema.omit({ cursor: true }),
+        pagination: datadogPagePaginationSchema,
         warnings: z.string().nullable(),
         meta: datadogAggregationMetaSchema,
         message: z.string()
@@ -2050,7 +2056,7 @@ export const attioRecordSchema = z
     .catchall(z.unknown())
 
 export const attioUpsertErrorSchema = z.object({
-    index: z.number(),
+    index: z.number().int(),
     message: z.string()
 })
 
@@ -2106,7 +2112,7 @@ export const launchDarklyEnvironmentConfigSchema = z.object({
     contextTargets: z.array(z.record(z.string(), z.unknown())),
     rules: z.array(z.record(z.string(), z.unknown())),
     fallthrough: z.record(z.string(), z.unknown()).nullable(),
-    offVariation: z.number().nullable(),
+    offVariation: z.number().int().nullable(),
     prerequisites: z.array(z.record(z.string(), z.unknown()))
 })
 
@@ -2123,7 +2129,7 @@ export const launchDarklyHistoryEntrySchema = z.object({
 
 export const launchDarklyHistoryResultSchema = z.object({
     entries: z.array(launchDarklyHistoryEntrySchema),
-    totalEntries: z.number(),
+    totalEntries: z.number().int(),
     url: z.string()
 })
 
@@ -2142,7 +2148,7 @@ export const attioQueryRecordsInputSchema = z.object({
         .string()
         .nullable()
         .describe('Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators.'),
-    limit: z.number().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
+    limit: z.number().int().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
 })
 
 export const attioUpsertRecordInputSchema = z.object({
@@ -2161,13 +2167,13 @@ export const listWorkOSUsersInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
     email: z.string().nullable().optional().describe("Optional exact email address filter. Omit or pass null to list all users."),
     organizationId: z.string().nullable().optional().describe("Optional WorkOS organization ID filter. Omit or pass null for all organizations."),
-    limit: z.number().default(20).describe("Maximum number of users to return (default: 20, max: 100)."),
+    limit: z.number().int().default(20).describe("Maximum number of users to return (default: 20, max: 100)."),
     after: z.string().nullable().optional().describe("Optional pagination cursor. Use the 'after' value from a previous response to get the next page.")
 })
 
 export const listWorkOSOrganizationsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
-    limit: z.number().default(20).describe("Maximum number of organizations to return (default: 20, max: 100)."),
+    limit: z.number().int().default(20).describe("Maximum number of organizations to return (default: 20, max: 100)."),
     after: z.string().nullable().optional().describe("Optional pagination cursor. Use the 'after' value from a previous response to get the next page.")
 })
 
@@ -2198,7 +2204,7 @@ export const getLaunchDarklyFlagDetailsInputSchema = z.object({
     includeHistory: z.boolean().default(false).describe("If true, includes change history for the flag over the specified time window."),
     before: z.string().nullable().optional().describe("Optional: ISO date - only return history entries before this date (only used if includeHistory is true)."),
     after: z.string().nullable().optional().describe("Optional: ISO date - only return history entries after this date (only used if includeHistory is true)."),
-    historyLimit: z.number().default(20).describe("Number of history entries to return if includeHistory is true (default: 20, max: 20).")
+    historyLimit: z.number().int().default(20).describe("Number of history entries to return if includeHistory is true (default: 20, max: 20).")
 })
 
 // Snowflake input schemas
@@ -2230,7 +2236,7 @@ export const attioListObjectsTool = defineTool({
     inputSchema: attioListObjectsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         objects: z.array(attioObjectWithAttributesSchema),
-        count: z.number()
+        count: z.number().int()
     })
 })
 
@@ -2239,7 +2245,7 @@ export const attioQueryRecordsTool = defineTool({
     inputSchema: attioQueryRecordsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         records: z.array(attioRecordSchema),
-        count: z.number()
+        count: z.number().int()
     })
 })
 
@@ -2248,10 +2254,10 @@ export const attioUpsertRecordTool = defineTool({
     inputSchema: attioUpsertRecordInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         records: z.array(attioRecordSchema).optional(),
-        count: z.number().optional(),
-        requestedCount: z.number().optional(),
-        successCount: z.number().optional(),
-        failureCount: z.number().optional(),
+        count: z.number().int().optional(),
+        requestedCount: z.number().int().optional(),
+        successCount: z.number().int().optional(),
+        failureCount: z.number().int().optional(),
         partial: z.boolean().optional(),
         errors: z.array(attioUpsertErrorSchema).optional()
     })
@@ -2291,7 +2297,7 @@ export const listLaunchDarklyFlagsTool = defineTool({
     inputSchema: listLaunchDarklyFlagsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         projectKey: z.string(),
-        totalFlags: z.number(),
+        totalFlags: z.number().int(),
         flags: z.array(launchDarklyFlagSummarySchema),
         flagsLink: z.string(),
         message: z.string()
@@ -2317,7 +2323,7 @@ export const snowflakeExecuteQueryTool = defineTool({
     outputSchema: toolOutputBaseSchema.extend({
         rows: z.array(snowflakeQueryRowSchema),
         columns: z.array(z.string()),
-        rowCount: z.number()
+        rowCount: z.number().int()
     })
 })
 
@@ -2327,7 +2333,7 @@ export const snowflakeExplainQueryTool = defineTool({
     outputSchema: toolOutputBaseSchema.extend({
         explainPlan: z.array(snowflakeQueryRowSchema),
         columns: z.array(z.string()),
-        rowCount: z.number()
+        rowCount: z.number().int()
     })
 })
 

@@ -48,8 +48,8 @@ class AttioObjects:
 
 class Attio:
     @staticmethod
-    def skill(obj: {{attio.skillObjectType}} | None = None) -> SkillConfig[{{attio.skillToolType}}]:
-        return SkillConfig(integration_id={{{attio.instanceIdRepr}}}, integration_type='attio', config_type='attio_output', config={"objectSlug": obj.api_slug if obj else None})
+    def skill(obj: {{attio.skillObjectType}}) -> SkillConfig[{{attio.skillToolType}}]:
+        return SkillConfig(integration_id={{{attio.instanceIdRepr}}}, integration_type='attio', config_type='attio_output', config=_compact_dict(objectSlug=obj.api_slug))
 {{#if attio.hasAttrs}}
 
 
@@ -100,12 +100,11 @@ def _flatten_attio_record(obj_slug: str, raw: object) -> AttioTypedRecord[Any]:
 
 class Attio:
     @staticmethod
-    def skill(obj: object | None = None) -> SkillConfig[str]:
-        object_slug = getattr(obj, 'api_slug', None) if obj is not None else None
+    def skill(obj: object) -> SkillConfig[str]:
         return SkillConfig(
             integration_id='attio_placeholder',
             integration_type='attio',
             config_type='attio_output',
-            config={"objectSlug": object_slug},
+            config=_compact_dict(objectSlug=getattr(obj, 'api_slug', None)),
         )
 {{/if}}

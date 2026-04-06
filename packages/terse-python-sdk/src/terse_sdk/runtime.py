@@ -23,7 +23,6 @@ from ._http_utils import (
     _read_response_detail,
 )
 from .types.config import TerseSettings
-from .types.enums import ConfigType
 from .types.events import (
     AnyInputEvent,
     AtlassianInputEvent,
@@ -229,13 +228,21 @@ class TerseAgent:
             {
                 "prompt": prompt,
                 "event": _serialize_run_event(event or _manual_event()),
-                "skills": [_serialize_skill_config(skill).model_dump(exclude_none=True) for skill in self.skills],
+                "skills": [
+                    _serialize_skill_config(skill).model_dump(exclude_none=True, by_alias=True) for skill in self.skills
+                ],
                 "toolApprovals": self.tool_approvals,
             }
         )
-        request_payload = request_body.model_dump(exclude_none=True)
+        request_payload = request_body.model_dump(exclude_none=True, by_alias=True)
         headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id)
-        _debug_log_request(LOGGER, "POST", f"{self.backend_url}/sdk/agent-run", headers, request_payload)
+        _debug_log_request(
+            LOGGER,
+            "POST",
+            f"{self.backend_url}/sdk/agent-run",
+            headers,
+            request_payload,
+        )
         failed_tool_calls: list[str] = []
 
         try:
@@ -290,7 +297,13 @@ class TerseAgent:
         api_key = _require_api_key()
         headers = _build_auth_headers(api_key, session_id=self.session_id)
         request_payload = {"toolName": tool_name, "params": dict(params or {})}
-        _debug_log_request(LOGGER, "POST", f"{self.backend_url}/sdk/tool-execute", headers, request_payload)
+        _debug_log_request(
+            LOGGER,
+            "POST",
+            f"{self.backend_url}/sdk/tool-execute",
+            headers,
+            request_payload,
+        )
 
         try:
             with httpx.Client(timeout=20.0) as client:
@@ -364,7 +377,7 @@ def deserialize_input_event(
     """Convert a serialized backend event into the best matching SDK event model."""
 
     if isinstance(value, SerializedEvent):
-        payload = value.model_dump(exclude_none=True)
+        payload = value.model_dump(exclude_none=True, by_alias=True)
     elif isinstance(value, str):
         parsed = json.loads(value)
         if not isinstance(parsed, dict):
@@ -415,9 +428,7 @@ def execute_registered_job(
 
 
 def _serialize_skill_config(skill: SkillConfig[Any]) -> SdkAgentSkillPayload:
-    config = dict(skill.config)
-    if skill.config_type == ConfigType.ATTIO_OUTPUT and "objectSlug" not in config:
-        config["objectSlug"] = None
+    config = {k: v for k, v in skill.config.items() if v is not None}
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type

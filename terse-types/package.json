@@ -21,8 +21,11 @@
     },
     "scripts": {
         "build": "tsc -p tsconfig.build.json && node --input-type=module -e \"import { fix } from 'tsc-esm-fix'; await fix({ cwd: process.cwd(), target: ['dist'], ext: '.js' })\"",
+        "check:schema": "node --import tsx scripts/check-schema-compat.ts",
+        "build:json-schema": "node --import tsx scripts/export-json-schema.ts",
         "clean": "rm -rf dist",
         "dev": "node ../scripts/tsc-watch-and-fix.mjs tsconfig.build.json dist",
+        "dev:python-types": "node scripts/dev-with-codegen.mjs",
         "format": "pnpm exec prettier --config ../.prettierrc --write \"*.{ts,json}\"",
         "format:check": "pnpm exec prettier --config ../.prettierrc --check \"*.{ts,json}\""
     },
@@ -37,6 +40,7 @@
     "license": "ISC",
     "devDependencies": {
         "tsc-esm-fix": "^3.1.2",
+        "tsx": "^4.21.0",
         "typescript": "^5.8.3"
     },
     "dependencies": {

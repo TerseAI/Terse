@@ -23,8 +23,8 @@ class ConfigType(StrEnum):
     GITHUB = "github"
     JIRA = "jira"
     CONFLUENCE = "confluence"
-    POSTHOG = "posthog"
-    DATADOG = "datadog"
+    POSTHOG = "POSTHOG"
+    DATADOG = "DATADOG"
     TIME_TRIGGER = "time_trigger"
     LAUNCHDARKLY = "launchdarkly"
     TERSE = "terse"
@@ -67,7 +67,17 @@ class IntegrationType(StrEnum):
 JiraEventType: TypeAlias = Literal["issue.created", "issue.updated"]
 LinearEventType: TypeAlias = Literal["issue.created", "issue.updated", "comment.created"]
 NotificationDestinationType: TypeAlias = Literal["email", "slack"]
-RunHistoryActionType: TypeAlias = Literal["create", "update", "delete", "read", "approve", "error"]
+
+
+class RunHistoryActionType(StrEnum):
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+    READ = "read"
+    APPROVE = "approve"
+    ERROR = "error"
+
+
 RunHistoryDecisionAction: TypeAlias = Literal["processed", "skipped"]
 RunHistoryStatus: TypeAlias = Literal["success", "failed", "cancelled", "skipped", "in_progress", "awaiting_approval"]
 SlackEventType: TypeAlias = Literal["message", "app_mention", "reaction_added"]

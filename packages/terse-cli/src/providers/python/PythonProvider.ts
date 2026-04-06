@@ -15,7 +15,7 @@ import { renderPythonGeneratedCode } from "./pythonTemplateEngine.js"
 
 const JOB_REGISTRY_MARKER = "__TERSE_JOB_REGISTRY__="
 const JOB_SKIPPED_MARKER = "__TERSE_SKIPPED__"
-const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.8"
+const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.9"
 
 type PythonSerializedConfig = {
     integrationId: string

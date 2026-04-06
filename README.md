@@ -80,7 +80,7 @@ Recommended wrapper scripts:
 ```bash
 npm run python:setup
 npm run python:check
-npm run python:test
+pnpm run python:test
 npm run python:dist:check
 npm run python:build
 ```
@@ -312,6 +312,24 @@ npm install ../../projects/Terse/packages/terse-sdk ../../projects/Terse/terse-t
 This uses the `file:` protocol to symlink both packages into `node_modules/`. Since the watchers are running, any source changes in `terse-sdk`, `terse-types`, or `terse-cli` will be reflected immediately.
 
 > **Note:** Use `npm install` (not `pnpm add`) from the test env. If you previously used pnpm to link, the `package.json` will contain `link:` protocol entries that npm cannot resolve. In that case, re-run the `npm install` command above to fix it.
+
+#### Python
+
+For Python test projects, install the local SDK in editable mode using `uv` from the test project directory:
+
+```bash
+uv pip install -e <path-to-repo>/packages/terse-python-sdk
+```
+
+For example:
+
+```bash
+uv pip install -e ../../projects/Terse/packages/terse-python-sdk
+```
+
+This installs the local SDK in editable mode, so any changes you make to the SDK source are reflected immediately without reinstalling.
+
+> **Note:** Running `uv sync` will revert to the PyPI version of `terse-sdk`. Re-run the `uv pip install -e` command above after any `uv sync`.
 
 ### 4. Point CLI to local backend
 

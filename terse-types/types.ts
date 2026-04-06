@@ -150,8 +150,8 @@ export const datadogIndexSchema = z.object({
     id: z.string(),
     name: z.string(),
     isEnabled: z.boolean(),
-    dailyLimit: z.number().optional(),
-    retentionDays: z.number().optional()
+    dailyLimit: z.number().int().optional(),
+    retentionDays: z.number().int().optional()
 })
 export type DatadogIndex = z.infer<typeof datadogIndexSchema>
 
@@ -212,7 +212,7 @@ export const confluencePageSchema = z.object({
     spaceName: z.string(),
     url: z.string(),
     status: z.string(),
-    version: z.number()
+    version: z.number().int()
 })
 export type ConfluencePage = z.infer<typeof confluencePageSchema>
 
@@ -230,14 +230,14 @@ export type ConfluencePagesQuery = z.infer<typeof confluencePagesQuerySchema>
 export const confluencePagesResponseSchema = z.object({
     pages: z.array(confluencePageSchema),
     spaceId: z.string(),
-    total: z.number()
+    total: z.number().int()
 })
 export type ConfluencePagesResponse = z.infer<typeof confluencePagesResponseSchema>
 
 export const confluenceResourcesResponseSchema = z.object({
     resources: z.array(confluencePageSchema),
     spaceId: z.string(),
-    total: z.number()
+    total: z.number().int()
 })
 export type ConfluenceResourcesResponse = z.infer<typeof confluenceResourcesResponseSchema>
 
@@ -248,13 +248,16 @@ export const jiraResourceProjectSchema = z.object({
     projectTypeKey: z.string()
 })
 
+export const jiraResourcesPayloadSchema = z.object({
+    projects: z.array(jiraResourceProjectSchema),
+    baseUrl: z.string(),
+    cloudId: z.string()
+})
+export type JiraResourcesPayload = z.infer<typeof jiraResourcesPayloadSchema>
+
 export const jiraResourcesResponseSchema = z.object({
     success: z.boolean(),
-    resources: z.object({
-        projects: z.array(jiraResourceProjectSchema),
-        baseUrl: z.string(),
-        cloudId: z.string()
-    })
+    resources: jiraResourcesPayloadSchema
 })
 export type JiraResourcesResponse = z.infer<typeof jiraResourcesResponseSchema>
 
@@ -323,11 +326,23 @@ export const figmaFrameOffsetRegionDataSchema = z.object({
 })
 export type FigmaFrameOffsetRegionData = z.infer<typeof figmaFrameOffsetRegionDataSchema>
 
+export const figmaVectorPositioningSchema = z.object({ type: z.literal("Vector"), data: figmaVectorDataSchema })
+export type FigmaVectorPositioning = z.infer<typeof figmaVectorPositioningSchema>
+
+export const figmaFrameOffsetPositioningSchema = z.object({ type: z.literal("FrameOffset"), data: figmaFrameOffsetDataSchema })
+export type FigmaFrameOffsetPositioning = z.infer<typeof figmaFrameOffsetPositioningSchema>
+
+export const figmaRegionPositioningSchema = z.object({ type: z.literal("Region"), data: figmaRegionDataSchema })
+export type FigmaRegionPositioning = z.infer<typeof figmaRegionPositioningSchema>
+
+export const figmaFrameOffsetRegionPositioningSchema = z.object({ type: z.literal("FrameOffsetRegion"), data: figmaFrameOffsetRegionDataSchema })
+export type FigmaFrameOffsetRegionPositioning = z.infer<typeof figmaFrameOffsetRegionPositioningSchema>
+
 export const figmaPositioningDataSchema = z.discriminatedUnion("type", [
-    z.object({ type: z.literal("Vector"), data: figmaVectorDataSchema }),
-    z.object({ type: z.literal("FrameOffset"), data: figmaFrameOffsetDataSchema }),
-    z.object({ type: z.literal("Region"), data: figmaRegionDataSchema }),
-    z.object({ type: z.literal("FrameOffsetRegion"), data: figmaFrameOffsetRegionDataSchema })
+    figmaVectorPositioningSchema,
+    figmaFrameOffsetPositioningSchema,
+    figmaRegionPositioningSchema,
+    figmaFrameOffsetRegionPositioningSchema
 ])
 export type FigmaPositioningData = z.infer<typeof figmaPositioningDataSchema>
 
@@ -608,7 +623,7 @@ export const agentReviewSchema = z.object({
     automationId: z.string(),
     title: z.string(),
     summary: z.string(),
-    runsAnalyzed: z.number(),
+    runsAnalyzed: z.number().int(),
     reviewPeriodStart: z.string(),
     reviewPeriodEnd: z.string(),
     createdAt: z.string()
@@ -660,7 +675,7 @@ export type ToggleImprovementsEnabledResponse = z.infer<typeof toggleImprovement
 export const repositorySchema = z.object({
     name: z.string(),
     owner: z.string(),
-    id: z.number()
+    id: z.number().int()
 })
 export type Repository = z.infer<typeof repositorySchema>
 
@@ -668,7 +683,7 @@ export const githubAppInstallationCallbackRequestSchema = z.object({
     name: z.string(),
     email: z.string(),
     username: z.string(),
-    installationId: z.number(),
+    installationId: z.number().int(),
     accountName: z.string().nullable(),
     repositories: z.array(repositorySchema)
 })
@@ -730,7 +745,7 @@ export type StatsInterval = z.infer<typeof statsIntervalSchema>
 
 export const dailyEventCountSchema = z.object({
     date: z.string(),
-    events: z.number()
+    events: z.number().int()
 })
 export type DailyEventCount = z.infer<typeof dailyEventCountSchema>
 
@@ -749,13 +764,13 @@ export type RecentAction = z.infer<typeof recentActionSchema>
 export const agentActivityItemSchema = z.object({
     agentId: z.string(),
     agentName: z.string(),
-    runCount: z.number()
+    runCount: z.number().int()
 })
 export type AgentActivityItem = z.infer<typeof agentActivityItemSchema>
 
 export const countByStringSchema = z.object({
     label: z.string(),
-    count: z.number()
+    count: z.number().int()
 })
 export type CountByString = z.infer<typeof countByStringSchema>
 
@@ -803,6 +818,9 @@ export const sdkAgentRunEventPayloadSchema = z.object({
 })
 export type SdkAgentRunEventPayload = z.infer<typeof sdkAgentRunEventPayloadSchema>
 
+export const partialSdkAgentRunEventPayloadSchema = sdkAgentRunEventPayloadSchema.partial()
+export type PartialSdkAgentRunEventPayload = z.infer<typeof partialSdkAgentRunEventPayloadSchema>
+
 export const sdkAgentSkillPayloadSchema = z.object({
     configType: configTypeEnum,
     config: unknownRecordSchema
@@ -810,14 +828,14 @@ export const sdkAgentSkillPayloadSchema = z.object({
 export type SdkAgentSkillPayload = z.infer<typeof sdkAgentSkillPayloadSchema>
 
 export const sdkAgentRunOptionsPayloadSchema = z.object({
-    maxTurns: z.number().optional(),
+    maxTurns: z.number().int().optional(),
     requireApproval: z.boolean().optional()
 })
 export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayloadSchema>
 
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
-    event: sdkAgentRunEventPayloadSchema.partial().optional(),
+    event: partialSdkAgentRunEventPayloadSchema.optional(),
     skills: z.array(sdkAgentSkillPayloadSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
@@ -830,7 +848,7 @@ export const sdkAgentRunResponseContractSchema = z.object({
 })
 
 export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
-    maxTurns: z.number(),
+    maxTurns: z.number().int(),
     requireApproval: z.boolean()
 })
 

@@ -1,30 +1,31 @@
 {
-  "name": "ai-product-owner",
-  "private": true,
-  "scripts": {
-    "build": "pnpm -r run build",
-    "dev": "pnpm run dev:setup && pnpm -r --parallel --stream run dev",
-    "dev:setup": "pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli run build",
-    "format": "pnpm -r run format && pnpm --dir terse-probot-app run format",
-    "format:check": "pnpm -r run format:check && pnpm --dir terse-probot-app run format:check",
-    "install-global": "pnpm -r --filter terse-sdk --filter terse-cli run install-global",
-    "python:setup": "uv sync --all-packages",
-    "python:test": "./.venv/bin/pytest packages/terse-python-sdk/tests",
-    "python:check": "./.venv/bin/ruff check packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ruff format --check packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ty check packages/terse-python-sdk/src && npm run python:test",
-    "python:fix": "./.venv/bin/ruff check --fix packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ruff format packages/terse-python-sdk/src packages/terse-python-sdk/tests",
-    "python:release:prep:sdk": "uv run bump-my-version bump --config-file .bumpversion-sdk.toml",
-    "python:dist:clean": "mkdir -p dist && find dist -maxdepth 1 -type f \\( -name 'terse_sdk-*' \\) -delete",
-    "python:build": "npm run python:dist:clean && uv build --package terse-sdk",
-    "python:dist:check": "npm run python:build && uvx twine check dist/terse_sdk-*",
-    "python:publish": "npm run python:dist:check && uvx twine upload dist/terse_sdk-*"
-  },
-  "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
-    "prettier": "^3.8.1"
-  },
-  "pnpm": {
-    "overrides": {
-      "@types/express-serve-static-core": "5.0.7"
+    "name": "ai-product-owner",
+    "private": true,
+    "scripts": {
+        "build": "pnpm -r run build",
+        "dev": "pnpm run dev:setup && pnpm -r --parallel --stream run dev",
+        "dev:setup": "pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli run build",
+        "generate:python-types": "pnpm --filter terse-types run build && pnpm --filter terse-types run build:json-schema && uv run python scripts/generate-pydantic-from-schema.py",
+        "format": "pnpm -r run format && pnpm --dir terse-probot-app run format",
+        "format:check": "pnpm -r run format:check && pnpm --dir terse-probot-app run format:check",
+        "install-global": "pnpm -r --filter terse-sdk --filter terse-cli run install-global",
+        "python:setup": "uv sync --all-packages",
+        "python:test": "./.venv/bin/pytest packages/terse-python-sdk/tests",
+        "python:check": "./.venv/bin/ruff check packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ruff format --check packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ty check packages/terse-python-sdk/src && pnpm run python:test",
+        "python:fix": "./.venv/bin/ruff check --fix packages/terse-python-sdk/src packages/terse-python-sdk/tests && ./.venv/bin/ruff format packages/terse-python-sdk/src packages/terse-python-sdk/tests",
+        "python:release:prep:sdk": "uv run bump-my-version bump --config-file .bumpversion-sdk.toml",
+        "python:dist:clean": "mkdir -p dist && find dist -maxdepth 1 -type f \\( -name 'terse_sdk-*' \\) -delete",
+        "python:build": "npm run python:dist:clean && uv build --package terse-sdk",
+        "python:dist:check": "npm run python:build && uvx twine check dist/terse_sdk-*",
+        "python:publish": "npm run python:dist:check && uvx twine upload dist/terse_sdk-*"
+    },
+    "devDependencies": {
+        "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+        "prettier": "^3.8.1"
+    },
+    "pnpm": {
+        "overrides": {
+            "@types/express-serve-static-core": "5.0.7"
+        }
     }
-  }
 }
