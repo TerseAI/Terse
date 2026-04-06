@@ -46,20 +46,6 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 
     const { data } = parsed
-    const normalized = {
-        prompt: data.prompt,
-        event: {
-            integrationType: data.event?.integrationType ?? IntegrationType.TERSE,
-            formattedContent: data.event?.formattedContent ?? "Manual trigger from terse run",
-            debugLog: data.event?.debugLog ?? "[MockInputEvent] Manual trigger via SDK"
-        },
-        skills: data.skills ?? [],
-        toolApprovals: data.toolApprovals ?? [],
-        options: {
-            maxTurns: data.options?.maxTurns ?? 50,
-            requireApproval: data.options?.requireApproval ?? true
-        }
-    }
     const { send, sandboxRunId } = initSseStream(req, res)
 
     try {
@@ -67,17 +53,17 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         const sdkRunner = createSdkRunner({
             runId,
             user,
-            prompt: normalized.prompt,
-            skills: normalized.skills,
-            toolApprovals: normalized.toolApprovals,
+            prompt: data.prompt,
+            skills: data.skills ?? [],
+            toolApprovals: data.toolApprovals ?? [],
             send,
             sandboxRunId,
-            options: normalized.options
+            options: data.options
         })
 
         send({ type: "run_started", runId })
 
-        const eventText = ["", `Integration Type: ${normalized.event.integrationType}`, `Event Content:`, normalized.event.formattedContent, ``, `Debug Log: ${normalized.event.debugLog}`].join("\n")
+        const eventText = ["", `Integration Type: ${data.event?.integrationType}`, `Event Content:`, data.event?.formattedContent ?? "", ``, `Debug Log: ${data.event?.debugLog ?? ""}`].join("\n")
 
         let result = await sdkRunner.run(eventText)
 
