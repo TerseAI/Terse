@@ -1,14 +1,16 @@
 ---
 title: "Context as Code"
-description: "How Terse compiles your workspace context so workflows do not have to rediscover it at runtime."
+description: Terse compiles your workspace into a typed SDK so workflows reference real resources and coding agents build automations with full context."
 icon: "lightbulb"
 ---
 
-Context as Code turns your connected systems into typed helpers so workflows reference real workspace resources instead of rediscovering IDs, channels, and lists at runtime.
+`terse generate` compiles your connected integrations into a typed SDK. Your workflows reference real workspace resources instead of hardcoded IDs, and your coding agent (Cursor, Claude Code, Windsurf, etc.) gets full autocompletions and type safety when building automations.
 
 ## The problem
 
-Suppose you have an AI agent setup using MCP. Each time the agent runs, it rediscovers context about your workspace:
+Without context-as-code, two things go wrong:
+
+**At runtime**, your workflow rediscovers workspace context on every execution:
 
 ```ts
 // Runtime discovery on every execution
@@ -23,12 +25,13 @@ if (!deals || !alertsChannel) {
 }
 ```
 
-This upfront context that the agent has to rebuild each time is unreliable, adds latency and is prone to failure.
+This adds latency, wastes tokens, and breaks when names change.
+
+**At build time**, your coding agent has no idea what resources exist in your workspace. It guesses at channel names, hallucinates list IDs, and produces workflows you have to manually fix. There is no autocomplete, no type checking, and no way for the agent to know what is actually available.
 
 ## The solution
 
-`terse generate` compiles that context into typed code once. It also encodes how your organization
-uses the tools so your coding agents can build automations quickly and with the right context.
+`terse generate` solves both problems at once. It compiles your workspace context into typed code, so workflows never rediscover resources at runtime and coding agents build against real data from the start.
 
 ```ts
 import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk";
@@ -44,10 +47,12 @@ const client = new Terse();
 
 await client.createJob({
   name: "new-deal-enrichment",
+  // This actually exists in the Attio Objects
   triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
   skills: [
     Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
     Apollo.skill(),
+    // This is a real slack channel in the workspace as well!
     Slack.skill({ channel: SlackChannel.DealDesk }),
   ],
   onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
@@ -99,29 +104,21 @@ await client.createJob({
   </Step>
 </Steps>
 
-## Key terms
-
-| Term              | Meaning                                                                                                        |
-| ----------------- | -------------------------------------------------------------------------------------------------------------- |
-| Workflow          | Am automation with triggers, skills, and a handler that you deploy with the CLI                      |
-| Trigger           | The event (e.g. CRM record created) or schedule (e.g. cron) that starts the workflow                           |
-| Skill             | A capability the workflow can use after you connect an integration (e.g. `Attio.skill()`, `Apollo.skill()`)    |
-| Generated helpers | Typed exports in `src/terse.generated.ts` — triggers, skills, resource constants, and `agent.tools.*` wrappers |
-
 ## Benefits
 
-- **Less runtime drift** — workspace structure is compiled into code.
-- **Lower latency** — no API calls to discover lists, channels, or owners.
-- **Type safety** — broken references fail at build time instead of in production.
-- **Better prompts** — workflows start with real context, not guesses.
+- **Less runtime drift:** workspace structure is compiled into code.
+- **Lower latency:** no API calls to discover lists, channels, or owners.
+- **Type safety:** broken references fail at build time instead of in production.
+- **Better prompts:** workflows start with real context, not guesses.
+- **Coding agent friendly:** your agent gets autocompletions and typed outputs, so it builds correct workflows without you looking up IDs.
 
 ## Where to go next
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Get a workflow live fast.
+    Get a workflow live in under 10 minutes.
   </Card>
-  <Card title="Templates" icon="book-open" href="/templates">
-    Templates
+  <Card title="Hosting & Deployment" icon="cloud-upload" href="/hosting">
+    Learn how terse deploy packages and runs your code serverlessly.
   </Card>
 </CardGroup>
