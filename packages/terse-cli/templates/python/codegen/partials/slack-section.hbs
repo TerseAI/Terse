@@ -75,9 +75,9 @@ class Slack:
     def skill(
         *,
         channel: SlackChannel | None = None,
-        user_ids: Sequence[str] | None = None,
-        user_names: Sequence[str] | None = None,
-        listen_to_user_dms: bool | None = None,
+        user_ids: Sequence[str] | None = [],
+        user_names: Sequence[str] | None = [],
+        listen_to_user_dms: bool | None = False,
     ) -> SkillConfig[{{slack.skillToolType}}]:
         return SkillConfig(
             integration_id={{{slack.instanceIdRepr}}},
