@@ -1,82 +1,151 @@
 ---
 title: "Overview"
-description: "Terse is a code-first workflow platform that gives coding agents the context they need out of the box. Connect your systems, generate helpers from workspace context, and deploy end-to-end workflows in TypeScript or Python."
+description: "Terse is a code-first AI workflow platform that is built to be created with coding agents. Connect your systems, generate helpers from workspace context, and deploy end-to-end workflows in TypeScript or Python."
 icon: "house"
 ---
 
 <div className="mt-2 mb-2">
-  <a
-    href="/quickstart"
-    className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90"
-    style={{ backgroundColor: "#0F766E" }}
-  >
-    Quickstart
-  </a>
+    <a
+        href="/quickstart"
+        className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90"
+        style={{ backgroundColor: "#0F766E" }}
+    >
+        Quickstart
+    </a>
 </div>
 
 ## How it works
 
-<div style={{ position: "relative", paddingBottom: "62.5%", height: 0 }}>
-  <iframe
-    src="https://www.loom.com/embed/447d269951604381b5a97b54bff07252"
-    title="How Terse workflows work"
-    frameBorder="0"
-    allowFullScreen
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-    }}
-  />
-</div>
+Use the language control to compare the same workflow in TypeScript (`createJob`) and Python (`@app.job`). In Python, GitHub is wired with `TriggerConfig` until GitHub helpers exist in `terse_generated`; Slack still comes from generated helpers after `terse generate`.
+
+<CodeGroup dropdown>
+
+```ts index.ts
+const client = new Terse()
+
+await client.createJob({
+    name: "Summarize PR and send slack message",
+    triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
+    skills: [
+      // Fine tune what agents have access to
+      GitHub.skill({ repos: [Repos.TerseAI.Terse] }), 
+      Slack.skill({ channel: SlackChannel.AllTerseInc })
+    ],
+    onTrigger: async (event: GithubPRInputEvent, Agent: TerseAgent) => {
+      
+        // deterministically call a tool
+        const message = await Agent.tools.slack.sendMessage({
+            channelId: SlackChannel.AllTerseInc.channelId,
+            message: "New PR from " + event.sender.login + "!"
+        })
+        
+        // Outputs are strongly typed
+        const parentId = message.message_ts
+
+        // Insert any prompt you want. Use helper to easily feed event as well.
+        const prompt = `
+          Summarize this PR ${event.formatForAgentRunner()}.
+          Keep it short. Reply in a thread to the Slack message (thread parent ts: ${parentId}).
+          Format the summary in Block Kit; include screenshots or diagrams from the PR as image blocks.
+        `.trim()
+        
+        // Trigger the Agent with Github + Slack tools auto added
+        await Agent.runAndWait(prompt)
+    }
+})
+```
+
+```python main.py
+from terse_sdk import GithubInputEvent, SkillConfig, Terse, TriggerConfig
+from terse_generated import Slack, SlackChannel, TerseAgent
+
+app = Terse()
+
+# From your Terse workspace (TypeScript’s terse.generated maps friendly repo names to these ids).
+github_integration_id = "<github-integration-id>"
+repo_id = 0
+
+@app.job(
+    name="Summarize PR and send slack message",
+    triggers=[
+        TriggerConfig(
+            integration_id=github_integration_id,
+            integration_type="github",
+            config_type="github",
+            config={
+                "repositoryIds": [repo_id],
+                "eventTypes": ["pull_request.opened"],
+            },
+        ),
+    ],
+    skills=[
+        SkillConfig(
+            integration_id=github_integration_id,
+            integration_type="github",
+            config_type="github",
+            config={"repositoryIds": [repo_id]},
+        ),
+        Slack.skill(channel=SlackChannel.AllTerseInc),
+    ],
+)
+def on_github_pr(event: GithubInputEvent, agent: TerseAgent) -> None:
+    sender = (
+        event.metadata.sender.login
+        if event.metadata and event.metadata.sender
+        else "someone"
+    )
+    message = agent.tools.slack.send_message(
+        channel=SlackChannel.AllTerseInc,
+        message=f"New PR from {sender}!",
+    )
+    prompt = f"""
+Summarize this PR {event.formatted_content}.
+
+Keep it short. Reply in a thread to the Slack message (thread parent ts: {message.message_ts}).
+Format the summary in Block Kit; include screenshots or diagrams from the PR as image blocks.
+""".strip()
+    agent.run_and_wait(prompt, event)
+```
+
+</CodeGroup>
 
 ## What you can build
 
 <CardGroup cols={2}>
-  <Card
-    title="CRM enrichment"
-    icon="sparkles"
-    href="/templates/new-deal-enrichment"
-  >
-    Enrich new deals with Apollo, score fit, and write the result back to Attio.
-  </Card>
-  <Card title="Deal Alerts" icon="bell" href="/templates/crm-slack-alerts">
-    Post Slack alerts when a deal hits a key stage.
-  </Card>
-  <Card
-    title="Weekly Pipeline Reporting"
-    icon="chart-column"
-    href="/templates/weekly-pipeline-digest"
-  >
-    Summarize open pipeline weekly and post the digest to Slack.
-  </Card>
-  <Card title="Additional Templates" icon="book-open" href="/templates">
-    Start from a working GTM workflow instead of a blank file.
-  </Card>
+    <Card title="CRM enrichment" icon="sparkles" href="/templates/new-deal-enrichment">
+        Enrich new deals with Apollo, score fit, and write the result back to Attio.
+    </Card>
+    <Card title="Deal Alerts" icon="bell" href="/templates/crm-slack-alerts">
+        Post Slack alerts when a deal hits a key stage.
+    </Card>
+    <Card title="Weekly Pipeline Reporting" icon="chart-column" href="/templates/weekly-pipeline-digest">
+        Summarize open pipeline weekly and post the digest to Slack.
+    </Card>
+    <Card title="Additional Templates" icon="book-open" href="/templates">
+        Start from a working GTM workflow instead of a blank file.
+    </Card>
 </CardGroup>
 
 ## Key concepts
 
-| Concept               | What it means                                                                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Context as Code**   | `terse generate` compiles your connected integrations into generated helpers — no runtime discovery of IDs, channels, or lists      |
-| **Workflow**          | A TypeScript or Python automation with triggers, skills, and a handler, deployed via `terse deploy`                                |
-| **Trigger**           | The event (e.g. `Attio.onRecordCreated()`) or schedule (e.g. `Schedule.cron()`) that starts a workflow                             |
-| **Skill**             | An integration capability available to the workflow (e.g. `Apollo.skill()`, `Slack.skill()`)                                       |
-| **Generated helpers** | Resource constants, trigger builders, skill constructors, and deterministic wrappers |
+| Concept               | What it means                                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Context as Code**   | `terse generate` compiles your connected integrations into generated helpers — no runtime discovery of IDs, channels, or lists |
+| **Workflow**          | A TypeScript or Python automation with triggers, skills, and a handler, deployed via `terse deploy`                            |
+| **Trigger**           | The event (e.g. `Attio.onRecordCreated()`) or schedule (e.g. `Schedule.cron()`) that starts a workflow                         |
+| **Skill**             | An integration capability available to the workflow (e.g. `Apollo.skill()`, `Slack.skill()`)                                   |
+| **Generated helpers** | Resource constants, trigger builders, skill constructors, and deterministic wrappers                                           |
 
 ## Where to start
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Get a weekly pipeline digest live in under 10 minutes.
-  </Card>
-  <Card title="Context as Code" icon="lightbulb" href="/context-as-code">
-    Understand how generated helpers make workflows more stable.
-  </Card>
-  <Card title="Compare approaches" icon="scale" href="/compare">
-    See where Terse fits relative to Zapier, custom scripts, and AI agents.
-  </Card>
+    <Card title="Quickstart" icon="rocket" href="/quickstart">
+        Get a weekly pipeline digest live in under 10 minutes.
+    </Card>
+    <Card title="Context as Code" icon="lightbulb" href="/context-as-code">
+        Understand how generated helpers make workflows more stable.
+    </Card>
+    <Card title="Compare approaches" icon="scale" href="/compare">
+        See where Terse fits relative to Zapier, custom scripts, and AI agents.
+    </Card>
 </CardGroup>

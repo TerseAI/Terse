@@ -16,7 +16,7 @@
     "groups": [
       {
         "group": "Getting started",
-        "pages": ["index", "quickstart", "context-as-code"]
+        "pages": ["index", "quickstart", "context-as-code", "hosting"]
       },
       {
         "group": "Templates",
