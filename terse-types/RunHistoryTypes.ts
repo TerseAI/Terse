@@ -1,22 +1,27 @@
 import * as z from "zod"
 
 import { configTypeEnum } from "./Configs"
-import { IntegrationType, integrationTypeEnum } from "./Integrations"
+import { integrationTypeEnum } from "./Integrations"
 import type { ModelEvent } from "./ModelEvents"
-import type { User } from "./types"
+import type { RunHistoryRecord, RunHistoryRecordWithAgent, User } from "./types"
 
-export enum RunHistoryStatus {
-    SUCCESS = "success",
-    FAILED = "failed",
-    CANCELLED = "cancelled",
-    SKIPPED = "skipped",
-    IN_PROGRESS = "in_progress",
-    AWAITING_APPROVAL = "awaiting_approval"
-}
+export const RunHistoryStatus = {
+    SUCCESS: "success",
+    FAILED: "failed",
+    CANCELLED: "cancelled",
+    SKIPPED: "skipped",
+    IN_PROGRESS: "in_progress",
+    AWAITING_APPROVAL: "awaiting_approval"
+} as const
+export const runHistoryStatusSchema = z.enum(RunHistoryStatus)
+export type RunHistoryStatus = z.infer<typeof runHistoryStatusSchema>
 
-export type RunHistoryDecisionAction = "processed" | "skipped"
+export const runHistoryDecisionActionSchema = z.enum(["processed", "skipped"])
+export type RunHistoryDecisionAction = z.infer<typeof runHistoryDecisionActionSchema>
+
 export const RUN_HISTORY_ACTION_TYPES = ["create", "update", "delete", "read", "approve", "error"] as const
-export type RunHistoryActionType = (typeof RUN_HISTORY_ACTION_TYPES)[number]
+export const runHistoryActionTypeSchema = z.enum(RUN_HISTORY_ACTION_TYPES)
+export type RunHistoryActionType = z.infer<typeof runHistoryActionTypeSchema>
 
 export const outputItemSchema = z.object({
     output_item_id: z.string(),
@@ -31,7 +36,7 @@ export const runHistoryActionBaseSchema = z.object({
     details: z.string(),
     url: z.string().optional(),
     step_id: z.string().optional(),
-    type: z.enum(RUN_HISTORY_ACTION_TYPES),
+    type: runHistoryActionTypeSchema,
     isReadOnly: z.boolean().optional(),
     output_items: z.array(outputItemSchema).optional()
 })
@@ -42,37 +47,10 @@ export type RunHistoryActionWithId = RunHistoryAction & {
     id: string
 }
 
-export type RunHistoryTrigger = {
-    // What event occurred to trigger the run (free-text, e.g. "email received", "database row created")
-    event: string
-    // Which integration this trigger came from (used for icons and grouping)
-    integration: IntegrationType
-    // Source or context of the trigger (e.g. Gmail, Notion DB name, repo name)
-    source: string
-    // Title of the trigger (Subject of the email, name of the database, etc.)
-    title?: string
-    // Subheader of the trigger (From of the email, description of the database, etc.)
-    subheader?: string
-    // Link to the trigger (Email URL, Database URL, etc.)
-    url?: string
-}
-
-export type RunHistoryDecision = {
-    action: RunHistoryDecisionAction
-    reasoning: string
-}
-
-export type RunHistoryRecord = {
-    id: string
-    agentId: string
-    timestamp: string
-    trigger: RunHistoryTrigger
-    filtered: boolean
-    decision: RunHistoryDecision
-    actions?: RunHistoryAction[]
-    status: RunHistoryStatus
-    isManuallyTriggered: boolean
-}
+// RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord, RunHistoryRecordWithAgent
+// are now defined as Zod schemas in types.ts and re-exported via index.ts.
+// Re-export them here for backward compatibility.
+export type { RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord, RunHistoryRecordWithAgent } from "./types"
 
 export type GetRunHistoryParamsRequest = {
     agentId: string
@@ -92,10 +70,6 @@ export type GetRunHistoryResponse = {
     page: number
     pageSize: number
     total: number
-}
-
-export type RunHistoryRecordWithAgent = RunHistoryRecord & {
-    agentName: string
 }
 
 export type GetAllRunHistoryResponse = {

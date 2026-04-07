@@ -33,13 +33,13 @@ from .types.attio import (
 )
 from .types.attio import __all__ as _attio_all
 from .types.chat_snippets import (
+    Button,
     ChatSnippet,
-    ChatSnippetButton,
-    ChatSnippetImage,
-    ChatSnippetIntegrationPrompt,
-    ChatSnippetMultipleChoice,
-    ChatSnippetNavigate,
+    Image,
+    IntegrationPrompt,
+    MultipleChoice,
     MultipleChoiceOption,
+    Navigate,
 )
 from .types.chat_snippets import __all__ as _chat_snippets_all
 from .types.config import TerseSettings
@@ -62,7 +62,6 @@ from .types.enums import (
     RunHistoryStatus,
     SlackChannelType,
     SlackEventType,
-    TicketSystemType,
     ToolCallExecutionStatus,
     WorkOSEventType,
 )
@@ -113,25 +112,23 @@ from .types.integrations import __all__ as _integrations_all
 from .types.jobs import JobDefinition, SkillConfig, TriggerConfig
 from .types.jobs import __all__ as _jobs_all
 from .types.model_events import (
+    Cancelled,
     Error,
+    FilterResult,
     ModelEvent,
-    ModelEventCancelled,
-    ModelEventFilterResult,
-    ModelEventNaturalStop,
-    ModelEventRunError,
-    ModelEventSnippet,
-    ModelEventTextDelta,
-    ModelEventThinking,
-    ModelEventToolApprovalRequest,
-    ModelEventToolApprovalResponse,
-    ModelEventToolCall,
-    ModelEventToolCallComplete,
-    ModelEventToolCallGenerating,
-    ModelEventUserMessage,
+    ModelEventChatSnippet,
+    NaturalStop,
     RunError,
     SharedErrorContext,
+    SnippetVariant,
     TextDelta,
+    Thinking,
+    ToolApprovalRequest,
+    ToolApprovalResponse,
     ToolCall,
+    ToolCallComplete,
+    ToolCallGenerating,
+    UserMessage,
 )
 from .types.model_events import __all__ as _model_events_all
 from .types.run_history import (
@@ -158,7 +155,6 @@ from .types.sdk_types import (
     SdkAgentRunOptionsPayload,
     SdkAgentRunRequestBody,
     SdkAgentRunResponseBody,
-    SdkAgentSkillPayload,
     SdkDeployJob,
     SdkDeployRequestBody,
     SdkDeployResponseBody,
@@ -167,18 +163,16 @@ from .types.sdk_types import (
 )
 from .types.sdk_types import __all__ as _sdk_types_all
 from .types.stream_events import (
+    Action,
+    Done,
+    FinalOutput,
+    RunStarted,
     SdkAgentStreamEvent,
-    SdkAgentStreamEventAction,
-    SdkAgentStreamEventDone,
-    SdkAgentStreamEventError,
-    SdkAgentStreamEventFinalOutput,
-    SdkAgentStreamEventRunStarted,
-    SdkAgentStreamEventText,
-    SdkAgentStreamEventToolApprovalRequested,
-    SdkAgentStreamEventToolCallCompleted,
-    SdkAgentStreamEventToolCallParams,
-    SdkAgentStreamEventToolCallStarted,
-    SdkAgentToolApprovalRequest,
+    Text,
+    ToolApprovalRequested,
+    ToolCallCompleted,
+    ToolCallParams,
+    ToolCallStarted,
 )
 from .types.stream_events import __all__ as _stream_events_all
 from .types.tools import (

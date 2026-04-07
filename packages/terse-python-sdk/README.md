@@ -23,7 +23,7 @@ The SDK provides:
 ## Quick Start
 
 ```python
-from terse_sdk import CronJobInputEvent, SdkAgentStreamEventFinalOutput, Terse
+from terse_sdk import CronJobInputEvent, FinalOutput, Terse
 from terse_generated import Schedule, TerseAgent
 
 app = Terse()
@@ -39,7 +39,7 @@ def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
         f"Context: {event.formatted_content}"
     )
     for stream_event in agent.run(prompt, event):
-        if isinstance(stream_event, SdkAgentStreamEventFinalOutput):
+        if isinstance(stream_event, FinalOutput):
             print(stream_event.final_output)
 ```
 

@@ -1,9 +1,9 @@
 import * as z from "zod"
 
-import { ConfigType, configDataSchema, configTypeEnum } from "./Configs"
-import { IntegrationType, integrationTypeEnum } from "./Integrations"
-import { RUN_HISTORY_ACTION_TYPES, RunHistoryStatus, runHistoryActionBaseSchema } from "./RunHistoryTypes"
-import type { RunHistoryAction, RunHistoryActionType, RunHistoryRecordWithAgent } from "./RunHistoryTypes"
+import { configDataSchema, configTypeEnum } from "./Configs"
+import { integrationTypeEnum } from "./Integrations"
+import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
+import type { RunHistoryAction } from "./RunHistoryTypes"
 import {
     attioAttributeSchema,
     attioObjectSchema,
@@ -518,10 +518,7 @@ export const agentTemplateSchema = z.object({
 })
 export type AgentTemplate = z.infer<typeof agentTemplateSchema>
 
-const runHistoryActionTypeSchema = z.enum(RUN_HISTORY_ACTION_TYPES)
-const runHistoryStatusSchema = z.enum(RunHistoryStatus)
-
-const runHistoryTriggerSchema = z.object({
+export const runHistoryTriggerSchema = z.object({
     event: z.string(),
     integration: integrationTypeEnum,
     source: z.string(),
@@ -529,13 +526,15 @@ const runHistoryTriggerSchema = z.object({
     subheader: z.string().optional(),
     url: z.string().optional()
 })
+export type RunHistoryTrigger = z.infer<typeof runHistoryTriggerSchema>
 
-const runHistoryDecisionSchema = z.object({
-    action: z.enum(["processed", "skipped"]),
+export const runHistoryDecisionSchema = z.object({
+    action: runHistoryDecisionActionSchema,
     reasoning: z.string()
 })
+export type RunHistoryDecision = z.infer<typeof runHistoryDecisionSchema>
 
-const runHistoryRecordSchema = z.object({
+export const runHistoryRecordSchema = z.object({
     id: z.string(),
     agentId: z.string(),
     timestamp: z.string(),
@@ -546,10 +545,12 @@ const runHistoryRecordSchema = z.object({
     status: runHistoryStatusSchema,
     isManuallyTriggered: z.boolean()
 })
+export type RunHistoryRecord = z.infer<typeof runHistoryRecordSchema>
 
-const runHistoryRecordWithAgentSchema = runHistoryRecordSchema.extend({
+export const runHistoryRecordWithAgentSchema = runHistoryRecordSchema.extend({
     agentName: z.string()
 })
+export type RunHistoryRecordWithAgent = z.infer<typeof runHistoryRecordWithAgentSchema>
 
 export const agentNotificationSettingsSchema = z.object({
     enabled: z.boolean(),
@@ -875,21 +876,42 @@ export const toolApprovalRequestedPayloadSchema = z.object({
     arguments: z.string()
 })
 
+export const runStartedSchema = z.object({ type: z.literal("run_started"), runId: z.string() })
+
+export const textSchema = z.object({ type: z.literal("text"), text: z.string() })
+
+export const finalOutputSchema = z.object({ type: z.literal("final_output"), finalOutput: z.string() })
+
+export const toolCallParamsSchema = z.object({ type: z.literal("tool_call_params"), toolCallParams: z.string() })
+
+export const toolCallStartedSchema = z.object({ type: z.literal("tool_call_started"), toolCallStarted: z.string() })
+
+export const toolCallCompletedSchema = z.object({ type: z.literal("tool_call_completed"), toolCallCompleted: z.string() })
+
+export const toolApprovalRequestedSchema = z.object({
+    type: z.literal("tool_approval_requested"),
+    toolApprovalRequested: toolApprovalRequestedPayloadSchema
+})
+
+export const actionSchema = z.object({ type: z.literal("action"), action: runHistoryActionBaseSchema })
+
+export const errorSchema = z.object({ type: z.literal("error"), message: z.string() })
+
+export const doneSchema = z.object({ type: z.literal("done") })
+
 export const sdkAgentStreamEventSchema = z.discriminatedUnion("type", [
-    z.object({ type: z.literal("run_started"), runId: z.string() }),
-    z.object({ type: z.literal("text"), text: z.string() }),
-    z.object({ type: z.literal("final_output"), finalOutput: z.string() }),
-    z.object({ type: z.literal("tool_call_params"), toolCallParams: z.string() }),
-    z.object({ type: z.literal("tool_call_started"), toolCallStarted: z.string() }),
-    z.object({ type: z.literal("tool_call_completed"), toolCallCompleted: z.string() }),
-    z.object({
-        type: z.literal("tool_approval_requested"),
-        toolApprovalRequested: toolApprovalRequestedPayloadSchema
-    }),
-    z.object({ type: z.literal("action"), action: runHistoryActionBaseSchema }),
-    z.object({ type: z.literal("error"), message: z.string() }),
-    z.object({ type: z.literal("done") })
+    runStartedSchema,
+    textSchema,
+    finalOutputSchema,
+    toolCallParamsSchema,
+    toolCallStartedSchema,
+    toolCallCompletedSchema,
+    toolApprovalRequestedSchema,
+    actionSchema,
+    errorSchema,
+    doneSchema
 ])
+
 export type SdkAgentStreamEvent = z.infer<typeof sdkAgentStreamEventSchema> & {
     action?: RunHistoryAction
 }

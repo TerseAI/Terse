@@ -1,15 +1,12 @@
-from terse_sdk import CronJobInputEvent, SdkAgentStreamEventFinalOutput, Terse
-from terse_generated import Attio, Schedule, Snowflake, TerseAgent
+from terse_sdk import CronJobInputEvent, FinalOutput, Terse
+from terse_generated import Schedule, TerseAgent
 
 app = Terse()
 
 @app.job(
     name="{{projectName}}",
     triggers=[Schedule.cron("0 9 * * 1")],
-    skills=[
-        Attio.skill(),
-        Snowflake.skill(),
-    ],
+    skills=[],
 )
 def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
     prompt = (
@@ -17,5 +14,5 @@ def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
         f"Context: {event.formatted_content}"
     )
     for stream_event in agent.run(prompt, event):
-        if isinstance(stream_event, SdkAgentStreamEventFinalOutput):
+        if isinstance(stream_event, FinalOutput):
             print(stream_event.final_output)
