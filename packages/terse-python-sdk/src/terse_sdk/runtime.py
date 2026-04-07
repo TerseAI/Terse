@@ -22,6 +22,7 @@ from ._http_utils import (
     _debug_log_response_payload,
     _read_response_detail,
 )
+from .types._generated import ConfigData
 from .types.config import TerseSettings
 from .types.events import (
     AnyInputEvent,
@@ -47,36 +48,19 @@ from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
     SdkAgentRunRequestBody,
     SdkAgentRunResponseBody,
-    SdkAgentSkillPayload,
     SerializedEvent,
 )
 from .types.stream_events import (
+    Done,
+    Error,
+    FinalOutput,
     SdkAgentStreamEvent,
-    SdkAgentStreamEventAction,
-    SdkAgentStreamEventDone,
-    SdkAgentStreamEventError,
-    SdkAgentStreamEventFinalOutput,
-    SdkAgentStreamEventRunStarted,
-    SdkAgentStreamEventText,
-    SdkAgentStreamEventToolApprovalRequested,
-    SdkAgentStreamEventToolCallCompleted,
-    SdkAgentStreamEventToolCallParams,
-    SdkAgentStreamEventToolCallStarted,
+    ToolCallCompleted,
 )
 
 JobEvent = AnyInputEvent
 JobHandler = Callable[[JobEvent, "TerseAgent"], None]
 JobFilter = Callable[[JobEvent], bool]
-AgentStreamEvent = (
-    SdkAgentStreamEventText
-    | SdkAgentStreamEventFinalOutput
-    | SdkAgentStreamEventToolCallParams
-    | SdkAgentStreamEventToolCallStarted
-    | SdkAgentStreamEventToolCallCompleted
-    | SdkAgentStreamEventAction
-    | SdkAgentStreamEventRunStarted
-    | SdkAgentStreamEventToolApprovalRequested
-)
 
 HandlerT = TypeVar("HandlerT", bound=Callable[..., object])
 ResultT = TypeVar("ResultT")
@@ -220,7 +204,7 @@ class TerseAgent:
         self._tools = factory(self)
         return self._tools
 
-    def run(self, prompt: str, event: InputEvent | None = None) -> Generator[AgentStreamEvent, None, None]:
+    def run(self, prompt: str, event: InputEvent | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
         api_key = _require_api_key()
@@ -263,17 +247,17 @@ class TerseAgent:
                         continue
 
                     stream_event = SdkAgentStreamEvent.model_validate_json(sse.data).root
-                    if isinstance(stream_event, SdkAgentStreamEventDone):
+                    if isinstance(stream_event, Done):
                         if failed_tool_calls:
                             raise TerseApiError(f"Run completed with failed tool calls: {'; '.join(failed_tool_calls)}")
                         return
-                    if isinstance(stream_event, SdkAgentStreamEventError):
+                    if isinstance(stream_event, Error):
                         raise TerseApiError(stream_event.message)
-                    if isinstance(stream_event, SdkAgentStreamEventToolCallCompleted):
+                    if isinstance(stream_event, ToolCallCompleted):
                         parsed = _parse_tool_call_completed(stream_event.tool_call_completed)
                         if parsed.get("status") and parsed["status"] != "completed":
                             failed_tool_calls.append(f"{parsed.get('tool', 'unknown_tool')}: {parsed['status']}")
-                    yield cast(AgentStreamEvent, stream_event)
+                    yield cast(SdkAgentStreamEvent, stream_event)
         except httpx.RequestError as exc:
             raise TerseApiError(f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}") from exc
         except ValidationError as exc:
@@ -287,7 +271,7 @@ class TerseAgent:
 
         final_output: str | None = None
         for chunk in self.run(prompt, event):
-            if isinstance(chunk, SdkAgentStreamEventFinalOutput):
+            if isinstance(chunk, FinalOutput):
                 final_output = chunk.final_output
         return final_output
 
@@ -427,12 +411,12 @@ def execute_registered_job(
     return False
 
 
-def _serialize_skill_config(skill: SkillConfig[Any]) -> SdkAgentSkillPayload:
+def _serialize_skill_config(skill: SkillConfig[Any]) -> ConfigData:
     config = {k: v for k, v in skill.config.items() if v is not None}
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type
-    return SdkAgentSkillPayload.model_validate({"configType": skill.config_type, "config": config})
+    return ConfigData.model_validate(config)
 
 
 def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:

@@ -20,13 +20,13 @@ from .attio import (
 )
 from .attio import __all__ as _attio_all
 from .chat_snippets import (
+    Button,
     ChatSnippet,
-    ChatSnippetButton,
-    ChatSnippetImage,
-    ChatSnippetIntegrationPrompt,
-    ChatSnippetMultipleChoice,
-    ChatSnippetNavigate,
+    Image,
+    IntegrationPrompt,
+    MultipleChoice,
     MultipleChoiceOption,
+    Navigate,
 )
 from .chat_snippets import __all__ as _chat_snippets_all
 from .config import TerseSettings
@@ -49,7 +49,6 @@ from .enums import (
     RunHistoryStatus,
     SlackChannelType,
     SlackEventType,
-    TicketSystemType,
     ToolCallExecutionStatus,
     WorkOSEventType,
 )
@@ -100,25 +99,23 @@ from .integrations import __all__ as _integrations_all
 from .jobs import JobDefinition, SkillConfig, TriggerConfig
 from .jobs import __all__ as _jobs_all
 from .model_events import (
+    Cancelled,
     Error,
+    FilterResult,
     ModelEvent,
-    ModelEventCancelled,
-    ModelEventFilterResult,
-    ModelEventNaturalStop,
-    ModelEventRunError,
-    ModelEventSnippet,
-    ModelEventTextDelta,
-    ModelEventThinking,
-    ModelEventToolApprovalRequest,
-    ModelEventToolApprovalResponse,
-    ModelEventToolCall,
-    ModelEventToolCallComplete,
-    ModelEventToolCallGenerating,
-    ModelEventUserMessage,
+    ModelEventChatSnippet,
+    NaturalStop,
     RunError,
     SharedErrorContext,
+    SnippetVariant,
     TextDelta,
+    Thinking,
+    ToolApprovalRequest,
+    ToolApprovalResponse,
     ToolCall,
+    ToolCallComplete,
+    ToolCallGenerating,
+    UserMessage,
 )
 from .model_events import __all__ as _model_events_all
 from .run_history import (
@@ -145,7 +142,6 @@ from .sdk_types import (
     SdkAgentRunOptionsPayload,
     SdkAgentRunRequestBody,
     SdkAgentRunResponseBody,
-    SdkAgentSkillPayload,
     SdkDeployJob,
     SdkDeployRequestBody,
     SdkDeployResponseBody,
@@ -154,18 +150,16 @@ from .sdk_types import (
 )
 from .sdk_types import __all__ as _sdk_types_all
 from .stream_events import (
+    Action,
+    Done,
+    FinalOutput,
+    RunStarted,
     SdkAgentStreamEvent,
-    SdkAgentStreamEventAction,
-    SdkAgentStreamEventDone,
-    SdkAgentStreamEventError,
-    SdkAgentStreamEventFinalOutput,
-    SdkAgentStreamEventRunStarted,
-    SdkAgentStreamEventText,
-    SdkAgentStreamEventToolApprovalRequested,
-    SdkAgentStreamEventToolCallCompleted,
-    SdkAgentStreamEventToolCallParams,
-    SdkAgentStreamEventToolCallStarted,
-    SdkAgentToolApprovalRequest,
+    Text,
+    ToolApprovalRequested,
+    ToolCallCompleted,
+    ToolCallParams,
+    ToolCallStarted,
 )
 from .stream_events import __all__ as _stream_events_all
 from .tools import (
