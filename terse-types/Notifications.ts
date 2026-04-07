@@ -20,18 +20,20 @@ export interface UpdateNotificationSettingsRequest {
     applyToAllAgents?: boolean
 }
 
-export enum NotificationDestinationType {
-    EMAIL = "email",
-    SLACK = "slack"
-}
+export const NotificationDestinationType = {
+    EMAIL: "email",
+    SLACK: "slack"
+} as const
+export const notificationDestinationTypeSchema = z.enum(NotificationDestinationType)
+export type NotificationDestinationType = z.infer<typeof notificationDestinationTypeSchema>
 
 export interface EmailNotificationDestination extends NotificationDestination {
-    type: NotificationDestinationType.EMAIL
+    type: "email"
     email: string
 }
 
 export interface SlackNotificationDestination extends NotificationDestination {
-    type: NotificationDestinationType.SLACK
+    type: "slack"
     integrationId: string
     slackChannelId?: string
     slackChannelName?: string
@@ -40,7 +42,7 @@ export interface SlackNotificationDestination extends NotificationDestination {
 }
 
 export const createNotificationDestinationRequestSchema = z.object({
-    type: z.enum(NotificationDestinationType),
+    type: notificationDestinationTypeSchema,
     email: z.email().optional(),
     integrationId: z.string().optional(),
     slackChannelId: z.string().optional(),

@@ -256,52 +256,57 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
 
 // MARK: Event Types — specific events within each integration trigger
 
-export enum SlackEventType {
-    MESSAGE = "message",
-    APP_MENTION = "app_mention",
-    REACTION_ADDED = "reaction_added"
-}
+export const SlackEventType = {
+    MESSAGE: "message",
+    APP_MENTION: "app_mention",
+    REACTION_ADDED: "reaction_added"
+} as const
+export const slackEventTypeSchema = z.enum(SlackEventType)
+export type SlackEventType = z.infer<typeof slackEventTypeSchema>
 
-export enum GitHubEventType {
-    PUSH = "push",
-    PR_OPENED = "pull_request.opened",
-    PR_MERGED = "pull_request.merged",
-    PR_CLOSED = "pull_request.closed",
-    PR_SYNCHRONIZE = "pull_request.synchronize"
-}
+export const GitHubEventType = {
+    PUSH: "push",
+    PR_OPENED: "pull_request.opened",
+    PR_MERGED: "pull_request.merged",
+    PR_CLOSED: "pull_request.closed",
+    PR_SYNCHRONIZE: "pull_request.synchronize"
+} as const
+export const gitHubEventTypeSchema = z.enum(GitHubEventType)
+export type GitHubEventType = z.infer<typeof gitHubEventTypeSchema>
 
-export enum LinearEventType {
-    ISSUE_CREATED = "issue.created",
-    ISSUE_UPDATED = "issue.updated",
-    COMMENT_CREATED = "comment.created"
-}
+export const linearEventTypeSchema = z.enum(["issue.created", "issue.updated", "comment.created"])
+export type LinearEventType = z.infer<typeof linearEventTypeSchema>
 
-export enum JiraEventType {
-    ISSUE_CREATED = "issue.created",
-    ISSUE_UPDATED = "issue.updated"
-}
+export const jiraEventTypeSchema = z.enum(["issue.created", "issue.updated"])
+export type JiraEventType = z.infer<typeof jiraEventTypeSchema>
 
-export enum FigmaEventType {
-    FILE_COMMENT = "file_comment"
-}
+export const FigmaEventType = {
+    FILE_COMMENT: "file_comment"
+} as const
+export const figmaEventTypeSchema = z.enum(FigmaEventType)
+export type FigmaEventType = z.infer<typeof figmaEventTypeSchema>
 
-export enum GmailEventType {
-    EMAIL_RECEIVED = "email.received"
-}
+export const GmailEventType = {
+    EMAIL_RECEIVED: "email.received"
+} as const
+export const gmailEventTypeSchema = z.enum(GmailEventType)
+export type GmailEventType = z.infer<typeof gmailEventTypeSchema>
 
-export enum WorkOSEventType {
-    USER_CREATED = "user.created",
-    USER_UPDATED = "user.updated",
-    USER_DELETED = "user.deleted",
-    ORGANIZATION_CREATED = "organization.created",
-    ORGANIZATION_MEMBERSHIP_CREATED = "organization_membership.created",
-    ORGANIZATION_MEMBERSHIP_UPDATED = "organization_membership.updated",
-    ORGANIZATION_MEMBERSHIP_DELETED = "organization_membership.deleted",
-    INVITATION_CREATED = "invitation.created",
-    INVITATION_ACCEPTED = "invitation.accepted",
-    INVITATION_RESENT = "invitation.resent",
-    INVITATION_REVOKED = "invitation.revoked"
-}
+export const WorkOSEventType = {
+    USER_CREATED: "user.created",
+    USER_UPDATED: "user.updated",
+    USER_DELETED: "user.deleted",
+    ORGANIZATION_CREATED: "organization.created",
+    ORGANIZATION_MEMBERSHIP_CREATED: "organization_membership.created",
+    ORGANIZATION_MEMBERSHIP_UPDATED: "organization_membership.updated",
+    ORGANIZATION_MEMBERSHIP_DELETED: "organization_membership.deleted",
+    INVITATION_CREATED: "invitation.created",
+    INVITATION_ACCEPTED: "invitation.accepted",
+    INVITATION_RESENT: "invitation.resent",
+    INVITATION_REVOKED: "invitation.revoked"
+} as const
+export const workOSEventTypeSchema = z.enum(WorkOSEventType)
+export type WorkOSEventType = z.infer<typeof workOSEventTypeSchema>
 
 export const ConfigInstanceSchema = z.object({
     integrationId: z.string(),
@@ -330,7 +335,7 @@ abstract class BaseConfigInstance<TIntegrationType extends IntegrationType, TCon
 export const GmailConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.GMAIL),
     configType: z.literal(ConfigType.GMAIL),
-    eventTypes: z.array(z.enum(GmailEventType)).nullable()
+    eventTypes: z.array(gmailEventTypeSchema).nullable()
 })
 export type GmailConfigData = z.infer<typeof GmailConfigSchema>
 export type GmailConfigInstance = GmailConfigData & ConfigBehavior
@@ -358,7 +363,7 @@ export const FigmaConfigSchema = ConfigInstanceSchema.extend({
     fileKey: z.string(),
     fileName: z.string(),
     teamId: z.string(),
-    eventTypes: z.array(z.enum(FigmaEventType)).nullable()
+    eventTypes: z.array(figmaEventTypeSchema).nullable()
 })
 export type FigmaConfigData = z.infer<typeof FigmaConfigSchema>
 export type FigmaConfigInstance = FigmaConfigData & ConfigBehavior
@@ -397,7 +402,7 @@ export const SlackConfigSchema = ConfigInstanceSchema.extend({
     channelName: z.string().nullable(),
     listenToUserDms: z.boolean().default(false),
     userIds: z.array(z.string()).nullable(),
-    eventTypes: z.array(z.enum(SlackEventType)).nullable()
+    eventTypes: z.array(slackEventTypeSchema).nullable()
 })
 export type SlackConfigData = z.infer<typeof SlackConfigSchema>
 export type SlackConfigInstance = SlackConfigData & ConfigBehavior
@@ -572,7 +577,7 @@ export const LinearInputConfigSchema = ConfigInstanceSchema.extend({
     configType: z.literal(ConfigType.LINEAR_INPUT),
     projectId: z.string().nullable(),
     projectName: z.string().nullable(),
-    eventTypes: z.array(z.enum(LinearEventType)).nullable()
+    eventTypes: z.array(linearEventTypeSchema).nullable()
 })
 export type LinearInputConfigData = z.infer<typeof LinearInputConfigSchema>
 export type LinearInputConfigInstance = LinearInputConfigData & ConfigBehavior
@@ -648,7 +653,7 @@ export const GitHubConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.GITHUB),
     configType: z.literal(ConfigType.GITHUB),
     repositoryIds: z.array(z.number().int()),
-    eventTypes: z.array(z.enum(GitHubEventType)).nullable()
+    eventTypes: z.array(gitHubEventTypeSchema).nullable()
 })
 export type GitHubConfigData = z.infer<typeof GitHubConfigSchema>
 export type GitHubConfigInstance = GitHubConfigData & ConfigBehavior
@@ -680,7 +685,7 @@ export const JiraConfigSchema = ConfigInstanceSchema.extend({
     configType: z.literal(ConfigType.JIRA),
     projectKey: z.string().nullable(),
     projectId: z.string().nullable(),
-    eventTypes: z.array(z.enum(JiraEventType)).nullable()
+    eventTypes: z.array(jiraEventTypeSchema).nullable()
 })
 export type JiraConfigData = z.infer<typeof JiraConfigSchema>
 export type JiraConfigInstance = JiraConfigData & ConfigBehavior
@@ -901,7 +906,7 @@ export class TerseConfig extends BaseConfigInstance<IntegrationType.TERSE, Confi
 export const WorkOSInputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.WORKOS),
     configType: z.literal(ConfigType.WORKOS_INPUT),
-    eventTypes: z.array(z.enum(WorkOSEventType)).default([])
+    eventTypes: z.array(workOSEventTypeSchema).default([])
 })
 export type WorkOSInputConfigData = z.infer<typeof WorkOSInputConfigSchema>
 export type WorkOSInputConfigInstance = WorkOSInputConfigData & ConfigBehavior

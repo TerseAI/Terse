@@ -37,7 +37,7 @@ Import these from `terse_sdk`:
 
 - `Terse` — the runtime object used to register workflows
 - `CronJobInputEvent` and other typed event models
-- `SdkAgentStreamEventFinalOutput` if you want to stream and inspect final output explicitly
+- `FinalOutput` if you want to stream and inspect final output explicitly
 
 Import these from `terse_generated`:
 
@@ -98,10 +98,10 @@ Annotate handlers with `TerseAgent` from `terse_generated`, not `terse_sdk`, so 
 Streams agent events from the backend.
 
 ```python
-from terse_sdk import SdkAgentStreamEventFinalOutput
+from terse_sdk import FinalOutput
 
 for stream_event in agent.run("Summarize the account.", event):
-    if isinstance(stream_event, SdkAgentStreamEventFinalOutput):
+    if isinstance(stream_event, FinalOutput):
         print(stream_event.final_output)
 ```
 

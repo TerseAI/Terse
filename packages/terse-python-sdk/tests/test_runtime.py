@@ -15,18 +15,15 @@ import terse_sdk.types as terse_types
 from terse_sdk import (
     ConfigType,
     CronJobInputEvent,
+    Done,
     EventType,
+    FinalOutput,
     IntegrationType,
     MissingApiKeyError,
+    RunStarted,
     SdkAgentStreamEvent,
-    SdkAgentStreamEventDone,
-    SdkAgentStreamEventFinalOutput,
-    SdkAgentStreamEventRunStarted,
-    SdkAgentStreamEventText,
-    SdkAgentStreamEventToolApprovalRequested,
-    SdkAgentStreamEventToolCallCompleted,
-    SdkAgentToolApprovalRequest,
     SerializedEventInputEvent,
+    SkillConfig,
     SlackChannelType,
     SlackInputEvent,
     SlackListChannelsToolOutput,
@@ -37,6 +34,10 @@ from terse_sdk import (
     TerseAgent,
     TerseApiError,
     TerseRuntimeError,
+    Text,
+    ToolApprovalRequest,
+    ToolApprovalRequested,
+    ToolCallCompleted,
     TriggerConfig,
     clear_job_registry,
     deserialize_input_event,
@@ -238,7 +239,7 @@ def test_deserialize_input_event_enriches_slack_metadata() -> None:
     assert event.thread_timestamp == "1710000000.000001"
     assert event.team_id == "T123"
     assert event.permalink == "https://slack.example/message"
-    assert event.channel_type == SlackChannelType.IM
+    assert event.channel_type == SlackChannelType.im
     assert event.blocks == [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}]
     assert event.attachments is not None
     assert event.attachments[0].author_name == "Terse"
@@ -318,7 +319,8 @@ def test_slack_tool_output_models_accept_backend_shapes() -> None:
 
     assert send_result.message_ts == "1710000000.100000"
     assert send_result.has_blocks is False
-    assert channels_result.next_cursor == "cursor_123"
+    assert channels_result.next_cursor is not None
+    assert channels_result.next_cursor.root == "cursor_123"
     assert channels_result.channels[0].is_private is False
     assert channels_result.channels[0].user_id is None
     assert users_result.users[0].name == "Olivia"
@@ -392,9 +394,9 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
         triggers=[
             TriggerConfig(
                 integration_id="slack_integration",
-                integration_type=IntegrationType.SLACK,
+                integration_type=IntegrationType.slack,
                 event_type="message",
-                config_type=ConfigType.SLACK,
+                config_type=ConfigType.slack,
                 config={"channelId": "C123"},
             )
         ],
@@ -413,7 +415,7 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
         )
 
     assert seen_tools == ["slack-tools"]
-    assert [config.integration_type for config in seen_manual_tool_configs] == [IntegrationType.SLACK]
+    assert [config.integration_type for config in seen_manual_tool_configs] == [IntegrationType.slack]
 
 
 def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> None:
@@ -425,9 +427,9 @@ def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> Non
 
 
 def test_stream_event_exports_include_sdk_run_events() -> None:
-    assert terse_types.SdkAgentStreamEventRunStarted is SdkAgentStreamEventRunStarted
-    assert terse_types.SdkAgentStreamEventToolApprovalRequested is SdkAgentStreamEventToolApprovalRequested
-    assert terse_types.SdkAgentToolApprovalRequest is SdkAgentToolApprovalRequest
+    assert terse_types.RunStarted is RunStarted
+    assert terse_types.ToolApprovalRequested is ToolApprovalRequested
+    assert terse_types.ToolApprovalRequest is ToolApprovalRequest
     assert EventType.RUN_STARTED == "run_started"
     assert EventType.TOOL_APPROVAL_REQUESTED == "tool_approval_requested"
 
@@ -435,7 +437,7 @@ def test_stream_event_exports_include_sdk_run_events() -> None:
 def test_run_started_event_supports_backend_payload() -> None:
     event = SdkAgentStreamEvent.model_validate({"type": "run_started", "runId": "run_123"}).root
 
-    assert isinstance(event, SdkAgentStreamEventRunStarted)
+    assert isinstance(event, RunStarted)
     assert event.run_id == "run_123"
 
 
@@ -451,7 +453,7 @@ def test_tool_approval_requested_event_supports_backend_payload() -> None:
         }
     ).root
 
-    assert isinstance(event, SdkAgentStreamEventToolApprovalRequested)
+    assert isinstance(event, ToolApprovalRequested)
     assert event.tool_approval_requested.step_id == "step_123"
     assert event.tool_approval_requested.tool_name == "demo_tool"
     assert event.tool_approval_requested.arguments == json.dumps({"value": 1})
@@ -511,10 +513,10 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         )
 
     assert len(events) == 5
-    assert isinstance(events[0], SdkAgentStreamEventRunStarted)
+    assert isinstance(events[0], RunStarted)
     assert events[0].type == EventType.RUN_STARTED
     assert events[0].run_id == "run_123"
-    assert isinstance(events[2], SdkAgentStreamEventToolApprovalRequested)
+    assert isinstance(events[2], ToolApprovalRequested)
     assert events[2].type == EventType.TOOL_APPROVAL_REQUESTED
     assert events[2].tool_approval_requested.tool_name == "demo_tool"
     assert events[-1].type == EventType.FINAL_OUTPUT
@@ -550,9 +552,9 @@ def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
                 manual_tool_configs=[
                     TriggerConfig(
                         integration_id="slack_integration",
-                        integration_type=IntegrationType.SLACK,
+                        integration_type=IntegrationType.slack,
                         event_type="message",
-                        config_type=ConfigType.SLACK,
+                        config_type=ConfigType.slack,
                         config={"channelId": "C123"},
                     )
                 ],
@@ -562,14 +564,56 @@ def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
     assert captured["json"]["skills"] == []
 
 
+def test_agent_run_serializes_skills_as_flat_config_data() -> None:
+    captured: dict[str, object] = {}
+    stream = _FakeEventSource([json.dumps({"type": "done"})])
+
+    def fake_connect_sse(
+        client: object,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: dict[str, object],
+    ) -> _FakeEventSource:
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        return stream
+
+    with (
+        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
+        patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
+    ):
+        list(
+            TerseAgent(
+                skills=[
+                    SkillConfig(
+                        integration_id="attio_integration",
+                        integration_type=IntegrationType.attio,
+                        config_type=ConfigType.attio_output,
+                        config={"objectSlug": "people"},
+                    )
+                ]
+            ).run("hello")
+        )
+
+    assert captured["json"]["skills"] == [
+        {
+            "integrationId": "attio_integration",
+            "integrationType": "attio",
+            "configType": "attio_output",
+            "objectSlug": "people",
+        }
+    ]
+
+
 def test_agent_run_raises_on_failed_tool_call() -> None:
     stream = _FakeEventSource(
         [
-            SdkAgentStreamEventToolCallCompleted(
+            ToolCallCompleted(
                 type="tool_call_completed",
                 tool_call_completed=json.dumps({"tool": "demo_tool", "status": "failed"}),
             ).model_dump_json(),
-            SdkAgentStreamEventDone(type="done").model_dump_json(),
+            Done(type="done").model_dump_json(),
         ]
     )
 
@@ -587,8 +631,8 @@ def test_agent_run_and_wait_returns_final_output() -> None:
         "run",
         return_value=iter(
             [
-                SdkAgentStreamEventText(type="text", text="thinking"),
-                SdkAgentStreamEventFinalOutput(type="final_output", final_output="done"),
+                Text(type="text", text="thinking"),
+                FinalOutput(type="final_output", final_output="done"),
             ]
         ),
     ):

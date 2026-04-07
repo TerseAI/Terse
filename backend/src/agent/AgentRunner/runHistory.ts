@@ -10,7 +10,7 @@ import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../.
 
 export type RunTrigger = RunHistoryTrigger
 
-export type CompletedRunStatus = RunHistoryStatus.SUCCESS | RunHistoryStatus.FAILED
+export type CompletedRunStatus = typeof RunHistoryStatus.SUCCESS | typeof RunHistoryStatus.FAILED
 const PENDING_APPROVALS_INVALIDATION_KEY = pendingApprovalsKey()[0]
 
 export async function createRunRecord(params: { agentId: string; trigger: RunTrigger; isManuallyTriggered?: boolean }): Promise<string> {
@@ -88,7 +88,9 @@ export async function finalizeRunStatus(runId: string, status: CompletedRunStatu
     })
 }
 
-export type CompletedRunEvaluation = { status: RunHistoryStatus.SUCCESS; isSuccessful: true } | { status: RunHistoryStatus.FAILED; isSuccessful: false; failureReason: string }
+export type CompletedRunEvaluation =
+    | { status: typeof RunHistoryStatus.SUCCESS; isSuccessful: true }
+    | { status: typeof RunHistoryStatus.FAILED; isSuccessful: false; failureReason: string }
 
 export function evaluateCompletedRun(finalOutput: unknown, endedWithToolFailure: boolean): CompletedRunEvaluation {
     const hasFinalOutput = Boolean(finalOutput)

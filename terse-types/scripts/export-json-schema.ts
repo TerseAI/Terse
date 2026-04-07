@@ -83,6 +83,7 @@ async function main() {
     let standaloneCount = 0
 
     for (const [key, value] of Object.entries(moduleExports)) {
+        console.log(`Processing export key: ${key}`)
         if (isToolDefinition(value)) {
             const baseName = capitalize(key.replace(/Tool$/, ""))
             const inputName = `${baseName}ToolInput`
@@ -152,6 +153,77 @@ async function main() {
             defs[name] = convertSchema(name, schema)
         }
     }
+
+    // Phase 2b: Add titles to inline objects in oneOf/anyOf unions so that
+    // datamodel-codegen --use-title-as-name produces semantic class names
+    // (e.g. ModelEventToolApprovalResponse instead of ModelEvent1).
+    function toPascalCase(s: string): string {
+        return s.replace(/(^|_)(.)/g, (_, __, c: string) => c.toUpperCase())
+    }
+
+    for (const [defName, defSchema] of Object.entries(defs)) {
+        if (!defSchema || typeof defSchema !== "object") continue
+        const schema = defSchema as Record<string, unknown>
+        for (const unionKey of ["oneOf", "anyOf"] as const) {
+            const members = schema[unionKey]
+            if (!Array.isArray(members)) continue
+            for (const member of members) {
+                if (!member || typeof member !== "object") continue
+                const m = member as Record<string, unknown>
+                if (m.type !== "object" || !m.properties || typeof m.properties !== "object") continue
+                const props = m.properties as Record<string, Record<string, unknown>>
+                for (const propSchema of Object.values(props)) {
+                    if ("const" in propSchema) {
+                        m.title = `${defName}${toPascalCase(String(propSchema.const))}`
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    // Phase 2c: Title inline property schemas so datamodel-codegen uses
+    // "{Parent}{Property}" names instead of "Limit1", "Page2", etc.
+    for (const [defName, defSchema] of Object.entries(defs)) {
+        if (!defSchema || typeof defSchema !== "object") continue
+        const schema = defSchema as Record<string, unknown>
+        if (schema.type !== "object" || !schema.properties || typeof schema.properties !== "object") continue
+        const props = schema.properties as Record<string, Record<string, unknown>>
+        for (const [propName, propSchema] of Object.entries(props)) {
+            if (!propSchema || typeof propSchema !== "object" || propSchema.$ref || propSchema.title) continue
+            // Only title non-trivial inline schemas (have constraints, defaults, anyOf, oneOf, or nested objects)
+            const isNonTrivial =
+                "minimum" in propSchema ||
+                "maximum" in propSchema ||
+                "default" in propSchema ||
+                "anyOf" in propSchema ||
+                "oneOf" in propSchema ||
+                "allOf" in propSchema ||
+                (propSchema.type === "object" && "properties" in propSchema)
+            if (isNonTrivial) {
+                propSchema.title = `${defName}${toPascalCase(propName)}`
+            }
+        }
+    }
+
+    // Phase 2d: Strip JS Number.MAX_SAFE_INTEGER / MIN_SAFE_INTEGER bounds —
+    // they carry no Python semantics and produce noisy constraints.
+    const JS_SAFE_MAX = 9007199254740991
+    const JS_SAFE_MIN = -9007199254740991
+    function stripJsSafeBounds(obj: unknown): void {
+        if (Array.isArray(obj)) {
+            for (const item of obj) stripJsSafeBounds(item)
+            return
+        }
+        if (!obj || typeof obj !== "object") return
+        const rec = obj as Record<string, unknown>
+        if (rec.maximum === JS_SAFE_MAX) delete rec.maximum
+        if (rec.minimum === JS_SAFE_MIN) delete rec.minimum
+        if (rec.exclusiveMaximum === JS_SAFE_MAX) delete rec.exclusiveMaximum
+        if (rec.exclusiveMinimum === JS_SAFE_MIN) delete rec.exclusiveMinimum
+        for (const v of Object.values(rec)) stripJsSafeBounds(v)
+    }
+    stripJsSafeBounds(defs)
 
     // Phase 3: Write output
     const outputPath = fileURLToPath(new URL("../dist/json-schema/terse-types.schema.json", import.meta.url))
