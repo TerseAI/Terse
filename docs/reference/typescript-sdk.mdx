@@ -13,9 +13,9 @@ Terse workflows combine two sources:
 
 Import these from `terse-sdk`:
 
-- `Terse` — the SDK client
-- `TerseAgent` — the runtime object inside `onTrigger`
-- `InputEvent` — the base event interface
+- `Terse`: the SDK client
+- `TerseAgent`: the runtime object inside `onTrigger`
+- `InputEvent`: the base event interface
 - Specific event types: `AttioRecordInputEvent`, `ScheduleCronInputEvent`, `ScheduleIntervalInputEvent`, `ManualInputEvent`
 
 ## `Terse`
@@ -145,7 +145,7 @@ await agent.tools.attio.updateRecord({
 ### Tips for structured output
 
 - Tell the model the exact JSON shape you expect.
-- Use `JSON.parse()` and handle the failure case — the model may include markdown fencing or extra text.
+- Use `JSON.parse()` and handle the failure case, since the model may include markdown fencing or extra text.
 - For critical writes, validate the parsed result before passing it to `agent.tools.*`.
 
 ```ts
@@ -249,9 +249,9 @@ Event typing depends on the trigger.
 
 It exports:
 
-- `Schedule` — cron and interval trigger builders
-- Integration namespaces — `Attio`, `Apollo`, `Slack`, `Http`
-- Workspace resource constants — `AttioList`, `SlackChannel`, `AttioOwner`
+- `Schedule`: cron and interval trigger builders
+- Integration namespaces: `Attio`, `Apollo`, `Slack`, `Http`
+- Workspace resource constants: `AttioList`, `SlackChannel`, `AttioOwner`
 - Deterministic tool wrappers exposed through `agent.tools.*`
 
 <Warning>

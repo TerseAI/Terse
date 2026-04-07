@@ -1,6 +1,6 @@
 ---
 title: "Hosting & Deployment"
-description: "How terse deploy takes your local code and turns it into a live, trigger-ready workflow — no Dockerfile, no build step, no infrastructure to manage."
+description: "How terse deploy takes your local code and turns it into a live, trigger-ready workflow. No Dockerfile, no build step, no infrastructure to manage."
 icon: "cloud-upload"
 ---
 
@@ -10,16 +10,16 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
 
 <Steps>
     <Step title="Your code is zipped and uploaded">
-        The CLI collects all project files — excluding `node_modules`, `.git`, `.env`, and other non-essentials — compresses them into a ZIP archive, and uploads it to cloud storage. Archives are content-addressed by SHA-256 hash, so identical code across deploys is automatically deduplicated.
+        The CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. Archives are content-addressed by SHA-256 hash, so identical code across deploys is automatically deduplicated.
     </Step>
     <Step title="Triggers and skills are registered">
         Each job's triggers (e.g. a GitHub webhook, a cron schedule) and skills (e.g. Slack, Apollo) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never need to reconfigure external services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.
     </Step>
     <Step title="A trigger fires">
-        When an event matches one of your triggers, Terse spins up an isolated [Modal](https://modal.com) sandbox with the right runtime — `node:22-slim` for TypeScript or `python:3.11-slim` for Python, detected automatically from your `package.json` or `pyproject.toml`.
+        When an event matches one of your triggers, Terse spins up an isolated [Modal](https://modal.com) sandbox with the right runtime: `node:22-slim` for TypeScript or `python:3.11-slim` for Python, detected automatically from your `package.json` or `pyproject.toml`.
     </Step>
     <Step title="Your handler executes">
-        Inside the container, your code is extracted, dependencies are installed, and `terse run` loads your job. A `TerseAgent` is created with the skills you defined and your `onTrigger` handler executes — calling tools deterministically, prompting the agent, or both. When the run completes, the container is torn down and results are logged.
+        Inside the container, your code is extracted, dependencies are installed, and `terse run` loads your job. A `TerseAgent` is created with the skills you defined, and your `onTrigger` handler executes. It can call tools deterministically, prompt the agent, or both. When the run completes, the container is torn down and results are logged.
     </Step>
 </Steps>
 

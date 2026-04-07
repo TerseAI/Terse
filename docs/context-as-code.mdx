@@ -106,14 +106,14 @@ await client.createJob({
 | Workflow          | Am automation with triggers, skills, and a handler that you deploy with the CLI                      |
 | Trigger           | The event (e.g. CRM record created) or schedule (e.g. cron) that starts the workflow                           |
 | Skill             | A capability the workflow can use after you connect an integration (e.g. `Attio.skill()`, `Apollo.skill()`)    |
-| Generated helpers | Typed exports in `src/terse.generated.ts` — triggers, skills, resource constants, and `agent.tools.*` wrappers |
+| Generated helpers | Typed exports in `src/terse.generated.ts`, including triggers, skills, resource constants, and `agent.tools.*` wrappers |
 
 ## Benefits
 
-- **Less runtime drift** — workspace structure is compiled into code.
-- **Lower latency** — no API calls to discover lists, channels, or owners.
-- **Type safety** — broken references fail at build time instead of in production.
-- **Better prompts** — workflows start with real context, not guesses.
+- **Less runtime drift:** workspace structure is compiled into code.
+- **Lower latency:** no API calls to discover lists, channels, or owners.
+- **Type safety:** broken references fail at build time instead of in production.
+- **Better prompts:** workflows start with real context, not guesses.
 
 ## Where to go next
 
