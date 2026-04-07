@@ -36,6 +36,8 @@ def main() -> None:
         "--use-one-literal-as-default",
         "--base-class",
         "terse_sdk.types._base.TerseModel",
+        "--naming-strategy",
+        "parent-prefixed",
         "--use-title-as-name",
         "--reuse-model",
         "--use-annotated",

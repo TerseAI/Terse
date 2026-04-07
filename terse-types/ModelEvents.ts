@@ -211,17 +211,22 @@ export const imageSchema = z.object({
     url: z.string()
 })
 
-export const snippetVariantSchema = z.discriminatedUnion("type", [buttonSchema, integrationPromptSchema, navigateSchema, multipleChoiceSchema, imageSchema, imageSchema])
+export const snippetVariantSchema = z.discriminatedUnion("type", [buttonSchema, integrationPromptSchema, navigateSchema, multipleChoiceSchema, imageSchema])
 export type SnippetVariant = z.infer<typeof snippetVariantSchema>
 
-export const chatSnippetSchema = z.intersection(
-    z.object({
-        id: z.string().optional(),
-        step_id: z.string().optional(),
-        selectedValue: z.string().optional()
-    }),
-    snippetVariantSchema
-)
+const chatSnippetMetadataSchema = {
+    id: z.string().optional(),
+    step_id: z.string().optional(),
+    selectedValue: z.string().optional()
+} satisfies z.ZodRawShape
+
+export const chatSnippetSchema = z.discriminatedUnion("type", [
+    buttonSchema.extend(chatSnippetMetadataSchema),
+    integrationPromptSchema.extend(chatSnippetMetadataSchema),
+    navigateSchema.extend(chatSnippetMetadataSchema),
+    multipleChoiceSchema.extend(chatSnippetMetadataSchema),
+    imageSchema.extend(chatSnippetMetadataSchema)
+])
 export type ChatSnippet = z.infer<typeof chatSnippetSchema>
 
 export const modelEventChatSnippetSchema = z.object({

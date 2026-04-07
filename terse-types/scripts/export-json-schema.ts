@@ -154,9 +154,9 @@ async function main() {
         }
     }
 
-    // Phase 2b: Add titles to inline objects in oneOf/anyOf unions so that
-    // datamodel-codegen --use-title-as-name produces semantic class names
-    // (e.g. ModelEventToolApprovalResponse instead of ModelEvent1).
+    // Phase 2b: Title inline objects in oneOf/anyOf unions by discriminator
+    // value. datamodel-codegen's parent-prefixed naming then scopes them to
+    // the containing model (e.g. ModelEventToolApprovalResponse).
     function toPascalCase(s: string): string {
         return s.replace(/(^|_)(.)/g, (_, __, c: string) => c.toUpperCase())
     }
@@ -174,7 +174,7 @@ async function main() {
                 const props = m.properties as Record<string, Record<string, unknown>>
                 for (const propSchema of Object.values(props)) {
                     if ("const" in propSchema) {
-                        m.title = `${defName}${toPascalCase(String(propSchema.const))}`
+                        m.title = toPascalCase(String(propSchema.const))
                         break
                     }
                 }
@@ -182,31 +182,7 @@ async function main() {
         }
     }
 
-    // Phase 2c: Title inline property schemas so datamodel-codegen uses
-    // "{Parent}{Property}" names instead of "Limit1", "Page2", etc.
-    for (const [defName, defSchema] of Object.entries(defs)) {
-        if (!defSchema || typeof defSchema !== "object") continue
-        const schema = defSchema as Record<string, unknown>
-        if (schema.type !== "object" || !schema.properties || typeof schema.properties !== "object") continue
-        const props = schema.properties as Record<string, Record<string, unknown>>
-        for (const [propName, propSchema] of Object.entries(props)) {
-            if (!propSchema || typeof propSchema !== "object" || propSchema.$ref || propSchema.title) continue
-            // Only title non-trivial inline schemas (have constraints, defaults, anyOf, oneOf, or nested objects)
-            const isNonTrivial =
-                "minimum" in propSchema ||
-                "maximum" in propSchema ||
-                "default" in propSchema ||
-                "anyOf" in propSchema ||
-                "oneOf" in propSchema ||
-                "allOf" in propSchema ||
-                (propSchema.type === "object" && "properties" in propSchema)
-            if (isNonTrivial) {
-                propSchema.title = `${defName}${toPascalCase(propName)}`
-            }
-        }
-    }
-
-    // Phase 2d: Strip JS Number.MAX_SAFE_INTEGER / MIN_SAFE_INTEGER bounds —
+    // Phase 2c: Strip JS Number.MAX_SAFE_INTEGER / MIN_SAFE_INTEGER bounds —
     // they carry no Python semantics and produce noisy constraints.
     const JS_SAFE_MAX = 9007199254740991
     const JS_SAFE_MIN = -9007199254740991

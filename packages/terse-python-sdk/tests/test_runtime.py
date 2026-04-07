@@ -320,7 +320,7 @@ def test_slack_tool_output_models_accept_backend_shapes() -> None:
     assert send_result.message_ts == "1710000000.100000"
     assert send_result.has_blocks is False
     assert channels_result.next_cursor is not None
-    assert channels_result.next_cursor.root == "cursor_123"
+    assert channels_result.next_cursor == "cursor_123"
     assert channels_result.channels[0].is_private is False
     assert channels_result.channels[0].user_id is None
     assert users_result.users[0].name == "Olivia"
