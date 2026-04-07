@@ -88,9 +88,7 @@ export async function finalizeRunStatus(runId: string, status: CompletedRunStatu
     })
 }
 
-export type CompletedRunEvaluation =
-    | { status: typeof RunHistoryStatus.SUCCESS; isSuccessful: true }
-    | { status: typeof RunHistoryStatus.FAILED; isSuccessful: false; failureReason: string }
+export type CompletedRunEvaluation = { status: typeof RunHistoryStatus.SUCCESS; isSuccessful: true } | { status: typeof RunHistoryStatus.FAILED; isSuccessful: false; failureReason: string }
 
 export function evaluateCompletedRun(finalOutput: unknown, endedWithToolFailure: boolean): CompletedRunEvaluation {
     const hasFinalOutput = Boolean(finalOutput)
