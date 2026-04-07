@@ -1,7 +1,10 @@
 {
     "$schema": "https://mintlify.com/docs.json",
     "theme": "mint",
-    "favicon": "/favicon.svg",
+    "favicon": {
+        "light": "/logo/light.svg",
+        "dark": "/logo/dark.svg"
+    },
     "name": "Terse",
     "logo": {
         "light": "/logo/terse.png",
