@@ -4,10 +4,6 @@ description: "Create, test, and deploy your first Terse project"
 icon: "rocket"
 ---
 
-Create your first Terse project, generate helpers from your connected integrations, and deploy it.
-
-## Tutorial
-
 <Steps>
   <Step title="Install the CLI">
 
@@ -18,30 +14,70 @@ npm install -g terse-cli
   </Step>
   <Step title="Scaffold a project">
 
-```bash
-# TypeScript (default)
-terse init acme-revenue
-
-# Python
-terse init acme-revenue --language python
-
-cd acme-revenue
+<CodeGroup>
+```bash TypeScript
+terse init my-project
 ```
+```bash Python
+terse init my-project --language python
+```
+</CodeGroup>
+
+`terse init` handles the full setup in one command:
+
+1. Scaffolds your project files (`src/index.ts` or `src/main.py`, config, etc.)
+2. Installs dependencies
+3. Opens the browser to authenticate via `terse login`
+4. Checks your connected integrations and prompts you to add more if needed
+5. Runs `terse generate` to produce a typed SDK from your workspace
+
+After init, your project looks like this:
+
+<CodeGroup>
+```text TypeScript
+my-project/
+  src/
+    index.ts              # your job definitions
+    terse.generated.ts    # generated SDK (do not edit)
+  package.json
+  tsconfig.json
+  .env
+  .gitignore
+```
+```text Python
+my-project/
+  src/
+    main.py               # your job definitions
+    terse_generated.py    # generated SDK (do not edit)
+  pyproject.toml
+  .python-version
+  .env
+  .gitignore
+```
+</CodeGroup>
+
+  </Step>
+  <Step title="Write your workflow">
+
+Open `src/index.ts` (or `src/main.py`) and define a job. The scaffolded file includes a starter example. Your generated SDK gives you typed helpers for every integration you connected: trigger builders, skill constructors, resource constants, and deterministic tool wrappers.
+
   </Step>
   <Step title="Test locally">
 
 ```bash
-terse test --verbose
+terse test
 ```
 
+Runs your workflow locally against the Terse backend so you can verify it works before deploying.
+
   </Step>
-  <Step title="Deploy to Terse">
+  <Step title="Deploy">
 
 ```bash
 terse deploy
 ```
 
-Navigate to the link provided to monitor your workflow.
+Your code is packaged, uploaded, and hosted serverlessly. Navigate to the link provided to monitor your workflow. [Learn more about how deployment works.](/hosting)
 
   </Step>
 </Steps>
@@ -50,9 +86,9 @@ Navigate to the link provided to monitor your workflow.
 
 <CardGroup cols={2}>
   <Card title="Context as Code" icon="lightbulb" href="/context-as-code">
-    Understand what `terse generate` produces in each language and why it matters.
+    Understand what `terse generate` produces and why it matters.
   </Card>
   <Card title="Templates" icon="book-open" href="/templates">
-    See examples of what to build with your generated helpers.
+    Start from a working workflow instead of a blank file.
   </Card>
 </CardGroup>

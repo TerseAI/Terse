@@ -17,9 +17,9 @@ icon: "house"
 
 AI agents are fast to build but make mistakes. Deterministic workflows are reliable but slow to set up. Terse lets you mix both in the same workflow: call tools directly when you need precision, hand off to an agent when you need judgment. Deploy serverlessly with `terse deploy`, build faster with a generated SDK from your workspace.
 
-<CodeGroup dropdown>
+<CodeGroup>
 
-```ts index.ts
+```ts Typescript
 const client = new Terse()
 
 await client.createJob({
@@ -54,7 +54,7 @@ await client.createJob({
 })
 ```
 
-```python main.py
+```python Python
 from terse_sdk import GithubInputEvent, SkillConfig, Terse, TriggerConfig
 from terse_generated import Slack, SlackChannel, TerseAgent
 
