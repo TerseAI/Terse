@@ -11,6 +11,7 @@ import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRunFailedAndInvalidate } from "../../realtimeSocket"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
+import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -238,6 +239,11 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
         }
 
+        // SDK agents with a job_url trigger the user's own infrastructure via webhook
+        if (agent.source === "SDK" && agent.prompt?.job_url) {
+            return this.processWebhookAgent(agent, existingRunId)
+        }
+
         // SDK agents run in a Modal sandbox instead of the normal agent pipeline
         if (agent.source === "SDK" && agent.prompt?.source_code_gcs_key) {
             return this.processSdkAgent(agent, existingRunId)
@@ -444,6 +450,48 @@ export class EventProcessor {
             })
 
         return new ProcessorResult(true, "SDK job execution started", agent, undefined, runId)
+    }
+
+    private async processWebhookAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
+        const runId = existingRunId ?? (await this.createRunForAgent(agent))
+
+        const serializedEvent: SerializedEvent = {
+            integrationType: this.inputEvent.integrationType,
+            eventType: this.inputEvent.eventType,
+            formattedContent: this.inputEvent.formatForAgentRunner(),
+            debugLog: this.inputEvent.debugLog(),
+            metadata: this.inputEvent.serializeMetadata()
+        }
+        const eventJson = JSON.stringify(serializedEvent)
+
+        const jobUrl = agent.prompt?.job_url
+        if (!jobUrl) {
+            throw new Error(`Webhook agent "${agent.name}" is missing job_url`)
+        }
+
+        logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, jobUrl })
+
+        // Fire-and-forget: webhook execution runs asynchronously
+        const service = new WebhookJobExecutionService()
+        void service
+            .execute({
+                jobUrl,
+                runId,
+                agentId: agent.id,
+                orgId: this.user.organizationId,
+                user: this.user,
+                eventJson,
+                jobName: agent.name
+            })
+            .catch(error => {
+                logger.error(`Webhook job execution failed for agent "${agent.name}"`, {
+                    error,
+                    runId,
+                    agentId: agent.id
+                })
+            })
+
+        return new ProcessorResult(true, "Webhook job execution started", agent, undefined, runId)
     }
 }
 

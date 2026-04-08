@@ -1,10 +1,11 @@
-import type { ConfigData } from "terse-types"
+import type { ConfigData, SerializedEvent } from "terse-types"
 import type { RunHistoryAction } from "terse-types"
 import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ApiRoutes } from "terse-types"
 
 import type { InferEvents, InferToolApprovals, InputEvent, TypedSkill, TypedTrigger } from "./types.js"
+import { deserializeInputEvent } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -100,7 +101,7 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     toolApprovals?: InferToolApprovals<TSkills>[]
     filter?: (event: InferEvents<TTriggers>) => boolean | Promise<boolean>
     onTrigger: (event: InferEvents<TTriggers>, Agent: TerseAgent) => Promise<void>
-    webhookURL?: string
+    jobUrl?: string
 }
 
 /** Internal job registry — lives on globalThis so it survives across module instances (e.g. tsx loaders). */
@@ -119,6 +120,45 @@ export class Terse {
             throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
         }
         _jobRegistry.set(params.name, params as unknown as CreateJobParameters)
+    }
+
+    /**
+     * Handle an incoming trigger request from the Terse backend.
+     * Wire this into your own HTTP route (Express, Hono, Next.js, etc.).
+     *
+     * Returns a response object containing the API key for handshake verification.
+     * Dispatches `onTrigger` in the background after returning.
+     *
+     * @example
+     * ```ts
+     * // Express
+     * app.post("/terse", async (req, res) => {
+     *     const result = await terse.handleTrigger(req.body)
+     *     res.json(result)
+     * })
+     * ```
+     */
+    async handleTrigger(body: { jobName: string; runId: string; event: SerializedEvent }): Promise<{ status: string; apiKey: string }> {
+        const apiKey = process.env.TERSE_API_KEY
+        if (!apiKey) {
+            throw new Error("TERSE_API_KEY environment variable is not set.")
+        }
+
+        const job = _jobRegistry.get(body.jobName)
+        if (!job) {
+            throw new Error(`Job "${body.jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
+        }
+
+        // Dispatch onTrigger in the background (fire and forget)
+        const inputEvent = deserializeInputEvent(body.event)
+        const agent = new TerseAgent(job.skills as ConfigData[])
+        void Promise.resolve()
+            .then(() => job.onTrigger(inputEvent as never, agent))
+            .catch(err => {
+                console.error(`[terse] Job "${body.jobName}" onTrigger failed:`, err)
+            })
+
+        return { status: "ok", apiKey }
     }
 }
 

@@ -905,14 +905,13 @@ export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
     triggers: z.array(configDataSchema),
     outputs: z.array(configDataSchema),
-    toolApprovals: z.array(z.string()),
-    webhookURL: z.string().optional()
+    toolApprovals: z.array(z.string())
 })
 export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
 export const sdkDeployRequestBodySchema = z.object({
     jobs: z.array(sdkDeployJobSchema),
-    sourceZipBase64: z.string()
+    jobUrl: z.string().optional()
 })
 export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>
 
