@@ -525,6 +525,12 @@ importers:
 
   terse-types:
     dependencies:
+      '@slack/types':
+        specifier: ^2.20.1
+        version: 2.20.1
+      '@slack/web-api':
+        specifier: ^7.15.0
+        version: 7.15.0
       zod:
         specifier: 4.3.6
         version: 4.3.6

@@ -1,6 +1,8 @@
+import type { GenericMessageEvent, KnownBlock, MessageAttachment } from "@slack/types"
 import * as z from "zod"
 
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
+import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
 
 export enum ConfigType {
     GMAIL = "gmail",
@@ -1294,3 +1296,38 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig
 } as const satisfies ConfigMetadataMap
+
+// Mark: Event Data
+
+const eventTypeEnum = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, jiraEventTypeSchema, figmaEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
+
+export const eventDataSchema = z.object({
+    integrationType: integrationTypeEnum,
+    eventType: eventTypeEnum
+})
+
+// Slack Event Data
+export const slackEventDataSchema = eventDataSchema.extend({
+    integrationType: z.literal(IntegrationType.SLACK),
+    eventType: slackEventTypeSchema,
+    channelId: z.string(),
+    channelName: z.string().nullable(),
+    userId: z.string(),
+    userName: z.string().nullable(),
+    text: z.string(),
+    timestamp: z.string(),
+    threadTimestamp: z.string().nullable(),
+    teamId: z.string(),
+    permalink: z.string().nullable(),
+    channelType: z.enum(SlackChannelType).nullable(),
+    blocks: z.array(z.unknown()).nullable(),
+    attachments: z.array(z.unknown()).nullable(),
+    files: z.array(z.unknown()).nullable()
+})
+type SlackEventDataSchemaShape = z.infer<typeof slackEventDataSchema>
+
+export type SlackEventData = Omit<SlackEventDataSchemaShape, "blocks" | "attachments" | "files"> & {
+    blocks: SlackBlocks | null
+    attachments: SlackAttachments | null
+    files: SlackFiles | null
+}

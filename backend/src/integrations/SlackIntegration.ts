@@ -1,12 +1,15 @@
 import { InputConfigType } from "@prisma/client"
-import { KnownBlock } from "@slack/types"
 import { LogLevel, WebClient } from "@slack/web-api"
+import { Reaction } from "@slack/web-api/dist/types/response/ChannelsHistoryResponse"
+import { Channel as SlackChannel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse"
+import { User as SlackUser } from "@slack/web-api/dist/types/response/UsersInfoResponse"
 import { Member as SlackUserMember } from "@slack/web-api/dist/types/response/UsersListResponse"
 import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { ConfigData, ConfigType, SlackConfigSchema, SlackEventType } from "terse-types/Configs"
+import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage } from "terse-types"
+import { SlackEventData } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -19,7 +22,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { SlackAttachment, SlackFile, SlackMessageImage, extractImagesFromMessage, extractTextFromAttachments, extractTextFromBlocks, pickSlackFileUrl } from "../slack/blockKitHelpers"
+import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { Jwt } from "../utility/jwt"
@@ -34,7 +37,7 @@ import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
 
 export class SlackIntegrationManager
-    implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
+    implements Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.SLACK
@@ -127,7 +130,7 @@ export class SlackIntegrationManager
         }))
     }
 
-    async processWebhookEvent(event: SlackMessageEvent): Promise<void> {
+    async processWebhookEvent(event: SimplifiedSlackEvent): Promise<void> {
         // For event_callback types, check if we've already processed this event
         const { team_id, event_id, type, authorizations } = event
 
@@ -181,7 +184,7 @@ export class SlackIntegrationManager
                     break
                 case "message":
                     // Process message asynchronously (fire and forget - errors are logged but don't affect Slack)
-                    handleSlackMessage(event, team_id, authorizations as SlackAuthorizations[]).catch(error => {
+                    handleSlackMessage(event, team_id).catch(error => {
                         logger.error("Error processing Slack message in background", {
                             error
                         })
@@ -558,17 +561,7 @@ export class SlackIntegrationManager
         const client = new WebClient(token, { logLevel: LogLevel.ERROR })
         const teamId = userSlackIntegration.slack_integration.team_id
 
-        let messages: Array<{
-            channel: string
-            ts: string
-            user?: string
-            text?: string
-            thread_ts?: string
-            channel_type?: SlackChannelType
-            blocks?: unknown[]
-            attachments?: unknown[]
-            files?: unknown[]
-        }> = []
+        let messages: SlackMessageLookup[] = []
 
         if (slackConfig.listenToUserDms) {
             const imList = await client.conversations.list({
@@ -633,56 +626,24 @@ export class SlackIntegrationManager
 
         const events: InputEvent[] = []
         for (const msg of messages) {
-            const [channelInfo, userInfo, permalinkResult, fullMessageResult] = await Promise.allSettled([
-                client.conversations.info({ channel: msg.channel }),
-                client.users.info({ user: msg.user! }),
-                client.chat.getPermalink({ channel: msg.channel, message_ts: msg.ts }),
-                client.conversations.history({
-                    channel: msg.channel,
-                    oldest: msg.ts,
-                    latest: msg.ts,
-                    inclusive: true,
-                    limit: 1
-                })
-            ])
-
-            const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>, "Channel info", "Failed to fetch channel info")
-            const userResult = processSlackApiResult<{ user?: SlackUser }>(userInfo as SlackApiSettledResult<{ user?: SlackUser }>, "User info", "Failed to fetch user info")
-            const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(
-                permalinkResult as SlackApiSettledResult<{ permalink?: string }>,
-                "Message permalink",
-                "Failed to fetch message permalink"
-            )
-            const channelName = extractChannelName(channelResult, userResult, msg.user!, msg.channel)
-            const userName = extractUserName(userResult)
-            const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined
-
-            let blocks = msg.blocks as KnownBlock[] | undefined
-            let attachments = msg.attachments as SlackAttachment[] | undefined
-            let files = msg.files as SlackFile[] | undefined
-            let text = msg.text || ""
-            if (fullMessageResult.status === PromiseSettledStatus.FULFILLED && fullMessageResult.value.ok && fullMessageResult.value.messages?.[0]) {
-                const full = fullMessageResult.value.messages[0]
-                if (!blocks && full.blocks) blocks = full.blocks as KnownBlock[]
-                if (!attachments && full.attachments) attachments = full.attachments as SlackAttachment[]
-                if (!files && full.files) files = full.files as SlackFile[]
-                if (!text && full.text) text = full.text
-            }
+            const enrichedMessage = await fetchEnrichedSlackMessageData(client, msg)
 
             const slackEventData: SlackEventData = {
+                integrationType: IntegrationType.SLACK,
+                eventType: SlackEventType.MESSAGE,
                 channelId: msg.channel,
-                channelName,
-                userId: msg.user!,
-                userName,
-                text,
+                channelName: enrichedMessage.channelName || null,
+                userId: msg.user,
+                userName: enrichedMessage.userName || null,
+                text: enrichedMessage.text,
                 timestamp: msg.ts,
-                threadTimestamp: msg.thread_ts,
+                threadTimestamp: msg.thread_ts || null,
                 teamId,
-                permalink,
-                channelType: msg.channel_type,
-                blocks,
-                attachments,
-                files
+                permalink: enrichedMessage.permalink || null,
+                channelType: msg.channel_type || null,
+                blocks: enrichedMessage.blocks || null,
+                attachments: enrichedMessage.attachments || null,
+                files: enrichedMessage.files || null
             }
             events.push(new SlackEvent(slackEventData))
         }
@@ -913,8 +874,8 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
     formatForAgentRunner(): string {
         // Extract rich content from blocks and attachments (used by third-party apps)
-        const blockContent = this.data.blocks ? extractTextFromBlocks(this.data.blocks) : ""
-        const attachmentContent = this.data.attachments ? extractTextFromAttachments(this.data.attachments) : ""
+        const blockContent = JSON.stringify(this.data.blocks)
+        const attachmentContent = JSON.stringify(this.data.attachments)
 
         // Determine the main message content
         // If text is empty but we have block/attachment content, note that
@@ -1018,7 +979,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
             source: this.data.channelName || this.data.channelId,
             title: this.data.text.substring(0, 100), // First 100 chars of message
             subheader: this.data.userName || this.data.userId,
-            url: this.data.permalink
+            url: this.data.permalink || undefined
         }
     }
 }
@@ -1188,7 +1149,101 @@ function extractUserName(userResult: { success: boolean; data?: { user?: SlackUs
     return userName
 }
 
-async function handleSlackMessage(event: SlackMessageEvent, teamId: string, authorizations: SlackAuthorizations[]) {
+type SlackMessageLookup = Pick<SlackMessage, "text" | "thread_ts" | "blocks" | "attachments" | "files"> & {
+    channel: string
+    user: string
+    ts: string
+    channel_type?: SlackChannelType
+}
+
+type EnrichedSlackMessageData = {
+    channelName?: string
+    userName?: string
+    permalink?: string
+    text: string
+    blocks?: SlackBlocks
+    attachments?: SlackAttachments
+    files?: SlackFiles
+}
+
+async function fetchEnrichedSlackMessageData(client: WebClient, message: SlackMessageLookup): Promise<EnrichedSlackMessageData> {
+    const [channelInfo, userInfo, permalinkResult, fullMessageResult] = await Promise.allSettled([
+        client.conversations.info({
+            channel: message.channel
+        }),
+        client.users.info({
+            user: message.user
+        }),
+        client.chat.getPermalink({
+            channel: message.channel,
+            message_ts: message.ts
+        }),
+        client.conversations.history({
+            channel: message.channel,
+            oldest: message.ts,
+            latest: message.ts,
+            inclusive: true,
+            limit: 1
+        })
+    ])
+
+    const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>, "Channel info", "Failed to fetch channel info")
+    const userResult = processSlackApiResult<{ user?: SlackUser }>(userInfo as SlackApiSettledResult<{ user?: SlackUser }>, "User info", "Failed to fetch user info")
+    const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(permalinkResult as SlackApiSettledResult<{ permalink?: string }>, "Message permalink", "Failed to fetch message permalink")
+
+    const channelName = extractChannelName(channelResult, userResult, message.user, message.channel)
+    const userName = extractUserName(userResult)
+    const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined
+
+    if (permalink) {
+        logger.debug(`✓ Fetched message permalink: ${permalink}`, {
+            permalink,
+            channel: message.channel,
+            messageTs: message.ts
+        })
+    }
+
+    let blocks = message.blocks
+    let attachments = message.attachments
+    let files = message.files
+    let text = message.text || ""
+
+    if (fullMessageResult.status === PromiseSettledStatus.FULFILLED && fullMessageResult.value.ok && fullMessageResult.value.messages?.[0]) {
+        const fullMessage = fullMessageResult.value.messages[0]
+
+        if (!blocks && fullMessage.blocks) {
+            blocks = fullMessage.blocks
+            logger.debug(`✓ Extracted blocks from full message API (${blocks.length} blocks)`, { channel: message.channel, messageTs: message.ts })
+        }
+        if (!attachments && fullMessage.attachments) {
+            attachments = fullMessage.attachments
+            logger.debug(`✓ Extracted attachments from full message API (${attachments.length} attachments)`, { channel: message.channel, messageTs: message.ts })
+        }
+        if (!files && fullMessage.files) {
+            files = fullMessage.files
+            logger.debug(`✓ Extracted files from full message API (${files.length} files)`, { channel: message.channel, messageTs: message.ts })
+        }
+        if (!text && fullMessage.text) {
+            text = fullMessage.text
+            logger.debug("✓ Extracted text from full message API", {
+                channel: message.channel,
+                messageTs: message.ts
+            })
+        }
+    }
+
+    return {
+        channelName,
+        userName,
+        permalink,
+        text,
+        blocks,
+        attachments,
+        files
+    }
+}
+
+async function handleSlackMessage(event: SimplifiedSlackEvent, teamId: string) {
     try {
         logger.debug("Processing Slack message event", {
             event: JSON.stringify(event, null, 2),
@@ -1302,107 +1357,22 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             teamId
         })
 
-        // Fetch all available data from Slack API in parallel
-        // Include full message fetch to get blocks/attachments (not always in event payload)
-        const [channelInfo, userInfo, permalinkResult, fullMessageResult] = await Promise.allSettled([
-            // Fetch channel information
-            client.conversations.info({
-                channel: messageEvent.channel!
-            }),
-            // Fetch user information
-            client.users.info({
-                user: messageEvent.user!
-            }),
-            // Get message permalink
-            client.chat.getPermalink({
-                channel: messageEvent.channel!,
-                message_ts: messageEvent.ts!
-            }),
-            // Fetch full message to get blocks/attachments (Slack Events API often omits these)
-            client.conversations.history({
-                channel: messageEvent.channel!,
-                oldest: messageEvent.ts!,
-                latest: messageEvent.ts!,
-                inclusive: true,
-                limit: 1
-            })
-        ])
-
-        // Process all API results
-        const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>, "Channel info", "Failed to fetch channel info")
-
-        const userResult = processSlackApiResult<{ user?: SlackUser }>(userInfo as SlackApiSettledResult<{ user?: SlackUser }>, "User info", "Failed to fetch user info")
-
-        const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(
-            permalinkResult as SlackApiSettledResult<{ permalink?: string }>,
-            "Message permalink",
-            "Failed to fetch message permalink"
-        )
-
-        // Extract channel name and metadata
-        const channelName = extractChannelName(channelResult, userResult, messageEvent.user!, messageEvent.channel!)
-
-        // Extract user information
-        const userName = extractUserName(userResult)
-
-        // Extract permalink
-        const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined
-        if (permalink) {
-            logger.debug(`✓ Fetched message permalink: ${permalink}`, {
-                permalink,
-                channel: messageEvent.channel,
-                messageTs: messageEvent.ts
-            })
-        }
-
-        // Extract blocks/attachments from full message API call (Events API often omits these)
-        const fullMessageApiResult = processSlackApiResult<SlackFullMessageResponse>(
-            fullMessageResult as SlackApiSettledResult<SlackFullMessageResponse>,
-            "Full message",
-            "Failed to fetch full message"
-        )
-
-        // Use blocks/attachments/files from API if not in event payload
-        let blocks = messageEvent.blocks as KnownBlock[] | undefined
-        let attachments = messageEvent.attachments as SlackAttachment[] | undefined
-        let files = messageEvent.files as SlackFile[] | undefined
-        let text = messageEvent.text || ""
-
-        if (fullMessageApiResult.success && fullMessageApiResult.data?.messages?.[0]) {
-            // Since we limit the API call to 1 message (oldest=ts, latest=ts, limit=1),
-            // the first item in the array is always the exact message we requested
-            const fullMessage = fullMessageApiResult.data.messages[0]
-
-            // Use API blocks/attachments if event payload didn't have them
-            if (!blocks && fullMessage.blocks) {
-                blocks = fullMessage.blocks as KnownBlock[]
-                logger.debug(`✓ Extracted blocks from full message API (${blocks.length} blocks)`, { channel: messageEvent.channel, messageTs: messageEvent.ts })
-            }
-            if (!attachments && fullMessage.attachments) {
-                attachments = fullMessage.attachments as SlackAttachment[]
-                logger.debug(`✓ Extracted attachments from full message API (${attachments.length} attachments)`, { channel: messageEvent.channel, messageTs: messageEvent.ts })
-            }
-            if (!files && fullMessage.files) {
-                files = fullMessage.files as SlackFile[]
-                logger.debug(`✓ Extracted files from full message API (${files.length} files)`, { channel: messageEvent.channel, messageTs: messageEvent.ts })
-            }
-            // Also update text if it was empty in the event but present in full message
-            if (!text && fullMessage.text) {
-                text = fullMessage.text
-                logger.debug(`✓ Extracted text from full message API`, {
-                    channel: messageEvent.channel,
-                    messageTs: messageEvent.ts
-                })
-            }
-        }
+        const enrichedMessage = await fetchEnrichedSlackMessageData(client, {
+            channel: messageEvent.channel!,
+            user: messageEvent.user!,
+            ts: messageEvent.ts!,
+            text: messageEvent.text,
+            thread_ts: messageEvent.thread_ts,
+            channel_type: messageEvent.channel_type
+        })
 
         // Supports: images, PDFs
         let storedFiles: StoredFile[] = []
-        if (files && files.length > 0) {
+        if (enrichedMessage.files && enrichedMessage.files.length > 0) {
             const botToken = await getSecret(IntegrationType.SLACK, filteredWorkspaceUserIntegrations[0].slack_integration.id, SecretField.AccessToken)
 
             if (botToken) {
-                storedFiles = await downloadSlackFiles(files, teamId, botToken)
+                storedFiles = await downloadSlackFiles(enrichedMessage.files, teamId, botToken)
             } else {
                 logger.warn("No Slack bot token available for file download", {
                     teamId
@@ -1412,20 +1382,22 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
 
         // Build SlackEventData with all available information
         const slackEventData: SlackEventData = {
+            integrationType: IntegrationType.SLACK,
+            eventType: SlackEventType.MESSAGE,
             channelId: messageEvent.channel!,
-            channelName: channelName,
+            channelName: enrichedMessage.channelName || null,
             userId: messageEvent.user!,
-            userName: userName,
-            text: text,
+            userName: enrichedMessage.userName || null,
+            text: enrichedMessage.text,
             timestamp: messageEvent.ts!,
-            threadTimestamp: messageEvent.thread_ts,
+            threadTimestamp: messageEvent.thread_ts || null,
             teamId: teamId,
-            permalink: permalink,
-            channelType: messageEvent.channel_type,
+            permalink: enrichedMessage.permalink || null,
+            channelType: messageEvent.channel_type || null,
             // Include blocks, attachments, and files (from event or API)
-            blocks: blocks,
-            attachments: attachments,
-            files: files
+            blocks: enrichedMessage.blocks || null,
+            attachments: enrichedMessage.attachments || null,
+            files: enrichedMessage.files || null
         }
 
         // Create SlackEvent once
@@ -1565,13 +1537,10 @@ export async function validateSlackUserIds(accessToken: string, userIds: string[
     }
 }
 
-// Re-export from SlackClient for backwards compatibility
-export { initializeSlackWebClient } from "./SlackClient"
-
-export async function downloadSlackFiles(files: SlackFile[], teamId: string, botToken: string): Promise<StoredFile[]> {
+export async function downloadSlackFiles(files: SlackFiles, teamId: string, botToken: string): Promise<StoredFile[]> {
     try {
         const supportedFiles = filterSupportedSlackFiles(files)
-        if (supportedFiles.length === 0) return []
+        if (!supportedFiles || supportedFiles.length === 0) return []
 
         // Check if bot has files:read permission before attempting downloads
         const canReadFiles = await hasFilesReadScope(botToken)
@@ -1592,13 +1561,14 @@ export async function downloadSlackFiles(files: SlackFile[], teamId: string, bot
         logger.error(`Failed to download Slack files`, {
             error,
             teamId,
-            fileCount: files.length
+            fileCount: files ? files.length : 0
         })
         return []
     }
 }
 
-function filterSupportedSlackFiles(files: SlackFile[]): SlackFile[] {
+function filterSupportedSlackFiles(files: SlackFiles): SlackFiles {
+    if (!files) return []
     return files.filter(file => {
         const mimetype = file.mimetype ?? ""
         const filename = file.name ?? file.title ?? ""
@@ -1613,6 +1583,13 @@ async function processSlackFile(args: { file: SlackFile; teamId: string; botToke
         const downloadUrl = pickSlackFileUrl(file)
         if (!downloadUrl) {
             logger.warn(`No download URL found for Slack file`, {
+                fileId: file.id,
+                teamId
+            })
+            return null
+        }
+        if (!file.id) {
+            logger.warn(`No file ID found for Slack file`, {
                 fileId: file.id,
                 teamId
             })
@@ -1693,7 +1670,7 @@ async function downloadSlackFile(args: { downloadUrl: string; botToken: string; 
     const buffer = Buffer.from(await response.arrayBuffer())
     const mimeType = file.mimetype || response.headers.get("content-type") || "application/octet-stream"
 
-    const filename = file.name || file.title
+    const filename = file.name || file.title || undefined
 
     logger.debug(`Successfully downloaded Slack file`, {
         fileId: file.id,
@@ -1716,130 +1693,9 @@ type SlackApiResponse<T = unknown> = { ok: boolean; error?: string } & T
 type SlackApiSettledResult<T = unknown> = PromiseSettledResult<SlackApiResponse<T>>
 
 /**
- * Response type for conversations.history API call
- * Used to fetch full message content including blocks/attachments
+ * Relevant Slack event data simplified for Terse
  */
-type SlackFullMessageResponse = {
-    messages?: Array<{
-        blocks?: unknown[]
-        attachments?: unknown[]
-        files?: unknown[]
-        text?: string
-    }>
-}
-
-/**
- * Slack event data
- * Processed Slack message event data used for channel events
- */
-export interface SlackEventData {
-    channelId: string
-    channelName?: string
-    userId: string
-    userName?: string
-    text: string
-    timestamp: string
-    threadTimestamp?: string
-    teamId: string
-    // Permalink for the message (if available)
-    permalink?: string
-    channelType?: SlackChannelType
-    // Block Kit content from third-party apps
-    blocks?: KnownBlock[]
-    // Legacy attachments
-    attachments?: SlackAttachment[]
-    // File attachments (including images)
-    files?: SlackFile[]
-}
-
-/**
- * Slack user profile object from users.info API
- */
-interface SlackUserProfile {
-    avatar_hash?: string
-    status_text?: string
-    status_emoji?: string
-    real_name?: string
-    display_name?: string
-    real_name_normalized?: string
-    display_name_normalized?: string
-    email?: string
-    image_original?: string
-    image_24?: string
-    image_32?: string
-    image_48?: string
-    image_72?: string
-    image_192?: string
-    image_512?: string
-    team?: string
-}
-
-/**
- * Slack user object from users.info API
- */
-interface SlackUser {
-    id: string
-    team_id?: string
-    name?: string
-    deleted?: boolean
-    color?: string
-    real_name?: string
-    tz?: string
-    tz_label?: string
-    tz_offset?: number
-    profile?: SlackUserProfile
-    is_admin?: boolean
-    is_owner?: boolean
-    is_primary_owner?: boolean
-    is_restricted?: boolean
-    is_ultra_restricted?: boolean
-    is_bot?: boolean
-    updated?: number
-    is_app_user?: boolean
-    has_2fa?: boolean
-}
-
-/**
- * Slack channel/conversation object from conversations.info API
- * Can represent public channels, private channels, DMs, or group DMs
- */
-interface SlackChannel {
-    id: string
-    name?: string
-    is_channel?: boolean
-    is_group?: boolean
-    is_im?: boolean
-    is_mpim?: boolean
-    is_private?: boolean
-    is_archived?: boolean
-    is_general?: boolean
-    is_shared?: boolean
-    is_org_shared?: boolean
-    is_member?: boolean
-    created?: number
-    creator?: string
-    name_normalized?: string
-    user?: string // For DMs, the user ID of the other person
-    last_read?: string
-    members?: string[]
-    topic?: {
-        value?: string
-        creator?: string
-        last_set?: number
-    }
-    purpose?: {
-        value?: string
-        creator?: string
-        last_set?: number
-    }
-    previous_names?: string[]
-}
-
-/**
- * Full Slack event payload structure
- * This represents the complete payload sent by Slack, not just the event portion
- */
-export interface SlackMessageEvent {
+export interface SimplifiedSlackEvent {
     // Top-level payload fields
     type: "event_callback" | "app_uninstalled" | "tokens_revoked" | "url_verification"
     team_id: string
@@ -1866,47 +1722,7 @@ export interface SlackMessageEvent {
             user: string
             ts: string
         }
-        files?: Array<{
-            id: string
-            name: string
-            title: string
-            mimetype: string
-            filetype: string
-            pretty_type: string
-            user: string
-            size: number
-            url_private?: string
-            url_private_download?: string
-            permalink?: string
-            permalink_public?: string
-        }>
-        reactions?: Array<{
-            name: string
-            users: string[]
-            count: number
-        }>
-        attachments?: Array<{
-            fallback?: string
-            color?: string
-            pretext?: string
-            author_name?: string
-            author_link?: string
-            author_icon?: string
-            title?: string
-            title_link?: string
-            text?: string
-            fields?: Array<{
-                title: string
-                value: string
-                short: boolean
-            }>
-            image_url?: string
-            thumb_url?: string
-            footer?: string
-            footer_icon?: string
-            ts?: number
-        }>
-        blocks?: unknown[]
+        reactions?: Reaction[]
         client_msg_id?: string
         parent_user_id?: string
         reply_count?: number

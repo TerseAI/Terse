@@ -4,6 +4,7 @@ import { configDataSchema, configTypeEnum } from "./Configs"
 import { integrationTypeEnum } from "./Integrations"
 import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction } from "./RunHistoryTypes"
+import { SlackChannelType, slackChannelTypeSchema } from "./SlackTypes"
 import {
     attioAttributeSchema,
     attioObjectSchema,
@@ -196,14 +197,7 @@ export const terseAgentMessageMetadataSchema = z.object({
 })
 export type TerseAgentMessageMetadata = z.infer<typeof terseAgentMessageMetadataSchema>
 
-export enum SlackChannelType {
-    CHANNEL = "channel",
-    GROUP = "group",
-    MPIM = "mpim",
-    IM = "im"
-}
-
-export const slackChannelTypeSchema = z.enum(SlackChannelType)
+export { SlackChannelType, slackChannelTypeSchema }
 
 export const confluencePageSchema = z.object({
     id: z.string(),

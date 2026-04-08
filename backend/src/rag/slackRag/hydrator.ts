@@ -1,7 +1,7 @@
-import { SlackChannelType } from "terse-types"
+import { IntegrationType, SlackChannelType, SlackEventData, SlackEventType } from "terse-types"
 
 import { initializeSlackWebClient } from "../../integrations/SlackClient"
-import { SlackEvent, SlackEventData } from "../../integrations/SlackIntegration"
+import { SlackEvent } from "../../integrations/SlackIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { HydratorType } from "../../types/rag"
@@ -161,16 +161,21 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             }
 
             const eventData: SlackEventData = {
+                integrationType: IntegrationType.SLACK,
+                eventType: SlackEventType.MESSAGE,
                 channelId,
-                channelName,
+                channelName: channelName || null,
                 channelType,
                 userId: message.user || "",
-                userName,
+                userName: userName || null,
                 text: message.text || "",
                 timestamp: message.ts || timestamp,
-                threadTimestamp: message.thread_ts,
+                threadTimestamp: message.thread_ts || null,
                 teamId: userSlackIntegration.slack_integration.team_id,
-                permalink
+                permalink,
+                blocks: message.blocks || null,
+                attachments: message.attachments || null,
+                files: message.files || null
             }
 
             return new SlackEvent(eventData)
