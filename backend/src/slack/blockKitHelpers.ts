@@ -1,5 +1,6 @@
 import type { AppMentionEvent, Button, GenericMessageEvent, KnownBlock, ModalView, RichTextElement, TextObject } from "@slack/types"
 import { WebClient } from "@slack/web-api"
+import { SlackFile, SlackFiles } from "terse-types"
 
 import { ConfigurationFieldDefinition, FormFieldDefinition } from "../integrations/abstract/Integration"
 import logger from "../logger"
@@ -599,32 +600,6 @@ export interface SlackAttachment {
 }
 
 /**
- * Slack file object from the files array in messages
- */
-export interface SlackFile {
-    id: string
-    name?: string
-    title?: string
-    mimetype?: string
-    filetype?: string
-    // Various URL formats for accessing the file
-    url_private?: string
-    url_private_download?: string
-    thumb_64?: string
-    thumb_80?: string
-    thumb_160?: string
-    thumb_360?: string
-    thumb_480?: string
-    thumb_720?: string
-    thumb_800?: string
-    thumb_960?: string
-    thumb_1024?: string
-    // For images
-    original_w?: number
-    original_h?: number
-}
-
-/**
  * Represents an image extracted from a Slack message
  * Can be from blocks, attachments, or file uploads
  */
@@ -1067,7 +1042,7 @@ export function extractTextFromAttachments(attachments: SlackAttachment[]): stri
  * Extract all images from a Slack message
  * Searches blocks, attachments, and files for images
  */
-export function extractImagesFromMessage(data: { blocks?: KnownBlock[]; attachments?: SlackAttachment[]; files?: SlackFile[] }): SlackMessageImage[] {
+export function extractImagesFromMessage(data: { blocks?: KnownBlock[]; attachments?: SlackAttachment[]; files?: SlackFiles }): SlackMessageImage[] {
     const images: SlackMessageImage[] = []
 
     // Extract from blocks
@@ -1188,11 +1163,12 @@ export function pickSlackFileUrl(file: SlackFile): string | undefined {
  * Extract images from file uploads
  * Note: Slack file URLs require authentication to access
  */
-function extractImagesFromFiles(files: SlackFile[]): SlackMessageImage[] {
+function extractImagesFromFiles(files: SlackFiles): SlackMessageImage[] {
     const images: SlackMessageImage[] = []
     const imageMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml"]
     const imageFileTypes = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]
 
+    if (!files) return images
     for (const file of files) {
         // Check if it's an image file
         const isImage = (file.mimetype && imageMimeTypes.includes(file.mimetype)) || (file.filetype && imageFileTypes.includes(file.filetype.toLowerCase()))
@@ -1204,8 +1180,8 @@ function extractImagesFromFiles(files: SlackFile[]): SlackMessageImage[] {
         if (url) {
             images.push({
                 url: url,
-                alt_text: file.title || file.name,
-                title: file.title,
+                alt_text: file.title || file.name || undefined,
+                title: file.title || undefined,
                 source: "file",
                 // Slack file URLs require authentication
                 requiresAuth: true

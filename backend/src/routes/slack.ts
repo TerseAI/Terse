@@ -5,7 +5,6 @@ import { User } from "terse-types/types"
 import { SlackIntegrationManager, fetchSlackChannelsForIntegration, fetchSlackUsersForIntegration } from "../integrations/SlackIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { UserSlackIntegrationWithUser } from "../types/prisma"
 
 // MARK: - Route Handlers
 

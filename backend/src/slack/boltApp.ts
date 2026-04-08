@@ -14,7 +14,7 @@ import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import { jwt as jwtConfig, settings } from "../config/settings"
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask"
 import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues"
-import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration"
+import { SimplifiedSlackEvent, SlackIntegrationManager } from "../integrations/SlackIntegration"
 import { FormSubmissionInput, isFormIntegrationInstallation, isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
@@ -168,7 +168,7 @@ export async function setupSlackBolt() {
                 }
             }
 
-            const slackMessageEvent: SlackMessageEvent = {
+            const slackMessageEvent: SimplifiedSlackEvent = {
                 type: "event_callback",
                 team_id: body.team_id || "",
                 event_id: body.event_id,
@@ -1615,7 +1615,7 @@ export async function setupSlackBolt() {
             }
 
             // Format as SlackMessageEvent to match existing webhook handler format
-            const slackMessageEvent: SlackMessageEvent = {
+            const slackMessageEvent: SimplifiedSlackEvent = {
                 type: "app_uninstalled",
                 team_id: teamId
             }
@@ -1643,7 +1643,7 @@ export async function setupSlackBolt() {
             const tokens = (body as any).tokens as { bot?: string[]; oauth?: string[] } | undefined
 
             // Format as SlackMessageEvent to match existing webhook handler format
-            const slackMessageEvent: SlackMessageEvent = {
+            const slackMessageEvent: SimplifiedSlackEvent = {
                 type: "tokens_revoked",
                 team_id: teamId,
                 tokens: tokens
