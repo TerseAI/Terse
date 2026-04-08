@@ -38,19 +38,19 @@ triggers=[
 </CodeGroup>
 
 <Expandable title="Event payload">
-  **All GitHub events include:**
-  - `repository` - `{ id, name, owner, defaultBranch }`
-  - `sender` - `{ login, email }`
-  - `commits` - array of `{ sha, message, fileDiffs: [{ filename, diff }] }`
+
+**All GitHub events include:**
+- `repository` - `{ id, name, owner, defaultBranch }`
+- `sender` - `{ login, email }`
+- `commits` - array of `{ sha, message, fileDiffs: [{ filename, diff }] }`
 
 **PR events add:**
-
 - `pullRequest` - `{ number, title, body, state, merged, head, base, author, url }`
 
 **Push events add:**
-
 - `branch` - the branch that was pushed to
-    </Expandable>
+
+</Expandable>
 
 ### Slack
 
