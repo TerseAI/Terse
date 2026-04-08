@@ -137,7 +137,7 @@ class RegisteredJob:
     triggers: list[TriggerConfig] = field(default_factory=list)
     skills: list[SkillConfig[Any]] = field(default_factory=list)
     filter: JobFilter | None = field(default=None, repr=False, compare=False)
-    webhook_url: str | None = None
+    job_url: str | None = None
     tool_approvals: list[str] | None = None
 
 
@@ -150,7 +150,7 @@ class Terse:
         triggers: Sequence[TriggerConfig] | None = None,
         skills: Sequence[SkillConfig[ToolApprovalT]] | None = None,
         filter: JobFilter | None = None,
-        webhook_url: str | None = None,
+        job_url: str | None = None,
         tool_approvals: Sequence[ToolApprovalT] | None = None,
     ) -> Callable[[HandlerT], HandlerT]:
         """Register a job and return the original handler."""
@@ -162,12 +162,58 @@ class Terse:
                 triggers=list(triggers or []),
                 skills=list(skills or []),
                 filter=filter,
-                webhook_url=webhook_url,
+                job_url=job_url,
                 tool_approvals=list(tool_approvals) if tool_approvals else None,
             )
             return handler
 
         return decorator
+
+    def handle_trigger(self, body: dict[str, object]) -> dict[str, str]:
+        """Handle an incoming trigger request from the Terse backend.
+
+        Wire this into your own HTTP route (FastAPI, Flask, Django, etc.).
+
+        Returns a dict containing the API key for handshake verification.
+        Dispatches the job handler in the background after returning.
+
+        Example (FastAPI)::
+
+            @app.post("/terse")
+            async def terse_route(request: Request):
+                return terse.handle_trigger(await request.json())
+        """
+        import threading
+
+        api_key = _require_api_key()
+
+        job_name = str(body.get("jobName", ""))
+        if not job_name:
+            raise TerseRuntimeError("Missing 'jobName' in trigger request body.")
+
+        job = _JOB_REGISTRY.get(job_name)
+        if job is None:
+            available = ", ".join(_JOB_REGISTRY.keys())
+            raise TerseRuntimeError(
+                f'Job "{job_name}" not found in registry. Available jobs: {available}'
+            )
+
+        raw_event = body.get("event")
+        if not isinstance(raw_event, dict):
+            raise TerseRuntimeError("Missing or invalid 'event' in trigger request body.")
+
+        event = deserialize_input_event(raw_event)
+
+        # Dispatch the job handler in a background thread (fire and forget)
+        def _run() -> None:
+            try:
+                execute_registered_job(job, event)
+            except Exception:
+                LOGGER.exception('Job "%s" handler failed', job_name)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+        return {"status": "ok", "apiKey": api_key}
 
 
 class TerseAgent:

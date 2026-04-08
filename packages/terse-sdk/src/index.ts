@@ -1,7 +1,7 @@
-import type { ConfigData, SerializedEvent } from "terse-types"
+import type { ConfigData } from "terse-types"
 import type { RunHistoryAction } from "terse-types"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
-import { IntegrationType } from "terse-types"
+import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, WebhookJobTriggerResponse } from "terse-types"
+import { IntegrationType, webhookJobTriggerRequestSchema } from "terse-types"
 import { ApiRoutes } from "terse-types"
 
 import type { InferEvents, InferToolApprovals, InputEvent, TypedSkill, TypedTrigger } from "./types.js"
@@ -138,24 +138,31 @@ export class Terse {
      * })
      * ```
      */
-    async handleTrigger(body: { jobName: string; runId: string; event: SerializedEvent }): Promise<{ status: string; apiKey: string }> {
+    async handleTrigger(body: unknown): Promise<WebhookJobTriggerResponse> {
+        const parsedBody = webhookJobTriggerRequestSchema.safeParse(body)
+        if (!parsedBody.success) {
+            const detail = parsedBody.error.issues.map(i => i.message).join("; ")
+            throw new Error(`Invalid webhook trigger body: ${detail}`)
+        }
+
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set.")
         }
 
-        const job = _jobRegistry.get(body.jobName)
+        const { jobName, event } = parsedBody.data
+        const job = _jobRegistry.get(jobName)
         if (!job) {
-            throw new Error(`Job "${body.jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
+            throw new Error(`Job "${jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
         }
 
         // Dispatch onTrigger in the background (fire and forget)
-        const inputEvent = deserializeInputEvent(body.event)
+        const inputEvent = deserializeInputEvent(event)
         const agent = new TerseAgent(job.skills as ConfigData[])
         void Promise.resolve()
             .then(() => job.onTrigger(inputEvent as never, agent))
             .catch(err => {
-                console.error(`[terse] Job "${body.jobName}" onTrigger failed:`, err)
+                console.error(`[terse] Job "${jobName}" onTrigger failed:`, err)
             })
 
         return { status: "ok", apiKey }

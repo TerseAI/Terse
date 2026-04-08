@@ -4,7 +4,7 @@ import path from "node:path"
 
 import { BACKEND_URL } from "./config.js"
 
-export function readApiKey(): string | null {
+export function readEnvVar(name: string): string | null {
     const envPath = path.resolve(process.cwd(), ".env")
     if (!fs.existsSync(envPath)) return null
     const content = fs.readFileSync(envPath, "utf-8")
@@ -12,15 +12,20 @@ export function readApiKey(): string | null {
         const trimmed = line.trim()
         if (trimmed.startsWith("#") || !trimmed.includes("=")) continue
         const [key, ...rest] = trimmed.split("=")
-        if (key.trim() === "TERSE_API_KEY") {
+        if (key.trim() === name) {
             const val = rest.join("=").trim()
-            if (val) {
-                process.env.TERSE_API_KEY = val
-            }
             return val || null
         }
     }
     return null
+}
+
+export function readApiKey(): string | null {
+    const val = readEnvVar("TERSE_API_KEY")
+    if (val) {
+        process.env.TERSE_API_KEY = val
+    }
+    return val
 }
 
 export function readApiKeyOrBail(options?: { title?: string; detail?: string }): string {

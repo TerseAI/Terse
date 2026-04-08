@@ -817,6 +817,21 @@ export const serializedEventSchema = z.object({
 })
 export type SerializedEvent = z.infer<typeof serializedEventSchema>
 
+/** Request body POSTed by the backend to a deployed SDK job webhook URL. */
+export const webhookJobTriggerRequestSchema = z.object({
+    jobName: z.string(),
+    runId: z.string(),
+    event: serializedEventSchema
+})
+export type WebhookJobTriggerRequest = z.infer<typeof webhookJobTriggerRequestSchema>
+
+/** Response body from the SDK webhook handler (`Terse.handleTrigger`); `apiKey` is required for handshake verification. */
+export const webhookJobTriggerResponseSchema = z.object({
+    status: z.string().optional(),
+    apiKey: z.string().min(1)
+})
+export type WebhookJobTriggerResponse = z.infer<typeof webhookJobTriggerResponseSchema>
+
 export const sdkAgentRunEventPayloadSchema = z.object({
     integrationType: integrationTypeEnum,
     formattedContent: z.string(),
@@ -911,7 +926,8 @@ export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
 export const sdkDeployRequestBodySchema = z.object({
     jobs: z.array(sdkDeployJobSchema),
-    jobUrl: z.string().optional()
+    jobUrl: z.string().optional(),
+    sourceZipBase64: z.string().optional()
 })
 export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>
 
