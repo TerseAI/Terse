@@ -1,6 +1,6 @@
 import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
-import { openSessionStream as connectTerseSessionStream, type SessionStreamEvent, type SessionStreamHandle } from "terse-sdk"
+import { type SessionStreamEvent, type SessionStreamHandle, openSessionStream as connectTerseSessionStream } from "terse-sdk"
 import { ApiRoutes } from "terse-types"
 import type { SdkApprovalDecisionRequestBody } from "terse-types"
 

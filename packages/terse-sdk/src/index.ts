@@ -4,9 +4,9 @@ import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEve
 import { IntegrationType, webhookJobTriggerRequestSchema } from "terse-types"
 import { ApiRoutes } from "terse-types"
 
+import { openSessionStream } from "./sessionStream.js"
 import type { InferEvents, InferToolApprovals, InputEvent, TypedSkill, TypedTrigger } from "./types.js"
 import { deserializeInputEvent } from "./types.js"
-import { openSessionStream } from "./sessionStream.js"
 
 declare const process: { env: Record<string, string | undefined> }
 

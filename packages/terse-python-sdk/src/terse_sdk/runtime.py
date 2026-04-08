@@ -169,51 +169,49 @@ class Terse:
 
         return decorator
 
-    def handle_trigger(self, body: dict[str, object]) -> dict[str, str]:
-        """Handle an incoming trigger request from the Terse backend.
+    # def handle_trigger(self, body: dict[str, object]) -> dict[str, str]:
+    #     """Handle an incoming trigger request from the Terse backend.
 
-        Wire this into your own HTTP route (FastAPI, Flask, Django, etc.).
+    #     Wire this into your own HTTP route (FastAPI, Flask, Django, etc.).
 
-        Returns a dict containing the API key for handshake verification.
-        Dispatches the job handler in the background after returning.
+    #     Returns a dict containing the API key for handshake verification.
+    #     Dispatches the job handler in the background after returning.
 
-        Example (FastAPI)::
+    #     Example (FastAPI)::
 
-            @app.post("/terse")
-            async def terse_route(request: Request):
-                return terse.handle_trigger(await request.json())
-        """
-        import threading
+    #         @app.post("/terse")
+    #         async def terse_route(request: Request):
+    #             return terse.handle_trigger(await request.json())
+    #     """
+    #     import threading
 
-        api_key = _require_api_key()
+    #     api_key = _require_api_key()
 
-        job_name = str(body.get("jobName", ""))
-        if not job_name:
-            raise TerseRuntimeError("Missing 'jobName' in trigger request body.")
+    #     job_name = str(body.get("jobName", ""))
+    #     if not job_name:
+    #         raise TerseRuntimeError("Missing 'jobName' in trigger request body.")
 
-        job = _JOB_REGISTRY.get(job_name)
-        if job is None:
-            available = ", ".join(_JOB_REGISTRY.keys())
-            raise TerseRuntimeError(
-                f'Job "{job_name}" not found in registry. Available jobs: {available}'
-            )
+    #     job = _JOB_REGISTRY.get(job_name)
+    #     if job is None:
+    #         available = ", ".join(_JOB_REGISTRY.keys())
+    #         raise TerseRuntimeError(f'Job "{job_name}" not found in registry. Available jobs: {available}')
 
-        raw_event = body.get("event")
-        if not isinstance(raw_event, dict):
-            raise TerseRuntimeError("Missing or invalid 'event' in trigger request body.")
+    #     raw_event = body.get("event")
+    #     if not isinstance(raw_event, dict):
+    #         raise TerseRuntimeError("Missing or invalid 'event' in trigger request body.")
 
-        event = deserialize_input_event(raw_event)
+    #     event = deserialize_input_event(raw_event)
 
-        # Dispatch the job handler in a background thread (fire and forget)
-        def _run() -> None:
-            try:
-                execute_registered_job(job, event)
-            except Exception:
-                LOGGER.exception('Job "%s" handler failed', job_name)
+    #     # Dispatch the job handler in a background thread (fire and forget)
+    #     def _run() -> None:
+    #         try:
+    #             execute_registered_job(job, event)
+    #         except Exception:
+    #             LOGGER.exception('Job "%s" handler failed', job_name)
 
-        threading.Thread(target=_run, daemon=True).start()
+    #     threading.Thread(target=_run, daemon=True).start()
 
-        return {"status": "ok", "apiKey": api_key}
+    #     return {"status": "ok", "apiKey": api_key}
 
 
 class TerseAgent:

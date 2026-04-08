@@ -7,7 +7,7 @@ import type { SerializedEvent } from "terse-types"
 
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
-import { openSessionStream, promptForToolApproval, submitApprovalDecision, type SessionStreamEvent } from "../shared/sessionStream.js"
+import { type SessionStreamEvent, openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
 import { ensureUvAvailable, execUv, loadDotenv, withTempScript } from "../shared/shellUtils.js"
 
 import { preparePythonTemplateContext } from "./preparePythonCodegenData.js"
