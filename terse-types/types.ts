@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { configDataSchema, configTypeEnum, triggerEventSchema } from "./Configs"
+import { configDataSchema, configTypeEnum } from "./Configs"
 import { integrationTypeEnum } from "./Integrations"
 import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction } from "./RunHistoryTypes"
@@ -15,13 +15,7 @@ import {
     linearTeamSchema,
     slackUserResponseSchema
 } from "./Tools"
-
-const pointSchema = z.object({
-    x: z.number(),
-    y: z.number()
-})
-
-const unknownRecordSchema = z.record(z.string(), z.unknown())
+import { triggerEventSchema } from "./TriggerEvents"
 
 export const roleSchema = z.enum(["admin", "user"])
 export type Role = z.infer<typeof roleSchema>
