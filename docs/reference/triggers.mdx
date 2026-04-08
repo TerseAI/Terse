@@ -10,11 +10,11 @@ Triggers define the event that starts your workflow. Each trigger is tied to an 
 
 ### GitHub
 
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
-| `GitHub.onPROpened()` | `GithubPRInputEvent` | A pull request is opened |
-| `GitHub.onPush()` | `GithubPushInputEvent` | Code is pushed to a branch |
-| `GitHub.onIssueCreated()` | `GithubInputEvent` | An issue is created |
+| Trigger                   | Event type             | Description                |
+| ------------------------- | ---------------------- | -------------------------- |
+| `GitHub.onPROpened()`     | `GithubPRInputEvent`   | A pull request is opened   |
+| `GitHub.onPush()`         | `GithubPushInputEvent` | Code is pushed to a branch |
+| `GitHub.onIssueCreated()` | `GithubInputEvent`     | An issue is created        |
 
 **Config:** Scoped to specific repositories via `repo` parameter.
 
@@ -43,19 +43,21 @@ triggers=[
   - `sender` - `{ login, email }`
   - `commits` - array of `{ sha, message, fileDiffs: [{ filename, diff }] }`
 
-  **PR events add:**
-  - `pullRequest` - `{ number, title, body, state, merged, head, base, author, url }`
+**PR events add:**
 
-  **Push events add:**
-  - `branch` - the branch that was pushed to
-</Expandable>
+- `pullRequest` - `{ number, title, body, state, merged, head, base, author, url }`
+
+**Push events add:**
+
+- `branch` - the branch that was pushed to
+    </Expandable>
 
 ### Slack
 
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
+| Trigger             | Event type          | Description                      |
+| ------------------- | ------------------- | -------------------------------- |
 | `Slack.onMessage()` | `SlackMessageEvent` | A message is posted in a channel |
-| `Slack.onDm()` | `SlackMessageEvent` | A direct message is received |
+| `Slack.onDm()`      | `SlackMessageEvent` | A direct message is received     |
 
 **Config:** Scoped to specific channels or users.
 
@@ -87,8 +89,8 @@ triggers=[
 
 ### Linear
 
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
+| Trigger                   | Event type    | Description         |
+| ------------------------- | ------------- | ------------------- |
 | `Linear.onIssueCreated()` | `LinearEvent` | An issue is created |
 | `Linear.onIssueUpdated()` | `LinearEvent` | An issue is updated |
 
@@ -118,8 +120,8 @@ triggers=[
 
 ### Attio
 
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
+| Trigger                   | Event type              | Description                   |
+| ------------------------- | ----------------------- | ----------------------------- |
 | `Attio.onRecordCreated()` | `AttioRecordInputEvent` | A record is created in a list |
 
 **Config:** Scoped to a specific Attio list.
@@ -142,24 +144,13 @@ triggers=[
 
 ### Gmail
 
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
+| Trigger              | Event type   | Description             |
+| -------------------- | ------------ | ----------------------- |
 | `Gmail.onNewEmail()` | `GmailEvent` | A new email is received |
 
 <CodeGroup>
-```ts TypeScript
-triggers: [Gmail.onNewEmail()]
-```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id=gmail_integration_id,
-        integration_type="gmail",
-        config_type="gmail",
-        config={},
-    )
-]
-```
+    ```ts TypeScript triggers: [Gmail.onNewEmail()] ``` ```python Python triggers=[ TriggerConfig( integration_id=gmail_integration_id, integration_type="gmail", config_type="gmail", config={}, ) ]
+    ```
 </CodeGroup>
 
 <Expandable title="Event payload">
@@ -171,42 +162,10 @@ triggers=[
   - `data.attachments` - array of `{ filename, mimeType, data }`
 </Expandable>
 
-### Figma
-
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
-| `Figma.onFileComment()` | `FigmaCommentEvent` | A comment is added to a Figma file |
-
-**Config:** Scoped to a specific file key.
-
-<CodeGroup>
-```ts TypeScript
-triggers: [Figma.onFileComment({ fileKey: "abc123" })]
-```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id=figma_integration_id,
-        integration_type="figma",
-        config_type="figma",
-        config={"fileKey": "abc123"},
-    )
-]
-```
-</CodeGroup>
-
-<Expandable title="Event payload">
-  - `data.fileKey` - the Figma file
-  - `data.commentId`, `data.message` - the comment
-  - `data.author` - `{ handle }`
-  - `data.imageUrls` - `{ nodeImage, fullFrame }` screenshots of the commented area
-  - `data.thread` - full comment thread with `{ id, author, message, resolvedAt }`
-</Expandable>
-
 ### WorkOS
 
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
+| Trigger            | Event type         | Description           |
+| ------------------ | ------------------ | --------------------- |
 | `WorkOS.onEvent()` | `WorkOSInputEvent` | A WorkOS event occurs |
 
 **Config:** Filtered by event types (`user.created`, `organization.created`, `organization_membership.created`, `invitation.created`, etc.).
@@ -239,53 +198,29 @@ triggers=[
 
 ### Schedule
 
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
+| Trigger           | Event type          | Description              |
+| ----------------- | ------------------- | ------------------------ |
 | `Schedule.cron()` | `CronJobInputEvent` | Fires on a cron schedule |
 
-<CodeGroup>
-```ts TypeScript
-triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am
-```
-```python Python
-triggers=[Schedule.cron("0 9 * * 1")]  # Every Monday at 9am
-```
-</CodeGroup>
+<CodeGroup>```ts TypeScript triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am ``` ```python Python triggers=[Schedule.cron("0 9 * * 1")] # Every Monday at 9am ```</CodeGroup>
 
 <Expandable title="Event payload">
-  - `data.isManualTrigger` - whether the run was triggered manually from the dashboard
-  - `data.manualContext` - optional context string provided on manual triggers
+    - `data.isManualTrigger` - whether the run was triggered manually from the dashboard - `data.manualContext` - optional context string provided on manual triggers
 </Expandable>
 
 ### Webhook
 
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
+| Trigger               | Event type     | Description                                               |
+| --------------------- | -------------- | --------------------------------------------------------- |
 | `Webhook.onRequest()` | `WebhookEvent` | Fires when an HTTP request hits the generated webhook URL |
 
 Webhook URLs are auto-generated on deploy and remain stable across redeploys.
 
 <CodeGroup>
-```ts TypeScript
-triggers: [Webhook.onRequest()]
-```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id="system",
-        integration_type="webhook",
-        config_type="webhook_input",
-        config={},
-    )
-]
-```
+    ```ts TypeScript triggers: [Webhook.onRequest()] ``` ```python Python triggers=[ TriggerConfig( integration_id="system", integration_type="webhook", config_type="webhook_input", config={}, ) ] ```
 </CodeGroup>
 
-<Expandable title="Event payload">
-  - `body` - the raw JSON payload
-  - `headers` - HTTP headers
-  - `method` - HTTP method (GET, POST, etc.)
-</Expandable>
+<Expandable title="Event payload">- `body` - the raw JSON payload - `headers` - HTTP headers - `method` - HTTP method (GET, POST, etc.)</Expandable>
 
 ## Common event interface
 

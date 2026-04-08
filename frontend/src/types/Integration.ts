@@ -12,8 +12,5 @@ export enum Integration {
     NOTION = "notion",
 
     // Mail
-    GMAIL = "gmail",
-
-    // Design tools
-    FIGMA = "figma"
+    GMAIL = "gmail"
 }

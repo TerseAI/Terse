@@ -123,11 +123,6 @@ Linear.onIssueUpdated({ team: LinearTeam.Engineering })
 Gmail.onNewEmail()
 ```
 
-### Figma
-```typescript
-Figma.onComment()
-```
-
 ### WorkOS
 ```typescript
 WorkOS.onUserCreated()

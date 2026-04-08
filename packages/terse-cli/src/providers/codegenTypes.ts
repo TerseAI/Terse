@@ -110,7 +110,6 @@ export interface CodegenInput {
     github: GitHubInstanceData[]
     slack: SlackInstanceData[]
     gmail: IntegrationInstanceData[]
-    figma: IntegrationInstanceData[]
     linear: LinearInstanceData[]
     notion: NotionInstanceData[]
     posthog: PosthogInstanceData[]

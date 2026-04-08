@@ -4,7 +4,6 @@ import {
     ConfigData,
     ConfigType,
     DatadogConfig,
-    FigmaConfig,
     GitHubConfig,
     GitHubEventType,
     GmailConfig,
@@ -42,8 +41,6 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.SLACK
         case IntegrationType.NOTION:
             return PrismaIntegrationType.NOTION
-        case IntegrationType.FIGMA:
-            return PrismaIntegrationType.FIGMA
         case IntegrationType.TERSE:
             return PrismaIntegrationType.TERSE
         case IntegrationType.POSTHOG:
@@ -81,8 +78,6 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
         case PrismaIntegrationType.NOTION_PAGE:
             // Both NOTION and NOTION_PAGE map to NOTION in shared enum
             return IntegrationType.NOTION
-        case PrismaIntegrationType.FIGMA:
-            return IntegrationType.FIGMA
         case PrismaIntegrationType.TERSE:
             return IntegrationType.TERSE
         case PrismaIntegrationType.POSTHOG:
@@ -119,8 +114,6 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.SLACK
         case IntegrationType.NOTION:
             return PrismaIntegrationType.NOTION
-        case IntegrationType.FIGMA:
-            return PrismaIntegrationType.FIGMA
         case IntegrationType.TERSE:
             return PrismaIntegrationType.TERSE
         case IntegrationType.POSTHOG:
@@ -159,8 +152,6 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
         case PrismaIntegrationType.NOTION_PAGE:
             // Both map to NOTION in shared enum
             return IntegrationType.NOTION
-        case PrismaIntegrationType.FIGMA:
-            return IntegrationType.FIGMA
         case PrismaIntegrationType.TERSE:
             return IntegrationType.TERSE
         case PrismaIntegrationType.POSTHOG:
@@ -211,10 +202,6 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         return new GmailConfig(integrationId)
     }
 
-    if (channelInput.figma_config) {
-        return new FigmaConfig(integrationId, channelInput.figma_config.file_key, channelInput.figma_config.file_name || "", channelInput.figma_config.team_id || "")
-    }
-
     if (channelInput.slack_config) {
         return new SlackConfig(
             integrationId,
@@ -253,7 +240,6 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
     // Type guard to ensure we implement conversion here
     switch (channelInput.config_type) {
         case InputConfigType.GMAIL:
-        case InputConfigType.FIGMA:
         case InputConfigType.SLACK:
         case InputConfigType.NOTION_PAGE:
         case InputConfigType.NOTION_DATABASE:
@@ -371,8 +357,6 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
     switch (configType) {
         case ConfigType.GMAIL:
             return InputConfigType.GMAIL
-        case ConfigType.FIGMA:
-            return InputConfigType.FIGMA
         case ConfigType.SLACK:
             return InputConfigType.SLACK
         case ConfigType.NOTION:
@@ -419,8 +403,6 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
     switch (inputConfigType) {
         case InputConfigType.GMAIL:
             return ConfigType.GMAIL
-        case InputConfigType.FIGMA:
-            return ConfigType.FIGMA
         case InputConfigType.SLACK:
             return ConfigType.SLACK
         case InputConfigType.NOTION_PAGE:

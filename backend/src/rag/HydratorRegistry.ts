@@ -1,7 +1,6 @@
 import { HydratorType, HydratorTypeMap, RAGNamespace } from "../types/rag"
 
 import { CompositeHydrator, HydrationContext, Hydrator, Identifiable } from "./Hydrator"
-import { FigmaCommentEventHydrator } from "./figmaRag/hydrator"
 import { GithubEventHydrator } from "./githubRag/hydrator"
 import { GmailEventHydrator } from "./gmailRag/hydrator"
 import { LinearEventHydrator } from "./linearRag/hydrator"
@@ -18,7 +17,6 @@ const HYDRATOR_FACTORIES: {
     [HydratorType.GITHUB_EVENT]: ctx => new GithubEventHydrator(ctx),
     [HydratorType.LINEAR_EVENT]: ctx => new LinearEventHydrator(ctx),
     [HydratorType.GMAIL_EVENT]: ctx => new GmailEventHydrator(ctx),
-    [HydratorType.FIGMA_COMMENT_EVENT]: ctx => new FigmaCommentEventHydrator(ctx),
     [HydratorType.WORKOS_EVENT]: ctx => new WorkOSEventHydrator(ctx)
 }
 

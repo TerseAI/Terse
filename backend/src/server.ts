@@ -24,7 +24,6 @@ import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { getBuilderChatHistory } from "./routes/builderChat"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
-import { figmaOAuthCallback, getFigmaIntegrations, handleFigmaWebhook } from "./routes/figma"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
@@ -219,10 +218,6 @@ app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
     handleGmailWebhook(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.FIGMA, async (req, res) => {
-    handleFigmaWebhook(req, res)
-})
-
 // Linear webhook needs raw body for signature verification
 app.use(ApiRoutes.LINEAR.WEBHOOK, express.raw({ type: "application/json" }))
 
@@ -405,16 +400,6 @@ app.get(ApiRoutes.ATTIO.OAUTH_CALLBACK, async (req, res) => {
 
 app.get(ApiRoutes.ATTIO.OBJECTS, authMiddleware, async (req, res) => {
     getAttioObjects(req, res)
-})
-
-// MARK: FIGMA
-
-app.get(ApiRoutes.FIGMA.INTEGRATIONS, authMiddleware, async (req, res) => {
-    getFigmaIntegrations(req, res)
-})
-
-app.get(ApiRoutes.FIGMA.OAUTH_CALLBACK, async (req, res) => {
-    figmaOAuthCallback(req, res)
 })
 
 // MARK: LINEAR

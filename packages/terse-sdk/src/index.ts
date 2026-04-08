@@ -54,7 +54,6 @@ export {
     ConfigType,
     ConfigInstance,
     GmailConfig,
-    FigmaConfig,
     SlackConfig,
     SlackOutputConfig,
     GmailOutputConfig,
@@ -76,7 +75,6 @@ export {
     SlackEventType,
     GitHubEventType,
     LinearEventType,
-    FigmaEventType,
     GmailEventType,
     WorkOSEventType
 } from "terse-types"

@@ -6,7 +6,6 @@ import {
     AttioIcon,
     CalendarClockIcon,
     DatadogIcon,
-    FigmaIcon,
     GithubIcon,
     GmailIcon,
     LaunchDarklyIcon,
@@ -35,8 +34,6 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <GmailIcon />
         case ConfigType.NOTION:
             return <NotionIcon />
-        case ConfigType.FIGMA:
-            return <FigmaIcon />
         case ConfigType.POSTHOG:
             return <PosthogIcon />
         case ConfigType.LAUNCHDARKLY:
@@ -74,8 +71,6 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <GmailIcon />
         case IntegrationType.NOTION:
             return <NotionIcon />
-        case IntegrationType.FIGMA:
-            return <FigmaIcon />
         case IntegrationType.TERSE:
         case IntegrationType.CRON_JOB:
             return <CalendarClockIcon />

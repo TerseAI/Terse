@@ -7,7 +7,7 @@ import { jwt as jwtConfig } from "../config/settings"
  */
 export enum OAuthStateEncodingFormat {
     /**
-     * Sign as JWT token (used by Slack, Linear, Figma, etc.)
+     * Sign as JWT token (used by Slack, Linear etc.)
      */
     JWT = "jwt",
     /**
@@ -103,7 +103,7 @@ export function createOAuthStateToken(options: OAuthStatePayloadOptions): string
         // Encode as base64 JSON string (used by GitHub, Gmail)
         encodedState = Buffer.from(JSON.stringify(statePayload)).toString("base64")
     } else {
-        // Sign as JWT token (default, used by Slack, Linear, Figma, etc.)
+        // Sign as JWT token (default, used by Slack, Linear etc.)
         const jwtToken = jwt.sign(statePayload, jwtConfig.secret, {
             expiresIn: expiresIn as any
         })

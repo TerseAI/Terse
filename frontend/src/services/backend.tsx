@@ -4,7 +4,6 @@ import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/
 import {
     AttioIntegration,
     DatadogIntegration,
-    FigmaIntegration,
     GithubIntegration,
     GmailIntegration,
     InstallationOptionsFor,
@@ -141,11 +140,6 @@ interface BackendService {
      * Gets all Gmail integrations for the current user
      */
     getGmailIntegrations(): Promise<GmailIntegration[]>
-
-    /**
-     * Gets all Figma integrations for the current user
-     */
-    getFigmaIntegrations(): Promise<FigmaIntegration[]>
 
     /**
      * Gets all GitHub integrations for the current user
@@ -665,16 +659,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting Gmail integrations:", error)
-                throw error
-            })
-    },
-
-    getFigmaIntegrations: () => {
-        return axios
-            .get<FigmaIntegration[]>(`${backendBaseUrl}${ApiRoutes.FIGMA.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Figma integrations:", error)
                 throw error
             })
     },

@@ -93,13 +93,6 @@ export const settings = {
         redirectUri: requireEnv("NOTION_OAUTH_REDIRECT_URI")
     },
 
-    // Figma OAuth
-    figma: {
-        clientId: requireEnv("FIGMA_CLIENT_ID"),
-        clientSecret: requireEnv("FIGMA_CLIENT_SECRET"),
-        redirectUrl: requireEnv("FIGMA_REDIRECT_URL")
-    },
-
     // Slack OAuth
     slack: {
         clientId: requireEnv("SLACK_CLIENT_ID"),
@@ -189,7 +182,7 @@ export const settings = {
 } as const
 
 // Export individual settings for convenience
-export const { jwt, database, openai, tavily, gemini, urls, nodeEnv, gmail, githubApp, notion, figma, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
+export const { jwt, database, openai, tavily, gemini, urls, nodeEnv, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
 
 // Type exports
 export type Settings = typeof settings

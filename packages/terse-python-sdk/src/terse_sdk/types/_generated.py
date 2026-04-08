@@ -7,31 +7,13 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel
+from pydantic import AwareDatetime, ConfigDict, EmailStr, Field, RootModel
 
 from terse_sdk.types._base import TerseModel
 
 
 class Model(RootModel[Any]):
     root: Any
-
-
-class AtlassianIntegrationInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        regex_engine="python-re",
-    )
-    id: str
-    base_url: Annotated[AnyUrl, Field(alias="baseUrl")]
-    email: Annotated[
-        EmailStr,
-        Field(
-            pattern="^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
-        ),
-    ]
-    site_name: Annotated[str | None, Field(alias="siteName")] = None
-    project_key: Annotated[str | None, Field(alias="projectKey")] = None
-    project_name: Annotated[str | None, Field(alias="projectName")] = None
 
 
 class AttioIntegrationInstance(TerseModel):
@@ -56,7 +38,6 @@ class ConfigTypeEnum(StrEnum):
     gmail = "gmail"
     gmail_output = "gmail_output"
     gmail_draft_output = "gmail_draft_output"
-    figma = "figma"
     slack = "slack"
     slack_output = "slack_output"
     notion = "notion"
@@ -79,10 +60,8 @@ class IntegrationTypeEnum(StrEnum):
     github = "github"
     gmail = "gmail"
     linear = "linear"
-    atlassian = "atlassian"
     slack = "slack"
     notion = "notion"
-    figma = "figma"
     terse = "terse"
     posthog = "posthog"
     datadog = "datadog"
@@ -119,33 +98,6 @@ class DatadogIntegrationInstance(TerseModel):
     )
     id: str
     region: str
-
-
-class FigmaEventType(StrEnum):
-    file_comment = "file_comment"
-
-
-class FigmaConfigInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["figma"], Field(alias="integrationType")] = "figma"
-    config_type: Annotated[Literal["figma"], Field(alias="configType")] = "figma"
-    file_key: Annotated[str, Field(alias="fileKey")]
-    file_name: Annotated[str, Field(alias="fileName")]
-    team_id: Annotated[str, Field(alias="teamId")]
-    event_types: Annotated[list[FigmaEventType] | None, Field(alias="eventTypes")]
-
-
-class FigmaIntegrationInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    handle: str
-    figma_user_id: str
-    token_expiry: AwareDatetime
 
 
 class GitHubEventType(StrEnum):
@@ -703,7 +655,6 @@ class AgentNotificationSettings(TerseModel):
 class ConfigData(
     RootModel[
         GmailConfigInstance
-        | FigmaConfigInstance
         | SlackConfigInstance
         | SlackOutputConfigInstance
         | GmailOutputConfigInstance
@@ -726,7 +677,6 @@ class ConfigData(
 ):
     root: (
         GmailConfigInstance
-        | FigmaConfigInstance
         | SlackConfigInstance
         | SlackOutputConfigInstance
         | GmailOutputConfigInstance
@@ -1745,197 +1695,9 @@ class EventData(TerseModel):
     )
     integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
     event_type: Annotated[
-        SlackEventType | GitHubEventType | LinearEventType | FigmaEventType | GmailEventType | WorkOSEventType,
+        SlackEventType | GitHubEventType | LinearEventType | GmailEventType | WorkOSEventType,
         Field(alias="eventType"),
     ]
-
-
-class FigmaWebhookUser(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    handle: str
-    email: str
-    img_url: str
-
-
-class FigmaVectorData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    x: float
-    y: float
-
-
-class FigmaClientMeta(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    x: float
-    y: float
-    width: float
-    height: float
-    node_id: str
-    node_offset: FigmaVectorData
-
-
-class FigmaApiComment(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    message: str
-    client_meta: FigmaClientMeta | None
-    user: FigmaWebhookUser
-    created_at: str
-    resolved_at: str | None
-    parent_id: str | None = None
-    order_id: str | None = None
-    mentions: list[Any] | None = None
-    reactions: list[Any] | None = None
-
-
-class FigmaCommentImageUrls(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    node_image: Annotated[str | None, Field(alias="nodeImage")] = None
-    full_frame: Annotated[str | None, Field(alias="fullFrame")] = None
-
-
-class FigmaFrameOffsetRegionData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    node_id: str
-    node_offset: FigmaVectorData
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-class FigmaFrameOffsetRegionPositioning(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Literal["FrameOffsetRegion"] = "FrameOffsetRegion"
-    data: FigmaFrameOffsetRegionData
-
-
-class FigmaRegionData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-class FigmaRegionPositioning(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Literal["Region"] = "Region"
-    data: FigmaRegionData
-
-
-class FigmaFrameOffsetData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    node_id: str
-    node_offset: FigmaVectorData
-
-
-class FigmaFrameOffsetPositioning(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Literal["FrameOffset"] = "FrameOffset"
-    data: FigmaFrameOffsetData
-
-
-class FigmaVectorPositioning(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Literal["Vector"] = "Vector"
-    data: FigmaVectorData
-
-
-class FigmaPositioningData(
-    RootModel[
-        FigmaVectorPositioning
-        | FigmaFrameOffsetPositioning
-        | FigmaRegionPositioning
-        | FigmaFrameOffsetRegionPositioning
-    ]
-):
-    root: (
-        FigmaVectorPositioning
-        | FigmaFrameOffsetPositioning
-        | FigmaRegionPositioning
-        | FigmaFrameOffsetRegionPositioning
-    )
-
-
-class FigmaFileMetadata(TerseModel):
-    name: str | None = None
-    folder_name: str | None = None
-    url: str | None = None
-
-
-class FigmaCommentThreadEntry(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    message: str
-    author: FigmaWebhookUser
-    created_at: Annotated[str, Field(alias="createdAt")]
-    resolved_at: Annotated[str | None, Field(alias="resolvedAt")]
-    parent_id: Annotated[str | None, Field(alias="parentId")]
-    order_id: Annotated[str | None, Field(alias="orderId")] = None
-    is_root: Annotated[bool | None, Field(alias="isRoot")] = None
-
-
-class FigmaCommentEventData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    comment_id: Annotated[str, Field(alias="commentId")]
-    file_key: Annotated[str, Field(alias="fileKey")]
-    file_url: Annotated[str, Field(alias="fileUrl")]
-    node_id: Annotated[str | None, Field(alias="nodeId")] = None
-    message: str
-    author: FigmaWebhookUser
-    created_at: Annotated[str, Field(alias="createdAt")]
-    resolved: bool | None = None
-    thread: list[FigmaCommentThreadEntry] | None = None
-    file_metadata: Annotated[FigmaFileMetadata | None, Field(alias="fileMetadata")] = None
-    positioning_data: Annotated[FigmaPositioningData | None, Field(alias="positioningData")] = None
-    matched_node_ids: Annotated[list[str] | None, Field(alias="matchedNodeIds")] = None
-    image_urls: Annotated[FigmaCommentImageUrls | None, Field(alias="imageUrls")] = None
-
-
-class FigmaEventTypes(StrEnum):
-    file_comment = "FILE_COMMENT"
-
-
-class FigmaWebhookComment(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    message: str
-    client_meta: FigmaClientMeta
-    user: FigmaWebhookUser
-    created_at: str
-    resolved_at: str | None
 
 
 class FilterResult(TerseModel):

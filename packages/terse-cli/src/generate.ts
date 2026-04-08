@@ -5,7 +5,6 @@ import ora from "ora"
 import type {
     AttioIntegration,
     DatadogIntegration,
-    FigmaIntegration,
     GithubIntegration,
     GmailIntegration,
     LaunchDarklyIntegration,
@@ -99,7 +98,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         github: [],
         slack: [],
         gmail: [],
-        figma: [],
         linear: [],
         notion: [],
         posthog: [],
@@ -155,16 +153,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                         return { id: inst.id, displayName: inst.teamName || inst.id, channels: resp.channels || [] }
                     })
                 )
-            })
-        )
-    }
-
-    // ── Figma (no resources) ──
-    if (has(IntegrationType.FIGMA)) {
-        promises.push(
-            safely(async () => {
-                const instances = await fetchWithAuth<FigmaIntegration[]>(ApiRoutes.FIGMA.INTEGRATIONS, apiKey)
-                input.figma = instances.map(inst => ({ id: inst.id, displayName: inst.handle || inst.id }))
             })
         )
     }
@@ -317,7 +305,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         input.github.length +
         input.slack.length +
         input.gmail.length +
-        input.figma.length +
         input.linear.length +
         input.notion.length +
         input.posthog.length +
@@ -385,9 +372,6 @@ function printSummary(input: CodegenInput): void {
     for (const inst of input.slack) {
         const n = inst.channels.length
         console.log(`  ${g} Slack (${inst.displayName}) — ${n} ${n === 1 ? "channel" : "channels"}`)
-    }
-    for (const inst of input.figma) {
-        console.log(`  ${g} Figma (${inst.displayName})`)
     }
     for (const inst of input.linear) {
         const n = inst.teams.length

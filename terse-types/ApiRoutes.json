@@ -49,10 +49,6 @@
         "RESOURCES": "/notion/resources",
         "DELETE_INTEGRATION": "/notion/delete-integration"
     },
-    "FIGMA": {
-        "INTEGRATIONS": "/figma/integrations",
-        "OAUTH_CALLBACK": "/figma/oauth/callback"
-    },
     "LINEAR": {
         "OAUTH_CALLBACK": "/linear/oauth/callback",
         "WEBHOOK": "/linear/webhook",
@@ -147,7 +143,6 @@
     },
     "WEBHOOKS": {
         "GMAIL": "/webhooks/gmail",
-        "FIGMA": "/webhooks/figma",
         "WORKOS": "/webhooks/workos",
         "LINEAR_BY_USER_ID": "/webhooks/linear/:userId",
         "SCHEDULE_BY_INPUT_ID": "/webhooks/schedule/:inputId",

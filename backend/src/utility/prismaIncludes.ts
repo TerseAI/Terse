@@ -9,7 +9,6 @@ export function getInputConfigInclude() {
         linear_config: true,
         github_config: true,
         gmail_config: true,
-        figma_config: true,
         time_trigger_config: true,
         workos_config: true,
         webhook_config: true
@@ -30,7 +29,6 @@ export function getOutputConfigInclude() {
         posthog_config: true,
         datadog_config: true,
         launchdarkly_config: true,
-        figma_config: true,
         workos_output_config: true,
         attio_config: true,
         snowflake_config: true

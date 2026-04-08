@@ -114,35 +114,6 @@
         "isActive": true
     },
     {
-        "id": "figma-prd-drift-detector",
-        "category": "sync",
-        "name": "Detect Information Drift",
-        "description": "Alert when designs and specs drift out of sync",
-        "chatPrompt": "Create an agent that monitors Figma for discussions that conflict with my PRD in Notion, alerting me when designs and specs drift out of sync.",
-        "prompt": {
-            "text": "Monitor Figma for conflicting discussions with the PRD."
-        },
-        "triggers": [
-            {
-                "config": {
-                    "configType": "figma",
-                    "integrationType": "figma"
-                }
-            }
-        ],
-        "outputs": [
-            {
-                "config": {
-                    "configType": "notion",
-                    "integrationType": "notion"
-                },
-                "readOnly": false
-            }
-        ],
-        "requireApproval": false,
-        "isActive": true
-    },
-    {
         "id": "release-notes-builder",
         "category": "sync",
         "name": "Release Notes Builder",
@@ -246,64 +217,6 @@
                     "configType": "github",
                     "integrationType": "github"
                 }
-            }
-        ],
-        "requireApproval": false,
-        "isActive": true
-    },
-    {
-        "id": "design-review-prep",
-        "category": "track",
-        "name": "Design Review Prep",
-        "description": "Questions to ask in tomorrow's design review",
-        "chatPrompt": "Build an agent that watches Figma file changes and updates a Notion page with prepared questions and discussion points for the next design review.",
-        "prompt": {
-            "text": "Monitor Figma for file changes (new frames, updated components, comments). Before each design review, update the configured Notion page with: 1) Summary of what changed since last review. 2) Questions to ask the designer (accessibility, edge cases, states). 3) Open comments or threads that need resolution. 4) Any drift from the PRD or existing patterns. Keep the page scannable and actionable for the review meeting."
-        },
-        "triggers": [
-            {
-                "config": {
-                    "configType": "figma",
-                    "integrationType": "figma"
-                }
-            }
-        ],
-        "outputs": [
-            {
-                "config": {
-                    "configType": "notion",
-                    "integrationType": "notion"
-                },
-                "readOnly": false
-            }
-        ],
-        "requireApproval": false,
-        "isActive": true
-    },
-    {
-        "id": "design-decision-capturer",
-        "category": "track",
-        "name": "Design Decision Capturer",
-        "description": "Never re-debate the same design decision again",
-        "chatPrompt": "Create an agent that turns Figma comments into structured entries in a Notion database, so design decisions are recorded and searchable.",
-        "prompt": {
-            "text": "Monitor Figma for comments and discussions. When a design decision is made (e.g. \"we're going with option A because...\"), create or update an entry in the configured Notion database. Each entry should include: decision summary, context (file/frame), rationale, date, and link to the Figma thread. Use a consistent format so the team can search past decisions and avoid re-debating. Never create duplicate entries for the same decision."
-        },
-        "triggers": [
-            {
-                "config": {
-                    "configType": "figma",
-                    "integrationType": "figma"
-                }
-            }
-        ],
-        "outputs": [
-            {
-                "config": {
-                    "configType": "notion",
-                    "integrationType": "notion"
-                },
-                "readOnly": false
             }
         ],
         "requireApproval": false,

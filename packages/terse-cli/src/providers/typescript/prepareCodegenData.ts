@@ -62,10 +62,6 @@ export interface SlackSectionContext {
     channelClass: ResourceClassContext
 }
 
-export interface FigmaSectionContext {
-    id: string
-}
-
 export interface LinearSectionContext {
     id: string
     skillToolType: string
@@ -157,7 +153,6 @@ export interface TemplateContext {
     github?: GitHubSectionContext
     gmail?: GmailSectionContext
     slack?: SlackSectionContext
-    figma?: FigmaSectionContext
     linear?: LinearSectionContext
     notion?: NotionSectionContext
     posthog?: PosthogSectionContext
@@ -417,11 +412,6 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
     })
 }
 
-function prepareFigmaSection(instances: IntegrationInstanceData[]): SectionContext<FigmaSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    return sectionData(["FigmaConfig", "FigmaEventType"], { id: instances[0].id })
-}
-
 function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefinition[]): SectionContext<LinearSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
@@ -611,10 +601,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     instanceMap.set(
         "gmail",
         input.gmail.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "figma",
-        input.figma.map(inst => ({ id: inst.id, displayName: inst.displayName }))
     )
     instanceMap.set(
         "linear",
@@ -982,7 +968,6 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const github = prepareGitHubSection(input.github, input.tools)
     const gmail = prepareGmailSection(input.gmail, input.tools)
     const slack = prepareSlackSection(input.slack, input.tools)
-    const figma = prepareFigmaSection(input.figma)
     const linear = prepareLinearSection(input.linear, input.tools)
     const notion = prepareNotionSection(input.notion, input.tools)
     const posthog = preparePosthogSection(input.posthog, input.tools)
@@ -994,7 +979,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const tools = prepareToolsSection(input.tools, input)
     const system = prepareSystemSection(input.tools)
 
-    const sections = [github, gmail, slack, figma, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
+    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
 
     for (const section of sections) {
         section.imports.forEach(value => allImports.add(value))
@@ -1008,7 +993,6 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         github: github.data,
         gmail: gmail.data,
         slack: slack.data,
-        figma: figma.data,
         linear: linear.data,
         notion: notion.data,
         posthog: posthog.data,

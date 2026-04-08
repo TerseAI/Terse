@@ -2,7 +2,6 @@ import { ConfigType } from "terse-types/Configs"
 
 import { AttioOutputIntegration } from "./AttioOutputIntegration"
 import { DatadogIntegration } from "./DatadogIntegration"
-import { FigmaIntegration } from "./FigmaIntegration"
 import { GitHubIntegration } from "./GitHubIntegration"
 import { GmailIntegration } from "./GmailIntegration"
 import { GmailOutputIntegration } from "./GmailOutputIntegration"
@@ -39,9 +38,6 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
 
         case ConfigType.GITHUB:
             return <GitHubIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
-
-        case ConfigType.FIGMA:
-            return <FigmaIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
         case ConfigType.LINEAR_INPUT:
             return <LinearInputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />

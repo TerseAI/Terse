@@ -1,4 +1,3 @@
-import type { GenericMessageEvent, KnownBlock, MessageAttachment } from "@slack/types"
 import * as z from "zod"
 
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
@@ -8,7 +7,6 @@ export enum ConfigType {
     GMAIL = "gmail",
     GMAIL_OUTPUT = "gmail_output",
     GMAIL_DRAFT_OUTPUT = "gmail_draft_output",
-    FIGMA = "figma",
     SLACK = "slack",
     SLACK_OUTPUT = "slack_output",
     NOTION = "notion",
@@ -45,15 +43,6 @@ export const GmailConfigMetadata = {
     name: "Gmail",
     description: "Monitor incoming emails",
     integrationType: IntegrationType.GMAIL,
-    isInput: true,
-    isOutput: false
-} as const satisfies ConfigDetails
-
-export const FigmaConfigMetadata = {
-    configType: ConfigType.FIGMA,
-    name: "Figma",
-    description: "Monitor design changes in Figma files",
-    integrationType: IntegrationType.FIGMA,
     isInput: true,
     isOutput: false
 } as const satisfies ConfigDetails
@@ -226,7 +215,6 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.GMAIL]: GmailConfigMetadata,
     [ConfigType.GMAIL_OUTPUT]: GmailOutputConfigMetadata,
     [ConfigType.GMAIL_DRAFT_OUTPUT]: GmailDraftOutputConfigMetadata,
-    [ConfigType.FIGMA]: FigmaConfigMetadata,
     [ConfigType.SLACK]: SlackConfigMetadata,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfigMetadata,
     [ConfigType.NOTION]: NotionConfigMetadata,
@@ -267,12 +255,6 @@ export type GitHubEventType = z.infer<typeof gitHubEventTypeSchema>
 
 export const linearEventTypeSchema = z.enum(["issue.created", "issue.updated", "comment.created"])
 export type LinearEventType = z.infer<typeof linearEventTypeSchema>
-
-export const FigmaEventType = {
-    FILE_COMMENT: "file_comment"
-} as const
-export const figmaEventTypeSchema = z.enum(FigmaEventType)
-export type FigmaEventType = z.infer<typeof figmaEventTypeSchema>
 
 export const GmailEventType = {
     EMAIL_RECEIVED: "email.received"
@@ -342,44 +324,6 @@ export class GmailConfig extends BaseConfigInstance<IntegrationType.GMAIL, Confi
 
     formatForAgent(): string {
         return `Type: Gmail\nIntegration ID: ${this.integrationId}`
-    }
-}
-
-export const FigmaConfigSchema = ConfigInstanceSchema.extend({
-    integrationType: z.literal(IntegrationType.FIGMA),
-    configType: z.literal(ConfigType.FIGMA),
-    fileKey: z.string(),
-    fileName: z.string(),
-    teamId: z.string(),
-    eventTypes: z.array(figmaEventTypeSchema).nullable()
-})
-export type FigmaConfigData = z.infer<typeof FigmaConfigSchema>
-export type FigmaConfigInstance = FigmaConfigData & ConfigBehavior
-
-export class FigmaConfig extends BaseConfigInstance<IntegrationType.FIGMA, ConfigType.FIGMA> implements FigmaConfigInstance {
-    constructor(
-        integrationId: string,
-        public fileKey: string,
-        public fileName: string,
-        public teamId: string,
-        public eventTypes: FigmaEventType[] | null = null
-    ) {
-        super(integrationId, IntegrationType.FIGMA, ConfigType.FIGMA)
-    }
-
-    isComplete(): boolean {
-        return !!(this.fileKey && this.teamId)
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Figma`, `Integration ID: ${this.integrationId}`]
-        if (this.fileName) {
-            parts.push(`File: ${this.fileName}`)
-        }
-        if (this.fileKey) {
-            parts.push(`File Key: ${this.fileKey}`)
-        }
-        return parts.join("\n")
     }
 }
 
@@ -935,7 +879,6 @@ export class WebhookInputConfig extends BaseConfigInstance<IntegrationType.WEBHO
 
 export const configDataSchema = z.union([
     GmailConfigSchema,
-    FigmaConfigSchema,
     SlackConfigSchema,
     SlackOutputConfigSchema,
     GmailOutputConfigSchema,
@@ -970,8 +913,6 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.TERSE:
         case ConfigType.WEBHOOK_INPUT:
             return true
-        case ConfigType.FIGMA:
-            return !!(config.fileKey && config.teamId)
         case ConfigType.SLACK:
             return !!(config.channelId || config.listenToUserDms)
         case ConfigType.SLACK_OUTPUT:
@@ -1005,12 +946,6 @@ export function formatConfigForAgent(config: ConfigData): string {
     switch (config.configType) {
         case ConfigType.GMAIL:
             return `Type: Gmail\nIntegration ID: ${config.integrationId}`
-        case ConfigType.FIGMA: {
-            const parts = [`Type: Figma`, `Integration ID: ${config.integrationId}`]
-            if (config.fileName) parts.push(`File: ${config.fileName}`)
-            if (config.fileKey) parts.push(`File Key: ${config.fileKey}`)
-            return parts.join("\n")
-        }
         case ConfigType.SLACK: {
             const parts = [`Type: Slack`, `Integration ID: ${config.integrationId}`]
             if (config.channelName) {
@@ -1124,7 +1059,6 @@ type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) 
 
 export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.GMAIL]: typeof GmailConfig
-    [ConfigType.FIGMA]: typeof FigmaConfig
     [ConfigType.SLACK]: typeof SlackConfig
     [ConfigType.SLACK_OUTPUT]: typeof SlackOutputConfig
     [ConfigType.GMAIL_OUTPUT]: typeof GmailOutputConfig
@@ -1149,7 +1083,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.GMAIL]: GmailConfig,
     [ConfigType.GMAIL_OUTPUT]: GmailOutputConfig,
     [ConfigType.GMAIL_DRAFT_OUTPUT]: GmailDraftOutputConfig,
-    [ConfigType.FIGMA]: FigmaConfig,
     [ConfigType.SLACK]: SlackConfig,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfig,
     [ConfigType.NOTION]: NotionConfig,
@@ -1170,7 +1103,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
 
 // Mark: Event Data
 
-const eventTypeEnum = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, figmaEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
+const eventTypeEnum = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
 
 export const eventDataSchema = z.object({
     integrationType: integrationTypeEnum,

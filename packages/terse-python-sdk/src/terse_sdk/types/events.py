@@ -149,10 +149,6 @@ class NotionInputEvent(InputEvent):
     integration_type: Literal["notion"] = "notion"
 
 
-class FigmaInputEvent(InputEvent):
-    integration_type: Literal["figma"] = "figma"
-
-
 class PosthogInputEvent(InputEvent):
     integration_type: Literal["posthog"] = "posthog"
 
@@ -230,7 +226,6 @@ KnownInputEvent: TypeAlias = Annotated[
     | LinearInputEvent
     | GmailInputEvent
     | NotionInputEvent
-    | FigmaInputEvent
     | PosthogInputEvent
     | DatadogInputEvent
     | TerseInputEvent
@@ -250,7 +245,6 @@ __all__ = [
     "AttioInputEvent",
     "CronJobInputEvent",
     "DatadogInputEvent",
-    "FigmaInputEvent",
     "GithubCommit",
     "GithubEventMetadata",
     "GithubFileDiff",

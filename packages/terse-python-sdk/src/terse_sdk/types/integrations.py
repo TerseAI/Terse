@@ -11,7 +11,6 @@ from ._generated import (
 from ._generated import (
     AttioOutputConfigInstance,
     DatadogConfigInstance,
-    FigmaConfigInstance,
     GitHubConfigInstance,
     GmailConfigInstance,
     GmailDraftOutputConfigInstance,
@@ -72,7 +71,6 @@ __all__ = [
     "ConfigDetails",
     "ConfigInstance",
     "DatadogConfigInstance",
-    "FigmaConfigInstance",
     "GitHubConfigInstance",
     "GmailConfigInstance",
     "GmailDraftOutputConfigInstance",

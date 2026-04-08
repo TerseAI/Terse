@@ -36,7 +36,7 @@ function buildJudgeSystemPrompt(automationId: string, source: AutomationSource):
 
 Terse is an automation platform. Users build agents that react to events and take actions on external tools.
 
-Triggers: Define what events an agent listens to — Slack messages, GitHub PRs, Linear issues, Gmail emails, Figma comments, cron schedules, etc. An agent can have multiple triggers. Each trigger is configured to watch a specific source (e.g., a particular Slack channel, a GitHub repo, a Notion database).
+Triggers: Define what events an agent listens to — Slack messages, GitHub PRs, Linear issues, Gmail emails, cron schedules, etc. An agent can have multiple triggers. Each trigger is configured to watch a specific source (e.g., a particular Slack channel, a GitHub repo, a Notion database).
 
 Event filtering: Before the agent runs, an EventFilter checks if the incoming event is relevant to the automation based on the user's instructions. Events that don't pass the filter show as "filtered" in run history — the agent never processes them. This is normal and expected behavior.
 
