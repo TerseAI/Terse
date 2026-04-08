@@ -902,11 +902,13 @@ export class SlackEvent extends InputEvent implements Identifiable {
     data: SlackEventData
     entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
     entityId: string
+    private storedFiles: StoredFile[]
 
-    constructor(data: SlackEventData) {
+    constructor(data: SlackEventData, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.entityId = `${data.teamId}:${data.permalink || ""}`
+        this.storedFiles = storedFiles
     }
 
     formatForAgentRunner(): string {
@@ -946,27 +948,12 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     /**
-     * Extract all images from the Slack message
-     * Images can come from:
-     * - Block Kit image blocks
-     * - Section block accessories
-     * - Context block elements
-     * - Attachments (image_url, thumb_url)
-     * - File uploads (files array)
-     *
-     * @returns Array of image objects with URLs and metadata
-     */
-    getImages(): SlackMessageImage[] {
-        return extractImagesFromMessage(this.data)
-    }
-
-    /**
      * Get all stored files with full metadata (images, documents)
      * Includes both private files cached in GCS and public block/attachment images
      */
     getFiles(): StoredFile[] {
-        const files: StoredFile[] = [...(this.data.storedFiles || [])]
-        const publicImages = this.getImages().filter(img => !img.requiresAuth)
+        const files: StoredFile[] = [...(this.storedFiles || [])]
+        const publicImages = extractImagesFromMessage(this.data).filter(img => !img.requiresAuth)
         for (const img of publicImages) {
             files.push({
                 url: img.url,
@@ -1438,12 +1425,11 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             // Include blocks, attachments, and files (from event or API)
             blocks: blocks,
             attachments: attachments,
-            files: files,
-            storedFiles: storedFiles.length > 0 ? storedFiles : undefined
+            files: files
         }
 
         // Create SlackEvent once
-        const slackEvent = new SlackEvent(slackEventData)
+        const slackEvent = new SlackEvent(slackEventData, storedFiles)
 
         // Process the event against automations for all users in this workspace
         // This ensures messages from any workspace user can trigger automations
@@ -1764,7 +1750,6 @@ export interface SlackEventData {
     attachments?: SlackAttachment[]
     // File attachments (including images)
     files?: SlackFile[]
-    storedFiles?: StoredFile[]
 }
 
 /**

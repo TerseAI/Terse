@@ -172,11 +172,9 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
                             // Download attachments and store in GCS (if configured)
                             const allAttachments = parsedEmail.attachments || []
+                            let storedFiles: StoredFile[] = []
                             if (allAttachments.length > 0) {
-                                const storedFiles = await downloadGmailAttachments(gmail, parsedEmail.id, allAttachments, integration.id)
-                                if (storedFiles.length > 0) {
-                                    parsedEmail.storedFiles = storedFiles
-                                }
+                                storedFiles = await downloadGmailAttachments(gmail, parsedEmail.id, allAttachments, integration.id)
                             }
 
                             // Process email through automations (non-blocking)
@@ -187,11 +185,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                                 to: parsedEmail.to,
                                 date: emailDate.toISOString(),
                                 integrationId: integration.id,
-                                messageId: parsedEmail.id,
-                                fileCount: parsedEmail.storedFiles?.length || 0
+                                messageId: parsedEmail.id
                             })
 
-                            const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id), fullUser)
+                            const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id, storedFiles), fullUser)
                             const results = await eventProcessor.process()
 
                             let hasSuccess = false
@@ -565,12 +562,14 @@ export class GmailEvent extends InputEvent implements Identifiable {
     entityId: string
     data: GmailEventData
     private integrationId: string
+    private storedFiles: StoredFile[]
 
-    constructor(data: GmailEventData, integrationId: string) {
+    constructor(data: GmailEventData, integrationId: string, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.integrationId = integrationId
         this.entityId = `${integrationId}:${data.id}`
+        this.storedFiles = storedFiles
     }
 
     formatForAgentRunner(): string {
@@ -643,7 +642,7 @@ export class GmailEvent extends InputEvent implements Identifiable {
     }
 
     getFiles(): StoredFile[] {
-        return this.data.storedFiles || []
+        return this.storedFiles || []
     }
 }
 
@@ -1000,8 +999,6 @@ export interface GmailEventData {
     labelIds: string[]
     // Parsed attachments (images, documents, etc.)
     attachments?: GmailParsedAttachment[]
-    // Stored files with full metadata (category, mimeType, url)
-    storedFiles?: StoredFile[]
 }
 
 type ProcessedWebhookClaim =
