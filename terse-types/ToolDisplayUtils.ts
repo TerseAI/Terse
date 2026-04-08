@@ -346,59 +346,6 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     },
 
     // ===================
-    // Jira Tools
-    // ===================
-    jira_create_ticket: {
-        preparing: "Getting a task ready",
-        executing: params => {
-            const title = params?.title as string | undefined
-            return title ? `Creating task: "${truncate(title)}"` : "Creating task"
-        },
-        complete: (params, result) => {
-            const parsed = safeParseResult(result)
-            const issue = parsed?.issue as Record<string, unknown> | undefined
-            const key = issue?.key as string | undefined
-            const title = (params?.title as string) || (issue?.title as string)
-            if (key && title) return `Created task ${key}: "${truncate(title, 30)}"`
-            if (key) return `Created task ${key}`
-            if (title) return `Created task "${truncate(title)}"`
-            return "Task created"
-        },
-        approval: params => {
-            const title = params?.title as string | undefined
-            return title ? `Create Jira ticket: "${truncate(title)}"?` : "Create this Jira ticket?"
-        }
-    },
-    jira_update_ticket: {
-        preparing: "Getting your updates ready",
-        executing: params => {
-            const issueKey = params?.issueKey as string | undefined
-            return issueKey ? `Updating task ${issueKey}` : "Updating task"
-        },
-        complete: params => {
-            const issueKey = params?.issueKey as string | undefined
-            return issueKey ? `Updated task ${issueKey}` : "Task updated"
-        },
-        approval: () => "Update this task?"
-    },
-    jira_search_ticket: {
-        preparing: "Looking for tasks",
-        executing: params => {
-            const text = params?.text as string | undefined
-            return text ? `Looking for tasks about "${truncate(text)}"` : "Looking for tasks"
-        },
-        complete: (params, result) => {
-            const parsed = safeParseResult(result)
-            const count = parsed?.count as number | undefined
-            const text = params?.text as string | undefined
-            if (count !== undefined && text) return `Found ${count} task${count !== 1 ? "s" : ""} about "${truncate(text, 25)}"`
-            if (count !== undefined) return `Found ${count} task${count !== 1 ? "s" : ""}`
-            if (text) return `Looked for "${truncate(text)}"`
-            return "Search complete"
-        }
-    },
-
-    // ===================
     // Notion Tools
     // ===================
     notion_create_or_update_database_row: {
@@ -563,25 +510,6 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (channelName) return `Loaded conversation from ${channelName}`
             return "Conversation loaded"
         }
-    },
-
-    // ===================
-    // Confluence Tools
-    // ===================
-    confluence_query_page: {
-        preparing: "Finding page",
-        executing: () => "Loading page",
-        complete: (_params, result) => {
-            const parsed = safeParseResult(result)
-            const title = parsed?.title as string | undefined
-            return title ? `Opened "${truncate(title)}"` : "Page loaded"
-        }
-    },
-    confluence_add_comment: {
-        preparing: "Getting your note ready",
-        executing: () => "Adding your note",
-        complete: () => "Note added",
-        approval: () => "Add this comment?"
     },
 
     // ===================

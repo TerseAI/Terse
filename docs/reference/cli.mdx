@@ -8,10 +8,10 @@ The `terse` CLI scaffolds, generates, tests, runs, and deploys Terse projects in
 
 All commands auto-detect the project language from the current directory based on marker files.
 
-| Language | Project markers | Entry file | Generated file |
-| -------- | --------------- | ---------- | -------------- |
-| TypeScript | `package.json`, `src/index.ts` | `src/index.ts` | `src/terse.generated.ts` |
-| Python | `pyproject.toml`, `src/main.py` | `src/main.py` | `src/terse_generated.py` |
+| Language   | Project markers                 | Entry file     | Generated file           |
+| ---------- | ------------------------------- | -------------- | ------------------------ |
+| TypeScript | `package.json`, `src/index.ts`  | `src/index.ts` | `src/terse.generated.ts` |
+| Python     | `pyproject.toml`, `src/main.py` | `src/main.py`  | `src/terse_generated.py` |
 
 Python projects require [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency management and local execution.
 
@@ -19,20 +19,13 @@ Python projects require [`uv`](https://docs.astral.sh/uv/getting-started/install
 
 Scaffolds a new project and runs the full setup flow: installs dependencies, authenticates, connects integrations, and generates your SDK.
 
-<CodeGroup>
-```bash TypeScript
-terse init my-project
-```
-```bash Python
-terse init my-project --language python
-```
-</CodeGroup>
+<CodeGroup>```bash TypeScript terse init my-project ``` ```bash Python terse init my-project --language python ```</CodeGroup>
 
 **Options:**
 
-| Flag | Description | Default |
-| ---- | ----------- | ------- |
-| `-l, --language <lang>` | `ts`, `typescript`, `py`, or `python` | `ts` |
+| Flag                    | Description                           | Default |
+| ----------------------- | ------------------------------------- | ------- |
+| `-l, --language <lang>` | `ts`, `typescript`, `py`, or `python` | `ts`    |
 
 **What it does in order:**
 
@@ -77,10 +70,10 @@ terse integrate
 
 **Connection types:**
 
-| Type | Flow | Integrations |
-| ---- | ---- | ------------ |
-| OAuth | Opens browser for authorization, polls until connected | GitHub, Slack, Gmail, Figma, Linear, Atlassian, Notion, WorkOS |
-| Form | Prompts for credentials (API keys, account IDs, etc.) in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
+| Type  | Flow                                                                  | Integrations                                        |
+| ----- | --------------------------------------------------------------------- | --------------------------------------------------- |
+| OAuth | Opens browser for authorization, polls until connected                | GitHub, Slack, Gmail, Figma, Linear, Notion, WorkOS |
+| Form  | Prompts for credentials (API keys, account IDs, etc.) in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio    |
 
 ## `terse generate`
 
@@ -92,22 +85,15 @@ terse generate
 
 **Outputs:**
 
-<CodeGroup>
-```text TypeScript
-src/terse.generated.ts
-```
-```text Python
-src/terse_generated.py
-```
-</CodeGroup>
+<CodeGroup>```text TypeScript src/terse.generated.ts ``` ```text Python src/terse_generated.py ```</CodeGroup>
 
 **What's in the generated file:**
 
-| Category | Examples |
-| -------- | -------- |
-| Resource constants | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Deals` |
-| Trigger builders | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()` |
-| Skill constructors | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()` |
+| Category                    | Examples                                                              |
+| --------------------------- | --------------------------------------------------------------------- |
+| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Deals`   |
+| Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`         |
+| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                    |
 | Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()` |
 
 Each integration generates typed helpers based on the actual resources in your workspace (repos, channels, lists, projects, etc.), so your code references real names instead of raw IDs.
@@ -129,8 +115,8 @@ terse test my-job
 
 **Options:**
 
-| Flag | Description | Default |
-| ---- | ----------- | ------- |
+| Flag            | Description                             | Default |
+| --------------- | --------------------------------------- | ------- |
 | `-v, --verbose` | Show agent stream output during the run | Enabled |
 
 **How it works:**
@@ -154,9 +140,9 @@ terse run my-job --event-file ./event.json
 
 **Options:**
 
-| Flag | Description |
-| ---- | ----------- |
-| `--event <json>` | Inline serialized event JSON |
+| Flag                  | Description                              |
+| --------------------- | ---------------------------------------- |
+| `--event <json>`      | Inline serialized event JSON             |
 | `--event-file <path>` | Path to a JSON file containing the event |
 
 One of `--event` or `--event-file` is required.

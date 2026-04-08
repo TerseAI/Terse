@@ -1,6 +1,5 @@
 export enum Integration {
     // Ticketing systems
-    JIRA = "jira",
     LINEAR = "linear",
 
     // Messaging systems
@@ -16,8 +15,5 @@ export enum Integration {
     GMAIL = "gmail",
 
     // Design tools
-    FIGMA = "figma",
-
-    // Documentation
-    CONFLUENCE = "confluence"
+    FIGMA = "figma"
 }

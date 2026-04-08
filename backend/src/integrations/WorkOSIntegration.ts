@@ -1,4 +1,5 @@
 import { InputConfigType } from "@prisma/client"
+import { WorkOSWebhookPayload } from "terse-types"
 import { ConfigData, ConfigType, WorkOSEventType, WorkOSInputConfigSchema } from "terse-types/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -305,14 +306,6 @@ async function fetchWorkOSEvents(apiKey: string, eventTypes: string[], limit: nu
 
     const json = (await response.json()) as WorkOSEventsResponse
     return json.data
-}
-
-// WorkOS webhook event payload
-export interface WorkOSWebhookPayload {
-    id: string
-    event: string
-    data: Record<string, any>
-    created_at: string
 }
 
 // Combined type for processWebhookEvent (single parameter per interface contract)

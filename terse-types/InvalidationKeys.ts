@@ -63,22 +63,6 @@ export const githubRepositoriesKey = (installationId: number | null | undefined)
     return ["githubRepositories", installationId] as const
 }
 
-export const confluenceResourcesKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
-    if (!integrationId) {
-        return null
-    }
-
-    return ["confluenceResources", integrationId] as const
-}
-
-export const jiraResourcesKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
-    if (!integrationId) {
-        return null
-    }
-
-    return ["jiraResources", integrationId] as const
-}
-
 export const linearTeamsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null
@@ -89,10 +73,6 @@ export const linearTeamsKey = (integrationId: string | null | undefined): readon
 
 export const gmailIntegrationsKey = (): readonly [string] => {
     return ["gmailIntegrations"] as const
-}
-
-export const atlassianIntegrationsKey = (): readonly [string] => {
-    return ["atlassianIntegrations"] as const
 }
 
 export const figmaIntegrationsKey = (): readonly [string] => {

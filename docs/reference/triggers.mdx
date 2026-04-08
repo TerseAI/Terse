@@ -140,38 +140,6 @@ triggers=[
 ```
 </CodeGroup>
 
-### Jira
-
-| Trigger | Event type | Description |
-| ------- | ---------- | ----------- |
-| `Jira.onIssueCreated()` | `JiraEvent` | A Jira issue is created |
-| `Jira.onIssueUpdated()` | `JiraEvent` | A Jira issue is updated |
-
-**Config:** Optionally scoped to a specific project.
-
-<CodeGroup>
-```ts TypeScript
-triggers: [Jira.onIssueCreated({ project: JiraProject.Backend })]
-```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id=jira_integration_id,
-        integration_type="atlassian",
-        config_type="jira",
-        config={"projectKey": "BACKEND"},
-    )
-]
-```
-</CodeGroup>
-
-<Expandable title="Event payload">
-  - `data.user` - `{ displayName, emailAddress }`
-  - `data.issue` - `{ key, fields: { summary, description, status, priority, project, issuetype, assignee, labels } }`
-  - `data.comment` - present on comment events: `{ author, created, body }`
-  - `data.changelog` - present on updates: `{ items: [{ field, fromString, toString }] }`
-</Expandable>
-
 ### Gmail
 
 | Trigger | Event type | Description |

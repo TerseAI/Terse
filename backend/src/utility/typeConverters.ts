@@ -3,7 +3,6 @@ import {
     AttioOutputConfig,
     ConfigData,
     ConfigType,
-    ConfluenceConfig,
     DatadogConfig,
     FigmaConfig,
     GitHubConfig,
@@ -11,7 +10,6 @@ import {
     GmailConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
-    JiraConfig,
     LaunchDarklyConfig,
     LinearInputConfig,
     LinearOutputConfig,
@@ -40,8 +38,6 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.GMAIL
         case IntegrationType.LINEAR:
             return PrismaIntegrationType.LINEAR
-        case IntegrationType.ATLASSIAN:
-            return PrismaIntegrationType.JIRA
         case IntegrationType.SLACK:
             return PrismaIntegrationType.SLACK
         case IntegrationType.NOTION:
@@ -79,10 +75,6 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.GMAIL
         case PrismaIntegrationType.LINEAR:
             return IntegrationType.LINEAR
-        case PrismaIntegrationType.JIRA:
-        case PrismaIntegrationType.CONFLUENCE:
-            // Both JIRA and CONFLUENCE map to ATLASSIAN in shared enum
-            return IntegrationType.ATLASSIAN
         case PrismaIntegrationType.SLACK:
             return IntegrationType.SLACK
         case PrismaIntegrationType.NOTION:
@@ -115,7 +107,6 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
 }
 
 // Convert IntegrationType to Prisma IntegrationType (for run history)
-// Note: ATLASSIAN maps to CONFLUENCE in Prisma for run history
 export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integrationType: IntegrationType): PrismaIntegrationType => {
     switch (integrationType) {
         case IntegrationType.GITHUB:
@@ -124,10 +115,6 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.GMAIL
         case IntegrationType.LINEAR:
             return PrismaIntegrationType.LINEAR
-        case IntegrationType.ATLASSIAN:
-            // For run history, ATLASSIAN maps to CONFLUENCE by default
-            // If we need to distinguish JIRA vs CONFLUENCE, we'd need more context
-            return PrismaIntegrationType.CONFLUENCE
         case IntegrationType.SLACK:
             return PrismaIntegrationType.SLACK
         case IntegrationType.NOTION:
@@ -166,10 +153,6 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.GMAIL
         case PrismaIntegrationType.LINEAR:
             return IntegrationType.LINEAR
-        case PrismaIntegrationType.CONFLUENCE:
-        case PrismaIntegrationType.JIRA:
-            // Both map to ATLASSIAN in shared enum
-            return IntegrationType.ATLASSIAN
         case PrismaIntegrationType.SLACK:
             return IntegrationType.SLACK
         case PrismaIntegrationType.NOTION:
@@ -255,20 +238,6 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         return new GitHubConfig(integrationId, channelInput.github_config.repository_ids || [], (channelInput.github_config.event_types || []) as GitHubEventType[])
     }
 
-    if (channelInput.jira_config) {
-        return new JiraConfig(integrationId, channelInput.jira_config.project_key || undefined, channelInput.jira_config.project_id || undefined)
-    }
-
-    if (channelInput.confluence_config) {
-        return new ConfluenceConfig(
-            integrationId,
-            channelInput.confluence_config.space_name || "",
-            channelInput.confluence_config.space_id || "",
-            channelInput.confluence_config.page_id || "",
-            channelInput.confluence_config.page_name || ""
-        )
-    }
-
     if (channelInput.time_trigger_config) {
         return new TimeTriggerConfig(channelInput.time_trigger_config.cron_expression || "")
     }
@@ -290,8 +259,6 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         case InputConfigType.NOTION_DATABASE:
         case InputConfigType.LINEAR:
         case InputConfigType.GITHUB:
-        case InputConfigType.JIRA:
-        case InputConfigType.CONFLUENCE:
         case InputConfigType.POSTHOG:
         case InputConfigType.TIME_TRIGGER:
         case InputConfigType.WORKOS_INPUT:
@@ -317,16 +284,6 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
         return new NotionConfig(integrationId, nc.database_ids ?? [], nc.database_names ?? [], nc.page_ids ?? [], nc.page_names ?? [])
     }
 
-    if (channelOutput.confluence_config) {
-        return new ConfluenceConfig(
-            integrationId,
-            channelOutput.confluence_config.space_name || "",
-            channelOutput.confluence_config.space_id || "",
-            channelOutput.confluence_config.page_id || "",
-            channelOutput.confluence_config.page_name || ""
-        )
-    }
-
     if (channelOutput.linear_config) {
         return new LinearOutputConfig(
             integrationId,
@@ -335,10 +292,6 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
             channelOutput.linear_config.project_id || undefined,
             channelOutput.linear_config.project_name || undefined
         )
-    }
-
-    if (channelOutput.jira_config) {
-        return new JiraConfig(integrationId, channelOutput.jira_config.project_key || undefined, channelOutput.jira_config.project_id || undefined)
     }
 
     if (channelOutput.slack_config) {
@@ -394,9 +347,7 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION:
-        case OutputConfigType.CONFLUENCE:
         case OutputConfigType.LINEAR_TICKET:
-        case OutputConfigType.JIRA_TICKET:
         case OutputConfigType.SLACK_CHANNEL:
         case OutputConfigType.GMAIL:
         case OutputConfigType.GITHUB:
@@ -431,10 +382,6 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.LINEAR
         case ConfigType.GITHUB:
             return InputConfigType.GITHUB
-        case ConfigType.JIRA:
-            return InputConfigType.JIRA
-        case ConfigType.CONFLUENCE:
-            return InputConfigType.CONFLUENCE
         case ConfigType.POSTHOG:
             return InputConfigType.POSTHOG
         case ConfigType.TIME_TRIGGER:
@@ -483,10 +430,6 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.LINEAR_INPUT
         case InputConfigType.GITHUB:
             return ConfigType.GITHUB
-        case InputConfigType.JIRA:
-            return ConfigType.JIRA
-        case InputConfigType.CONFLUENCE:
-            return ConfigType.CONFLUENCE
         case InputConfigType.POSTHOG:
             return ConfigType.POSTHOG
         case InputConfigType.TIME_TRIGGER:
@@ -515,12 +458,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.LAUNCHDARKLY
         case ConfigType.NOTION:
             return OutputConfigType.NOTION
-        case ConfigType.CONFLUENCE:
-            return OutputConfigType.CONFLUENCE
         case ConfigType.LINEAR_OUTPUT:
             return OutputConfigType.LINEAR_TICKET
-        case ConfigType.JIRA:
-            return OutputConfigType.JIRA_TICKET
         case ConfigType.SLACK_OUTPUT:
             return OutputConfigType.SLACK_CHANNEL
         case ConfigType.GMAIL_OUTPUT:

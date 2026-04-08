@@ -1,6 +1,5 @@
 import { IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
 
-import { AtlassianIntegrationManager } from "../AtlassianIntegration"
 import { AttioIntegrationManager } from "../AttioIntegration"
 import { CronJobIntegrationManager } from "../CronJobIntegration"
 import { DatadogIntegrationManager } from "../DatadogIntegration"
@@ -27,7 +26,6 @@ export function isSystemIntegration(integrationType: IntegrationType): boolean {
 }
 
 export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
-    new AtlassianIntegrationManager(),
     new CronJobIntegrationManager(),
     new FigmaIntegrationManager(),
     new GithubIntegrationManager(),

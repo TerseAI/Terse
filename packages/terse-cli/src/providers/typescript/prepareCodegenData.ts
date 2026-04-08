@@ -1,7 +1,6 @@
 import { toolsWithIntegrationId } from "terse-types"
 
 import type {
-    AtlassianInstanceData,
     AttioAttributeData,
     AttioInstanceData,
     CodegenInput,
@@ -71,13 +70,6 @@ export interface LinearSectionContext {
     id: string
     skillToolType: string
     teamClass: ResourceClassContext
-}
-
-export interface AtlassianSectionContext {
-    id: string
-    skillToolType: string
-    jiraProjectClass: ResourceClassContext
-    confluencePageClass: ResourceClassContext
 }
 
 export interface NotionSectionContext {
@@ -167,7 +159,6 @@ export interface TemplateContext {
     slack?: SlackSectionContext
     figma?: FigmaSectionContext
     linear?: LinearSectionContext
-    atlassian?: AtlassianSectionContext
     notion?: NotionSectionContext
     posthog?: PosthogSectionContext
     datadog?: DatadogSectionContext
@@ -326,13 +317,7 @@ function renderAttioObjectValueShape(attributes: AttioAttributeData[], mode: "in
 }
 
 function toolIntegrationToIntegrationType(toolIntegration: string): string {
-    switch (toolIntegration) {
-        case "jira":
-        case "confluence":
-            return "atlassian"
-        default:
-            return toolIntegration
-    }
+    return toolIntegration
 }
 
 function renderStringLiteralUnion(values: string[]): string {
@@ -452,36 +437,6 @@ function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefini
             ],
             "name",
             inst.teams
-        )
-    })
-}
-
-function prepareAtlassianSection(instances: AtlassianInstanceData[], tools: ToolDefinition[]): SectionContext<AtlassianSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
-    return sectionData(["JiraConfig", "ConfluenceConfig", "TypedSkill", "JiraEventType"], {
-        id: inst.id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "atlassian"),
-        jiraProjectClass: buildResourceClassContext(
-            "JiraProject",
-            [
-                { classField: "projectKey", type: "string", sourceField: "key" },
-                { classField: "projectId", type: "string", sourceField: "id" },
-                { classField: "name", type: "string", sourceField: "name" }
-            ],
-            "name",
-            inst.jiraProjects
-        ),
-        confluencePageClass: buildResourceClassContext(
-            "ConfluencePage",
-            [
-                { classField: "pageId", type: "string", sourceField: "id" },
-                { classField: "title", type: "string", sourceField: "title" },
-                { classField: "spaceId", type: "string", sourceField: "spaceId" },
-                { classField: "spaceName", type: "string", sourceField: "spaceName" }
-            ],
-            "title",
-            inst.confluencePages
         )
     })
 }
@@ -664,18 +619,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     instanceMap.set(
         "linear",
         input.linear.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "jira",
-        input.atlassian.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "confluence",
-        input.atlassian.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "atlassian",
-        input.atlassian.map(inst => ({ id: inst.id, displayName: inst.displayName }))
     )
     instanceMap.set(
         "notion",
@@ -1041,7 +984,6 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const slack = prepareSlackSection(input.slack, input.tools)
     const figma = prepareFigmaSection(input.figma)
     const linear = prepareLinearSection(input.linear, input.tools)
-    const atlassian = prepareAtlassianSection(input.atlassian, input.tools)
     const notion = prepareNotionSection(input.notion, input.tools)
     const posthog = preparePosthogSection(input.posthog, input.tools)
     const datadog = prepareDatadogSection(input.datadog, input.tools)
@@ -1052,7 +994,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const tools = prepareToolsSection(input.tools, input)
     const system = prepareSystemSection(input.tools)
 
-    const sections = [github, gmail, slack, figma, linear, atlassian, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
+    const sections = [github, gmail, slack, figma, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
 
     for (const section of sections) {
         section.imports.forEach(value => allImports.add(value))
@@ -1068,7 +1010,6 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         slack: slack.data,
         figma: figma.data,
         linear: linear.data,
-        atlassian: atlassian.data,
         notion: notion.data,
         posthog: posthog.data,
         datadog: datadog.data,

@@ -5,7 +5,6 @@ export enum IntegrationType {
     GITHUB = "github",
     GMAIL = "gmail",
     LINEAR = "linear",
-    ATLASSIAN = "atlassian",
     SLACK = "slack",
     NOTION = "notion",
     FIGMA = "figma",
@@ -67,14 +66,6 @@ export const FigmaIntegrationMetadata = {
     type: IntegrationType.FIGMA,
     name: "Figma",
     description: "Trigger on Figma file comments (does not support file edits or design changes)",
-    isInput: true,
-    isOutput: false
-} as const satisfies IntegrationDetails
-
-export const AtlassianIntegrationMetadata = {
-    type: IntegrationType.ATLASSIAN,
-    name: "Atlassian",
-    description: "Update documents in Atlassian",
     isInput: true,
     isOutput: false
 } as const satisfies IntegrationDetails
@@ -165,7 +156,6 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.GMAIL]: GmailIntegrationMetadata,
     [IntegrationType.NOTION]: NotionIntegrationMetadata,
     [IntegrationType.LINEAR]: LinearIntegrationMetadata,
-    [IntegrationType.ATLASSIAN]: AtlassianIntegrationMetadata,
     [IntegrationType.SLACK]: SlackIntegrationMetadata,
     [IntegrationType.GITHUB]: GithubIntegrationMetadata,
     [IntegrationType.FIGMA]: FigmaIntegrationMetadata,
@@ -201,7 +191,6 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.GMAIL]: NoInstallationOptions
     [IntegrationType.NOTION]: NoInstallationOptions
     [IntegrationType.LINEAR]: NoInstallationOptions
-    [IntegrationType.ATLASSIAN]: NoInstallationOptions
     [IntegrationType.GITHUB]: NoInstallationOptions
     [IntegrationType.FIGMA]: NoInstallationOptions
     [IntegrationType.TERSE]: NoInstallationOptions
@@ -243,15 +232,6 @@ export const NotionIntegrationSchema = IntegrationInstanceSchema.extend({
     workspaceName: z.string().optional()
 })
 export type NotionIntegration = z.infer<typeof NotionIntegrationSchema>
-
-export const AtlassianIntegrationSchema = IntegrationInstanceSchema.extend({
-    baseUrl: z.url(),
-    email: z.email(),
-    siteName: z.string().optional(),
-    projectKey: z.string().optional(),
-    projectName: z.string().optional()
-})
-export type AtlassianIntegration = z.infer<typeof AtlassianIntegrationSchema>
 
 export const GithubIntegrationSchema = IntegrationInstanceSchema.extend({
     installation_id: z.number().int(),

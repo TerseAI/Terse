@@ -1,4 +1,3 @@
-import type { JiraEvent } from "../integrations/AtlassianIntegration"
 import type { FigmaCommentEvent } from "../integrations/FigmaIntegration"
 import type { GithubEvent } from "../integrations/GithubIntegration"
 import type { GmailEvent } from "../integrations/GmailIntegration"
@@ -15,7 +14,6 @@ export enum HydratorType {
     LINEAR_EVENT = "linear_event",
     GMAIL_EVENT = "gmail_event",
     FIGMA_COMMENT_EVENT = "figma_comment_event",
-    JIRA_EVENT = "jira_event",
     WORKOS_EVENT = "workos_event"
 }
 
@@ -44,7 +42,6 @@ export type HydratorTypeMap = {
     [HydratorType.LINEAR_EVENT]: LinearEvent
     [HydratorType.GMAIL_EVENT]: GmailEvent
     [HydratorType.FIGMA_COMMENT_EVENT]: FigmaCommentEvent
-    [HydratorType.JIRA_EVENT]: JiraEvent
     [HydratorType.WORKOS_EVENT]: WorkOSEvent
 }
 

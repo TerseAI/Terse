@@ -63,8 +63,6 @@ class ConfigTypeEnum(StrEnum):
     linear_input = "linear_input"
     linear_output = "linear_output"
     github = "github"
-    jira = "jira"
-    confluence = "confluence"
     posthog = "POSTHOG"
     datadog = "DATADOG"
     time_trigger = "time_trigger"
@@ -74,6 +72,7 @@ class ConfigTypeEnum(StrEnum):
     workos_output = "workos_output"
     attio_output = "attio_output"
     snowflake_output = "snowflake_output"
+    webhook_input = "webhook_input"
 
 
 class IntegrationTypeEnum(StrEnum):
@@ -92,6 +91,7 @@ class IntegrationTypeEnum(StrEnum):
     workos = "workos"
     attio = "attio"
     snowflake = "snowflake"
+    webhook = "webhook"
 
 
 class BaseConfigInstance(TerseModel):
@@ -101,19 +101,6 @@ class BaseConfigInstance(TerseModel):
     integration_id: Annotated[str, Field(alias="integrationId")]
     integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
     config_type: Annotated[ConfigTypeEnum, Field(alias="configType")]
-
-
-class ConfluenceConfigInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["atlassian"], Field(alias="integrationType")] = "atlassian"
-    config_type: Annotated[Literal["confluence"], Field(alias="configType")] = "confluence"
-    space_name: Annotated[str, Field(alias="spaceName")]
-    space_id: Annotated[str, Field(alias="spaceId")]
-    page_id: Annotated[str, Field(alias="pageId")]
-    page_name: Annotated[str, Field(alias="pageName")]
 
 
 class DatadogConfigInstance(TerseModel):
@@ -212,6 +199,35 @@ class GmailDraftOutputConfigInstance(TerseModel):
     config_type: Annotated[Literal["gmail_draft_output"], Field(alias="configType")] = "gmail_draft_output"
 
 
+class GmailParsedAttachment(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    attachment_id: Annotated[str, Field(alias="attachmentId")]
+    filename: str
+    mime_type: Annotated[str, Field(alias="mimeType")]
+    content_id: Annotated[str | None, Field(alias="contentId")] = None
+    is_inline: Annotated[bool, Field(alias="isInline")]
+
+
+class GmailEventData(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    thread_id: Annotated[str, Field(alias="threadId")]
+    subject: str
+    from_: Annotated[str, Field(alias="from")]
+    to: str
+    date: str
+    internal_date: Annotated[str, Field(alias="internalDate")]
+    message_id: Annotated[str, Field(alias="messageId")]
+    body: str
+    snippet: str
+    label_ids: Annotated[list[str], Field(alias="labelIds")]
+    attachments: list[GmailParsedAttachment] | None = None
+
+
 class GmailIntegrationInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -250,23 +266,6 @@ class IntegrationWithStatus(TerseModel):
     )
     integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
     is_active: Annotated[bool, Field(alias="isActive")]
-
-
-class JiraEventType(StrEnum):
-    issue_created = "issue.created"
-    issue_updated = "issue.updated"
-
-
-class JiraConfigInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["atlassian"], Field(alias="integrationType")] = "atlassian"
-    config_type: Annotated[Literal["jira"], Field(alias="configType")] = "jira"
-    project_key: Annotated[str | None, Field(alias="projectKey")]
-    project_id: Annotated[str | None, Field(alias="projectId")]
-    event_types: Annotated[list[JiraEventType] | None, Field(alias="eventTypes")]
 
 
 class LaunchDarklyConfigInstance(TerseModel):
@@ -332,6 +331,87 @@ class LinearOutputConfigInstance(TerseModel):
     team_name: Annotated[str | None, Field(alias="teamName")]
     project_id: Annotated[str | None, Field(alias="projectId")]
     project_name: Annotated[str | None, Field(alias="projectName")]
+
+
+class LinearWebhookAction(StrEnum):
+    create = "create"
+    update = "update"
+    remove = "remove"
+
+
+class LinearWebhookActor(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    name: str
+    email: str
+    url: str
+    type: str
+
+
+class LinearWebhookAssignee(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    name: str
+
+
+class LinearWebhookTeam(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    key: str
+    name: str
+
+
+class LinearWebhookState(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    color: str
+    name: str
+    type: str
+
+
+class LinearWebhookData(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    created_at: Annotated[str, Field(alias="createdAt")]
+    updated_at: Annotated[str, Field(alias="updatedAt")]
+    number: float
+    title: str
+    priority: float
+    sort_order: Annotated[float, Field(alias="sortOrder")]
+    priority_sort_order: Annotated[float, Field(alias="prioritySortOrder")]
+    sla_type: Annotated[str, Field(alias="slaType")]
+    added_to_team_at: Annotated[str, Field(alias="addedToTeamAt")]
+    trashed: bool
+    label_ids: Annotated[list[str], Field(alias="labelIds")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    previous_identifiers: Annotated[list[str], Field(alias="previousIdentifiers")]
+    state_id: Annotated[str, Field(alias="stateId")]
+    reaction_data: Annotated[list[Any], Field(alias="reactionData")]
+    priority_label: Annotated[str, Field(alias="priorityLabel")]
+    bot_actor: Annotated[str | None, Field(alias="botActor")] = None
+    identifier: str
+    url: str
+    subscriber_ids: Annotated[list[str], Field(alias="subscriberIds")]
+    state: LinearWebhookState
+    team: LinearWebhookTeam
+    labels: list[Any]
+    description: str | None = None
+    description_data: Annotated[str | None, Field(alias="descriptionData")] = None
+    assignee: LinearWebhookAssignee | None = None
+
+
+class LinearWebhookType(RootModel[Literal["Issue"] | Literal["Comment"] | Literal["Project"] | str]):
+    root: Literal["Issue"] | Literal["Comment"] | Literal["Project"] | str
 
 
 class NotionConfigInstance(TerseModel):
@@ -466,6 +546,15 @@ class TimeTriggerConfigInstance(TerseModel):
     cron_expression: Annotated[str, Field(alias="cronExpression")]
 
 
+class WebhookInputConfigInstance(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_id: Annotated[Literal["system"], Field(alias="integrationId")] = "system"
+    integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = "webhook"
+    config_type: Annotated[Literal["webhook_input"], Field(alias="configType")] = "webhook_input"
+
+
 class WorkOSEventType(StrEnum):
     user_created = "user.created"
     user_updated = "user.updated"
@@ -511,6 +600,10 @@ class WorkOSOutputConfigInstance(TerseModel):
     integration_id: Annotated[str, Field(alias="integrationId")]
     integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
     config_type: Annotated[Literal["workos_output"], Field(alias="configType")] = "workos_output"
+
+
+class WorkOSWebhookData(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
 
 
 class OutputItem(TerseModel):
@@ -619,8 +712,6 @@ class ConfigData(
         | LinearInputConfigInstance
         | LinearOutputConfigInstance
         | GitHubConfigInstance
-        | JiraConfigInstance
-        | ConfluenceConfigInstance
         | PosthogConfigInstance
         | DatadogConfigInstance
         | TimeTriggerConfigInstance
@@ -630,6 +721,7 @@ class ConfigData(
         | WorkOSOutputConfigInstance
         | AttioOutputConfigInstance
         | SnowflakeOutputConfigInstance
+        | WebhookInputConfigInstance
     ]
 ):
     root: (
@@ -643,8 +735,6 @@ class ConfigData(
         | LinearInputConfigInstance
         | LinearOutputConfigInstance
         | GitHubConfigInstance
-        | JiraConfigInstance
-        | ConfluenceConfigInstance
         | PosthogConfigInstance
         | DatadogConfigInstance
         | TimeTriggerConfigInstance
@@ -654,6 +744,7 @@ class ConfigData(
         | WorkOSOutputConfigInstance
         | AttioOutputConfigInstance
         | SnowflakeOutputConfigInstance
+        | WebhookInputConfigInstance
     )
 
 
@@ -665,8 +756,20 @@ class AgentOutput(TerseModel):
     config: ConfigData
 
 
-class AgentTrigger(AgentOutput):
-    pass
+class TriggerMetadata(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    webhook_url: Annotated[str | None, Field(alias="webhookUrl")] = None
+
+
+class AgentTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    config: ConfigData
+    metadata: TriggerMetadata | None = None
 
 
 class AgentPrompt(TerseModel):
@@ -1382,6 +1485,23 @@ class ChatSnippet(
     )
 
 
+class FileDiff(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: str
+    diff: str
+
+
+class Commit(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    sha: str
+    name: str
+    file_diffs: Annotated[list[FileDiff], Field(alias="fileDiffs")]
+
+
 class ConfigurationOption(MultipleChoiceOption):
     pass
 
@@ -1401,226 +1521,6 @@ class ConfigurationFieldDefinition(TerseModel):
     options: list[ConfigurationOption]
     required: bool | None = None
     hint: str | None = None
-
-
-class ConfluenceAddCommentToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Confluence integration to use.",
-        ),
-    ]
-    page_id: Annotated[
-        str,
-        Field(alias="pageId", description="The Confluence page ID to add a comment to."),
-    ]
-    comment_text: Annotated[str, Field(description="The text content of the comment to add.")]
-    text_to_comment_on: Annotated[
-        str | None,
-        Field(
-            description="Optional: The specific text in the page that this comment refers to. If provided, the tool will try to find this text and attach the comment to it. If not provided, you must specify start_position and end_position."
-        ),
-    ] = None
-    start_position: Annotated[
-        int | None,
-        Field(
-            description="Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided."
-        ),
-    ] = None
-    end_position: Annotated[
-        int | None,
-        Field(
-            description="Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided."
-        ),
-    ] = None
-
-
-class ConfluenceAddCommentInput(RootModel[ConfluenceAddCommentToolInput]):
-    root: ConfluenceAddCommentToolInput
-
-
-class ConfluenceCommentPosition(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    start: int
-    end: int
-
-
-class ConfluenceAddCommentToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
-    comment_id: str
-    comment_text: str
-    position: ConfluenceCommentPosition
-    text_commented_on: str | None = None
-    message: str
-
-
-class ConfluenceBodyRepresentation(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    value: str
-    representation: str
-
-
-class ConfluenceBodyContent(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    storage: ConfluenceBodyRepresentation | None = None
-    view: ConfluenceBodyRepresentation | None = None
-    export_view: ConfluenceBodyRepresentation | None = None
-
-
-class ConfluencePageRelation(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    title: str
-    type: str
-
-
-class ConfluencePageVersionAuthor(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: str
-    username: str | None = None
-    user_key: Annotated[str | None, Field(alias="userKey")] = None
-    account_id: Annotated[str | None, Field(alias="accountId")] = None
-    display_name: Annotated[str | None, Field(alias="displayName")] = None
-
-
-class ConfluencePageVersion(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    number: int
-    when: str
-    message: str | None = None
-    by: ConfluencePageVersionAuthor | None = None
-
-
-class ConfluencePageSpace(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str | float
-    key: str
-    name: str
-    type: str
-
-
-class ConfluencePageQueryResult(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    page_id: str
-    title: str
-    type: str
-    status: str
-    space: ConfluencePageSpace | None = None
-    version: ConfluencePageVersion | None = None
-    created_date: str | None = None
-    last_modified: str | None = None
-    url: str | None = None
-    body: ConfluenceBodyContent
-    body_text: str
-    ancestors: list[ConfluencePageRelation]
-    descendants: list[ConfluencePageRelation]
-    ancestors_count: int
-    descendants_count: int
-
-
-class ConfluencePage(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    title: str
-    space_id: Annotated[str, Field(alias="spaceId")]
-    space_name: Annotated[str, Field(alias="spaceName")]
-    url: str
-    status: str
-    version: int
-
-
-class ConfluencePagesQuery(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    space_id: Annotated[str | None, Field(alias="spaceId")] = None
-    space_key: Annotated[str | None, Field(alias="spaceKey")] = None
-
-
-class ConfluencePagesResponse(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    pages: list[ConfluencePage]
-    space_id: Annotated[str, Field(alias="spaceId")]
-    total: int
-
-
-class ConfluenceQueryPageToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Confluence integration to use.",
-        ),
-    ]
-    page_id: Annotated[str, Field(alias="pageId", description="The Confluence page ID to query.")]
-
-
-class ConfluenceQueryPageInput(RootModel[ConfluenceQueryPageToolInput]):
-    root: ConfluenceQueryPageToolInput
-
-
-class ConfluenceQueryPageToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
-    page_id: str
-    title: str
-    type: str
-    status: str
-    space: ConfluencePageSpace | None = None
-    version: ConfluencePageVersion | None = None
-    created_date: str | None = None
-    last_modified: str | None = None
-    url: str | None = None
-    body: ConfluenceBodyContent
-    body_text: str
-    ancestors: list[ConfluencePageRelation]
-    descendants: list[ConfluencePageRelation]
-    ancestors_count: int
-    descendants_count: int
-
-
-class ConfluenceResourcesResponse(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    resources: list[ConfluencePage]
-    space_id: Annotated[str, Field(alias="spaceId")]
-    total: int
 
 
 class CountByString(TerseModel):
@@ -1837,6 +1737,17 @@ class Error(TerseModel):
     )
     type: Literal["error"] = "error"
     message: str
+
+
+class EventData(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
+    event_type: Annotated[
+        SlackEventType | GitHubEventType | LinearEventType | FigmaEventType | GmailEventType | WorkOSEventType,
+        Field(alias="eventType"),
+    ]
 
 
 class FigmaWebhookUser(TerseModel):
@@ -2511,6 +2422,72 @@ class GithubAppInstallationCallbackRequest(TerseModel):
     repositories: list[Repository]
 
 
+class Sender(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    login: str
+    email: str | None = None
+
+
+class GithubRepository(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: float
+    name: str
+    owner: str
+    default_branch: Annotated[str, Field(alias="defaultBranch")]
+
+
+class PullRequestUser(Sender):
+    pass
+
+
+class PullRequestRef(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    ref: str
+    sha: str
+
+
+class PullRequestState(StrEnum):
+    open = "open"
+    closed = "closed"
+
+
+class PullRequest(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    number: float
+    title: str
+    body: str | None = None
+    state: PullRequestState
+    merged: bool
+    head: PullRequestRef
+    base: PullRequestRef
+    user: PullRequestUser
+
+
+class GithubEventData(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    event_type: Annotated[GitHubEventType, Field(alias="eventType")]
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    branch: str | None = None
+    commits: list[Commit]
+    pull_request: Annotated[PullRequest | None, Field(alias="pullRequest")] = None
+    repository: GithubRepository
+    sender: Sender
+
+
 class GmailHeader(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2840,310 +2817,6 @@ class IntegrationPrompt(TerseModel):
     state_token: Annotated[str | None, Field(alias="stateToken")] = None
 
 
-class JiraAssigneeInputJiraAssigneeInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    email: Annotated[str, Field(description="The assignee email")]
-
-
-class JiraAssigneeInput(RootModel[JiraAssigneeInputJiraAssigneeInput | None]):
-    root: JiraAssigneeInputJiraAssigneeInput | None
-
-
-class JiraCreateTicketToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Jira integration to use.",
-        ),
-    ]
-    title: Annotated[str, Field(description="The issue title/summary. This is required.")]
-    description: Annotated[
-        str | None,
-        Field(description="The issue description in plain text or markdown format."),
-    ] = None
-    project_key: Annotated[
-        str,
-        Field(
-            alias="projectKey",
-            description='The Jira project key (e.g., "PROJ", "TEAM"). This is required.',
-        ),
-    ]
-    issue_type: Annotated[
-        str | None,
-        Field(
-            alias="issueType",
-            description='The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")',
-        ),
-    ]
-    assignee: Annotated[JiraAssigneeInput | None, Field(description="The assignee of the ticket")] = None
-    priority: Annotated[
-        int | None,
-        Field(description="The priority of the ticket (number, typically 1-5)"),
-    ] = None
-    labels: Annotated[
-        list[str] | None,
-        Field(description="The labels for the ticket (array of label names)"),
-    ] = None
-    due_date: Annotated[
-        str | None,
-        Field(
-            alias="dueDate",
-            description='The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.',
-        ),
-    ] = None
-
-
-class JiraCreateTicketInput(RootModel[JiraCreateTicketToolInput]):
-    root: JiraCreateTicketToolInput
-
-
-class JiraIssueTypeRef(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    name: str
-
-
-class JiraIssueProjectRef(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    name: str
-    key: str
-
-
-class JiraIssueAssignee(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    name: str
-    email: str | None = None
-
-
-class JiraIssueState(JiraIssueTypeRef):
-    pass
-
-
-class JiraRichDescription(RootModel[str | dict[str, Any]]):
-    root: str | dict[str, Any]
-
-
-class JiraIssueSummary(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str | None = None
-    key: str
-    identifier: str
-    title: str | None = None
-    description: JiraRichDescription | None = None
-    state: JiraIssueState | None = None
-    priority: int | None = None
-    assignee: JiraIssueAssignee | None = None
-    labels: list[str] | None = None
-    due_date: Annotated[str | None, Field(alias="dueDate")] = None
-    project: JiraIssueProjectRef | None = None
-    issue_type: Annotated[JiraIssueTypeRef | None, Field(alias="issueType")] = None
-    url: str | None = None
-    created_at: Annotated[str | None, Field(alias="createdAt")] = None
-    updated_at: Annotated[str | None, Field(alias="updatedAt")] = None
-
-
-class JiraCreateTicketToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: bool
-    actions: list[RunHistoryAction] | None = None
-    issue: JiraIssueSummary
-
-
-class JiraProject(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    key: str
-    name: str
-
-
-class JiraCredentialsValidationResponse(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    valid: bool
-    projects: list[JiraProject] | None = None
-    error: str | None = None
-
-
-class JiraResourceProject(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    key: str
-    name: str
-    project_type_key: Annotated[str, Field(alias="projectTypeKey")]
-
-
-class JiraResourcesPayload(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    projects: list[JiraResourceProject]
-    base_url: Annotated[str, Field(alias="baseUrl")]
-    cloud_id: Annotated[str, Field(alias="cloudId")]
-
-
-class JiraResourcesResponse(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: bool
-    resources: JiraResourcesPayload
-
-
-class JiraSearchTicketToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Jira integration to use.",
-        ),
-    ]
-    jql: Annotated[
-        str | None,
-        Field(
-            description="JQL (Jira Query Language) query to search for issues. If not provided, will search all issues."
-        ),
-    ] = None
-    text: Annotated[
-        str | None,
-        Field(
-            description='Text to search for in issue titles and descriptions. If provided, will be converted to JQL: text ~ "search term"'
-        ),
-    ] = None
-    project_key: Annotated[
-        str | None,
-        Field(
-            alias="projectKey",
-            description='Filter by Jira project key (e.g., "PROJ", "TEAM")',
-        ),
-    ] = None
-    assignee_email: Annotated[
-        str | None,
-        Field(alias="assigneeEmail", description="Filter by assignee email address"),
-    ] = None
-    status: Annotated[
-        str | None,
-        Field(description='Filter by status name (e.g., "In Progress", "Done", "To Do")'),
-    ] = None
-    limit: Annotated[
-        int | None,
-        Field(description="Maximum number of issues to return. Defaults to 50 if not provided."),
-    ] = None
-    next_page_token: Annotated[
-        str | None,
-        Field(
-            alias="nextPageToken",
-            description="Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.",
-        ),
-    ] = None
-
-
-class JiraSearchTicketInput(RootModel[JiraSearchTicketToolInput]):
-    root: JiraSearchTicketToolInput
-
-
-class JiraSearchTicketToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: bool
-    actions: list[RunHistoryAction] | None = None
-    issues: list[JiraIssueSummary]
-    count: int
-    total: int
-    max_results: Annotated[int, Field(alias="maxResults")]
-    is_last: Annotated[bool, Field(alias="isLast")]
-    next_page_token: Annotated[str | None, Field(alias="nextPageToken")] = None
-    jql: str
-
-
-class JiraUpdateTicketToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Jira integration to use.",
-        ),
-    ]
-    issue_key: Annotated[
-        str,
-        Field(
-            alias="issueKey",
-            description='The key of the Jira issue to update (e.g., "PROJ-123"). This is required.',
-        ),
-    ]
-    title: Annotated[str | None, Field(description="The issue title/summary.")] = None
-    description: Annotated[
-        str | None,
-        Field(description="The issue description in plain text or markdown format."),
-    ] = None
-    status: Annotated[
-        str | None,
-        Field(description='The status name to transition to (e.g., "In Progress", "Done", "To Do").'),
-    ] = None
-    assignee: Annotated[
-        JiraAssigneeInput | None,
-        Field(description="The assignee of the ticket. Set to null to unassign."),
-    ] = None
-    priority: Annotated[
-        int | None,
-        Field(description="The priority of the ticket (number, typically 1-5)."),
-    ] = None
-    labels: Annotated[
-        list[str] | None,
-        Field(description="The labels for the ticket (array of label names). This replaces all existing labels."),
-    ] = None
-    due_date: Annotated[
-        str | None,
-        Field(
-            alias="dueDate",
-            description='The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.',
-        ),
-    ] = None
-
-
-class JiraUpdateTicketInput(RootModel[JiraUpdateTicketToolInput]):
-    root: JiraUpdateTicketToolInput
-
-
-class JiraUpdateTicketToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: bool
-    actions: list[RunHistoryAction] | None = None
-    issue: JiraIssueSummary
-    updated_fields: Annotated[list[str], Field(alias="updatedFields")]
-
-
 class LaunchDarklyEnvironment(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -3427,8 +3100,13 @@ class LinearGetTeamsInput(RootModel[LinearGetTeamsToolInput]):
     root: LinearGetTeamsToolInput
 
 
-class LinearTeam(JiraIssueProjectRef):
-    pass
+class LinearTeam(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    name: str
+    key: str
 
 
 class LinearGetTeamsToolOutput(TerseModel):
@@ -3467,11 +3145,16 @@ class LinearGetUsersToolOutput(TerseModel):
     users: list[LinearUserSummary]
 
 
-class LinearIssueAssignee(JiraIssueAssignee):
-    pass
+class LinearIssueAssignee(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    name: str
+    email: str | None = None
 
 
-class LinearIssueProject(JiraIssueTypeRef):
+class LinearIssueProject(LinearWebhookAssignee):
     pass
 
 
@@ -3733,7 +3416,22 @@ class LinearUpdateTicketToolOutput(LinearCreateTicketToolOutput):
     pass
 
 
-class LinearWorkspace(JiraIssueTypeRef):
+class LinearWebhookEventData(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    action: LinearWebhookAction
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    data: LinearWebhookData
+    type: LinearWebhookType
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+
+
+class LinearWorkspace(LinearWebhookAssignee):
     pass
 
 
@@ -4459,8 +4157,8 @@ class NotionCreateOrUpdatePageToolOutput(NotionCreateOrUpdateDatabaseRowToolOutp
     pass
 
 
-class NotionPageParent(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
+class NotionPageParent(WorkOSWebhookData):
+    pass
 
 
 class NotionFileReference(TerseModel):
@@ -4633,7 +4331,7 @@ class NotionListUsersInput(RootModel[NotionListUsersToolInput]):
     root: NotionListUsersToolInput
 
 
-class NotionWorkspaceUser(JiraIssueAssignee):
+class NotionWorkspaceUser(LinearIssueAssignee):
     pass
 
 
@@ -5473,7 +5171,7 @@ class SdkDeployJob(TerseModel):
     webhook_url: Annotated[str | None, Field(alias="webhookURL")] = None
 
 
-class SdkDeployRemoved(JiraIssueTypeRef):
+class SdkDeployRemoved(LinearWebhookAssignee):
     pass
 
 
@@ -5485,6 +5183,14 @@ class SdkDeployRequestBody(TerseModel):
     source_zip_base64: Annotated[str, Field(alias="sourceZipBase64")]
 
 
+class SdkDeployResultTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    metadata: TriggerMetadata | None = None
+
+
 class SdkDeployResult(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -5492,6 +5198,7 @@ class SdkDeployResult(TerseModel):
     job_name: Annotated[str, Field(alias="jobName")]
     automation_id: Annotated[str, Field(alias="automationId")]
     is_update: Annotated[bool, Field(alias="isUpdate")]
+    triggers: list[SdkDeployResultTrigger] | None = None
 
 
 class SdkDeployResponseBody(TerseModel):
@@ -6033,6 +5740,27 @@ class SlackConversationMessage(TerseModel):
     thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
 
 
+class SlackEventData(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[SlackEventType, Field(alias="eventType")]
+    channel_id: Annotated[str, Field(alias="channelId")]
+    channel_name: Annotated[str | None, Field(alias="channelName")]
+    user_id: Annotated[str, Field(alias="userId")]
+    user_name: Annotated[str | None, Field(alias="userName")]
+    text: str
+    timestamp: str
+    thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    permalink: str | None
+    channel_type: Annotated[SlackChannelType | None, Field(alias="channelType")]
+    blocks: list[Any] | None
+    attachments: list[Any] | None
+    files: list[Any] | None
+
+
 class SlackListChannelsTypes(StrEnum):
     public = "public"
     private = "private"
@@ -6115,7 +5843,7 @@ class SlackListUsersInput(RootModel[SlackListUsersToolInput]):
     root: SlackListUsersToolInput
 
 
-class SlackUserSummary(JiraIssueTypeRef):
+class SlackUserSummary(LinearWebhookAssignee):
     pass
 
 
@@ -6262,7 +5990,7 @@ class SnowflakeExecuteQueryInput(RootModel[SnowflakeExecuteQueryToolInput]):
     root: SnowflakeExecuteQueryToolInput
 
 
-class SnowflakeQueryRow(NotionPageParent):
+class SnowflakeQueryRow(WorkOSWebhookData):
     pass
 
 
@@ -6498,18 +6226,6 @@ class UpdateNotificationDestinationRequest(TerseModel):
     is_active: Annotated[bool | None, Field(alias="isActive")] = None
 
 
-class UseConfluenceResourcesReturnBase(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    resources: list[ConfluencePage]
-    response: ConfluenceResourcesResponse | None = None
-    is_loading: Annotated[bool, Field(alias="isLoading")]
-    is_error: Annotated[bool, Field(alias="isError")]
-    error: Any
-    is_validating: Annotated[bool, Field(alias="isValidating")]
-
-
 class UserNoOrganization(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -6700,6 +6416,16 @@ class WebhookWorkOSTriggerParams(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
+
+
+class WorkOSWebhookPayload(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    event: str
+    data: WorkOSWebhookData
+    created_at: str
 
 
 class WorkosWebhookSecretUpdateRequest(TerseModel):

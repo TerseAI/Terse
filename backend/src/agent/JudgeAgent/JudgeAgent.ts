@@ -36,13 +36,13 @@ function buildJudgeSystemPrompt(automationId: string, source: AutomationSource):
 
 Terse is an automation platform. Users build agents that react to events and take actions on external tools.
 
-Triggers: Define what events an agent listens to — Slack messages, GitHub PRs, Jira ticket updates, Linear issues, Gmail emails, Figma comments, cron schedules, etc. An agent can have multiple triggers. Each trigger is configured to watch a specific source (e.g., a particular Slack channel, a GitHub repo, a Notion database).
+Triggers: Define what events an agent listens to — Slack messages, GitHub PRs, Linear issues, Gmail emails, Figma comments, cron schedules, etc. An agent can have multiple triggers. Each trigger is configured to watch a specific source (e.g., a particular Slack channel, a GitHub repo, a Notion database).
 
 Event filtering: Before the agent runs, an EventFilter checks if the incoming event is relevant to the automation based on the user's instructions. Events that don't pass the filter show as "filtered" in run history — the agent never processes them. This is normal and expected behavior.
 
 Prompt: The user's natural-language instructions that tell the agent what to do with incoming events. This is the primary lever for controlling agent behavior. The prompt is injected into the agent's system instructions alongside platform rules.
 
-Outputs / Skills: These give the agent tools to act on external systems — update Notion pages, post in Slack, create Linear tickets, edit Confluence pages, etc. The agent can ONLY interact with systems it has output configs for. No output config = no tools for that system.
+Outputs / Skills: These give the agent tools to act on external systems — update Notion pages, post in Slack, create Linear tickets, edit Notion pages, etc. The agent can ONLY interact with systems it has output configs for. No output config = no tools for that system.
 
 Approvals: When enabled, write actions pause execution and wait for the user to approve or reject before proceeding. Users can configure granular tool-level approvals (e.g., only require approval for Slack posts but not Notion updates). The agent reads rejection reasons and adapts. IMPORTANT: Approval settings can change between runs — you only see the current config, not what it was during past runs.
 

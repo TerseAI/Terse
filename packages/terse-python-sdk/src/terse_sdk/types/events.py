@@ -141,10 +141,6 @@ class LinearInputEvent(InputEvent):
     integration_type: Literal["linear"] = "linear"
 
 
-class AtlassianInputEvent(InputEvent):
-    integration_type: Literal["atlassian"] = "atlassian"
-
-
 class GmailInputEvent(InputEvent):
     integration_type: Literal["gmail"] = "gmail"
 
@@ -232,7 +228,6 @@ KnownInputEvent: TypeAlias = Annotated[
     GithubInputEvent
     | SlackInputEvent
     | LinearInputEvent
-    | AtlassianInputEvent
     | GmailInputEvent
     | NotionInputEvent
     | FigmaInputEvent
@@ -252,7 +247,6 @@ AnyInputEvent: TypeAlias = KnownInputEvent | SerializedEventInputEvent
 
 __all__ = [
     "AnyInputEvent",
-    "AtlassianInputEvent",
     "AttioInputEvent",
     "CronJobInputEvent",
     "DatadogInputEvent",

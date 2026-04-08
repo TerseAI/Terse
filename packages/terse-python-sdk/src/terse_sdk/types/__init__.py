@@ -41,7 +41,6 @@ from .enums import (
     GitHubEventType,
     GmailEventType,
     IntegrationType,
-    JiraEventType,
     LinearEventType,
     NotificationDestinationType,
     RunHistoryActionType,
@@ -55,7 +54,6 @@ from .enums import (
 from .enums import __all__ as _enums_all
 from .events import (
     AnyInputEvent,
-    AtlassianInputEvent,
     AttioInputEvent,
     CronJobInputEvent,
     DatadogInputEvent,

@@ -83,20 +83,6 @@ export const linearWorkspaceSchema = z.object({
 })
 export type LinearWorkspace = z.infer<typeof linearWorkspaceSchema>
 
-export const jiraProjectSchema = z.object({
-    id: z.string(),
-    key: z.string(),
-    name: z.string()
-})
-export type JiraProject = z.infer<typeof jiraProjectSchema>
-
-export const jiraCredentialsValidationResponseSchema = z.object({
-    valid: z.boolean(),
-    projects: z.array(jiraProjectSchema).optional(),
-    error: z.string().optional()
-})
-export type JiraCredentialsValidationResponse = z.infer<typeof jiraCredentialsValidationResponseSchema>
-
 export const notionResourceTypeSchema = z.enum(["database", "page"])
 export type NotionResourceType = z.infer<typeof notionResourceTypeSchema>
 
@@ -198,80 +184,6 @@ export const terseAgentMessageMetadataSchema = z.object({
 export type TerseAgentMessageMetadata = z.infer<typeof terseAgentMessageMetadataSchema>
 
 export { SlackChannelType, slackChannelTypeSchema }
-
-export const confluencePageSchema = z.object({
-    id: z.string(),
-    title: z.string(),
-    spaceId: z.string(),
-    spaceName: z.string(),
-    url: z.string(),
-    status: z.string(),
-    version: z.number().int()
-})
-export type ConfluencePage = z.infer<typeof confluencePageSchema>
-
-export const confluencePagesQuerySchema = z
-    .object({
-        integrationId: z.string(),
-        spaceId: z.string().optional(),
-        spaceKey: z.string().optional()
-    })
-    .refine(({ spaceId, spaceKey }) => spaceId != null || spaceKey != null, {
-        message: "Either spaceId or spaceKey is required"
-    })
-export type ConfluencePagesQuery = z.infer<typeof confluencePagesQuerySchema>
-
-export const confluencePagesResponseSchema = z.object({
-    pages: z.array(confluencePageSchema),
-    spaceId: z.string(),
-    total: z.number().int()
-})
-export type ConfluencePagesResponse = z.infer<typeof confluencePagesResponseSchema>
-
-export const confluenceResourcesResponseSchema = z.object({
-    resources: z.array(confluencePageSchema),
-    spaceId: z.string(),
-    total: z.number().int()
-})
-export type ConfluenceResourcesResponse = z.infer<typeof confluenceResourcesResponseSchema>
-
-export const jiraResourceProjectSchema = z.object({
-    id: z.string(),
-    key: z.string(),
-    name: z.string(),
-    projectTypeKey: z.string()
-})
-
-export const jiraResourcesPayloadSchema = z.object({
-    projects: z.array(jiraResourceProjectSchema),
-    baseUrl: z.string(),
-    cloudId: z.string()
-})
-export type JiraResourcesPayload = z.infer<typeof jiraResourcesPayloadSchema>
-
-export const jiraResourcesResponseSchema = z.object({
-    success: z.boolean(),
-    resources: jiraResourcesPayloadSchema
-})
-export type JiraResourcesResponse = z.infer<typeof jiraResourcesResponseSchema>
-
-export const useConfluenceResourcesReturnBaseSchema = z.object({
-    resources: z.array(confluencePageSchema),
-    response: confluenceResourcesResponseSchema.optional(),
-    isLoading: z.boolean(),
-    isError: z.boolean(),
-    error: z.unknown(),
-    isValidating: z.boolean()
-})
-
-export const createUseConfluenceResourcesReturnSchema = <TMutate extends z.ZodTypeAny>(mutateSchema: TMutate) =>
-    useConfluenceResourcesReturnBaseSchema.extend({
-        mutate: mutateSchema
-    })
-
-export type UseConfluenceResourcesReturn<MutateType = any> = z.infer<typeof useConfluenceResourcesReturnBaseSchema> & {
-    mutate: MutateType
-}
 
 export enum FigmaEventTypes {
     FILE_COMMENT = "FILE_COMMENT"

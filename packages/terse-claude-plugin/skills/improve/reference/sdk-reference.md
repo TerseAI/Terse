@@ -118,12 +118,6 @@ Linear.onIssueCreated({ team: LinearTeam.Engineering })
 Linear.onIssueUpdated({ team: LinearTeam.Engineering })
 ```
 
-### Jira
-```typescript
-Jira.onIssueCreated({ project: JiraProject.MyProject })
-Jira.onIssueUpdated({ project: JiraProject.MyProject })
-```
-
 ### Gmail
 ```typescript
 Gmail.onNewEmail()
@@ -160,8 +154,6 @@ skills: [
     Slack.skill({ channel: SlackChannel.General }),
     Linear.skill({ team: LinearTeam.Engineering }),
     Notion.skill({ database: NotionDB.Tasks }),
-    Jira.skill({ project: JiraProject.MyProject }),
-    Confluence.skill({ page: ConfluencePage.TeamDocs }),
     Gmail.skill(),
     PostHog.skill({ project: PostHogProject.Main }),
     Datadog.skill({ index: DatadogIndex.Main }),

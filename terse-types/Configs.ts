@@ -15,8 +15,6 @@ export enum ConfigType {
     LINEAR_INPUT = "linear_input",
     LINEAR_OUTPUT = "linear_output",
     GITHUB = "github",
-    JIRA = "jira",
-    CONFLUENCE = "confluence",
     POSTHOG = "POSTHOG",
     DATADOG = "DATADOG",
     TIME_TRIGGER = "time_trigger",
@@ -132,24 +130,6 @@ export const GitHubConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
-export const JiraConfigMetadata = {
-    configType: ConfigType.JIRA,
-    name: "Jira",
-    description: "Monitor and update Jira issues",
-    integrationType: IntegrationType.ATLASSIAN,
-    isInput: true,
-    isOutput: true
-} as const satisfies ConfigDetails
-
-export const ConfluenceConfigMetadata = {
-    configType: ConfigType.CONFLUENCE,
-    name: "Confluence",
-    description: "Update Confluence pages",
-    integrationType: IntegrationType.ATLASSIAN,
-    isInput: false,
-    isOutput: true
-} as const satisfies ConfigDetails
-
 export const PosthogConfigMetadata = {
     configType: ConfigType.POSTHOG,
     name: "Posthog",
@@ -253,8 +233,6 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfigMetadata,
     [ConfigType.GITHUB]: GitHubConfigMetadata,
-    [ConfigType.JIRA]: JiraConfigMetadata,
-    [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
     [ConfigType.POSTHOG]: PosthogConfigMetadata,
     [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
@@ -289,9 +267,6 @@ export type GitHubEventType = z.infer<typeof gitHubEventTypeSchema>
 
 export const linearEventTypeSchema = z.enum(["issue.created", "issue.updated", "comment.created"])
 export type LinearEventType = z.infer<typeof linearEventTypeSchema>
-
-export const jiraEventTypeSchema = z.enum(["issue.created", "issue.updated"])
-export type JiraEventType = z.infer<typeof jiraEventTypeSchema>
 
 export const FigmaEventType = {
     FILE_COMMENT: "file_comment"
@@ -693,83 +668,6 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
     }
 }
 
-export const JiraConfigSchema = ConfigInstanceSchema.extend({
-    integrationType: z.literal(IntegrationType.ATLASSIAN),
-    configType: z.literal(ConfigType.JIRA),
-    projectKey: z.string().nullable(),
-    projectId: z.string().nullable(),
-    eventTypes: z.array(jiraEventTypeSchema).nullable()
-})
-export type JiraConfigData = z.infer<typeof JiraConfigSchema>
-export type JiraConfigInstance = JiraConfigData & ConfigBehavior
-
-export class JiraConfig extends BaseConfigInstance<IntegrationType.ATLASSIAN, ConfigType.JIRA> implements JiraConfigInstance {
-    constructor(
-        integrationId: string,
-        public projectKey: string | null = null,
-        public projectId: string | null = null,
-        public eventTypes: JiraEventType[] | null = null
-    ) {
-        super(integrationId, IntegrationType.ATLASSIAN, ConfigType.JIRA)
-    }
-
-    isComplete(): boolean {
-        // Jira only requires integrationId (base check handled in isInputComplete)
-        return true
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Jira`, `Integration ID: ${this.integrationId}`]
-        if (this.projectKey) {
-            parts.push(`Project Key: ${this.projectKey}`)
-        } else if (this.projectId) {
-            parts.push(`Project ID: ${this.projectId}`)
-        }
-        return parts.join("\n")
-    }
-}
-
-export const ConfluenceConfigSchema = ConfigInstanceSchema.extend({
-    integrationType: z.literal(IntegrationType.ATLASSIAN),
-    configType: z.literal(ConfigType.CONFLUENCE),
-    spaceName: z.string(),
-    spaceId: z.string(),
-    pageId: z.string(),
-    pageName: z.string()
-})
-export type ConfluenceConfigData = z.infer<typeof ConfluenceConfigSchema>
-export type ConfluenceConfigInstance = ConfluenceConfigData & ConfigBehavior
-
-export class ConfluenceConfig extends BaseConfigInstance<IntegrationType.ATLASSIAN, ConfigType.CONFLUENCE> implements ConfluenceConfigInstance {
-    constructor(
-        integrationId: string,
-        public spaceName: string,
-        public spaceId: string,
-        public pageId: string, // Page ID (required for outputs - specific page to write to)
-        public pageName: string // Page display name (for UI, optional)
-    ) {
-        super(integrationId, IntegrationType.ATLASSIAN, ConfigType.CONFLUENCE)
-    }
-
-    isComplete(): boolean {
-        // Confluence only requires integrationId (base check handled in isInputComplete)
-        return true
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Confluence`, `Integration ID: ${this.integrationId}`]
-        if (this.spaceName) {
-            parts.push(`Space: ${this.spaceName}`)
-        }
-        if (this.pageName) {
-            parts.push(`Page: ${this.pageName}`)
-        } else if (this.pageId) {
-            parts.push(`Page ID: ${this.pageId}`)
-        }
-        return parts.join("\n")
-    }
-}
-
 export const PosthogConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.POSTHOG),
     configType: z.literal(ConfigType.POSTHOG),
@@ -1046,8 +944,6 @@ export const configDataSchema = z.union([
     LinearInputConfigSchema,
     LinearOutputConfigSchema,
     GitHubConfigSchema,
-    JiraConfigSchema,
-    ConfluenceConfigSchema,
     PosthogConfigSchema,
     DatadogConfigSchema,
     TimeTriggerConfigSchema,
@@ -1071,8 +967,6 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.GMAIL_OUTPUT:
         case ConfigType.GMAIL_DRAFT_OUTPUT:
         case ConfigType.LINEAR_INPUT:
-        case ConfigType.JIRA:
-        case ConfigType.CONFLUENCE:
         case ConfigType.TERSE:
         case ConfigType.WEBHOOK_INPUT:
             return true
@@ -1181,25 +1075,6 @@ export function formatConfigForAgent(config: ConfigData): string {
             if (config.repositoryIds.length > 0) parts.push(`Repositories: ${config.repositoryIds.join(", ")}`)
             return parts.join("\n")
         }
-        case ConfigType.JIRA: {
-            const parts = [`Type: Jira`, `Integration ID: ${config.integrationId}`]
-            if (config.projectKey) {
-                parts.push(`Project Key: ${config.projectKey}`)
-            } else if (config.projectId) {
-                parts.push(`Project ID: ${config.projectId}`)
-            }
-            return parts.join("\n")
-        }
-        case ConfigType.CONFLUENCE: {
-            const parts = [`Type: Confluence`, `Integration ID: ${config.integrationId}`]
-            if (config.spaceName) parts.push(`Space: ${config.spaceName}`)
-            if (config.pageName) {
-                parts.push(`Page: ${config.pageName}`)
-            } else if (config.pageId) {
-                parts.push(`Page ID: ${config.pageId}`)
-            }
-            return parts.join("\n")
-        }
         case ConfigType.POSTHOG: {
             const parts = [`Type: Posthog`, `Integration ID: ${config.integrationId}`]
             if (config.projectId) parts.push(`Project ID: ${config.projectId}`)
@@ -1258,8 +1133,6 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig
     [ConfigType.GITHUB]: typeof GitHubConfig
-    [ConfigType.JIRA]: typeof JiraConfig
-    [ConfigType.CONFLUENCE]: typeof ConfluenceConfig
     [ConfigType.POSTHOG]: typeof PosthogConfig
     [ConfigType.DATADOG]: typeof DatadogConfig
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig
@@ -1283,8 +1156,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LINEAR_INPUT]: LinearInputConfig,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfig,
     [ConfigType.GITHUB]: GitHubConfig,
-    [ConfigType.JIRA]: JiraConfig,
-    [ConfigType.CONFLUENCE]: ConfluenceConfig,
     [ConfigType.POSTHOG]: PosthogConfig,
     [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
@@ -1299,7 +1170,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
 
 // Mark: Event Data
 
-const eventTypeEnum = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, jiraEventTypeSchema, figmaEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
+const eventTypeEnum = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, figmaEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
 
 export const eventDataSchema = z.object({
     integrationType: integrationTypeEnum,
@@ -1493,3 +1364,14 @@ export const linearWebhookEventDataSchema = z.object({
 })
 
 export type LinearWebhookEventData = z.infer<typeof linearWebhookEventDataSchema>
+
+export const WorkOSWebhookDataSchema = z.record(z.string(), z.any())
+
+export const workOSWebhookPayloadSchema = z.object({
+    id: z.string(),
+    event: z.string(),
+    data: WorkOSWebhookDataSchema,
+    created_at: z.string()
+})
+
+export type WorkOSWebhookPayload = z.infer<typeof workOSWebhookPayloadSchema>

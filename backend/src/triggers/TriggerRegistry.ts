@@ -1,7 +1,6 @@
 import { FigmaTrigger } from "./FigmaTrigger"
 import { GithubTrigger } from "./GithubTrigger"
 import { GmailTrigger } from "./GmailTrigger"
-import { JiraTrigger } from "./JiraTrigger"
 import { LinearTrigger } from "./LinearTrigger"
 import { ScheduleTrigger } from "./ScheduleTrigger"
 import { SlackTrigger } from "./SlackTrigger"
@@ -15,7 +14,6 @@ export const TRIGGER_REGISTRY: Trigger<any>[] = [
     new FigmaTrigger(),
     new GithubTrigger(),
     new LinearTrigger(),
-    new JiraTrigger(),
     new ScheduleTrigger(),
     new WorkOSTrigger(),
     new WebhookTrigger()

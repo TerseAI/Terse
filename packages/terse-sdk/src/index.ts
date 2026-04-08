@@ -63,8 +63,6 @@ export {
     LinearInputConfig,
     LinearOutputConfig,
     GitHubConfig,
-    JiraConfig,
-    ConfluenceConfig,
     PosthogConfig,
     DatadogConfig,
     TimeTriggerConfig,
@@ -78,7 +76,6 @@ export {
     SlackEventType,
     GitHubEventType,
     LinearEventType,
-    JiraEventType,
     FigmaEventType,
     GmailEventType,
     WorkOSEventType

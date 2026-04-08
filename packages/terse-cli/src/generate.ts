@@ -3,7 +3,6 @@ import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
 import type {
-    AtlassianIntegration,
     AttioIntegration,
     DatadogIntegration,
     FigmaIntegration,
@@ -24,7 +23,6 @@ import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import {
-    type AtlassianInstanceData,
     type AttioAttributeData,
     type AttioInstanceData,
     type CodegenInput,
@@ -103,7 +101,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         gmail: [],
         figma: [],
         linear: [],
-        atlassian: [],
         notion: [],
         posthog: [],
         datadog: [],
@@ -183,35 +180,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                             () => [] as Array<{ id: string; name: string; key: string }>
                         )
                         return { id: inst.id, displayName: inst.workspaceName || inst.id, teams: Array.isArray(teams) ? teams : [] }
-                    })
-                )
-            })
-        )
-    }
-
-    // ── Atlassian — fetches Jira projects + Confluence pages per instance ──
-    if (has(IntegrationType.ATLASSIAN)) {
-        promises.push(
-            safely(async () => {
-                const instances = await fetchWithAuth<AtlassianIntegration[]>(ApiRoutes.ATLASSIAN.INTEGRATIONS, apiKey)
-                input.atlassian = await Promise.all(
-                    instances.map(async (inst): Promise<AtlassianInstanceData> => {
-                        const [jiraResp, confResp] = await Promise.all([
-                            fetchWithAuth<{ resources: { projects: Array<{ id: string; key: string; name: string }> } }>(
-                                `${ApiRoutes.JIRA.RESOURCES}?integrationId=${encodeURIComponent(inst.id)}`,
-                                apiKey
-                            ).catch(() => null),
-                            fetchWithAuth<{ resources: Array<{ id: string; title: string; spaceId: string; spaceName: string }> }>(
-                                `${ApiRoutes.CONFLUENCE.RESOURCES}?integrationId=${encodeURIComponent(inst.id)}`,
-                                apiKey
-                            ).catch(() => null)
-                        ])
-                        return {
-                            id: inst.id,
-                            displayName: inst.siteName || inst.email || inst.id,
-                            jiraProjects: jiraResp?.resources?.projects || [],
-                            confluencePages: confResp?.resources || []
-                        }
                     })
                 )
             })
@@ -351,7 +319,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         input.gmail.length +
         input.figma.length +
         input.linear.length +
-        input.atlassian.length +
         input.notion.length +
         input.posthog.length +
         input.datadog.length +
@@ -425,12 +392,6 @@ function printSummary(input: CodegenInput): void {
     for (const inst of input.linear) {
         const n = inst.teams.length
         console.log(`  ${g} Linear (${inst.displayName}) — ${n} ${n === 1 ? "team" : "teams"}`)
-    }
-    for (const inst of input.atlassian) {
-        const jp = inst.jiraProjects.length
-        const cp = inst.confluencePages.length
-        console.log(`  ${g} Jira (${inst.displayName}) — ${jp} ${jp === 1 ? "project" : "projects"}`)
-        console.log(`  ${g} Confluence (${inst.displayName}) — ${cp} ${cp === 1 ? "page" : "pages"}`)
     }
     for (const inst of input.notion) {
         const d = inst.databases.length

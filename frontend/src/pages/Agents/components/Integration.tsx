@@ -5,13 +5,10 @@ import { IntegrationType } from "terse-types/Integrations"
 import {
     AttioIcon,
     CalendarClockIcon,
-    ConfluenceIcon,
     DatadogIcon,
     FigmaIcon,
     GithubIcon,
     GmailIcon,
-    JiraConfluenceIcon,
-    JiraIcon,
     LaunchDarklyIcon,
     LinearIcon,
     NotionIcon,
@@ -40,10 +37,6 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <NotionIcon />
         case ConfigType.FIGMA:
             return <FigmaIcon />
-        case ConfigType.JIRA:
-            return <JiraIcon />
-        case ConfigType.CONFLUENCE:
-            return <ConfluenceIcon />
         case ConfigType.POSTHOG:
             return <PosthogIcon />
         case ConfigType.LAUNCHDARKLY:
@@ -83,8 +76,6 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <NotionIcon />
         case IntegrationType.FIGMA:
             return <FigmaIcon />
-        case IntegrationType.ATLASSIAN:
-            return <JiraConfluenceIcon />
         case IntegrationType.TERSE:
         case IntegrationType.CRON_JOB:
             return <CalendarClockIcon />
