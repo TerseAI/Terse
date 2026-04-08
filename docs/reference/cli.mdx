@@ -52,6 +52,13 @@ Options:
 
 - `--language <ts|typescript|py|python>`: choose the project language. Defaults to `ts`.
 
+Attach mode:
+
+- If you run `terse init` inside an existing npm project with no `project-name`, the CLI switches to attach mode instead of overwriting `package.json`.
+- In attach mode, the CLI asks whether you want to self-host or use serverless.
+- Self-hosted means your jobs run on your own infrastructure via `TERSE_JOB_URL`, and no source code is uploaded.
+- Serverless means `terse deploy` will zip the current project directory and store it in GCS before running on Terse-managed infrastructure.
+
 TypeScript scaffolds:
 
 - `src/index.ts`
@@ -145,6 +152,8 @@ Behavior to remember:
 - new local workflows are created remotely
 - existing local workflows are updated remotely
 - workflows removed locally are removed remotely on the next deploy
+- if `TERSE_JOB_URL` is set, deploy uses your own infrastructure and does not upload source code
+- if `TERSE_JOB_URL` is not set, deploy warns before uploading a zip of the current project directory to GCS
 
 ## Required environment variable
 

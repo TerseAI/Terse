@@ -42,7 +42,7 @@ import { resolveProvider } from "./providers/resolveProvider.js"
 // ── Main ──────────────────────────────────────────────────────────────
 
 export async function generate(provider: LanguageProvider = resolveProvider()): Promise<void> {
-    assertProjectRoot(provider)
+    assertProjectRoot(provider, provider.detectionMarkers)
 
     const totalStart = performance.now()
 
@@ -380,7 +380,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
     console.log(`  ${chalk.green("+")} Schedule trigger`)
     console.log(`  ${chalk.green("+")} Terse skills (web search)`)
     console.log("")
-    console.log(`  ${chalk.green.bold("Generated")} ${provider.generatedCodePath}`)
+    console.log(`  ${chalk.green.bold("Generated")} ${path.relative(process.cwd(), provider.resolveGeneratedCodePath(process.cwd()))}`)
     console.log(`  ${chalk.dim(`Codegen: ${codegenMs.toFixed(0)}ms | Total: ${totalMs.toFixed(0)}ms`)}`)
     console.log("")
 }
@@ -396,7 +396,7 @@ async function safely(fn: () => Promise<void>): Promise<void> {
 }
 
 function writeOutput(code: string, provider: LanguageProvider): void {
-    const outputPath = path.resolve(process.cwd(), provider.generatedCodePath)
+    const outputPath = provider.resolveGeneratedCodePath(process.cwd())
     const outputDir = path.dirname(outputPath)
     if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true })

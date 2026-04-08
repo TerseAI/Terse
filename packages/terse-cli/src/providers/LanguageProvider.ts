@@ -6,6 +6,10 @@ import type { CodegenInput } from "./codegenTypes"
 export interface LanguageProvider {
     readonly language: "typescript" | "python"
     readonly displayName: string
+    readonly detectionMarkers: {
+        requiredFiles: string[]
+        description: string
+    }
     readonly projectMarkers: {
         requiredFiles: string[]
         description: string
@@ -22,6 +26,7 @@ export interface LanguageProvider {
     getPostInitSteps(packageManager: string): string[]
     detectPackageManager(): string
     installDependencies(targetDir: string): Promise<void>
+    resolveGeneratedCodePath(cwd: string): string
     renderGeneratedCode(input: CodegenInput): string
     loadJobRegistry(): Promise<Map<string, CreateJobParameters>>
     executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void>

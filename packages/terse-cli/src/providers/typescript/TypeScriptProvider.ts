@@ -1,5 +1,6 @@
 import chalk from "chalk"
 import { exec, execSync } from "node:child_process"
+import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
@@ -22,6 +23,10 @@ const execAsync = promisify(exec)
 export class TypeScriptProvider implements LanguageProvider {
     readonly language = "typescript" as const
     readonly displayName = "TypeScript"
+    readonly detectionMarkers = {
+        requiredFiles: ["package.json", "tsconfig.json"],
+        description: "TypeScript project"
+    }
     readonly projectMarkers = {
         requiredFiles: ["package.json", "src/index.ts"],
         description: "TypeScript Terse project"
@@ -64,6 +69,10 @@ export class TypeScriptProvider implements LanguageProvider {
     async installDependencies(targetDir: string): Promise<void> {
         const packageManager = this.detectPackageManager()
         await execAsync(`${packageManager} install`, { cwd: targetDir })
+    }
+
+    resolveGeneratedCodePath(cwd: string): string {
+        return path.join(cwd, fs.existsSync(path.join(cwd, "src")) ? "src/terse.generated.ts" : "terse.generated.ts")
     }
 
     renderGeneratedCode(input: CodegenInput): string {

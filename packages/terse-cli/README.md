@@ -24,6 +24,8 @@ pnpm run install-global
 
 Scaffold a new Terse project with boilerplate code and config.
 
+If you run `terse init` inside an existing npm project with no project name, the CLI uses attach mode instead of overwriting `package.json`. In attach mode it asks whether you want to self-host via `TERSE_JOB_URL` or use serverless deploys, and it warns that serverless deploys upload a zip of the current project directory to GCS.
+
 ### `terse generate`
 
 Generate TypeScript types for your connected integrations (creates `terse.generated.ts`).
@@ -48,6 +50,8 @@ Fetch sample events from your connected integrations and run a job interactively
 ### `terse deploy`
 
 Deploy all jobs to the Terse platform. This syncs with the server — jobs that have been removed locally will be deleted remotely.
+
+If `TERSE_JOB_URL` is unset, hosted deploys now prompt for confirmation before uploading a zip of the current project directory.
 
 ## Getting Started
 

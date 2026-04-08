@@ -1,5 +1,6 @@
 import chalk from "chalk"
 import { execFileSync, spawn } from "node:child_process"
+import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { CreateJobParameters } from "terse-sdk"
@@ -41,6 +42,10 @@ type ApprovalState = {
 export class PythonProvider implements LanguageProvider {
     readonly language = "python" as const
     readonly displayName = "Python"
+    readonly detectionMarkers = {
+        requiredFiles: ["pyproject.toml"],
+        description: "Python project"
+    }
     readonly projectMarkers = {
         requiredFiles: ["pyproject.toml", "src/main.py"],
         description: "Python Terse project"
@@ -84,6 +89,10 @@ export class PythonProvider implements LanguageProvider {
             UV_CACHE_DIR: path.join(os.tmpdir(), "terse-uv-cache")
         }
         await execUv(["sync"], { cwd: targetDir, env })
+    }
+
+    resolveGeneratedCodePath(cwd: string): string {
+        return path.join(cwd, fs.existsSync(path.join(cwd, "src")) ? "src/terse_generated.py" : "terse_generated.py")
     }
 
     renderGeneratedCode(input: CodegenInput): string {
