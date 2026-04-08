@@ -120,6 +120,9 @@ async function updateExistingAutomation(
 ): Promise<AgentWithTriggerRelations> {
     const automationId = existing.id
 
+    // Preserve webhook tokens so URLs stay stable across redeploys
+    const preservedWebhookTokens = existing.inputs.filter(input => input.webhook_config).map(input => input.webhook_config!.webhook_token)
+
     await tearDownAgentTriggers(existing)
 
     return prisma.$transaction(async tx => {
@@ -154,6 +157,21 @@ async function updateExistingAutomation(
 
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
         await createOutputsForAutomation(tx, automationId, outputs, organizationId, userId)
+
+        // This is a hack to preserve webhook tokens so URLs don't change on redeploy.
+        // The right way to do this is to have some stable ids for the triggers so we can upsert. But that's a bigger change.
+        // TODO: Figure out a way to upsert here and prevent this workaround.
+        if (preservedWebhookTokens.length > 0) {
+            const newWebhookConfigs = await tx.automation_webhook_configs.findMany({
+                where: { automation_input: { automation_id: automationId } }
+            })
+            for (let i = 0; i < newWebhookConfigs.length && i < preservedWebhookTokens.length; i++) {
+                await tx.automation_webhook_configs.update({
+                    where: { id: newWebhookConfigs[i].id },
+                    data: { webhook_token: preservedWebhookTokens[i] }
+                })
+            }
+        }
 
         return tx.automations.findFirstOrThrow({
             where: { id: automationId },
