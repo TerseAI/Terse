@@ -1,10 +1,9 @@
 import { Octokit } from "@octokit/rest"
 import { IntegrationType } from "terse-types"
-import { GithubEventData } from "terse-types"
+import { GithubTriggerEvent } from "terse-types"
 
 import { getAppInstallationsForUser } from "../../integrations/GithubIntegration"
-import { GithubEvent } from "../../integrations/GithubIntegration"
-import { getPullRequestFiles } from "../../integrations/GithubIntegration"
+import { GithubTriggerEventRuntime, getPullRequestFiles } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { StoredFile } from "../../services/FileStorageService"
@@ -12,14 +11,14 @@ import { SecretField, getSecret } from "../../services/SecretService"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
-export class GithubEventHydrator extends Hydrator<GithubEvent> {
+export class GithubEventHydrator extends Hydrator<GithubTriggerEventRuntime> {
     readonly entityType = HydratorType.GITHUB_EVENT
 
     constructor(ctx: HydrationContext) {
         super(ctx)
     }
 
-    async hydrate(ref: Identifiable): Promise<GithubEvent> {
+    async hydrate(ref: Identifiable): Promise<GithubTriggerEventRuntime> {
         const event = await this.fetchFromGitHub(ref.entityId)
         if (!event) {
             throw new Error(`Failed to hydrate GitHub event: ${ref.entityId}`)
@@ -27,7 +26,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
         return event
     }
 
-    async hydrateBulk(refs: Identifiable[]): Promise<GithubEvent[]> {
+    async hydrateBulk(refs: Identifiable[]): Promise<GithubTriggerEventRuntime[]> {
         const results = await Promise.all(refs.map(ref => this.fetchFromGitHub(ref.entityId)))
         return results.map((event, i) => {
             if (!event) {
@@ -37,7 +36,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
         })
     }
 
-    private async fetchFromGitHub(entityId: string): Promise<GithubEvent | null> {
+    private async fetchFromGitHub(entityId: string): Promise<GithubTriggerEventRuntime | null> {
         const parts = entityId.split(":")
         if (parts.length < 3) {
             logger.error(`Invalid GitHub entityId format: ${entityId}`)
@@ -99,7 +98,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
             if (type === "pr") {
                 const prNumber = parseInt(identifier, 10)
                 const { data: pr } = await octokit.pulls.get({ owner, repo: name, pull_number: prNumber })
-                const eventData: GithubEventData = {
+                const eventData: GithubTriggerEvent = {
                     integrationType: IntegrationType.GITHUB,
                     username: pr.user?.login ?? "",
                     installationId,
@@ -129,12 +128,12 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
                     }
                 }
                 const storedFiles: StoredFile[] = await getPullRequestFiles(eventData, accessToken, installationId.toString())
-                return new GithubEvent(eventData, storedFiles)
+                return new GithubTriggerEventRuntime(eventData, storedFiles)
             }
 
             if (type === "commit") {
                 const { data: commit } = await octokit.repos.getCommit({ owner, repo: name, ref: identifier })
-                const eventData: GithubEventData = {
+                const eventData: GithubTriggerEvent = {
                     integrationType: IntegrationType.GITHUB,
                     username: commit.commit?.author?.name ?? "",
                     installationId,
@@ -159,7 +158,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
                         }
                     ]
                 }
-                return new GithubEvent(eventData, [])
+                return new GithubTriggerEventRuntime(eventData, [])
             }
 
             if (type === "push") {
@@ -167,7 +166,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
                 const branch = identifier
                 const { data: branchData } = await octokit.repos.getBranch({ owner, repo: name, branch })
                 const latestCommit = branchData.commit
-                const eventData: GithubEventData = {
+                const eventData: GithubTriggerEvent = {
                     integrationType: IntegrationType.GITHUB,
                     username: latestCommit.commit?.author?.name ?? "",
                     installationId,
@@ -192,7 +191,7 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
                         }
                     ]
                 }
-                return new GithubEvent(eventData, [])
+                return new GithubTriggerEventRuntime(eventData, [])
             }
 
             logger.warn(`Unsupported GitHub entity type: ${type}`)

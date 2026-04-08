@@ -26,27 +26,13 @@ from .types._generated import ConfigData
 from .types.config import TerseSettings
 from .types.events import (
     AnyInputEvent,
-    AttioInputEvent,
-    CronJobInputEvent,
-    DatadogInputEvent,
-    GithubInputEvent,
-    GmailInputEvent,
-    InputEvent,
-    LaunchDarklyInputEvent,
-    LinearInputEvent,
-    NotionInputEvent,
-    PosthogInputEvent,
-    SerializedEventInputEvent,
-    SlackInputEvent,
-    SnowflakeInputEvent,
     TerseInputEvent,
-    WorkOSInputEvent,
 )
 from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
     SdkAgentRunRequestBody,
     SdkAgentRunResponseBody,
-    SerializedEvent,
+    TriggerEvent,
 )
 from .types.stream_events import (
     Done,
@@ -63,24 +49,10 @@ JobFilter = Callable[[JobEvent], bool]
 HandlerT = TypeVar("HandlerT", bound=Callable[..., object])
 ResultT = TypeVar("ResultT")
 ToolApprovalT = TypeVar("ToolApprovalT", bound=str)
+JobEventT = TypeVar("JobEventT", bound=AnyInputEvent)
 
 _JOB_REGISTRY: dict[str, RegisteredJob] = {}
 LOGGER = logging.getLogger("terse.sdk.runtime")
-_EVENT_MODEL_BY_INTEGRATION = {
-    "github": GithubInputEvent,
-    "slack": SlackInputEvent,
-    "linear": LinearInputEvent,
-    "gmail": GmailInputEvent,
-    "notion": NotionInputEvent,
-    "posthog": PosthogInputEvent,
-    "datadog": DatadogInputEvent,
-    "terse": TerseInputEvent,
-    "cron_job": CronJobInputEvent,
-    "launchdarkly": LaunchDarklyInputEvent,
-    "workos": WorkOSInputEvent,
-    "attio": AttioInputEvent,
-    "snowflake": SnowflakeInputEvent,
-}
 
 
 class TerseRuntimeError(RuntimeError):
@@ -114,7 +86,7 @@ class RegisteredJob:
 
     name: str
     handler: Callable[..., object] = field(repr=False, compare=False)
-    triggers: list[TriggerConfig] = field(default_factory=list)
+    triggers: list[TriggerConfig[AnyInputEvent]] = field(default_factory=list)
     skills: list[SkillConfig[Any]] = field(default_factory=list)
     filter: JobFilter | None = field(default=None, repr=False, compare=False)
     webhook_url: str | None = None
@@ -127,21 +99,21 @@ class Terse:
     def job(
         self,
         name: str,
-        triggers: Sequence[TriggerConfig] | None = None,
+        triggers: Sequence[TriggerConfig[JobEventT]] | None = None,
         skills: Sequence[SkillConfig[ToolApprovalT]] | None = None,
-        filter: JobFilter | None = None,
+        filter: Callable[[JobEventT], bool] | None = None,
         webhook_url: str | None = None,
         tool_approvals: Sequence[ToolApprovalT] | None = None,
-    ) -> Callable[[HandlerT], HandlerT]:
+    ) -> Callable[[Callable[[JobEventT, TerseAgent], object]], Callable[[JobEventT, TerseAgent], object]]:
         """Register a job and return the original handler."""
 
-        def decorator(handler: HandlerT) -> HandlerT:
+        def decorator(handler: Callable[[JobEventT, TerseAgent], object]) -> Callable[[JobEventT, TerseAgent], object]:
             _JOB_REGISTRY[name] = RegisteredJob(
                 name=name,
                 handler=handler,
-                triggers=list(triggers or []),
+                triggers=cast(list[TriggerConfig[AnyInputEvent]], list(triggers or [])),
                 skills=list(skills or []),
-                filter=filter,
+                filter=cast(JobFilter | None, filter),
                 webhook_url=webhook_url,
                 tool_approvals=list(tool_approvals) if tool_approvals else None,
             )
@@ -200,7 +172,7 @@ class TerseAgent:
         self._tools = factory(self)
         return self._tools
 
-    def run(self, prompt: str, event: InputEvent | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
+    def run(self, prompt: str, event: AnyInputEvent | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
         api_key = _require_api_key()
@@ -259,7 +231,7 @@ class TerseAgent:
         except ValidationError as exc:
             raise TerseApiError(f"Received invalid agent stream payload.\n  {exc}") from exc
 
-    def run_and_wait(self, prompt: str, event: InputEvent | None = None) -> str | None:
+    def run_and_wait(self, prompt: str, event: AnyInputEvent | None = None) -> str | None:
         """Run the agent to completion and return the final output.
 
         Returns ``None`` if no final_output event was received.
@@ -352,33 +324,26 @@ def get_job_registry() -> dict[str, RegisteredJob]:
 
 
 def deserialize_input_event(
-    value: SerializedEvent | Mapping[str, object] | str,
+    value: TriggerEvent | Mapping[str, object] | str,
 ) -> AnyInputEvent:
-    """Convert a serialized backend event into the best matching SDK event model."""
+    """Convert a canonical trigger event payload into the matching SDK event model."""
 
-    if isinstance(value, SerializedEvent):
-        payload = value.model_dump(exclude_none=True, by_alias=True)
-    elif isinstance(value, str):
+    if isinstance(value, TriggerEvent):
+        return value.root
+    if hasattr(value, "model_dump") and hasattr(value, "integration_type"):
+        return cast(AnyInputEvent, value)
+    if isinstance(value, str):
         parsed = json.loads(value)
         if not isinstance(parsed, dict):
-            raise TerseRuntimeError("Serialized event JSON must be an object.")
+            raise TerseRuntimeError("Trigger event JSON must be an object.")
         payload = dict(parsed)
     else:
         payload = dict(value)
 
-    if _read_integration_type(payload) == "slack":
-        try:
-            return _deserialize_slack_input_event(payload)
-        except ValidationError:
-            return SerializedEventInputEvent.model_validate(payload)
-
-    event_class = _EVENT_MODEL_BY_INTEGRATION.get(_read_integration_type(payload))
-    if event_class is None:
-        return SerializedEventInputEvent.model_validate(payload)
     try:
-        return event_class.model_validate(payload)
-    except ValidationError:
-        return SerializedEventInputEvent.model_validate(payload)
+        return TriggerEvent.model_validate(payload).root
+    except ValidationError as exc:
+        raise TerseRuntimeError("Trigger event payload does not match the canonical schema.") from exc
 
 
 def execute_registered_job(
@@ -432,20 +397,12 @@ def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
     return None
 
 
-def _serialize_run_event(event: InputEvent) -> dict[str, str]:
-    return {
-        "integrationType": event.integration_type,
-        "formattedContent": event.formatted_content,
-        "debugLog": event.debug_log,
-    }
+def _serialize_run_event(event: AnyInputEvent) -> dict[str, object]:
+    return event.model_dump(exclude_none=True, by_alias=True)
 
 
 def _manual_event() -> TerseInputEvent:
-    return TerseInputEvent(
-        event_type="manual",
-        formatted_content="Manual trigger from terse run",
-        debug_log="[MockInputEvent] Manual trigger via SDK",
-    )
+    return TerseInputEvent.model_validate({"integrationType": "terse", "eventType": "manual_sample"})
 
 
 def _build_auth_headers(
@@ -504,39 +461,6 @@ def _as_object_dict(value: object) -> dict[str, object] | None:
     if isinstance(value, dict):
         return cast(dict[str, object], value)
     return None
-
-
-def _read_integration_type(payload: Mapping[str, object]) -> str:
-    raw_value = payload.get("integrationType", payload.get("integration_type"))
-    return str(raw_value or "")
-
-
-def _deserialize_slack_input_event(payload: Mapping[str, object]) -> SlackInputEvent:
-    metadata = payload.get("metadata")
-    metadata_dict = dict(metadata) if isinstance(metadata, Mapping) else {}
-
-    return SlackInputEvent.model_validate(
-        {
-            "integrationType": "slack",
-            "eventType": payload.get("eventType", payload.get("event_type", "unknown")),
-            "formattedContent": payload.get("formattedContent", payload.get("formatted_content", "")),
-            "debugLog": payload.get("debugLog", payload.get("debug_log", "")),
-            "metadata": metadata_dict or None,
-            "channelId": metadata_dict.get("channelId", payload.get("channelId", payload.get("channel_id", ""))),
-            "channelName": metadata_dict.get("channelName", payload.get("channelName", payload.get("channel_name"))),
-            "userId": metadata_dict.get("userId", payload.get("userId", payload.get("user_id", ""))),
-            "userName": metadata_dict.get("userName", payload.get("userName", payload.get("user_name"))),
-            "text": metadata_dict.get("text", payload.get("text", "")),
-            "timestamp": metadata_dict.get("timestamp", payload.get("timestamp", "")),
-            "threadTs": metadata_dict.get("threadTs", payload.get("threadTs", payload.get("thread_ts"))),
-            "teamId": metadata_dict.get("teamId", payload.get("teamId", payload.get("team_id", ""))),
-            "permalink": metadata_dict.get("permalink", payload.get("permalink")),
-            "channelType": metadata_dict.get("channelType", payload.get("channelType", payload.get("channel_type"))),
-            "blocks": metadata_dict.get("blocks", payload.get("blocks")),
-            "attachments": metadata_dict.get("attachments", payload.get("attachments")),
-            "files": metadata_dict.get("files", payload.get("files")),
-        }
-    )
 
 
 def _parse_tool_call_completed(raw: str) -> dict[str, str]:

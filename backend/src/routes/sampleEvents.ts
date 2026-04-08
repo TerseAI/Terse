@@ -1,8 +1,7 @@
 import { Request, Response } from "express"
+import type { TriggerEvent, User } from "terse-types"
 import { ConfigType } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
-import type { User } from "terse-types/types"
-import type { SerializedEvent, TriggerPayload } from "terse-types/types"
 import { sdkSampleEventsRequestSchema } from "terse-types/types"
 
 import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"
@@ -17,7 +16,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
 
     const { triggers } = sdkSampleEventsRequestSchema.parse(req.body)
 
-    const events: SerializedEvent[] = []
+    const events: TriggerEvent[] = []
 
     for (const trigger of triggers) {
         const { integrationId, integrationType, config } = trigger
@@ -31,13 +30,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
             const inputEvents = await fetchSampleEvents(integrationId, integrationType, config, user.organizationId, user.id, { limit: 5 })
 
             for (const evt of inputEvents) {
-                events.push({
-                    integrationType: evt.integrationType,
-                    eventType: evt.eventType,
-                    formattedContent: evt.formatForAgentRunner(),
-                    debugLog: evt.debugLog(),
-                    metadata: evt.serializeMetadata()
-                })
+                events.push(evt.data)
             }
         } catch (err) {
             // Skip integrations that don't support sample events or that error

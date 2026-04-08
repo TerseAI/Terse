@@ -2,8 +2,8 @@
 
 export const Schedule = {
     /** Use in `triggers[]` — run on a cron schedule */
-    cron(opts: { expression: string }): TimeTriggerConfig {
-        return new TimeTriggerConfig(opts.expression)
+    cron(opts: { expression: string }): TypedTrigger<CronJobInputEvent> {
+        return new TimeTriggerConfig(opts.expression) as TypedTrigger<CronJobInputEvent>
     },
 }
 

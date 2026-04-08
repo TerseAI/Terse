@@ -1,5 +1,5 @@
 import axios from "axios"
-import { ApiRoutes, buildRoute } from "terse-types"
+import { ApiRoutes, buildRoute, type TriggerEvent } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -23,6 +23,7 @@ import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, R
 import { GetSentNotificationsResponse } from "terse-types/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 import {
+    type AgentTrigger,
     Agent,
     AgentTemplate,
     AgentUpdate,
@@ -42,13 +43,11 @@ import {
     OAuthInstallationDetails,
     PosthogProjectsResponse,
     RecentAgent,
-    SerializedEvent,
     SlackChannelsResponse,
     SlackUsersResponse,
     StatsInterval,
     StatsResponse,
-    ToggleImprovementsEnabledResponse,
-    TriggerPayload
+    ToggleImprovementsEnabledResponse
 } from "terse-types/types"
 
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
@@ -408,12 +407,14 @@ interface BackendService {
     /**
      * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
      */
-    fetchSampleEvents(triggers: TriggerPayload[]): Promise<{ events: SerializedEvent[] }>
+    fetchSampleEvents(
+        triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>
+    ): Promise<{ events: TriggerEvent[] }>
 
     /**
      * Triggers an automation with a specific event payload (e.g. a sample event)
      */
-    triggerWithEvent(automationId: string, event: SerializedEvent): Promise<{ received: boolean; message: string }>
+    triggerWithEvent(automationId: string, event: TriggerEvent): Promise<{ received: boolean; message: string }>
 
     /**
      * Manually triggers a scheduled automation trigger
@@ -1312,9 +1313,9 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    fetchSampleEvents: (triggers: TriggerPayload[]) => {
+    fetchSampleEvents: (triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {
         return axios
-            .post<{ events: SerializedEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
+            .post<{ events: TriggerEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error fetching sample events:", error)
@@ -1322,7 +1323,7 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    triggerWithEvent: (automationId: string, event: SerializedEvent) => {
+    triggerWithEvent: (automationId: string, event: TriggerEvent) => {
         const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { automationId })
         return axios
             .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event }, { withCredentials: true })

@@ -22,7 +22,6 @@ from terse_sdk import (
     MissingApiKeyError,
     RunStarted,
     SdkAgentStreamEvent,
-    SerializedEventInputEvent,
     SkillConfig,
     SlackChannelType,
     SlackInputEvent,
@@ -129,23 +128,24 @@ def test_execute_registered_job_supports_sync_callables() -> None:
 
     def allow_sync(event: CronJobInputEvent) -> bool:
         filter_calls.append(event.event_type)
-        return event.event_type == "manual"
+        return bool(event.is_manual_trigger)
 
     @app.job(name="sync-job", filter=allow_sync)
     def sync_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
         _ = agent
-        handler_calls.append(event.formatted_content)
+        handler_calls.append(event.manual_context or "")
 
     event = CronJobInputEvent(
-        event_type="manual",
-        formatted_content="hello",
-        debug_log="world",
+        event_type="cron",
+        input_id="input_123",
+        is_manual_trigger=True,
+        manual_context="hello",
     )
 
     sync_job = get_job_registry()["sync-job"]
 
     assert not execute_registered_job(sync_job, event, agent=TerseAgent())
-    assert filter_calls == ["manual"]
+    assert [value.root for value in filter_calls] == ["cron"]
     assert handler_calls == ["hello"]
 
 
@@ -164,7 +164,7 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
 
     skipped = execute_registered_job(
         get_job_registry()["demo-job"],
-        CronJobInputEvent(event_type="manual", formatted_content="demo", debug_log="demo"),
+        CronJobInputEvent(event_type="cron", input_id="input_123", is_manual_trigger=True, manual_context="demo"),
         agent=TerseAgent(),
     )
 
@@ -176,15 +176,17 @@ def test_deserialize_input_event_supports_camel_case_payloads() -> None:
     event = deserialize_input_event(
         {
             "integrationType": "cron_job",
-            "eventType": "manual",
-            "formattedContent": "Scheduled job",
-            "debugLog": "cron",
+            "eventType": "cron",
+            "inputId": "input_123",
+            "isManualTrigger": True,
+            "manualContext": "Scheduled job",
         }
     )
 
     assert isinstance(event, CronJobInputEvent)
     assert event.integration_type == "cron_job"
-    assert event.formatted_content == "Scheduled job"
+    assert event.input_id == "input_123"
+    assert event.manual_context == "Scheduled job"
 
 
 def test_deserialize_input_event_enriches_slack_metadata() -> None:
@@ -192,39 +194,36 @@ def test_deserialize_input_event_enriches_slack_metadata() -> None:
         {
             "integrationType": "slack",
             "eventType": "message",
-            "formattedContent": "Slack message",
-            "debugLog": "slack-debug",
-            "metadata": {
-                "channelId": "C123",
-                "channelName": "alerts",
-                "userId": "U123",
-                "userName": "Olivia",
-                "text": "Deploy finished",
-                "timestamp": "1710000000.100000",
-                "threadTs": "1710000000.000001",
-                "teamId": "T123",
-                "permalink": "https://slack.example/message",
-                "channelType": "im",
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {"type": "mrkdwn", "text": "Deploy finished"},
-                    }
-                ],
-                "attachments": [
-                    {
-                        "fallback": "fallback text",
-                        "author_name": "Terse",
-                    }
-                ],
-                "files": [
-                    {
-                        "id": "F123",
-                        "name": "deploy.log",
-                        "url_private": "https://files.example/deploy.log",
-                    }
-                ],
-            },
+            "channelId": "C123",
+            "channelName": "alerts",
+            "userId": "U123",
+            "userName": "Olivia",
+            "text": "Deploy finished",
+            "timestamp": "1710000000.100000",
+            "threadTs": "1710000000.000001",
+            "threadTimestamp": "1710000000.000001",
+            "teamId": "T123",
+            "permalink": "https://slack.example/message",
+            "channelType": "im",
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "Deploy finished"},
+                }
+            ],
+            "attachments": [
+                {
+                    "fallback": "fallback text",
+                    "author_name": "Terse",
+                }
+            ],
+            "files": [
+                {
+                    "id": "F123",
+                    "name": "deploy.log",
+                    "url_private": "https://files.example/deploy.log",
+                }
+            ],
         }
     )
 
@@ -242,23 +241,19 @@ def test_deserialize_input_event_enriches_slack_metadata() -> None:
     assert event.channel_type == SlackChannelType.im
     assert event.blocks == [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}]
     assert event.attachments is not None
-    assert event.attachments[0].author_name == "Terse"
+    assert event.attachments[0]["author_name"] == "Terse"
     assert event.files is not None
-    assert event.files[0].url_private == "https://files.example/deploy.log"
+    assert event.files[0]["url_private"] == "https://files.example/deploy.log"
 
 
-def test_deserialize_input_event_falls_back_for_unknown_integrations() -> None:
-    event = deserialize_input_event(
-        {
-            "integrationType": "unknown_service",
-            "eventType": "manual",
-            "formattedContent": "Unknown",
-            "debugLog": "unknown",
-        }
-    )
-
-    assert isinstance(event, SerializedEventInputEvent)
-    assert event.integration_type == "unknown_service"
+def test_deserialize_input_event_rejects_unknown_integrations() -> None:
+    with pytest.raises(TerseRuntimeError):
+        deserialize_input_event(
+            {
+                "integrationType": "unknown_service",
+                "eventType": "manual",
+            }
+        )
 
 
 def test_slack_tool_output_models_accept_backend_shapes() -> None:
@@ -407,9 +402,9 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
         execute_registered_job(
             job,
             CronJobInputEvent(
-                event_type="manual",
-                formatted_content="manual trigger",
-                debug_log="manual",
+                event_type="cron",
+                input_id="input_123",
+                is_manual_trigger=True,
             ),
             agent=TerseAgent(),
         )
@@ -505,9 +500,10 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
             TerseAgent().run(
                 "hello",
                 CronJobInputEvent(
-                    event_type="manual",
-                    formatted_content="Scheduled event",
-                    debug_log="cron",
+                    event_type="cron",
+                    input_id="input_123",
+                    is_manual_trigger=True,
+                    manual_context="Scheduled event",
                 ),
             )
         )
@@ -524,7 +520,8 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
     assert captured["method"] == "POST"
     assert captured["headers"]["Authorization"] == "Bearer terse_test_key"
     assert captured["json"]["event"]["integrationType"] == "cron_job"
-    assert captured["json"]["event"]["formattedContent"] == "Scheduled event"
+    assert captured["json"]["event"]["inputId"] == "input_123"
+    assert captured["json"]["event"]["manualContext"] == "Scheduled event"
 
 
 def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:

@@ -1,4 +1,5 @@
 import { Request, Response } from "express"
+import type { TriggerEvent } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEventParamsSchema, triggerWithEventRequestSchema } from "terse-types/types"
@@ -6,7 +7,7 @@ import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEvent
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { cloudScheduler } from "../config/settings"
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
-import { InputEvent } from "../integrations/abstract/InputEvent"
+import { TriggerEventRuntime } from "../integrations/abstract/TriggerEventRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -16,28 +17,16 @@ export interface ManualTriggerRequest {
     context?: string
 }
 
-class SyntheticEvent extends InputEvent {
+class SyntheticTriggerEventRuntime extends TriggerEventRuntime {
     readonly integrationType: IntegrationType
     readonly eventType: string
-    private readonly _formattedContent: string
-    private readonly _debugLog: string
-    private readonly _metadata?: Record<string, unknown>
+    readonly data: TriggerEvent
 
-    constructor(integrationType: IntegrationType, formattedContent: string, debugLog: string, eventType?: string, metadata?: Record<string, unknown>) {
+    constructor(event: TriggerEvent) {
         super()
-        this.integrationType = integrationType
-        this._formattedContent = formattedContent
-        this._debugLog = debugLog
-        this.eventType = eventType ?? "manual_sample"
-        this._metadata = metadata
-    }
-
-    formatForAgentRunner(): string {
-        return this._formattedContent
-    }
-
-    debugLog(): string {
-        return this._debugLog
+        this.data = event
+        this.integrationType = event.integrationType
+        this.eventType = event.eventType
     }
 
     matchesAgentTrigger(_agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -49,12 +38,8 @@ class SyntheticEvent extends InputEvent {
             event: "manual_sample",
             integration: this.integrationType,
             source: "Manual trigger with sample event",
-            title: this._debugLog
+            title: this.debugLog()
         }
-    }
-
-    serializeMetadata(): Record<string, unknown> | undefined {
-        return this._metadata
     }
 }
 
@@ -151,7 +136,7 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
     res.status(200).json({ received: true, message: "Trigger with event initiated" })
 
     runWithUserContext(user, async () => {
-        const syntheticEvent = new SyntheticEvent(event.integrationType, event.formattedContent, event.debugLog, event.eventType, event.metadata)
+        const syntheticEvent = new SyntheticTriggerEventRuntime(event)
         const eventProcessor = new EventProcessor(syntheticEvent, user, { isManuallyTriggered: true })
         await eventProcessor.processSingleAgent(automationId)
     }).catch(error => {

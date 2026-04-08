@@ -14,7 +14,6 @@ from ._generated import (
     RunHistoryActionType,
     RunHistoryDecisionAction,
     RunHistoryStatus,
-    SlackChannelType,
     SlackEventType,
     ToolCallExecutionStatus,
     WorkOSEventType,
@@ -24,6 +23,9 @@ from ._generated import (
 )
 from ._generated import (
     IntegrationTypeEnum as IntegrationType,
+)
+from ._generated import (
+    SlackTriggerEventChannelType as SlackChannelType,
 )
 
 __all__ = [

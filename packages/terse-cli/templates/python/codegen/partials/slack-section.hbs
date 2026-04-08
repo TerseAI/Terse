@@ -21,7 +21,7 @@ SlackChannel.{{staticName}} = SlackChannel(channel_id={{{channelIdRepr}}}, name=
 
 class Slack:
     @staticmethod
-    def on_message(channel: SlackChannel, *, user_ids: Sequence[str] | None = None) -> TriggerConfig:
+    def on_message(channel: SlackChannel, *, user_ids: Sequence[str] | None = None) -> TriggerConfig[SlackInputEvent]:
         return TriggerConfig(
             integration_id={{{slack.instanceIdRepr}}},
             integration_type='slack',
@@ -37,7 +37,7 @@ class Slack:
         )
 
     @staticmethod
-    def on_dm(*, user_ids: Sequence[str] | None = None) -> TriggerConfig:
+    def on_dm(*, user_ids: Sequence[str] | None = None) -> TriggerConfig[SlackInputEvent]:
         return TriggerConfig(
             integration_id={{{slack.instanceIdRepr}}},
             integration_type='slack',
@@ -57,7 +57,7 @@ class Slack:
         listen_to_user_dms: bool | None = None,
         user_ids: Sequence[str] | None = None,
         event_types: Sequence[SlackEventType] | None = None,
-    ) -> TriggerConfig:
+    ) -> TriggerConfig[SlackInputEvent]:
         return TriggerConfig(
             integration_id={{{slack.instanceIdRepr}}},
             integration_type='slack',
@@ -105,7 +105,7 @@ class SlackChannel:
 
 class Slack:
     @staticmethod
-    def on_message(channel: SlackChannel, *, user_ids: list[str] | None = None) -> TriggerConfig:
+    def on_message(channel: SlackChannel, *, user_ids: list[str] | None = None) -> TriggerConfig[SlackInputEvent]:
         return TriggerConfig(
             integration_id='slack_placeholder',
             integration_type='slack',
@@ -121,7 +121,7 @@ class Slack:
         )
 
     @staticmethod
-    def on_dm(*, user_ids: list[str] | None = None) -> TriggerConfig:
+    def on_dm(*, user_ids: list[str] | None = None) -> TriggerConfig[SlackInputEvent]:
         return TriggerConfig(
             integration_id='slack_placeholder',
             integration_type='slack',
@@ -141,7 +141,7 @@ class Slack:
         listen_to_user_dms: bool | None = None,
         user_ids: list[str] | None = None,
         event_types: list[str] | None = None,
-    ) -> TriggerConfig:
+    ) -> TriggerConfig[SlackInputEvent]:
         return TriggerConfig(
             integration_id='slack_placeholder',
             integration_type='slack',

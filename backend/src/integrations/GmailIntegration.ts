@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { gmail_v1, google } from "googleapis"
-import { ConfigData, ConfigType, GmailEventData, GmailEventType, GmailParsedAttachment } from "terse-types"
+import { ConfigData, ConfigType, GmailEventData, GmailEventType, GmailParsedAttachment, GmailTriggerEvent } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -23,8 +23,8 @@ import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
-import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose"]
@@ -188,7 +188,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                                 messageId: parsedEmail.id
                             })
 
-                            const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id, storedFiles), fullUser)
+                            const eventProcessor = new EventProcessor(new GmailTriggerEventRuntime(parsedEmail, integration.id, storedFiles), fullUser)
                             const results = await eventProcessor.process()
 
                             let hasSuccess = false
@@ -516,7 +516,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerEventRuntime[]> {
         if (triggerConfig.configType !== ConfigType.GMAIL) {
             return []
         }
@@ -544,59 +544,36 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             maxResults: limit
         })
         const messageIds = (listResponse.data.messages?.map(m => m.id).filter(Boolean) as string[]) || []
-        const events: InputEvent[] = []
+        const events: TriggerEventRuntime[] = []
         for (const messageId of messageIds) {
             const eventData = await fetchAndParseEmail(gmail, messageId)
             if (eventData) {
-                events.push(new GmailEvent(eventData, integrationId))
+                events.push(new GmailTriggerEventRuntime(eventData, integrationId))
             }
         }
         return events
     }
 }
 
-export class GmailEvent extends InputEvent implements Identifiable {
+export class GmailTriggerEventRuntime extends TriggerEventRuntime implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.GMAIL
     readonly eventType: GmailEventType = GmailEventType.EMAIL_RECEIVED
     entityType = HydratorType.GMAIL_EVENT
     entityId: string
-    data: GmailEventData
+    data: GmailTriggerEvent
     private integrationId: string
     private storedFiles: StoredFile[]
 
     constructor(data: GmailEventData, integrationId: string, storedFiles: StoredFile[] = []) {
         super()
-        this.data = data
+        this.data = {
+            integrationType: IntegrationType.GMAIL,
+            eventType: GmailEventType.EMAIL_RECEIVED,
+            ...data
+        }
         this.integrationId = integrationId
         this.entityId = `${integrationId}:${data.id}`
         this.storedFiles = storedFiles
-    }
-
-    formatForAgentRunner(): string {
-        const getAttachmentLog = (attachment: GmailParsedAttachment) => {
-            return `- ${attachment.filename} ${attachment.isInline ? "Inline" : "Attachment"}  (${attachment.mimeType})`
-        }
-        const attachmentInfo = this.data.attachments?.map(getAttachmentLog).join("\n") || "No attachments"
-
-        return `
-        Incoming Email Event.
-
-        Gmail Event:
-        Subject: ${this.data.subject}
-        From: ${this.data.from}
-        To: ${this.data.to}
-        Date: ${this.data.date}
-        Message ID: ${this.data.messageId}
-        Thread ID: ${this.data.threadId}
-        Body: ${this.data.body}
-        Snippet: ${this.data.snippet}
-        Attachments (if any listed, actual files should be added below):
-        ${attachmentInfo}
-        `
-    }
-
-    debugLog(): string {
-        return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {

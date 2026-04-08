@@ -1120,6 +1120,8 @@ export const slackEventDataSchema = eventDataSchema.extend({
     userName: z.string().nullable(),
     text: z.string(),
     timestamp: z.string(),
+    // Keep both names during migration; `threadTs` is the target shared field.
+    threadTs: z.string().nullable().optional(),
     threadTimestamp: z.string().nullable(),
     teamId: z.string(),
     permalink: z.string().nullable(),
@@ -1144,6 +1146,8 @@ export const fileDiffSchema = z.object({
 
 export const commitSchema = z.object({
     sha: z.string(),
+    // Keep both names during migration; `message` is the target shared field.
+    message: z.string().optional(),
     name: z.string(),
     fileDiffs: z.array(fileDiffSchema)
 })
@@ -1167,7 +1171,10 @@ export const pullRequestSchema = z.object({
     merged: z.boolean(),
     head: pullRequestRefSchema,
     base: pullRequestRefSchema,
-    user: pullRequestUserSchema
+    // Keep both names during migration; `author` is the target shared field.
+    user: pullRequestUserSchema,
+    author: pullRequestUserSchema.optional(),
+    url: z.string().optional()
 })
 
 export const githubRepositorySchema = z.object({
@@ -1308,3 +1315,177 @@ export const workOSWebhookPayloadSchema = z.object({
 })
 
 export type WorkOSWebhookPayload = z.infer<typeof workOSWebhookPayloadSchema>
+
+// MARK: Canonical Trigger Events
+
+export const webhookTriggerEventTypeSchema = z.literal("webhook")
+export type WebhookTriggerEventType = z.infer<typeof webhookTriggerEventTypeSchema>
+
+export const cronTriggerEventTypeSchema = z.literal("cron")
+export type CronTriggerEventType = z.infer<typeof cronTriggerEventTypeSchema>
+
+export const manualSampleTriggerEventTypeSchema = z.literal("manual_sample")
+export type ManualSampleTriggerEventType = z.infer<typeof manualSampleTriggerEventTypeSchema>
+
+export const triggerEventTypeSchema = z.union([
+    slackEventTypeSchema,
+    gitHubEventTypeSchema,
+    linearEventTypeSchema,
+    gmailEventTypeSchema,
+    workOSEventTypeSchema,
+    webhookTriggerEventTypeSchema,
+    cronTriggerEventTypeSchema,
+    manualSampleTriggerEventTypeSchema
+])
+export type TriggerEventType = z.infer<typeof triggerEventTypeSchema>
+
+export const baseTriggerEventSchema = z.object({
+    integrationType: integrationTypeEnum,
+    eventType: triggerEventTypeSchema
+})
+export type BaseTriggerEvent = z.infer<typeof baseTriggerEventSchema>
+
+export const slackTriggerEventSchema = slackEventDataSchema
+export type SlackTriggerEvent = SlackEventData
+
+export const githubTriggerEventSchema = githubEventDataSchema
+export type GithubTriggerEvent = GithubEventData
+
+export const gmailTriggerEventSchema = baseTriggerEventSchema
+    .extend({
+        integrationType: z.literal(IntegrationType.GMAIL),
+        eventType: gmailEventTypeSchema
+    })
+    .merge(GmailEventDataSchema)
+export type GmailTriggerEvent = z.infer<typeof gmailTriggerEventSchema>
+
+export const linearTriggerEventSchema = baseTriggerEventSchema
+    .extend({
+        integrationType: z.literal(IntegrationType.LINEAR),
+        eventType: linearEventTypeSchema
+    })
+    .merge(linearWebhookEventDataSchema)
+export type LinearTriggerEvent = z.infer<typeof linearTriggerEventSchema>
+
+export const workOSTriggerUserSchema = z.object({
+    id: z.string(),
+    email: z.string(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    emailVerified: z.boolean(),
+    profilePictureUrl: z.string().optional()
+})
+export type WorkOSTriggerUser = z.infer<typeof workOSTriggerUserSchema>
+
+export const workOSTriggerMembershipSchema = z.object({
+    id: z.string(),
+    userId: z.string(),
+    organizationId: z.string(),
+    role: z.object({
+        slug: z.string()
+    }),
+    status: z.string()
+})
+export type WorkOSTriggerMembership = z.infer<typeof workOSTriggerMembershipSchema>
+
+export const workOSTriggerInvitationSchema = z.object({
+    id: z.string(),
+    email: z.string(),
+    organizationId: z.string(),
+    inviterEmail: z.string().optional(),
+    state: z.string(),
+    acceptedAt: z.string().optional()
+})
+export type WorkOSTriggerInvitation = z.infer<typeof workOSTriggerInvitationSchema>
+
+export const workOSTriggerOrganizationSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+export type WorkOSTriggerOrganization = z.infer<typeof workOSTriggerOrganizationSchema>
+
+export const workOSBaseTriggerEventSchema = baseTriggerEventSchema.extend({
+    integrationType: z.literal(IntegrationType.WORKOS),
+    eventType: workOSEventTypeSchema,
+    eventId: z.string(),
+    createdAt: z.string()
+})
+export type WorkOSBaseTriggerEvent = z.infer<typeof workOSBaseTriggerEventSchema>
+
+export const workOSUserTriggerEventSchema = workOSBaseTriggerEventSchema.extend({
+    eventType: z.union([z.literal(WorkOSEventType.USER_CREATED), z.literal(WorkOSEventType.USER_UPDATED), z.literal(WorkOSEventType.USER_DELETED)]),
+    user: workOSTriggerUserSchema
+})
+export type WorkOSUserTriggerEvent = z.infer<typeof workOSUserTriggerEventSchema>
+
+export const workOSMembershipTriggerEventSchema = workOSBaseTriggerEventSchema.extend({
+    eventType: z.union([
+        z.literal(WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED),
+        z.literal(WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED),
+        z.literal(WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED)
+    ]),
+    membership: workOSTriggerMembershipSchema
+})
+export type WorkOSMembershipTriggerEvent = z.infer<typeof workOSMembershipTriggerEventSchema>
+
+export const workOSInvitationTriggerEventSchema = workOSBaseTriggerEventSchema.extend({
+    eventType: z.union([
+        z.literal(WorkOSEventType.INVITATION_CREATED),
+        z.literal(WorkOSEventType.INVITATION_ACCEPTED),
+        z.literal(WorkOSEventType.INVITATION_RESENT),
+        z.literal(WorkOSEventType.INVITATION_REVOKED)
+    ]),
+    invitation: workOSTriggerInvitationSchema,
+    user: workOSTriggerUserSchema.optional()
+})
+export type WorkOSInvitationTriggerEvent = z.infer<typeof workOSInvitationTriggerEventSchema>
+
+export const workOSOrganizationTriggerEventSchema = workOSBaseTriggerEventSchema.extend({
+    eventType: z.literal(WorkOSEventType.ORGANIZATION_CREATED),
+    organization: workOSTriggerOrganizationSchema
+})
+export type WorkOSOrganizationTriggerEvent = z.infer<typeof workOSOrganizationTriggerEventSchema>
+
+export const workOSTriggerEventSchema = z.union([
+    workOSUserTriggerEventSchema,
+    workOSMembershipTriggerEventSchema,
+    workOSInvitationTriggerEventSchema,
+    workOSOrganizationTriggerEventSchema,
+    workOSBaseTriggerEventSchema
+])
+export type WorkOSTriggerEvent = z.infer<typeof workOSTriggerEventSchema>
+
+export const webhookTriggerEventSchema = baseTriggerEventSchema.extend({
+    integrationType: z.literal(IntegrationType.WEBHOOK),
+    eventType: webhookTriggerEventTypeSchema,
+    body: z.record(z.string(), z.unknown()),
+    headers: z.record(z.string(), z.string()),
+    method: z.string()
+})
+export type WebhookTriggerEvent = z.infer<typeof webhookTriggerEventSchema>
+
+export const cronTriggerEventSchema = baseTriggerEventSchema.extend({
+    integrationType: z.literal(IntegrationType.CRON_JOB),
+    eventType: cronTriggerEventTypeSchema,
+    inputId: z.string(),
+    isManualTrigger: z.boolean().optional(),
+    manualContext: z.string().optional()
+})
+export type CronTriggerEvent = z.infer<typeof cronTriggerEventSchema>
+
+export const manualSampleTriggerEventSchema = baseTriggerEventSchema.extend({
+    eventType: manualSampleTriggerEventTypeSchema
+})
+export type ManualSampleTriggerEvent = z.infer<typeof manualSampleTriggerEventSchema>
+
+export const triggerEventSchema = z.union([
+    slackTriggerEventSchema,
+    githubTriggerEventSchema,
+    gmailTriggerEventSchema,
+    linearTriggerEventSchema,
+    workOSTriggerEventSchema,
+    webhookTriggerEventSchema,
+    cronTriggerEventSchema,
+    manualSampleTriggerEventSchema
+])
+export type TriggerEvent = z.infer<typeof triggerEventSchema>

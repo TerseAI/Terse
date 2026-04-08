@@ -10,10 +10,10 @@ import { z } from "zod"
 import { filterEvent } from "../../agent/AgentRunner/EventFilter"
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
 import { generateEventSummary } from "../../agent/EventSummaryAgent/EventSummaryAgent"
-import { CronJobEvent } from "../../integrations/CronJobIntegration"
+import { CronTriggerEventRuntime } from "../../integrations/CronJobIntegration"
 import { FetchResourcesOptions, FetchResourcesOptionsSchema } from "../../integrations/abstract/FetchResourcesOptions"
-import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { TriggerEventRuntime } from "../../integrations/abstract/TriggerEventRuntime"
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
 import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
@@ -293,7 +293,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User is required to trigger agent run")
                 }
 
-                let inputEvent: InputEvent
+                let inputEvent: TriggerEventRuntime
                 let resolvedEntityType: string
                 let resolvedEntityId: string
                 const userEntityId = entityId != null && String(entityId).trim() !== "" ? entityId.trim() : null
@@ -308,7 +308,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                         entityType: hydratorType,
                         entityId: userEntityId
                     })
-                    inputEvent = hydrated as InputEvent
+                    inputEvent = hydrated as TriggerEventRuntime
                     resolvedEntityType = userEntityType
                     resolvedEntityId = userEntityId
                     logger.info("[triggerAgentRun] Hydrated event", {
@@ -325,7 +325,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     if (!agent) throw new Error("Agent not found")
                     const timeTriggerInput = agent.inputs.find(i => i.config_type === "TIME_TRIGGER" && i.time_trigger_config)
                     if (!timeTriggerInput) throw new Error("Agent does not have a time trigger input")
-                    const cronJobEvent = new CronJobEvent({
+                    const cronJobEvent = new CronTriggerEventRuntime({
                         inputId: timeTriggerInput.id,
                         isManualTrigger: true,
                         manualContext: manualContext ?? undefined

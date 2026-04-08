@@ -224,22 +224,20 @@ Webhook URLs are auto-generated on deploy and remain stable across redeploys.
 
 ## Common event interface
 
-All events implement a shared interface:
+All triggers resolve to the shared canonical `TriggerEvent` payload shape. Your handler receives the concrete subtype for the trigger you selected.
 
 <CodeGroup>
 ```ts TypeScript
-interface InputEvent {
+interface TriggerEvent {
   readonly integrationType: string
   readonly eventType: string
-  formatForAgentRunner(): string  // Formats the event for LLM consumption
 }
 ```
 ```python Python
-class InputEvent:
+class TriggerEvent:
     integration_type: str
     event_type: str
-    formatted_content: str  # Pre-formatted string for LLM consumption
 ```
 </CodeGroup>
 
-In TypeScript, call `event.formatForAgentRunner()` to get a string representation suitable for including in prompts. In Python, use `event.formatted_content`.
+Each trigger subtype adds its own canonical fields, such as Slack message metadata, GitHub PR data, webhook request bodies, or cron trigger context.

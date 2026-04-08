@@ -388,7 +388,7 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
 
 function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDefinition[]): SectionContext<GmailSectionContext> {
     if (instances.length === 0) return sectionData([])
-    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "GmailEventType"], {
+    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType", "GmailInputEvent"], {
         id: instances[0].id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "gmail")
     })
@@ -415,7 +415,7 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
 function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefinition[]): SectionContext<LinearSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
-    return sectionData(["LinearInputConfig", "LinearOutputConfig", "TypedSkill", "LinearEventType"], {
+    return sectionData(["LinearInputConfig", "LinearOutputConfig", "TypedSkill", "TypedTrigger", "LinearEventType", "LinearInputEvent"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "linear"),
         teamClass: buildResourceClassContext(
@@ -957,7 +957,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
 }
 
 function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSectionContext> {
-    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookInputEvent", "TypedTrigger"], {
+    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookInputEvent", "CronJobInputEvent", "TypedTrigger"], {
         skillToolType: buildSkillToolTypeForIntegration(tools, "terse")
     })
 }

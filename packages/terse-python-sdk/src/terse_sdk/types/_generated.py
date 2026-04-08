@@ -1307,6 +1307,50 @@ class AttioUpsertRecordToolOutput(TerseModel):
     errors: list[AttioUpsertError] | None = None
 
 
+class ManualSampleTriggerEventType(RootModel[Literal["manual_sample"]]):
+    root: Literal["manual_sample"] = "manual_sample"
+
+
+class CronTriggerEventType(RootModel[Literal["cron"]]):
+    root: Literal["cron"] = "cron"
+
+
+class WebhookTriggerEventType(RootModel[Literal["webhook"]]):
+    root: Literal["webhook"] = "webhook"
+
+
+class TriggerEventType(
+    RootModel[
+        SlackEventType
+        | GitHubEventType
+        | LinearEventType
+        | GmailEventType
+        | WorkOSEventType
+        | WebhookTriggerEventType
+        | CronTriggerEventType
+        | ManualSampleTriggerEventType
+    ]
+):
+    root: (
+        SlackEventType
+        | GitHubEventType
+        | LinearEventType
+        | GmailEventType
+        | WorkOSEventType
+        | WebhookTriggerEventType
+        | CronTriggerEventType
+        | ManualSampleTriggerEventType
+    )
+
+
+class BaseTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
+    event_type: Annotated[TriggerEventType, Field(alias="eventType")]
+
+
 class Button(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1448,6 +1492,7 @@ class Commit(TerseModel):
         extra="forbid",
     )
     sha: str
+    message: str | None = None
     name: str
     file_diffs: Annotated[list[FileDiff], Field(alias="fileDiffs")]
 
@@ -1504,6 +1549,17 @@ class CreateNotificationDestinationRequest(TerseModel):
     slack_user_id: Annotated[str | None, Field(alias="slackUserId")] = None
     slack_user_name: Annotated[str | None, Field(alias="slackUserName")] = None
     is_active: Annotated[bool | None, Field(alias="isActive")] = None
+
+
+class CronTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["cron_job"], Field(alias="integrationType")] = "cron_job"
+    event_type: Annotated[CronTriggerEventType, Field(alias="eventType")]
+    input_id: Annotated[str, Field(alias="inputId")]
+    is_manual_trigger: Annotated[bool | None, Field(alias="isManualTrigger")] = None
+    manual_context: Annotated[str | None, Field(alias="manualContext")] = None
 
 
 class DailyEventCount(TerseModel):
@@ -2232,9 +2288,11 @@ class PullRequest(TerseModel):
     head: PullRequestRef
     base: PullRequestRef
     user: PullRequestUser
+    author: PullRequestUser | None = None
+    url: str | None = None
 
 
-class GithubEventData(TerseModel):
+class GithubTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2248,6 +2306,10 @@ class GithubEventData(TerseModel):
     pull_request: Annotated[PullRequest | None, Field(alias="pullRequest")] = None
     repository: GithubRepository
     sender: Sender
+
+
+class GithubEventData(RootModel[GithubTriggerEvent]):
+    root: GithubTriggerEvent
 
 
 class GmailHeader(TerseModel):
@@ -2432,6 +2494,26 @@ class GmailSendSummary(TerseModel):
     subject: str
     summary: str
     is_reply: bool
+
+
+class GmailTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = "gmail"
+    event_type: Annotated[GmailEventType, Field(alias="eventType")]
+    id: str
+    thread_id: Annotated[str, Field(alias="threadId")]
+    subject: str
+    from_: Annotated[str, Field(alias="from")]
+    to: str
+    date: str
+    internal_date: Annotated[str, Field(alias="internalDate")]
+    message_id: Annotated[str, Field(alias="messageId")]
+    body: str
+    snippet: str
+    label_ids: Annotated[list[str], Field(alias="labelIds")]
+    attachments: list[GmailParsedAttachment] | None = None
 
 
 class GrepGitHubCodeToolInputPage(RootModel[int]):
@@ -3109,6 +3191,23 @@ class LinearSearchTicketToolOutput(TerseModel):
     pagination: LinearSearchPagination
 
 
+class LinearTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    event_type: Annotated[LinearEventType, Field(alias="eventType")]
+    action: LinearWebhookAction
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    data: LinearWebhookData
+    type: LinearWebhookType
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+
+
 class LinearUpdateTicketUpdates(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -3616,6 +3715,14 @@ class LogoUploadUrlQuery(TerseModel):
         extra="forbid",
     )
     content_type: Annotated[str, Field(alias="contentType")]
+
+
+class ManualSampleTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
+    event_type: Annotated[ManualSampleTriggerEventType, Field(alias="eventType")]
 
 
 class ManualTriggerParams(TerseModel):
@@ -4445,15 +4552,6 @@ class OrganizationUpdateRequest(TerseModel):
     name: str
 
 
-class PartialSdkAgentRunEventPayload(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[IntegrationTypeEnum | None, Field(alias="integrationType")] = None
-    formatted_content: Annotated[str | None, Field(alias="formattedContent")] = None
-    debug_log: Annotated[str | None, Field(alias="debugLog")] = None
-
-
 class PosthogEventCount(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -4770,15 +4868,6 @@ class SandboxStage(StrEnum):
     running = "running"
 
 
-class SdkAgentRunEventPayload(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
-    formatted_content: Annotated[str, Field(alias="formattedContent")]
-    debug_log: Annotated[str, Field(alias="debugLog")]
-
-
 class SdkAgentRunNormalizedRequestOptions(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -4787,12 +4876,214 @@ class SdkAgentRunNormalizedRequestOptions(TerseModel):
     require_approval: Annotated[bool, Field(alias="requireApproval")]
 
 
+class WebhookTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = "webhook"
+    event_type: Annotated[WebhookTriggerEventType, Field(alias="eventType")]
+    body: dict[str, Any]
+    headers: dict[str, str]
+    method: str
+
+
+class WorkOSBaseTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[WorkOSEventType, Field(alias="eventType")]
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+
+
+class WorkOSTriggerOrganization(LinearWebhookAssignee):
+    pass
+
+
+class WorkOSOrganizationTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization.created"], Field(alias="eventType")] = "organization.created"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    organization: WorkOSTriggerOrganization
+
+
+class WorkOSTriggerUser(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    email: str
+    first_name: Annotated[str | None, Field(alias="firstName")] = None
+    last_name: Annotated[str | None, Field(alias="lastName")] = None
+    email_verified: Annotated[bool, Field(alias="emailVerified")]
+    profile_picture_url: Annotated[str | None, Field(alias="profilePictureUrl")] = None
+
+
+class WorkOSTriggerInvitation(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    email: str
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    inviter_email: Annotated[str | None, Field(alias="inviterEmail")] = None
+    state: str
+    accepted_at: Annotated[str | None, Field(alias="acceptedAt")] = None
+
+
+class WorkOSInvitationTriggerEventEventType(StrEnum):
+    invitation_created = "invitation.created"
+    invitation_accepted = "invitation.accepted"
+    invitation_resent = "invitation.resent"
+    invitation_revoked = "invitation.revoked"
+
+
+class WorkOSInvitationTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[WorkOSInvitationTriggerEventEventType, Field(alias="eventType")]
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    invitation: WorkOSTriggerInvitation
+    user: WorkOSTriggerUser | None = None
+
+
+class WorkOSTriggerMembershipRole(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    slug: str
+
+
+class WorkOSTriggerMembership(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    user_id: Annotated[str, Field(alias="userId")]
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    role: WorkOSTriggerMembershipRole
+    status: str
+
+
+class WorkOSMembershipTriggerEventEventType(StrEnum):
+    organization_membership_created = "organization_membership.created"
+    organization_membership_updated = "organization_membership.updated"
+    organization_membership_deleted = "organization_membership.deleted"
+
+
+class WorkOSMembershipTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[WorkOSMembershipTriggerEventEventType, Field(alias="eventType")]
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    membership: WorkOSTriggerMembership
+
+
+class WorkOSUserTriggerEventEventType(StrEnum):
+    user_created = "user.created"
+    user_updated = "user.updated"
+    user_deleted = "user.deleted"
+
+
+class WorkOSUserTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[WorkOSUserTriggerEventEventType, Field(alias="eventType")]
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    user: WorkOSTriggerUser
+
+
+class WorkOSTriggerEvent(
+    RootModel[
+        WorkOSUserTriggerEvent
+        | WorkOSMembershipTriggerEvent
+        | WorkOSInvitationTriggerEvent
+        | WorkOSOrganizationTriggerEvent
+        | WorkOSBaseTriggerEvent
+    ]
+):
+    root: (
+        WorkOSUserTriggerEvent
+        | WorkOSMembershipTriggerEvent
+        | WorkOSInvitationTriggerEvent
+        | WorkOSOrganizationTriggerEvent
+        | WorkOSBaseTriggerEvent
+    )
+
+
+class SlackTriggerEventChannelType(StrEnum):
+    channel = "channel"
+    group = "group"
+    mpim = "mpim"
+    im = "im"
+
+
+class SlackTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[SlackEventType, Field(alias="eventType")]
+    channel_id: Annotated[str, Field(alias="channelId")]
+    channel_name: Annotated[str | None, Field(alias="channelName")]
+    user_id: Annotated[str, Field(alias="userId")]
+    user_name: Annotated[str | None, Field(alias="userName")]
+    text: str
+    timestamp: str
+    thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
+    thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    permalink: str | None
+    channel_type: Annotated[SlackTriggerEventChannelType | None, Field(alias="channelType")]
+    blocks: list[Any] | None
+    attachments: list[Any] | None
+    files: list[Any] | None
+
+
+class TriggerEvent(
+    RootModel[
+        SlackTriggerEvent
+        | GithubTriggerEvent
+        | GmailTriggerEvent
+        | LinearTriggerEvent
+        | WorkOSTriggerEvent
+        | WebhookTriggerEvent
+        | CronTriggerEvent
+        | ManualSampleTriggerEvent
+    ]
+):
+    root: (
+        SlackTriggerEvent
+        | GithubTriggerEvent
+        | GmailTriggerEvent
+        | LinearTriggerEvent
+        | WorkOSTriggerEvent
+        | WebhookTriggerEvent
+        | CronTriggerEvent
+        | ManualSampleTriggerEvent
+    )
+
+
 class SdkAgentRunNormalizedRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     prompt: str
-    event: SdkAgentRunEventPayload
+    event: TriggerEvent
     skills: list[ConfigData]
     tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
     options: SdkAgentRunNormalizedRequestOptions
@@ -4811,7 +5102,7 @@ class SdkAgentRunRequestBody(TerseModel):
         extra="forbid",
     )
     prompt: str | None = None
-    event: PartialSdkAgentRunEventPayload | None = None
+    event: TriggerEvent | None = None
     skills: list[ConfigData] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")] = None
@@ -4974,7 +5265,7 @@ class SdkDeployResponseBody(TerseModel):
     details: str | None = None
 
 
-class TriggerPayload(TerseModel):
+class SdkSampleEventsRequestTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -4987,7 +5278,7 @@ class SdkSampleEventsRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    triggers: Annotated[list[TriggerPayload], Field(min_length=1)]
+    triggers: Annotated[list[SdkSampleEventsRequestTrigger], Field(min_length=1)]
 
 
 class SdkToolExecuteRequest(TerseModel):
@@ -5442,17 +5733,6 @@ class SearchRumEventsToolOutput(ListRumEventsToolOutput):
     pass
 
 
-class SerializedEvent(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
-    event_type: Annotated[str | None, Field(alias="eventType")] = None
-    formatted_content: Annotated[str, Field(alias="formattedContent")]
-    debug_log: Annotated[str, Field(alias="debugLog")]
-    metadata: dict[str, Any] | None = None
-
-
 class SlackChannelListItem(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -5476,13 +5756,6 @@ class SlackChannel(TerseModel):
     is_mpim: Annotated[bool, Field(alias="isMPIM")]
 
 
-class SlackChannelType(StrEnum):
-    channel = "channel"
-    group = "group"
-    mpim = "mpim"
-    im = "im"
-
-
 class SlackChannelsResponse(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -5502,25 +5775,8 @@ class SlackConversationMessage(TerseModel):
     thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
 
 
-class SlackEventData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
-    event_type: Annotated[SlackEventType, Field(alias="eventType")]
-    channel_id: Annotated[str, Field(alias="channelId")]
-    channel_name: Annotated[str | None, Field(alias="channelName")]
-    user_id: Annotated[str, Field(alias="userId")]
-    user_name: Annotated[str | None, Field(alias="userName")]
-    text: str
-    timestamp: str
-    thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
-    team_id: Annotated[str, Field(alias="teamId")]
-    permalink: str | None
-    channel_type: Annotated[SlackChannelType | None, Field(alias="channelType")]
-    blocks: list[Any] | None
-    attachments: list[Any] | None
-    files: list[Any] | None
+class SlackEventData(RootModel[SlackTriggerEvent]):
+    root: SlackTriggerEvent
 
 
 class SlackListChannelsTypes(StrEnum):
@@ -5954,6 +6210,10 @@ class TransientAgentTrigger(TransientAgentOutput):
     pass
 
 
+class TriggerEventArray(RootModel[list[TriggerEvent]]):
+    root: list[TriggerEvent]
+
+
 class TriggerWithEventParams(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -5965,7 +6225,7 @@ class TriggerWithEventRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    event: SerializedEvent
+    event: TriggerEvent
 
 
 class UpdateNotificationDestinationRequest(TerseModel):

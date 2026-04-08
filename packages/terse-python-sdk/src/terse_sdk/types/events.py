@@ -1,74 +1,48 @@
-"""Input event models for the Python SDK."""
+"""Canonical trigger-event models for the Python SDK."""
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, TypeAlias
-
-from pydantic import Field
+from typing import TypeAlias
 
 from ._base import TerseModel
-from .enums import SlackChannelType
+from ._generated import (
+    Commit,
+    CronTriggerEvent,
+    FileDiff,
+    GithubRepository,
+    GithubTriggerEvent,
+    GmailTriggerEvent,
+    LinearTriggerEvent,
+    ManualSampleTriggerEvent,
+    PullRequest,
+    PullRequestRef,
+    Sender,
+    SlackTriggerEvent,
+    TriggerEvent,
+    WebhookTriggerEvent,
+    WorkOSBaseTriggerEvent,
+    WorkOSInvitationTriggerEvent,
+    WorkOSMembershipTriggerEvent,
+    WorkOSOrganizationTriggerEvent,
+    WorkOSTriggerEvent,
+    WorkOSTriggerInvitation,
+    WorkOSTriggerMembership,
+    WorkOSTriggerOrganization,
+    WorkOSTriggerUser,
+    WorkOSUserTriggerEvent,
+)
 
-
-class InputEvent(TerseModel):
-    integration_type: str
-    event_type: str = "unknown"
-    formatted_content: str = ""
-    debug_log: str = ""
-    metadata: dict[str, Any] | None = None
-
-
-class GithubRepository(TerseModel):
-    id: int
-    name: str
-    owner: str
-    default_branch: str = "main"
-
-
-class GithubUser(TerseModel):
-    login: str
-    email: str | None = None
-
-
-class GithubFileDiff(TerseModel):
-    filename: str
-    diff: str
-
-
-class GithubCommit(TerseModel):
-    sha: str
-    message: str
-    file_diffs: list[GithubFileDiff] = Field(default_factory=list)
-
-
-class GithubPRRef(TerseModel):
-    ref: str
-    sha: str
-
-
-class GithubPRData(TerseModel):
-    number: int
-    title: str
-    body: str | None = None
-    state: Literal["open", "closed"]
-    merged: bool = False
-    head: GithubPRRef
-    base: GithubPRRef
-    author: GithubUser
-    url: str
-
-
-class GithubEventMetadata(TerseModel):
-    repository: GithubRepository | None = None
-    sender: GithubUser | None = None
-    commits: list[GithubCommit] = Field(default_factory=list)
-    pull_request: GithubPRData | None = None
-    branch: str | None = None
-
-
-class GithubInputEvent(InputEvent):
-    integration_type: Literal["github"] = "github"
-    metadata: GithubEventMetadata | None = None
+TriggerEventScalar: TypeAlias = (
+    SlackTriggerEvent
+    | GithubTriggerEvent
+    | GmailTriggerEvent
+    | LinearTriggerEvent
+    | WebhookTriggerEvent
+    | WorkOSBaseTriggerEvent
+    | WorkOSTriggerEvent
+    | CronTriggerEvent
+    | ManualSampleTriggerEvent
+)
 
 
 class SlackAttachmentField(TerseModel):
@@ -116,129 +90,58 @@ class SlackFile(TerseModel):
     original_h: int | None = None
 
 
-class SlackInputEvent(InputEvent):
-    integration_type: Literal["slack"] = "slack"
-    channel_id: str = ""
-    channel_name: str | None = None
-    user_id: str = ""
-    user_name: str | None = None
-    text: str = ""
-    timestamp: str = ""
-    thread_ts: str | None = None
-    team_id: str = ""
-    permalink: str | None = None
-    channel_type: SlackChannelType | None = None
-    blocks: list[dict[str, Any]] | None = None
-    attachments: list[SlackAttachment] | None = None
-    files: list[SlackFile] | None = None
-
-    @property
-    def thread_timestamp(self) -> str | None:
-        return self.thread_ts
-
-
-class LinearInputEvent(InputEvent):
-    integration_type: Literal["linear"] = "linear"
+GithubFileDiff = FileDiff
+GithubCommit = Commit
+GithubUser = Sender
+GithubPRRef = PullRequestRef
+GithubPRData = PullRequest
+GithubEventMetadata = GithubTriggerEvent
+GithubInputEvent = GithubTriggerEvent
+SlackInputEvent = SlackTriggerEvent
+LinearInputEvent = LinearTriggerEvent
+GmailInputEvent = GmailTriggerEvent
+CronJobInputEvent = CronTriggerEvent
+TerseInputEvent = ManualSampleTriggerEvent
+WorkOSEventUser = WorkOSTriggerUser
+WorkOSEventMembership = WorkOSTriggerMembership
+WorkOSEventInvitation = WorkOSTriggerInvitation
+WorkOSEventOrganization = WorkOSTriggerOrganization
+WorkOSInputEvent = WorkOSBaseTriggerEvent | WorkOSTriggerEvent
+WorkOSEventMetadata = WorkOSBaseTriggerEvent
+WebhookInputEvent = WebhookTriggerEvent
 
 
-class GmailInputEvent(InputEvent):
-    integration_type: Literal["gmail"] = "gmail"
+class _LegacyInputEvent(TerseModel):
+    integration_type: str
+    event_type: str = "manual_sample"
 
 
-class NotionInputEvent(InputEvent):
-    integration_type: Literal["notion"] = "notion"
+class AttioInputEvent(_LegacyInputEvent):
+    integration_type: str = "attio"
 
 
-class PosthogInputEvent(InputEvent):
-    integration_type: Literal["posthog"] = "posthog"
+class DatadogInputEvent(_LegacyInputEvent):
+    integration_type: str = "datadog"
 
 
-class DatadogInputEvent(InputEvent):
-    integration_type: Literal["datadog"] = "datadog"
+class LaunchDarklyInputEvent(_LegacyInputEvent):
+    integration_type: str = "launchdarkly"
 
 
-class TerseInputEvent(InputEvent):
-    integration_type: Literal["terse"] = "terse"
+class NotionInputEvent(_LegacyInputEvent):
+    integration_type: str = "notion"
 
 
-class CronJobInputEvent(InputEvent):
-    integration_type: Literal["cron_job"] = "cron_job"
+class PosthogInputEvent(_LegacyInputEvent):
+    integration_type: str = "posthog"
 
 
-class LaunchDarklyInputEvent(InputEvent):
-    integration_type: Literal["launchdarkly"] = "launchdarkly"
+class SnowflakeInputEvent(_LegacyInputEvent):
+    integration_type: str = "snowflake"
 
 
-class WorkOSEventUser(TerseModel):
-    id: str
-    email: str
-    first_name: str | None = None
-    last_name: str | None = None
-    email_verified: bool
-    profile_picture_url: str | None = None
-
-
-class WorkOSEventMembership(TerseModel):
-    id: str
-    user_id: str
-    organization_id: str
-    role: dict[str, str]
-    status: str
-
-
-class WorkOSEventInvitation(TerseModel):
-    id: str
-    email: str
-    organization_id: str
-    inviter_email: str | None = None
-    state: str
-    accepted_at: str | None = None
-
-
-class WorkOSEventMetadata(TerseModel):
-    event_id: str | None = None
-    created_at: str | None = None
-    user: WorkOSEventUser | None = None
-    membership: WorkOSEventMembership | None = None
-    invitation: WorkOSEventInvitation | None = None
-
-
-class WorkOSInputEvent(InputEvent):
-    integration_type: Literal["workos"] = "workos"
-    metadata: WorkOSEventMetadata | None = None
-
-
-class AttioInputEvent(InputEvent):
-    integration_type: Literal["attio"] = "attio"
-
-
-class SnowflakeInputEvent(InputEvent):
-    integration_type: Literal["snowflake"] = "snowflake"
-
-
-class SerializedEventInputEvent(InputEvent):
-    """Fallback event for integrations without a dedicated typed model yet."""
-
-
-KnownInputEvent: TypeAlias = Annotated[
-    GithubInputEvent
-    | SlackInputEvent
-    | LinearInputEvent
-    | GmailInputEvent
-    | NotionInputEvent
-    | PosthogInputEvent
-    | DatadogInputEvent
-    | TerseInputEvent
-    | CronJobInputEvent
-    | LaunchDarklyInputEvent
-    | WorkOSInputEvent
-    | AttioInputEvent
-    | SnowflakeInputEvent,
-    Field(discriminator="integration_type"),
-]
-
-AnyInputEvent: TypeAlias = KnownInputEvent | SerializedEventInputEvent
-
+KnownInputEvent: TypeAlias = TriggerEventScalar
+AnyInputEvent: TypeAlias = TriggerEventScalar
 
 __all__ = [
     "AnyInputEvent",
@@ -254,22 +157,29 @@ __all__ = [
     "GithubRepository",
     "GithubUser",
     "GmailInputEvent",
-    "InputEvent",
     "KnownInputEvent",
     "LaunchDarklyInputEvent",
     "LinearInputEvent",
     "NotionInputEvent",
     "PosthogInputEvent",
-    "SerializedEventInputEvent",
     "SlackAttachment",
     "SlackAttachmentField",
     "SlackFile",
     "SlackInputEvent",
     "SnowflakeInputEvent",
     "TerseInputEvent",
+    "WebhookInputEvent",
+    "TriggerEvent",
+    "WorkOSBaseTriggerEvent",
     "WorkOSEventInvitation",
     "WorkOSEventMembership",
     "WorkOSEventMetadata",
+    "WorkOSEventOrganization",
     "WorkOSEventUser",
     "WorkOSInputEvent",
+    "WorkOSInvitationTriggerEvent",
+    "WorkOSMembershipTriggerEvent",
+    "WorkOSOrganizationTriggerEvent",
+    "WorkOSTriggerEvent",
+    "WorkOSUserTriggerEvent",
 ]

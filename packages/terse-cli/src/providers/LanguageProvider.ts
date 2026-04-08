@@ -1,5 +1,5 @@
 import type { CreateJobParameters } from "terse-sdk"
-import type { SerializedEvent } from "terse-types"
+import type { TriggerEvent } from "terse-types"
 
 import type { CodegenInput } from "./codegenTypes"
 
@@ -24,5 +24,5 @@ export interface LanguageProvider {
     installDependencies(targetDir: string): Promise<void>
     renderGeneratedCode(input: CodegenInput): string
     loadJobRegistry(): Promise<Map<string, CreateJobParameters>>
-    executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void>
+    executeJob(job: CreateJobParameters, event: TriggerEvent, opts?: { verbose?: boolean }): Promise<void>
 }

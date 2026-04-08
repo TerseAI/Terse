@@ -8,8 +8,7 @@ import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage } from "terse-types"
-import { SlackEventData } from "terse-types/Configs"
+import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage, SlackTriggerEvent } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -33,8 +32,8 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "./SlackClient"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
 
 export class SlackIntegrationManager
     implements Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
@@ -534,7 +533,7 @@ export class SlackIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerEventRuntime[]> {
         if (triggerConfig.configType !== ConfigType.SLACK) {
             return []
         }
@@ -624,11 +623,11 @@ export class SlackIntegrationManager
             return []
         }
 
-        const events: InputEvent[] = []
+        const events: TriggerEventRuntime[] = []
         for (const msg of messages) {
             const enrichedMessage = await fetchEnrichedSlackMessageData(client, msg)
 
-            const slackEventData: SlackEventData = {
+            const slackEventData: SlackTriggerEvent = {
                 integrationType: IntegrationType.SLACK,
                 eventType: SlackEventType.MESSAGE,
                 channelId: msg.channel,
@@ -645,7 +644,7 @@ export class SlackIntegrationManager
                 attachments: enrichedMessage.attachments || null,
                 files: enrichedMessage.files || null
             }
-            events.push(new SlackEvent(slackEventData))
+            events.push(new SlackTriggerEventRuntime(slackEventData))
         }
         return events
     }
@@ -857,55 +856,19 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
 
 // MARK: - SLACK Event
 
-export class SlackEvent extends InputEvent implements Identifiable {
+export class SlackTriggerEventRuntime extends TriggerEventRuntime implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.SLACK
     readonly eventType: SlackEventType = SlackEventType.MESSAGE
-    data: SlackEventData
+    data: SlackTriggerEvent
     entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
     entityId: string
     private storedFiles: StoredFile[]
 
-    constructor(data: SlackEventData, storedFiles: StoredFile[] = []) {
+    constructor(data: SlackTriggerEvent, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.entityId = `${data.teamId}:${data.permalink || ""}`
         this.storedFiles = storedFiles
-    }
-
-    formatForAgentRunner(): string {
-        // Extract rich content from blocks and attachments (used by third-party apps)
-        const blockContent = JSON.stringify(this.data.blocks)
-        const attachmentContent = JSON.stringify(this.data.attachments)
-
-        // Determine the main message content
-        // If text is empty but we have block/attachment content, note that
-        const messageText = this.data.text || "(no plain text)"
-
-        return `
-        Incoming Slack Message Event.
-
-        Slack Event:
-        Channel: ${this.data.channelName || this.data.channelId}
-        User: ${this.data.userName || this.data.userId}
-        Message: ${messageText}
-        Timestamp: ${this.data.timestamp}
-        ${this.data.threadTimestamp ? `Thread: ${this.data.threadTimestamp}` : ""}
-        Team ID: ${this.data.teamId}
-        ${
-            blockContent
-                ? `
-        Rich Content (from blocks):
-        ${blockContent}`
-                : ""
-        }
-        ${
-            attachmentContent
-                ? `
-        Attachment Content:
-        ${attachmentContent}`
-                : ""
-        }
-        `
     }
 
     /**
@@ -923,29 +886,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
             })
         }
         return files
-    }
-
-    debugLog(): string {
-        const isDM = this.data.channelType === SlackChannelType.IM
-        return `Slack Event: ${isDM ? "DM" : this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId}}`
-    }
-
-    serializeMetadata(): Record<string, unknown> {
-        return {
-            channelId: this.data.channelId,
-            channelName: this.data.channelName,
-            userId: this.data.userId,
-            userName: this.data.userName,
-            text: this.data.text,
-            timestamp: this.data.timestamp,
-            threadTs: this.data.threadTimestamp,
-            teamId: this.data.teamId,
-            permalink: this.data.permalink,
-            channelType: this.data.channelType,
-            blocks: this.data.blocks,
-            attachments: this.data.attachments,
-            files: this.data.files
-        }
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -1380,8 +1320,8 @@ async function handleSlackMessage(event: SimplifiedSlackEvent, teamId: string) {
             }
         }
 
-        // Build SlackEventData with all available information
-        const slackEventData: SlackEventData = {
+        // Build the canonical Slack trigger event with all available information
+        const slackEventData: SlackTriggerEvent = {
             integrationType: IntegrationType.SLACK,
             eventType: SlackEventType.MESSAGE,
             channelId: messageEvent.channel!,
@@ -1400,8 +1340,8 @@ async function handleSlackMessage(event: SimplifiedSlackEvent, teamId: string) {
             files: enrichedMessage.files || null
         }
 
-        // Create SlackEvent once
-        const slackEvent = new SlackEvent(slackEventData, storedFiles)
+        // Create SlackTriggerEventRuntime once
+        const slackEvent = new SlackTriggerEventRuntime(slackEventData, storedFiles)
 
         // Process the event against automations for all users in this workspace
         // This ensures messages from any workspace user can trigger automations

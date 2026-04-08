@@ -134,7 +134,7 @@ If you only have one job, it's selected automatically.
 Runs a job locally with an explicit event payload. Unlike `test`, this is non-interactive and does not fetch sample events.
 
 ```bash
-terse run --event '{"integrationType":"cron_job","formattedContent":"Manual trigger"}'
+terse run --event '{"integrationType":"cron_job","eventType":"cron","inputId":"trigger_123","isManualTrigger":true,"manualContext":"Manual trigger"}'
 terse run my-job --event-file ./event.json
 ```
 
@@ -142,7 +142,7 @@ terse run my-job --event-file ./event.json
 
 | Flag                  | Description                              |
 | --------------------- | ---------------------------------------- |
-| `--event <json>`      | Inline serialized event JSON             |
+| `--event <json>`      | Inline canonical `TriggerEvent` JSON     |
 | `--event-file <path>` | Path to a JSON file containing the event |
 
 One of `--event` or `--event-file` is required.

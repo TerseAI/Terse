@@ -3,7 +3,7 @@ import { execFileSync, spawn } from "node:child_process"
 import os from "node:os"
 import path from "node:path"
 import type { CreateJobParameters } from "terse-sdk"
-import type { SdkAgentStreamEvent, SerializedEvent } from "terse-types"
+import type { SdkAgentStreamEvent, TriggerEvent } from "terse-types"
 
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
@@ -122,7 +122,7 @@ export class PythonProvider implements LanguageProvider {
         }
     }
 
-    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
+    async executeJob(job: CreateJobParameters, event: TriggerEvent, opts?: { verbose?: boolean }): Promise<void> {
         const cwd = process.cwd()
         const env: NodeJS.ProcessEnv = {
             ...loadDotenv(cwd),

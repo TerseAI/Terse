@@ -1,7 +1,7 @@
-import { IntegrationType, SlackChannelType, SlackEventData, SlackEventType } from "terse-types"
+import { IntegrationType, SlackChannelType, SlackEventType, SlackTriggerEvent } from "terse-types"
 
 import { initializeSlackWebClient } from "../../integrations/SlackClient"
-import { SlackEvent } from "../../integrations/SlackIntegration"
+import { SlackTriggerEventRuntime } from "../../integrations/SlackIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { HydratorType } from "../../types/rag"
@@ -36,14 +36,14 @@ function parsePermalink(permalink: string): { channelId: string; timestamp: stri
     return { channelId, timestamp }
 }
 
-export class SlackEventHydrator extends Hydrator<SlackEvent> {
+export class SlackEventHydrator extends Hydrator<SlackTriggerEventRuntime> {
     readonly entityType = HydratorType.SLACK_MESSAGE_EVENT
 
     constructor(ctx: HydrationContext) {
         super(ctx)
     }
 
-    async hydrate(ref: Identifiable): Promise<SlackEvent> {
+    async hydrate(ref: Identifiable): Promise<SlackTriggerEventRuntime> {
         const event = await this.fetchFromSlack(ref.entityId)
         if (!event) {
             throw new Error(`Failed to hydrate Slack event: ${ref.entityId}`)
@@ -51,7 +51,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
         return event
     }
 
-    async hydrateBulk(refs: Identifiable[]): Promise<SlackEvent[]> {
+    async hydrateBulk(refs: Identifiable[]): Promise<SlackTriggerEventRuntime[]> {
         const results = await Promise.all(refs.map(ref => this.fetchFromSlack(ref.entityId)))
 
         return results.map((event, i) => {
@@ -62,7 +62,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
         })
     }
 
-    private async fetchFromSlack(entityId: string): Promise<SlackEvent | null> {
+    private async fetchFromSlack(entityId: string): Promise<SlackTriggerEventRuntime | null> {
         // Split only on the first colon to preserve colons in the permalink URL
         const colonIndex = entityId.indexOf(":")
         if (colonIndex === -1) {
@@ -160,7 +160,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
                 }
             }
 
-            const eventData: SlackEventData = {
+            const eventData: SlackTriggerEvent = {
                 integrationType: IntegrationType.SLACK,
                 eventType: SlackEventType.MESSAGE,
                 channelId,
@@ -178,7 +178,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
                 files: message.files || null
             }
 
-            return new SlackEvent(eventData)
+            return new SlackTriggerEventRuntime(eventData)
         } catch (error: any) {
             // Handle specific Slack API errors
             const errorCode = error?.data?.error || error?.code

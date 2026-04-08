@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom"
 import { Tab, TabGroup, TabList } from "@headlessui/react"
 import { Clock, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
-import { CONFIG_DETAILS, ConfigType } from "terse-types"
+import { CONFIG_DETAILS, ConfigType, debugTriggerEvent, formatTriggerEventForAgent } from "terse-types"
 import { FrontendRoutes } from "terse-types"
-import type { AgentTrigger, SerializedEvent } from "terse-types"
+import type { AgentTrigger, TriggerEvent } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { Badge } from "../../components/ui/badge"
@@ -99,7 +99,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
         }
     }
 
-    const handleSelectEvent = async (event: SerializedEvent) => {
+    const handleSelectEvent = async (event: TriggerEvent) => {
         await triggerWithEvent(event)
         setSelectedTab(1)
     }
@@ -252,11 +252,11 @@ function SampleEventsDialog({
     onSelect,
     onClose
 }: {
-    events: SerializedEvent[]
+    events: TriggerEvent[]
     open: boolean
     isFetching: boolean
     isTriggering: boolean
-    onSelect: (event: SerializedEvent) => void
+    onSelect: (event: TriggerEvent) => void
     onClose: () => void
 }) {
     return (
@@ -288,10 +288,12 @@ function SampleEventsDialog({
                                     <Badge variant="outline" className="text-xs">
                                         {event.integrationType}
                                     </Badge>
-                                    <span className="text-sm font-medium truncate">{event.debugLog}</span>
+                                    <span className="text-sm font-medium truncate">{debugTriggerEvent(event)}</span>
                                     <Zap className="h-3.5 w-3.5 text-muted-foreground ml-auto shrink-0" />
                                 </div>
-                                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-32 overflow-y-auto bg-muted/50 rounded p-2">{event.formattedContent}</pre>
+                                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-32 overflow-y-auto bg-muted/50 rounded p-2">
+                                    {formatTriggerEventForAgent(event)}
+                                </pre>
                             </button>
                         ))}
                     </div>

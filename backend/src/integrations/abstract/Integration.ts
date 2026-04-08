@@ -6,7 +6,7 @@ import { OAuthInstallationDetails } from "terse-types"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 import type { FetchResourcesOptions } from "./FetchResourcesOptions"
-import type { InputEvent } from "./InputEvent"
+import type { TriggerEventRuntime } from "./TriggerEventRuntime"
 
 export type { FormFieldDefinition, ConfigurationFieldDefinition, ConfigurationOption, ConfigurationFieldType, FormFieldType } from "terse-types"
 
@@ -36,7 +36,7 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
         options?: {
             limit?: number
         }
-    ): Promise<InputEvent[]>
+    ): Promise<TriggerEventRuntime[]>
 }
 
 export interface FormSubmissionInput {

@@ -1,25 +1,28 @@
 import type { ConfigData } from "terse-types"
 import type { RunHistoryAction } from "terse-types"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
+import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, TriggerEvent } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ApiRoutes } from "terse-types"
+import { createManualTriggerEvent, sdkAgentRunRequestBodySchema } from "terse-types"
 
-import type { InferEvents, InferToolApprovals, InputEvent, TypedSkill, TypedTrigger } from "./types.js"
+import type { InferEvents, InferToolApprovals, TypedSkill, TypedTrigger } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
 // Re-export SDK-specific types
-export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
+export type { ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 export {
     GithubInputEvent,
     GithubPRInputEvent,
     GithubPushInputEvent,
+    GmailInputEvent,
+    LinearInputEvent,
+    CronJobInputEvent,
     WorkOSInputEvent,
     WorkOSUserInputEvent,
     WorkOSMembershipInputEvent,
     WorkOSInvitationInputEvent,
     WorkOSOrganizationInputEvent,
-    SerializedEventInputEvent,
     isGithubEvent,
     isGithubPREvent,
     isGithubPushEvent,
@@ -33,21 +36,9 @@ export {
     isWebhookEvent,
     deserializeInputEvent
 } from "./types.js"
-export type { GithubRepository, GithubUser, GithubFileDiff, GithubCommit, GithubPRData, WorkOSEventUser, WorkOSEventMembership, WorkOSEventInvitation, WorkOSEventOrganization } from "./types.js"
 
 // Mock event for CLI's `terse run` command
-export class MockInputEvent implements InputEvent {
-    readonly integrationType = IntegrationType.TERSE
-    readonly eventType = "manual"
-
-    formatForAgentRunner(): string {
-        return "Manual trigger from terse run"
-    }
-
-    debugLog(): string {
-        return "[MockInputEvent] Manual trigger via CLI"
-    }
-}
+export const createMockInputEvent = (): TriggerEvent => createManualTriggerEvent({ integrationType: IntegrationType.TERSE })
 
 // Re-export shared types for consumer convenience
 export {
@@ -79,7 +70,7 @@ export {
     WorkOSEventType
 } from "terse-types"
 
-export type { SdkAgentRunEventPayload, SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
+export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
 export { IntegrationType } from "terse-types"
 
 export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
@@ -145,19 +136,15 @@ export class TerseAgent {
         this.toolApprovals = toolApprovals
     }
 
-    async *run(prompt: string, event?: InputEvent): AsyncGenerator<TerseAgentResult> {
-        const resolvedEvent = event ?? new MockInputEvent()
+    async *run(prompt: string, event?: TriggerEvent): AsyncGenerator<TerseAgentResult> {
+        const resolvedEvent = event ?? createMockInputEvent()
 
-        const requestBody: SdkAgentRunRequestBody = {
+        const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
             prompt,
             toolApprovals: this.toolApprovals,
-            event: {
-                integrationType: resolvedEvent.integrationType,
-                formattedContent: resolvedEvent.formatForAgentRunner(),
-                debugLog: resolvedEvent.debugLog()
-            },
+            event: resolvedEvent,
             skills: this.skills
-        }
+        })
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
             method: "POST",
@@ -197,7 +184,7 @@ export class TerseAgent {
      * Runs the agent to completion and discards streamed output.
      * Useful when you only care that the run finished (or threw).
      */
-    async runAndWait(prompt: string, event?: InputEvent): Promise<string> {
+    async runAndWait(prompt: string, event?: TriggerEvent): Promise<string> {
         for await (const chunk of this.run(prompt, event)) {
             if (chunk.type === EventType.FINAL_OUTPUT) {
                 return (chunk as FinalOutputResult).finalOutput

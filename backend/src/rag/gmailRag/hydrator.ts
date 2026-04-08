@@ -1,7 +1,7 @@
 import { google } from "googleapis"
 import { IntegrationType } from "terse-types"
 
-import { GmailEvent, fetchAndParseEmail, getOAuth2Client } from "../../integrations/GmailIntegration"
+import { GmailTriggerEventRuntime, fetchAndParseEmail, getOAuth2Client } from "../../integrations/GmailIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
@@ -10,14 +10,14 @@ import { SecretField, getSecret } from "../../services/SecretService"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
-export class GmailEventHydrator extends Hydrator<GmailEvent> {
+export class GmailEventHydrator extends Hydrator<GmailTriggerEventRuntime> {
     readonly entityType = HydratorType.GMAIL_EVENT
 
     constructor(ctx: HydrationContext) {
         super(ctx)
     }
 
-    async hydrate(ref: Identifiable): Promise<GmailEvent> {
+    async hydrate(ref: Identifiable): Promise<GmailTriggerEventRuntime> {
         const event = await this.fetchFromGmail(ref.entityId)
         if (!event) {
             throw new Error(`Failed to hydrate Gmail event: ${ref.entityId}`)
@@ -25,7 +25,7 @@ export class GmailEventHydrator extends Hydrator<GmailEvent> {
         return event
     }
 
-    async hydrateBulk(refs: Identifiable[]): Promise<GmailEvent[]> {
+    async hydrateBulk(refs: Identifiable[]): Promise<GmailTriggerEventRuntime[]> {
         const results = await Promise.all(refs.map(ref => this.fetchFromGmail(ref.entityId)))
         return results.map((event, i) => {
             if (!event) {
@@ -35,7 +35,7 @@ export class GmailEventHydrator extends Hydrator<GmailEvent> {
         })
     }
 
-    private async fetchFromGmail(entityId: string): Promise<GmailEvent | null> {
+    private async fetchFromGmail(entityId: string): Promise<GmailTriggerEventRuntime | null> {
         const parts = entityId.split(":")
         if (parts.length < 2) {
             logger.error(`Invalid Gmail entityId format: ${entityId}`)
@@ -85,7 +85,7 @@ export class GmailEventHydrator extends Hydrator<GmailEvent> {
             if (!parsed.labelIds.includes("INBOX")) {
                 parsed.labelIds = [...parsed.labelIds, "INBOX"]
             }
-            return new GmailEvent(parsed, integrationId)
+            return new GmailTriggerEventRuntime(parsed, integrationId)
         } catch (error) {
             logger.error(`Failed to fetch Gmail message ${messageId}`, { error, entityId })
             return null

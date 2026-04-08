@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { configDataSchema, configTypeEnum } from "./Configs"
+import { configDataSchema, configTypeEnum, triggerEventSchema } from "./Configs"
 import { integrationTypeEnum } from "./Integrations"
 import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction } from "./RunHistoryTypes"
@@ -568,32 +568,6 @@ export type StatsResponse = z.infer<typeof statsResponseSchema> & {
     recentRuns: RunHistoryRecordWithAgent[]
 }
 
-export const triggerPayloadSchema = z.object({
-    integrationId: z.string(),
-    integrationType: integrationTypeEnum,
-    config: configDataSchema
-})
-export type TriggerPayload = z.infer<typeof triggerPayloadSchema>
-
-export const serializedEventSchema = z.object({
-    integrationType: integrationTypeEnum,
-    eventType: z.string().optional(),
-    formattedContent: z.string(),
-    debugLog: z.string(),
-    metadata: unknownRecordSchema.optional()
-})
-export type SerializedEvent = z.infer<typeof serializedEventSchema>
-
-export const sdkAgentRunEventPayloadSchema = z.object({
-    integrationType: integrationTypeEnum,
-    formattedContent: z.string(),
-    debugLog: z.string()
-})
-export type SdkAgentRunEventPayload = z.infer<typeof sdkAgentRunEventPayloadSchema>
-
-export const partialSdkAgentRunEventPayloadSchema = sdkAgentRunEventPayloadSchema.partial()
-export type PartialSdkAgentRunEventPayload = z.infer<typeof partialSdkAgentRunEventPayloadSchema>
-
 export const sdkAgentRunOptionsPayloadSchema = z.object({
     maxTurns: z.number().int().optional(),
     requireApproval: z.boolean().optional()
@@ -602,7 +576,7 @@ export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayload
 
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
-    event: partialSdkAgentRunEventPayloadSchema.optional(),
+    event: triggerEventSchema.optional(),
     skills: z.array(configDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
@@ -621,7 +595,7 @@ export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
 
 export const sdkAgentRunNormalizedRequestSchema = z.object({
     prompt: z.string(),
-    event: sdkAgentRunEventPayloadSchema,
+    event: triggerEventSchema,
     skills: z.array(configDataSchema),
     toolApprovals: z.array(z.string()),
     options: sdkAgentRunNormalizedRequestOptionsSchema
@@ -820,11 +794,19 @@ export const workosWebhookSecretUpdateRequestSchema = z.object({
 export type WorkosWebhookSecretUpdateRequest = z.infer<typeof workosWebhookSecretUpdateRequestSchema>
 
 export const sdkSampleEventsRequestSchema = z.object({
-    triggers: z.array(triggerPayloadSchema).min(1)
+    triggers: z
+        .array(
+            z.object({
+                integrationId: z.string(),
+                integrationType: integrationTypeEnum,
+                config: configDataSchema
+            })
+        )
+        .min(1)
 })
 export type SdkSampleEventsRequest = z.infer<typeof sdkSampleEventsRequestSchema>
 
 export const triggerWithEventRequestSchema = z.object({
-    event: serializedEventSchema
+    event: triggerEventSchema
 })
 export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSchema>

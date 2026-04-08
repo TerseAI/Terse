@@ -9,9 +9,10 @@ from pydantic import Field
 from ._base import TerseModel
 
 _TToolName = TypeVar("_TToolName", bound=str, covariant=True)
+_TEvent = TypeVar("_TEvent", covariant=True)
 
 
-class TriggerConfig(TerseModel):
+class TriggerConfig(TerseModel, Generic[_TEvent]):
     integration_id: str
     integration_type: str
     event_type: str | None = None
@@ -28,7 +29,7 @@ class SkillConfig(TerseModel, Generic[_TToolName]):
 
 class JobDefinition(TerseModel, Generic[_TToolName]):
     name: str
-    triggers: list[TriggerConfig] = Field(default_factory=list)
+    triggers: list[TriggerConfig[Any]] = Field(default_factory=list)
     skills: list[SkillConfig[_TToolName]] = Field(default_factory=list)
 
 
