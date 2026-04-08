@@ -6,7 +6,7 @@ import ora from "ora"
 import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
+import { fetchWithAuth, readApiKeyOrBail, readEnvVar } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJobRegistry } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
@@ -22,7 +22,22 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
 
     const registry = await loadJobRegistry(provider)
     const jobs = [...registry.values()]
-    const { sourceZipBase64, fileCount, zipSizeBytes } = buildZipPayload(provider)
+
+    // If TERSE_JOB_URL is set in .env, deploy in URL mode (user infrastructure).
+    // All jobs get this URL and no source code is zipped or uploaded.
+    const jobUrl = readEnvVar("TERSE_JOB_URL")
+    const isUrlMode = !!jobUrl
+
+    let sourceZipBase64: string | undefined
+    let fileCount = 0
+    let zipSizeBytes = 0
+
+    if (!isUrlMode) {
+        const zipPayload = buildZipPayload(provider)
+        sourceZipBase64 = zipPayload.sourceZipBase64
+        fileCount = zipPayload.fileCount
+        zipSizeBytes = zipPayload.zipSizeBytes
+    }
 
     const spinner = ora(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}...`).start()
 
@@ -32,9 +47,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
                 jobName: job.name,
                 triggers: job.triggers,
                 outputs: job.skills ?? [],
-                toolApprovals: job.toolApprovals ?? [],
-                webhookURL: job.webhookURL
+                toolApprovals: job.toolApprovals ?? []
             })),
+            jobUrl: isUrlMode ? jobUrl : undefined,
             sourceZipBase64
         })
 
@@ -62,8 +77,13 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
             }
         }
 
-        console.log(chalk.dim(`  Files: ${fileCount}`))
-        console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
+        if (isUrlMode) {
+            console.log(chalk.dim(`  Mode: user infrastructure`))
+            console.log(chalk.dim(`  Job URL: ${jobUrl}`))
+        } else {
+            console.log(chalk.dim(`  Files: ${fileCount}`))
+            console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
+        }
 
         if (result.removed.length > 0) {
             console.log(chalk.yellow(`\nRemoved ${result.removed.length} stale job${result.removed.length === 1 ? "" : "s"} no longer in project:`))

@@ -924,11 +924,20 @@ export const sdkDeployJobSchema = z.object({
 })
 export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
-export const sdkDeployRequestBodySchema = z.object({
-    jobs: z.array(sdkDeployJobSchema),
-    jobUrl: z.string().optional(),
-    sourceZipBase64: z.string().optional()
-})
+export const sdkDeployRequestBodySchema = z
+    .object({
+        jobs: z.array(sdkDeployJobSchema),
+        jobUrl: z.string().optional(),
+        sourceZipBase64: z.string().optional()
+    })
+    .refine(data => !(data.jobUrl && data.sourceZipBase64), {
+        message: "jobUrl and sourceZipBase64 cannot be provided together",
+        path: ["jobUrl"]
+    })
+    .refine(data => data.jobUrl != null || data.sourceZipBase64 != null, {
+        message: "Either jobUrl or sourceZipBase64 is required",
+        path: ["sourceZipBase64"]
+    })
 export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>
 
 export const sdkDeployResultSchema = z.object({
