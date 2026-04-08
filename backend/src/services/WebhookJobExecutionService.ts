@@ -5,7 +5,8 @@ import { finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistor
 import logger from "../logger"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { extractErrorMessage } from "../utility/strings"
-import { runWebhookJobHandshakeChallenge, WEBHOOK_JOB_FETCH_TIMEOUT_MS } from "./webhookJobHandshakeChallenge"
+
+import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from "./webhookJobHandshakeChallenge"
 
 export interface WebhookJobExecutionParams {
     jobUrl: string
@@ -39,6 +40,8 @@ export class WebhookJobExecutionService {
                 })
                 return
             }
+
+            logger.info("Challenge successful, delivering event", { runId, agentId, event })
 
             const deliverController = new AbortController()
             const deliverTimeout = setTimeout(() => deliverController.abort(), WEBHOOK_JOB_FETCH_TIMEOUT_MS)

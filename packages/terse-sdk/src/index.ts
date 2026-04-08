@@ -161,9 +161,8 @@ export class Terse {
             throw new Error("TERSE_API_KEY environment variable is not set.")
         }
 
-        const requestBody = webhookJobTriggerRequestSchema.safeParse(body)
-
-        if (requestBody.) {
+        const challenge = webhookJobChallengeRequestSchema.safeParse(body)
+        if (challenge.success) {
             return { status: "ok", apiKey }
         }
 
@@ -216,13 +215,8 @@ export class Terse {
             throw new Error(`Invalid webhook trigger body: ${detail}`)
         }
 
-        const challenge = webhookJobChallengeRequestSchema.safeParse(body)
-        if (!challenge.success) {
-            const detail = challenge.error.issues.map((issue: { message: string }) => issue.message).join("; ")
-            throw new Error(`Invalid webhook challenge body: ${detail}`)
-        }
-
-        return { status: "ok", apiKey }
+        const detail = challenge.error.issues.map((issue: { message: string }) => issue.message).join("; ")
+        throw new Error(`Invalid webhook challenge body: ${detail}`)
     }
 }
 
