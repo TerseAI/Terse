@@ -467,7 +467,8 @@ export const agentOutputSchema = z.object({
 export type AgentOutput = z.infer<typeof agentOutputSchema>
 
 export const agentPromptSchema = z.object({
-    text: z.string()
+    text: z.string(),
+    jobUrl: z.string().optional()
 })
 export type AgentPrompt = z.infer<typeof agentPromptSchema>
 
@@ -973,6 +974,18 @@ export const sdkDeployResponseBodySchema = z.object({
     details: z.string().optional()
 })
 export type SdkDeployResponseBody = z.infer<typeof sdkDeployResponseBodySchema>
+
+export const sdkJobServerCheckStepSchema = z.enum(["http", "json", "response_schema", "token", "org"])
+export type SdkJobServerCheckStep = z.infer<typeof sdkJobServerCheckStepSchema>
+
+export const sdkJobServerCheckResponseSchema = z.object({
+    success: z.boolean(),
+    message: z.string(),
+    triggerUrl: z.string().optional(),
+    step: sdkJobServerCheckStepSchema.optional(),
+    httpStatus: z.number().optional()
+})
+export type SdkJobServerCheckResponse = z.infer<typeof sdkJobServerCheckResponseSchema>
 
 export type AttioUpsertError = z.infer<typeof attioUpsertErrorSchema>
 

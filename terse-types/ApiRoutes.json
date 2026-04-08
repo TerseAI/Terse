@@ -143,6 +143,7 @@
     "SDK": {
         "ME": "/sdk/me",
         "SAMPLE_EVENTS": "/sdk/sample-events",
+        "VERIFY_JOB_SERVER": "/sdk/agents/:agentId/verify-job-server",
         "TOOL_EXECUTE": "/sdk/tool-execute",
         "TOOL_DEFINITIONS": "/sdk/tool-definitions",
         "AGENT_RUN": "/sdk/agent-run",

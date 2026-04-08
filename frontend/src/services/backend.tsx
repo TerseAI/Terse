@@ -50,6 +50,7 @@ import {
     SerializedEvent,
     SlackChannelsResponse,
     SlackUsersResponse,
+    SdkJobServerCheckResponse,
     StatsInterval,
     StatsResponse,
     ToggleImprovementsEnabledResponse,
@@ -329,6 +330,11 @@ interface BackendService {
      * Gets a single agent by ID
      */
     getAgentById(id: string): Promise<Agent>
+
+    /**
+     * Verifies that a self-hosted SDK job server is reachable and correctly configured
+     */
+    verifySdkJobServer(agentId: string): Promise<SdkJobServerCheckResponse>
 
     /**
      * Gets the latest review and improvements for an agent
@@ -1151,6 +1157,17 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting agent:", error)
+                throw error
+            })
+    },
+
+    verifySdkJobServer: (agentId: string) => {
+        const url = buildRoute(ApiRoutes.SDK.VERIFY_JOB_SERVER, { agentId })
+        return axios
+            .post<SdkJobServerCheckResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error verifying SDK job server:", error)
                 throw error
             })
     },

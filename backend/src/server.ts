@@ -47,6 +47,7 @@ import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent } fr
 import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
 import { handleSdkDeploy } from "./routes/sdkDeploy"
 import { handleSdkIntegrationFields, handleSdkIntegrationFormSubmit } from "./routes/sdkIntegrations"
+import { handleVerifySdkJobServer } from "./routes/sdkJobServer"
 import { handleSessionEvents } from "./routes/sdkSession"
 import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
 import { handleToolExecute } from "./routes/sdkToolExecute"
@@ -708,6 +709,10 @@ app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) =>
 
 app.post(ApiRoutes.SDK.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
     handleSampleEvents(req, res)
+})
+
+app.post(ApiRoutes.SDK.VERIFY_JOB_SERVER, authMiddleware, async (req, res) => {
+    handleVerifySdkJobServer(req, res)
 })
 
 app.post(ApiRoutes.SDK.TOOL_EXECUTE, authMiddleware, async (req, res) => {
