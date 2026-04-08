@@ -1331,3 +1331,63 @@ export type SlackEventData = Omit<SlackEventDataSchemaShape, "blocks" | "attachm
     attachments: SlackAttachments | null
     files: SlackFiles | null
 }
+
+// Github Event Data
+export const fileDiffSchema = z.object({
+    filename: z.string(),
+    diff: z.string()
+})
+
+export const commitSchema = z.object({
+    sha: z.string(),
+    name: z.string(),
+    fileDiffs: z.array(fileDiffSchema)
+})
+
+export const pullRequestUserSchema = z.object({
+    login: z.string(),
+    email: z.string().optional()
+})
+
+export const pullRequestRefSchema = z.object({
+    ref: z.string(),
+    sha: z.string()
+})
+
+export const pullRequestSchema = z.object({
+    id: z.string(),
+    number: z.number(),
+    title: z.string(),
+    body: z.string().optional(),
+    state: z.enum(["open", "closed"]),
+    merged: z.boolean(),
+    head: pullRequestRefSchema,
+    base: pullRequestRefSchema,
+    user: pullRequestUserSchema
+})
+
+export const githubRepositorySchema = z.object({
+    id: z.number(),
+    name: z.string(),
+    owner: z.string(),
+    defaultBranch: z.string()
+})
+
+export const senderSchema = z.object({
+    login: z.string(),
+    email: z.string().optional()
+})
+
+export const githubEventDataSchema = eventDataSchema.extend({
+    integrationType: z.literal(IntegrationType.GITHUB),
+    eventType: gitHubEventTypeSchema,
+    username: z.string(),
+    installationId: z.number(),
+    repositoryName: z.string(),
+    branch: z.string().optional(),
+    commits: z.array(commitSchema),
+    pullRequest: pullRequestSchema.optional(),
+    repository: githubRepositorySchema,
+    sender: senderSchema
+})
+export type GithubEventData = z.infer<typeof githubEventDataSchema>

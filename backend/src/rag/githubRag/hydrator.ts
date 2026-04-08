@@ -1,12 +1,12 @@
 import { Octokit } from "@octokit/rest"
 import { IntegrationType } from "terse-types"
+import { GithubEventData } from "terse-types"
 
 import { getAppInstallationsForUser } from "../../integrations/GithubIntegration"
 import { GithubEvent } from "../../integrations/GithubIntegration"
 import { getPullRequestFiles } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import type { GithubAppUnifiedEventRequest } from "../../routes/GithubTypes"
 import { StoredFile } from "../../services/FileStorageService"
 import { SecretField, getSecret } from "../../services/SecretService"
 import { HydratorType } from "../../types/rag"
@@ -99,7 +99,8 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
             if (type === "pr") {
                 const prNumber = parseInt(identifier, 10)
                 const { data: pr } = await octokit.pulls.get({ owner, repo: name, pull_number: prNumber })
-                const eventData: GithubAppUnifiedEventRequest = {
+                const eventData: GithubEventData = {
+                    integrationType: IntegrationType.GITHUB,
                     username: pr.user?.login ?? "",
                     installationId,
                     repositoryName: repo.full_name,
@@ -133,7 +134,8 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
 
             if (type === "commit") {
                 const { data: commit } = await octokit.repos.getCommit({ owner, repo: name, ref: identifier })
-                const eventData: GithubAppUnifiedEventRequest = {
+                const eventData: GithubEventData = {
+                    integrationType: IntegrationType.GITHUB,
                     username: commit.commit?.author?.name ?? "",
                     installationId,
                     repositoryName: repo.full_name,
@@ -165,7 +167,8 @@ export class GithubEventHydrator extends Hydrator<GithubEvent> {
                 const branch = identifier
                 const { data: branchData } = await octokit.repos.getBranch({ owner, repo: name, branch })
                 const latestCommit = branchData.commit
-                const eventData: GithubAppUnifiedEventRequest = {
+                const eventData: GithubEventData = {
+                    integrationType: IntegrationType.GITHUB,
                     username: latestCommit.commit?.author?.name ?? "",
                     installationId,
                     repositoryName: repo.full_name,

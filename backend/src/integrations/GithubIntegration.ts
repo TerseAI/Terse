@@ -4,6 +4,7 @@ import { InputConfigType } from "@prisma/client"
 import axios, { AxiosResponse } from "axios"
 import * as cheerio from "cheerio"
 import { Request, Response } from "express"
+import { GithubEventData } from "terse-types"
 import { ConfigData, ConfigType, GitHubConfigSchema, GitHubEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
@@ -16,14 +17,7 @@ import logger, { runWithUserContext } from "../logger"
 import { getGitHubAccessToken } from "../outputs/github/githubApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import {
-    GithubAppInstallation,
-    GithubAppInstallationRepository,
-    GithubAppInstallationRepositoryResponse,
-    GithubAppInstallationResponse,
-    GithubAppUnifiedEventRequest,
-    GithubAppUser
-} from "../routes/GithubTypes"
+import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
@@ -38,9 +32,7 @@ import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
 
-export class GithubIntegrationManager
-    implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB>
-{
+export class GithubIntegrationManager implements Integration<GithubIntegration, GithubEventData, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.GITHUB
 
@@ -123,7 +115,7 @@ export class GithubIntegrationManager
         }))
     }
 
-    async processWebhookEvent(event: GithubAppUnifiedEventRequest): Promise<void> {
+    async processWebhookEvent(event: GithubEventData): Promise<void> {
         const users: PrismaUser[] = await resolveUsersForGithubInstallation(event.installationId)
 
         if (users.length === 0) {
@@ -436,10 +428,10 @@ export class GithubEvent extends InputEvent implements Identifiable {
     readonly eventType: GitHubEventType
     entityType = HydratorType.GITHUB_EVENT
     entityId: string
-    data: GithubAppUnifiedEventRequest
+    data: GithubEventData
     private storedFiles: StoredFile[]
 
-    constructor(data: GithubAppUnifiedEventRequest, storedFiles: StoredFile[] = []) {
+    constructor(data: GithubEventData, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.storedFiles = storedFiles
@@ -975,7 +967,7 @@ async function createPushEventData(
     repo: { id: number; owner: string; name: string; defaultBranch: string },
     installationId: number,
     accessToken: string
-): Promise<GithubAppUnifiedEventRequest | null> {
+): Promise<GithubEventData | null> {
     try {
         const commitDetails = await fetchCommitDiffForSample(accessToken, repo.owner, repo.name, commit.sha)
         if (!commitDetails) return null
@@ -986,6 +978,7 @@ async function createPushEventData(
         }))
 
         return {
+            integrationType: IntegrationType.GITHUB,
             username: commit.commit.author?.name || commit.author?.login || "unknown",
             installationId,
             repositoryName: `${repo.owner}/${repo.name}`,
@@ -1020,7 +1013,7 @@ async function createPullRequestEventData(
     repo: { id: number; owner: string; name: string; defaultBranch: string },
     installationId: number,
     accessToken: string
-): Promise<GithubAppUnifiedEventRequest | null> {
+): Promise<GithubEventData | null> {
     try {
         let eventType: "pull_request.opened" | "pull_request.merged" | "pull_request.closed" = pr.merged_at
             ? "pull_request.merged"
@@ -1045,6 +1038,7 @@ async function createPullRequestEventData(
         )
 
         return {
+            integrationType: IntegrationType.GITHUB,
             username: pr.user?.login || "unknown",
             installationId,
             repositoryName: `${repo.owner}/${repo.name}`,
@@ -1078,7 +1072,7 @@ async function createPullRequestEventData(
     }
 }
 
-export async function getPullRequestFiles(event: GithubAppUnifiedEventRequest, token: string, integrationId: string): Promise<StoredFile[]> {
+export async function getPullRequestFiles(event: GithubEventData, token: string, integrationId: string): Promise<StoredFile[]> {
     if (!event.pullRequest) {
         return []
     }
