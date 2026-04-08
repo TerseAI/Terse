@@ -8,10 +8,7 @@ import type { LanguageProvider } from "./providers/LanguageProvider.js"
  * Verify the CWD is the root of a Terse project for the active language provider.
  * Exits with a clear error message if not.
  */
-export function assertProjectRoot(
-    provider: LanguageProvider,
-    markers: { requiredFiles: string[]; description: string } = provider.projectMarkers
-): void {
+export function assertProjectRoot(provider: LanguageProvider, markers: { requiredFiles: string[]; description: string } = provider.projectMarkers): void {
     const cwd = process.cwd()
     const missingFiles = markers.requiredFiles.filter(relativePath => !fs.existsSync(path.join(cwd, relativePath)))
 

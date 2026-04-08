@@ -167,56 +167,47 @@ export class Terse {
         }
 
         const full = webhookJobTriggerRequestSchema.safeParse(body)
-        if (full.success) {
-            const { jobName, runId, event } = full.data
-            const job = _jobRegistry.get(jobName)
-            if (!job) {
-                throw new Error(`Job "${jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
-            }
-
-            const apiBaseUrl = resolveTerseBackendUrl()
-            const session = await openSessionStream(apiBaseUrl, apiKey)
-
-            try {
-                // Set up the job
-                const inputEvent = deserializeInputEvent(event)
-                const agent = new TerseAgent(job.skills, apiBaseUrl, session.sessionId, job.toolApprovals ?? [], runId)
-                agent.manualToolConfigs = [...job.skills, ...job.triggers]
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
-                if (createTools) {
-                    Object.defineProperty(agent, "tools", { value: createTools(agent) })
-                }
-
-                // Fire and forget to ack job triggering to backend
-                void Promise.resolve().then(async () => {
-                    try {
-                        if (job.filter) {
-                            const shouldRun = await job.filter(inputEvent)
-                            if (!shouldRun) return
-                        }
-                        await job.onTrigger(inputEvent as never, agent)
-                    } catch (err) {
-                        console.error(`[terse] Job "${jobName}" onTrigger failed:`, err)
-                    } finally {
-                        session.close()
-                    }
-                })
-
-                return { status: "ok", apiKey }
-            } catch (error) {
-                session.close()
-                throw error
-            }
-        }
-
-        if (typeof body === "object" && body !== null && "event" in body) {
+        if (!full.success) {
             const detail = full.error.issues.map((issue: { message: string }) => issue.message).join("; ")
             throw new Error(`Invalid webhook trigger body: ${detail}`)
         }
 
-        const detail = challenge.error.issues.map((issue: { message: string }) => issue.message).join("; ")
-        throw new Error(`Invalid webhook challenge body: ${detail}`)
+        const { jobName, runId, event } = full.data
+        const job = _jobRegistry.get(jobName)
+        if (!job) {
+            throw new Error(`Job "${jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
+        }
+
+        const apiBaseUrl = resolveTerseBackendUrl()
+        const session = await openSessionStream(apiBaseUrl, apiKey)
+
+        try {
+            // Set up the job
+            const inputEvent = deserializeInputEvent(event)
+            const agent = new TerseAgent(job.skills, apiBaseUrl, session.sessionId, job.toolApprovals ?? [], runId)
+            agent.manualToolConfigs = [...job.skills, ...job.triggers]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
+            if (createTools) {
+                Object.defineProperty(agent, "tools", { value: createTools(agent) })
+            }
+
+            // Fire and forget to ack job triggering to backend
+            void Promise.resolve().then(async () => {
+                if (job.filter) {
+                    const shouldRun = await job.filter(inputEvent)
+                    if (!shouldRun) return
+                }
+                await job.onTrigger(inputEvent, agent)
+            })
+
+            return { status: "ok", apiKey }
+        } catch (error) {
+            session.close()
+            throw error
+        } finally {
+            session.close()
+        }
     }
 }
 
