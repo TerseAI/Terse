@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { gmail_v1, google } from "googleapis"
-import { ConfigData, ConfigType, GmailConfigSchema, GmailEventType } from "terse-types/Configs"
+import { ConfigData, ConfigType, GmailEventData, GmailEventType, GmailParsedAttachment } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -972,33 +972,6 @@ export async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: strin
 export type GmailWebhookEvent = {
     emailAddress: string
     historyId: number
-}
-
-/**
- * Parsed attachment from a Gmail message (images, documents, etc.)
- */
-export interface GmailParsedAttachment {
-    attachmentId: string
-    filename: string
-    mimeType: string
-    contentId?: string
-    isInline: boolean
-}
-
-export interface GmailEventData {
-    id: string
-    threadId: string
-    subject: string
-    from: string
-    to: string
-    date: string // Header date string (for display)
-    internalDate: string // Gmail's internal timestamp (milliseconds since epoch)
-    messageId: string
-    body: string
-    snippet: string
-    labelIds: string[]
-    // Parsed attachments (images, documents, etc.)
-    attachments?: GmailParsedAttachment[]
 }
 
 type ProcessedWebhookClaim =

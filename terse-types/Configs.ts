@@ -1391,3 +1391,31 @@ export const githubEventDataSchema = eventDataSchema.extend({
     sender: senderSchema
 })
 export type GithubEventData = z.infer<typeof githubEventDataSchema>
+
+// Gmail Event Data
+
+export const GmailParsedAttachmentSchema = z.object({
+    attachmentId: z.string(),
+    filename: z.string(),
+    mimeType: z.string(),
+    contentId: z.string().optional(),
+    isInline: z.boolean()
+})
+export type GmailParsedAttachment = z.infer<typeof GmailParsedAttachmentSchema>
+
+export const GmailEventDataSchema = z.object({
+    id: z.string(),
+    threadId: z.string(),
+    subject: z.string(),
+    from: z.string(),
+    to: z.string(),
+    date: z.string(),
+    internalDate: z.string(),
+    messageId: z.string(),
+    body: z.string(),
+    snippet: z.string(),
+    labelIds: z.array(z.string()),
+    attachments: z.array(GmailParsedAttachmentSchema).optional()
+})
+
+export type GmailEventData = z.infer<typeof GmailEventDataSchema>
