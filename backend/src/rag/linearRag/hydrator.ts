@@ -1,5 +1,6 @@
 import { LinearClient } from "@linear/sdk"
 import { IntegrationType } from "terse-types"
+import { LinearWebhookEventData } from "terse-types"
 
 import { LinearEvent } from "../../integrations/LinearIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
@@ -7,7 +8,6 @@ import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationReg
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { HydratorType } from "../../types/rag"
-import { LinearWebhookPayload } from "../../utility/LinearWebhookPayload"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class LinearEventHydrator extends Hydrator<LinearEvent> {
@@ -79,7 +79,7 @@ export class LinearEventHydrator extends Hydrator<LinearEvent> {
 
             const state = await issue.state
             const team = await issue.team
-            const payload: LinearWebhookPayload = {
+            const payload: LinearWebhookEventData = {
                 action: "update",
                 actor: {
                     id: (await issue.creator)?.id ?? "",

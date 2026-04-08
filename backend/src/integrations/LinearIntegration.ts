@@ -2,6 +2,7 @@ import { LinearClient } from "@linear/sdk"
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
+import { LinearWebhookEventData } from "terse-types"
 import { ConfigData, ConfigType, LinearEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "terse-types/Integrations"
@@ -19,7 +20,6 @@ import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
-import { LinearWebhookPayload } from "../utility/LinearWebhookPayload"
 import { createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
@@ -30,7 +30,7 @@ import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
 
 export class LinearIntegrationManager
-    implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR>
+    implements Integration<LinearIntegration, LinearWebhookEventData, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR>
 {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.LINEAR
@@ -99,7 +99,7 @@ export class LinearIntegrationManager
         }))
     }
 
-    async processWebhookEvent(event: LinearWebhookPayload): Promise<void> {
+    async processWebhookEvent(event: LinearWebhookEventData): Promise<void> {
         logger.info("📥 [LINEAR INTEGRATION MANAGER] Received webhook event", {
             type: event.type,
             action: event.action,
@@ -510,7 +510,7 @@ export class LinearIntegrationManager
         for (const issue of issuesResponse.nodes) {
             const [team, state, assignee, creator] = await Promise.all([issue.team, issue.state, issue.assignee, issue.creator])
 
-            const payload: LinearWebhookPayload = {
+            const payload: LinearWebhookEventData = {
                 action: "create",
                 actor: {
                     id: creator?.id || "unknown",
@@ -621,10 +621,10 @@ export class LinearEvent extends InputEvent implements Identifiable {
     readonly eventType: LinearEventType
     entityType = HydratorType.LINEAR_EVENT
     entityId: string
-    data: LinearWebhookPayload
+    data: LinearWebhookEventData
     private integrationId: string
 
-    constructor(data: LinearWebhookPayload, integrationId: string) {
+    constructor(data: LinearWebhookEventData, integrationId: string) {
         super()
         this.data = data
         this.integrationId = integrationId

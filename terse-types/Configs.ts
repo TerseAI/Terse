@@ -1419,3 +1419,77 @@ export const GmailEventDataSchema = z.object({
 })
 
 export type GmailEventData = z.infer<typeof GmailEventDataSchema>
+
+export const LinearWebhookActionSchema = z.enum(["create", "update", "remove"])
+
+export const LinearWebhookTypeSchema = z.union([z.literal("Issue"), z.literal("Comment"), z.literal("Project"), z.string()])
+
+export const LinearWebhookActorSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    url: z.string(),
+    type: z.string()
+})
+
+export const LinearWebhookStateSchema = z.object({
+    id: z.string(),
+    color: z.string(),
+    name: z.string(),
+    type: z.string()
+})
+
+export const LinearWebhookTeamSchema = z.object({
+    id: z.string(),
+    key: z.string(),
+    name: z.string()
+})
+
+export const LinearWebhookAssigneeSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+
+export const LinearWebhookDataSchema = z.object({
+    id: z.string(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    number: z.number(),
+    title: z.string(),
+    priority: z.number(),
+    sortOrder: z.number(),
+    prioritySortOrder: z.number(),
+    slaType: z.string(),
+    addedToTeamAt: z.string(),
+    trashed: z.boolean(),
+    labelIds: z.array(z.string()),
+    teamId: z.string(),
+    previousIdentifiers: z.array(z.string()),
+    stateId: z.string(),
+    reactionData: z.array(z.any()),
+    priorityLabel: z.string(),
+    botActor: z.string().optional(),
+    identifier: z.string(),
+    url: z.string(),
+    subscriberIds: z.array(z.string()),
+    state: LinearWebhookStateSchema,
+    team: LinearWebhookTeamSchema,
+    labels: z.array(z.any()),
+    description: z.string().optional(),
+    descriptionData: z.string().optional(),
+    assignee: LinearWebhookAssigneeSchema.optional()
+})
+
+export const linearWebhookEventDataSchema = z.object({
+    action: LinearWebhookActionSchema,
+    actor: LinearWebhookActorSchema,
+    createdAt: z.string(),
+    data: LinearWebhookDataSchema,
+    type: LinearWebhookTypeSchema,
+    url: z.string().optional(),
+    organizationId: z.string(),
+    webhookTimestamp: z.number(),
+    webhookId: z.string()
+})
+
+export type LinearWebhookEventData = z.infer<typeof linearWebhookEventDataSchema>
