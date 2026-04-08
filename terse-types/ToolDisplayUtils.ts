@@ -689,6 +689,27 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return "Summary ready"
         }
     },
+    createGitHubPullRequest: {
+        preparing: "Preparing pull request",
+        executing: params => {
+            const title = params?.title as string | undefined
+            return title ? `Creating PR: "${truncate(title)}"` : "Creating pull request"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const pr = parsed?.pullRequest as Record<string, unknown> | undefined
+            const prNumber = pr?.number as number | undefined
+            const title = (params?.title as string) || (pr?.title as string)
+            if (prNumber && title) return `Created PR #${prNumber}: "${truncate(title, 30)}"`
+            if (prNumber) return `Created PR #${prNumber}`
+            if (title) return `Created PR: "${truncate(title)}"`
+            return "Pull request created"
+        },
+        approval: params => {
+            const title = params?.title as string | undefined
+            return title ? `Create PR: "${truncate(title)}"?` : "Create this pull request?"
+        }
+    },
 
     // ===================
     // PostHog Tools

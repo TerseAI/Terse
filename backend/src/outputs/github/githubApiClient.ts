@@ -628,6 +628,81 @@ export async function getPullRequestDiff(
 }
 
 /**
+ * Created pull request information
+ */
+export interface CreatedPullRequestInfo {
+    number: number
+    title: string
+    state: "open" | "closed"
+    merged: boolean
+    draft: boolean
+    htmlUrl: string
+    baseBranch: string
+    headBranch: string
+    author: string
+}
+
+/**
+ * Create a pull request in a GitHub repository
+ */
+export async function createPullRequest(
+    client: Octokit,
+    owner: string,
+    repo: string,
+    options: {
+        title: string
+        body?: string
+        head: string
+        base: string
+        draft?: boolean
+    }
+): Promise<CreatedPullRequestInfo> {
+    const { title, body, head, base, draft = false } = options
+
+    try {
+        const { data } = await client.pulls.create({
+            owner,
+            repo,
+            title,
+            body: body || undefined,
+            head,
+            base,
+            draft
+        })
+
+        return {
+            number: data.number,
+            title: data.title,
+            state: data.state as "open" | "closed",
+            merged: data.merged,
+            draft: data.draft ?? false,
+            htmlUrl: data.html_url,
+            baseBranch: data.base.ref,
+            headBranch: data.head.ref,
+            author: data.user?.login || "unknown"
+        }
+    } catch (error: any) {
+        if (error.status === 422) {
+            const message = error.message || "Validation failed"
+            logger.error("Failed to create pull request - validation error", { owner, repo, head, base, error: message })
+            throw new Error(
+                `Failed to create PR: ${message}. Common causes: the branch doesn't exist, there are no changes between the branches, or a PR already exists for this head/base combination.`
+            )
+        }
+        if (error.status === 403) {
+            logger.error("Failed to create pull request - forbidden", { owner, repo, error: error.message })
+            throw new Error("Permission denied. The GitHub token may not have write access to this repository.")
+        }
+        if (error.status === 404) {
+            logger.error("Failed to create pull request - not found", { owner, repo, error: error.message })
+            throw new Error(`Repository ${owner}/${repo} not found or not accessible.`)
+        }
+        logger.error("Failed to create pull request", { owner, repo, head, base, error: error.message })
+        throw error
+    }
+}
+
+/**
  * Commit information
  */
 export interface CommitInfo {

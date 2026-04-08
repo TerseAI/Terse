@@ -942,6 +942,15 @@ export const summarizeGitHubPullRequestDiffInputSchema = z.object({
         )
 })
 
+export const createGitHubPullRequestInputSchema = z.object({
+    repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    title: z.string().describe("The title of the pull request."),
+    body: z.string().nullable().describe("The description/body of the pull request in Markdown format. Use null for no description."),
+    head: z.string().describe('The name of the branch where your changes are implemented (e.g., "feature/update-docs"). This is the source branch.'),
+    base: z.string().describe('The name of the branch you want the changes pulled into (e.g., "main"). This is the target branch.'),
+    draft: z.boolean().nullable().describe("Whether to create the pull request as a draft. Use null for false (non-draft).")
+})
+
 export const notionCreateOrUpdatePageInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
     page_id: z.string().nullable().optional().describe("ID of an existing page to update. Omit or null to create a new subpage under parentPageId."),
@@ -1552,6 +1561,18 @@ export const summarizeGitHubPullRequestDiffTool = defineTool({
         summary: z.record(z.string(), z.unknown()),
         pagination: gitHubPaginationSchema,
         analysis: z.string(),
+        message: z.string()
+    })
+})
+
+export const createGitHubPullRequestTool = defineTool({
+    name: "createGitHubPullRequest",
+    inputSchema: createGitHubPullRequestInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        pullRequest: gitHubPullRequestRefSchema.extend({
+            draft: z.boolean()
+        }),
         message: z.string()
     })
 })
@@ -2375,6 +2396,7 @@ export const ToolDefinitions = {
     [listGitHubPullRequestsTool.name]: listGitHubPullRequestsTool,
     [listGitHubCommitsTool.name]: listGitHubCommitsTool,
     [summarizeGitHubPullRequestDiffTool.name]: summarizeGitHubPullRequestDiffTool,
+    [createGitHubPullRequestTool.name]: createGitHubPullRequestTool,
     [notionCreateOrUpdatePageTool.name]: notionCreateOrUpdatePageTool,
     [notionCreateOrUpdateDatabaseRowTool.name]: notionCreateOrUpdateDatabaseRowTool,
     [notionModifyBlocksTool.name]: notionModifyBlocksTool,

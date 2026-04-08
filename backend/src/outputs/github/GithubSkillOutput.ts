@@ -9,6 +9,7 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output, RuntimeSystemInstructionsContext, ToolboxEntry } from "../abstract/Output"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
+import { createGitHubPullRequestTool } from "./tools/createPullRequest"
 import { grepGitHubCodeTool } from "./tools/grepCode"
 import { listGitHubCommitsTool } from "./tools/listCommits"
 import { listGitHubDirectoryTool } from "./tools/listDirectory"
@@ -26,7 +27,8 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
             { tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory" },
             { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests" },
             { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits" },
-            { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" }
+            { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" },
+            { tool: createGitHubPullRequestTool, isReadOnly: false, integration: IntegrationType.GITHUB, displayName: "Create pull request" }
         ]
 
         super(OutputConfigType.GITHUB, toolbox)
@@ -82,7 +84,7 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
         }
 
         const lines: string[] = []
-        lines.push("=== GITHUB SKILL (READ-ONLY) ===")
+        lines.push("=== GITHUB SKILL ===")
         lines.push("Available configurations:")
         for (const config of configs) {
             const repoIds = config.repositoryIds ?? []
@@ -94,7 +96,8 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
                 .join(", ")
             lines.push(`  • Integration ID: ${config.integrationId} - Repositories: ${repoDetails || "N/A"}`)
         }
-        lines.push("\nGitHub tools are read-only in this skill and automatically use the connected user's GitHub token.")
+        lines.push("\nGitHub tools automatically use the connected user's GitHub token.")
+        lines.push("Most tools are read-only (search, read, list). The createGitHubPullRequest tool can create pull requests.")
         lines.push('When a tool asks for repository, use the configured entries above (prefer "owner/repo" when available, otherwise use repository IDs).')
         return lines.join("\n")
     }
