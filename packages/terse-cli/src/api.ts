@@ -5,7 +5,11 @@ import path from "node:path"
 import { BACKEND_URL } from "./config.js"
 
 export function readEnvVar(name: string): string | null {
-    const envPath = path.resolve(process.cwd(), ".env")
+    return readEnvVarFromDir(process.cwd(), name)
+}
+
+export function readEnvVarFromDir(dir: string, name: string): string | null {
+    const envPath = path.resolve(dir, ".env")
     if (!fs.existsSync(envPath)) return null
     const content = fs.readFileSync(envPath, "utf-8")
     for (const line of content.split("\n")) {
@@ -21,7 +25,11 @@ export function readEnvVar(name: string): string | null {
 }
 
 export function readApiKey(): string | null {
-    const val = readEnvVar("TERSE_API_KEY")
+    return readApiKeyFromDir(process.cwd())
+}
+
+export function readApiKeyFromDir(dir: string): string | null {
+    const val = readEnvVarFromDir(dir, "TERSE_API_KEY")
     if (val) {
         process.env.TERSE_API_KEY = val
     }

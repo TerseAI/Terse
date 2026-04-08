@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import chalk from "chalk"
 import { Command } from "commander"
 
 import { loginAndWriteEnv } from "./auth.js"
@@ -7,6 +8,7 @@ import { deploy } from "./deploy.js"
 import { generate } from "./generate.js"
 import { init } from "./init.js"
 import { integrate } from "./integrate.js"
+import { isPromptCancellationError } from "./promptErrors.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 import { run } from "./run.js"
 import { test } from "./test.js"
@@ -73,4 +75,13 @@ program
         await deploy(resolveProvider())
     })
 
-await program.parseAsync()
+try {
+    await program.parseAsync()
+} catch (error) {
+    if (isPromptCancellationError(error)) {
+        console.log(chalk.yellow("\n  Cancelled.\n"))
+        process.exit(130)
+    }
+
+    throw error
+}

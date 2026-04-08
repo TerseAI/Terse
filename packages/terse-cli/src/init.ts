@@ -4,7 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
 
-import { loginAndWriteEnv } from "./auth.js"
+import { getExistingAuthenticatedUserName, loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
@@ -112,6 +112,18 @@ function changeDirectory(targetDir: string): Promise<void> {
 async function initInAttachMode(provider: LanguageProvider): Promise<void> {
     const cwd = process.cwd()
     const projectName = path.basename(cwd)
+    const existingUserName = await getExistingAuthenticatedUserName(cwd)
+
+    if (existingUserName) {
+        console.log(`\n  ${chalk.green.bold("Already set up")} for ${chalk.bold(existingUserName)}.\n`)
+        console.log(chalk.dim("  This project already has a valid TERSE_API_KEY, so init does not need to run again.\n"))
+        console.log("  Next steps:\n")
+        console.log(`  1. Run ${chalk.cyan("terse integrate")} to connect or review integrations`)
+        console.log(`  2. Run ${chalk.cyan("terse generate")} to refresh generated helpers`)
+        console.log(`  3. Run ${chalk.cyan("terse deploy")} when you're ready to sync jobs`)
+        console.log("")
+        return
+    }
 
     console.log(`\n  Attaching Terse to existing project ${chalk.bold(projectName)}\n`)
     console.log(chalk.dim("  We detected an existing npm project, so init will avoid overwriting your package.json or scaffold files.\n"))
