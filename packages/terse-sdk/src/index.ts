@@ -1,7 +1,7 @@
 import type { ConfigData } from "terse-types"
 import type { RunHistoryAction } from "terse-types"
 import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, WebhookJobTriggerResponse } from "terse-types"
-import { IntegrationType, webhookJobTriggerRequestSchema } from "terse-types"
+import { IntegrationType, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
 import { ApiRoutes } from "terse-types"
 
 import { openSessionStream } from "./sessionStream.js"
@@ -141,9 +141,10 @@ export class Terse {
      * Handle an incoming trigger request from the Terse backend.
      * Wire this into your own HTTP route (Express, Hono, Next.js, etc.).
      *
-     * Opens an SDK session event stream (same as the `terse` CLI) so agent/tool events
-     * are associated with `X-Terse-Session-Id`. Returns the API key for handshake verification,
-     * then runs `onTrigger` in the background and closes the stream when the job finishes.
+     * Two-phase protocol: (1) POST with `{ challenge: true }` — returns `{ apiKey }` for the
+     * backend to verify before any event leaves Terse. (2) POST with `{ jobName, runId, event }` —
+     * opens an SDK session stream, runs `onTrigger` in the background, and closes the stream when
+     * the job finishes.
      *
      * @example
      * ```ts
@@ -155,56 +156,73 @@ export class Terse {
      * ```
      */
     async handleTrigger(body: unknown): Promise<WebhookJobTriggerResponse> {
-        const parsedBody = webhookJobTriggerRequestSchema.safeParse(body)
-        if (!parsedBody.success) {
-            const detail = parsedBody.error.issues.map(i => i.message).join("; ")
-            throw new Error(`Invalid webhook trigger body: ${detail}`)
-        }
-
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set.")
         }
 
-        const { jobName, runId, event } = parsedBody.data
-        const job = _jobRegistry.get(jobName)
-        if (!job) {
-            throw new Error(`Job "${jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
+        const requestBody = webhookJobTriggerRequestSchema.safeParse(body)
+
+        if (requestBody.) {
+            return { status: "ok", apiKey }
         }
 
-        const apiBaseUrl = resolveTerseBackendUrl()
-        const session = await openSessionStream(apiBaseUrl, apiKey)
-
-        try {
-            // Mirror TypeScriptProvider.executeJob: session stream + agent wiring, filter, then onTrigger (async).
-            const inputEvent = deserializeInputEvent(event)
-            const agent = new TerseAgent(job.skills, apiBaseUrl, session.sessionId, job.toolApprovals ?? [], runId)
-            agent.manualToolConfigs = [...job.skills, ...job.triggers]
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
-            if (createTools) {
-                Object.defineProperty(agent, "tools", { value: createTools(agent) })
+        const full = webhookJobTriggerRequestSchema.safeParse(body)
+        if (full.success) {
+            const { jobName, runId, event } = full.data
+            const job = _jobRegistry.get(jobName)
+            if (!job) {
+                throw new Error(`Job "${jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
             }
 
-            void Promise.resolve().then(async () => {
-                try {
-                    if (job.filter) {
-                        const shouldRun = await job.filter(inputEvent as never)
-                        if (!shouldRun) return
-                    }
-                    await job.onTrigger(inputEvent as never, agent)
-                } catch (err) {
-                    console.error(`[terse] Job "${jobName}" onTrigger failed:`, err)
-                } finally {
-                    session.close()
-                }
-            })
+            const apiBaseUrl = resolveTerseBackendUrl()
+            const session = await openSessionStream(apiBaseUrl, apiKey)
 
-            return { status: "ok", apiKey }
-        } catch (error) {
-            session.close()
-            throw error
+            try {
+                // Set up the job
+                const inputEvent = deserializeInputEvent(event)
+                const agent = new TerseAgent(job.skills, apiBaseUrl, session.sessionId, job.toolApprovals ?? [], runId)
+                agent.manualToolConfigs = [...job.skills, ...job.triggers]
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
+                if (createTools) {
+                    Object.defineProperty(agent, "tools", { value: createTools(agent) })
+                }
+
+                // Fire and forget to ack job triggering to backend
+                void Promise.resolve().then(async () => {
+                    try {
+                        if (job.filter) {
+                            const shouldRun = await job.filter(inputEvent)
+                            if (!shouldRun) return
+                        }
+                        await job.onTrigger(inputEvent as never, agent)
+                    } catch (err) {
+                        console.error(`[terse] Job "${jobName}" onTrigger failed:`, err)
+                    } finally {
+                        session.close()
+                    }
+                })
+
+                return { status: "ok", apiKey }
+            } catch (error) {
+                session.close()
+                throw error
+            }
         }
+
+        if (typeof body === "object" && body !== null && "event" in body) {
+            const detail = full.error.issues.map((issue: { message: string }) => issue.message).join("; ")
+            throw new Error(`Invalid webhook trigger body: ${detail}`)
+        }
+
+        const challenge = webhookJobChallengeRequestSchema.safeParse(body)
+        if (!challenge.success) {
+            const detail = challenge.error.issues.map((issue: { message: string }) => issue.message).join("; ")
+            throw new Error(`Invalid webhook challenge body: ${detail}`)
+        }
+
+        return { status: "ok", apiKey }
     }
 }
 

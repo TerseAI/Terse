@@ -817,7 +817,13 @@ export const serializedEventSchema = z.object({
 })
 export type SerializedEvent = z.infer<typeof serializedEventSchema>
 
-/** Request body POSTed by the backend to a deployed SDK job webhook URL. */
+/** First-phase POST from the backend: request a challenge only; SDK returns `apiKey` for verification before the event is sent. */
+export const webhookJobChallengeRequestSchema = z.object({
+    challenge: z.literal(true)
+})
+export type WebhookJobChallengeRequest = z.infer<typeof webhookJobChallengeRequestSchema>
+
+/** Second-phase POST: full trigger payload after the backend has verified the handshake `apiKey`. */
 export const webhookJobTriggerRequestSchema = z.object({
     jobName: z.string(),
     runId: z.string(),
@@ -825,7 +831,7 @@ export const webhookJobTriggerRequestSchema = z.object({
 })
 export type WebhookJobTriggerRequest = z.infer<typeof webhookJobTriggerRequestSchema>
 
-/** Response body from the SDK webhook handler (`Terse.handleTrigger`); `apiKey` is required for handshake verification. */
+/** Response body from the SDK webhook handler (`Terse.handleTrigger`); `apiKey` is required on the handshake response. */
 export const webhookJobTriggerResponseSchema = z.object({
     status: z.string().optional(),
     apiKey: z.string().min(1)

@@ -1,14 +1,11 @@
-import { ApiRoutes } from "terse-types"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { User, webhookJobTriggerResponseSchema } from "terse-types/types"
+import { User } from "terse-types/types"
 
 import { finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
 import logger from "../logger"
-import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
-import { hashToken } from "../utility/apiTokens"
 import { extractErrorMessage } from "../utility/strings"
-import { joinJobServerPath } from "../utility/webhookUrl"
+import { runWebhookJobHandshakeChallenge, WEBHOOK_JOB_FETCH_TIMEOUT_MS } from "./webhookJobHandshakeChallenge"
 
 export interface WebhookJobExecutionParams {
     jobUrl: string
@@ -20,8 +17,6 @@ export interface WebhookJobExecutionParams {
     jobName: string
 }
 
-const WEBHOOK_TIMEOUT_MS = 30_000
-
 export class WebhookJobExecutionService {
     async execute(params: WebhookJobExecutionParams): Promise<void> {
         const { jobUrl, runId, agentId, orgId, eventJson, jobName } = params
@@ -29,77 +24,48 @@ export class WebhookJobExecutionService {
         try {
             const event = JSON.parse(eventJson)
 
-            const controller = new AbortController()
-            const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS)
-            const targetUrl = joinJobServerPath(jobUrl, ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER)
-            logger.info("Webhook job: attempting to execute", { runId, agentId, targetUrl })
+            const challenge = await runWebhookJobHandshakeChallenge({ jobUrl, organizationId: orgId })
+            logger.info("Webhook job: handshake then deliver", { runId, agentId, triggerUrl: challenge.triggerUrl })
 
-            let response: Response
+            if (!challenge.ok) {
+                await markRunFailed(runId, challenge.message, "agent")
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+                logger.error("Webhook job: handshake failed", {
+                    runId,
+                    agentId,
+                    triggerUrl: challenge.triggerUrl,
+                    step: challenge.step,
+                    httpStatus: challenge.httpStatus
+                })
+                return
+            }
+
+            const deliverController = new AbortController()
+            const deliverTimeout = setTimeout(() => deliverController.abort(), WEBHOOK_JOB_FETCH_TIMEOUT_MS)
+            let deliverResponse: Response
             try {
-                response = await fetch(targetUrl, {
+                deliverResponse = await fetch(challenge.triggerUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ jobName, runId, event }),
-                    signal: controller.signal
+                    signal: deliverController.signal
                 })
             } finally {
-                clearTimeout(timeout)
+                clearTimeout(deliverTimeout)
             }
 
-            if (!response.ok) {
-                const body = await response.text().catch(() => "")
+            if (!deliverResponse.ok) {
+                const body = await deliverResponse.text().catch(() => "")
                 const detail = body.slice(0, 500)
-                await markRunFailed(runId, `Webhook returned ${response.status}: ${detail}`, "agent")
+                await markRunFailed(runId, `Webhook delivery returned ${deliverResponse.status}: ${detail}`, "agent")
                 emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                logger.error("Webhook job: non-2xx response", { runId, agentId, status: response.status, detail })
+                logger.error("Webhook job: delivery non-2xx", { runId, agentId, status: deliverResponse.status, detail })
                 return
             }
 
-            let json: unknown
-            try {
-                json = await response.json()
-            } catch {
-                await markRunFailed(runId, "Webhook returned invalid JSON response", "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                logger.error("Webhook job: invalid JSON response", { runId, agentId })
-                return
-            }
-
-            const parsedResponse = webhookJobTriggerResponseSchema.safeParse(json)
-            if (!parsedResponse.success) {
-                const details = parsedResponse.error.issues.map(i => i.message).join("; ")
-                await markRunFailed(runId, `Webhook response failed validation: ${details}`, "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                logger.error("Webhook job: response validation failed", { runId, agentId, issues: parsedResponse.error.issues })
-                return
-            }
-
-            const responseBody = parsedResponse.data
-
-            // Verify the API key belongs to the same org
-            const tokenHash = hashToken(responseBody.apiKey)
-            const token = await db().api_tokens.findUnique({
-                where: { token_hash: tokenHash }
-            })
-
-            if (!token) {
-                await markRunFailed(runId, "Webhook handshake failed: invalid API key", "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                logger.error("Webhook job: API key not found", { runId, agentId })
-                return
-            }
-
-            if (token.organization_id !== orgId) {
-                await markRunFailed(runId, "Webhook handshake failed: API key does not belong to this organization", "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                logger.error("Webhook job: org mismatch", { runId, agentId, tokenOrg: token.organization_id, expectedOrg: orgId })
-                return
-            }
-
-            // Handshake verified, trigger delivered successfully
             await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
             emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-            logger.info("Webhook job: trigger delivered and verified", { runId, agentId, jobName })
+            logger.info("Webhook job: handshake verified and trigger delivered", { runId, agentId, jobName })
         } catch (error) {
             const errorMessage = error instanceof Error && error.name === "AbortError" ? "Webhook request timed out" : extractErrorMessage(error)
 
