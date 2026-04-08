@@ -3,11 +3,11 @@ import { execFileSync, spawn } from "node:child_process"
 import os from "node:os"
 import path from "node:path"
 import type { CreateJobParameters } from "terse-sdk"
-import type { SdkAgentStreamEvent, SerializedEvent } from "terse-types"
+import type { SerializedEvent } from "terse-types"
 
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
-import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
+import { openSessionStream, promptForToolApproval, submitApprovalDecision, type SessionStreamEvent } from "../shared/sessionStream.js"
 import { ensureUvAvailable, execUv, loadDotenv, withTempScript } from "../shared/shellUtils.js"
 
 import { preparePythonTemplateContext } from "./preparePythonCodegenData.js"
@@ -288,7 +288,7 @@ function extractRegistryPayload(stdout: string): string {
 }
 
 function createApprovalHandler(apiKey: string, state: ApprovalState) {
-    return async (event: SdkAgentStreamEvent | { type: "session_started"; sessionId: string }) => {
+    return async (event: SessionStreamEvent) => {
         if (event.type === "run_started") {
             state.runId = event.runId
             return

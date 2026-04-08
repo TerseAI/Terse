@@ -6,14 +6,23 @@ import { ApiRoutes } from "terse-types"
 
 import type { InferEvents, InferToolApprovals, InputEvent, TypedSkill, TypedTrigger } from "./types.js"
 import { deserializeInputEvent } from "./types.js"
+import { openSessionStream } from "./sessionStream.js"
 
 declare const process: { env: Record<string, string | undefined> }
+
+/** Aligns with `terse` CLI (`packages/terse-cli/src/config.ts`) when `TERSE_BACKEND_URL` is unset. */
+function resolveTerseBackendUrl(): string {
+    return process.env.TERSE_BACKEND_URL || "https://cursor-for-tickets.onrender.com"
+}
 
 /**
  * Path relative to `TERSE_JOB_URL` where the Terse backend POSTs webhook job triggers.
  * Mount your handler at this path (e.g. `app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, ...)`).
  */
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
+
+export { openSessionStream } from "./sessionStream.js"
+export type { OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
 
 // Re-export SDK-specific types
 export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
@@ -132,8 +141,9 @@ export class Terse {
      * Handle an incoming trigger request from the Terse backend.
      * Wire this into your own HTTP route (Express, Hono, Next.js, etc.).
      *
-     * Returns a response object containing the API key for handshake verification.
-     * Dispatches `onTrigger` in the background after returning.
+     * Opens an SDK session event stream (same as the `terse` CLI) so agent/tool events
+     * are associated with `X-Terse-Session-Id`. Returns the API key for handshake verification,
+     * then runs `onTrigger` in the background and closes the stream when the job finishes.
      *
      * @example
      * ```ts
@@ -156,22 +166,45 @@ export class Terse {
             throw new Error("TERSE_API_KEY environment variable is not set.")
         }
 
-        const { jobName, event } = parsedBody.data
+        const { jobName, runId, event } = parsedBody.data
         const job = _jobRegistry.get(jobName)
         if (!job) {
             throw new Error(`Job "${jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
         }
 
-        // Dispatch onTrigger in the background (fire and forget)
-        const inputEvent = deserializeInputEvent(event)
-        const agent = new TerseAgent(job.skills as ConfigData[])
-        void Promise.resolve()
-            .then(() => job.onTrigger(inputEvent as never, agent))
-            .catch(err => {
-                console.error(`[terse] Job "${jobName}" onTrigger failed:`, err)
+        const apiBaseUrl = resolveTerseBackendUrl()
+        const session = await openSessionStream(apiBaseUrl, apiKey)
+
+        try {
+            // Mirror TypeScriptProvider.executeJob: session stream + agent wiring, filter, then onTrigger (async).
+            const inputEvent = deserializeInputEvent(event)
+            const agent = new TerseAgent(job.skills, apiBaseUrl, session.sessionId, job.toolApprovals ?? [], runId)
+            agent.manualToolConfigs = [...job.skills, ...job.triggers]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
+            if (createTools) {
+                Object.defineProperty(agent, "tools", { value: createTools(agent) })
+            }
+
+            void Promise.resolve().then(async () => {
+                try {
+                    if (job.filter) {
+                        const shouldRun = await job.filter(inputEvent as never)
+                        if (!shouldRun) return
+                    }
+                    await job.onTrigger(inputEvent as never, agent)
+                } catch (err) {
+                    console.error(`[terse] Job "${jobName}" onTrigger failed:`, err)
+                } finally {
+                    session.close()
+                }
             })
 
-        return { status: "ok", apiKey }
+            return { status: "ok", apiKey }
+        } catch (error) {
+            session.close()
+            throw error
+        }
     }
 }
 
@@ -187,6 +220,7 @@ export class TerseAgent {
     readonly toolApprovals: string[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
+    private readonly runId?: string
 
     /**
      * Optional callback invoked when the agent requires tool approval.
@@ -196,11 +230,12 @@ export class TerseAgent {
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    constructor(skills: ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
+    constructor(skills: ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = [], runId?: string) {
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
         this.sessionId = sessionId
         this.toolApprovals = toolApprovals
+        this.runId = runId
     }
 
     async *run(prompt: string, event?: InputEvent): AsyncGenerator<TerseAgentResult> {
@@ -289,8 +324,8 @@ export class TerseAgent {
             Accept: "text/event-stream"
         }
         if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
-        const runId = process.env.TERSE_RUN_ID
-        if (runId) headers["X-Terse-Run-Id"] = runId
+        const runIdHeader = this.runId ?? process.env.TERSE_RUN_ID
+        if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
         return headers
     }
 
