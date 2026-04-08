@@ -1,3 +1,4 @@
+import { ApiRoutes } from "terse-types"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User, webhookJobTriggerResponseSchema } from "terse-types/types"
 
@@ -7,6 +8,7 @@ import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { hashToken } from "../utility/apiTokens"
 import { extractErrorMessage } from "../utility/strings"
+import { joinJobServerPath } from "../utility/webhookUrl"
 
 export interface WebhookJobExecutionParams {
     jobUrl: string
@@ -29,10 +31,12 @@ export class WebhookJobExecutionService {
 
             const controller = new AbortController()
             const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS)
+            const targetUrl = joinJobServerPath(jobUrl, ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER)
+            logger.info("Webhook job: attempting to execute", { runId, agentId, targetUrl })
 
             let response: Response
             try {
-                response = await fetch(jobUrl, {
+                response = await fetch(targetUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ jobName, runId, event }),

@@ -151,7 +151,8 @@
         "DEPLOY": "/sdk/deploy",
         "DEVICE_TOKEN_EXCHANGE": "/sdk/auth/device-token-exchange",
         "INTEGRATION_FIELDS": "/sdk/integrations/:integrationType/fields",
-        "INTEGRATION_FORM_SUBMIT": "/sdk/integrations/:integrationType/form-submit"
+        "INTEGRATION_FORM_SUBMIT": "/sdk/integrations/:integrationType/form-submit",
+        "JOB_WEBHOOK_TRIGGER": "/webhook/terse/trigger"
     },
     "NOTIFICATION_SETTINGS": "/notification-settings",
     "SENT_NOTIFICATIONS": {

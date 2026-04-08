@@ -9,6 +9,12 @@ import { deserializeInputEvent } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
+/**
+ * Path relative to `TERSE_JOB_URL` where the Terse backend POSTs webhook job triggers.
+ * Mount your handler at this path (e.g. `app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, ...)`).
+ */
+export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
+
 // Re-export SDK-specific types
 export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 export {
@@ -131,8 +137,8 @@ export class Terse {
      *
      * @example
      * ```ts
-     * // Express
-     * app.post("/terse", async (req, res) => {
+     * // Express — use TERSE_JOB_WEBHOOK_TRIGGER_PATH so the path matches the backend.
+     * app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, async (req, res) => {
      *     const result = await terse.handleTrigger(req.body)
      *     res.json(result)
      * })
