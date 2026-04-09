@@ -104,6 +104,13 @@ export class PythonProvider implements LanguageProvider {
     async loadJobRegistry(): Promise<Map<string, CreateJobParameters>> {
         const cwd = process.cwd()
         const env = loadDotenv(cwd)
+        const entryPath = path.join(cwd, this.entryFile)
+
+        if (!fs.existsSync(entryPath)) {
+            console.error(chalk.red(`Error: Could not find Terse job entry file at ${this.entryFile}.`))
+            console.error(chalk.dim("Add a file that registers jobs with @app.job(...), then try again."))
+            process.exit(1)
+        }
 
         try {
             const script = buildLoadRegistryScript()

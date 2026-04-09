@@ -10,7 +10,7 @@ import type { LanguageProvider } from "./providers/LanguageProvider.js"
  * Each createJob() call populates this map.
  */
 export async function loadJobRegistry(provider: LanguageProvider): Promise<Map<string, CreateJobParameters>> {
-    assertProjectRoot(provider)
+    assertProjectRoot(provider, provider.detectionMarkers)
     return provider.loadJobRegistry()
 }
 

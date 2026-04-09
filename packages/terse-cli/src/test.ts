@@ -7,14 +7,11 @@ import { ApiRoutes } from "terse-types"
 import type { SerializedEvent } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
-import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
 export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider()): Promise<void> {
-    assertProjectRoot(provider)
-
     const { job } = await loadJob(provider, jobName)
     console.log(chalk.cyan(`\n  Testing job: ${job.name}\n`))
 

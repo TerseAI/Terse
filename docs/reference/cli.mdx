@@ -14,7 +14,7 @@ Python projects use [`uv`](https://docs.astral.sh/uv/getting-started/installatio
 
 | Language | Project markers | Entry file | Generated file |
 | -------- | --------------- | ---------- | -------------- |
-| TypeScript | `package.json`, `src/index.ts` | `src/index.ts` | `src/terse.generated.ts` |
+| TypeScript | `package.json`, `tsconfig.json` | `src/terse.jobs.ts` | `src/terse.generated.ts` |
 | Python | `pyproject.toml`, `src/main.py` | `src/main.py` | `src/terse_generated.py` |
 
 ## Command summary
@@ -61,7 +61,7 @@ Attach mode:
 
 TypeScript scaffolds:
 
-- `src/index.ts`
+- `src/terse.jobs.ts`
 - `src/terse.generated.ts` after `terse generate`
 - `package.json`
 - `tsconfig.json`

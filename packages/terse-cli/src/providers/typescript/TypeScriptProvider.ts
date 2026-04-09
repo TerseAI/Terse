@@ -28,10 +28,10 @@ export class TypeScriptProvider implements LanguageProvider {
         description: "TypeScript project"
     }
     readonly projectMarkers = {
-        requiredFiles: ["package.json", "src/index.ts"],
+        requiredFiles: ["package.json", "tsconfig.json"],
         description: "TypeScript Terse project"
     }
-    readonly entryFile = "src/index.ts"
+    readonly entryFile = "src/terse.jobs.ts"
     readonly generatedCodePath = "src/terse.generated.ts"
     readonly deployExclusions = {
         dirs: new Set(["node_modules", ".git", "dist", ".next", ".turbo"]),
@@ -42,7 +42,7 @@ export class TypeScriptProvider implements LanguageProvider {
         return [
             { template: "typescript/init/package.json.hbs", output: "package.json" },
             { template: "typescript/init/tsconfig.json.hbs", output: "tsconfig.json" },
-            { template: "typescript/init/src/index.ts.hbs", output: "src/index.ts" },
+            { template: "typescript/init/src/terse.jobs.ts.hbs", output: "src/terse.jobs.ts" },
             { template: "typescript/init/env.example.hbs", output: ".env.example" },
             { template: "typescript/init/gitignore.hbs", output: ".gitignore" },
             { template: "typescript/init/.claude/settings.json.hbs", output: ".claude/settings.json" }
@@ -81,15 +81,24 @@ export class TypeScriptProvider implements LanguageProvider {
 
     async loadJobRegistry(): Promise<Map<string, CreateJobParameters>> {
         const cwd = process.cwd()
-        const entryPath = path.join(cwd, this.entryFile)
+        const resolvedEntryFile = resolveTypeScriptEntryFile(cwd)
         const parentURL = pathToFileURL(path.join(cwd, "package.json")).href
+
+        if (!resolvedEntryFile) {
+            console.error(chalk.red("Error: Could not find a Terse jobs entry file."))
+            console.error(chalk.dim(`Create ${this.entryFile} and have your app startup file import it.`))
+            console.error(chalk.dim("Legacy projects can continue using src/index.ts for now."))
+            process.exit(1)
+        }
+
+        const entryPath = path.join(cwd, resolvedEntryFile)
 
         try {
             await tsImport(entryPath, parentURL)
         } catch (error) {
             if (isModuleNotFoundError(error)) {
                 const missingPackage = extractMissingPackage(error)
-                console.error(chalk.red(`Error: Cannot find package '${missingPackage}' imported from ${this.entryFile}`))
+                console.error(chalk.red(`Error: Cannot find package '${missingPackage}' imported from ${resolvedEntryFile}`))
                 if (missingPackage === "terse-sdk") {
                     console.error(chalk.dim("\nMake sure terse-sdk is installed in your project:"))
                     console.error(chalk.dim("  npm install terse-sdk"))
@@ -99,7 +108,7 @@ export class TypeScriptProvider implements LanguageProvider {
                     console.error(chalk.dim(`\nInstall the missing package: npm install ${missingPackage}`))
                 }
             } else {
-                console.error(chalk.red(`Error importing ${this.entryFile}:\n`))
+                console.error(chalk.red(`Error importing ${resolvedEntryFile}:\n`))
                 console.error(error)
             }
             process.exit(1)
@@ -109,7 +118,8 @@ export class TypeScriptProvider implements LanguageProvider {
         const registry = (globalThis as any).__terse_jobRegistry as Map<string, CreateJobParameters> | undefined
 
         if (!registry || registry.size === 0) {
-            console.error(chalk.red(`No jobs found. Make sure your ${this.entryFile} calls client.createJob().`))
+            console.error(chalk.red(`No jobs found after importing ${resolvedEntryFile}.`))
+            console.error(chalk.dim("Make sure this file, or something it imports, calls client.createJob()."))
             process.exit(1)
         }
 
@@ -188,4 +198,14 @@ function isModuleNotFoundError(error: unknown): error is Error & { code: string 
 function extractMissingPackage(error: Error): string {
     const match = error.message.match(/Cannot find package '([^']+)'/)
     return match?.[1] ?? "unknown"
+}
+
+function resolveTypeScriptEntryFile(cwd: string): string | null {
+    for (const candidate of ["src/terse.jobs.ts", "src/index.ts"]) {
+        if (fs.existsSync(path.join(cwd, candidate))) {
+            return candidate
+        }
+    }
+
+    return null
 }

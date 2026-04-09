@@ -3,14 +3,11 @@ import fs from "fs"
 import type { SerializedEvent } from "terse-types"
 
 import { readApiKey } from "./api.js"
-import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
 export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider()): Promise<void> {
-    assertProjectRoot(provider)
-
     if (eventFile && !eventJson) {
         try {
             eventJson = fs.readFileSync(eventFile, "utf-8")

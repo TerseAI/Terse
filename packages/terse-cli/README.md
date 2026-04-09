@@ -26,6 +26,8 @@ Scaffold a new Terse project with boilerplate code and config.
 
 If you run `terse init` inside an existing npm project with no project name, the CLI uses attach mode instead of overwriting `package.json`. In attach mode it asks whether you want to self-host via `TERSE_JOB_URL` or use serverless deploys, and it warns that serverless deploys upload a zip of the current project directory to GCS.
 
+TypeScript projects register jobs in `src/terse.jobs.ts`. In existing apps, import that file from your normal startup path.
+
 ### `terse generate`
 
 Generate TypeScript types for your connected integrations (creates `terse.generated.ts`).

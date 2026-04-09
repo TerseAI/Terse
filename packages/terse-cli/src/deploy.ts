@@ -8,14 +8,11 @@ import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail, readEnvVar } from "./api.js"
-import { assertProjectRoot } from "./assertProjectRoot.js"
 import { loadJobRegistry } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
 export async function deploy(provider: LanguageProvider = resolveProvider()) {
-    assertProjectRoot(provider)
-
     const apiKey = readApiKeyOrBail({
         title: "Error: No TERSE_API_KEY found in .env",
         detail: "Run `terse init` to set up your project, or add TERSE_API_KEY to your .env file."

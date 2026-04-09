@@ -178,7 +178,7 @@ async function initInAttachMode(provider: LanguageProvider): Promise<void> {
     console.log(`\n  ${chalk.green.bold("Done!")} Terse is attached to your existing project.\n`)
     console.log("  Next steps:\n")
     console.log(`  1. Install ${chalk.cyan("terse-sdk")} in this repo if you haven't already`)
-    console.log(`  2. Add your Terse job definitions to ${chalk.cyan(provider.entryFile)} or your existing entrypoint`)
+    console.log(`  2. Add your Terse job definitions to ${chalk.cyan(provider.entryFile)} and import that file from your app startup path`)
     if (mode === "self-hosted") {
         console.log(`  3. Set ${chalk.cyan("TERSE_JOB_URL")} in ${chalk.cyan(".env")} before running ${chalk.cyan("terse deploy")}`)
         console.log(`  4. Run ${chalk.cyan("terse integrate")} to connect integrations`)
