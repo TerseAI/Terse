@@ -209,14 +209,14 @@ export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResp
 const configInstanceDataSchema = configDataSchema
 
 export const triggerMetadataSchema = z.object({
-    webhookUrl: z.string().optional()
+    webhookUrl: z.string().nullable().optional()
 })
 export type TriggerMetadata = z.infer<typeof triggerMetadataSchema>
 
 export const agentTriggerSchema = z.object({
     id: z.string(),
     config: configInstanceDataSchema,
-    metadata: triggerMetadataSchema.optional()
+    metadata: triggerMetadataSchema.nullable().optional()
 })
 export type AgentTrigger = z.infer<typeof agentTriggerSchema>
 

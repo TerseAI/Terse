@@ -4,16 +4,16 @@
 
 export const Linear = {
     /** Trigger when a new issue is created */
-    onIssueCreated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearTriggerEvent> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_CREATED]) as TypedTrigger<LinearTriggerEvent>
+    onIssueCreated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearIssueCreatedTriggerEvent> {
+        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_CREATED]) as TypedTrigger<LinearIssueCreatedTriggerEvent>
     },
     /** Trigger when an issue is updated */
-    onIssueUpdated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearTriggerEvent> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_UPDATED]) as TypedTrigger<LinearTriggerEvent>
+    onIssueUpdated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearIssueUpdatedTriggerEvent> {
+        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_UPDATED]) as TypedTrigger<LinearIssueUpdatedTriggerEvent>
     },
     /** Trigger when a comment is added to an issue */
-    onComment(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearTriggerEvent> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.COMMENT_CREATED]) as TypedTrigger<LinearTriggerEvent>
+    onComment(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearCommentCreatedTriggerEvent> {
+        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.COMMENT_CREATED]) as TypedTrigger<LinearCommentCreatedTriggerEvent>
     },
     /** Trigger on all Linear events */
     trigger(opts?: { projectId?: string; projectName?: string; eventTypes?: LinearEventType[] }): TypedTrigger<LinearTriggerEvent> {

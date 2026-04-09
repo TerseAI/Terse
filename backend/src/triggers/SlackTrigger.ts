@@ -17,6 +17,9 @@ export class SlackTrigger implements Trigger<SlackConfig> {
         if (!trigger.channelId && !trigger.listenToUserDms) {
             throw new Error("Invalid trigger config for slack: requires channelId or listenToUserDms=true")
         }
+        if (!trigger.eventTypes || trigger.eventTypes.length === 0) {
+            throw new Error("Invalid trigger config for slack: at least one event type must be selected")
+        }
         const channelIds = trigger.channelId ? [trigger.channelId] : []
         const userIds = trigger.userIds ?? []
         if (channelIds.length > 0 || userIds.length > 0) {
@@ -33,7 +36,8 @@ export class SlackTrigger implements Trigger<SlackConfig> {
                 channel_id: trigger.channelId,
                 channel_name: trigger.channelName,
                 listen_to_user_dms: trigger.listenToUserDms,
-                user_ids: trigger.userIds || []
+                user_ids: trigger.userIds || [],
+                event_types: trigger.eventTypes || []
             }
         })
     }

@@ -13,7 +13,7 @@ from typing import Any, TypeVar, cast
 
 import httpx
 from httpx_sse import connect_sse
-from pydantic import ValidationError
+from pydantic import RootModel, ValidationError
 
 from ._http_utils import (
     _buffer_response_content,
@@ -326,9 +326,9 @@ def deserialize_trigger_event(
     """Convert a canonical trigger event payload into the matching SDK event model."""
 
     if isinstance(value, TriggerEvent):
-        return value.root
-    if hasattr(value, "model_dump") and hasattr(value, "integration_type"):
-        return cast(AnyTriggerEvent, value)
+        return cast(AnyTriggerEvent, _unwrap_root_models(value))
+    if hasattr(value, "model_dump"):
+        return cast(AnyTriggerEvent, _unwrap_root_models(value))
     if isinstance(value, str):
         parsed = json.loads(value)
         if not isinstance(parsed, dict):
@@ -338,9 +338,16 @@ def deserialize_trigger_event(
         payload = dict(value)
 
     try:
-        return TriggerEvent.model_validate(payload).root
+        return cast(AnyTriggerEvent, _unwrap_root_models(TriggerEvent.model_validate(payload)))
     except ValidationError as exc:
         raise TerseRuntimeError("Trigger event payload does not match the canonical schema.") from exc
+
+
+def _unwrap_root_models(value: object) -> object:
+    current = value
+    while isinstance(current, RootModel):
+        current = current.root
+    return current
 
 
 def execute_registered_job(

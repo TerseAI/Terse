@@ -1,5 +1,5 @@
-import { AlertTriangleIcon, Info, Plus } from "lucide-react"
-import { GitHubConfig } from "terse-types/Configs"
+import { AlertTriangleIcon, Plus } from "lucide-react"
+import { GitHubConfig, GitHubEventType } from "terse-types/Configs"
 import { ConfigType } from "terse-types/Configs"
 import { GithubIntegration as GithubIntegrationType, IntegrationType } from "terse-types/Integrations"
 
@@ -11,9 +11,18 @@ import { GithubResourceSelector } from "../GithubResourceSelector"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
+import { Checkbox } from "../ui/checkbox"
+import { Label } from "../ui/label"
 
 import { InputConfigSelectorProps } from "./types"
+
+const GITHUB_EVENT_TYPES: { value: GitHubEventType; label: string; description: string }[] = [
+    { value: GitHubEventType.PUSH, label: "Push", description: "Commits pushed to branches" },
+    { value: GitHubEventType.PR_OPENED, label: "Pull Request Opened", description: "A pull request is created" },
+    { value: GitHubEventType.PR_SYNCHRONIZE, label: "Pull Request Updated", description: "A pull request receives new commits" },
+    { value: GitHubEventType.PR_MERGED, label: "Pull Request Merged", description: "A pull request is merged" },
+    { value: GitHubEventType.PR_CLOSED, label: "Pull Request Closed", description: "A pull request is closed without merging" }
+]
 
 export function GitHubIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useGithubIntegrations()
@@ -25,6 +34,7 @@ export function GitHubIntegration({ input, variant, setConfig }: InputConfigSele
         const integration = integrations.find((integration: GithubIntegrationType) => integration.id === value)
         if (integration) {
             setSelectedIntegrationId(integration.id)
+            setConfig(new GitHubConfig(integration.id, currentConfig?.repositoryIds || [], currentConfig?.eventTypes || []))
         }
     }
 
@@ -77,11 +87,20 @@ export function GitHubIntegration({ input, variant, setConfig }: InputConfigSele
     // Card variant: compact view
     if (variant === "card") {
         const hasRepos = currentConfig?.repositoryIds && currentConfig.repositoryIds.length > 0
+        const hasEventTypes = (currentConfig?.eventTypes?.length ?? 0) > 0
         if (!hasRepos) {
             return (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <AlertTriangleIcon className="size-3 text-warning" />
                     Select repositories
+                </div>
+            )
+        }
+        if (!hasEventTypes) {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-warning" />
+                    Select event types
                 </div>
             )
         }
@@ -108,45 +127,37 @@ export function GitHubIntegration({ input, variant, setConfig }: InputConfigSele
                         installationId={selectedIntegration.installation_id}
                         selectedRepositoryIds={currentConfig?.repositoryIds || []}
                         onSelect={repositoryIds => {
-                            const updatedConfig = new GitHubConfig(selectedIntegrationId, repositoryIds)
+                            const updatedConfig = new GitHubConfig(selectedIntegrationId, repositoryIds, currentConfig?.eventTypes || [])
                             setConfig(updatedConfig)
                         }}
-                        customLabel={
-                            <div className="flex items-center gap-1.5">
-                                <label className="text-xs font-medium text-muted-foreground">Select Repositories</label>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" onClick={e => e.preventDefault()}>
-                                            <Info className="w-3.5 h-3.5" />
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" className="max-w-xs">
-                                        <div className="flex flex-col gap-1.5">
-                                            <p className="font-medium mb-1">Monitored GitHub Events</p>
-                                            <p className="text-xs">We monitor the following events from your selected repositories:</p>
-                                            <ul className="text-xs mt-1 space-y-0.5 list-disc list-inside">
-                                                <li>
-                                                    <strong>Push</strong> - Commits pushed to branches
-                                                </li>
-                                                <li>
-                                                    <strong>Pull Request Opened</strong> - When a PR is created
-                                                </li>
-                                                <li>
-                                                    <strong>Pull Request Updated</strong> - When a PR receives new commits
-                                                </li>
-                                                <li>
-                                                    <strong>Pull Request Merged/Closed</strong> - When a PR is merged or closed
-                                                </li>
-                                                <li>
-                                                    <strong>Issues Opened</strong> - When an issue is created
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </div>
-                        }
+                        customLabel={<label className="text-xs font-medium text-muted-foreground">Select Repositories</label>}
                     />
+                    <div className="mt-4 space-y-4">
+                        <div className="space-y-1">
+                            <Label className="text-sm font-medium">Event Types</Label>
+                            <p className="text-xs text-muted-foreground">Select the GitHub events that should trigger this agent.</p>
+                        </div>
+                        <div className="space-y-2">
+                            {GITHUB_EVENT_TYPES.map(eventType => (
+                                <label key={eventType.value} className="flex items-start gap-3 p-3 rounded-md border border-border hover:bg-accent/50 cursor-pointer">
+                                    <Checkbox
+                                        checked={currentConfig?.eventTypes?.includes(eventType.value) || false}
+                                        onCheckedChange={checked => {
+                                            const nextEventTypes = checked
+                                                ? [...(currentConfig?.eventTypes || []), eventType.value]
+                                                : (currentConfig?.eventTypes || []).filter(type => type !== eventType.value)
+                                            setConfig(new GitHubConfig(selectedIntegrationId, currentConfig?.repositoryIds || [], nextEventTypes))
+                                        }}
+                                        className="mt-0.5"
+                                    />
+                                    <div className="space-y-0.5">
+                                        <div className="text-sm font-medium">{eventType.label}</div>
+                                        <div className="text-xs text-muted-foreground">{eventType.description}</div>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

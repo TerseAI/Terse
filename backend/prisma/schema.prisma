@@ -540,6 +540,7 @@ model automation_slack_configs {
   channel_name       String? // Channel display name (for UI, optional)
   listen_to_user_dms Boolean  @default(false) // This integration should include listening to user DMs
   user_ids           String[] // User IDs to listen to
+  event_types        String[] @default([])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -578,6 +579,7 @@ model automation_linear_configs {
   team_name    String? // Team display name (for UI, optional)
   project_id   String? // Project ID (optional - scopes to specific project)
   project_name String? // Project display name (for UI, optional)
+  event_types  String[] @default([])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

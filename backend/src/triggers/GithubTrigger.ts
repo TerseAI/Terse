@@ -15,6 +15,9 @@ export class GithubTrigger implements Trigger<GitHubConfig> {
     }
 
     async validateConfig(trigger: GitHubConfig, userId: string): Promise<void> {
+        if (!trigger.eventTypes || trigger.eventTypes.length === 0) {
+            throw new Error("Invalid trigger config for github: at least one event type must be selected")
+        }
         await validateGithubRepositoryIds({
             userId,
             integrationId: trigger.integrationId,

@@ -24,11 +24,12 @@ from terse_sdk import (
     SdkAgentStreamEvent,
     SkillConfig,
     SlackChannelType,
+    SlackMessageTriggerEvent,
+    SlackTriggerEvent,
     SlackListChannelsToolOutput,
     SlackListUsersToolOutput,
     SlackReadConversationToolOutput,
     SlackSendMessageToolOutput,
-    SlackTriggerEvent,
     Terse,
     TerseAgent,
     TerseApiError,
@@ -37,6 +38,7 @@ from terse_sdk import (
     ToolApprovalRequest,
     ToolApprovalRequested,
     ToolCallCompleted,
+    TriggerEvent,
     TriggerConfig,
     clear_job_registry,
     deserialize_trigger_event,
@@ -227,7 +229,7 @@ def test_deserialize_trigger_event_enriches_slack_metadata() -> None:
         }
     )
 
-    assert isinstance(event, SlackTriggerEvent)
+    assert isinstance(event, SlackMessageTriggerEvent)
     assert event.channel_id == "C123"
     assert event.channel_name == "alerts"
     assert event.user_id == "U123"
@@ -244,6 +246,64 @@ def test_deserialize_trigger_event_enriches_slack_metadata() -> None:
     assert event.attachments[0]["author_name"] == "Terse"
     assert event.files is not None
     assert event.files[0]["url_private"] == "https://files.example/deploy.log"
+
+
+def test_deserialize_trigger_event_unwraps_generated_trigger_event_root_models() -> None:
+    payload = {
+        "integrationType": "slack",
+        "eventType": "message",
+        "channelId": "C123",
+        "channelName": "alerts",
+        "userId": "U123",
+        "userName": "Olivia",
+        "text": "Deploy finished",
+        "timestamp": "1710000000.100000",
+        "threadTs": "1710000000.000001",
+        "threadTimestamp": "1710000000.000001",
+        "teamId": "T123",
+        "permalink": "https://slack.example/message",
+        "channelType": "im",
+        "blocks": None,
+        "attachments": None,
+        "files": None,
+    }
+
+    generated_event = TriggerEvent.model_validate(payload)
+
+    event = deserialize_trigger_event(generated_event)
+
+    assert isinstance(event, SlackMessageTriggerEvent)
+    assert event.channel_id == "C123"
+    assert event.event_type == "message"
+
+
+def test_deserialize_trigger_event_unwraps_generated_integration_root_models() -> None:
+    payload = {
+        "integrationType": "slack",
+        "eventType": "message",
+        "channelId": "C123",
+        "channelName": "alerts",
+        "userId": "U123",
+        "userName": "Olivia",
+        "text": "Deploy finished",
+        "timestamp": "1710000000.100000",
+        "threadTs": "1710000000.000001",
+        "threadTimestamp": "1710000000.000001",
+        "teamId": "T123",
+        "permalink": "https://slack.example/message",
+        "channelType": "im",
+        "blocks": None,
+        "attachments": None,
+        "files": None,
+    }
+
+    generated_event = SlackTriggerEvent.model_validate(payload)
+
+    event = deserialize_trigger_event(generated_event)
+
+    assert isinstance(event, SlackMessageTriggerEvent)
+    assert event.channel_id == "C123"
+    assert event.event_type == "message"
 
 
 def test_deserialize_trigger_event_rejects_unknown_integrations() -> None:

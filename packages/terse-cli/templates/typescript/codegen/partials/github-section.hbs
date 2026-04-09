@@ -35,16 +35,20 @@ export const GitHub = {
         return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PUSH]) as TypedTrigger<GitHubPushTriggerEvent>
     },
     /** Trigger when a pull request is opened */
-    onPROpened(opts: { repo: Repos }): TypedTrigger<GitHubPullRequestTriggerEvent> {
-        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED]) as TypedTrigger<GitHubPullRequestTriggerEvent>
+    onPROpened(opts: { repo: Repos }): TypedTrigger<GitHubPullRequestOpenedTriggerEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED]) as TypedTrigger<GitHubPullRequestOpenedTriggerEvent>
     },
     /** Trigger when a pull request is merged */
-    onPRMerged(opts: { repo: Repos }): TypedTrigger<GitHubPullRequestTriggerEvent> {
-        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_MERGED]) as TypedTrigger<GitHubPullRequestTriggerEvent>
+    onPRMerged(opts: { repo: Repos }): TypedTrigger<GitHubPullRequestMergedTriggerEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_MERGED]) as TypedTrigger<GitHubPullRequestMergedTriggerEvent>
     },
     /** Trigger when a pull request is closed */
-    onPRClosed(opts: { repo: Repos }): TypedTrigger<GitHubPullRequestTriggerEvent> {
-        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_CLOSED]) as TypedTrigger<GitHubPullRequestTriggerEvent>
+    onPRClosed(opts: { repo: Repos }): TypedTrigger<GitHubPullRequestClosedTriggerEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_CLOSED]) as TypedTrigger<GitHubPullRequestClosedTriggerEvent>
+    },
+    /** Trigger when a pull request is synchronized */
+    onPRSynchronized(opts: { repo: Repos }): TypedTrigger<GitHubPullRequestSynchronizedTriggerEvent> {
+        return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_SYNCHRONIZE]) as TypedTrigger<GitHubPullRequestSynchronizedTriggerEvent>
     },
     /** Trigger on any pull request event */
     onPR(opts: { repo: Repos }): TypedTrigger<GitHubPullRequestTriggerEvent> {

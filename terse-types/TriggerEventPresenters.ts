@@ -38,7 +38,7 @@ const triggerEventPresenters = {
         formatForAgent: formatSlackTriggerEvent,
         debug: (event: SlackTriggerEvent): string => {
             const isDM = event.channelType === "im"
-            return `Slack Event: ${isDM ? "DM" : event.channelName || event.channelId} - ${event.userName || event.userId}`
+            return `Slack Event: ${event.eventType} - ${isDM ? "DM" : event.channelName || event.channelId} - ${event.userName || event.userId}`
         }
     },
     [IntegrationType.GMAIL]: {
@@ -166,17 +166,25 @@ function formatSlackTriggerEvent(event: SlackTriggerEvent): string {
     const attachmentContent = JSON.stringify(event.attachments)
     const messageText = event.text || "(no plain text)"
     const threadTs = event.threadTs ?? event.threadTimestamp ?? null
+    const eventLabel =
+        event.eventType === "app_mention" ? "Incoming Slack App Mention Event." : event.eventType === "reaction_added" ? "Incoming Slack Reaction Added Event." : "Incoming Slack Message Event."
+    const reactionInfo =
+        event.eventType === "reaction_added"
+            ? `Reaction: ${event.reaction || "unknown"}\n        Target Message Timestamp: ${event.itemTimestamp || "unknown"}\n        Target User: ${event.itemUserId || "unknown"}`
+            : ""
 
     return `
-        Incoming Slack Message Event.
+        ${eventLabel}
 
         Slack Event:
+        Event Type: ${event.eventType}
         Channel: ${event.channelName || event.channelId}
         User: ${event.userName || event.userId}
         Message: ${messageText}
         Timestamp: ${event.timestamp}
         ${threadTs ? `Thread: ${threadTs}` : ""}
         Team ID: ${event.teamId}
+        ${reactionInfo}
         ${
             blockContent
                 ? `

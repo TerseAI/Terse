@@ -1,10 +1,17 @@
 import type { ConfigData } from "terse-types"
 import type {
     CronTriggerEvent as BaseCronTriggerEvent,
+    GitHubPullRequestClosedTriggerEvent as BaseGitHubPullRequestClosedTriggerEvent,
+    GitHubPullRequestMergedTriggerEvent as BaseGitHubPullRequestMergedTriggerEvent,
+    GitHubPullRequestOpenedTriggerEvent as BaseGitHubPullRequestOpenedTriggerEvent,
+    GitHubPullRequestSynchronizedTriggerEvent as BaseGitHubPullRequestSynchronizedTriggerEvent,
     GitHubPullRequestTriggerEvent as BaseGitHubPullRequestTriggerEvent,
     GitHubPushTriggerEvent as BaseGitHubPushTriggerEvent,
     GitHubTriggerEvent as BaseGitHubTriggerEvent,
     GmailTriggerEvent as BaseGmailTriggerEvent,
+    LinearCommentCreatedTriggerEvent as BaseLinearCommentCreatedTriggerEvent,
+    LinearIssueCreatedTriggerEvent as BaseLinearIssueCreatedTriggerEvent,
+    LinearIssueUpdatedTriggerEvent as BaseLinearIssueUpdatedTriggerEvent,
     LinearTriggerEvent as BaseLinearTriggerEvent,
     ManualSampleTriggerEvent as BaseManualSampleTriggerEvent,
     RunHistoryAction,
@@ -13,15 +20,28 @@ import type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
+    SlackAppMentionTriggerEvent as BaseSlackAppMentionTriggerEvent,
+    SlackMessageTriggerEvent as BaseSlackMessageTriggerEvent,
+    SlackReactionAddedTriggerEvent as BaseSlackReactionAddedTriggerEvent,
     SlackTriggerEvent as BaseSlackTriggerEvent,
     ToolInputByName,
     ToolOutputByName,
     TriggerEvent as BaseTriggerEvent,
     WebhookTriggerEvent as BaseWebhookTriggerEvent,
+    WorkOSInvitationAcceptedTriggerEvent as BaseWorkOSInvitationAcceptedTriggerEvent,
+    WorkOSInvitationCreatedTriggerEvent as BaseWorkOSInvitationCreatedTriggerEvent,
     WorkOSInvitationTriggerEvent as BaseWorkOSInvitationTriggerEvent,
+    WorkOSInvitationResentTriggerEvent as BaseWorkOSInvitationResentTriggerEvent,
+    WorkOSInvitationRevokedTriggerEvent as BaseWorkOSInvitationRevokedTriggerEvent,
+    WorkOSOrganizationMembershipCreatedTriggerEvent as BaseWorkOSOrganizationMembershipCreatedTriggerEvent,
+    WorkOSOrganizationMembershipDeletedTriggerEvent as BaseWorkOSOrganizationMembershipDeletedTriggerEvent,
+    WorkOSOrganizationMembershipUpdatedTriggerEvent as BaseWorkOSOrganizationMembershipUpdatedTriggerEvent,
     WorkOSMembershipTriggerEvent as BaseWorkOSMembershipTriggerEvent,
     WorkOSOrganizationTriggerEvent as BaseWorkOSOrganizationTriggerEvent,
     WorkOSTriggerEvent as BaseWorkOSTriggerEvent,
+    WorkOSUserCreatedTriggerEvent as BaseWorkOSUserCreatedTriggerEvent,
+    WorkOSUserDeletedTriggerEvent as BaseWorkOSUserDeletedTriggerEvent,
+    WorkOSUserUpdatedTriggerEvent as BaseWorkOSUserUpdatedTriggerEvent,
     WorkOSUserTriggerEvent as BaseWorkOSUserTriggerEvent
 } from "terse-types"
 import { IntegrationType } from "terse-types"
@@ -87,18 +107,38 @@ export {
 export type SdkAgentRunOptionsPayload = BaseSdkAgentRunOptionsPayload
 export type TriggerEvent = SDKTriggerEvent<BaseTriggerEvent>
 export type CronTriggerEvent = SDKTriggerEvent<BaseCronTriggerEvent>
+export type GitHubPullRequestClosedTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestClosedTriggerEvent>
+export type GitHubPullRequestMergedTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestMergedTriggerEvent>
+export type GitHubPullRequestOpenedTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestOpenedTriggerEvent>
+export type GitHubPullRequestSynchronizedTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestSynchronizedTriggerEvent>
 export type GitHubPullRequestTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestTriggerEvent>
 export type GitHubPushTriggerEvent = SDKTriggerEvent<BaseGitHubPushTriggerEvent>
 export type GitHubTriggerEvent = SDKTriggerEvent<BaseGitHubTriggerEvent>
 export type GmailTriggerEvent = SDKTriggerEvent<BaseGmailTriggerEvent>
+export type LinearCommentCreatedTriggerEvent = SDKTriggerEvent<BaseLinearCommentCreatedTriggerEvent>
+export type LinearIssueCreatedTriggerEvent = SDKTriggerEvent<BaseLinearIssueCreatedTriggerEvent>
+export type LinearIssueUpdatedTriggerEvent = SDKTriggerEvent<BaseLinearIssueUpdatedTriggerEvent>
 export type LinearTriggerEvent = SDKTriggerEvent<BaseLinearTriggerEvent>
 export type ManualSampleTriggerEvent = SDKTriggerEvent<BaseManualSampleTriggerEvent>
+export type SlackAppMentionTriggerEvent = SDKTriggerEvent<BaseSlackAppMentionTriggerEvent>
+export type SlackMessageTriggerEvent = SDKTriggerEvent<BaseSlackMessageTriggerEvent>
+export type SlackReactionAddedTriggerEvent = SDKTriggerEvent<BaseSlackReactionAddedTriggerEvent>
 export type SlackTriggerEvent = SDKTriggerEvent<BaseSlackTriggerEvent>
 export type WebhookTriggerEvent = SDKTriggerEvent<BaseWebhookTriggerEvent>
+export type WorkOSInvitationAcceptedTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationAcceptedTriggerEvent>
+export type WorkOSInvitationCreatedTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationCreatedTriggerEvent>
 export type WorkOSInvitationTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationTriggerEvent>
+export type WorkOSInvitationResentTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationResentTriggerEvent>
+export type WorkOSInvitationRevokedTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationRevokedTriggerEvent>
+export type WorkOSOrganizationMembershipCreatedTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationMembershipCreatedTriggerEvent>
+export type WorkOSOrganizationMembershipDeletedTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationMembershipDeletedTriggerEvent>
+export type WorkOSOrganizationMembershipUpdatedTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationMembershipUpdatedTriggerEvent>
 export type WorkOSMembershipTriggerEvent = SDKTriggerEvent<BaseWorkOSMembershipTriggerEvent>
 export type WorkOSOrganizationTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationTriggerEvent>
 export type WorkOSTriggerEvent = SDKTriggerEvent<BaseWorkOSTriggerEvent>
+export type WorkOSUserCreatedTriggerEvent = SDKTriggerEvent<BaseWorkOSUserCreatedTriggerEvent>
+export type WorkOSUserDeletedTriggerEvent = SDKTriggerEvent<BaseWorkOSUserDeletedTriggerEvent>
+export type WorkOSUserUpdatedTriggerEvent = SDKTriggerEvent<BaseWorkOSUserUpdatedTriggerEvent>
 export type WorkOSUserTriggerEvent = SDKTriggerEvent<BaseWorkOSUserTriggerEvent>
 export type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName }
 export { IntegrationType } from "terse-types"

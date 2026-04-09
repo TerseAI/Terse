@@ -1,7 +1,6 @@
 import * as z from "zod"
 
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
-import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
 
 export enum ConfigType {
     GMAIL = "gmail",
@@ -357,8 +356,9 @@ export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, Confi
     }
 
     isComplete(): boolean {
-        // Slack is complete if either channelId is set OR listenToUserDms is true
-        return !!(this.channelId || this.listenToUserDms)
+        const hasTarget = !!(this.channelId || this.listenToUserDms)
+        const hasEventTypes = (this.eventTypes?.length ?? 0) > 0
+        return hasTarget && hasEventTypes
     }
 
     formatForAgent(): string {
@@ -374,6 +374,9 @@ export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, Confi
 
         if (this.userIds) {
             parts.push(`Users: ${this.userIds.join(", ")}`)
+        }
+        if (this.eventTypes?.length) {
+            parts.push(`Event Types: ${this.eventTypes.join(", ")}`)
         }
 
         return parts.join("\n")
@@ -530,7 +533,7 @@ export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR
     }
 
     isComplete(): boolean {
-        return true
+        return (this.eventTypes?.length ?? 0) > 0
     }
 
     formatForAgent(): string {
@@ -539,6 +542,9 @@ export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR
             parts.push(`Project: ${this.projectName}`)
         } else if (this.projectId) {
             parts.push(`Project ID: ${this.projectId}`)
+        }
+        if (this.eventTypes?.length) {
+            parts.push(`Event Types: ${this.eventTypes.join(", ")}`)
         }
         return parts.join("\n")
     }
@@ -605,13 +611,16 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
     }
 
     isComplete(): boolean {
-        return (this.repositoryIds?.length ?? 0) > 0
+        return (this.repositoryIds?.length ?? 0) > 0 && (this.eventTypes?.length ?? 0) > 0
     }
 
     formatForAgent(): string {
         const parts = [`Type: GitHub`, `Integration ID: ${this.integrationId}`]
         if (this.repositoryIds.length > 0) {
             parts.push(`Repositories: ${this.repositoryIds.join(", ")}`)
+        }
+        if (this.eventTypes?.length) {
+            parts.push(`Event Types: ${this.eventTypes.join(", ")}`)
         }
         return parts.join("\n")
     }
@@ -914,12 +923,14 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.GMAIL:
         case ConfigType.GMAIL_OUTPUT:
         case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return true
         case ConfigType.LINEAR_INPUT:
+            return (config.eventTypes?.length ?? 0) > 0
         case ConfigType.TERSE:
         case ConfigType.WEBHOOK_INPUT:
             return true
         case ConfigType.SLACK:
-            return !!(config.channelId || config.listenToUserDms)
+            return !!(config.channelId || config.listenToUserDms) && (config.eventTypes?.length ?? 0) > 0
         case ConfigType.SLACK_OUTPUT:
             return !!(config.channelId || (config.userIds?.length ?? 0) > 0 || config.listenToUserDms)
         case ConfigType.NOTION:
@@ -930,7 +941,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.SNOWFLAKE_OUTPUT:
             return !!config.integrationId
         case ConfigType.GITHUB:
-            return (config.repositoryIds?.length ?? 0) > 0
+            return (config.repositoryIds?.length ?? 0) > 0 && (config.eventTypes?.length ?? 0) > 0
         case ConfigType.POSTHOG:
             return !!config.projectId
         case ConfigType.TIME_TRIGGER:
@@ -960,6 +971,7 @@ export function formatConfigForAgent(config: ConfigData): string {
             }
             if (config.listenToUserDms) parts.push(`Listening to user DMs: Yes`)
             if (config.userIds) parts.push(`Users: ${config.userIds.join(", ")}`)
+            if (config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
             return parts.join("\n")
         }
         case ConfigType.SLACK_OUTPUT: {
@@ -994,6 +1006,7 @@ export function formatConfigForAgent(config: ConfigData): string {
             } else if (config.projectId) {
                 parts.push(`Project ID: ${config.projectId}`)
             }
+            if (config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
             return parts.join("\n")
         }
         case ConfigType.LINEAR_OUTPUT: {
@@ -1013,6 +1026,7 @@ export function formatConfigForAgent(config: ConfigData): string {
         case ConfigType.GITHUB: {
             const parts = [`Type: GitHub`, `Integration ID: ${config.integrationId}`]
             if (config.repositoryIds.length > 0) parts.push(`Repositories: ${config.repositoryIds.join(", ")}`)
+            if (config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
             return parts.join("\n")
         }
         case ConfigType.POSTHOG: {

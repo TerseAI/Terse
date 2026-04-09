@@ -12,7 +12,7 @@ const triggerEventHeaderSchema = z.object({
     eventType: providerTriggerEventTypeSchema
 })
 
-export const slackTriggerEventSchema = triggerEventHeaderSchema.extend({
+const slackTriggerEventBaseSchema = triggerEventHeaderSchema.extend({
     integrationType: z.literal(IntegrationType.SLACK),
     eventType: slackEventTypeSchema,
     channelId: z.string(),
@@ -31,13 +31,43 @@ export const slackTriggerEventSchema = triggerEventHeaderSchema.extend({
     attachments: z.array(z.unknown()).nullable(),
     files: z.array(z.unknown()).nullable()
 })
-type SlackTriggerEventSchemaShape = z.infer<typeof slackTriggerEventSchema>
-
-export type SlackTriggerEvent = Omit<SlackTriggerEventSchemaShape, "blocks" | "attachments" | "files"> & {
+export const slackMessageTriggerEventSchema = slackTriggerEventBaseSchema.extend({
+    eventType: z.literal("message")
+})
+type SlackMessageTriggerEventSchemaShape = z.infer<typeof slackMessageTriggerEventSchema>
+export type SlackMessageTriggerEvent = Omit<SlackMessageTriggerEventSchemaShape, "blocks" | "attachments" | "files"> & {
     blocks: SlackBlocks | null
     attachments: SlackAttachments | null
     files: SlackFiles | null
 }
+
+export const slackAppMentionTriggerEventSchema = slackTriggerEventBaseSchema.extend({
+    eventType: z.literal("app_mention")
+})
+type SlackAppMentionTriggerEventSchemaShape = z.infer<typeof slackAppMentionTriggerEventSchema>
+export type SlackAppMentionTriggerEvent = Omit<SlackAppMentionTriggerEventSchemaShape, "blocks" | "attachments" | "files"> & {
+    blocks: SlackBlocks | null
+    attachments: SlackAttachments | null
+    files: SlackFiles | null
+}
+
+export const slackReactionAddedTriggerEventSchema = slackTriggerEventBaseSchema.extend({
+    eventType: z.literal("reaction_added"),
+    reaction: z.string(),
+    itemType: z.string().nullable(),
+    itemUserId: z.string().nullable(),
+    itemChannelId: z.string().nullable(),
+    itemTimestamp: z.string().nullable()
+})
+type SlackReactionAddedTriggerEventSchemaShape = z.infer<typeof slackReactionAddedTriggerEventSchema>
+export type SlackReactionAddedTriggerEvent = Omit<SlackReactionAddedTriggerEventSchemaShape, "blocks" | "attachments" | "files"> & {
+    blocks: SlackBlocks | null
+    attachments: SlackAttachments | null
+    files: SlackFiles | null
+}
+
+export const slackTriggerEventSchema = z.discriminatedUnion("eventType", [slackMessageTriggerEventSchema, slackAppMentionTriggerEventSchema, slackReactionAddedTriggerEventSchema])
+export type SlackTriggerEvent = SlackMessageTriggerEvent | SlackAppMentionTriggerEvent | SlackReactionAddedTriggerEvent
 
 // Github Event Data
 export const fileDiffSchema = z.object({

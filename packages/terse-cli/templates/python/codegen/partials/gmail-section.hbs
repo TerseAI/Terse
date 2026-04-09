@@ -1,0 +1,25 @@
+{{#if gmail}}
+
+
+# === Gmail ===
+
+
+class Gmail:
+    @staticmethod
+    def on_email() -> TriggerConfig[GmailTriggerEvent]:
+        return TriggerConfig(
+            integration_id={{{gmail.instanceIdRepr}}},
+            integration_type='gmail',
+            config_type='gmail',
+            config=_compact_dict(eventTypes=[GmailEventType.email_received]),
+        )
+
+    @staticmethod
+    def trigger(*, event_types: Sequence[GmailEventType] | None = None) -> TriggerConfig[GmailTriggerEvent]:
+        return TriggerConfig(
+            integration_id={{{gmail.instanceIdRepr}}},
+            integration_type='gmail',
+            config_type='gmail',
+            config=_compact_dict(eventTypes=list(event_types) if event_types is not None else None),
+        )
+{{/if}}

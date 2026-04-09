@@ -2,15 +2,10 @@ import { App as SlackApp } from "@slack/bolt"
 // ESM wraps CommonJS default exports, so we need to access .default
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver"
 import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js"
-import { AppMentionEvent, GenericMessageEvent, ModalView } from "@slack/types"
+import { GenericMessageEvent, ModalView, ReactionAddedEvent } from "@slack/types"
 import jwt from "jsonwebtoken"
 import { IntegrationType } from "terse-types/Integrations"
-import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata, User } from "terse-types/types"
 
-import ChatAgent from "../agent/ChatAgent/ChatAgent"
-import SlackChatInterface from "../agent/ChatAgent/ChatInterfaces/SlackChatInterface"
-import { SurveyAnswerTask } from "../agent/ChatAgent/SurveyAnswerTask"
-import { surveyAnswerTaskQueue } from "../agent/ChatAgent/SurveyAnswerTaskQueue"
 import { jwt as jwtConfig, settings } from "../config/settings"
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask"
 import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues"
@@ -22,10 +17,8 @@ import { db } from "../prismaClient"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { SecretField, getSecret } from "../services/SecretService"
 import { OAuthStatePayload, createOAuthStateToken } from "../utility/oauth"
-import { getUserForOrg } from "../utility/workos"
 
 import {
-    addEyesReaction,
     configurationFieldsToSlackBlocks,
     createErrorModal,
     createFeedbackModal,
@@ -33,36 +26,10 @@ import {
     createOAuthModal,
     createProcessingModal,
     createSuccessModal,
-    formFieldsToSlackBlocks,
-    removeEyesReaction
+    formFieldsToSlackBlocks
 } from "./blockKitHelpers"
 
 const ExpressReceiver = ((ExpressReceiverModule as any).default || ExpressReceiverModule) as typeof ExpressReceiverType
-
-/**
- * Gets the Terse user ID from a Slack user ID and team ID
- */
-async function getUserFromSlackUser(slackUserId: string, teamId: string): Promise<User | undefined> {
-    const userSlackIntegration = await db().user_slack_integrations.findFirst({
-        where: {
-            authed_user_id: slackUserId,
-            slack_team_id: teamId
-        }
-    })
-    if (!userSlackIntegration) {
-        return undefined
-    }
-    const userId = userSlackIntegration.user_id
-    const organizationId = userSlackIntegration.organization_id
-    if (!organizationId) {
-        return undefined
-    }
-    const user = await getUserForOrg(userId, organizationId)
-    if (!user) {
-        return undefined
-    }
-    return user
-}
 
 /**
  * Creates and configures the Slack Bolt app with ExpressReceiver
@@ -120,54 +87,6 @@ export async function setupSlackBolt() {
     slack.message(async ({ event, body, context, say, client }) => {
         try {
             const messageEvent = event as GenericMessageEvent
-            // Check if message is in a thread (thread_ts is the root parent's timestamp)
-            const threadTs = messageEvent.thread_ts
-            const isInThread = !!threadTs
-
-            // If in a thread, not from a bot, and the thread started with an @mention of our bot,
-            // route to ChatAgent for conversational follow-up
-            if (isInThread && !messageEvent.bot_id && messageEvent.text && context.botUserId) {
-                const threadStartedByMention = await isThreadStartedByAppMention(client, messageEvent.channel, threadTs, context.botUserId)
-
-                if (threadStartedByMention && messageEvent.ts) {
-                    logger.info("Thread reply in app_mention thread, routing to ChatAgent:", {
-                        threadTs,
-                        channel: messageEvent.channel,
-                        text: messageEvent.text
-                    })
-
-                    addEyesReaction(client, messageEvent)
-
-                    try {
-                        // Get the user ID from the Slack user ID and team ID
-                        const user = await getUserFromSlackUser(messageEvent.user, body.team_id)
-                        if (!user) {
-                            logger.warn("Could not find user for Slack user", {
-                                slackUserId: messageEvent.user,
-                                teamId: body.team_id
-                            })
-                            await say({
-                                text: "Unable to identify your user account. Please ensure you have connected your Slack account to Terse.",
-                                thread_ts: threadTs
-                            })
-                            return
-                        }
-                        const threadAgentContext = (await getAgentMessageContext(client, messageEvent.channel, threadTs, user.organizationId)) ?? undefined
-                        const slackChatInterface = new SlackChatInterface(messageEvent.channel, client, user.id, user.organizationId, messageEvent.user, threadTs)
-                        const chatAgent = new ChatAgent(slackChatInterface, threadTs, user, threadAgentContext)
-                        await chatAgent.run(messageEvent.text)
-                    } catch (error) {
-                        logger.error("Error processing Slack thread reply:", { error })
-                        await say({
-                            text: "An error occurred while processing your request. Please try again later.",
-                            thread_ts: threadTs
-                        })
-                    } finally {
-                        removeEyesReaction(client, messageEvent)
-                    }
-                }
-            }
-
             const slackMessageEvent: SimplifiedSlackEvent = {
                 type: "event_callback",
                 team_id: body.team_id || "",
@@ -191,7 +110,6 @@ export async function setupSlackBolt() {
                     channel_type: messageEvent.channel_type as any // SlackChannelType - type guard needed for proper typing
                 }
             }
-
             // Process with existing webhook handler
             const slackIntegrationManager = new SlackIntegrationManager()
             await slackIntegrationManager.processWebhookEvent(slackMessageEvent)
@@ -201,127 +119,59 @@ export async function setupSlackBolt() {
     })
 
     slack.event("app_mention", async ({ event, body, say, client }) => {
-        logger.info("Starting app_mention based ChatAgent run", {
-            channel: event.channel,
-            timestamp: event.ts
+        const slackIntegrationManager = new SlackIntegrationManager()
+        await slackIntegrationManager.processWebhookEvent({
+            type: "event_callback",
+            team_id: body.team_id || "",
+            event_id: body.event_id,
+            authorizations: body.authorizations?.map(auth => ({
+                enterprise_id: auth.enterprise_id || null,
+                team_id: auth.team_id || "",
+                user_id: auth.user_id || "",
+                is_bot: auth.is_bot || false,
+                is_enterprise_install: auth.is_enterprise_install || false
+            })),
+            event: {
+                type: "app_mention",
+                channel: event.channel,
+                user: event.user,
+                text: event.text || "",
+                ts: event.ts,
+                thread_ts: event.thread_ts
+            }
         })
-        addEyesReaction(client, event as AppMentionEvent)
-
-        const message = event.text as string
-        const chatId = event.ts as string // Use the timestamp of the mention as the Chat ID!!!
-
-        try {
-            // Get the user ID from the Slack user ID and team ID
-            if (!event.user || !body.team_id) {
-                logger.warn("Could not find user ID for Slack user", {
-                    slackUserId: event.user,
-                    teamId: body.team_id
-                })
-                await say({
-                    text: "Unable to identify your user account. Please ensure you have connected your Slack account to Terse.",
-                    thread_ts: chatId
-                })
-                return
-            }
-            const user = await getUserFromSlackUser(event.user, body.team_id)
-            if (!user) {
-                logger.warn("Could not find user for Slack user", {
-                    slackUserId: event.user,
-                    teamId: body.team_id
-                })
-                await say({
-                    text: "Unable to identify your user account. Please ensure you have connected your Slack account to Terse.",
-                    thread_ts: chatId
-                })
-                return
-            }
-            let agentContext: string | undefined
-            const threadTs = event.thread_ts as string | undefined
-            if (threadTs) {
-                agentContext = (await getAgentMessageContext(client, event.channel, threadTs, user.organizationId)) ?? undefined
-            }
-
-            const slackChatInterface = new SlackChatInterface(event.channel, client, user.id, user.organizationId, event.user, chatId)
-            const chatAgent = new ChatAgent(slackChatInterface, chatId, user, agentContext)
-
-            const messageWithContext = await buildSlackChannelContextMessage(client, message, event.channel)
-
-            await chatAgent.run(messageWithContext)
-        } catch (error) {
-            logger.error("Error processing Slack app_mention:", { error })
-            await say({
-                text: "An error occurred while processing your request. Please try again later.",
-                thread_ts: chatId
-            })
-        } finally {
-            removeEyesReaction(client, event as AppMentionEvent)
-        }
     })
 
-    // Handle survey multiple-choice selection - emit SurveyAnswerTask for blocking waitFor in ChatInterface
-    slack.action("survey_select", async ({ ack, body, action, respond }) => {
-        await ack()
-
+    slack.event("reaction_added", async ({ event, body }) => {
         try {
-            if (!("selected_option" in action) || !action.selected_option || !("value" in action.selected_option)) {
-                logger.error("[Slack Survey] Action missing selected_option or value")
-                await respond({
-                    text: "Error: No selection received.",
-                    response_type: "ephemeral"
-                })
-                return
-            }
-            const selectedValue = (action.selected_option as { value: string }).value
-            const blockId = (action as { block_id?: string }).block_id ?? (body as any).actions?.[0]?.block_id
-            if (!blockId || typeof blockId !== "string" || !blockId.startsWith("survey_")) {
-                logger.error("[Slack Survey] Invalid or missing block_id", { blockId })
-                await respond({
-                    text: "Error: Invalid survey request.",
-                    response_type: "ephemeral"
-                })
-                return
-            }
-            // blockId format: survey_{questionId}__{sessionId}__{channel}
-            const payload = blockId.replace(/^survey_/, "").split("__")
-            const questionId = payload[0]
-            const sessionId = payload[1]
-            const channel = payload[2]
-            if (!questionId || !sessionId || !channel) {
-                logger.error("[Slack Survey] Could not parse questionId, sessionId or channel from block_id", {
-                    blockId
-                })
-                await respond({
-                    text: "Error: Invalid survey request.",
-                    response_type: "ephemeral"
-                })
-                return
-            }
-            const bodyUser = (body as any).user?.id
-            const teamId = (body as any).team?.id
-            if (!bodyUser || !teamId) {
-                logger.error("[Slack Survey] Missing user or team in payload")
-                await respond({
-                    text: "Error: Could not identify user.",
-                    response_type: "ephemeral"
-                })
-                return
-            }
-            const user = await getUserFromSlackUser(bodyUser, teamId)
-            if (!user) {
-                logger.warn("[Slack Survey] No Terse user for Slack user", { slackUserId: bodyUser, teamId })
-                await respond({
-                    text: "Unable to identify your user account. Please ensure you have connected your Slack account to Terse.",
-                    response_type: "ephemeral"
-                })
-                return
-            }
-            surveyAnswerTaskQueue.emit(new SurveyAnswerTask(questionId, selectedValue, user.id, sessionId))
-        } catch (error) {
-            logger.error("[Slack Survey] Error emitting SurveyAnswerTask", { error })
-            await respond({
-                text: "An error occurred while processing your answer. Please try again.",
-                response_type: "ephemeral"
+            const reactionEvent = event as ReactionAddedEvent
+            const slackIntegrationManager = new SlackIntegrationManager()
+            await slackIntegrationManager.processWebhookEvent({
+                type: "event_callback",
+                team_id: body.team_id || "",
+                event_id: body.event_id,
+                authorizations: body.authorizations?.map(auth => ({
+                    enterprise_id: auth.enterprise_id || null,
+                    team_id: auth.team_id || "",
+                    user_id: auth.user_id || "",
+                    is_bot: auth.is_bot || false,
+                    is_enterprise_install: auth.is_enterprise_install || false
+                })),
+                event: {
+                    type: "reaction_added",
+                    user: reactionEvent.user,
+                    reaction: reactionEvent.reaction,
+                    item_user: reactionEvent.item_user,
+                    event_ts: reactionEvent.event_ts,
+                    item: {
+                        type: reactionEvent.item.type,
+                        channel: "channel" in reactionEvent.item ? reactionEvent.item.channel : undefined,
+                        ts: "ts" in reactionEvent.item ? reactionEvent.item.ts : undefined
+                    }
+                }
             })
+        } catch (error) {
+            logger.error("Error processing Slack reaction_added:", { error })
         }
     })
 
@@ -1672,109 +1522,5 @@ export async function setupSlackBolt() {
     return {
         slack,
         receiver
-    }
-}
-
-async function getAgentMessageContext(client: SlackApp["client"], channel: string, threadTs: string, organizationId: string): Promise<string | null> {
-    try {
-        const replies = await client.conversations.replies({
-            channel,
-            ts: threadTs,
-            limit: 1,
-            include_all_metadata: true
-        })
-        const rootMessage = replies.messages?.[0]
-        if (rootMessage?.metadata?.event_type !== TERSE_AGENT_MESSAGE_EVENT_TYPE) return null
-
-        const { run_id, automation_id, organization_id } = (rootMessage.metadata as TerseAgentMessageMetadata).event_payload
-
-        if (organization_id !== organizationId) return null
-
-        const [agent, runRecord] = await Promise.all([
-            db().automations.findFirst({ where: { id: automation_id, organization_id: organizationId }, include: { prompt: true } }),
-            db().run_history_records.findFirst({
-                where: { id: run_id, automation: { organization_id: organizationId } },
-                include: { actions: { orderBy: { created_at: "asc" }, take: 20 } }
-            })
-        ])
-
-        const lines: string[] = [
-            "## Agent Message Context",
-            "The user is replying to a Slack message sent by one of their automation agents.",
-            "Use this context to help them understand what the agent did, modify the agent, or take follow-up actions.",
-            ""
-        ]
-        if (agent) {
-            lines.push(`Agent Name: "${agent.name}"`, `Agent ID: ${agent.id}`)
-            if (agent.prompt?.content) {
-                const preview = agent.prompt.content.length > 500 ? agent.prompt.content.slice(0, 500) + "..." : agent.prompt.content
-                lines.push(`Agent Instructions: ${preview}`)
-            }
-        }
-        if (runRecord) {
-            lines.push("", `Run ID: ${run_id}`, `Run Status: ${runRecord.status}`, `Trigger: ${runRecord.event}`)
-            if (runRecord.decision_reason) lines.push(`Decision: ${runRecord.decision_action} - ${runRecord.decision_reason}`)
-            if (runRecord.actions?.length) {
-                lines.push("", "Actions taken:")
-                for (const a of runRecord.actions) lines.push(`- ${a.action}: ${a.details}`)
-            }
-        }
-        return lines.join("\n")
-    } catch (error) {
-        logger.error("Error fetching agent message context:", { error, channel, threadTs })
-        return null
-    }
-}
-
-async function buildSlackChannelContextMessage(client: SlackApp["client"], message: string, channelId: string): Promise<string> {
-    let channelName: string | undefined
-    try {
-        const channelInfo = await client.conversations.info({ channel: channelId })
-        channelName = (channelInfo.channel as { name?: string } | undefined)?.name
-    } catch (error) {
-        logger.warn("Failed to fetch Slack channel info for chat context", {
-            error,
-            channelId
-        })
-    }
-
-    const channelLabel = channelName ? `#${channelName}` : "this channel"
-    // Note: The channel name is just context metadata - don't assume the user wants to automate something
-    // related to the channel just because they're messaging from it. Respond to what they actually said.
-    return `[Context: User is messaging from ${channelLabel} in Slack]\n\nUser message: ${message}`
-}
-
-async function isThreadStartedByAppMention(
-    client: {
-        conversations: {
-            replies: (args: { channel: string; ts: string; limit: number }) => Promise<{ messages?: Array<{ text?: string }> }>
-        }
-    },
-    channel: string,
-    threadTs: string,
-    botUserId: string
-): Promise<boolean> {
-    try {
-        // Fetch the root message of the thread
-        const replies = await client.conversations.replies({
-            channel,
-            ts: threadTs,
-            limit: 1 // We only need the root message
-        })
-
-        const rootMessage = replies.messages?.[0]
-        if (!rootMessage?.text) {
-            return false
-        }
-
-        // Check if the root message mentions the bot (format: <@U1234567890>)
-        return rootMessage.text.includes(`<@${botUserId}>`)
-    } catch (error) {
-        logger.error("Error checking if thread started by app mention:", {
-            error,
-            channel,
-            threadTs
-        })
-        return false
     }
 }

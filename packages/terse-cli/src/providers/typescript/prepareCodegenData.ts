@@ -334,7 +334,19 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
     if (instances.length === 0) return sectionData([])
 
     const inst = instances[0]
-    const imports = ["GitHubConfig", "GitHubEventType", "TypedTrigger", "TypedSkill", "GitHubPullRequestTriggerEvent", "GitHubPushTriggerEvent", "GitHubTriggerEvent"]
+    const imports = [
+        "GitHubConfig",
+        "GitHubEventType",
+        "TypedTrigger",
+        "TypedSkill",
+        "GitHubPullRequestOpenedTriggerEvent",
+        "GitHubPullRequestMergedTriggerEvent",
+        "GitHubPullRequestClosedTriggerEvent",
+        "GitHubPullRequestSynchronizedTriggerEvent",
+        "GitHubPullRequestTriggerEvent",
+        "GitHubPushTriggerEvent",
+        "GitHubTriggerEvent"
+    ]
     const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
 
     const repositoriesWithFullName = inst.repositories.map(repo => {
@@ -397,7 +409,9 @@ function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDe
 function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefinition[]): SectionContext<SlackSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
-    return sectionData(["SlackConfig", "SlackOutputConfig", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTriggerEvent"], {
+    return sectionData(
+        ["SlackAppMentionTriggerEvent", "SlackConfig", "SlackMessageTriggerEvent", "SlackOutputConfig", "SlackReactionAddedTriggerEvent", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTriggerEvent"],
+        {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
         channelClass: buildResourceClassContext(
@@ -409,26 +423,40 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
             "name",
             inst.channels
         )
-    })
+        }
+    )
 }
 
 function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefinition[]): SectionContext<LinearSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
-    return sectionData(["LinearInputConfig", "LinearOutputConfig", "TypedSkill", "TypedTrigger", "LinearEventType", "LinearTriggerEvent"], {
-        id: inst.id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "linear"),
-        teamClass: buildResourceClassContext(
-            "LinearTeam",
-            [
-                { classField: "teamId", type: "string", sourceField: "id" },
-                { classField: "name", type: "string", sourceField: "name" },
-                { classField: "key", type: "string", sourceField: "key" }
-            ],
-            "name",
-            inst.teams
-        )
-    })
+    return sectionData(
+        [
+            "LinearInputConfig",
+            "LinearOutputConfig",
+            "TypedSkill",
+            "TypedTrigger",
+            "LinearEventType",
+            "LinearIssueCreatedTriggerEvent",
+            "LinearIssueUpdatedTriggerEvent",
+            "LinearCommentCreatedTriggerEvent",
+            "LinearTriggerEvent"
+        ],
+        {
+            id: inst.id,
+            skillToolType: buildSkillToolTypeForIntegration(tools, "linear"),
+            teamClass: buildResourceClassContext(
+                "LinearTeam",
+                [
+                    { classField: "teamId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" },
+                    { classField: "key", type: "string", sourceField: "key" }
+                ],
+                "name",
+                inst.teams
+            )
+        }
+    )
 }
 
 function prepareNotionSection(instances: NotionInstanceData[], tools: ToolDefinition[]): SectionContext<NotionSectionContext> {
@@ -514,8 +542,18 @@ function prepareWorkOSSection(instances: IntegrationInstanceData[], tools: ToolD
             "TypedSkill",
             "TypedTrigger",
             "WorkOSTriggerEvent",
+            "WorkOSUserCreatedTriggerEvent",
+            "WorkOSUserUpdatedTriggerEvent",
+            "WorkOSUserDeletedTriggerEvent",
             "WorkOSUserTriggerEvent",
+            "WorkOSOrganizationMembershipCreatedTriggerEvent",
+            "WorkOSOrganizationMembershipUpdatedTriggerEvent",
+            "WorkOSOrganizationMembershipDeletedTriggerEvent",
             "WorkOSMembershipTriggerEvent",
+            "WorkOSInvitationCreatedTriggerEvent",
+            "WorkOSInvitationAcceptedTriggerEvent",
+            "WorkOSInvitationResentTriggerEvent",
+            "WorkOSInvitationRevokedTriggerEvent",
             "WorkOSInvitationTriggerEvent",
             "WorkOSOrganizationTriggerEvent"
         ],

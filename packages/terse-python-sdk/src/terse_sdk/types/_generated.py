@@ -5205,19 +5205,19 @@ class WorkOSTriggerEvent(
     )
 
 
-class SlackTriggerEventChannelType(StrEnum):
+class SlackReactionAddedTriggerEventChannelType(StrEnum):
     channel = "channel"
     group = "group"
     mpim = "mpim"
     im = "im"
 
 
-class SlackTriggerEvent(TerseModel):
+class SlackReactionAddedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
-    event_type: Annotated[SlackEventType, Field(alias="eventType")]
+    event_type: Annotated[Literal["reaction_added"], Field(alias="eventType")] = "reaction_added"
     channel_id: Annotated[str, Field(alias="channelId")]
     channel_name: Annotated[str | None, Field(alias="channelName")]
     user_id: Annotated[str, Field(alias="userId")]
@@ -5228,10 +5228,65 @@ class SlackTriggerEvent(TerseModel):
     thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
     team_id: Annotated[str, Field(alias="teamId")]
     permalink: str | None
-    channel_type: Annotated[SlackTriggerEventChannelType | None, Field(alias="channelType")]
+    channel_type: Annotated[SlackReactionAddedTriggerEventChannelType | None, Field(alias="channelType")]
     blocks: list[Any] | None
     attachments: list[Any] | None
     files: list[Any] | None
+    reaction: str
+    item_type: Annotated[str | None, Field(alias="itemType")]
+    item_user_id: Annotated[str | None, Field(alias="itemUserId")]
+    item_channel_id: Annotated[str | None, Field(alias="itemChannelId")]
+    item_timestamp: Annotated[str | None, Field(alias="itemTimestamp")]
+
+
+class SlackAppMentionTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[Literal["app_mention"], Field(alias="eventType")] = "app_mention"
+    channel_id: Annotated[str, Field(alias="channelId")]
+    channel_name: Annotated[str | None, Field(alias="channelName")]
+    user_id: Annotated[str, Field(alias="userId")]
+    user_name: Annotated[str | None, Field(alias="userName")]
+    text: str
+    timestamp: str
+    thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
+    thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    permalink: str | None
+    channel_type: Annotated[SlackReactionAddedTriggerEventChannelType | None, Field(alias="channelType")]
+    blocks: list[Any] | None
+    attachments: list[Any] | None
+    files: list[Any] | None
+
+
+class SlackMessageTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[Literal["message"], Field(alias="eventType")] = "message"
+    channel_id: Annotated[str, Field(alias="channelId")]
+    channel_name: Annotated[str | None, Field(alias="channelName")]
+    user_id: Annotated[str, Field(alias="userId")]
+    user_name: Annotated[str | None, Field(alias="userName")]
+    text: str
+    timestamp: str
+    thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
+    thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    permalink: str | None
+    channel_type: Annotated[SlackReactionAddedTriggerEventChannelType | None, Field(alias="channelType")]
+    blocks: list[Any] | None
+    attachments: list[Any] | None
+    files: list[Any] | None
+
+
+class SlackTriggerEvent(
+    RootModel[SlackMessageTriggerEvent | SlackAppMentionTriggerEvent | SlackReactionAddedTriggerEvent]
+):
+    root: SlackMessageTriggerEvent | SlackAppMentionTriggerEvent | SlackReactionAddedTriggerEvent
 
 
 class TriggerEvent(

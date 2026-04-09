@@ -391,11 +391,14 @@ export class GithubIntegrationManager
         }
 
         const requestedTypes = githubConfig.eventTypes ?? []
-        const wantsPush = requestedTypes.length === 0 || requestedTypes.includes(GitHubEventType.PUSH)
+        if (requestedTypes.length === 0) {
+            return []
+        }
+        const wantsPush = requestedTypes.includes(GitHubEventType.PUSH)
 
         const requestedPRTypes = requestedTypes.filter(t => t.startsWith("pull_request."))
-        const wantsPR = requestedTypes.length === 0 || requestedPRTypes.length > 0
-        const prApiState = derivePRApiState(requestedTypes.length === 0 ? [] : requestedPRTypes)
+        const wantsPR = requestedPRTypes.length > 0
+        const prApiState = derivePRApiState(requestedPRTypes)
 
         const events: TriggerEventRuntime[] = []
         for (const repo of repos) {

@@ -643,9 +643,14 @@ export class LinearTriggerEventRuntime extends TriggerEventRuntime implements Id
         if (agentTrigger.config_type !== InputConfigType.LINEAR) {
             return false
         }
-
-        // Since we don't filter for a team at the moment, nothing else to check
-        return true
+        if (agentTrigger.integration_id !== this.integrationId) {
+            return false
+        }
+        const linearConfig = agentTrigger.linear_config
+        if (!linearConfig || !linearConfig.event_types || linearConfig.event_types.length === 0) {
+            return false
+        }
+        return linearConfig.event_types.includes(this.eventType)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {

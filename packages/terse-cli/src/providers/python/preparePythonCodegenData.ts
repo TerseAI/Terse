@@ -1,4 +1,14 @@
-import type { AttioAttributeData, AttioInstanceData, CodegenInput, SlackInstanceData, SnowflakeInstanceData, ToolDefinition } from "../codegenTypes.js"
+import type {
+    AttioAttributeData,
+    AttioInstanceData,
+    CodegenInput,
+    GitHubInstanceData,
+    IntegrationInstanceData,
+    LinearInstanceData,
+    SlackInstanceData,
+    SnowflakeInstanceData,
+    ToolDefinition
+} from "../codegenTypes.js"
 
 const SUPPORTED_TOOL_SPECS = [
     ["attio", "attio_list_objects", "list_objects"],
@@ -101,17 +111,61 @@ export interface PythonSlackCtx {
     skillToolType: string
 }
 
+export interface PythonGitHubOwnerCtx {
+    staticName: string
+    nameRepr: string
+}
+
+export interface PythonGitHubRepoCtx {
+    staticName: string
+    repositoryId: number
+    nameRepr: string
+    fullNameRepr: string
+    ownerStaticName: string
+}
+
+export interface PythonGitHubRepoGroupCtx {
+    ownerStaticName: string
+    repos: PythonGitHubRepoCtx[]
+}
+
+export interface PythonGitHubCtx {
+    instanceIdRepr: string
+    owners: PythonGitHubOwnerCtx[]
+    repoGroups: PythonGitHubRepoGroupCtx[]
+}
+
+export interface PythonGmailCtx {
+    instanceIdRepr: string
+}
+
+export interface PythonLinearCtx {
+    instanceIdRepr: string
+}
+
+export interface PythonWorkOSCtx {
+    instanceIdRepr: string
+}
+
 export interface PythonTemplateContext {
     attio: PythonAttioCtx | null
+    github: PythonGitHubCtx | null
+    gmail: PythonGmailCtx | null
+    linear: PythonLinearCtx | null
     slack: PythonSlackCtx | null
     snowflake: PythonSnowflakeCtx | null
+    workos: PythonWorkOSCtx | null
     hasAttio: boolean
     hasAttioAttrs: boolean
     hasAttioTools: boolean
+    hasGithub: boolean
+    hasGmail: boolean
+    hasLinear: boolean
     hasSlack: boolean
     hasSlackTools: boolean
     hasSnowflake: boolean
     hasSnowflakeTools: boolean
+    hasWorkOS: boolean
     hasAnyToolNameTypes: boolean
     hasAnyDeterministicTools: boolean
     sdkImports: string[]
@@ -131,22 +185,68 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
     const snowflakeTools = selectSupportedTools(input.tools, "snowflake")
 
     const attio = input.attio[0] ? buildAttioCtx(input.attio[0], attioTools) : null
+    const github = input.github[0] ? buildGitHubCtx(input.github[0]) : null
+    const gmail = input.gmail[0] ? buildSimpleIntegrationCtx(input.gmail[0]) : null
+    const linear = input.linear[0] ? buildLinearCtx(input.linear[0]) : null
     const slack = input.slack[0] ? buildSlackCtx(input.slack[0], slackTools) : null
     const snowflake = input.snowflake[0] ? buildSnowflakeCtx(input.snowflake[0], snowflakeTools) : null
+    const workos = input.workos[0] ? buildSimpleIntegrationCtx(input.workos[0]) : null
 
     const hasAttio = attio !== null
     const hasAttioAttrs = !!attio?.hasAttrs
     const hasAttioTools = (attio?.tools.length ?? 0) > 0
+    const hasGithub = github !== null
+    const hasGmail = gmail !== null
+    const hasLinear = linear !== null
     const hasSlack = slack !== null
     const hasSlackTools = (slack?.tools.length ?? 0) > 0
     const hasSnowflake = snowflake !== null
     const hasSnowflakeTools = (snowflake?.tools.length ?? 0) > 0
+    const hasWorkOS = workos !== null
     const hasAnyToolNameTypes = (attio?.approvableTools.length ?? 0) > 0 || (slack?.approvableTools.length ?? 0) > 0 || (snowflake?.approvableTools.length ?? 0) > 0
     const hasAnyDeterministicTools = hasAttioTools || hasSlackTools || hasSnowflakeTools
 
-    const sdkImports = ["CronTriggerEvent", "SkillConfig", "TerseAgent as _SdkTerseAgent", "TriggerConfig"]
+    const sdkImports = ["CronTriggerEvent", "SkillConfig", "TerseAgent as _SdkTerseAgent", "TriggerConfig", "WebhookTriggerEvent"]
+    if (hasGithub) {
+        sdkImports.push(
+            "GitHubEventType",
+            "GitHubPullRequestClosedTriggerEvent",
+            "GitHubPullRequestMergedTriggerEvent",
+            "GitHubPullRequestOpenedTriggerEvent",
+            "GitHubPullRequestSynchronizedTriggerEvent",
+            "GitHubPullRequestTriggerEvent",
+            "GitHubPushTriggerEvent",
+            "GitHubTriggerEvent"
+        )
+    }
+    if (hasGmail) {
+        sdkImports.push("GmailEventType", "GmailTriggerEvent")
+    }
+    if (hasLinear) {
+        sdkImports.push("LinearCommentCreatedTriggerEvent", "LinearEventType", "LinearIssueCreatedTriggerEvent", "LinearIssueUpdatedTriggerEvent", "LinearTriggerEvent")
+    }
     if (hasSlack) {
-        sdkImports.push("SlackEventType", "SlackTriggerEvent")
+        sdkImports.push("SlackAppMentionTriggerEvent", "SlackEventType", "SlackMessageTriggerEvent", "SlackReactionAddedTriggerEvent", "SlackTriggerEvent")
+    }
+    if (hasWorkOS) {
+        sdkImports.push(
+            "WorkOSEventType",
+            "WorkOSInvitationAcceptedTriggerEvent",
+            "WorkOSInvitationCreatedTriggerEvent",
+            "WorkOSInvitationResentTriggerEvent",
+            "WorkOSInvitationRevokedTriggerEvent",
+            "WorkOSInvitationTriggerEvent",
+            "WorkOSMembershipTriggerEvent",
+            "WorkOSOrganizationMembershipCreatedTriggerEvent",
+            "WorkOSOrganizationMembershipDeletedTriggerEvent",
+            "WorkOSOrganizationMembershipUpdatedTriggerEvent",
+            "WorkOSOrganizationTriggerEvent",
+            "WorkOSTriggerEvent",
+            "WorkOSUserCreatedTriggerEvent",
+            "WorkOSUserDeletedTriggerEvent",
+            "WorkOSUserTriggerEvent",
+            "WorkOSUserUpdatedTriggerEvent"
+        )
     }
     if (hasAttioAttrs && hasAttioTools) {
         sdkImports.push("AttioTypedQueryResult", "AttioTypedRecord", "AttioTypedUpsertResult")
@@ -161,8 +261,10 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
             typingImports.add(name)
         }
     }
-    if (hasSlack) {
+    if (hasGithub || hasSlack) {
         typingImports.add("ClassVar")
+    }
+    if (hasGithub || hasGmail || hasLinear || hasSlack || hasWorkOS) {
         typingImports.add("Sequence")
     }
     if (hasAnyToolNameTypes) {
@@ -170,21 +272,29 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
     }
     const typingImportsLine = typingImports.size ? `from typing import ${Array.from(typingImports).sort().join(", ")}` : undefined
 
-    const pydanticImportsLine = hasAttio || hasSlack ? "from pydantic import BaseModel, ConfigDict" : undefined
+    const pydanticImportsLine = hasAttio || hasGithub || hasSlack ? "from pydantic import BaseModel, ConfigDict" : undefined
 
-    const exportedNames = buildExportedNames(attio, slack, snowflake)
+    const exportedNames = buildExportedNames(attio, github, gmail, linear, slack, snowflake, workos)
 
     return {
         attio,
+        github,
+        gmail,
+        linear,
         slack,
         snowflake,
+        workos,
         hasAttio,
         hasAttioAttrs,
         hasAttioTools,
+        hasGithub,
+        hasGmail,
+        hasLinear,
         hasSlack,
         hasSlackTools,
         hasSnowflake,
         hasSnowflakeTools,
+        hasWorkOS,
         hasAnyToolNameTypes,
         hasAnyDeterministicTools,
         sdkImports,
@@ -277,6 +387,57 @@ function buildSlackCtx(instance: SlackInstanceData, tools: ToolDefinition[]): Py
     }
 }
 
+function buildGitHubCtx(instance: GitHubInstanceData): PythonGitHubCtx {
+    const repositoriesWithFullName = instance.repositories.map(repo => {
+        const owner = repo.owner || "UnknownOwner"
+        const fullName = repo.fullName || (repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name)
+        return { ...repo, owner, fullName }
+    })
+
+    const ownerEntries = new Map<string, { staticName: string; repos: typeof repositoriesWithFullName }>()
+    const usedOwnerNames = new Set<string>()
+    for (const repo of repositoriesWithFullName) {
+        if (!ownerEntries.has(repo.owner)) {
+            const ownerName = uniqueName(toPascalCase(repo.owner) || "UnknownOwner", usedOwnerNames)
+            ownerEntries.set(repo.owner, { staticName: ownerName, repos: [] as typeof repositoriesWithFullName })
+        }
+        ownerEntries.get(repo.owner)!.repos.push(repo)
+    }
+
+    const owners = Array.from(ownerEntries.entries()).map(([name, data]) => ({
+        staticName: data.staticName,
+        nameRepr: pyRepr(name)
+    }))
+
+    const repoGroups = Array.from(ownerEntries.values()).map(group => {
+        const usedRepoNames = new Set<string>()
+        return {
+            ownerStaticName: group.staticName,
+            repos: group.repos.map(repo => ({
+                staticName: uniqueName(toPascalCase(repo.name) || "Repo", usedRepoNames),
+                repositoryId: repo.id,
+                nameRepr: pyRepr(repo.name),
+                fullNameRepr: pyRepr(repo.fullName),
+                ownerStaticName: group.staticName
+            }))
+        }
+    })
+
+    return {
+        instanceIdRepr: pyRepr(instance.integration.id),
+        owners,
+        repoGroups
+    }
+}
+
+function buildSimpleIntegrationCtx(instance: IntegrationInstanceData): { instanceIdRepr: string } {
+    return { instanceIdRepr: pyRepr(instance.id) }
+}
+
+function buildLinearCtx(instance: LinearInstanceData): PythonLinearCtx {
+    return { instanceIdRepr: pyRepr(instance.id) }
+}
+
 function buildAttioObjectCtx(obj: AttioInstanceData["objects"][number], usedNames: Set<string>, hasAttrs: boolean): PythonAttioObjectCtx {
     const pascal = toPascalCase(obj.singular_noun || obj.api_slug) || "Object"
     const staticName = uniqueName(pascal, usedNames)
@@ -343,7 +504,15 @@ function buildToolNamesLiteral(tools: PythonToolCtx[]): string {
     return tools.map(tool => tool.nameRepr).join(", ")
 }
 
-function buildExportedNames(attio: PythonAttioCtx | null, slack: PythonSlackCtx | null, snowflake: PythonSnowflakeCtx | null): string[] {
+function buildExportedNames(
+    attio: PythonAttioCtx | null,
+    github: PythonGitHubCtx | null,
+    gmail: PythonGmailCtx | null,
+    linear: PythonLinearCtx | null,
+    slack: PythonSlackCtx | null,
+    snowflake: PythonSnowflakeCtx | null,
+    workos: PythonWorkOSCtx | null
+): string[] {
     const names = ["Schedule", "GeneratedTools", "create_tools", "attach_tools", "TerseAgent"]
 
     for (const tool of [...(attio?.tools ?? []), ...(slack?.tools ?? []), ...(snowflake?.tools ?? [])]) {
@@ -369,8 +538,12 @@ function buildExportedNames(attio: PythonAttioCtx | null, slack: PythonSlackCtx 
         names.push("Attio")
     }
 
+    if (github) names.push("GitHub", "GitHubOwner", "GitHubRepo")
+    if (gmail) names.push("Gmail")
+    if (linear) names.push("Linear")
     names.push("Slack", "SlackChannel")
-    names.push("Snowflake")
+    names.push("Snowflake", "Webhook")
+    if (workos) names.push("WorkOS")
     return names
 }
 

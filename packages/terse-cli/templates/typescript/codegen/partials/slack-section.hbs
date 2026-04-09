@@ -4,12 +4,20 @@
 
 export const Slack = {
     /** Trigger on any message in a channel */
-    onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackTriggerEvent> {
+    onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTriggerEvent> {
         return new SlackConfig("{{escape id}}", opts.channel.channelId, opts.channel.name, false, opts.userIds, [SlackEventType.MESSAGE])
     },
     /** Trigger on direct messages to the bot */
-    onDm(opts?: { userIds?: string[] }): TypedTrigger<SlackTriggerEvent> {
+    onDm(opts?: { userIds?: string[] }): TypedTrigger<SlackMessageTriggerEvent> {
         return new SlackConfig("{{escape id}}", undefined, undefined, true, opts?.userIds, [SlackEventType.MESSAGE])
+    },
+    /** Trigger when the Slack app is directly mentioned */
+    onAppMention(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackAppMentionTriggerEvent> {
+        return new SlackConfig("{{escape id}}", opts.channel.channelId, opts.channel.name, false, opts.userIds, [SlackEventType.APP_MENTION])
+    },
+    /** Trigger when a reaction is added to a message in a channel */
+    onReactionAdded(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackReactionAddedTriggerEvent> {
+        return new SlackConfig("{{escape id}}", opts.channel.channelId, opts.channel.name, false, opts.userIds, [SlackEventType.REACTION_ADDED])
     },
     /** Trigger on all Slack events (messages + DMs) for a channel */
     trigger(opts?: { channel?: SlackChannel; listenToUserDms?: boolean; userIds?: string[]; eventTypes?: SlackEventType[] }): TypedTrigger<SlackTriggerEvent> {

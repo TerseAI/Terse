@@ -10,11 +10,13 @@ import {
     GmailDraftOutputConfig,
     GmailOutputConfig,
     LaunchDarklyConfig,
+    LinearEventType,
     LinearInputConfig,
     LinearOutputConfig,
     NotionConfig,
     PosthogConfig,
     SlackConfig,
+    SlackEventType,
     SlackOutputConfig,
     SnowflakeOutputConfig,
     TerseConfig,
@@ -208,7 +210,8 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
             channelInput.slack_config.channel_id || undefined,
             channelInput.slack_config.channel_name || undefined,
             channelInput.slack_config.listen_to_user_dms || false,
-            channelInput.slack_config.user_ids || undefined
+            channelInput.slack_config.user_ids || undefined,
+            (channelInput.slack_config.event_types || []) as SlackEventType[]
         )
     }
 
@@ -218,7 +221,12 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
     }
 
     if (channelInput.linear_config) {
-        return new LinearInputConfig(integrationId, channelInput.linear_config.team_id || undefined, channelInput.linear_config.team_name || undefined)
+        return new LinearInputConfig(
+            integrationId,
+            channelInput.linear_config.project_id || undefined,
+            channelInput.linear_config.project_name || undefined,
+            (channelInput.linear_config.event_types || []) as LinearEventType[]
+        )
     }
 
     if (channelInput.github_config) {

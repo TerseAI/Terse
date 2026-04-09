@@ -26,7 +26,11 @@ const SCHEMA_NAME_OVERRIDES: Record<string, string> = {
     githubPullRequestClosedTriggerEventSchema: "GitHubPullRequestClosedTriggerEvent",
     githubPullRequestMergedTriggerEventSchema: "GitHubPullRequestMergedTriggerEvent",
     githubPullRequestTriggerEventSchema: "GitHubPullRequestTriggerEvent",
-    githubTriggerEventSchema: "GitHubTriggerEvent"
+    githubTriggerEventSchema: "GitHubTriggerEvent",
+    slackMessageTriggerEventSchema: "SlackMessageTriggerEvent",
+    slackAppMentionTriggerEventSchema: "SlackAppMentionTriggerEvent",
+    slackReactionAddedTriggerEventSchema: "SlackReactionAddedTriggerEvent",
+    slackTriggerEventSchema: "SlackTriggerEvent"
 }
 
 function isZodSchema(value: unknown): value is z.ZodTypeAny {
