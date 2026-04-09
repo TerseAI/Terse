@@ -17,6 +17,13 @@ export async function loadJobRegistry(provider: LanguageProvider): Promise<Map<s
 export async function loadJob(provider: LanguageProvider, jobName?: string): Promise<{ job: CreateJobParameters }> {
     const registry = await loadJobRegistry(provider)
 
+    if (registry.size === 0) {
+        console.error(chalk.red("No jobs found."))
+        console.log(`\nMake sure ${provider.entryFile} registers at least one job.`)
+        console.log(`Check that your ${provider.detectionMarkers.requiredFiles.join(" and ")} are configured correctly.`)
+        process.exit(1)
+    }
+
     // Resolve which job to run
     let resolvedName: string
 

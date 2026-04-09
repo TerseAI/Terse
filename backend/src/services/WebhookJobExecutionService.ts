@@ -1,7 +1,7 @@
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { User } from "terse-types/types"
+import { User, webhookJobTriggerResponseSchema } from "terse-types/types"
 
-import { finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
+import { finalizeRunStatus, markRunFailed, markRunSkipped } from "../agent/AgentRunner/runHistory"
 import logger from "../logger"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { extractErrorMessage } from "../utility/strings"
@@ -66,9 +66,27 @@ export class WebhookJobExecutionService {
                 return
             }
 
+            // Consume the body and check for filter-skip. Do not mark SUCCESS here — self-hosted jobs run via
+            // POST /sdk/agent-run (X-Terse-Run-Id), which finalizes status when the agent actually finishes.
+            const rawBody = await deliverResponse.text().catch(() => "")
+            let parsed: unknown
+            try {
+                parsed = rawBody ? JSON.parse(rawBody) : undefined
+            } catch {
+                /* non-JSON body is fine */
+            }
+            const triggerResponse = webhookJobTriggerResponseSchema.safeParse(parsed)
+            const filtered = triggerResponse.success && triggerResponse.data.filtered === true
+
+            if (filtered) {
+                await markRunSkipped(runId, "Job filter excluded this event")
+                logger.info("Webhook job: trigger delivered but job filter skipped the run", { runId, agentId, jobName })
+            } else {
+                logger.info("Webhook job: trigger delivered; awaiting SDK agent run for completion", { runId, agentId, jobName })
+            }
+
             await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
             emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-            logger.info("Webhook job: handshake verified and trigger delivered", { runId, agentId, jobName })
         } catch (error) {
             const errorMessage = error instanceof Error && error.name === "AbortError" ? "Webhook request timed out" : extractErrorMessage(error)
 

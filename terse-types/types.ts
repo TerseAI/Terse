@@ -835,7 +835,8 @@ export type WebhookJobTriggerRequest = z.infer<typeof webhookJobTriggerRequestSc
 /** Response body from the SDK webhook handler (`Terse.handleTrigger`); `apiKey` is required on the handshake response. */
 export const webhookJobTriggerResponseSchema = z.object({
     status: z.string().optional(),
-    apiKey: z.string().min(1)
+    apiKey: z.string().min(1),
+    filtered: z.boolean().optional()
 })
 export type WebhookJobTriggerResponse = z.infer<typeof webhookJobTriggerResponseSchema>
 

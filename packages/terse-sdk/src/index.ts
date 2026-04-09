@@ -143,8 +143,9 @@ export class Terse {
      *
      * Two-phase protocol: (1) POST with `{ challenge: true }` — returns `{ apiKey }` for the
      * backend to verify before any event leaves Terse. (2) POST with `{ jobName, runId, event }` —
-     * opens an SDK session stream, runs `onTrigger` in the background, and closes the stream when
-     * the job finishes.
+     * opens an SDK session stream, **awaits** `onTrigger` (so this method does not return until your
+     * job handler finishes — ensure you `await Agent.runAndWait` / the full agent run), then closes
+     * the session stream.
      *
      * @example
      * ```ts
@@ -189,7 +190,7 @@ export class Terse {
             if (job.filter) {
                 const shouldRun = await job.filter(inputEvent)
                 if (!shouldRun) {
-                    return { status: "ok", apiKey }
+                    return { status: "ok", apiKey, filtered: true }
                 }
             }
             await job.onTrigger(inputEvent, agent)
