@@ -1,11 +1,5 @@
 from __future__ import annotations
 
-from terse_sdk import (
-    GitHubPullRequestOpenedTriggerEvent,
-    GitHubPullRequestSynchronizedTriggerEvent,
-    LinearIssueCreatedTriggerEvent,
-    WorkOSOrganizationMembershipCreatedTriggerEvent,
-)
 from terse_sdk.types._generated import (
     LinearTeam,
     NotionPageBlock,
@@ -15,9 +9,7 @@ from terse_sdk.types.enums import ConfigType
 
 
 def test_generated_linear_team_model_validates() -> None:
-    team = LinearTeam.model_validate(
-        {"id": "team_123", "name": "Platform", "key": "PLAT"}
-    )
+    team = LinearTeam.model_validate({"id": "team_123", "name": "Platform", "key": "PLAT"})
 
     assert team.id == "team_123"
     assert team.name == "Platform"
