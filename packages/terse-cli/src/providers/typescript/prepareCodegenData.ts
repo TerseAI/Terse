@@ -410,19 +410,29 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
     return sectionData(
-        ["SlackAppMentionTriggerEvent", "SlackConfig", "SlackMessageTriggerEvent", "SlackOutputConfig", "SlackReactionAddedTriggerEvent", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTriggerEvent"],
+        [
+            "SlackAppMentionTriggerEvent",
+            "SlackConfig",
+            "SlackMessageTriggerEvent",
+            "SlackOutputConfig",
+            "SlackReactionAddedTriggerEvent",
+            "TypedSkill",
+            "SlackEventType",
+            "TypedTrigger",
+            "SlackTriggerEvent"
+        ],
         {
-        id: inst.id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
-        channelClass: buildResourceClassContext(
-            "SlackChannel",
-            [
-                { classField: "channelId", type: "string", sourceField: "id" },
-                { classField: "name", type: "string", sourceField: "name" }
-            ],
-            "name",
-            inst.channels
-        )
+            id: inst.id,
+            skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
+            channelClass: buildResourceClassContext(
+                "SlackChannel",
+                [
+                    { classField: "channelId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" }
+                ],
+                "name",
+                inst.channels
+            )
         }
     )
 }
