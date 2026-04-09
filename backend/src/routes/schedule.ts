@@ -17,16 +17,14 @@ export interface ManualTriggerRequest {
     context?: string
 }
 
-class SyntheticTriggerEventRuntime extends TriggerEventRuntime {
-    readonly integrationType: IntegrationType
-    readonly eventType: string
+class SyntheticTriggerEventRuntime extends TriggerEventRuntime<TriggerEvent> {
+    readonly integrationType: TriggerEvent["integrationType"]
     readonly data: TriggerEvent
 
     constructor(event: TriggerEvent) {
         super()
         this.data = event
         this.integrationType = event.integrationType
-        this.eventType = event.eventType
     }
 
     matchesAgentTrigger(_agentTrigger: AgentTriggerWithConfigs): boolean {

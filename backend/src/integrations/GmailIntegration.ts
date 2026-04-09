@@ -555,9 +555,8 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
     }
 }
 
-export class GmailTriggerEventRuntime extends TriggerEventRuntime implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.GMAIL
-    readonly eventType: GmailEventType = GmailEventType.EMAIL_RECEIVED
+export class GmailTriggerEventRuntime extends TriggerEventRuntime<GmailTriggerEvent> implements Identifiable {
+    readonly integrationType = IntegrationType.GMAIL
     entityType = HydratorType.GMAIL_EVENT
     entityId: string
     data: GmailTriggerEvent

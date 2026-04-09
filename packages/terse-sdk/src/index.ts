@@ -46,31 +46,14 @@ import type {
 } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ApiRoutes } from "terse-types"
-import { createManualTriggerEvent, debugTriggerEvent, formatTriggerEventForAgent, sdkAgentRunRequestBodySchema } from "terse-types"
+import { sdkAgentRunRequestBodySchema } from "terse-types"
 
-import { attachTriggerEventHelpers } from "./types.js"
 import type { InferEvents, InferToolApprovals, SDKTriggerEvent, TypedSkill, TypedTrigger } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
 // Re-export SDK-specific types
 export type { ToolboxEntry, SDKTriggerEvent, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
-export {
-    isGitHubTriggerEvent,
-    isGitHubPullRequestTriggerEvent,
-    isGitHubPushTriggerEvent,
-    isWorkOSTriggerEvent,
-    isWorkOSUserTriggerEvent,
-    isWorkOSMembershipTriggerEvent,
-    isWorkOSInvitationTriggerEvent,
-    isWorkOSOrganizationTriggerEvent,
-    isWebhookTriggerEvent,
-    attachTriggerEventHelpers,
-    deserializeTriggerEvent
-} from "./types.js"
-
-// Mock event for CLI's `terse run` command
-export const createMockTriggerEvent = (): SDKTriggerEvent => attachTriggerEventHelpers(createManualTriggerEvent({ integrationType: IntegrationType.TERSE }))
 
 // Re-export shared types for consumer convenience
 export {
@@ -207,7 +190,7 @@ export class TerseAgent {
     }
 
     async *run(prompt: string, event?: BaseTriggerEvent): AsyncGenerator<TerseAgentResult> {
-        const resolvedEvent = event ?? createMockTriggerEvent()
+        const resolvedEvent = event
 
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
             prompt,

@@ -16,9 +16,6 @@ export class LinearTrigger implements Trigger<LinearInputConfig> {
     async validateConfig(trigger: LinearInputConfig, _userId: string): Promise<void> {
         // Not doing schema validation here because
         // it errors out. TODO: fix this.
-        if (!trigger.eventTypes || trigger.eventTypes.length === 0) {
-            throw new Error("Invalid trigger config for linear: at least one event type must be selected")
-        }
         if (trigger.projectId) {
             await validateLinearProjectExists(trigger.integrationId, trigger.projectId)
         }

@@ -580,3 +580,36 @@ export function debugTriggerEvent(event: TriggerEvent): string {
 }
 
 export const triggerEventArraySchema = z.array(triggerEventSchema)
+
+export const serializedEventSchema = z.object({
+    integrationType: integrationTypeEnum,
+    eventType: triggerEventTypeSchema,
+    formattedContent: z.string(),
+    debugLog: z.string(),
+    data: triggerEventSchema
+})
+export type SerializedEvent = z.infer<typeof serializedEventSchema>
+
+export class SerializedTriggerEventRuntime {
+    integrationType: IntegrationType
+    eventType: string
+    formattedContent: string
+    _debugLog: string
+    data: TriggerEvent
+
+    constructor(params: SerializedEvent) {
+        this.integrationType = params.integrationType
+        this.eventType = params.eventType
+        this.formattedContent = params.formattedContent
+        this._debugLog = params.debugLog
+        this.data = params.data
+    }
+
+    debugLog(): string {
+        return this._debugLog
+    }
+
+    formatForAgentRunner(): string {
+        return this.formattedContent
+    }
+}

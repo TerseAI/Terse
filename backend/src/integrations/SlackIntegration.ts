@@ -871,9 +871,8 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
 
 // MARK: - SLACK Event
 
-export class SlackTriggerEventRuntime extends TriggerEventRuntime implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.SLACK
-    readonly eventType: SlackEventType
+export class SlackTriggerEventRuntime extends TriggerEventRuntime<SlackTriggerEvent> implements Identifiable {
+    readonly integrationType = IntegrationType.SLACK
     data: SlackTriggerEvent
     entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
     entityId: string
@@ -882,7 +881,6 @@ export class SlackTriggerEventRuntime extends TriggerEventRuntime implements Ide
     constructor(data: SlackTriggerEvent, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
-        this.eventType = data.eventType
         this.entityId = `${data.teamId}:${data.permalink || ""}`
         this.storedFiles = storedFiles
     }

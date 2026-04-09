@@ -314,9 +314,8 @@ export interface WorkOSWebhookRequest {
     payload: WorkOSWebhookPayload
 }
 
-export class WorkOSTriggerEventRuntime extends TriggerEventRuntime implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.WORKOS
-    readonly eventType: WorkOSEventType
+export class WorkOSTriggerEventRuntime extends TriggerEventRuntime<WorkOSTriggerEvent> implements Identifiable {
+    readonly integrationType = IntegrationType.WORKOS
     entityType = HydratorType.WORKOS_EVENT
     entityId: string
     data: WorkOSTriggerEvent
@@ -327,7 +326,6 @@ export class WorkOSTriggerEventRuntime extends TriggerEventRuntime implements Id
     ) {
         super()
         this.data = buildWorkOSTriggerEvent(payload)
-        this.eventType = this.data.eventType
         this.entityId = `${integrationId}:${payload.id}`
     }
 

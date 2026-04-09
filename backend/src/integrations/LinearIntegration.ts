@@ -616,9 +616,8 @@ export async function validateLinearProjectExists(integrationId: string, project
     }
 }
 
-export class LinearTriggerEventRuntime extends TriggerEventRuntime implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.LINEAR
-    readonly eventType: LinearEventType
+export class LinearTriggerEventRuntime extends TriggerEventRuntime<LinearTriggerEvent> implements Identifiable {
+    readonly integrationType = IntegrationType.LINEAR
     entityType = HydratorType.LINEAR_EVENT
     entityId: string
     data: LinearTriggerEvent
@@ -628,7 +627,6 @@ export class LinearTriggerEventRuntime extends TriggerEventRuntime implements Id
         super()
         this.data = buildLinearTriggerEvent(data)
         this.integrationId = integrationId
-        this.eventType = this.data.eventType
         const dataId = (data.data as { id?: string })?.id
         this.entityId = `${integrationId}:${dataId ?? "unknown"}`
     }

@@ -1,7 +1,7 @@
 import chalk from "chalk"
 import fs from "fs"
-import { parseTriggerEvent } from "terse-types"
-import type { TriggerEvent } from "terse-types"
+import { serializedEventSchema } from "terse-types"
+import type { SerializedEvent } from "terse-types"
 
 import { readApiKey } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
@@ -24,11 +24,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 
     if (!eventJson) {
         console.error(chalk.red("Error: --event <json> or --event-file <path> is required.\n"))
-        console.error(
-            chalk.dim(
-                '  Usage: terse run --event \'{"integrationType":"slack","eventType":"message","channelId":"C123","userId":"U123","text":"Hello","timestamp":"1710000000.000100","teamId":"T123"}\''
-            )
-        )
+        console.error(chalk.dim('  Usage: terse run --event \'{"integrationType":"...","formattedContent":"...","debugLog":"..."}\''))
         console.error(chalk.dim("         terse run --event-file ./event.json"))
         console.error(chalk.dim("  Tip:   Use `terse test` to interactively pick a sample event.\n"))
         process.exit(1)
@@ -38,17 +34,9 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     const { job } = await loadJob(provider, jobName)
     console.log(chalk.cyan(`\n  Running job: ${job.name}\n`))
 
-    let parsedJson: unknown
+    let parsed: SerializedEvent
     try {
-        parsedJson = JSON.parse(eventJson)
-    } catch {
-        console.error(chalk.red("Error: --event value is not valid JSON."))
-        process.exit(1)
-    }
-
-    let parsed: TriggerEvent
-    try {
-        parsed = parseTriggerEvent(parsedJson)
+        parsed = serializedEventSchema.parse(eventJson)
     } catch (error) {
         console.error(chalk.red("Error: --event does not match the canonical TriggerEvent schema."))
         console.error(chalk.dim(error instanceof Error ? error.message : String(error)))

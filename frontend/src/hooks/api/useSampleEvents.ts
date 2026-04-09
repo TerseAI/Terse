@@ -2,14 +2,14 @@ import { useCallback, useState } from "react"
 
 import { toast } from "sonner"
 import { IntegrationType } from "terse-types"
-import type { AgentTrigger, TriggerEvent } from "terse-types"
+import type { AgentTrigger, SerializedEvent } from "terse-types"
 
 import { BackendProvider } from "../../services/backend"
 
 export function useSampleEvents(triggers: AgentTrigger[], automationId?: string) {
     const [isFetching, setIsFetching] = useState(false)
     const [isTriggering, setIsTriggering] = useState(false)
-    const [events, setEvents] = useState<TriggerEvent[]>([])
+    const [events, setEvents] = useState<SerializedEvent[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
     const integrationTriggers = triggers.filter(t => t.config.integrationType !== IntegrationType.CRON_JOB)
@@ -44,7 +44,7 @@ export function useSampleEvents(triggers: AgentTrigger[], automationId?: string)
     }, [integrationTriggers])
 
     const triggerWithEvent = useCallback(
-        async (event: TriggerEvent) => {
+        async (event: SerializedEvent) => {
             if (!automationId) return
             setIsTriggering(true)
             try {

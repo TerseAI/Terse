@@ -4,6 +4,7 @@ import type {
     GitHubPullRequestTriggerEvent,
     GitHubPushTriggerEvent,
     GitHubTriggerEvent,
+    SerializedEvent,
     TriggerEvent,
     WebhookTriggerEvent,
     WorkOSInvitationTriggerEvent,
@@ -23,7 +24,8 @@ export interface ToolboxEntry {
     displayName: string
 }
 
-export type SDKTriggerEvent<TEvent extends TriggerEvent = TriggerEvent> = TEvent & {
+export type SDKTriggerEvent<TEvent extends TriggerEvent = TriggerEvent> = {
+    data: TEvent
     formatForAgentRunner(): string
     debugLog(): string
 }
@@ -49,78 +51,3 @@ export type TypedSkill<TToolName extends string = never> = ConfigData & {
 
 export type InferToolApproval<T> = T extends TypedSkill<infer TToolName> ? TToolName : never
 export type InferToolApprovals<T extends readonly unknown[]> = InferToolApproval<T[number]>
-
-export function isGitHubTriggerEvent(event: TriggerEvent): event is GitHubTriggerEvent {
-    return event.integrationType === IntegrationType.GITHUB && event.eventType !== "manual_sample"
-}
-
-export function isGitHubPullRequestTriggerEvent(event: TriggerEvent): event is GitHubPullRequestTriggerEvent {
-    return event.integrationType === IntegrationType.GITHUB && event.eventType !== GitHubEventType.PUSH
-}
-
-export function isGitHubPushTriggerEvent(event: TriggerEvent): event is GitHubPushTriggerEvent {
-    return event.integrationType === IntegrationType.GITHUB && event.eventType === GitHubEventType.PUSH
-}
-
-export function isWorkOSTriggerEvent(event: TriggerEvent): event is WorkOSTriggerEvent {
-    return event.integrationType === IntegrationType.WORKOS && event.eventType !== "manual_sample"
-}
-
-export function isWorkOSUserTriggerEvent(event: TriggerEvent): event is WorkOSUserTriggerEvent {
-    return (
-        event.integrationType === IntegrationType.WORKOS &&
-        (event.eventType === WorkOSEventType.USER_CREATED || event.eventType === WorkOSEventType.USER_UPDATED || event.eventType === WorkOSEventType.USER_DELETED)
-    )
-}
-
-export function isWorkOSMembershipTriggerEvent(event: TriggerEvent): event is WorkOSMembershipTriggerEvent {
-    return (
-        event.integrationType === IntegrationType.WORKOS &&
-        (event.eventType === WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED ||
-            event.eventType === WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED ||
-            event.eventType === WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED)
-    )
-}
-
-export function isWorkOSInvitationTriggerEvent(event: TriggerEvent): event is WorkOSInvitationTriggerEvent {
-    return (
-        event.integrationType === IntegrationType.WORKOS &&
-        (event.eventType === WorkOSEventType.INVITATION_CREATED ||
-            event.eventType === WorkOSEventType.INVITATION_ACCEPTED ||
-            event.eventType === WorkOSEventType.INVITATION_RESENT ||
-            event.eventType === WorkOSEventType.INVITATION_REVOKED)
-    )
-}
-
-export function isWorkOSOrganizationTriggerEvent(event: TriggerEvent): event is WorkOSOrganizationTriggerEvent {
-    return event.integrationType === IntegrationType.WORKOS && event.eventType === WorkOSEventType.ORGANIZATION_CREATED
-}
-
-export function isWebhookTriggerEvent(event: TriggerEvent): event is WebhookTriggerEvent {
-    return event.integrationType === IntegrationType.WEBHOOK && event.eventType !== "manual_sample"
-}
-
-export function attachTriggerEventHelpers<TEvent extends TriggerEvent>(event: TEvent): SDKTriggerEvent<TEvent> {
-    const enrichedEvent = event as SDKTriggerEvent<TEvent>
-
-    if (typeof enrichedEvent.formatForAgentRunner !== "function" || typeof enrichedEvent.debugLog !== "function") {
-        Object.defineProperties(enrichedEvent, {
-            formatForAgentRunner: {
-                value: () => formatTriggerEventForAgent(event),
-                enumerable: false,
-                configurable: true
-            },
-            debugLog: {
-                value: () => debugTriggerEvent(event),
-                enumerable: false,
-                configurable: true
-            }
-        })
-    }
-
-    return enrichedEvent
-}
-
-export function deserializeTriggerEvent(value: unknown): SDKTriggerEvent {
-    return attachTriggerEventHelpers(parseTriggerEvent(value))
-}

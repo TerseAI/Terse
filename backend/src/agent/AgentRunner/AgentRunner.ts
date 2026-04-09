@@ -3,7 +3,7 @@ import { RunHistoryActionType } from "@prisma/client"
 import { EntityType } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ChangeEventType, ChangedItem, ModelEvent } from "terse-types"
-import type { ConfigData, RunHistoryAction, TrackingParams } from "terse-types"
+import type { ConfigData, RunHistoryAction, TrackingParams, TriggerEvent } from "terse-types"
 
 import { settings } from "../../config/settings"
 import { TriggerEventRuntime } from "../../integrations/abstract/TriggerEventRuntime"

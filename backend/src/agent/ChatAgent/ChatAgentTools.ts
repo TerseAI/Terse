@@ -1,6 +1,6 @@
 import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
-import { ConfigData, buildRoute } from "terse-types"
+import { ConfigData, CronTriggerEvent, TriggerEvent, buildRoute } from "terse-types"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { RunHistoryStatus, TrackingParams } from "terse-types"
@@ -308,7 +308,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                         entityType: hydratorType,
                         entityId: userEntityId
                     })
-                    inputEvent = hydrated as TriggerEventRuntime
+                    inputEvent = hydrated as TriggerEventRuntime<TriggerEvent>
                     resolvedEntityType = userEntityType
                     resolvedEntityId = userEntityId
                     logger.info("[triggerAgentRun] Hydrated event", {
@@ -330,7 +330,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                         isManualTrigger: true,
                         manualContext: manualContext ?? undefined
                     })
-                    inputEvent = cronJobEvent
+                    inputEvent = cronJobEvent as TriggerEventRuntime<CronTriggerEvent>
                     resolvedEntityType = "cron_trigger"
                     resolvedEntityId = timeTriggerInput.id
                 }

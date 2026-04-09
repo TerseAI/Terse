@@ -1,5 +1,5 @@
 import axios from "axios"
-import { ApiRoutes, type TriggerEvent, buildRoute } from "terse-types"
+import { ApiRoutes, SerializedEvent, buildRoute } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -407,12 +407,12 @@ interface BackendService {
     /**
      * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
      */
-    fetchSampleEvents(triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>): Promise<{ events: TriggerEvent[] }>
+    fetchSampleEvents(triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>): Promise<{ events: SerializedEvent[] }>
 
     /**
      * Triggers an automation with a specific event payload (e.g. a sample event)
      */
-    triggerWithEvent(automationId: string, event: TriggerEvent): Promise<{ received: boolean; message: string }>
+    triggerWithEvent(automationId: string, event: SerializedEvent): Promise<{ received: boolean; message: string }>
 
     /**
      * Manually triggers a scheduled automation trigger
@@ -1313,7 +1313,7 @@ export const BackendProvider: BackendService = {
 
     fetchSampleEvents: (triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {
         return axios
-            .post<{ events: TriggerEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
+            .post<{ events: SerializedEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error fetching sample events:", error)
@@ -1321,7 +1321,7 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    triggerWithEvent: (automationId: string, event: TriggerEvent) => {
+    triggerWithEvent: (automationId: string, event: SerializedEvent) => {
         const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { automationId })
         return axios
             .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event }, { withCredentials: true })

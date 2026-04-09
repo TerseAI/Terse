@@ -10,28 +10,7 @@ type ExportModule = Record<string, unknown>
  * Default derivation: strip trailing "Schema", capitalize first letter, then apply
  * *Config -> *ConfigInstance and *Integration -> *IntegrationInstance patterns.
  */
-const SCHEMA_NAME_OVERRIDES: Record<string, string> = {
-    // Base types that need "Base" prefix
-    ConfigInstanceSchema: "BaseConfigInstance",
-    IntegrationInstanceSchema: "BaseIntegrationInstance",
-    // Name differs from export key
-    slackUserResponseSchema: "SlackUserSummary",
-    runHistoryActionBaseSchema: "RunHistoryAction",
-    // GitHub capitalization fix
-    GithubIntegrationSchema: "GitHubIntegrationInstance",
-    githubRepositorySchema: "GitHubRepository",
-    githubPushTriggerEventSchema: "GitHubPushTriggerEvent",
-    githubPullRequestOpenedTriggerEventSchema: "GitHubPullRequestOpenedTriggerEvent",
-    githubPullRequestSynchronizedTriggerEventSchema: "GitHubPullRequestSynchronizedTriggerEvent",
-    githubPullRequestClosedTriggerEventSchema: "GitHubPullRequestClosedTriggerEvent",
-    githubPullRequestMergedTriggerEventSchema: "GitHubPullRequestMergedTriggerEvent",
-    githubPullRequestTriggerEventSchema: "GitHubPullRequestTriggerEvent",
-    githubTriggerEventSchema: "GitHubTriggerEvent",
-    slackMessageTriggerEventSchema: "SlackMessageTriggerEvent",
-    slackAppMentionTriggerEventSchema: "SlackAppMentionTriggerEvent",
-    slackReactionAddedTriggerEventSchema: "SlackReactionAddedTriggerEvent",
-    slackTriggerEventSchema: "SlackTriggerEvent"
-}
+const SCHEMA_NAME_OVERRIDES: Record<string, string> = {}
 
 function isZodSchema(value: unknown): value is z.ZodTypeAny {
     return !!value && typeof value === "object" && "_zod" in value

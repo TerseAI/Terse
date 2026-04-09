@@ -1,9 +1,9 @@
 import { select } from "@inquirer/prompts"
 import chalk from "chalk"
 import ora from "ora"
-import { IntegrationType, TypedTrigger } from "terse-sdk"
-import { ApiRoutes, debugTriggerEvent } from "terse-types"
-import type { ConfigData, TriggerEvent } from "terse-types"
+import { IntegrationType } from "terse-sdk"
+import { ApiRoutes, debugTriggerEvent, formatTriggerEventForAgent } from "terse-types"
+import type { SerializedEvent, TriggerEvent } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
@@ -26,13 +26,13 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     const webhookTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK)
     const integrationTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB && t.integrationType !== IntegrationType.WEBHOOK)
 
-    let events: TriggerEvent[] = []
+    let events: SerializedEvent[] = []
 
     // Fetch sample events for integration triggers (time triggers have no sample events)
     if (integrationTriggers.length > 0) {
         const spinner = ora("Fetching sample events").start()
         try {
-            const result = await fetchWithAuth<{ events: TriggerEvent[] }>(
+            const result = await fetchWithAuth<{ events: SerializedEvent[] }>(
                 ApiRoutes.SDK.SAMPLE_EVENTS,
                 apiKey,
                 {
@@ -53,24 +53,28 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
 
     // Add a synthetic manual trigger event for each time trigger
     for (const trigger of timeTriggers) {
-        events.push({
-            integrationType: IntegrationType.CRON_JOB,
-            eventType: "cron",
-            inputId: trigger.integrationId,
-            isManualTrigger: true,
-            manualContext: `Manual trigger from terse test (schedule: ${(trigger as any).cronExpression ?? "unknown"})`
-        })
+        events.push(
+            serializeEvent({
+                integrationType: IntegrationType.CRON_JOB,
+                eventType: "cron",
+                inputId: trigger.integrationId,
+                isManualTrigger: true,
+                manualContext: `Manual trigger from terse test (schedule: ${(trigger as any).cronExpression ?? "unknown"})`
+            })
+        )
     }
 
     // Add a synthetic manual trigger event for each webhook trigger
     for (const trigger of webhookTriggers) {
-        events.push({
-            integrationType: IntegrationType.WEBHOOK,
-            eventType: "webhook",
-            body: {},
-            headers: {},
-            method: "POST"
-        })
+        events.push(
+            serializeEvent({
+                integrationType: IntegrationType.WEBHOOK,
+                eventType: "webhook",
+                body: {},
+                headers: {},
+                method: "POST"
+            })
+        )
     }
 
     if (events.length === 0) {
@@ -81,10 +85,20 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     const choice = await select<number>({
         message: "Select sample event:",
         choices: events.map((event, index) => ({
-            name: `${event.integrationType} - ${debugTriggerEvent(event)}`,
+            name: `${event.integrationType} - ${event.debugLog}`,
             value: index
         }))
     })
 
     await provider.executeJob(job, events[choice], { verbose: !!verbose })
+}
+
+function serializeEvent(event: TriggerEvent): SerializedEvent {
+    return {
+        integrationType: event.integrationType,
+        eventType: event.eventType,
+        formattedContent: formatTriggerEventForAgent(event),
+        debugLog: debugTriggerEvent(event),
+        data: event
+    }
 }

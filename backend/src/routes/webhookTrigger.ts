@@ -11,9 +11,8 @@ import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
-export class WebhookTriggerEventRuntime extends TriggerEventRuntime {
+export class WebhookTriggerEventRuntime extends TriggerEventRuntime<WebhookTriggerEvent> {
     readonly integrationType = IntegrationType.WEBHOOK
-    readonly eventType = "webhook"
     readonly data: WebhookTriggerEvent
     private readonly agentId: string
 

@@ -428,9 +428,8 @@ export class GithubIntegrationManager
 
 // MARK: - GithubTriggerEventRuntime
 
-export class GithubTriggerEventRuntime extends TriggerEventRuntime implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.GITHUB
-    readonly eventType: GitHubEventType
+export class GithubTriggerEventRuntime extends TriggerEventRuntime<GitHubTriggerEvent> implements Identifiable {
+    readonly integrationType = IntegrationType.GITHUB
     entityType = HydratorType.GITHUB_EVENT
     entityId: string
     data: GitHubTriggerEvent
@@ -440,7 +439,6 @@ export class GithubTriggerEventRuntime extends TriggerEventRuntime implements Id
         super()
         this.data = data
         this.storedFiles = storedFiles
-        this.eventType = data.eventType as GitHubEventType
         if (data.pullRequest) {
             this.entityId = `${data.installationId}:${data.repository.id}:pr/${data.pullRequest.number}`
         } else if (data.commits?.length) {

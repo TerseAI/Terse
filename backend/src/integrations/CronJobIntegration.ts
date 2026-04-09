@@ -249,9 +249,8 @@ function isSchedulerJobNotFoundError(error: unknown): boolean {
     return typeof anyError.message === "string" && anyError.message.includes("NOT_FOUND")
 }
 
-export class CronTriggerEventRuntime extends TriggerEventRuntime {
-    readonly integrationType: IntegrationType = IntegrationType.CRON_JOB
-    readonly eventType: string = "cron"
+export class CronTriggerEventRuntime extends TriggerEventRuntime<CronTriggerEvent> {
+    readonly integrationType = IntegrationType.CRON_JOB
     data: CronTriggerEvent
 
     constructor(data: ScheduleWebhookEvent) {
