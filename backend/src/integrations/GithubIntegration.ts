@@ -4,7 +4,7 @@ import { InputConfigType } from "@prisma/client"
 import axios, { AxiosResponse } from "axios"
 import * as cheerio from "cheerio"
 import { Request, Response } from "express"
-import { GithubTriggerEvent } from "terse-types"
+import { GitHubTriggerEvent } from "terse-types"
 import { ConfigData, ConfigType, GitHubConfigSchema, GitHubEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
@@ -33,7 +33,7 @@ import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OA
 import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
 
 export class GithubIntegrationManager
-    implements Integration<GithubIntegration, GithubTriggerEvent, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB>
+    implements Integration<GithubIntegration, GitHubTriggerEvent, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB>
 {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.GITHUB
@@ -117,7 +117,7 @@ export class GithubIntegrationManager
         }))
     }
 
-    async processWebhookEvent(event: GithubTriggerEvent): Promise<void> {
+    async processWebhookEvent(event: GitHubTriggerEvent): Promise<void> {
         const users: PrismaUser[] = await resolveUsersForGithubInstallation(event.installationId)
 
         if (users.length === 0) {
@@ -430,10 +430,10 @@ export class GithubTriggerEventRuntime extends TriggerEventRuntime implements Id
     readonly eventType: GitHubEventType
     entityType = HydratorType.GITHUB_EVENT
     entityId: string
-    data: GithubTriggerEvent
+    data: GitHubTriggerEvent
     private storedFiles: StoredFile[]
 
-    constructor(data: GithubTriggerEvent, storedFiles: StoredFile[] = []) {
+    constructor(data: GitHubTriggerEvent, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.storedFiles = storedFiles
@@ -817,7 +817,7 @@ async function createPushEventData(
     repo: { id: number; owner: string; name: string; defaultBranch: string },
     installationId: number,
     accessToken: string
-): Promise<GithubTriggerEvent | null> {
+): Promise<GitHubTriggerEvent | null> {
     try {
         const commitDetails = await fetchCommitDiffForSample(accessToken, repo.owner, repo.name, commit.sha)
         if (!commitDetails) return null
@@ -863,7 +863,7 @@ async function createPullRequestEventData(
     repo: { id: number; owner: string; name: string; defaultBranch: string },
     installationId: number,
     accessToken: string
-): Promise<GithubTriggerEvent | null> {
+): Promise<GitHubTriggerEvent | null> {
     try {
         let eventType: "pull_request.opened" | "pull_request.merged" | "pull_request.closed" = pr.merged_at
             ? "pull_request.merged"
@@ -922,7 +922,7 @@ async function createPullRequestEventData(
     }
 }
 
-export async function getPullRequestFiles(event: GithubTriggerEvent, token: string, integrationId: string): Promise<StoredFile[]> {
+export async function getPullRequestFiles(event: GitHubTriggerEvent, token: string, integrationId: string): Promise<StoredFile[]> {
     if (!event.pullRequest) {
         return []
     }

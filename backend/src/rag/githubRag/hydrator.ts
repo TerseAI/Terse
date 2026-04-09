@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest"
 import { IntegrationType } from "terse-types"
-import { GithubTriggerEvent } from "terse-types"
+import { GitHubTriggerEvent } from "terse-types"
 
 import { getAppInstallationsForUser } from "../../integrations/GithubIntegration"
 import { GithubTriggerEventRuntime, getPullRequestFiles } from "../../integrations/GithubIntegration"
@@ -98,7 +98,7 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerEventRuntime> {
             if (type === "pr") {
                 const prNumber = parseInt(identifier, 10)
                 const { data: pr } = await octokit.pulls.get({ owner, repo: name, pull_number: prNumber })
-                const eventData: GithubTriggerEvent = {
+                const eventData: GitHubTriggerEvent = {
                     integrationType: IntegrationType.GITHUB,
                     username: pr.user?.login ?? "",
                     installationId,
@@ -133,7 +133,7 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerEventRuntime> {
 
             if (type === "commit") {
                 const { data: commit } = await octokit.repos.getCommit({ owner, repo: name, ref: identifier })
-                const eventData: GithubTriggerEvent = {
+                const eventData: GitHubTriggerEvent = {
                     integrationType: IntegrationType.GITHUB,
                     username: commit.commit?.author?.name ?? "",
                     installationId,
@@ -166,7 +166,7 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerEventRuntime> {
                 const branch = identifier
                 const { data: branchData } = await octokit.repos.getBranch({ owner, repo: name, branch })
                 const latestCommit = branchData.commit
-                const eventData: GithubTriggerEvent = {
+                const eventData: GitHubTriggerEvent = {
                     integrationType: IntegrationType.GITHUB,
                     username: latestCommit.commit?.author?.name ?? "",
                     installationId,

@@ -24,10 +24,7 @@ from ._http_utils import (
 )
 from .types._generated import ConfigData
 from .types.config import TerseSettings
-from .types.events import (
-    AnyInputEvent,
-    TerseInputEvent,
-)
+from .types.events import AnyTriggerEvent, ManualSampleTriggerEvent
 from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
     SdkAgentRunRequestBody,
@@ -42,14 +39,14 @@ from .types.stream_events import (
     ToolCallCompleted,
 )
 
-JobEvent = AnyInputEvent
+JobEvent = AnyTriggerEvent
 JobHandler = Callable[[JobEvent, "TerseAgent"], None]
 JobFilter = Callable[[JobEvent], bool]
 
 HandlerT = TypeVar("HandlerT", bound=Callable[..., object])
 ResultT = TypeVar("ResultT")
 ToolApprovalT = TypeVar("ToolApprovalT", bound=str)
-JobEventT = TypeVar("JobEventT", bound=AnyInputEvent)
+JobEventT = TypeVar("JobEventT", bound=AnyTriggerEvent)
 
 _JOB_REGISTRY: dict[str, RegisteredJob] = {}
 LOGGER = logging.getLogger("terse.sdk.runtime")
@@ -86,7 +83,7 @@ class RegisteredJob:
 
     name: str
     handler: Callable[..., object] = field(repr=False, compare=False)
-    triggers: list[TriggerConfig[AnyInputEvent]] = field(default_factory=list)
+    triggers: list[TriggerConfig[AnyTriggerEvent]] = field(default_factory=list)
     skills: list[SkillConfig[Any]] = field(default_factory=list)
     filter: JobFilter | None = field(default=None, repr=False, compare=False)
     webhook_url: str | None = None
@@ -111,7 +108,7 @@ class Terse:
             _JOB_REGISTRY[name] = RegisteredJob(
                 name=name,
                 handler=handler,
-                triggers=cast(list[TriggerConfig[AnyInputEvent]], list(triggers or [])),
+                triggers=cast(list[TriggerConfig[AnyTriggerEvent]], list(triggers or [])),
                 skills=list(skills or []),
                 filter=cast(JobFilter | None, filter),
                 webhook_url=webhook_url,
@@ -172,7 +169,7 @@ class TerseAgent:
         self._tools = factory(self)
         return self._tools
 
-    def run(self, prompt: str, event: AnyInputEvent | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
+    def run(self, prompt: str, event: AnyTriggerEvent | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
         api_key = _require_api_key()
@@ -231,7 +228,7 @@ class TerseAgent:
         except ValidationError as exc:
             raise TerseApiError(f"Received invalid agent stream payload.\n  {exc}") from exc
 
-    def run_and_wait(self, prompt: str, event: AnyInputEvent | None = None) -> str | None:
+    def run_and_wait(self, prompt: str, event: AnyTriggerEvent | None = None) -> str | None:
         """Run the agent to completion and return the final output.
 
         Returns ``None`` if no final_output event was received.
@@ -323,15 +320,15 @@ def get_job_registry() -> dict[str, RegisteredJob]:
     return dict(_JOB_REGISTRY)
 
 
-def deserialize_input_event(
+def deserialize_trigger_event(
     value: TriggerEvent | Mapping[str, object] | str,
-) -> AnyInputEvent:
+) -> AnyTriggerEvent:
     """Convert a canonical trigger event payload into the matching SDK event model."""
 
     if isinstance(value, TriggerEvent):
         return value.root
     if hasattr(value, "model_dump") and hasattr(value, "integration_type"):
-        return cast(AnyInputEvent, value)
+        return cast(AnyTriggerEvent, value)
     if isinstance(value, str):
         parsed = json.loads(value)
         if not isinstance(parsed, dict):
@@ -348,7 +345,7 @@ def deserialize_input_event(
 
 def execute_registered_job(
     job: RegisteredJob,
-    event: AnyInputEvent,
+    event: AnyTriggerEvent,
     agent: TerseAgent | None = None,
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
@@ -397,12 +394,12 @@ def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
     return None
 
 
-def _serialize_run_event(event: AnyInputEvent) -> dict[str, object]:
+def _serialize_run_event(event: AnyTriggerEvent) -> dict[str, object]:
     return event.model_dump(exclude_none=True, by_alias=True)
 
 
-def _manual_event() -> TerseInputEvent:
-    return TerseInputEvent.model_validate({"integrationType": "terse", "eventType": "manual_sample"})
+def _manual_event() -> ManualSampleTriggerEvent:
+    return ManualSampleTriggerEvent.model_validate({"integrationType": "terse", "eventType": "manual_sample"})
 
 
 def _build_auth_headers(

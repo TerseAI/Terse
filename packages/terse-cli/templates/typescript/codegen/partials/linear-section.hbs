@@ -4,20 +4,20 @@
 
 export const Linear = {
     /** Trigger when a new issue is created */
-    onIssueCreated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearInputEvent> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_CREATED]) as TypedTrigger<LinearInputEvent>
+    onIssueCreated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearTriggerEvent> {
+        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_CREATED]) as TypedTrigger<LinearTriggerEvent>
     },
     /** Trigger when an issue is updated */
-    onIssueUpdated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearInputEvent> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_UPDATED]) as TypedTrigger<LinearInputEvent>
+    onIssueUpdated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearTriggerEvent> {
+        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_UPDATED]) as TypedTrigger<LinearTriggerEvent>
     },
     /** Trigger when a comment is added to an issue */
-    onComment(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearInputEvent> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.COMMENT_CREATED]) as TypedTrigger<LinearInputEvent>
+    onComment(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearTriggerEvent> {
+        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.COMMENT_CREATED]) as TypedTrigger<LinearTriggerEvent>
     },
     /** Trigger on all Linear events */
-    trigger(opts?: { projectId?: string; projectName?: string; eventTypes?: LinearEventType[] }): TypedTrigger<LinearInputEvent> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, opts?.eventTypes) as TypedTrigger<LinearInputEvent>
+    trigger(opts?: { projectId?: string; projectName?: string; eventTypes?: LinearEventType[] }): TypedTrigger<LinearTriggerEvent> {
+        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, opts?.eventTypes) as TypedTrigger<LinearTriggerEvent>
     },
     /** Use in `skills[]` */
     skill(opts?: { team?: LinearTeam; projectId?: string; projectName?: string }): TypedSkill<{{{skillToolType}}}> {

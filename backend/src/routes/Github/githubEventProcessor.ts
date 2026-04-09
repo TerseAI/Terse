@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { GetGithubRepositoriesForIntegrationResponse, User } from "terse-types"
-import { GithubTriggerEvent } from "terse-types"
+import { GitHubTriggerEvent } from "terse-types"
 
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
 import { GithubTriggerEventRuntime } from "../../integrations/GithubIntegration"
@@ -8,7 +8,7 @@ import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { resolveUserForGithubInstallation } from "../github"
 
-export async function processGithubEvent(event: GithubTriggerEvent) {
+export async function processGithubEvent(event: GitHubTriggerEvent) {
     logger.info("processGithubEvent", { event })
 
     const user: User | null = await resolveUserForGithubInstallation(event.installationId, event.username)

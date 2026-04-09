@@ -14,7 +14,7 @@ import terse_sdk.runtime as runtime_module
 import terse_sdk.types as terse_types
 from terse_sdk import (
     ConfigType,
-    CronJobInputEvent,
+    CronTriggerEvent,
     Done,
     EventType,
     FinalOutput,
@@ -24,11 +24,11 @@ from terse_sdk import (
     SdkAgentStreamEvent,
     SkillConfig,
     SlackChannelType,
-    SlackInputEvent,
     SlackListChannelsToolOutput,
     SlackListUsersToolOutput,
     SlackReadConversationToolOutput,
     SlackSendMessageToolOutput,
+    SlackTriggerEvent,
     Terse,
     TerseAgent,
     TerseApiError,
@@ -39,7 +39,7 @@ from terse_sdk import (
     ToolCallCompleted,
     TriggerConfig,
     clear_job_registry,
-    deserialize_input_event,
+    deserialize_trigger_event,
     execute_registered_job,
     get_job_registry,
 )
@@ -100,7 +100,7 @@ def test_job_registration_and_registry_clear() -> None:
     app = Terse()
 
     @app.job(name="demo-job")
-    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTriggerEvent, agent: TerseAgent) -> None:
         _ = (event, agent)
 
     registry = get_job_registry()
@@ -115,7 +115,7 @@ def test_job_registration_preserves_tool_approvals() -> None:
     app = Terse()
 
     @app.job(name="demo-job", tool_approvals=["attio_upsert_record"])
-    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTriggerEvent, agent: TerseAgent) -> None:
         _ = (event, agent)
 
     assert get_job_registry()["demo-job"].tool_approvals == ["attio_upsert_record"]
@@ -126,16 +126,16 @@ def test_execute_registered_job_supports_sync_callables() -> None:
     filter_calls: list[str] = []
     app = Terse()
 
-    def allow_sync(event: CronJobInputEvent) -> bool:
+    def allow_sync(event: CronTriggerEvent) -> bool:
         filter_calls.append(event.event_type)
         return bool(event.is_manual_trigger)
 
     @app.job(name="sync-job", filter=allow_sync)
-    def sync_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    def sync_handler(event: CronTriggerEvent, agent: TerseAgent) -> None:
         _ = agent
         handler_calls.append(event.manual_context or "")
 
-    event = CronJobInputEvent(
+    event = CronTriggerEvent(
         event_type="cron",
         input_id="input_123",
         is_manual_trigger=True,
@@ -153,18 +153,18 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
     calls: list[str] = []
     app = Terse()
 
-    def never(event: CronJobInputEvent) -> bool:
+    def never(event: CronTriggerEvent) -> bool:
         _ = event
         return False
 
     @app.job(name="demo-job", filter=never)
-    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTriggerEvent, agent: TerseAgent) -> None:
         _ = (event, agent)
         calls.append("ran")
 
     skipped = execute_registered_job(
         get_job_registry()["demo-job"],
-        CronJobInputEvent(event_type="cron", input_id="input_123", is_manual_trigger=True, manual_context="demo"),
+        CronTriggerEvent(event_type="cron", input_id="input_123", is_manual_trigger=True, manual_context="demo"),
         agent=TerseAgent(),
     )
 
@@ -172,8 +172,8 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
     assert calls == []
 
 
-def test_deserialize_input_event_supports_camel_case_payloads() -> None:
-    event = deserialize_input_event(
+def test_deserialize_trigger_event_supports_camel_case_payloads() -> None:
+    event = deserialize_trigger_event(
         {
             "integrationType": "cron_job",
             "eventType": "cron",
@@ -183,14 +183,14 @@ def test_deserialize_input_event_supports_camel_case_payloads() -> None:
         }
     )
 
-    assert isinstance(event, CronJobInputEvent)
+    assert isinstance(event, CronTriggerEvent)
     assert event.integration_type == "cron_job"
     assert event.input_id == "input_123"
     assert event.manual_context == "Scheduled job"
 
 
-def test_deserialize_input_event_enriches_slack_metadata() -> None:
-    event = deserialize_input_event(
+def test_deserialize_trigger_event_enriches_slack_metadata() -> None:
+    event = deserialize_trigger_event(
         {
             "integrationType": "slack",
             "eventType": "message",
@@ -227,7 +227,7 @@ def test_deserialize_input_event_enriches_slack_metadata() -> None:
         }
     )
 
-    assert isinstance(event, SlackInputEvent)
+    assert isinstance(event, SlackTriggerEvent)
     assert event.channel_id == "C123"
     assert event.channel_name == "alerts"
     assert event.user_id == "U123"
@@ -246,9 +246,9 @@ def test_deserialize_input_event_enriches_slack_metadata() -> None:
     assert event.files[0]["url_private"] == "https://files.example/deploy.log"
 
 
-def test_deserialize_input_event_rejects_unknown_integrations() -> None:
+def test_deserialize_trigger_event_rejects_unknown_integrations() -> None:
     with pytest.raises(TerseRuntimeError):
-        deserialize_input_event(
+        deserialize_trigger_event(
             {
                 "integrationType": "unknown_service",
                 "eventType": "manual",
@@ -401,7 +401,7 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
     with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
         execute_registered_job(
             job,
-            CronJobInputEvent(
+            CronTriggerEvent(
                 event_type="cron",
                 input_id="input_123",
                 is_manual_trigger=True,
@@ -499,7 +499,7 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         events = list(
             TerseAgent().run(
                 "hello",
-                CronJobInputEvent(
+                CronTriggerEvent(
                     event_type="cron",
                     input_id="input_123",
                     is_manual_trigger=True,

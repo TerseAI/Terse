@@ -334,7 +334,7 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
     if (instances.length === 0) return sectionData([])
 
     const inst = instances[0]
-    const imports = ["GitHubConfig", "GitHubEventType", "TypedTrigger", "TypedSkill", "GithubPRInputEvent", "GithubPushInputEvent", "GithubInputEvent"]
+    const imports = ["GitHubConfig", "GitHubEventType", "TypedTrigger", "TypedSkill", "GitHubPullRequestTriggerEvent", "GitHubPushTriggerEvent", "GitHubTriggerEvent"]
     const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
 
     const repositoriesWithFullName = inst.repositories.map(repo => {
@@ -388,7 +388,7 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
 
 function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDefinition[]): SectionContext<GmailSectionContext> {
     if (instances.length === 0) return sectionData([])
-    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType", "GmailInputEvent"], {
+    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType", "GmailTriggerEvent"], {
         id: instances[0].id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "gmail")
     })
@@ -397,7 +397,7 @@ function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDe
 function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefinition[]): SectionContext<SlackSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
-    return sectionData(["SlackConfig", "SlackOutputConfig", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackMessageEvent"], {
+    return sectionData(["SlackConfig", "SlackOutputConfig", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTriggerEvent"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
         channelClass: buildResourceClassContext(
@@ -415,7 +415,7 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
 function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefinition[]): SectionContext<LinearSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
-    return sectionData(["LinearInputConfig", "LinearOutputConfig", "TypedSkill", "TypedTrigger", "LinearEventType", "LinearInputEvent"], {
+    return sectionData(["LinearInputConfig", "LinearOutputConfig", "TypedSkill", "TypedTrigger", "LinearEventType", "LinearTriggerEvent"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "linear"),
         teamClass: buildResourceClassContext(
@@ -513,11 +513,11 @@ function prepareWorkOSSection(instances: IntegrationInstanceData[], tools: ToolD
             "WorkOSEventType",
             "TypedSkill",
             "TypedTrigger",
-            "WorkOSInputEvent",
-            "WorkOSUserInputEvent",
-            "WorkOSMembershipInputEvent",
-            "WorkOSInvitationInputEvent",
-            "WorkOSOrganizationInputEvent"
+            "WorkOSTriggerEvent",
+            "WorkOSUserTriggerEvent",
+            "WorkOSMembershipTriggerEvent",
+            "WorkOSInvitationTriggerEvent",
+            "WorkOSOrganizationTriggerEvent"
         ],
         {
             id: instances[0].id,
@@ -957,7 +957,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
 }
 
 function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSectionContext> {
-    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookInputEvent", "CronJobInputEvent", "TypedTrigger"], {
+    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookTriggerEvent", "CronTriggerEvent", "TypedTrigger"], {
         skillToolType: buildSkillToolTypeForIntegration(tools, "terse")
     })
 }

@@ -25,7 +25,7 @@ terse generate
 ## Core workflow
 
 ```ts
-import { ScheduleCronInputEvent, Terse, TerseAgent } from "terse-sdk"
+import { CronTriggerEvent, Terse, TerseAgent } from "terse-sdk"
 import { Attio, AttioList, Schedule, Slack, SlackChannel } from "./terse.generated"
 
 const client = new Terse()
@@ -37,7 +37,7 @@ await client.createJob({
     Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }),
     Slack.skill({ channel: SlackChannel.RevenueTeam }),
   ],
-  onTrigger: async (event: ScheduleCronInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: CronTriggerEvent, agent: TerseAgent) => {
     const prompt = [
       `Summarize open pipeline for ${event.window.label}.`,
       `Window start: ${event.window.startsAt}`,

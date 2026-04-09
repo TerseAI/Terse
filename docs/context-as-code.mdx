@@ -34,7 +34,7 @@ This adds latency, wastes tokens, and breaks when names change.
 `terse generate` solves both problems at once. It compiles your workspace context into typed code, so workflows never rediscover resources at runtime and coding agents build against real data from the start.
 
 ```ts
-import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk";
+import { TriggerEvent, Terse, TerseAgent } from "terse-sdk";
 import {
   Apollo,
   Attio,
@@ -55,7 +55,7 @@ await client.createJob({
     // This is a real slack channel in the workspace as well!
     Slack.skill({ channel: SlackChannel.DealDesk }),
   ],
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
     const enrichment = await agent.tools.apollo.enrichCompany({
       domain: event.record.values.company_domain,
     });

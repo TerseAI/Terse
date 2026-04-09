@@ -19,7 +19,7 @@ icon: "scale"
 A multi-step Zapier flow becomes a single TypeScript file:
 
 ```ts
-import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk"
+import { TriggerEvent, Terse, TerseAgent } from "terse-sdk"
 import { Apollo, Attio, AttioList } from "./terse.generated"
 
 const client = new Terse()
@@ -28,7 +28,7 @@ await client.createJob({
   name: "new-deal-enrichment",
   triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
   skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()],
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
     const company = await agent.tools.apollo.enrichCompany({
       domain: event.record.values.company_domain,
     })

@@ -24,7 +24,7 @@ terse generate
 ## Core workflow
 
 ```ts
-import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk";
+import { TriggerEvent, Terse, TerseAgent } from "terse-sdk";
 import { Attio, AttioList, Slack, SlackChannel } from "./terse.generated";
 
 const client = new Terse();
@@ -36,9 +36,9 @@ await client.createJob({
     Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }),
     Slack.skill({ channel: SlackChannel.DealDesk }),
   ],
-  filter: (event: AttioRecordInputEvent) =>
+  filter: (event: TriggerEvent) =>
     event.record.values.stage === "contract-sent",
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
     await agent.tools.slack.sendMessage({
       channelId: SlackChannel.DealDesk.channelId,
       message: `Contract sent for ${event.record.values.company_name} by ${event.record.values.owner_name}.`,

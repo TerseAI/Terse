@@ -25,7 +25,7 @@ terse generate
 ## Core workflow
 
 ```ts
-import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk"
+import { TriggerEvent, Terse, TerseAgent } from "terse-sdk"
 import { Apollo, Attio, AttioList } from "./terse.generated"
 
 const client = new Terse()
@@ -37,7 +37,7 @@ await client.createJob({
     Attio.skill({ lists: [AttioList.Contacts.NewContacts] }),
     Apollo.skill(),
   ],
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
     const company = await agent.tools.apollo.enrichCompany({
       domain: event.record.values.company_domain,
     })

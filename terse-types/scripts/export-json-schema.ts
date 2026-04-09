@@ -18,7 +18,15 @@ const SCHEMA_NAME_OVERRIDES: Record<string, string> = {
     slackUserResponseSchema: "SlackUserSummary",
     runHistoryActionBaseSchema: "RunHistoryAction",
     // GitHub capitalization fix
-    GithubIntegrationSchema: "GitHubIntegrationInstance"
+    GithubIntegrationSchema: "GitHubIntegrationInstance",
+    githubRepositorySchema: "GitHubRepository",
+    githubPushTriggerEventSchema: "GitHubPushTriggerEvent",
+    githubPullRequestOpenedTriggerEventSchema: "GitHubPullRequestOpenedTriggerEvent",
+    githubPullRequestSynchronizedTriggerEventSchema: "GitHubPullRequestSynchronizedTriggerEvent",
+    githubPullRequestClosedTriggerEventSchema: "GitHubPullRequestClosedTriggerEvent",
+    githubPullRequestMergedTriggerEventSchema: "GitHubPullRequestMergedTriggerEvent",
+    githubPullRequestTriggerEventSchema: "GitHubPullRequestTriggerEvent",
+    githubTriggerEventSchema: "GitHubTriggerEvent"
 }
 
 function isZodSchema(value: unknown): value is z.ZodTypeAny {

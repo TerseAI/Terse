@@ -151,35 +151,6 @@ class GmailDraftOutputConfigInstance(TerseModel):
     config_type: Annotated[Literal["gmail_draft_output"], Field(alias="configType")] = "gmail_draft_output"
 
 
-class GmailParsedAttachment(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    attachment_id: Annotated[str, Field(alias="attachmentId")]
-    filename: str
-    mime_type: Annotated[str, Field(alias="mimeType")]
-    content_id: Annotated[str | None, Field(alias="contentId")] = None
-    is_inline: Annotated[bool, Field(alias="isInline")]
-
-
-class GmailEventData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    thread_id: Annotated[str, Field(alias="threadId")]
-    subject: str
-    from_: Annotated[str, Field(alias="from")]
-    to: str
-    date: str
-    internal_date: Annotated[str, Field(alias="internalDate")]
-    message_id: Annotated[str, Field(alias="messageId")]
-    body: str
-    snippet: str
-    label_ids: Annotated[list[str], Field(alias="labelIds")]
-    attachments: list[GmailParsedAttachment] | None = None
-
-
 class GmailIntegrationInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -203,6 +174,17 @@ class GmailOutputConfigInstance(TerseModel):
     integration_id: Annotated[str, Field(alias="integrationId")]
     integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = "gmail"
     config_type: Annotated[Literal["gmail_output"], Field(alias="configType")] = "gmail_output"
+
+
+class GmailParsedAttachment(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    attachment_id: Annotated[str, Field(alias="attachmentId")]
+    filename: str
+    mime_type: Annotated[str, Field(alias="mimeType")]
+    content_id: Annotated[str | None, Field(alias="contentId")] = None
+    is_inline: Annotated[bool, Field(alias="isInline")]
 
 
 class BaseIntegrationInstance(TerseModel):
@@ -308,6 +290,12 @@ class LinearWebhookAssignee(TerseModel):
     )
     id: str
     name: str
+
+
+class LinearWebhookCommentData(TerseModel):
+    id: str
+    body: str | None = None
+    issue_id: Annotated[str | None, Field(alias="issueId")] = None
 
 
 class LinearWebhookTeam(TerseModel):
@@ -1745,17 +1733,6 @@ class Error(TerseModel):
     message: str
 
 
-class EventData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
-    event_type: Annotated[
-        SlackEventType | GitHubEventType | LinearEventType | GmailEventType | WorkOSEventType,
-        Field(alias="eventType"),
-    ]
-
-
 class FilterResult(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2240,26 +2217,12 @@ class GithubAppInstallationCallbackRequest(TerseModel):
     repositories: list[Repository]
 
 
-class Sender(TerseModel):
+class PullRequestUser(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     login: str
     email: str | None = None
-
-
-class GithubRepository(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: float
-    name: str
-    owner: str
-    default_branch: Annotated[str, Field(alias="defaultBranch")]
-
-
-class PullRequestUser(Sender):
-    pass
 
 
 class PullRequestRef(TerseModel):
@@ -2292,24 +2255,132 @@ class PullRequest(TerseModel):
     url: str | None = None
 
 
-class GithubTriggerEvent(TerseModel):
+class Sender(PullRequestUser):
+    pass
+
+
+class GitHubRepository(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: float
+    name: str
+    owner: str
+    default_branch: Annotated[str, Field(alias="defaultBranch")]
+
+
+class GitHubPullRequestClosedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
-    event_type: Annotated[GitHubEventType, Field(alias="eventType")]
     username: str
     installation_id: Annotated[float, Field(alias="installationId")]
     repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GitHubRepository
+    sender: Sender
+    pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
     branch: str | None = None
     commits: list[Commit]
-    pull_request: Annotated[PullRequest | None, Field(alias="pullRequest")] = None
-    repository: GithubRepository
+    event_type: Annotated[Literal["pull_request.closed"], Field(alias="eventType")] = "pull_request.closed"
+
+
+class GitHubPullRequestMergedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GitHubRepository
     sender: Sender
+    pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
+    branch: str | None = None
+    commits: list[Commit]
+    event_type: Annotated[Literal["pull_request.merged"], Field(alias="eventType")] = "pull_request.merged"
 
 
-class GithubEventData(RootModel[GithubTriggerEvent]):
-    root: GithubTriggerEvent
+class GitHubPullRequestOpenedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GitHubRepository
+    sender: Sender
+    pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
+    branch: str | None = None
+    commits: list[Commit]
+    event_type: Annotated[Literal["pull_request.opened"], Field(alias="eventType")] = "pull_request.opened"
+
+
+class GitHubPullRequestSynchronizedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GitHubRepository
+    sender: Sender
+    pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
+    branch: str | None = None
+    commits: list[Commit]
+    event_type: Annotated[Literal["pull_request.synchronize"], Field(alias="eventType")] = "pull_request.synchronize"
+
+
+class GitHubPullRequestTriggerEvent(
+    RootModel[
+        GitHubPullRequestOpenedTriggerEvent
+        | GitHubPullRequestSynchronizedTriggerEvent
+        | GitHubPullRequestClosedTriggerEvent
+        | GitHubPullRequestMergedTriggerEvent
+    ]
+):
+    root: (
+        GitHubPullRequestOpenedTriggerEvent
+        | GitHubPullRequestSynchronizedTriggerEvent
+        | GitHubPullRequestClosedTriggerEvent
+        | GitHubPullRequestMergedTriggerEvent
+    )
+
+
+class GitHubPushTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GitHubRepository
+    sender: Sender
+    event_type: Annotated[Literal["push"], Field(alias="eventType")] = "push"
+    branch: str
+    commits: list[Commit]
+    pull_request: Annotated[Any | None, Field(alias="pullRequest")] = None
+
+
+class GitHubTriggerEvent(
+    RootModel[
+        GitHubPushTriggerEvent
+        | GitHubPullRequestOpenedTriggerEvent
+        | GitHubPullRequestSynchronizedTriggerEvent
+        | GitHubPullRequestClosedTriggerEvent
+        | GitHubPullRequestMergedTriggerEvent
+    ]
+):
+    root: (
+        GitHubPushTriggerEvent
+        | GitHubPullRequestOpenedTriggerEvent
+        | GitHubPullRequestSynchronizedTriggerEvent
+        | GitHubPullRequestClosedTriggerEvent
+        | GitHubPullRequestMergedTriggerEvent
+    )
 
 
 class GmailHeader(TerseModel):
@@ -2743,6 +2814,23 @@ class LinearAddCommentToolOutput(TerseModel):
     comment: LinearCommentHandle
 
 
+class LinearCommentCreatedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    action: Literal["create"] = "create"
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+    event_type: Annotated[Literal["comment.created"], Field(alias="eventType")] = "comment.created"
+    type: Literal["Comment"] = "Comment"
+    data: LinearWebhookCommentData
+
+
 class LinearCreateTicketPayload(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2998,6 +3086,23 @@ class LinearIssueAssignee(TerseModel):
     email: str | None = None
 
 
+class LinearIssueCreatedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    action: Literal["create"] = "create"
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+    event_type: Annotated[Literal["issue.created"], Field(alias="eventType")] = "issue.created"
+    type: Literal["Issue"] = "Issue"
+    data: LinearWebhookData
+
+
 class LinearIssueProject(LinearWebhookAssignee):
     pass
 
@@ -3040,6 +3145,23 @@ class LinearIssueSummary(TerseModel):
 
 class LinearIssueTeam(RootModel[LinearTeam]):
     root: LinearTeam
+
+
+class LinearIssueUpdatedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    action: Literal["update"] = "update"
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+    event_type: Annotated[Literal["issue.updated"], Field(alias="eventType")] = "issue.updated"
+    type: Literal["Issue"] = "Issue"
+    data: LinearWebhookData
 
 
 class LinearReadTicketComment(TerseModel):
@@ -3191,21 +3313,10 @@ class LinearSearchTicketToolOutput(TerseModel):
     pagination: LinearSearchPagination
 
 
-class LinearTriggerEvent(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
-    event_type: Annotated[LinearEventType, Field(alias="eventType")]
-    action: LinearWebhookAction
-    actor: LinearWebhookActor
-    created_at: Annotated[str, Field(alias="createdAt")]
-    data: LinearWebhookData
-    type: LinearWebhookType
-    url: str | None = None
-    organization_id: Annotated[str, Field(alias="organizationId")]
-    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
-    webhook_id: Annotated[str, Field(alias="webhookId")]
+class LinearTriggerEvent(
+    RootModel[LinearIssueCreatedTriggerEvent | LinearIssueUpdatedTriggerEvent | LinearCommentCreatedTriggerEvent]
+):
+    root: LinearIssueCreatedTriggerEvent | LinearIssueUpdatedTriggerEvent | LinearCommentCreatedTriggerEvent
 
 
 class LinearUpdateTicketUpdates(TerseModel):
@@ -3277,7 +3388,7 @@ class LinearUpdateTicketToolOutput(LinearCreateTicketToolOutput):
     pass
 
 
-class LinearWebhookEventData(TerseModel):
+class LinearWebhookPayload(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -4887,16 +4998,6 @@ class WebhookTriggerEvent(TerseModel):
     method: str
 
 
-class WorkOSBaseTriggerEvent(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
-    event_type: Annotated[WorkOSEventType, Field(alias="eventType")]
-    event_id: Annotated[str, Field(alias="eventId")]
-    created_at: Annotated[str, Field(alias="createdAt")]
-
-
 class WorkOSTriggerOrganization(LinearWebhookAssignee):
     pass
 
@@ -4936,19 +5037,48 @@ class WorkOSTriggerInvitation(TerseModel):
     accepted_at: Annotated[str | None, Field(alias="acceptedAt")] = None
 
 
-class WorkOSInvitationTriggerEventEventType(StrEnum):
-    invitation_created = "invitation.created"
-    invitation_accepted = "invitation.accepted"
-    invitation_resent = "invitation.resent"
-    invitation_revoked = "invitation.revoked"
-
-
-class WorkOSInvitationTriggerEvent(TerseModel):
+class WorkOSInvitationRevokedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
-    event_type: Annotated[WorkOSInvitationTriggerEventEventType, Field(alias="eventType")]
+    event_type: Annotated[Literal["invitation.revoked"], Field(alias="eventType")] = "invitation.revoked"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    invitation: WorkOSTriggerInvitation
+    user: WorkOSTriggerUser | None = None
+
+
+class WorkOSInvitationResentTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.resent"], Field(alias="eventType")] = "invitation.resent"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    invitation: WorkOSTriggerInvitation
+    user: WorkOSTriggerUser | None = None
+
+
+class WorkOSInvitationAcceptedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.accepted"], Field(alias="eventType")] = "invitation.accepted"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    invitation: WorkOSTriggerInvitation
+    user: WorkOSTriggerUser | None = None
+
+
+class WorkOSInvitationCreatedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.created"], Field(alias="eventType")] = "invitation.created"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     invitation: WorkOSTriggerInvitation
@@ -4973,35 +5103,73 @@ class WorkOSTriggerMembership(TerseModel):
     status: str
 
 
-class WorkOSMembershipTriggerEventEventType(StrEnum):
-    organization_membership_created = "organization_membership.created"
-    organization_membership_updated = "organization_membership.updated"
-    organization_membership_deleted = "organization_membership.deleted"
-
-
-class WorkOSMembershipTriggerEvent(TerseModel):
+class WorkOSOrganizationMembershipDeletedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
-    event_type: Annotated[WorkOSMembershipTriggerEventEventType, Field(alias="eventType")]
+    event_type: Annotated[Literal["organization_membership.deleted"], Field(alias="eventType")] = (
+        "organization_membership.deleted"
+    )
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     membership: WorkOSTriggerMembership
 
 
-class WorkOSUserTriggerEventEventType(StrEnum):
-    user_created = "user.created"
-    user_updated = "user.updated"
-    user_deleted = "user.deleted"
-
-
-class WorkOSUserTriggerEvent(TerseModel):
+class WorkOSOrganizationMembershipUpdatedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
-    event_type: Annotated[WorkOSUserTriggerEventEventType, Field(alias="eventType")]
+    event_type: Annotated[Literal["organization_membership.updated"], Field(alias="eventType")] = (
+        "organization_membership.updated"
+    )
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    membership: WorkOSTriggerMembership
+
+
+class WorkOSOrganizationMembershipCreatedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization_membership.created"], Field(alias="eventType")] = (
+        "organization_membership.created"
+    )
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    membership: WorkOSTriggerMembership
+
+
+class WorkOSUserDeletedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.deleted"], Field(alias="eventType")] = "user.deleted"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    user: WorkOSTriggerUser
+
+
+class WorkOSUserUpdatedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.updated"], Field(alias="eventType")] = "user.updated"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    user: WorkOSTriggerUser
+
+
+class WorkOSUserCreatedTriggerEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.created"], Field(alias="eventType")] = "user.created"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     user: WorkOSTriggerUser
@@ -5009,19 +5177,31 @@ class WorkOSUserTriggerEvent(TerseModel):
 
 class WorkOSTriggerEvent(
     RootModel[
-        WorkOSUserTriggerEvent
-        | WorkOSMembershipTriggerEvent
-        | WorkOSInvitationTriggerEvent
+        WorkOSUserCreatedTriggerEvent
+        | WorkOSUserUpdatedTriggerEvent
+        | WorkOSUserDeletedTriggerEvent
+        | WorkOSOrganizationMembershipCreatedTriggerEvent
+        | WorkOSOrganizationMembershipUpdatedTriggerEvent
+        | WorkOSOrganizationMembershipDeletedTriggerEvent
+        | WorkOSInvitationCreatedTriggerEvent
+        | WorkOSInvitationAcceptedTriggerEvent
+        | WorkOSInvitationResentTriggerEvent
+        | WorkOSInvitationRevokedTriggerEvent
         | WorkOSOrganizationTriggerEvent
-        | WorkOSBaseTriggerEvent
     ]
 ):
     root: (
-        WorkOSUserTriggerEvent
-        | WorkOSMembershipTriggerEvent
-        | WorkOSInvitationTriggerEvent
+        WorkOSUserCreatedTriggerEvent
+        | WorkOSUserUpdatedTriggerEvent
+        | WorkOSUserDeletedTriggerEvent
+        | WorkOSOrganizationMembershipCreatedTriggerEvent
+        | WorkOSOrganizationMembershipUpdatedTriggerEvent
+        | WorkOSOrganizationMembershipDeletedTriggerEvent
+        | WorkOSInvitationCreatedTriggerEvent
+        | WorkOSInvitationAcceptedTriggerEvent
+        | WorkOSInvitationResentTriggerEvent
+        | WorkOSInvitationRevokedTriggerEvent
         | WorkOSOrganizationTriggerEvent
-        | WorkOSBaseTriggerEvent
     )
 
 
@@ -5057,7 +5237,7 @@ class SlackTriggerEvent(TerseModel):
 class TriggerEvent(
     RootModel[
         SlackTriggerEvent
-        | GithubTriggerEvent
+        | GitHubTriggerEvent
         | GmailTriggerEvent
         | LinearTriggerEvent
         | WorkOSTriggerEvent
@@ -5068,7 +5248,7 @@ class TriggerEvent(
 ):
     root: (
         SlackTriggerEvent
-        | GithubTriggerEvent
+        | GitHubTriggerEvent
         | GmailTriggerEvent
         | LinearTriggerEvent
         | WorkOSTriggerEvent
@@ -5775,10 +5955,6 @@ class SlackConversationMessage(TerseModel):
     thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
 
 
-class SlackEventData(RootModel[SlackTriggerEvent]):
-    root: SlackTriggerEvent
-
-
 class SlackListChannelsTypes(StrEnum):
     public = "public"
     private = "private"
@@ -6438,6 +6614,42 @@ class WebhookWorkOSTriggerParams(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
+
+
+class WorkOSInvitationTriggerEvent(
+    RootModel[
+        WorkOSInvitationCreatedTriggerEvent
+        | WorkOSInvitationAcceptedTriggerEvent
+        | WorkOSInvitationResentTriggerEvent
+        | WorkOSInvitationRevokedTriggerEvent
+    ]
+):
+    root: (
+        WorkOSInvitationCreatedTriggerEvent
+        | WorkOSInvitationAcceptedTriggerEvent
+        | WorkOSInvitationResentTriggerEvent
+        | WorkOSInvitationRevokedTriggerEvent
+    )
+
+
+class WorkOSMembershipTriggerEvent(
+    RootModel[
+        WorkOSOrganizationMembershipCreatedTriggerEvent
+        | WorkOSOrganizationMembershipUpdatedTriggerEvent
+        | WorkOSOrganizationMembershipDeletedTriggerEvent
+    ]
+):
+    root: (
+        WorkOSOrganizationMembershipCreatedTriggerEvent
+        | WorkOSOrganizationMembershipUpdatedTriggerEvent
+        | WorkOSOrganizationMembershipDeletedTriggerEvent
+    )
+
+
+class WorkOSUserTriggerEvent(
+    RootModel[WorkOSUserCreatedTriggerEvent | WorkOSUserUpdatedTriggerEvent | WorkOSUserDeletedTriggerEvent]
+):
+    root: WorkOSUserCreatedTriggerEvent | WorkOSUserUpdatedTriggerEvent | WorkOSUserDeletedTriggerEvent
 
 
 class WorkOSWebhookPayload(TerseModel):

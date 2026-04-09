@@ -1,6 +1,6 @@
 import crypto from "crypto"
 import { Request, Response } from "express"
-import { linearWebhookEventDataSchema } from "terse-types"
+import { linearWebhookPayloadSchema } from "terse-types"
 import { LinearTeam } from "terse-types/types"
 
 import { settings } from "../config/settings"
@@ -60,7 +60,7 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
         }
 
         // Parse JSON body
-        const body = linearWebhookEventDataSchema.parse(rawBody)
+        const body = linearWebhookPayloadSchema.parse(rawBody)
 
         // Ack early, avoid spamming the webhook
         res.status(200).json({ received: true })

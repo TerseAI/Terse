@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { gmail_v1, google } from "googleapis"
-import { ConfigData, ConfigType, GmailEventData, GmailEventType, GmailParsedAttachment, GmailTriggerEvent } from "terse-types"
+import { ConfigData, ConfigType, GmailEventType, GmailMessagePayload, GmailParsedAttachment, GmailTriggerEvent } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -141,7 +141,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                             continue
                         }
 
-                        const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId)
+                        const parsedEmail: GmailMessagePayload | null = await fetchAndParseEmail(gmail, messageId)
 
                         if (parsedEmail) {
                             const emailTimestamp = parseInt(parsedEmail.internalDate, 10)
@@ -564,7 +564,7 @@ export class GmailTriggerEventRuntime extends TriggerEventRuntime implements Ide
     private integrationId: string
     private storedFiles: StoredFile[]
 
-    constructor(data: GmailEventData, integrationId: string, storedFiles: StoredFile[] = []) {
+    constructor(data: GmailMessagePayload, integrationId: string, storedFiles: StoredFile[] = []) {
         super()
         this.data = {
             integrationType: IntegrationType.GMAIL,
@@ -852,7 +852,7 @@ async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistor
     return messageIds
 }
 
-export async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailEventData | null> {
+export async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailMessagePayload | null> {
     try {
         const messageResponse = await gmail.users.messages.get({
             userId: "me",

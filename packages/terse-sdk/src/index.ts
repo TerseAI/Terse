@@ -12,33 +12,20 @@ declare const process: { env: Record<string, string | undefined> }
 // Re-export SDK-specific types
 export type { ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 export {
-    GithubInputEvent,
-    GithubPRInputEvent,
-    GithubPushInputEvent,
-    GmailInputEvent,
-    LinearInputEvent,
-    CronJobInputEvent,
-    WorkOSInputEvent,
-    WorkOSUserInputEvent,
-    WorkOSMembershipInputEvent,
-    WorkOSInvitationInputEvent,
-    WorkOSOrganizationInputEvent,
-    isGithubEvent,
-    isGithubPREvent,
-    isGithubPushEvent,
-    isWorkOSEvent,
-    isWorkOSUserEvent,
-    isWorkOSMembershipEvent,
-    isWorkOSInvitationEvent,
-    isWorkOSOrganizationEvent,
-    SlackMessageEvent,
-    WebhookInputEvent,
-    isWebhookEvent,
-    deserializeInputEvent
+    isGitHubTriggerEvent,
+    isGitHubPullRequestTriggerEvent,
+    isGitHubPushTriggerEvent,
+    isWorkOSTriggerEvent,
+    isWorkOSUserTriggerEvent,
+    isWorkOSMembershipTriggerEvent,
+    isWorkOSInvitationTriggerEvent,
+    isWorkOSOrganizationTriggerEvent,
+    isWebhookTriggerEvent,
+    deserializeTriggerEvent
 } from "./types.js"
 
 // Mock event for CLI's `terse run` command
-export const createMockInputEvent = (): TriggerEvent => createManualTriggerEvent({ integrationType: IntegrationType.TERSE })
+export const createMockTriggerEvent = (): TriggerEvent => createManualTriggerEvent({ integrationType: IntegrationType.TERSE })
 
 // Re-export shared types for consumer convenience
 export {
@@ -70,7 +57,29 @@ export {
     WorkOSEventType
 } from "terse-types"
 
-export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
+export type {
+    CronTriggerEvent,
+    GitHubPullRequestTriggerEvent,
+    GitHubPushTriggerEvent,
+    GitHubTriggerEvent,
+    GmailTriggerEvent,
+    LinearTriggerEvent,
+    ManualSampleTriggerEvent,
+    SlackTriggerEvent,
+    SdkAgentRunOptionsPayload,
+    SdkAgentRunRequestBody,
+    SdkAgentRunResponseBody,
+    SdkAgentStreamEvent,
+    ToolInputByName,
+    ToolOutputByName,
+    TriggerEvent,
+    WebhookTriggerEvent,
+    WorkOSInvitationTriggerEvent,
+    WorkOSMembershipTriggerEvent,
+    WorkOSOrganizationTriggerEvent,
+    WorkOSTriggerEvent,
+    WorkOSUserTriggerEvent
+} from "terse-types"
 export { IntegrationType } from "terse-types"
 
 export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
@@ -137,7 +146,7 @@ export class TerseAgent {
     }
 
     async *run(prompt: string, event?: TriggerEvent): AsyncGenerator<TerseAgentResult> {
-        const resolvedEvent = event ?? createMockInputEvent()
+        const resolvedEvent = event ?? createMockTriggerEvent()
 
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
             prompt,

@@ -1,14 +1,11 @@
-import { IntegrationType, parseTriggerEvent } from "terse-types"
+import { GitHubEventType, IntegrationType, WorkOSEventType, parseTriggerEvent } from "terse-types"
 import type {
     ConfigData,
-    CronTriggerEvent,
-    GithubTriggerEvent,
-    GmailTriggerEvent,
-    LinearTriggerEvent,
-    SlackTriggerEvent,
+    GitHubPullRequestTriggerEvent,
+    GitHubPushTriggerEvent,
+    GitHubTriggerEvent,
     TriggerEvent,
     WebhookTriggerEvent,
-    WorkOSBaseTriggerEvent,
     WorkOSInvitationTriggerEvent,
     WorkOSMembershipTriggerEvent,
     WorkOSOrganizationTriggerEvent,
@@ -48,56 +45,56 @@ export type TypedSkill<TToolName extends string = never> = ConfigData & {
 export type InferToolApproval<T> = T extends TypedSkill<infer TToolName> ? TToolName : never
 export type InferToolApprovals<T extends readonly unknown[]> = InferToolApproval<T[number]>
 
-export type GithubInputEvent = GithubTriggerEvent
-export type GithubPRInputEvent = GithubTriggerEvent & { pullRequest: NonNullable<GithubTriggerEvent["pullRequest"]> }
-export type GithubPushInputEvent = GithubTriggerEvent & { branch: string }
-export type WorkOSInputEvent = WorkOSBaseTriggerEvent | WorkOSTriggerEvent
-export type WorkOSUserInputEvent = WorkOSUserTriggerEvent
-export type WorkOSMembershipInputEvent = WorkOSMembershipTriggerEvent
-export type WorkOSInvitationInputEvent = WorkOSInvitationTriggerEvent
-export type WorkOSOrganizationInputEvent = WorkOSOrganizationTriggerEvent
-export type SlackMessageEvent = SlackTriggerEvent
-export type WebhookInputEvent = WebhookTriggerEvent
-export type GmailInputEvent = GmailTriggerEvent
-export type LinearInputEvent = LinearTriggerEvent
-export type CronJobInputEvent = CronTriggerEvent
-
-export function isGithubEvent(event: TriggerEvent): event is GithubInputEvent {
-    return event.integrationType === IntegrationType.GITHUB
+export function isGitHubTriggerEvent(event: TriggerEvent): event is GitHubTriggerEvent {
+    return event.integrationType === IntegrationType.GITHUB && event.eventType !== "manual_sample"
 }
 
-export function isGithubPREvent(event: TriggerEvent): event is GithubPRInputEvent {
-    return event.integrationType === IntegrationType.GITHUB && "pullRequest" in event && event.pullRequest !== undefined
+export function isGitHubPullRequestTriggerEvent(event: TriggerEvent): event is GitHubPullRequestTriggerEvent {
+    return event.integrationType === IntegrationType.GITHUB && event.eventType !== GitHubEventType.PUSH
 }
 
-export function isGithubPushEvent(event: TriggerEvent): event is GithubPushInputEvent {
-    return event.integrationType === IntegrationType.GITHUB && event.eventType !== "manual_sample" && "branch" in event && typeof event.branch === "string"
+export function isGitHubPushTriggerEvent(event: TriggerEvent): event is GitHubPushTriggerEvent {
+    return event.integrationType === IntegrationType.GITHUB && event.eventType === GitHubEventType.PUSH
 }
 
-export function isWorkOSEvent(event: TriggerEvent): event is WorkOSInputEvent {
-    return event.integrationType === IntegrationType.WORKOS
+export function isWorkOSTriggerEvent(event: TriggerEvent): event is WorkOSTriggerEvent {
+    return event.integrationType === IntegrationType.WORKOS && event.eventType !== "manual_sample"
 }
 
-export function isWorkOSUserEvent(event: TriggerEvent): event is WorkOSUserInputEvent {
-    return event.integrationType === IntegrationType.WORKOS && "user" in event && event.user !== undefined
+export function isWorkOSUserTriggerEvent(event: TriggerEvent): event is WorkOSUserTriggerEvent {
+    return (
+        event.integrationType === IntegrationType.WORKOS &&
+        (event.eventType === WorkOSEventType.USER_CREATED || event.eventType === WorkOSEventType.USER_UPDATED || event.eventType === WorkOSEventType.USER_DELETED)
+    )
 }
 
-export function isWorkOSMembershipEvent(event: TriggerEvent): event is WorkOSMembershipInputEvent {
-    return event.integrationType === IntegrationType.WORKOS && "membership" in event
+export function isWorkOSMembershipTriggerEvent(event: TriggerEvent): event is WorkOSMembershipTriggerEvent {
+    return (
+        event.integrationType === IntegrationType.WORKOS &&
+        (event.eventType === WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED ||
+            event.eventType === WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED ||
+            event.eventType === WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED)
+    )
 }
 
-export function isWorkOSInvitationEvent(event: TriggerEvent): event is WorkOSInvitationInputEvent {
-    return event.integrationType === IntegrationType.WORKOS && "invitation" in event
+export function isWorkOSInvitationTriggerEvent(event: TriggerEvent): event is WorkOSInvitationTriggerEvent {
+    return (
+        event.integrationType === IntegrationType.WORKOS &&
+        (event.eventType === WorkOSEventType.INVITATION_CREATED ||
+            event.eventType === WorkOSEventType.INVITATION_ACCEPTED ||
+            event.eventType === WorkOSEventType.INVITATION_RESENT ||
+            event.eventType === WorkOSEventType.INVITATION_REVOKED)
+    )
 }
 
-export function isWorkOSOrganizationEvent(event: TriggerEvent): event is WorkOSOrganizationInputEvent {
-    return event.integrationType === IntegrationType.WORKOS && "organization" in event
+export function isWorkOSOrganizationTriggerEvent(event: TriggerEvent): event is WorkOSOrganizationTriggerEvent {
+    return event.integrationType === IntegrationType.WORKOS && event.eventType === WorkOSEventType.ORGANIZATION_CREATED
 }
 
-export function isWebhookEvent(event: TriggerEvent): event is WebhookInputEvent {
-    return event.integrationType === IntegrationType.WEBHOOK
+export function isWebhookTriggerEvent(event: TriggerEvent): event is WebhookTriggerEvent {
+    return event.integrationType === IntegrationType.WEBHOOK && event.eventType !== "manual_sample"
 }
 
-export function deserializeInputEvent(value: unknown): TriggerEvent {
+export function deserializeTriggerEvent(value: unknown): TriggerEvent {
     return parseTriggerEvent(value)
 }

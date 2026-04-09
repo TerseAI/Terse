@@ -17,13 +17,13 @@ The SDK provides:
 - `Terse` for runtime job registration
 - `@app.job(...)` for declaring jobs
 - `TerseAgent` for agent runs and deterministic tool execution
-- typed event models such as `CronJobInputEvent`
+- typed trigger event models such as `CronTriggerEvent`
 - hand-written request/response models exported from `terse_sdk`
 
 ## Quick Start
 
 ```python
-from terse_sdk import CronJobInputEvent, FinalOutput, Terse
+from terse_sdk import CronTriggerEvent, FinalOutput, Terse
 from terse_generated import Schedule, TerseAgent
 
 app = Terse()
@@ -33,7 +33,7 @@ app = Terse()
     triggers=[Schedule.cron("0 9 * * 1")],
     skills=[],
 )
-def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
+def run_job(event: CronTriggerEvent, agent: TerseAgent) -> None:
     prompt = (
         "Tell a joke"
         f"Context: {event.formatted_content}"
@@ -60,7 +60,7 @@ Example inside a generated project:
 
 ```python
 from terse_generated import Schedule, Snowflake, TerseAgent
-from terse_sdk import CronJobInputEvent, Terse
+from terse_sdk import CronTriggerEvent, Terse
 
 app = Terse()
 
@@ -69,7 +69,7 @@ app = Terse()
     triggers=[Schedule.cron("0 9 * * 1")],
     skills=[Snowflake.skill()],
 )
-def example(event: CronJobInputEvent, agent: TerseAgent) -> None:
+def example(event: CronTriggerEvent, agent: TerseAgent) -> None:
     result = agent.tools.snowflake.execute_query(query="select current_date()")
     print(result)
 ```

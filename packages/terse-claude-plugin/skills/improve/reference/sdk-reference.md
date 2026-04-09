@@ -161,7 +161,7 @@ skills: [
 
 ## Event Types
 
-### InputEvent Interface (all events)
+### TriggerEvent interface
 ```typescript
 event.integrationType       // IntegrationType enum
 event.eventType             // specific event type string
@@ -171,7 +171,7 @@ event.debugLog()            // debug info string
 
 Python event classes expose the same event content through attributes like `event.integration_type`, `event.event_type`, `event.formatted_content`, and `event.debug_log`.
 
-### GithubPRInputEvent
+### GitHubPullRequestTriggerEvent
 ```typescript
 event.pullRequest.number    // PR number
 event.pullRequest.title     // PR title
@@ -187,7 +187,7 @@ event.repository            // { id, name, owner, defaultBranch }
 event.commits               // [{ sha, message, fileDiffs: [{ filename, diff }] }]
 ```
 
-### GithubPushInputEvent
+### GitHubPushTriggerEvent
 ```typescript
 event.branch                // branch that was pushed to
 event.sender                // { login, email? }
@@ -197,22 +197,22 @@ event.commits               // [{ sha, message, fileDiffs: [{ filename, diff }] 
 
 ### WorkOS Events
 ```typescript
-// WorkOSUserInputEvent
+// WorkOSUserTriggerEvent
 event.user.id / event.user.email / event.user.firstName / event.user.lastName
 
-// WorkOSMembershipInputEvent
+// WorkOSMembershipTriggerEvent
 event.membership.userId / event.membership.organizationId / event.membership.role.slug
 
-// WorkOSInvitationInputEvent
+// WorkOSInvitationTriggerEvent
 event.invitation.email / event.invitation.organizationId / event.invitation.state
 ```
 
 ### Type Guards
 ```typescript
-import { isGithubPREvent, isGithubPushEvent, isWorkOSUserEvent } from "terse-sdk"
+import { isGitHubPullRequestTriggerEvent, isGitHubPushTriggerEvent, isWorkOSUserTriggerEvent } from "terse-sdk"
 
-if (isGithubPREvent(event)) {
-    // event is typed as GithubPRInputEvent
+if (isGitHubPullRequestTriggerEvent(event)) {
+    // event is typed as GitHubPullRequestTriggerEvent
 }
 ```
 

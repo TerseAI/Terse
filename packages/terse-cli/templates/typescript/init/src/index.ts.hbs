@@ -1,4 +1,4 @@
-import { Terse, TerseAgent, GithubPRInputEvent } from "terse-sdk";
+import { Terse, TerseAgent, GitHubPullRequestTriggerEvent } from "terse-sdk";
 import { Repos, Slack, GitHub, SlackChannel } from "./terse.generated";
 
 const client = new Terse();
@@ -10,7 +10,7 @@ await client.createJob({
     GitHub.skill({ repos: [Repos.TerseAI.LandingPage, Repos.TerseAI.Terse] }),
     Slack.skill({ channel: SlackChannel.AllTerseInc }),
   ],
-  onTrigger: async (event: GithubPRInputEvent, Agent: TerseAgent) => {
+  onTrigger: async (event: GitHubPullRequestTriggerEvent, Agent: TerseAgent) => {
     const message = await Agent.tools.slack.sendMessage({
       channelId: SlackChannel.AllTerseInc.channelId,
       message: "New PR from " + event.sender.login + "!",

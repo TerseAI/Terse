@@ -2,48 +2,48 @@
 
 export const WorkOS = {
     /** Trigger on user creation */
-    onUserCreated(): TypedTrigger<WorkOSUserInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.USER_CREATED]) as TypedTrigger<WorkOSUserInputEvent>
+    onUserCreated(): TypedTrigger<WorkOSUserTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.USER_CREATED]) as TypedTrigger<WorkOSUserTriggerEvent>
     },
     /** Trigger on user update */
-    onUserUpdated(): TypedTrigger<WorkOSUserInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.USER_UPDATED]) as TypedTrigger<WorkOSUserInputEvent>
+    onUserUpdated(): TypedTrigger<WorkOSUserTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.USER_UPDATED]) as TypedTrigger<WorkOSUserTriggerEvent>
     },
     /** Trigger on user deletion */
-    onUserDeleted(): TypedTrigger<WorkOSUserInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.USER_DELETED]) as TypedTrigger<WorkOSUserInputEvent>
+    onUserDeleted(): TypedTrigger<WorkOSUserTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.USER_DELETED]) as TypedTrigger<WorkOSUserTriggerEvent>
     },
     /** Trigger on organization membership change */
-    onMembershipChanged(): TypedTrigger<WorkOSMembershipInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED, WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED, WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED]) as TypedTrigger<WorkOSMembershipInputEvent>
+    onMembershipChanged(): TypedTrigger<WorkOSMembershipTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED, WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED, WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED]) as TypedTrigger<WorkOSMembershipTriggerEvent>
     },
     /** Trigger when an invitation is sent */
-    onInvitationSent(): TypedTrigger<WorkOSInvitationInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_CREATED, WorkOSEventType.INVITATION_RESENT]) as TypedTrigger<WorkOSInvitationInputEvent>
+    onInvitationSent(): TypedTrigger<WorkOSInvitationTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_CREATED, WorkOSEventType.INVITATION_RESENT]) as TypedTrigger<WorkOSInvitationTriggerEvent>
     },
     /** Trigger when an invitation is first created */
-    onInvitationCreated(): TypedTrigger<WorkOSInvitationInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_CREATED]) as TypedTrigger<WorkOSInvitationInputEvent>
+    onInvitationCreated(): TypedTrigger<WorkOSInvitationTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_CREATED]) as TypedTrigger<WorkOSInvitationTriggerEvent>
     },
     /** Trigger when an invitation is resent */
-    onInvitationResent(): TypedTrigger<WorkOSInvitationInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_RESENT]) as TypedTrigger<WorkOSInvitationInputEvent>
+    onInvitationResent(): TypedTrigger<WorkOSInvitationTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_RESENT]) as TypedTrigger<WorkOSInvitationTriggerEvent>
     },
     /** Trigger on invitation accepted */
-    onInvitationAccepted(): TypedTrigger<WorkOSInvitationInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_ACCEPTED]) as TypedTrigger<WorkOSInvitationInputEvent>
+    onInvitationAccepted(): TypedTrigger<WorkOSInvitationTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_ACCEPTED]) as TypedTrigger<WorkOSInvitationTriggerEvent>
     },
     /** Trigger when an invitation is revoked */
-    onInvitationRevoked(): TypedTrigger<WorkOSInvitationInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_REVOKED]) as TypedTrigger<WorkOSInvitationInputEvent>
+    onInvitationRevoked(): TypedTrigger<WorkOSInvitationTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.INVITATION_REVOKED]) as TypedTrigger<WorkOSInvitationTriggerEvent>
     },
     /** Trigger on organization creation */
-    onOrganizationCreated(): TypedTrigger<WorkOSOrganizationInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.ORGANIZATION_CREATED]) as TypedTrigger<WorkOSOrganizationInputEvent>
+    onOrganizationCreated(): TypedTrigger<WorkOSOrganizationTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", [WorkOSEventType.ORGANIZATION_CREATED]) as TypedTrigger<WorkOSOrganizationTriggerEvent>
     },
     /** Trigger on specific WorkOS event types */
-    trigger(opts?: { eventTypes?: WorkOSEventType[] }): TypedTrigger<WorkOSInputEvent | WorkOSUserInputEvent | WorkOSMembershipInputEvent | WorkOSInvitationInputEvent | WorkOSOrganizationInputEvent> {
-        return new WorkOSInputConfig("{{escape id}}", opts?.eventTypes) as TypedTrigger<WorkOSInputEvent | WorkOSUserInputEvent | WorkOSMembershipInputEvent | WorkOSInvitationInputEvent | WorkOSOrganizationInputEvent>
+    trigger(opts?: { eventTypes?: WorkOSEventType[] }): TypedTrigger<WorkOSTriggerEvent | WorkOSUserTriggerEvent | WorkOSMembershipTriggerEvent | WorkOSInvitationTriggerEvent | WorkOSOrganizationTriggerEvent> {
+        return new WorkOSInputConfig("{{escape id}}", opts?.eventTypes) as TypedTrigger<WorkOSTriggerEvent | WorkOSUserTriggerEvent | WorkOSMembershipTriggerEvent | WorkOSInvitationTriggerEvent | WorkOSOrganizationTriggerEvent>
     },
     /** Use in `skills[]` */
     skill(): TypedSkill<{{{skillToolType}}}> {

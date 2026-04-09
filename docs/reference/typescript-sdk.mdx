@@ -15,8 +15,8 @@ Import these from `terse-sdk`:
 
 - `Terse`: the SDK client
 - `TerseAgent`: the runtime object inside `onTrigger`
-- `InputEvent`: the base event interface
-- Specific event types: `AttioRecordInputEvent`, `ScheduleCronInputEvent`, `ScheduleIntervalInputEvent`, `ManualInputEvent`
+- `TriggerEvent`: the base event interface
+- Specific event types: `GitHubTriggerEvent`, `GitHubPullRequestTriggerEvent`, `CronTriggerEvent`, `ManualSampleTriggerEvent`
 
 ## `Terse`
 
@@ -49,7 +49,7 @@ await client.createJob({
     Apollo.skill(),
     Slack.skill({ channel: SlackChannel.DealDesk }),
   ],
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
     // workflow logic
   },
 })
@@ -172,9 +172,9 @@ await client.createJob({
     Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }),
     Slack.skill({ channel: SlackChannel.DealDesk }),
   ],
-  filter: (event: AttioRecordInputEvent) =>
+  filter: (event: TriggerEvent) =>
     event.record.values.stage === "contract-sent",
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
     await agent.tools.slack.sendMessage({
       channelId: SlackChannel.DealDesk.channelId,
       message: `Contract sent for ${event.record.values.company_name}.`,
@@ -197,7 +197,7 @@ await client.createJob({
     Slack.skill({ channel: SlackChannel.DealDesk }),
   ],
   toolApprovals: ["attio.updateRecord", "slack.sendMessage"],
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
     const company = await agent.tools.apollo.enrichCompany({
       domain: event.record.values.company_domain,
     })
@@ -235,13 +235,13 @@ Event typing depends on the trigger.
 
 | Trigger source | Event type |
 | --- | --- |
-| Attio record events | `AttioRecordInputEvent` |
+| Attio record events | `TriggerEvent` |
 | Slack actions | Typed Slack action payloads |
-| Scheduled cron triggers | `ScheduleCronInputEvent` |
-| Scheduled interval triggers | `ScheduleIntervalInputEvent` |
-| Manual trigger | `ManualInputEvent` |
+| Scheduled cron triggers | `CronTriggerEvent` |
+| Scheduled interval triggers | `CronTriggerEvent` |
+| Manual trigger | `ManualSampleTriggerEvent` |
 
-`InputEvent` is the common base interface. Use the most specific event type your trigger exposes.
+`TriggerEvent` is the common base interface. Use the most specific trigger event type your trigger exposes.
 
 ## Generated helpers
 
@@ -264,7 +264,7 @@ It exports:
 Use the `Http` skill to call any REST API that Terse does not have a native integration for. This is useful for enrichment providers, internal services, or any system with an HTTP API.
 
 ```ts
-import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk"
+import { TriggerEvent, Terse, TerseAgent } from "terse-sdk"
 import { Attio, AttioList, Http } from "./terse.generated"
 
 const client = new Terse()
@@ -276,7 +276,7 @@ await client.createJob({
     Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
     Http.skill(),
   ],
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
+  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
     // Call any REST API directly
     const response = await agent.tools.http.request({
       method: "GET",

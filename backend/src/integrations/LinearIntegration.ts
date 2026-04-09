@@ -2,7 +2,7 @@ import { LinearClient } from "@linear/sdk"
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { LinearTriggerEvent, LinearWebhookEventData } from "terse-types"
+import { LinearTriggerEvent, LinearWebhookPayload } from "terse-types"
 import { ConfigData, ConfigType, LinearEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "terse-types/Integrations"
@@ -30,7 +30,7 @@ import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OA
 import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
 
 export class LinearIntegrationManager
-    implements Integration<LinearIntegration, LinearWebhookEventData, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR>
+    implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR>
 {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.LINEAR
@@ -99,7 +99,7 @@ export class LinearIntegrationManager
         }))
     }
 
-    async processWebhookEvent(event: LinearWebhookEventData): Promise<void> {
+    async processWebhookEvent(event: LinearWebhookPayload): Promise<void> {
         logger.info("📥 [LINEAR INTEGRATION MANAGER] Received webhook event", {
             type: event.type,
             action: event.action,
@@ -510,7 +510,7 @@ export class LinearIntegrationManager
         for (const issue of issuesResponse.nodes) {
             const [team, state, assignee, creator] = await Promise.all([issue.team, issue.state, issue.assignee, issue.creator])
 
-            const payload: LinearWebhookEventData = {
+            const payload: LinearWebhookPayload = {
                 action: "create",
                 actor: {
                     id: creator?.id || "unknown",
@@ -624,13 +624,9 @@ export class LinearTriggerEventRuntime extends TriggerEventRuntime implements Id
     data: LinearTriggerEvent
     private integrationId: string
 
-    constructor(data: LinearWebhookEventData, integrationId: string) {
+    constructor(data: LinearWebhookPayload, integrationId: string) {
         super()
-        this.data = {
-            integrationType: IntegrationType.LINEAR,
-            eventType: `${data.type.toLowerCase()}.${data.action}` as LinearEventType,
-            ...data
-        }
+        this.data = buildLinearTriggerEvent(data)
         this.integrationId = integrationId
         this.eventType = this.data.eventType
         const dataId = (data.data as { id?: string })?.id
@@ -670,10 +666,9 @@ export class LinearTriggerEventRuntime extends TriggerEventRuntime implements Id
             subheader = `${this.data.data.identifier} - ${this.data.data.state?.name || "Unknown"}`
             source = this.data.data.team?.name || this.data.organizationId
         } else if (this.data.type === "Comment" && this.data.data) {
-            const comment = this.data.data as any // Comment events have different structure
             // Linear webhook payload includes url field at the top level for comments
             url = this.data.url
-            title = `Comment on ${comment.issueId || "Unknown Issue"}`
+            title = `Comment on ${this.data.data.issueId || "Unknown Issue"}`
             subheader = this.data.actor.name
             source = this.data.organizationId
         } else {
@@ -698,4 +693,45 @@ export class LinearTriggerEventRuntime extends TriggerEventRuntime implements Id
     getFiles(): StoredFile[] {
         return []
     }
+}
+
+function buildLinearTriggerEvent(data: LinearWebhookPayload): LinearTriggerEvent {
+    if (data.type === "Issue" && data.action === "create") {
+        return {
+            ...data,
+            integrationType: IntegrationType.LINEAR,
+            eventType: "issue.created",
+            action: "create",
+            type: "Issue"
+        }
+    }
+
+    if (data.type === "Issue" && data.action === "update") {
+        return {
+            ...data,
+            integrationType: IntegrationType.LINEAR,
+            eventType: "issue.updated",
+            action: "update",
+            type: "Issue"
+        }
+    }
+
+    if (data.type === "Comment" && data.action === "create") {
+        const commentData = data.data as Record<string, unknown>
+        return {
+            ...data,
+            integrationType: IntegrationType.LINEAR,
+            eventType: "comment.created",
+            action: "create",
+            type: "Comment",
+            data: {
+                ...commentData,
+                id: typeof commentData.id === "string" ? commentData.id : "unknown",
+                body: typeof commentData.body === "string" ? commentData.body : undefined,
+                issueId: typeof commentData.issueId === "string" ? commentData.issueId : undefined
+            }
+        }
+    }
+
+    throw new Error(`Unsupported Linear trigger event: ${data.type}.${data.action}`)
 }

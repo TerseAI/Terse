@@ -375,51 +375,65 @@ function buildWorkOSTriggerEvent(payload: WorkOSWebhookPayload): WorkOSTriggerEv
     const eventType = payload.event as WorkOSEventType
     const baseEvent = {
         integrationType: IntegrationType.WORKOS as const,
-        eventType,
         eventId: payload.id,
         createdAt: payload.created_at
     }
     const user = extractWorkOSUserFromPayload(data, eventType)
 
-    if (eventType.startsWith("user.") && user) {
-        return { ...baseEvent, user }
-    }
-    if (eventType.startsWith("organization_membership.")) {
-        return {
-            ...baseEvent,
-            membership: {
-                id: data.id,
-                userId: data.user_id,
-                organizationId: data.organization_id,
-                role: data.role,
-                status: data.status
+    switch (eventType) {
+        case WorkOSEventType.USER_CREATED:
+        case WorkOSEventType.USER_UPDATED:
+        case WorkOSEventType.USER_DELETED:
+            return {
+                ...baseEvent,
+                eventType,
+                user: user ?? buildWorkOSUserFromPayload(data, eventType)
             }
-        }
-    }
-    if (eventType === "invitation.accepted" || eventType === "invitation.created" || eventType === "invitation.resent" || eventType === "invitation.revoked") {
-        return {
-            ...baseEvent,
-            invitation: {
-                id: data.id,
-                email: data.email,
-                organizationId: data.organization_id,
-                inviterEmail: data.inviter_email,
-                state: data.state,
-                acceptedAt: data.accepted_at
-            },
-            ...(user ? { user } : {})
-        }
-    }
-    if (eventType === "organization.created") {
-        return {
-            ...baseEvent,
-            organization: {
-                id: data.id,
-                name: data.name
+        case WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED:
+        case WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED:
+        case WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED:
+            return {
+                ...baseEvent,
+                eventType,
+                membership: {
+                    id: getString(data.id) ?? "",
+                    userId: getString(data.user_id) ?? getString(data.userId) ?? "",
+                    organizationId: getString(data.organization_id) ?? getString(data.organizationId) ?? "",
+                    role: {
+                        slug: getString(getNestedRecord(data.role)?.slug) ?? ""
+                    },
+                    status: getString(data.status) ?? ""
+                }
             }
-        }
+        case WorkOSEventType.INVITATION_CREATED:
+        case WorkOSEventType.INVITATION_ACCEPTED:
+        case WorkOSEventType.INVITATION_RESENT:
+        case WorkOSEventType.INVITATION_REVOKED:
+            return {
+                ...baseEvent,
+                eventType,
+                invitation: {
+                    id: getString(data.id) ?? "",
+                    email: getString(data.email) ?? "",
+                    organizationId: getString(data.organization_id) ?? getString(data.organizationId) ?? "",
+                    inviterEmail: getString(data.inviter_email) ?? getString(data.inviterEmail),
+                    state: getString(data.state) ?? "",
+                    acceptedAt: getString(data.accepted_at) ?? getString(data.acceptedAt)
+                },
+                ...(user ? { user } : {})
+            }
+        case WorkOSEventType.ORGANIZATION_CREATED:
+            return {
+                ...baseEvent,
+                eventType,
+                organization: {
+                    id: getString(data.id) ?? "",
+                    name: getString(data.name) ?? ""
+                }
+            }
     }
-    return baseEvent
+
+    throw new Error(`Unsupported WorkOS trigger event: ${eventType}`)
 }
 
 function getNestedRecord(value: unknown): Record<string, any> | null {
@@ -446,6 +460,19 @@ function extractWorkOSUserFromPayload(data: Record<string, any>, eventType: stri
     return {
         id,
         email,
+        firstName: getString(data.first_name) || getString(data.firstName) || getString(nestedUser?.first_name) || getString(nestedUser?.firstName),
+        lastName: getString(data.last_name) || getString(data.lastName) || getString(nestedUser?.last_name) || getString(nestedUser?.lastName),
+        emailVerified: Boolean(data.email_verified ?? data.emailVerified ?? nestedUser?.email_verified ?? nestedUser?.emailVerified),
+        profilePictureUrl: getString(data.profile_picture_url) || getString(data.profilePictureUrl) || getString(nestedUser?.profile_picture_url) || getString(nestedUser?.profilePictureUrl)
+    }
+}
+
+function buildWorkOSUserFromPayload(data: Record<string, any>, eventType: string) {
+    const nestedUser = getNestedRecord(data.user)
+
+    return {
+        id: getWorkOSUserIdFromPayload(data, eventType) ?? "",
+        email: getString(data.email) || getString(nestedUser?.email) || "",
         firstName: getString(data.first_name) || getString(data.firstName) || getString(nestedUser?.first_name) || getString(nestedUser?.firstName),
         lastName: getString(data.last_name) || getString(data.lastName) || getString(nestedUser?.last_name) || getString(nestedUser?.lastName),
         emailVerified: Boolean(data.email_verified ?? data.emailVerified ?? nestedUser?.email_verified ?? nestedUser?.emailVerified),

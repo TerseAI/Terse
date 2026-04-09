@@ -144,9 +144,9 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
     const hasAnyToolNameTypes = (attio?.approvableTools.length ?? 0) > 0 || (slack?.approvableTools.length ?? 0) > 0 || (snowflake?.approvableTools.length ?? 0) > 0
     const hasAnyDeterministicTools = hasAttioTools || hasSlackTools || hasSnowflakeTools
 
-    const sdkImports = ["CronJobInputEvent", "SkillConfig", "TerseAgent as _SdkTerseAgent", "TriggerConfig"]
+    const sdkImports = ["CronTriggerEvent", "SkillConfig", "TerseAgent as _SdkTerseAgent", "TriggerConfig"]
     if (hasSlack) {
-        sdkImports.push("SlackEventType", "SlackInputEvent")
+        sdkImports.push("SlackEventType", "SlackTriggerEvent")
     }
     if (hasAttioAttrs && hasAttioTools) {
         sdkImports.push("AttioTypedQueryResult", "AttioTypedRecord", "AttioTypedUpsertResult")

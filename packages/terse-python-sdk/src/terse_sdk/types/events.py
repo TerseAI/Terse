@@ -9,8 +9,10 @@ from ._generated import (
     Commit,
     CronTriggerEvent,
     FileDiff,
-    GithubRepository,
-    GithubTriggerEvent,
+    GitHubPullRequestTriggerEvent,
+    GitHubPushTriggerEvent,
+    GitHubRepository,
+    GitHubTriggerEvent,
     GmailTriggerEvent,
     LinearTriggerEvent,
     ManualSampleTriggerEvent,
@@ -20,7 +22,6 @@ from ._generated import (
     SlackTriggerEvent,
     TriggerEvent,
     WebhookTriggerEvent,
-    WorkOSBaseTriggerEvent,
     WorkOSInvitationTriggerEvent,
     WorkOSMembershipTriggerEvent,
     WorkOSOrganizationTriggerEvent,
@@ -30,18 +31,6 @@ from ._generated import (
     WorkOSTriggerOrganization,
     WorkOSTriggerUser,
     WorkOSUserTriggerEvent,
-)
-
-TriggerEventScalar: TypeAlias = (
-    SlackTriggerEvent
-    | GithubTriggerEvent
-    | GmailTriggerEvent
-    | LinearTriggerEvent
-    | WebhookTriggerEvent
-    | WorkOSBaseTriggerEvent
-    | WorkOSTriggerEvent
-    | CronTriggerEvent
-    | ManualSampleTriggerEvent
 )
 
 
@@ -90,96 +79,89 @@ class SlackFile(TerseModel):
     original_h: int | None = None
 
 
-GithubFileDiff = FileDiff
-GithubCommit = Commit
-GithubUser = Sender
-GithubPRRef = PullRequestRef
-GithubPRData = PullRequest
-GithubEventMetadata = GithubTriggerEvent
-GithubInputEvent = GithubTriggerEvent
-SlackInputEvent = SlackTriggerEvent
-LinearInputEvent = LinearTriggerEvent
-GmailInputEvent = GmailTriggerEvent
-CronJobInputEvent = CronTriggerEvent
-TerseInputEvent = ManualSampleTriggerEvent
-WorkOSEventUser = WorkOSTriggerUser
-WorkOSEventMembership = WorkOSTriggerMembership
-WorkOSEventInvitation = WorkOSTriggerInvitation
-WorkOSEventOrganization = WorkOSTriggerOrganization
-WorkOSInputEvent = WorkOSBaseTriggerEvent | WorkOSTriggerEvent
-WorkOSEventMetadata = WorkOSBaseTriggerEvent
-WebhookInputEvent = WebhookTriggerEvent
+GitHubFileDiff = FileDiff
+GitHubCommit = Commit
+GitHubUser = Sender
+GitHubPullRequestRef = PullRequestRef
+GitHubPullRequestData = PullRequest
+
+KnownTriggerEvent: TypeAlias = (
+    SlackTriggerEvent
+    | GitHubTriggerEvent
+    | GmailTriggerEvent
+    | LinearTriggerEvent
+    | WebhookTriggerEvent
+    | WorkOSTriggerEvent
+    | CronTriggerEvent
+    | ManualSampleTriggerEvent
+)
+AnyTriggerEvent: TypeAlias = KnownTriggerEvent
 
 
-class _LegacyInputEvent(TerseModel):
+class _ManualTriggerEvent(TerseModel):
     integration_type: str
     event_type: str = "manual_sample"
 
 
-class AttioInputEvent(_LegacyInputEvent):
+class AttioTriggerEvent(_ManualTriggerEvent):
     integration_type: str = "attio"
 
 
-class DatadogInputEvent(_LegacyInputEvent):
+class DatadogTriggerEvent(_ManualTriggerEvent):
     integration_type: str = "datadog"
 
 
-class LaunchDarklyInputEvent(_LegacyInputEvent):
+class LaunchDarklyTriggerEvent(_ManualTriggerEvent):
     integration_type: str = "launchdarkly"
 
 
-class NotionInputEvent(_LegacyInputEvent):
+class NotionTriggerEvent(_ManualTriggerEvent):
     integration_type: str = "notion"
 
 
-class PosthogInputEvent(_LegacyInputEvent):
+class PosthogTriggerEvent(_ManualTriggerEvent):
     integration_type: str = "posthog"
 
 
-class SnowflakeInputEvent(_LegacyInputEvent):
+class SnowflakeTriggerEvent(_ManualTriggerEvent):
     integration_type: str = "snowflake"
 
 
-KnownInputEvent: TypeAlias = TriggerEventScalar
-AnyInputEvent: TypeAlias = TriggerEventScalar
-
 __all__ = [
-    "AnyInputEvent",
-    "AttioInputEvent",
-    "CronJobInputEvent",
-    "DatadogInputEvent",
-    "GithubCommit",
-    "GithubEventMetadata",
-    "GithubFileDiff",
-    "GithubInputEvent",
-    "GithubPRData",
-    "GithubPRRef",
-    "GithubRepository",
-    "GithubUser",
-    "GmailInputEvent",
-    "KnownInputEvent",
-    "LaunchDarklyInputEvent",
-    "LinearInputEvent",
-    "NotionInputEvent",
-    "PosthogInputEvent",
+    "AnyTriggerEvent",
+    "AttioTriggerEvent",
+    "CronTriggerEvent",
+    "DatadogTriggerEvent",
+    "GitHubCommit",
+    "GitHubFileDiff",
+    "GitHubPullRequestData",
+    "GitHubPullRequestRef",
+    "GitHubPullRequestTriggerEvent",
+    "GitHubPushTriggerEvent",
+    "GitHubRepository",
+    "GitHubTriggerEvent",
+    "GitHubUser",
+    "GmailTriggerEvent",
+    "KnownTriggerEvent",
+    "LaunchDarklyTriggerEvent",
+    "LinearTriggerEvent",
+    "NotionTriggerEvent",
+    "PosthogTriggerEvent",
     "SlackAttachment",
     "SlackAttachmentField",
     "SlackFile",
-    "SlackInputEvent",
-    "SnowflakeInputEvent",
-    "TerseInputEvent",
-    "WebhookInputEvent",
+    "SlackTriggerEvent",
+    "SnowflakeTriggerEvent",
     "TriggerEvent",
-    "WorkOSBaseTriggerEvent",
-    "WorkOSEventInvitation",
-    "WorkOSEventMembership",
-    "WorkOSEventMetadata",
-    "WorkOSEventOrganization",
-    "WorkOSEventUser",
-    "WorkOSInputEvent",
+    "ManualSampleTriggerEvent",
+    "WebhookTriggerEvent",
     "WorkOSInvitationTriggerEvent",
     "WorkOSMembershipTriggerEvent",
     "WorkOSOrganizationTriggerEvent",
     "WorkOSTriggerEvent",
+    "WorkOSTriggerInvitation",
+    "WorkOSTriggerMembership",
+    "WorkOSTriggerOrganization",
+    "WorkOSTriggerUser",
     "WorkOSUserTriggerEvent",
 ]
