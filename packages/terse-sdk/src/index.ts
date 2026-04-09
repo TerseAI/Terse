@@ -12,7 +12,7 @@ declare const process: { env: Record<string, string | undefined> }
 
 /** Aligns with `terse` CLI (`packages/terse-cli/src/config.ts`) when `TERSE_BACKEND_URL` is unset. */
 function resolveTerseBackendUrl(): string {
-    return process.env.TERSE_BACKEND_URL || "https://cursor-for-tickets.onrender.com"
+    return process.env.TERSE_BACKEND_URL || "https://useterse.ai/api"
 }
 
 /**
@@ -184,22 +184,15 @@ export class Terse {
         try {
             // Set up the job
             const inputEvent = deserializeInputEvent(event)
-            const agent = new TerseAgent(job.skills, apiBaseUrl, session.sessionId, job.toolApprovals ?? [], runId)
-            agent.manualToolConfigs = [...job.skills, ...job.triggers]
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
-            if (createTools) {
-                Object.defineProperty(agent, "tools", { value: createTools(agent) })
-            }
+            const agent = TerseAgent.fromJob(job, { apiBaseUrl, sessionId: session.sessionId, runId })
 
-            // Fire and forget to ack job triggering to backend
-            void Promise.resolve().then(async () => {
-                if (job.filter) {
-                    const shouldRun = await job.filter(inputEvent)
-                    if (!shouldRun) return
+            if (job.filter) {
+                const shouldRun = await job.filter(inputEvent)
+                if (!shouldRun) {
+                    return { status: "ok", apiKey }
                 }
-                await job.onTrigger(inputEvent, agent)
-            })
+            }
+            await job.onTrigger(inputEvent, agent)
 
             return { status: "ok", apiKey }
         } catch (error) {
@@ -215,6 +208,22 @@ export type ApprovalRequestInfo = {
     stepId: string
     toolName: string
     arguments: string
+}
+
+export type CreateAgentForJobOptions = {
+    apiBaseUrl?: string
+    sessionId?: string
+    runId?: string
+}
+
+type JobAgentConfig = Pick<CreateJobParameters, "skills" | "triggers" | "toolApprovals">
+
+function attachGeneratedTools(agent: TerseAgent): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
+    if (createTools) {
+        Object.defineProperty(agent, "tools", { value: createTools(agent) })
+    }
 }
 
 export class TerseAgent {
@@ -239,6 +248,13 @@ export class TerseAgent {
         this.sessionId = sessionId
         this.toolApprovals = toolApprovals
         this.runId = runId
+    }
+
+    static fromJob(job: JobAgentConfig, options: CreateAgentForJobOptions = {}): TerseAgent {
+        const agent = new TerseAgent(job.skills, options.apiBaseUrl, options.sessionId, job.toolApprovals ? [...job.toolApprovals] : [], options.runId)
+        agent.manualToolConfigs = [...job.skills, ...job.triggers]
+        attachGeneratedTools(agent)
+        return agent
     }
 
     async *run(prompt: string, event?: InputEvent): AsyncGenerator<TerseAgentResult> {

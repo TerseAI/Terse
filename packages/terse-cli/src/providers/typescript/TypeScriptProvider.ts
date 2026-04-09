@@ -143,13 +143,7 @@ export class TypeScriptProvider implements LanguageProvider {
             closeSession = session.close
         }
 
-        const agent = new TerseAgent(job.skills, BACKEND_URL, sessionId, job.toolApprovals)
-        agent.manualToolConfigs = [...job.skills, ...job.triggers]
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
-        if (createTools) {
-            Object.defineProperty(agent, "tools", { value: createTools(agent) })
-        }
+        const agent = TerseAgent.fromJob(job, { apiBaseUrl: BACKEND_URL, sessionId })
 
         const isSandbox = !!process.env.TERSE_RUN_ID
         if (!isSandbox) {
