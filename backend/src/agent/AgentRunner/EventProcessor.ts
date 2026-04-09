@@ -239,14 +239,19 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
         }
 
+        console.log("WTF: Processing agent", { jobUrl: agent.prompt?.job_url, sourceCodeGcsKey: agent.prompt?.source_code_gcs_key })
+
         // SDK agents with a job_url trigger the user's own infrastructure via webhook
         if (agent.source === "SDK" && agent.prompt?.job_url) {
             return this.processWebhookAgent(agent, existingRunId)
         }
 
         // SDK agents run in a Modal sandbox instead of the normal agent pipeline
-        if (agent.source === "SDK" && agent.prompt?.source_code_gcs_key) {
+        else if (agent.source === "SDK" && agent.prompt?.source_code_gcs_key) {
             return this.processSdkAgent(agent, existingRunId)
+        } else if (agent.source === "SDK") {
+            logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name, source: agent.source })
+            throw new Error(`Unknown agent source: ${agent.source}`)
         }
 
         const runId = existingRunId ?? (await this.createRunForAgent(agent))

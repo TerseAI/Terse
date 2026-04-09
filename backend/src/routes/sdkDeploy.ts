@@ -37,9 +37,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
         let gcsKey: string | undefined
         if (sourceZipBase64) {
-            const gcsKey = await uploadSourceZipToGcs(sourceZipBase64, res)
-        } else {
-            gcsKey = undefined
+            gcsKey = await uploadSourceZipToGcs(sourceZipBase64, res)
         }
 
         for (const job of jobs) {
