@@ -24,7 +24,11 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 
     if (!eventJson) {
         console.error(chalk.red("Error: --event <json> or --event-file <path> is required.\n"))
-        console.error(chalk.dim('  Usage: terse run --event \'{"integrationType":"slack","eventType":"message","channelId":"C123","userId":"U123","text":"Hello","timestamp":"1710000000.000100","teamId":"T123"}\''))
+        console.error(
+            chalk.dim(
+                '  Usage: terse run --event \'{"integrationType":"slack","eventType":"message","channelId":"C123","userId":"U123","text":"Hello","timestamp":"1710000000.000100","teamId":"T123"}\''
+            )
+        )
         console.error(chalk.dim("         terse run --event-file ./event.json"))
         console.error(chalk.dim("  Tip:   Use `terse test` to interactively pick a sample event.\n"))
         process.exit(1)

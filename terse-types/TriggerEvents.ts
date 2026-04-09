@@ -341,11 +341,7 @@ export const linearCommentCreatedTriggerEventSchema = linearTriggerEventBaseSche
 })
 export type LinearCommentCreatedTriggerEvent = z.infer<typeof linearCommentCreatedTriggerEventSchema>
 
-export const linearTriggerEventSchema = z.discriminatedUnion("eventType", [
-    linearIssueCreatedTriggerEventSchema,
-    linearIssueUpdatedTriggerEventSchema,
-    linearCommentCreatedTriggerEventSchema
-])
+export const linearTriggerEventSchema = z.discriminatedUnion("eventType", [linearIssueCreatedTriggerEventSchema, linearIssueUpdatedTriggerEventSchema, linearCommentCreatedTriggerEventSchema])
 export type LinearTriggerEvent = z.infer<typeof linearTriggerEventSchema>
 
 export const workOSTriggerUserSchema = z.object({
@@ -410,11 +406,7 @@ export const workOSUserDeletedTriggerEventSchema = workOSTriggerEventBaseSchema.
 })
 export type WorkOSUserDeletedTriggerEvent = z.infer<typeof workOSUserDeletedTriggerEventSchema>
 
-export const workOSUserTriggerEventSchema = z.discriminatedUnion("eventType", [
-    workOSUserCreatedTriggerEventSchema,
-    workOSUserUpdatedTriggerEventSchema,
-    workOSUserDeletedTriggerEventSchema
-])
+export const workOSUserTriggerEventSchema = z.discriminatedUnion("eventType", [workOSUserCreatedTriggerEventSchema, workOSUserUpdatedTriggerEventSchema, workOSUserDeletedTriggerEventSchema])
 export type WorkOSUserTriggerEvent = z.infer<typeof workOSUserTriggerEventSchema>
 
 export const workOSOrganizationMembershipCreatedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({

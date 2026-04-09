@@ -1,5 +1,5 @@
 import axios from "axios"
-import { ApiRoutes, buildRoute, type TriggerEvent } from "terse-types"
+import { ApiRoutes, type TriggerEvent, buildRoute } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -23,9 +23,9 @@ import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, R
 import { GetSentNotificationsResponse } from "terse-types/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 import {
-    type AgentTrigger,
     Agent,
     AgentTemplate,
+    type AgentTrigger,
     AgentUpdate,
     AgentsResponse,
     ApiToken,
@@ -407,9 +407,7 @@ interface BackendService {
     /**
      * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
      */
-    fetchSampleEvents(
-        triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>
-    ): Promise<{ events: TriggerEvent[] }>
+    fetchSampleEvents(triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>): Promise<{ events: TriggerEvent[] }>
 
     /**
      * Triggers an automation with a specific event payload (e.g. a sample event)
