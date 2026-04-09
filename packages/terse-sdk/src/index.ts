@@ -1,16 +1,40 @@
 import type { ConfigData } from "terse-types"
-import type { RunHistoryAction } from "terse-types"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, TriggerEvent } from "terse-types"
+import type {
+    CronTriggerEvent as BaseCronTriggerEvent,
+    GitHubPullRequestTriggerEvent as BaseGitHubPullRequestTriggerEvent,
+    GitHubPushTriggerEvent as BaseGitHubPushTriggerEvent,
+    GitHubTriggerEvent as BaseGitHubTriggerEvent,
+    GmailTriggerEvent as BaseGmailTriggerEvent,
+    LinearTriggerEvent as BaseLinearTriggerEvent,
+    ManualSampleTriggerEvent as BaseManualSampleTriggerEvent,
+    RunHistoryAction,
+    SdkAgentRunOptionsPayload as BaseSdkAgentRunOptionsPayload,
+    SdkAgentRunRequestBody,
+    SdkAgentRunResponseBody,
+    SdkAgentStreamEvent,
+    SdkApprovalDecisionRequestBody,
+    SlackTriggerEvent as BaseSlackTriggerEvent,
+    ToolInputByName,
+    ToolOutputByName,
+    TriggerEvent as BaseTriggerEvent,
+    WebhookTriggerEvent as BaseWebhookTriggerEvent,
+    WorkOSInvitationTriggerEvent as BaseWorkOSInvitationTriggerEvent,
+    WorkOSMembershipTriggerEvent as BaseWorkOSMembershipTriggerEvent,
+    WorkOSOrganizationTriggerEvent as BaseWorkOSOrganizationTriggerEvent,
+    WorkOSTriggerEvent as BaseWorkOSTriggerEvent,
+    WorkOSUserTriggerEvent as BaseWorkOSUserTriggerEvent
+} from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ApiRoutes } from "terse-types"
-import { createManualTriggerEvent, sdkAgentRunRequestBodySchema } from "terse-types"
+import { createManualTriggerEvent, debugTriggerEvent, formatTriggerEventForAgent, sdkAgentRunRequestBodySchema } from "terse-types"
 
-import type { InferEvents, InferToolApprovals, TypedSkill, TypedTrigger } from "./types.js"
+import { attachTriggerEventHelpers } from "./types.js"
+import type { InferEvents, InferToolApprovals, SDKTriggerEvent, TypedSkill, TypedTrigger } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
 // Re-export SDK-specific types
-export type { ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
+export type { ToolboxEntry, SDKTriggerEvent, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 export {
     isGitHubTriggerEvent,
     isGitHubPullRequestTriggerEvent,
@@ -21,11 +45,12 @@ export {
     isWorkOSInvitationTriggerEvent,
     isWorkOSOrganizationTriggerEvent,
     isWebhookTriggerEvent,
+    attachTriggerEventHelpers,
     deserializeTriggerEvent
 } from "./types.js"
 
 // Mock event for CLI's `terse run` command
-export const createMockTriggerEvent = (): TriggerEvent => createManualTriggerEvent({ integrationType: IntegrationType.TERSE })
+export const createMockTriggerEvent = (): SDKTriggerEvent => attachTriggerEventHelpers(createManualTriggerEvent({ integrationType: IntegrationType.TERSE }))
 
 // Re-export shared types for consumer convenience
 export {
@@ -54,32 +79,28 @@ export {
     GitHubEventType,
     LinearEventType,
     GmailEventType,
-    WorkOSEventType
+    WorkOSEventType,
+    debugTriggerEvent,
+    formatTriggerEventForAgent
 } from "terse-types"
 
-export type {
-    CronTriggerEvent,
-    GitHubPullRequestTriggerEvent,
-    GitHubPushTriggerEvent,
-    GitHubTriggerEvent,
-    GmailTriggerEvent,
-    LinearTriggerEvent,
-    ManualSampleTriggerEvent,
-    SlackTriggerEvent,
-    SdkAgentRunOptionsPayload,
-    SdkAgentRunRequestBody,
-    SdkAgentRunResponseBody,
-    SdkAgentStreamEvent,
-    ToolInputByName,
-    ToolOutputByName,
-    TriggerEvent,
-    WebhookTriggerEvent,
-    WorkOSInvitationTriggerEvent,
-    WorkOSMembershipTriggerEvent,
-    WorkOSOrganizationTriggerEvent,
-    WorkOSTriggerEvent,
-    WorkOSUserTriggerEvent
-} from "terse-types"
+export type SdkAgentRunOptionsPayload = BaseSdkAgentRunOptionsPayload
+export type TriggerEvent = SDKTriggerEvent<BaseTriggerEvent>
+export type CronTriggerEvent = SDKTriggerEvent<BaseCronTriggerEvent>
+export type GitHubPullRequestTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestTriggerEvent>
+export type GitHubPushTriggerEvent = SDKTriggerEvent<BaseGitHubPushTriggerEvent>
+export type GitHubTriggerEvent = SDKTriggerEvent<BaseGitHubTriggerEvent>
+export type GmailTriggerEvent = SDKTriggerEvent<BaseGmailTriggerEvent>
+export type LinearTriggerEvent = SDKTriggerEvent<BaseLinearTriggerEvent>
+export type ManualSampleTriggerEvent = SDKTriggerEvent<BaseManualSampleTriggerEvent>
+export type SlackTriggerEvent = SDKTriggerEvent<BaseSlackTriggerEvent>
+export type WebhookTriggerEvent = SDKTriggerEvent<BaseWebhookTriggerEvent>
+export type WorkOSInvitationTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationTriggerEvent>
+export type WorkOSMembershipTriggerEvent = SDKTriggerEvent<BaseWorkOSMembershipTriggerEvent>
+export type WorkOSOrganizationTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationTriggerEvent>
+export type WorkOSTriggerEvent = SDKTriggerEvent<BaseWorkOSTriggerEvent>
+export type WorkOSUserTriggerEvent = SDKTriggerEvent<BaseWorkOSUserTriggerEvent>
+export type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName }
 export { IntegrationType } from "terse-types"
 
 export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
@@ -145,7 +166,7 @@ export class TerseAgent {
         this.toolApprovals = toolApprovals
     }
 
-    async *run(prompt: string, event?: TriggerEvent): AsyncGenerator<TerseAgentResult> {
+    async *run(prompt: string, event?: BaseTriggerEvent): AsyncGenerator<TerseAgentResult> {
         const resolvedEvent = event ?? createMockTriggerEvent()
 
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
@@ -193,7 +214,7 @@ export class TerseAgent {
      * Runs the agent to completion and discards streamed output.
      * Useful when you only care that the run finished (or threw).
      */
-    async runAndWait(prompt: string, event?: TriggerEvent): Promise<string> {
+    async runAndWait(prompt: string, event?: BaseTriggerEvent): Promise<string> {
         for await (const chunk of this.run(prompt, event)) {
             if (chunk.type === EventType.FINAL_OUTPUT) {
                 return (chunk as FinalOutputResult).finalOutput

@@ -253,7 +253,12 @@ export const GitHubEventType = {
 export const gitHubEventTypeSchema = z.enum(GitHubEventType)
 export type GitHubEventType = z.infer<typeof gitHubEventTypeSchema>
 
-export const linearEventTypeSchema = z.enum(["issue.created", "issue.updated", "comment.created"])
+export const LinearEventType = {
+    ISSUE_CREATED: "issue.created",
+    ISSUE_UPDATED: "issue.updated",
+    COMMENT_CREATED: "comment.created"
+} as const
+export const linearEventTypeSchema = z.enum(LinearEventType)
 export type LinearEventType = z.infer<typeof linearEventTypeSchema>
 
 export const GmailEventType = {

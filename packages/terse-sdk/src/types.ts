@@ -1,4 +1,4 @@
-import { GitHubEventType, IntegrationType, WorkOSEventType, parseTriggerEvent } from "terse-types"
+import { GitHubEventType, IntegrationType, WorkOSEventType, debugTriggerEvent, formatTriggerEventForAgent, parseTriggerEvent } from "terse-types"
 import type {
     ConfigData,
     GitHubPullRequestTriggerEvent,
@@ -23,6 +23,11 @@ export interface ToolboxEntry {
     displayName: string
 }
 
+export type SDKTriggerEvent<TEvent extends TriggerEvent = TriggerEvent> = TEvent & {
+    formatForAgentRunner(): string
+    debugLog(): string
+}
+
 // ---------------------------------------------------------------------------
 // TypedTrigger – phantom-typed ConfigData for generic event inference
 // ---------------------------------------------------------------------------
@@ -31,7 +36,7 @@ export type TypedTrigger<TEvent extends TriggerEvent = TriggerEvent> = ConfigDat
     readonly __eventType?: TEvent
 }
 
-export type InferEvent<T> = T extends TypedTrigger<infer E> ? E : TriggerEvent
+export type InferEvent<T> = T extends TypedTrigger<infer E> ? SDKTriggerEvent<E> : SDKTriggerEvent
 export type InferEvents<T extends readonly unknown[]> = InferEvent<T[number]>
 
 // ---------------------------------------------------------------------------
@@ -95,6 +100,27 @@ export function isWebhookTriggerEvent(event: TriggerEvent): event is WebhookTrig
     return event.integrationType === IntegrationType.WEBHOOK && event.eventType !== "manual_sample"
 }
 
-export function deserializeTriggerEvent(value: unknown): TriggerEvent {
-    return parseTriggerEvent(value)
+export function attachTriggerEventHelpers<TEvent extends TriggerEvent>(event: TEvent): SDKTriggerEvent<TEvent> {
+    const enrichedEvent = event as SDKTriggerEvent<TEvent>
+
+    if (typeof enrichedEvent.formatForAgentRunner !== "function" || typeof enrichedEvent.debugLog !== "function") {
+        Object.defineProperties(enrichedEvent, {
+            formatForAgentRunner: {
+                value: () => formatTriggerEventForAgent(event),
+                enumerable: false,
+                configurable: true
+            },
+            debugLog: {
+                value: () => debugTriggerEvent(event),
+                enumerable: false,
+                configurable: true
+            }
+        })
+    }
+
+    return enrichedEvent
+}
+
+export function deserializeTriggerEvent(value: unknown): SDKTriggerEvent {
+    return attachTriggerEventHelpers(parseTriggerEvent(value))
 }
