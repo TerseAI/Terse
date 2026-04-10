@@ -10,8 +10,8 @@ from .runtime import (
     TerseApiError,
     TerseRuntimeError,
     clear_job_registry,
-    deserialize_input_event,
     create_sdk_trigger,
+    deserialize_input_event,
     execute_registered_job,
     get_job_registry,
 )
