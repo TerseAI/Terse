@@ -222,12 +222,7 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
 
     if (channelInput.linear_config) {
         const lc = channelInput.linear_config
-        return new LinearInputConfig(
-            integrationId,
-            lc.project_id || undefined,
-            (lc.event_types || []) as LinearEventType[],
-            lc.team_id || undefined
-        )
+        return new LinearInputConfig(integrationId, lc.project_id || undefined, (lc.event_types || []) as LinearEventType[], lc.team_id || undefined)
     }
 
     if (channelInput.github_config) {

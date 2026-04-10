@@ -138,7 +138,7 @@ export function LinearInputIntegration({ input, variant, setConfig }: InputConfi
                                         const nextEventTypes = checked
                                             ? [...(currentConfig?.eventTypes || []), eventType.value]
                                             : (currentConfig?.eventTypes || []).filter(type => type !== eventType.value)
-                                        setConfig(new LinearInputConfig(selectedOption!.value, currentConfig?.projectId, currentConfig?.projectName, nextEventTypes))
+                                        setConfig(new LinearInputConfig(selectedOption!.value, currentConfig?.projectId, nextEventTypes))
                                     }}
                                     className="mt-0.5"
                                 />
