@@ -382,9 +382,7 @@ def execute_registered_job(
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
 
-    sdk_event: SDKTrigger[AnyTrigger] = (
-        event if isinstance(event, SDKTrigger) else SDKTrigger(event, "", "")
-    )
+    sdk_event: SDKTrigger[AnyTrigger] = event if isinstance(event, SDKTrigger) else SDKTrigger(event, "", "")
 
     manual_tool_configs = [*job.skills, *job.triggers]
     runtime_agent = agent or TerseAgent(

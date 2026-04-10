@@ -21,8 +21,8 @@ from terse_sdk import (
     IntegrationType,
     MissingApiKeyError,
     RunStarted,
-    SDKTrigger,
     SdkAgentStreamEvent,
+    SDKTrigger,
     SkillConfig,
     SlackChannelType,
     SlackListChannelsToolOutput,
@@ -812,17 +812,19 @@ def test_create_sdk_trigger_from_dict() -> None:
 
 
 def test_create_sdk_trigger_from_json_string() -> None:
-    envelope = json.dumps({
-        "integrationType": "cron_job",
-        "eventType": "cron",
-        "formattedContent": "cron fmt",
-        "debugLog": "cron dbg",
-        "data": {
+    envelope = json.dumps(
+        {
             "integrationType": "cron_job",
             "eventType": "cron",
-            "inputId": "input_456",
-        },
-    })
+            "formattedContent": "cron fmt",
+            "debugLog": "cron dbg",
+            "data": {
+                "integrationType": "cron_job",
+                "eventType": "cron",
+                "inputId": "input_456",
+            },
+        }
+    )
 
     sdk = create_sdk_trigger(envelope)
 
