@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from types import ModuleType, SimpleNamespace
@@ -120,6 +121,27 @@ def test_job_registration_and_registry_clear() -> None:
     registry = get_job_registry()
     assert "demo-job" in registry
     assert registry["demo-job"].handler is demo
+
+    clear_job_registry()
+    assert get_job_registry() == {}
+
+
+def test_job_registration_multiple_registrations() -> None:
+    app = Terse()
+
+    @app.job(name="demo-job")
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
+        _ = (event, agent)
+
+    @app.job(name="demo-job2")
+    def demo2(event: CronTrigger, agent: TerseAgent) -> None:
+        _ = (event, agent)
+
+    registry = get_job_registry()
+    assert "demo-job" in registry
+    assert registry["demo-job"].handler is demo
+    assert "demo-job2" in registry
+    assert registry["demo-job2"].handler is demo2
 
     clear_job_registry()
     assert get_job_registry() == {}
@@ -877,6 +899,184 @@ def test_deserialize_input_event_matches_create_sdk_trigger() -> None:
     assert sdk.debug_log == "slack debug"
     assert sdk.text == "hello"
     assert sdk.channel_id == "C123"
+
+
+def test_create_sdk_trigger_emits_debug_logs_when_terse_debug_enabled(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TERSE_DEBUG", "1")
+    original_level = runtime_module.LOGGER.level
+
+    try:
+        with caplog.at_level(logging.DEBUG, logger="terse.sdk.runtime"):
+            create_sdk_trigger(
+                {
+                    "integrationType": "slack",
+                    "eventType": "message",
+                    "formattedContent": "Slack message",
+                    "debugLog": "slack debug",
+                    "data": {
+                        "integrationType": "slack",
+                        "eventType": "message",
+                        "channelId": "C123",
+                        "channelName": "general",
+                        "userId": "U123",
+                        "userName": "bot",
+                        "text": "hello",
+                        "timestamp": "1710000000.100000",
+                        "threadTs": None,
+                        "threadTimestamp": None,
+                        "teamId": "T1",
+                        "permalink": "https://example.com",
+                        "channelType": "channel",
+                        "blocks": None,
+                        "attachments": None,
+                        "files": None,
+                    },
+                }
+            )
+    finally:
+        runtime_module.LOGGER.setLevel(original_level)
+
+    assert "Deserialized input event slack/message" in caplog.text
+
+
+def test_serialize_run_event_preserves_nullable_fields_and_json_enum_values() -> None:
+    sdk = deserialize_input_event(
+        {
+            "integrationType": "slack",
+            "eventType": "message",
+            "formattedContent": "Slack message",
+            "debugLog": "slack debug",
+            "data": {
+                "integrationType": "slack",
+                "eventType": "message",
+                "channelId": "C123",
+                "channelName": "general",
+                "userId": "U123",
+                "userName": "bot",
+                "text": "hello",
+                "timestamp": "1710000000.100000",
+                "threadTs": None,
+                "threadTimestamp": None,
+                "teamId": "T1",
+                "permalink": "https://example.com",
+                "channelType": "channel",
+                "blocks": None,
+                "attachments": None,
+                "files": None,
+            },
+        }
+    )
+
+    serialized = runtime_module._serialize_run_event(sdk)
+
+    assert serialized["threadTs"] is None
+    assert serialized["threadTimestamp"] is None
+    assert serialized["channelType"] == "channel"
+    assert serialized["blocks"] is None
+    assert serialized["attachments"] is None
+    assert serialized["files"] is None
+
+
+def test_build_agent_run_request_body_preserves_nested_null_event_fields() -> None:
+    sdk = deserialize_input_event(
+        {
+            "integrationType": "slack",
+            "eventType": "message",
+            "formattedContent": "Slack message",
+            "debugLog": "slack debug",
+            "data": {
+                "integrationType": "slack",
+                "eventType": "message",
+                "channelId": "C123",
+                "channelName": "general",
+                "userId": "U123",
+                "userName": "bot",
+                "text": "hello",
+                "timestamp": "1710000000.100000",
+                "threadTs": None,
+                "threadTimestamp": None,
+                "teamId": "T1",
+                "permalink": "https://example.com",
+                "channelType": "channel",
+                "blocks": None,
+                "attachments": None,
+                "files": None,
+            },
+        }
+    )
+
+    request_body = runtime_module._build_agent_run_request_body(
+        prompt="hi",
+        event=sdk,
+        skills=[],
+        tool_approvals=[],
+    )
+    request_payload = runtime_module._drop_top_level_none_values(
+        request_body.model_dump(
+            by_alias=True,
+            mode="json",
+            exclude_none=False,
+        )
+    )
+
+    assert isinstance(request_payload["event"], dict)
+    assert request_payload["event"]["threadTs"] is None
+    assert request_payload["event"]["threadTimestamp"] is None
+    assert request_payload["event"]["channelType"] == "channel"
+    assert request_payload["event"]["blocks"] is None
+    assert request_payload["event"]["attachments"] is None
+    assert request_payload["event"]["files"] is None
+    assert "options" not in request_payload
+
+
+def test_build_agent_run_request_body_emits_debug_logs_when_terse_debug_enabled(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TERSE_DEBUG", "1")
+    original_level = runtime_module.LOGGER.level
+    sdk = deserialize_input_event(
+        {
+            "integrationType": "slack",
+            "eventType": "message",
+            "formattedContent": "Slack message",
+            "debugLog": "slack debug",
+            "data": {
+                "integrationType": "slack",
+                "eventType": "message",
+                "channelId": "C123",
+                "channelName": "general",
+                "userId": "U123",
+                "userName": "bot",
+                "text": "hello",
+                "timestamp": "1710000000.100000",
+                "threadTs": None,
+                "threadTimestamp": None,
+                "teamId": "T1",
+                "permalink": "https://example.com",
+                "channelType": "channel",
+                "blocks": None,
+                "attachments": None,
+                "files": None,
+            },
+        }
+    )
+
+    try:
+        with caplog.at_level(logging.DEBUG, logger="terse.sdk.runtime"):
+            runtime_module._build_agent_run_request_body(
+                prompt="hi",
+                event=sdk,
+                skills=[],
+                tool_approvals=[],
+            )
+    finally:
+        runtime_module.LOGGER.setLevel(original_level)
+
+    assert "Building /sdk/agent-run request for slack/message" in caplog.text
 
 
 def test_execute_registered_job_wraps_raw_trigger_in_sdk_trigger() -> None:

@@ -13,7 +13,7 @@ from typing import Any, TypeVar, cast
 
 import httpx
 from httpx_sse import connect_sse
-from pydantic import RootModel, ValidationError
+from pydantic import BaseModel, RootModel, ValidationError
 
 from ._http_utils import (
     _buffer_response_content,
@@ -78,6 +78,33 @@ class EventType(StrEnum):
     ACTION = "action"
 
 
+def _is_truthy_env(var_name: str) -> bool:
+    value = os.environ.get(var_name)
+    if value is None:
+        return False
+    return value.strip().lower() not in {"", "0", "false", "no", "off"}
+
+
+def _configure_debug_logging() -> None:
+    if not (_is_truthy_env("TERSE_DEBUG") or _is_truthy_env("TERSE_SDK_DEBUG")):
+        return
+
+    LOGGER.setLevel(logging.DEBUG)
+
+    if LOGGER.handlers:
+        return
+
+    root_logger = logging.getLogger()
+    if root_logger.handlers:
+        return
+
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter("[%(name)s] %(levelname)s %(message)s"))
+    LOGGER.addHandler(handler)
+    LOGGER.propagate = False
+
+
 @dataclass(frozen=True)
 class RegisteredJob:
     """A runtime job registration captured from ``@app.job``."""
@@ -103,14 +130,14 @@ class Terse:
         webhook_url: str | None = None,
         tool_approvals: Sequence[ToolApprovalT] | None = None,
     ) -> Callable[
-        [Callable[[JobEventT, TerseAgent], object]],
-        Callable[[JobEventT, TerseAgent], object],
+        [Callable[[JobEventT, TerseAgent], None]],
+        Callable[[JobEventT, TerseAgent], None],
     ]:
         """Register a job and return the original handler."""
 
         def decorator(
-            handler: Callable[[JobEventT, TerseAgent], object],
-        ) -> Callable[[JobEventT, TerseAgent], object]:
+            handler: Callable[[JobEventT, TerseAgent], None],
+        ) -> Callable[[JobEventT, TerseAgent], None]:
             _JOB_REGISTRY[name] = RegisteredJob(
                 name=name,
                 handler=handler,
@@ -178,18 +205,23 @@ class TerseAgent:
     def run(self, prompt: str, event: AnyTrigger | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
+        _configure_debug_logging()
         api_key = _require_api_key()
-        request_body = SdkAgentRunRequestBody.model_validate(
-            {
-                "prompt": prompt,
-                "event": _serialize_run_event(event or _manual_event()),
-                "skills": [
-                    _serialize_skill_config(skill).model_dump(exclude_none=True, by_alias=True) for skill in self.skills
-                ],
-                "toolApprovals": self.tool_approvals,
-            }
+        request_body = _build_agent_run_request_body(
+            prompt=prompt,
+            event=event or _manual_event(),
+            skills=self.skills,
+            tool_approvals=self.tool_approvals,
         )
-        request_payload = request_body.model_dump(exclude_none=True, by_alias=True)
+        request_payload = _drop_top_level_none_values(
+            request_body.model_dump(
+                exclude_none=False,
+                by_alias=True,
+                mode="json",
+            )
+        )
+        if request_body.event is not None and isinstance(request_payload.get("event"), dict):
+            request_payload["event"] = _strip_optional_nones(request_payload["event"], request_body.event)
         headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id)
         _debug_log_request(
             LOGGER,
@@ -349,15 +381,29 @@ def deserialize_trigger_event(
         raise TerseRuntimeError("Trigger event payload does not match the canonical schema.") from exc
 
 
-def create_sdk_trigger(serialized: SerializedEvent | Mapping[str, object] | str) -> AnyTrigger:
+def create_sdk_trigger(
+    serialized: SerializedEvent | Mapping[str, object] | str,
+) -> AnyTrigger:
     """Create an ``SDKTrigger`` from a ``SerializedEvent`` envelope."""
 
+    _configure_debug_logging()
     if isinstance(serialized, str):
         serialized = SerializedEvent.model_validate_json(serialized)
     elif isinstance(serialized, Mapping):
         serialized = SerializedEvent.model_validate(serialized)
     trigger = cast(Any, _unwrap_root_models(serialized.data))
-    return cast(AnyTrigger, SDKTrigger(trigger, serialized.formatted_content, serialized.debug_log))
+    if LOGGER.isEnabledFor(logging.DEBUG):
+        trigger_payload = _serialize_run_event(trigger)
+        LOGGER.debug(
+            "Deserialized input event %s/%s with keys=%s",
+            trigger_payload.get("integrationType"),
+            trigger_payload.get("eventType"),
+            sorted(trigger_payload.keys()),
+        )
+    return cast(
+        AnyTrigger,
+        SDKTrigger(trigger, serialized.formatted_content, serialized.debug_log),
+    )
 
 
 def deserialize_input_event(value: Mapping[str, object] | str) -> AnyTrigger:
@@ -382,7 +428,6 @@ def execute_registered_job(
     agent: TerseAgent | None = None,
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
-
     sdk_event: AnyTrigger = event if isinstance(event, SDKTrigger) else SDKTrigger(event, "", "")
 
     manual_tool_configs = [*job.skills, *job.triggers]
@@ -429,9 +474,70 @@ def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
     return None
 
 
-def _serialize_run_event(event: AnyTrigger | _RawManualSampleTrigger) -> dict[str, object]:
+def _strip_optional_nones(data: dict[str, object], model: object) -> dict[str, object]:
+    """Strip ``None`` values from fields that have defaults (Zod ``.optional()``),
+    while preserving ``null`` for required-nullable fields (Zod ``.nullable()``).
+
+    This prevents Zod validation failures when the SDK sends JSON ``null`` for
+    fields that the backend schema marks as ``.optional()`` (accepts
+    ``undefined`` but not ``null``).
+    """
+    while isinstance(model, RootModel):
+        model = model.root
+    if not isinstance(model, BaseModel):
+        return data
+
+    model_cls = type(model)
+    keys_to_drop: list[str] = []
+
+    for field_name, field_info in model_cls.model_fields.items():
+        key = field_info.alias or field_name
+        if key not in data:
+            continue
+
+        value = data[key]
+
+        if value is None and not field_info.is_required():
+            keys_to_drop.append(key)
+            continue
+
+        if isinstance(value, dict):
+            nested = getattr(model, field_name, None)
+            if nested is not None and isinstance(nested, (BaseModel, RootModel)):
+                data[key] = _strip_optional_nones(value, nested)
+        elif isinstance(value, list):
+            nested_list = getattr(model, field_name, None)
+            if isinstance(nested_list, list):
+                new_items: list[object] = []
+                for i, item in enumerate(value):
+                    if (
+                        isinstance(item, dict)
+                        and i < len(nested_list)
+                        and isinstance(nested_list[i], (BaseModel, RootModel))
+                    ):
+                        new_items.append(_strip_optional_nones(item, nested_list[i]))
+                    else:
+                        new_items.append(item)
+                data[key] = new_items
+
+    for key in keys_to_drop:
+        del data[key]
+
+    return data
+
+
+def _serialize_run_event(
+    event: AnyTrigger | _RawManualSampleTrigger,
+) -> dict[str, object]:
     raw = event.data if isinstance(event, SDKTrigger) else event
-    return raw.model_dump(exclude_none=True, by_alias=True)
+    return cast(
+        dict[str, object],
+        raw.model_dump(
+            exclude_none=False,
+            by_alias=True,
+            mode="json",
+        ),
+    )
 
 
 def _manual_event() -> _RawManualSampleTrigger:
@@ -519,3 +625,41 @@ def _require_api_key() -> str:
 
 def _run_callable(func: Callable[..., ResultT], *args: object) -> ResultT:
     return func(*args)
+
+
+def _build_agent_run_request_body(
+    *,
+    prompt: str,
+    event: AnyTrigger | _RawManualSampleTrigger,
+    skills: Sequence[SkillConfig[Any]],
+    tool_approvals: list[str] | None,
+) -> SdkAgentRunRequestBody:
+    serialized_event = _serialize_run_event(event)
+    skill_payloads = [
+        _serialize_skill_config(skill).model_dump(
+            exclude_none=True,
+            by_alias=True,
+            mode="json",
+        )
+        for skill in skills
+    ]
+    if LOGGER.isEnabledFor(logging.DEBUG):
+        LOGGER.debug(
+            "Building /sdk/agent-run request for %s/%s with event keys=%s and %d skill(s)",
+            serialized_event.get("integrationType"),
+            serialized_event.get("eventType"),
+            sorted(serialized_event.keys()),
+            len(skill_payloads),
+        )
+    return SdkAgentRunRequestBody.model_validate(
+        {
+            "prompt": prompt,
+            "event": serialized_event,
+            "skills": skill_payloads,
+            "toolApprovals": tool_approvals,
+        }
+    )
+
+
+def _drop_top_level_none_values(payload: dict[str, object]) -> dict[str, object]:
+    return {key: value for key, value in payload.items() if value is not None}

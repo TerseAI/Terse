@@ -68,7 +68,6 @@ from .events import (
     GithubTrigger,
     GitHubUser,
     GmailTrigger,
-    KnownTrigger,
     LinearCommentCreatedTrigger,
     LinearIssueCreatedTrigger,
     LinearIssueUpdatedTrigger,

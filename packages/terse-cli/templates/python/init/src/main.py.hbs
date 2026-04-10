@@ -1,15 +1,15 @@
-from terse_sdk import CronTrigger, FinalOutput, Terse
-from terse_generated import Schedule, TerseAgent
+from terse_sdk import Terse, TerseAgent
+from terse_sdk.types.events import GithubPRTrigger
+
+from terse_generated import GitHub, GitHubRepo, Slack, SlackChannel
 
 app = Terse()
 
 @app.job(
     name="{{projectName}}",
-    triggers=[Schedule.cron("0 9 * * 1")],
-    skills=[],
+    triggers=[GitHub.on_pr(repo=GitHubRepo.Terse)],
+    skills=[Slack.skill(channel=SlackChannel.AllTerseInc)],
 )
-def run_job(event: CronTrigger, agent: TerseAgent) -> None:
-    prompt = ( "Tell a joke" f"Context: {event.formatted_content}" )
-    for stream_event in agent.run(prompt, event):
-        if isinstance(stream_event, FinalOutput):
-            print(stream_event.final_output)
+def run_job(event: GithubPRTrigger, agent: TerseAgent, /) -> None:
+    prompt = f"Summarise the PR and send a message to slack: {event.formatted_content}"
+    agent.run_and_wait(prompt, event)
