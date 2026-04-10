@@ -25,7 +25,6 @@ from terse_sdk import (
     SdkAgentStreamEvent,
     SDKTrigger,
     SkillConfig,
-    SlackChannelType,
     SlackListChannelsToolOutput,
     SlackListUsersToolOutput,
     SlackReadConversationToolOutput,
@@ -49,12 +48,6 @@ from terse_sdk.types._generated import (
 )
 from terse_sdk.types._generated import (
     SlackMessageTrigger as _RawSlackMessageTrigger,
-)
-from terse_sdk.types._generated import (
-    SlackTrigger as _RawSlackTrigger,
-)
-from terse_sdk.types._generated import (
-    Trigger as _RawTrigger,
 )
 
 
@@ -102,9 +95,7 @@ class _FakeClient:
     def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
         return False
 
-    def post(
-        self, url: str, *, headers: dict[str, str], json: dict[str, object]
-    ) -> httpx.Response:
+    def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> httpx.Response:
         self.calls.append({"url": url, "headers": headers, "json": json})
         if self.response is None:
             raise AssertionError("No response configured")
@@ -297,9 +288,7 @@ def test_agent_execute_tool_includes_session_and_run_headers() -> None:
         ),
         patch("terse_sdk.runtime.httpx.Client", return_value=fake_client),
     ):
-        result = TerseAgent(session_id="session_123").execute_tool(
-            "demo_tool", {"value": 1}
-        )
+        result = TerseAgent(session_id="session_123").execute_tool("demo_tool", {"value": 1})
 
     assert result == {"ok": True}
     assert fake_client.calls[0]["headers"]["X-Terse-Session-Id"] == "session_123"
@@ -308,9 +297,7 @@ def test_agent_execute_tool_includes_session_and_run_headers() -> None:
 
 
 def test_agent_execute_tool_requires_api_key() -> None:
-    with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), pytest.raises(
-        MissingApiKeyError
-    ):
+    with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), pytest.raises(MissingApiKeyError):
         TerseAgent().execute_tool("demo_tool")
 
 
@@ -371,9 +358,7 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
         )
 
     assert seen_tools == ["slack-tools"]
-    assert [config.integration_type for config in seen_manual_tool_configs] == [
-        IntegrationType.slack
-    ]
+    assert [config.integration_type for config in seen_manual_tool_configs] == [IntegrationType.slack]
 
 
 def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> None:
@@ -393,9 +378,7 @@ def test_stream_event_exports_include_sdk_run_events() -> None:
 
 
 def test_run_started_event_supports_backend_payload() -> None:
-    event = SdkAgentStreamEvent.model_validate(
-        {"type": "run_started", "runId": "run_123"}
-    ).root
+    event = SdkAgentStreamEvent.model_validate({"type": "run_started", "runId": "run_123"}).root
 
     assert isinstance(event, RunStarted)
     assert event.run_id == "run_123"
@@ -438,9 +421,7 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
             json.dumps(
                 {
                     "type": "tool_call_completed",
-                    "toolCallCompleted": json.dumps(
-                        {"tool": "demo_tool", "status": "completed"}
-                    ),
+                    "toolCallCompleted": json.dumps({"tool": "demo_tool", "status": "completed"}),
                 }
             ),
             json.dumps({"type": "final_output", "finalOutput": "done"}),
@@ -456,9 +437,7 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         headers: dict[str, str],
         json: dict[str, object],
     ) -> _FakeEventSource:
-        captured.update(
-            {"method": method, "url": url, "headers": headers, "json": json}
-        )
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
         return stream
 
     with (
@@ -505,9 +484,7 @@ def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
         headers: dict[str, str],
         json: dict[str, object],
     ) -> _FakeEventSource:
-        captured.update(
-            {"method": method, "url": url, "headers": headers, "json": json}
-        )
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
         return stream
 
     with (
@@ -544,9 +521,7 @@ def test_agent_run_serializes_skills_as_flat_config_data() -> None:
         headers: dict[str, str],
         json: dict[str, object],
     ) -> _FakeEventSource:
-        captured.update(
-            {"method": method, "url": url, "headers": headers, "json": json}
-        )
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
         return stream
 
     with (
@@ -581,9 +556,7 @@ def test_agent_run_raises_on_failed_tool_call() -> None:
         [
             ToolCallCompleted(
                 type="tool_call_completed",
-                tool_call_completed=json.dumps(
-                    {"tool": "demo_tool", "status": "failed"}
-                ),
+                tool_call_completed=json.dumps({"tool": "demo_tool", "status": "failed"}),
             ).model_dump_json(),
             Done(type="done").model_dump_json(),
         ]
@@ -621,9 +594,7 @@ def test_agent_run_and_wait_returns_none_when_no_final_output_arrives() -> None:
 
 
 def test_agent_run_and_wait_propagates_errors() -> None:
-    with patch.object(
-        TerseAgent, "run", side_effect=TerseApiError("boom")
-    ), pytest.raises(TerseApiError):
+    with patch.object(TerseAgent, "run", side_effect=TerseApiError("boom")), pytest.raises(TerseApiError):
         TerseAgent().run_and_wait("hello")
 
 
@@ -994,9 +965,7 @@ def test_execute_registered_job_passes_sdk_trigger_through() -> None:
     )
     sdk_event = SDKTrigger(raw, "pre-formatted", "pre-debug")
 
-    execute_registered_job(
-        get_job_registry()["passthrough-test"], sdk_event, agent=TerseAgent()
-    )
+    execute_registered_job(get_job_registry()["passthrough-test"], sdk_event, agent=TerseAgent())
 
     assert len(received_events) == 1
     assert received_events[0] is sdk_event

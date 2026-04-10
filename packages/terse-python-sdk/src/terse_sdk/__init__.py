@@ -10,9 +10,9 @@ from .runtime import (
     TerseApiError,
     TerseRuntimeError,
     clear_job_registry,
+    deserialize_input_event,
     execute_registered_job,
     get_job_registry,
-    deserialize_input_event,
 )
 from .types._generated import (
     BaseTrigger,
@@ -52,6 +52,7 @@ from .types.enums import (
     ChangeEventType,
     ConfigType,
     EntityType,
+    EventType,
     GitHubEventType,
     GmailEventType,
     IntegrationType,
@@ -64,7 +65,6 @@ from .types.enums import (
     SlackEventType,
     ToolCallExecutionStatus,
     WorkOSEventType,
-    EventType,
 )
 from .types.enums import __all__ as _enums_all
 from .types.events import (
