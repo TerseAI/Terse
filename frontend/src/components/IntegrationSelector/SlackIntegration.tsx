@@ -2,7 +2,7 @@ import { useState } from "react"
 
 import { AlertTriangleIcon, Plus } from "lucide-react"
 import { isConfigComplete } from "terse-types"
-import { SlackConfig } from "terse-types"
+import { SlackConfig, SlackEventType } from "terse-types"
 import { ConfigType } from "terse-types"
 import { IntegrationType, SlackIntegration as SlackIntegrationType } from "terse-types/Integrations"
 
@@ -15,8 +15,16 @@ import { SlackConfigurationSelector } from "../SlackChannelSelector"
 import DropdownSelect from "../ui/DropdownSelect"
 import { StatusOption } from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
+import { Checkbox } from "../ui/checkbox"
+import { Label } from "../ui/label"
 
 import { InputConfigSelectorProps } from "./types"
+
+const SLACK_EVENT_TYPES: { value: SlackEventType; label: string; description: string }[] = [
+    { value: SlackEventType.MESSAGE, label: "Message", description: "A regular Slack message is posted" },
+    { value: SlackEventType.APP_MENTION, label: "App Mention", description: "The Slack app is directly mentioned" },
+    { value: SlackEventType.REACTION_ADDED, label: "Reaction Added", description: "A user adds a reaction to a message" }
+]
 
 export function SlackIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useSlackIntegrations()
@@ -40,7 +48,7 @@ export function SlackIntegration({ input, variant, setConfig }: InputConfigSelec
         const integration = integrations.find((integration: SlackIntegrationType) => integration.id === value)
         if (integration) {
             setSelectedIntegrationId(integration.id)
-            setConfig(new SlackConfig(integration.id, undefined, undefined, false, undefined))
+            setConfig(new SlackConfig(integration.id, undefined, undefined, false, undefined, currentConfig?.eventTypes || []))
         }
     }
 
@@ -146,7 +154,8 @@ export function SlackIntegration({ input, variant, setConfig }: InputConfigSelec
                                         hasChannel ? channelId : undefined,
                                         hasChannel ? agentName : undefined,
                                         hasChannel ? false : currentConfig?.listenToUserDms,
-                                        currentConfig?.userIds
+                                        currentConfig?.userIds,
+                                        currentConfig?.eventTypes
                                     )
                                     setConfig(updatedConfig)
                                 }}
@@ -156,15 +165,58 @@ export function SlackIntegration({ input, variant, setConfig }: InputConfigSelec
                                         listenToUserDms ? undefined : currentConfig?.channelId,
                                         listenToUserDms ? undefined : currentConfig?.channelName,
                                         listenToUserDms,
-                                        currentConfig?.userIds
+                                        currentConfig?.userIds,
+                                        currentConfig?.eventTypes
                                     )
                                     setConfig(updatedConfig)
                                 }}
                                 onSelectUsers={userIds => {
-                                    const updatedConfig = new SlackConfig(selectedIntegrationId, currentConfig?.channelId, currentConfig?.channelName, currentConfig?.listenToUserDms, userIds)
+                                    const updatedConfig = new SlackConfig(
+                                        selectedIntegrationId,
+                                        currentConfig?.channelId,
+                                        currentConfig?.channelName,
+                                        currentConfig?.listenToUserDms,
+                                        userIds,
+                                        currentConfig?.eventTypes
+                                    )
                                     setConfig(updatedConfig)
                                 }}
                             />
+                            <div className="mt-4 space-y-4">
+                                <div className="space-y-1">
+                                    <Label className="text-sm font-medium">Event Types</Label>
+                                    <p className="text-xs text-muted-foreground">Select the Slack events that should trigger this agent.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    {SLACK_EVENT_TYPES.map(eventType => (
+                                        <label key={eventType.value} className="flex items-start gap-3 p-3 rounded-md border border-border hover:bg-accent/50 cursor-pointer">
+                                            <Checkbox
+                                                checked={currentConfig?.eventTypes?.includes(eventType.value) || false}
+                                                onCheckedChange={checked => {
+                                                    const nextEventTypes = checked
+                                                        ? [...(currentConfig?.eventTypes || []), eventType.value]
+                                                        : (currentConfig?.eventTypes || []).filter(type => type !== eventType.value)
+                                                    setConfig(
+                                                        new SlackConfig(
+                                                            selectedIntegrationId,
+                                                            currentConfig?.channelId,
+                                                            currentConfig?.channelName,
+                                                            currentConfig?.listenToUserDms,
+                                                            currentConfig?.userIds,
+                                                            nextEventTypes
+                                                        )
+                                                    )
+                                                }}
+                                                className="mt-0.5"
+                                            />
+                                            <div className="space-y-0.5">
+                                                <div className="text-sm font-medium">{eventType.label}</div>
+                                                <div className="text-xs text-muted-foreground">{eventType.description}</div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     )
                 })()}

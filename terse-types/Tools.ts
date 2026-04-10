@@ -149,48 +149,6 @@ export const slackConversationMessageSchema = z.object({
     threadTs: z.string().optional()
 })
 
-export const jiraIssueStateSchema = z.object({
-    id: z.string(),
-    name: z.string()
-})
-
-export const jiraIssueAssigneeSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string().optional()
-})
-
-export const jiraIssueProjectRefSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    key: z.string()
-})
-
-export const jiraIssueTypeRefSchema = z.object({
-    id: z.string(),
-    name: z.string()
-})
-
-export const jiraRichDescriptionSchema = z.union([z.string(), z.record(z.string(), z.unknown())])
-
-export const jiraIssueSummarySchema = z.object({
-    id: z.string().optional(),
-    key: z.string(),
-    identifier: z.string(),
-    title: z.string().optional(),
-    description: jiraRichDescriptionSchema.optional(),
-    state: jiraIssueStateSchema.optional(),
-    priority: z.number().int().optional(),
-    assignee: jiraIssueAssigneeSchema.nullable().optional(),
-    labels: z.array(z.string()).optional(),
-    dueDate: z.string().optional(),
-    project: jiraIssueProjectRefSchema.optional(),
-    issueType: jiraIssueTypeRefSchema.optional(),
-    url: z.string().optional(),
-    createdAt: z.string().optional(),
-    updatedAt: z.string().optional()
-})
-
 export const gitHubPaginationSchema = z.object({
     page: z.number().int(),
     perPage: z.number().int(),
@@ -503,68 +461,6 @@ export const gmailDraftSummarySchema = z.object({
     is_reply: z.boolean()
 })
 
-export const confluencePageSpaceSchema = z.object({
-    id: z.union([z.string(), z.number()]),
-    key: z.string(),
-    name: z.string(),
-    type: z.string()
-})
-
-export const confluencePageVersionAuthorSchema = z.object({
-    type: z.string(),
-    username: z.string().optional(),
-    userKey: z.string().optional(),
-    accountId: z.string().optional(),
-    displayName: z.string().optional()
-})
-
-export const confluencePageVersionSchema = z.object({
-    number: z.number().int(),
-    when: z.string(),
-    message: z.string().optional(),
-    by: confluencePageVersionAuthorSchema.optional()
-})
-
-export const confluenceBodyRepresentationSchema = z.object({
-    value: z.string(),
-    representation: z.string()
-})
-
-export const confluenceBodyContentSchema = z.object({
-    storage: confluenceBodyRepresentationSchema.optional(),
-    view: confluenceBodyRepresentationSchema.optional(),
-    export_view: confluenceBodyRepresentationSchema.optional()
-})
-
-export const confluencePageRelationSchema = z.object({
-    id: z.string(),
-    title: z.string(),
-    type: z.string()
-})
-
-export const confluenceCommentPositionSchema = z.object({
-    start: z.number().int(),
-    end: z.number().int()
-})
-
-export const confluencePageQueryResultSchema = z.object({
-    page_id: z.string(),
-    title: z.string(),
-    type: z.string(),
-    status: z.string(),
-    space: confluencePageSpaceSchema.optional(),
-    version: confluencePageVersionSchema.optional(),
-    created_date: z.string().optional(),
-    last_modified: z.string().optional(),
-    url: z.string().optional(),
-    body: confluenceBodyContentSchema,
-    body_text: z.string(),
-    ancestors: z.array(confluencePageRelationSchema),
-    descendants: z.array(confluencePageRelationSchema),
-    ancestors_count: z.number().int(),
-    descendants_count: z.number().int()
-})
-
 export const posthogSeverityLevelSchema = z.enum(["error", "warn", "info", "debug"])
 
 export const posthogSessionSummarySchema = z.object({
@@ -802,55 +698,6 @@ export const slackReadConversationInputSchema = z.object({
     channelId: z.string().describe("The Slack channel ID to read (from slack_list_channels)."),
     limit: z.number().int().min(1).max(200).nullable().optional().default(50).describe("Maximum number of messages to return."),
     cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
-})
-
-export const jiraAssigneeInputSchema = z
-    .object({
-        email: z.string().describe("The assignee email")
-    })
-    .nullable()
-
-export const jiraCreateTicketInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
-    title: z.string().describe("The issue title/summary. This is required."),
-    description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
-    projectKey: z.string().describe('The Jira project key (e.g., "PROJ", "TEAM"). This is required.'),
-    issueType: z.string().nullable().optional().describe('The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")').default("Task"),
-    assignee: jiraAssigneeInputSchema.optional().describe("The assignee of the ticket"),
-    priority: z.number().int().nullable().optional().describe("The priority of the ticket (number, typically 1-5)"),
-    labels: z.array(z.string()).nullable().optional().describe("The labels for the ticket (array of label names)"),
-    dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.')
-})
-
-export const jiraUpdateTicketInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
-    issueKey: z.string().describe('The key of the Jira issue to update (e.g., "PROJ-123"). This is required.'),
-    title: z.string().nullable().optional().describe("The issue title/summary."),
-    description: z.string().nullable().optional().describe("The issue description in plain text or markdown format."),
-    status: z.string().nullable().optional().describe('The status name to transition to (e.g., "In Progress", "Done", "To Do").'),
-    assignee: jiraAssigneeInputSchema.optional().describe("The assignee of the ticket. Set to null to unassign."),
-    priority: z.number().int().nullable().optional().describe("The priority of the ticket (number, typically 1-5)."),
-    labels: z.array(z.string()).nullable().optional().describe("The labels for the ticket (array of label names). This replaces all existing labels."),
-    dueDate: z
-        .string()
-        .nullable()
-        .optional()
-        .describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.')
-})
-
-export const jiraSearchTicketInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Atlassian/Jira integration to use."),
-    jql: z.string().nullable().optional().describe("JQL (Jira Query Language) query to search for issues. If not provided, will search all issues."),
-    text: z.string().nullable().optional().describe('Text to search for in issue titles and descriptions. If provided, will be converted to JQL: text ~ "search term"'),
-    projectKey: z.string().nullable().optional().describe('Filter by Jira project key (e.g., "PROJ", "TEAM")'),
-    assigneeEmail: z.string().nullable().optional().describe("Filter by assignee email address"),
-    status: z.string().nullable().optional().describe('Filter by status name (e.g., "In Progress", "Done", "To Do")'),
-    limit: z.number().int().nullable().optional().describe("Maximum number of issues to return. Defaults to 50 if not provided."),
-    nextPageToken: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.")
 })
 
 export const searchGitHubCodeInputSchema = z.object({
@@ -1169,36 +1016,6 @@ export const gmailCreateDraftInputSchema = gmailSendEmailInputSchema.extend({
     thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new drafts.")
 })
 
-export const confluenceQueryPageInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Atlassian/Confluence integration to use."),
-    pageId: z.string().describe("The Confluence page ID to query.")
-})
-
-export const confluenceAddCommentInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Atlassian/Confluence integration to use."),
-    pageId: z.string().describe("The Confluence page ID to add a comment to."),
-    comment_text: z.string().describe("The text content of the comment to add."),
-    text_to_comment_on: z
-        .string()
-        .nullable()
-        .optional()
-        .describe(
-            "Optional: The specific text in the page that this comment refers to. If provided, the tool will try to find this text and attach the comment to it. If not provided, you must specify start_position and end_position."
-        ),
-    start_position: z
-        .number()
-        .int()
-        .nullable()
-        .optional()
-        .describe("Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided."),
-    end_position: z
-        .number()
-        .int()
-        .nullable()
-        .optional()
-        .describe("Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.")
-})
-
 export const searchPosthogSessionsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
     projectId: z.string().describe("The PostHog project ID."),
@@ -1422,37 +1239,6 @@ export const slackReadConversationTool = defineTool({
     })
 })
 
-export const jiraCreateTicketTool = defineTool({
-    name: "jira_create_ticket",
-    inputSchema: jiraCreateTicketInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        issue: jiraIssueSummarySchema
-    })
-})
-
-export const jiraUpdateTicketTool = defineTool({
-    name: "jira_update_ticket",
-    inputSchema: jiraUpdateTicketInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        issue: jiraIssueSummarySchema,
-        updatedFields: z.array(z.string())
-    })
-})
-
-export const jiraSearchTicketTool = defineTool({
-    name: "jira_search_ticket",
-    inputSchema: jiraSearchTicketInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        issues: z.array(jiraIssueSummarySchema),
-        count: z.number().int(),
-        total: z.number().int(),
-        maxResults: z.number().int(),
-        isLast: z.boolean(),
-        nextPageToken: z.string().optional(),
-        jql: z.string()
-    })
-})
-
 export const searchGitHubCodeTool = defineTool({
     name: "searchGitHubCode",
     inputSchema: searchGitHubCodeInputSchema,
@@ -1633,24 +1419,6 @@ export const gmailCreateDraftTool = defineTool({
     name: "gmail_create_draft",
     inputSchema: gmailCreateDraftInputSchema,
     outputSchema: toolOutputSuccessSchema.merge(gmailDraftSummarySchema)
-})
-
-export const confluenceQueryPageTool = defineTool({
-    name: "confluence_query_page",
-    inputSchema: confluenceQueryPageInputSchema,
-    outputSchema: toolOutputSuccessSchema.merge(confluencePageQueryResultSchema)
-})
-
-export const confluenceAddCommentTool = defineTool({
-    name: "confluence_add_comment",
-    inputSchema: confluenceAddCommentInputSchema,
-    outputSchema: toolOutputSuccessSchema.extend({
-        comment_id: z.string(),
-        comment_text: z.string(),
-        position: confluenceCommentPositionSchema,
-        text_commented_on: z.string().optional(),
-        message: z.string()
-    })
 })
 
 export const searchPosthogSessionsTool = defineTool({
@@ -2365,9 +2133,6 @@ export const ToolDefinitions = {
     [slackListChannelsTool.name]: slackListChannelsTool,
     [slackListUsersTool.name]: slackListUsersTool,
     [slackReadConversationTool.name]: slackReadConversationTool,
-    [jiraCreateTicketTool.name]: jiraCreateTicketTool,
-    [jiraUpdateTicketTool.name]: jiraUpdateTicketTool,
-    [jiraSearchTicketTool.name]: jiraSearchTicketTool,
     [searchGitHubCodeTool.name]: searchGitHubCodeTool,
     [grepGitHubCodeTool.name]: grepGitHubCodeTool,
     [readGitHubFileTool.name]: readGitHubFileTool,
@@ -2385,8 +2150,6 @@ export const ToolDefinitions = {
     [notionListUsersTool.name]: notionListUsersTool,
     [gmailSendEmailTool.name]: gmailSendEmailTool,
     [gmailCreateDraftTool.name]: gmailCreateDraftTool,
-    [confluenceQueryPageTool.name]: confluenceQueryPageTool,
-    [confluenceAddCommentTool.name]: confluenceAddCommentTool,
     [searchPosthogSessionsTool.name]: searchPosthogSessionsTool,
     [searchPosthogLogsTool.name]: searchPosthogLogsTool,
     [getPosthogSessionEventsTool.name]: getPosthogSessionEventsTool,

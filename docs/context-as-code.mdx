@@ -14,14 +14,14 @@ Without context-as-code, two things go wrong:
 
 ```ts
 // Runtime discovery on every execution
-const lists = await attio.lists.list();
-const deals = lists.find((list) => list.name === "New deals");
+const lists = await attio.lists.list()
+const deals = lists.find(list => list.name === "New deals")
 
-const channels = await slack.conversations.list();
-const alertsChannel = channels.find((channel) => channel.name === "deal-desk");
+const channels = await slack.conversations.list()
+const alertsChannel = channels.find(channel => channel.name === "deal-desk")
 
 if (!deals || !alertsChannel) {
-  throw new Error("Workspace context drifted");
+    throw new Error("Workspace context drifted")
 }
 ```
 
@@ -34,74 +34,57 @@ This adds latency, wastes tokens, and breaks when names change.
 `terse generate` solves both problems at once. It compiles your workspace context into typed code, so workflows never rediscover resources at runtime and coding agents build against real data from the start.
 
 ```ts
-import { AttioRecordInputEvent, Terse, TerseAgent } from "terse-sdk";
-import {
-  Apollo,
-  Attio,
-  AttioList,
-  Slack,
-  SlackChannel,
-} from "./terse.generated";
+import { Terse, TerseAgent, Trigger } from "terse-sdk"
 
-const client = new Terse();
+import { Apollo, Attio, AttioList, Slack, SlackChannel } from "./terse.generated"
+
+const client = new Terse()
 
 await client.createJob({
-  name: "new-deal-enrichment",
-  // This actually exists in the Attio Objects
-  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-  skills: [
-    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-    Apollo.skill(),
-    // This is a real slack channel in the workspace as well!
-    Slack.skill({ channel: SlackChannel.DealDesk }),
-  ],
-  onTrigger: async (event: AttioRecordInputEvent, agent: TerseAgent) => {
-    const enrichment = await agent.tools.apollo.enrichCompany({
-      domain: event.record.values.company_domain,
-    });
+    name: "new-deal-enrichment",
+    // This actually exists in the Attio Objects
+    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+    skills: [
+        Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
+        Apollo.skill(),
+        // This is a real slack channel in the workspace as well!
+        Slack.skill({ channel: SlackChannel.DealDesk })
+    ],
+    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+        const enrichment = await agent.tools.apollo.enrichCompany({
+            domain: event.record.values.company_domain
+        })
 
-    const prompt = [
-      "You are reviewing a new CRM deal.",
-      `Company: ${event.record.values.company_name}`,
-      `Domain: ${event.record.values.company_domain}`,
-      `Industry: ${enrichment.industry}`,
-      `Employee count: ${enrichment.employeeCount}`,
-      `Technologies: ${enrichment.technologies.join(", ")}`,
-      "Return 3 bullets and one recommended next step.",
-    ].join("\n");
+        const prompt = [
+            "You are reviewing a new CRM deal.",
+            `Company: ${event.record.values.company_name}`,
+            `Domain: ${event.record.values.company_domain}`,
+            `Industry: ${enrichment.industry}`,
+            `Employee count: ${enrichment.employeeCount}`,
+            `Technologies: ${enrichment.technologies.join(", ")}`,
+            "Return 3 bullets and one recommended next step."
+        ].join("\n")
 
-    const summary = await agent.runAndWait(prompt, event);
+        const summary = await agent.runAndWait(prompt, event)
 
-    await agent.tools.attio.updateRecord({
-      list: AttioList.Pipeline.NewDeals,
-      recordId: event.record.id,
-      fields: {
-        research_summary: summary,
-      },
-    });
-  },
-});
+        await agent.tools.attio.updateRecord({
+            list: AttioList.Pipeline.NewDeals,
+            recordId: event.record.id,
+            fields: {
+                research_summary: summary
+            }
+        })
+    }
+})
 ```
 
 ## How it works
 
 <Steps>
-  <Step title="Connect integrations">
-    Connect your CRM, enrichment provider, and messaging tools in the Terse app,
-    or run `terse integrate`.
-  </Step>
-  <Step title="Run `terse generate`">
-    Terse reads your connected integrations and their resources: lists, records,
-    channels, owners, endpoints, and more.
-  </Step>
-  <Step title="The CLI writes `src/terse.generated.ts`">
-    The generated file contains typed exports for triggers, skills,
-    deterministic tools, and workspace constants specific to your account.
-  </Step>
-  <Step title="Your workflow imports those exports">
-    You build against the generated types instead of runtime discovery. No name
-    lookups. No hardcoded IDs. No drift.
-  </Step>
+    <Step title="Connect integrations">Connect your CRM, enrichment provider, and messaging tools in the Terse app, or run `terse integrate`.</Step>
+    <Step title="Run `terse generate`">Terse reads your connected integrations and their resources: lists, records, channels, owners, endpoints, and more.</Step>
+    <Step title="The CLI writes `src/terse.generated.ts`">The generated file contains typed exports for triggers, skills, deterministic tools, and workspace constants specific to your account.</Step>
+    <Step title="Your workflow imports those exports">You build against the generated types instead of runtime discovery. No name lookups. No hardcoded IDs. No drift.</Step>
 </Steps>
 
 ## Benefits
@@ -115,10 +98,10 @@ await client.createJob({
 ## Where to go next
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Get a workflow live in under 10 minutes.
-  </Card>
-  <Card title="Hosting & Deployment" icon="cloud-upload" href="/hosting">
-    Learn how terse deploy packages and runs your code serverlessly.
-  </Card>
+    <Card title="Quickstart" icon="rocket" href="/quickstart">
+        Get a workflow live in under 10 minutes.
+    </Card>
+    <Card title="Hosting & Deployment" icon="cloud-upload" href="/hosting">
+        Learn how terse deploy packages and runs your code serverlessly.
+    </Card>
 </CardGroup>

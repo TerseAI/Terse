@@ -2,6 +2,7 @@ import { LinearClient } from "@linear/sdk"
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
+import { LinearTrigger, LinearWebhookPayload } from "terse-types"
 import { ConfigData, ConfigType, LinearEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "terse-types/Integrations"
@@ -19,15 +20,14 @@ import { SecretField, getSecret, storeSecret } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
-import { LinearWebhookPayload } from "../utility/LinearWebhookPayload"
 import { createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class LinearIntegrationManager
     implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR>
@@ -137,7 +137,7 @@ export class LinearIntegrationManager
             }
             try {
                 await runWithUserContext(user, async () => {
-                    const linearEvent = new LinearEvent(event, integration.id)
+                    const linearEvent = new LinearTriggerRuntime(event, integration.id)
                     const eventProcessor = new EventProcessor(linearEvent, user)
                     await eventProcessor.process()
                 })
@@ -482,7 +482,7 @@ export class LinearIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.LINEAR_INPUT) {
             return []
         }
@@ -506,7 +506,7 @@ export class LinearIntegrationManager
             orderBy: "updatedAt" as any
         })
 
-        const events: InputEvent[] = []
+        const events: TriggerRuntime[] = []
         for (const issue of issuesResponse.nodes) {
             const [team, state, assignee, creator] = await Promise.all([issue.team, issue.state, issue.assignee, issue.creator])
 
@@ -561,7 +561,7 @@ export class LinearIntegrationManager
                 webhookTimestamp: Date.now(),
                 webhookId: "sample"
             }
-            events.push(new LinearEvent(payload, integrationId))
+            events.push(new LinearTriggerRuntime(payload, integrationId))
         }
         return events
     }
@@ -616,96 +616,19 @@ export async function validateLinearProjectExists(integrationId: string, project
     }
 }
 
-export class LinearEvent extends InputEvent implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.LINEAR
-    readonly eventType: LinearEventType
+export class LinearTriggerRuntime extends TriggerRuntime<LinearTrigger> implements Identifiable {
+    readonly integrationType = IntegrationType.LINEAR
     entityType = HydratorType.LINEAR_EVENT
     entityId: string
-    data: LinearWebhookPayload
+    data: LinearTrigger
     private integrationId: string
 
     constructor(data: LinearWebhookPayload, integrationId: string) {
         super()
-        this.data = data
+        this.data = buildLinearTrigger(data)
         this.integrationId = integrationId
-        this.eventType = `${data.type.toLowerCase()}.${data.action}` as LinearEventType
         const dataId = (data.data as { id?: string })?.id
         this.entityId = `${integrationId}:${dataId ?? "unknown"}`
-    }
-
-    formatForAgentRunner(): string {
-        const indentMultiline = (text: string): string =>
-            text
-                .split("\n")
-                .map(line => `        ${line}`)
-                .join("\n")
-
-        const sections: string[] = []
-
-        // Event summary
-        sections.push(`Incoming Linear ${this.data.type} Event`)
-        sections.push(`Action: ${this.data.action}`)
-        sections.push(`Actor: ${this.data.actor.name} (${this.data.actor.email})`)
-        sections.push(`Created: ${this.data.createdAt}`)
-
-        // Format based on event type
-        if (this.data.type === "Issue" && this.data.data) {
-            const issue = this.data.data
-            const issueSections: string[] = []
-
-            issueSections.push(`Issue: ${issue.identifier} - ${issue.title}`)
-            if (issue.description) {
-                issueSections.push(`Description:\n${indentMultiline(issue.description)}`)
-            }
-            issueSections.push(`Priority: ${issue.priorityLabel || issue.priority}`)
-            issueSections.push(`State: ${issue.state?.name || "Unknown"}`)
-            issueSections.push(`Team: ${issue.team?.name || "Unknown"}`)
-
-            if (issue.assignee) {
-                issueSections.push(`Assignee: ${issue.assignee.name}`)
-            }
-
-            if (issue.labels && issue.labels.length > 0) {
-                const labelNames = issue.labels.map((l: any) => l.name || l).join(", ")
-                issueSections.push(`Labels: ${labelNames}`)
-            }
-
-            if (issue.url) {
-                issueSections.push(`URL: ${issue.url}`)
-            }
-
-            sections.push(issueSections.join("\n"))
-        } else if (this.data.type === "Comment" && this.data.data) {
-            const comment = this.data.data as any // Comment events have different structure
-            const commentSections: string[] = []
-
-            commentSections.push(`Comment on Issue: ${comment.issueId || "Unknown"}`)
-            if (comment.body) {
-                commentSections.push(`Comment:\n${indentMultiline(comment.body)}`)
-            }
-
-            sections.push(commentSections.join("\n"))
-        } else {
-            // Generic event data
-            sections.push(`Event Data:\n${indentMultiline(JSON.stringify(this.data.data, null, 2))}`)
-        }
-
-        // Organization context
-        if (this.data.organizationId) {
-            sections.push(`Organization ID: ${this.data.organizationId}`)
-        }
-
-        return sections.join("\n\n")
-    }
-
-    debugLog(): string {
-        if (this.data.type === "Issue" && this.data.data) {
-            return `Linear ${this.data.type} Event: ${this.data.data.identifier} - ${this.data.data.title} (${this.data.action})`
-        } else if (this.data.type === "Comment" && this.data.data) {
-            const comment = this.data.data as any // Comment events have different structure
-            return `Linear ${this.data.type} Event: Comment on issue ${comment.issueId || "Unknown"} (${this.data.action})`
-        }
-        return `Linear ${this.data.type} Event: ${this.data.action}`
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -718,9 +641,14 @@ export class LinearEvent extends InputEvent implements Identifiable {
         if (agentTrigger.config_type !== InputConfigType.LINEAR) {
             return false
         }
-
-        // Since we don't filter for a team at the moment, nothing else to check
-        return true
+        if (agentTrigger.integration_id !== this.integrationId) {
+            return false
+        }
+        const linearConfig = agentTrigger.linear_config
+        if (!linearConfig || !linearConfig.event_types || linearConfig.event_types.length === 0) {
+            return false
+        }
+        return !linearConfig.event_types || linearConfig.event_types.length === 0 || linearConfig.event_types.includes(this.data.eventType)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
@@ -741,10 +669,9 @@ export class LinearEvent extends InputEvent implements Identifiable {
             subheader = `${this.data.data.identifier} - ${this.data.data.state?.name || "Unknown"}`
             source = this.data.data.team?.name || this.data.organizationId
         } else if (this.data.type === "Comment" && this.data.data) {
-            const comment = this.data.data as any // Comment events have different structure
             // Linear webhook payload includes url field at the top level for comments
             url = this.data.url
-            title = `Comment on ${comment.issueId || "Unknown Issue"}`
+            title = `Comment on ${this.data.data.issueId || "Unknown Issue"}`
             subheader = this.data.actor.name
             source = this.data.organizationId
         } else {
@@ -769,4 +696,45 @@ export class LinearEvent extends InputEvent implements Identifiable {
     getFiles(): StoredFile[] {
         return []
     }
+}
+
+function buildLinearTrigger(data: LinearWebhookPayload): LinearTrigger {
+    if (data.type === "Issue" && data.action === "create") {
+        return {
+            ...data,
+            integrationType: IntegrationType.LINEAR,
+            eventType: "issue.created",
+            action: "create",
+            type: "Issue"
+        }
+    }
+
+    if (data.type === "Issue" && data.action === "update") {
+        return {
+            ...data,
+            integrationType: IntegrationType.LINEAR,
+            eventType: "issue.updated",
+            action: "update",
+            type: "Issue"
+        }
+    }
+
+    if (data.type === "Comment" && data.action === "create") {
+        const commentData = data.data as Record<string, unknown>
+        return {
+            ...data,
+            integrationType: IntegrationType.LINEAR,
+            eventType: "comment.created",
+            action: "create",
+            type: "Comment",
+            data: {
+                ...commentData,
+                id: typeof commentData.id === "string" ? commentData.id : "unknown",
+                body: typeof commentData.body === "string" ? commentData.body : undefined,
+                issueId: typeof commentData.issueId === "string" ? commentData.issueId : undefined
+            }
+        }
+    }
+
+    throw new Error(`Unsupported Linear trigger event: ${data.type}.${data.action}`)
 }

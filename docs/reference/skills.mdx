@@ -14,15 +14,15 @@ Read-only access to repositories.
 skills: [GitHub.skill({ repos: [Repos.MyOrg.MyRepo] })]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `search_code` | Search code across repositories | Read |
-| `grep_code` | Grep-like code search | Read |
-| `read_file` | Read file contents | Read |
-| `list_directory` | List directory contents | Read |
-| `list_pull_requests` | List pull requests | Read |
-| `list_commits` | List commits | Read |
-| `summarize_pull_request_diff` | Summarize PR changes | Read |
+| Tool                          | Description                     | Access |
+| ----------------------------- | ------------------------------- | ------ |
+| `search_code`                 | Search code across repositories | Read   |
+| `grep_code`                   | Grep-like code search           | Read   |
+| `read_file`                   | Read file contents              | Read   |
+| `list_directory`              | List directory contents         | Read   |
+| `list_pull_requests`          | List pull requests              | Read   |
+| `list_commits`                | List commits                    | Read   |
+| `summarize_pull_request_diff` | Summarize PR changes            | Read   |
 
 ## Slack
 
@@ -32,12 +32,12 @@ Send messages and read conversations.
 skills: [Slack.skill({ channel: SlackChannel.Engineering })]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `slack_send_message` | Send messages to channels or DMs | Write |
-| `slack_list_users` | List workspace users | Read |
-| `slack_list_channels` | List channels | Read |
-| `slack_read_conversation` | Read conversation history | Read |
+| Tool                      | Description                      | Access |
+| ------------------------- | -------------------------------- | ------ |
+| `slack_send_message`      | Send messages to channels or DMs | Write  |
+| `slack_list_users`        | List workspace users             | Read   |
+| `slack_list_channels`     | List channels                    | Read   |
+| `slack_read_conversation` | Read conversation history        | Read   |
 
 ## Linear
 
@@ -47,18 +47,18 @@ Create, update, and search issues.
 skills: [Linear.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `linear_search_tickets` | Search tickets | Read |
-| `linear_get_teams` | List teams | Read |
-| `linear_get_states` | Get issue states | Read |
-| `linear_get_labels` | Get available labels | Read |
-| `linear_get_projects` | List projects | Read |
-| `linear_get_users` | List team members | Read |
-| `linear_read_ticket` | Read ticket details | Read |
-| `linear_create_ticket` | Create a new ticket | Write |
-| `linear_update_ticket` | Update a ticket | Write |
-| `linear_add_comment` | Add a comment to a ticket | Write |
+| Tool                    | Description               | Access |
+| ----------------------- | ------------------------- | ------ |
+| `linear_search_tickets` | Search tickets            | Read   |
+| `linear_get_teams`      | List teams                | Read   |
+| `linear_get_states`     | Get issue states          | Read   |
+| `linear_get_labels`     | Get available labels      | Read   |
+| `linear_get_projects`   | List projects             | Read   |
+| `linear_get_users`      | List team members         | Read   |
+| `linear_read_ticket`    | Read ticket details       | Read   |
+| `linear_create_ticket`  | Create a new ticket       | Write  |
+| `linear_update_ticket`  | Update a ticket           | Write  |
+| `linear_add_comment`    | Add a comment to a ticket | Write  |
 
 ## Attio
 
@@ -68,11 +68,11 @@ Query and manage CRM records.
 skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `attio_list_objects` | List available objects | Read |
-| `attio_query_records` | Query records | Read |
-| `attio_upsert_record` | Create or update a record | Write |
+| Tool                  | Description               | Access |
+| --------------------- | ------------------------- | ------ |
+| `attio_list_objects`  | List available objects    | Read   |
+| `attio_query_records` | Query records             | Read   |
+| `attio_upsert_record` | Create or update a record | Write  |
 
 ## Notion
 
@@ -82,43 +82,16 @@ Read and write databases and pages.
 skills: [Notion.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `notion_get_schema` | Get database schema | Read |
-| `notion_query_database` | Query a database | Read |
-| `notion_query_page` | Query page content | Read |
-| `notion_list_users` | List workspace users | Read |
-| `notion_fetch_related_events` | Fetch related events | Read |
-| `notion_create_or_update_database_row` | Create or update database rows | Write |
-| `notion_create_or_update_page` | Create or update standalone pages | Write |
-| `notion_modify_blocks` | Modify page blocks | Write |
-
-## Jira
-
-Create, update, and search Jira issues.
-
-```ts
-skills: [Jira.skill()]
-```
-
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `jira_search_tickets` | Search tickets | Read |
-| `jira_create_ticket` | Create a ticket | Write |
-| `jira_update_ticket` | Update a ticket | Write |
-
-## Confluence
-
-Read and comment on Confluence pages.
-
-```ts
-skills: [Confluence.skill()]
-```
-
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `confluence_query_page` | Query page content and metadata | Read |
-| `confluence_add_comment` | Add inline comments to pages | Write |
+| Tool                                   | Description                       | Access |
+| -------------------------------------- | --------------------------------- | ------ |
+| `notion_get_schema`                    | Get database schema               | Read   |
+| `notion_query_database`                | Query a database                  | Read   |
+| `notion_query_page`                    | Query page content                | Read   |
+| `notion_list_users`                    | List workspace users              | Read   |
+| `notion_fetch_related_events`          | Fetch related events              | Read   |
+| `notion_create_or_update_database_row` | Create or update database rows    | Write  |
+| `notion_create_or_update_page`         | Create or update standalone pages | Write  |
+| `notion_modify_blocks`                 | Modify page blocks                | Write  |
 
 ## Gmail
 
@@ -128,10 +101,10 @@ Send emails and create drafts.
 skills: [Gmail.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `gmail_send_email` | Send emails or reply to threads | Write |
-| `gmail_create_draft` | Create draft emails for human review | Write |
+| Tool                 | Description                          | Access |
+| -------------------- | ------------------------------------ | ------ |
+| `gmail_send_email`   | Send emails or reply to threads      | Write  |
+| `gmail_create_draft` | Create draft emails for human review | Write  |
 
 ## Snowflake
 
@@ -141,10 +114,10 @@ Read-only SQL query execution.
 skills: [Snowflake.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `snowflake_explain_query` | Explain query execution plan | Read |
-| `snowflake_execute_query` | Execute SELECT queries (requires approval) | Read |
+| Tool                      | Description                                | Access |
+| ------------------------- | ------------------------------------------ | ------ |
+| `snowflake_explain_query` | Explain query execution plan               | Read   |
+| `snowflake_execute_query` | Execute SELECT queries (requires approval) | Read   |
 
 ## Datadog
 
@@ -154,12 +127,12 @@ Read-only access to logs and RUM events.
 skills: [Datadog.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `search_datadog_logs` | Search logs | Read |
-| `list_rum_events` | List RUM events | Read |
-| `search_rum_events` | Search RUM events | Read |
-| `aggregate_rum_events` | Aggregate RUM event data | Read |
+| Tool                   | Description              | Access |
+| ---------------------- | ------------------------ | ------ |
+| `search_datadog_logs`  | Search logs              | Read   |
+| `list_rum_events`      | List RUM events          | Read   |
+| `search_rum_events`    | Search RUM events        | Read   |
+| `aggregate_rum_events` | Aggregate RUM event data | Read   |
 
 ## PostHog
 
@@ -169,12 +142,12 @@ Read-only access to product analytics.
 skills: [PostHog.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `search_posthog_logs` | Search logs | Read |
-| `search_posthog_sessions` | Search sessions | Read |
-| `get_posthog_session_events` | Get events for a session | Read |
-| `search_posthog_events` | Search events | Read |
+| Tool                         | Description              | Access |
+| ---------------------------- | ------------------------ | ------ |
+| `search_posthog_logs`        | Search logs              | Read   |
+| `search_posthog_sessions`    | Search sessions          | Read   |
+| `get_posthog_session_events` | Get events for a session | Read   |
+| `search_posthog_events`      | Search events            | Read   |
 
 ## LaunchDarkly
 
@@ -184,10 +157,10 @@ Read-only access to feature flags.
 skills: [LaunchDarkly.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `list_launchdarkly_flags` | List feature flags | Read |
-| `get_launchdarkly_flag_details` | Get flag details | Read |
+| Tool                            | Description        | Access |
+| ------------------------------- | ------------------ | ------ |
+| `list_launchdarkly_flags`       | List feature flags | Read   |
+| `get_launchdarkly_flag_details` | Get flag details   | Read   |
 
 ## WorkOS
 
@@ -197,11 +170,11 @@ Read-only access to users and organizations.
 skills: [WorkOS.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `list_workos_users` | List users | Read |
-| `list_workos_organizations` | List organizations | Read |
-| `get_workos_user` | Get user details | Read |
+| Tool                        | Description        | Access |
+| --------------------------- | ------------------ | ------ |
+| `list_workos_users`         | List users         | Read   |
+| `list_workos_organizations` | List organizations | Read   |
+| `get_workos_user`           | Get user details   | Read   |
 
 ## Terse (built-in)
 
@@ -211,9 +184,9 @@ Web search and image tools available to all workflows.
 skills: [Terse.skill()]
 ```
 
-| Tool | Description | Access |
-| ---- | ----------- | ------ |
-| `web_search` | Search the web | Read |
-| `web_extract` | Extract and process web page content | Read |
-| `web_research` | Research and synthesize web information | Read |
-| `edit_image` | Edit and manipulate images | Read |
+| Tool           | Description                             | Access |
+| -------------- | --------------------------------------- | ------ |
+| `web_search`   | Search the web                          | Read   |
+| `web_extract`  | Extract and process web page content    | Read   |
+| `web_research` | Research and synthesize web information | Read   |
+| `edit_image`   | Edit and manipulate images              | Read   |

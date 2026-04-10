@@ -1,5 +1,5 @@
 import { AlertTriangleIcon, Plus } from "lucide-react"
-import { ConfigType, LinearInputConfig } from "terse-types"
+import { ConfigType, LinearEventType, LinearInputConfig } from "terse-types"
 import { IntegrationType, LinearIntegration as LinearIntegrationType } from "terse-types/Integrations"
 
 import { useLinearIntegrations } from "@/hooks/api/useLinearIntegrations"
@@ -9,8 +9,16 @@ import { useOAuthConnection } from "@/hooks/useOAuthConnection"
 import { IconForConfigType } from "../../pages/Agents/components/Integration"
 import DropdownSelect from "../ui/DropdownSelect"
 import { Button } from "../ui/button"
+import { Checkbox } from "../ui/checkbox"
+import { Label } from "../ui/label"
 
 import { InputConfigSelectorProps } from "./types"
+
+const LINEAR_EVENT_TYPES: { value: LinearEventType; label: string; description: string }[] = [
+    { value: LinearEventType.ISSUE_CREATED, label: "Issue Created", description: "A new Linear issue is created" },
+    { value: LinearEventType.ISSUE_UPDATED, label: "Issue Updated", description: "An existing Linear issue is updated" },
+    { value: LinearEventType.COMMENT_CREATED, label: "Comment Created", description: "A comment is added to a Linear issue" }
+]
 
 export function LinearInputIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useLinearIntegrations()
@@ -22,7 +30,7 @@ export function LinearInputIntegration({ input, variant, setConfig }: InputConfi
         const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value)
         if (integration) {
             // Preserve existing team and project when switching integrations
-            const linearConfig = new LinearInputConfig(integration.id, currentConfig?.projectId, currentConfig?.projectName)
+            const linearConfig = new LinearInputConfig(integration.id, currentConfig?.projectId, currentConfig?.projectName, currentConfig?.eventTypes)
             setConfig(linearConfig)
         }
     }
@@ -73,7 +81,7 @@ export function LinearInputIntegration({ input, variant, setConfig }: InputConfi
     // Card variant: compact view
     if (variant === "card") {
         const hasConfig = !!currentConfig && !!currentConfig.integrationId
-        const isComplete = hasConfig
+        const isComplete = hasConfig && (currentConfig?.eventTypes?.length ?? 0) > 0
         if (!isComplete) {
             if (!hasConfig) {
                 return (
@@ -115,6 +123,34 @@ export function LinearInputIntegration({ input, variant, setConfig }: InputConfi
                 <Plus className="w-4 h-4" />
                 {isOAuthConnecting ? "Connecting..." : "Connect Another Linear"}
             </Button>
+            {selectedOption && (
+                <div className="space-y-4 border-t border-border pt-3">
+                    <div className="space-y-1">
+                        <Label className="text-sm font-medium">Event Types</Label>
+                        <p className="text-xs text-muted-foreground">Select the Linear events that should trigger this agent.</p>
+                    </div>
+                    <div className="space-y-2">
+                        {LINEAR_EVENT_TYPES.map(eventType => (
+                            <label key={eventType.value} className="flex items-start gap-3 p-3 rounded-md border border-border hover:bg-accent/50 cursor-pointer">
+                                <Checkbox
+                                    checked={currentConfig?.eventTypes?.includes(eventType.value) || false}
+                                    onCheckedChange={checked => {
+                                        const nextEventTypes = checked
+                                            ? [...(currentConfig?.eventTypes || []), eventType.value]
+                                            : (currentConfig?.eventTypes || []).filter(type => type !== eventType.value)
+                                        setConfig(new LinearInputConfig(selectedOption!.value, currentConfig?.projectId, currentConfig?.projectName, nextEventTypes))
+                                    }}
+                                    className="mt-0.5"
+                                />
+                                <div className="space-y-0.5">
+                                    <div className="text-sm font-medium">{eventType.label}</div>
+                                    <div className="text-xs text-muted-foreground">{eventType.description}</div>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

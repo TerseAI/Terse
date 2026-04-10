@@ -1,0 +1,149 @@
+{{~#if workos}}
+
+
+# === WorkOS ===
+
+
+class WorkOS:
+    @staticmethod
+    def on_user_created() -> TriggerConfig[WorkOSUserCreatedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.user_created]),
+        )
+
+    @staticmethod
+    def on_user_updated() -> TriggerConfig[WorkOSUserUpdatedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.user_updated]),
+        )
+
+    @staticmethod
+    def on_user_deleted() -> TriggerConfig[WorkOSUserDeletedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.user_deleted]),
+        )
+
+    @staticmethod
+    def on_membership_created() -> TriggerConfig[WorkOSOrganizationMembershipCreatedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.organization_membership_created]),
+        )
+
+    @staticmethod
+    def on_membership_updated() -> TriggerConfig[WorkOSOrganizationMembershipUpdatedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.organization_membership_updated]),
+        )
+
+    @staticmethod
+    def on_membership_deleted() -> TriggerConfig[WorkOSOrganizationMembershipDeletedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.organization_membership_deleted]),
+        )
+
+    @staticmethod
+    def on_membership_changed() -> TriggerConfig[WorkOSMembershipTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(
+                eventTypes=[
+                    WorkOSEventType.organization_membership_created,
+                    WorkOSEventType.organization_membership_updated,
+                    WorkOSEventType.organization_membership_deleted,
+                ],
+            ),
+        )
+
+    @staticmethod
+    def on_invitation_sent() -> TriggerConfig[WorkOSInvitationTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(
+                eventTypes=[
+                    WorkOSEventType.invitation_created,
+                    WorkOSEventType.invitation_resent,
+                ],
+            ),
+        )
+
+    @staticmethod
+    def on_invitation_created() -> TriggerConfig[WorkOSInvitationCreatedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.invitation_created]),
+        )
+
+    @staticmethod
+    def on_invitation_resent() -> TriggerConfig[WorkOSInvitationResentTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.invitation_resent]),
+        )
+
+    @staticmethod
+    def on_invitation_accepted() -> TriggerConfig[WorkOSInvitationAcceptedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.invitation_accepted]),
+        )
+
+    @staticmethod
+    def on_invitation_revoked() -> TriggerConfig[WorkOSInvitationRevokedTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.invitation_revoked]),
+        )
+
+    @staticmethod
+    def on_organization_created() -> TriggerConfig[WorkOSOrganizationTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(eventTypes=[WorkOSEventType.organization_created]),
+        )
+
+    @staticmethod
+    def trigger(
+        *,
+        event_types: Sequence[WorkOSEventType] | None = None,
+    ) -> TriggerConfig[WorkOSTrigger]:
+        return TriggerConfig(
+            integration_id={{{workos.instanceIdRepr}}},
+            integration_type='workos',
+            config_type='workos_input',
+            config=_compact_dict(
+                eventTypes=list(event_types) if event_types is not None else None,
+            ),
+        )
+{{~/if}}

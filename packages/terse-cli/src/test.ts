@@ -1,10 +1,9 @@
 import { select } from "@inquirer/prompts"
 import chalk from "chalk"
 import ora from "ora"
-import { IntegrationType, TypedTrigger } from "terse-sdk"
-import { ConfigData } from "terse-types"
-import { ApiRoutes } from "terse-types"
-import type { SerializedEvent } from "terse-types"
+import { IntegrationType } from "terse-sdk"
+import { ApiRoutes, debugTrigger, formatTriggerForAgent } from "terse-types"
+import type { SerializedEvent, Trigger } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
@@ -54,21 +53,28 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
 
     // Add a synthetic manual trigger event for each time trigger
     for (const trigger of timeTriggers) {
-        events.push({
-            integrationType: IntegrationType.CRON_JOB,
-            formattedContent: `This is a manually triggered event for a time trigger (schedule: ${(trigger as any).cronExpression ?? "unknown"}).`,
-            debugLog: "Manual Trigger"
-        })
+        events.push(
+            serializeEvent({
+                integrationType: IntegrationType.CRON_JOB,
+                eventType: "cron",
+                inputId: trigger.integrationId,
+                isManualTrigger: true,
+                manualContext: `Manual trigger from terse test (schedule: ${(trigger as any).cronExpression ?? "unknown"})`
+            })
+        )
     }
 
     // Add a synthetic manual trigger event for each webhook trigger
-    for (const _trigger of webhookTriggers) {
-        events.push({
-            integrationType: IntegrationType.WEBHOOK,
-            formattedContent: "This is a manually triggered webhook event with an empty payload.",
-            debugLog: "Manual Webhook Trigger",
-            metadata: { body: {}, headers: {}, method: "POST" }
-        })
+    for (const trigger of webhookTriggers) {
+        events.push(
+            serializeEvent({
+                integrationType: IntegrationType.WEBHOOK,
+                eventType: "webhook",
+                body: {},
+                headers: {},
+                method: "POST"
+            })
+        )
     }
 
     if (events.length === 0) {
@@ -83,6 +89,15 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
             value: index
         }))
     })
-
     await provider.executeJob(job, events[choice], { verbose: !!verbose })
+}
+
+function serializeEvent(event: Trigger): SerializedEvent {
+    return {
+        integrationType: event.integrationType,
+        eventType: event.eventType,
+        formattedContent: formatTriggerForAgent(event),
+        debugLog: debugTrigger(event),
+        data: event
+    }
 }

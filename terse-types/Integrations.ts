@@ -5,10 +5,8 @@ export enum IntegrationType {
     GITHUB = "github",
     GMAIL = "gmail",
     LINEAR = "linear",
-    ATLASSIAN = "atlassian",
     SLACK = "slack",
     NOTION = "notion",
-    FIGMA = "figma",
     TERSE = "terse",
     POSTHOG = "posthog",
     DATADOG = "datadog",
@@ -61,22 +59,6 @@ export const SlackIntegrationMetadata = {
     description: "Send and receive messages in Slack (channels, group DMs, and DMs). Triggers can use user token to read your DMs; skills can send to channels or users with either token.",
     isInput: true,
     isOutput: true
-} as const satisfies IntegrationDetails
-
-export const FigmaIntegrationMetadata = {
-    type: IntegrationType.FIGMA,
-    name: "Figma",
-    description: "Trigger on Figma file comments (does not support file edits or design changes)",
-    isInput: true,
-    isOutput: false
-} as const satisfies IntegrationDetails
-
-export const AtlassianIntegrationMetadata = {
-    type: IntegrationType.ATLASSIAN,
-    name: "Atlassian",
-    description: "Update documents in Atlassian",
-    isInput: true,
-    isOutput: false
 } as const satisfies IntegrationDetails
 
 export const GithubIntegrationMetadata = {
@@ -165,10 +147,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.GMAIL]: GmailIntegrationMetadata,
     [IntegrationType.NOTION]: NotionIntegrationMetadata,
     [IntegrationType.LINEAR]: LinearIntegrationMetadata,
-    [IntegrationType.ATLASSIAN]: AtlassianIntegrationMetadata,
     [IntegrationType.SLACK]: SlackIntegrationMetadata,
     [IntegrationType.GITHUB]: GithubIntegrationMetadata,
-    [IntegrationType.FIGMA]: FigmaIntegrationMetadata,
     [IntegrationType.TERSE]: TerseIntegrationMetadata,
     [IntegrationType.POSTHOG]: PosthogIntegrationMetadata,
     [IntegrationType.DATADOG]: DatadogIntegrationMetadata,
@@ -201,9 +181,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.GMAIL]: NoInstallationOptions
     [IntegrationType.NOTION]: NoInstallationOptions
     [IntegrationType.LINEAR]: NoInstallationOptions
-    [IntegrationType.ATLASSIAN]: NoInstallationOptions
     [IntegrationType.GITHUB]: NoInstallationOptions
-    [IntegrationType.FIGMA]: NoInstallationOptions
     [IntegrationType.TERSE]: NoInstallationOptions
     [IntegrationType.POSTHOG]: NoInstallationOptions
     [IntegrationType.DATADOG]: NoInstallationOptions
@@ -231,27 +209,11 @@ export const GmailIntegrationSchema = IntegrationInstanceSchema.extend({
 })
 export type GmailIntegration = z.infer<typeof GmailIntegrationSchema>
 
-export const FigmaIntegrationSchema = IntegrationInstanceSchema.extend({
-    handle: z.string(),
-    figma_user_id: z.string(),
-    token_expiry: z.date()
-})
-export type FigmaIntegration = z.infer<typeof FigmaIntegrationSchema>
-
 export const NotionIntegrationSchema = IntegrationInstanceSchema.extend({
     workspaceId: z.string().optional(),
     workspaceName: z.string().optional()
 })
 export type NotionIntegration = z.infer<typeof NotionIntegrationSchema>
-
-export const AtlassianIntegrationSchema = IntegrationInstanceSchema.extend({
-    baseUrl: z.url(),
-    email: z.email(),
-    siteName: z.string().optional(),
-    projectKey: z.string().optional(),
-    projectName: z.string().optional()
-})
-export type AtlassianIntegration = z.infer<typeof AtlassianIntegrationSchema>
 
 export const GithubIntegrationSchema = IntegrationInstanceSchema.extend({
     installation_id: z.number().int(),

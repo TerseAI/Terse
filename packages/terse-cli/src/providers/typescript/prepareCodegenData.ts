@@ -1,7 +1,6 @@
 import { toolsWithIntegrationId } from "terse-types"
 
 import type {
-    AtlassianInstanceData,
     AttioAttributeData,
     AttioInstanceData,
     CodegenInput,
@@ -63,21 +62,10 @@ export interface SlackSectionContext {
     channelClass: ResourceClassContext
 }
 
-export interface FigmaSectionContext {
-    id: string
-}
-
 export interface LinearSectionContext {
     id: string
     skillToolType: string
     teamClass: ResourceClassContext
-}
-
-export interface AtlassianSectionContext {
-    id: string
-    skillToolType: string
-    jiraProjectClass: ResourceClassContext
-    confluencePageClass: ResourceClassContext
 }
 
 export interface NotionSectionContext {
@@ -165,9 +153,7 @@ export interface TemplateContext {
     github?: GitHubSectionContext
     gmail?: GmailSectionContext
     slack?: SlackSectionContext
-    figma?: FigmaSectionContext
     linear?: LinearSectionContext
-    atlassian?: AtlassianSectionContext
     notion?: NotionSectionContext
     posthog?: PosthogSectionContext
     datadog?: DatadogSectionContext
@@ -326,13 +312,7 @@ function renderAttioObjectValueShape(attributes: AttioAttributeData[], mode: "in
 }
 
 function toolIntegrationToIntegrationType(toolIntegration: string): string {
-    switch (toolIntegration) {
-        case "jira":
-        case "confluence":
-            return "atlassian"
-        default:
-            return toolIntegration
-    }
+    return toolIntegration
 }
 
 function renderStringLiteralUnion(values: string[]): string {
@@ -354,7 +334,19 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
     if (instances.length === 0) return sectionData([])
 
     const inst = instances[0]
-    const imports = ["GitHubConfig", "GitHubEventType", "TypedTrigger", "TypedSkill", "GithubPRInputEvent", "GithubPushInputEvent", "GithubInputEvent"]
+    const imports = [
+        "GitHubConfig",
+        "GitHubEventType",
+        "TypedTrigger",
+        "TypedSkill",
+        "GithubPROpenedTrigger",
+        "GithubPRMergedTrigger",
+        "GithubPRClosedTrigger",
+        "GithubPRSynchronizedTrigger",
+        "GithubPRTrigger",
+        "GithubPushTrigger",
+        "GithubTrigger"
+    ]
     const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
 
     const repositoriesWithFullName = inst.repositories.map(repo => {
@@ -408,7 +400,7 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
 
 function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDefinition[]): SectionContext<GmailSectionContext> {
     if (instances.length === 0) return sectionData([])
-    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "GmailEventType"], {
+    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType", "GmailTrigger"], {
         id: instances[0].id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "gmail")
     })
@@ -417,73 +409,54 @@ function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDe
 function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefinition[]): SectionContext<SlackSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
-    return sectionData(["SlackConfig", "SlackOutputConfig", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackMessageEvent"], {
-        id: inst.id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
-        channelClass: buildResourceClassContext(
-            "SlackChannel",
-            [
-                { classField: "channelId", type: "string", sourceField: "id" },
-                { classField: "name", type: "string", sourceField: "name" }
-            ],
-            "name",
-            inst.channels
-        )
-    })
-}
-
-function prepareFigmaSection(instances: IntegrationInstanceData[]): SectionContext<FigmaSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    return sectionData(["FigmaConfig", "FigmaEventType"], { id: instances[0].id })
+    return sectionData(
+        ["SlackAppMentionTrigger", "SlackConfig", "SlackMessageTrigger", "SlackOutputConfig", "SlackReactionAddedTrigger", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTrigger"],
+        {
+            id: inst.id,
+            skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
+            channelClass: buildResourceClassContext(
+                "SlackChannel",
+                [
+                    { classField: "channelId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" }
+                ],
+                "name",
+                inst.channels
+            )
+        }
+    )
 }
 
 function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefinition[]): SectionContext<LinearSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
-    return sectionData(["LinearInputConfig", "LinearOutputConfig", "TypedSkill", "LinearEventType"], {
-        id: inst.id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "linear"),
-        teamClass: buildResourceClassContext(
-            "LinearTeam",
-            [
-                { classField: "teamId", type: "string", sourceField: "id" },
-                { classField: "name", type: "string", sourceField: "name" },
-                { classField: "key", type: "string", sourceField: "key" }
-            ],
-            "name",
-            inst.teams
-        )
-    })
-}
-
-function prepareAtlassianSection(instances: AtlassianInstanceData[], tools: ToolDefinition[]): SectionContext<AtlassianSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
-    return sectionData(["JiraConfig", "ConfluenceConfig", "TypedSkill", "JiraEventType"], {
-        id: inst.id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "atlassian"),
-        jiraProjectClass: buildResourceClassContext(
-            "JiraProject",
-            [
-                { classField: "projectKey", type: "string", sourceField: "key" },
-                { classField: "projectId", type: "string", sourceField: "id" },
-                { classField: "name", type: "string", sourceField: "name" }
-            ],
-            "name",
-            inst.jiraProjects
-        ),
-        confluencePageClass: buildResourceClassContext(
-            "ConfluencePage",
-            [
-                { classField: "pageId", type: "string", sourceField: "id" },
-                { classField: "title", type: "string", sourceField: "title" },
-                { classField: "spaceId", type: "string", sourceField: "spaceId" },
-                { classField: "spaceName", type: "string", sourceField: "spaceName" }
-            ],
-            "title",
-            inst.confluencePages
-        )
-    })
+    return sectionData(
+        [
+            "LinearInputConfig",
+            "LinearOutputConfig",
+            "TypedSkill",
+            "TypedTrigger",
+            "LinearEventType",
+            "LinearIssueCreatedTrigger",
+            "LinearIssueUpdatedTrigger",
+            "LinearCommentCreatedTrigger",
+            "LinearTrigger"
+        ],
+        {
+            id: inst.id,
+            skillToolType: buildSkillToolTypeForIntegration(tools, "linear"),
+            teamClass: buildResourceClassContext(
+                "LinearTeam",
+                [
+                    { classField: "teamId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" },
+                    { classField: "key", type: "string", sourceField: "key" }
+                ],
+                "name",
+                inst.teams
+            )
+        }
+    )
 }
 
 function prepareNotionSection(instances: NotionInstanceData[], tools: ToolDefinition[]): SectionContext<NotionSectionContext> {
@@ -568,11 +541,21 @@ function prepareWorkOSSection(instances: IntegrationInstanceData[], tools: ToolD
             "WorkOSEventType",
             "TypedSkill",
             "TypedTrigger",
-            "WorkOSInputEvent",
-            "WorkOSUserInputEvent",
-            "WorkOSMembershipInputEvent",
-            "WorkOSInvitationInputEvent",
-            "WorkOSOrganizationInputEvent"
+            "WorkOSTrigger",
+            "WorkOSUserCreatedTrigger",
+            "WorkOSUserUpdatedTrigger",
+            "WorkOSUserDeletedTrigger",
+            "WorkOSUserTrigger",
+            "WorkOSOrganizationMembershipCreatedTrigger",
+            "WorkOSOrganizationMembershipUpdatedTrigger",
+            "WorkOSOrganizationMembershipDeletedTrigger",
+            "WorkOSMembershipTrigger",
+            "WorkOSInvitationCreatedTrigger",
+            "WorkOSInvitationAcceptedTrigger",
+            "WorkOSInvitationResentTrigger",
+            "WorkOSInvitationRevokedTrigger",
+            "WorkOSInvitationTrigger",
+            "WorkOSOrganizationTrigger"
         ],
         {
             id: instances[0].id,
@@ -658,24 +641,8 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         input.gmail.map(inst => ({ id: inst.id, displayName: inst.displayName }))
     )
     instanceMap.set(
-        "figma",
-        input.figma.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
         "linear",
         input.linear.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "jira",
-        input.atlassian.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "confluence",
-        input.atlassian.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "atlassian",
-        input.atlassian.map(inst => ({ id: inst.id, displayName: inst.displayName }))
     )
     instanceMap.set(
         "notion",
@@ -1028,7 +995,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
 }
 
 function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSectionContext> {
-    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookInputEvent", "TypedTrigger"], {
+    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookTrigger", "CronTrigger", "TypedTrigger"], {
         skillToolType: buildSkillToolTypeForIntegration(tools, "terse")
     })
 }
@@ -1039,9 +1006,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const github = prepareGitHubSection(input.github, input.tools)
     const gmail = prepareGmailSection(input.gmail, input.tools)
     const slack = prepareSlackSection(input.slack, input.tools)
-    const figma = prepareFigmaSection(input.figma)
     const linear = prepareLinearSection(input.linear, input.tools)
-    const atlassian = prepareAtlassianSection(input.atlassian, input.tools)
     const notion = prepareNotionSection(input.notion, input.tools)
     const posthog = preparePosthogSection(input.posthog, input.tools)
     const datadog = prepareDatadogSection(input.datadog, input.tools)
@@ -1052,7 +1017,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const tools = prepareToolsSection(input.tools, input)
     const system = prepareSystemSection(input.tools)
 
-    const sections = [github, gmail, slack, figma, linear, atlassian, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
+    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
 
     for (const section of sections) {
         section.imports.forEach(value => allImports.add(value))
@@ -1066,9 +1031,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         github: github.data,
         gmail: gmail.data,
         slack: slack.data,
-        figma: figma.data,
         linear: linear.data,
-        atlassian: atlassian.data,
         notion: notion.data,
         posthog: posthog.data,
         datadog: datadog.data,

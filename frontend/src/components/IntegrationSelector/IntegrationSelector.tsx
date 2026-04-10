@@ -1,13 +1,10 @@
 import { ConfigType } from "terse-types/Configs"
 
 import { AttioOutputIntegration } from "./AttioOutputIntegration"
-import { ConfluenceIntegration } from "./ConfluenceIntegration"
 import { DatadogIntegration } from "./DatadogIntegration"
-import { FigmaIntegration } from "./FigmaIntegration"
 import { GitHubIntegration } from "./GitHubIntegration"
 import { GmailIntegration } from "./GmailIntegration"
 import { GmailOutputIntegration } from "./GmailOutputIntegration"
-import { JiraIntegration } from "./JiraIntegration"
 import { LaunchDarklyIntegration } from "./LaunchDarklyIntegration"
 import { LinearInputIntegration } from "./LinearInputIntegration"
 import { LinearOutputIntegration } from "./LinearOutputIntegration"
@@ -42,20 +39,10 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
         case ConfigType.GITHUB:
             return <GitHubIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 
-        case ConfigType.FIGMA:
-            return <FigmaIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
-
         case ConfigType.LINEAR_INPUT:
             return <LinearInputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
         case ConfigType.LINEAR_OUTPUT:
             return <LinearOutputIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
-
-        case ConfigType.JIRA:
-            return <JiraIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
-
-        case ConfigType.CONFLUENCE:
-            return <ConfluenceIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
-
         case ConfigType.POSTHOG:
             return <PosthogIntegration input={props.input} variant={props.variant} setConfig={props.setConfig} />
 

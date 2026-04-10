@@ -22,15 +22,12 @@ import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./rou
 import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { getBuilderChatHistory } from "./routes/builderChat"
-import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
-import { figmaOAuthCallback, getFigmaIntegrations, handleFigmaWebhook } from "./routes/figma"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
-import { atlassianOAuthCallback, getAtlassianIntegrations, getJiraResources, handleJiraWebhook } from "./routes/jira"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { createNotificationDestination, deleteNotificationDestination, getNotificationDestinations, updateNotificationDestination } from "./routes/notificationDestinations"
@@ -221,10 +218,6 @@ app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
     handleGmailWebhook(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.FIGMA, async (req, res) => {
-    handleFigmaWebhook(req, res)
-})
-
 // Linear webhook needs raw body for signature verification
 app.use(ApiRoutes.LINEAR.WEBHOOK, express.raw({ type: "application/json" }))
 
@@ -244,11 +237,6 @@ app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, express.raw({ type:
 
 app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, async (req, res) => {
     handleWorkOSTriggerWebhook(req, res)
-})
-
-app.post(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID, async (req, res) => {
-    // Use the new webhook handler which verifies authenticity and processes the event
-    handleJiraWebhook(req, res)
 })
 
 app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, async (req, res) => {
@@ -371,32 +359,6 @@ app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, authMiddleware, async
     getGithubRepositoriesForIntegration(req, res)
 })
 
-// MARK: JIRA
-
-// MARK: ATLASSIAN
-app.get(ApiRoutes.ATLASSIAN.INTEGRATIONS, authMiddleware, async (req, res) => {
-    getAtlassianIntegrations(req, res)
-})
-
-app.get(ApiRoutes.JIRA.RESOURCES, authMiddleware, async (req, res) => {
-    getJiraResources(req, res)
-})
-
-// OAuth endpoints
-app.get(ApiRoutes.ATLASSIAN.OAUTH_CALLBACK, async (req, res) => {
-    atlassianOAuthCallback(req, res)
-})
-
-// MARK: CONFLUENCE
-
-app.get(ApiRoutes.CONFLUENCE.INTEGRATIONS, authMiddleware, async (req, res) => {
-    getConfluenceIntegrations(req, res)
-})
-
-app.get(ApiRoutes.CONFLUENCE.RESOURCES, authMiddleware, async (req, res) => {
-    getConfluenceResources(req, res)
-})
-
 // MARK: GMAIL
 app.get(ApiRoutes.GMAIL.INTEGRATIONS, authMiddleware, async (req, res) => {
     getGmailIntegrations(req, res)
@@ -438,16 +400,6 @@ app.get(ApiRoutes.ATTIO.OAUTH_CALLBACK, async (req, res) => {
 
 app.get(ApiRoutes.ATTIO.OBJECTS, authMiddleware, async (req, res) => {
     getAttioObjects(req, res)
-})
-
-// MARK: FIGMA
-
-app.get(ApiRoutes.FIGMA.INTEGRATIONS, authMiddleware, async (req, res) => {
-    getFigmaIntegrations(req, res)
-})
-
-app.get(ApiRoutes.FIGMA.OAUTH_CALLBACK, async (req, res) => {
-    figmaOAuthCallback(req, res)
 })
 
 // MARK: LINEAR

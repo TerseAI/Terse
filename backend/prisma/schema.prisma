@@ -25,10 +25,8 @@ model users {
   user_github_repositories  user_github_repositories[]
   linear_integrations       linear_integrations[]
   user_slack_integrations   user_slack_integrations[]
-  atlassian_integrations    atlassian_integrations[]
   gmail_integrations        gmail_integrations[]
   notion_integrations       notion_integrations[]
-  figma_integrations        figma_integrations[]
   automations               automations[]
   pending_approvals         pending_approvals[]
   user_github_installation  user_github_installation[]
@@ -151,29 +149,6 @@ model slack_integrations {
   processed_slack_events  processed_slack_events[]
 }
 
-model atlassian_integrations {
-  id              String   @id @default(cuid())
-  user_id         String
-  organization_id String
-  jira_user_email String // User email in Atlassian/Jira
-  base_url        String // Base URL of the Atlassian instance (e.g., https://company.atlassian.net)
-  cloud_id        String // Atlassian cloud ID for API calls
-  site_name       String? // Extracted site name from base_url
-  project_key     String? // Connection-level default project key. Can be overridden per automation via automation_jira_configs.project_key
-  project_name    String? // Connection-level default project name (display only)
-  webhook_id      String? // Webhook ID for Jira events
-  token_expiry    DateTime // Token expiration time
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([user_id])
-  @@index([organization_id])
-  @@index([base_url, project_key])
-  @@index([token_expiry]) // For finding tokens that need refresh
-}
-
 model gmail_integrations {
   id                          String    @id @default(cuid())
   user_id                     String
@@ -238,90 +213,6 @@ model notion_integrations {
   @@index([user_id])
   @@index([organization_id])
   @@index([workspace_id])
-}
-
-model figma_integrations {
-  id              String   @id @default(cuid())
-  user_id         String
-  organization_id String
-  handle          String
-  figma_user_id   String
-  token_expiry    DateTime
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-
-  user                     users                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  processed_figma_comments processed_figma_comments[]
-  figma_comment_context    figma_comment_context[]
-  figma_webhooks           figma_webhooks[]
-
-  @@index([user_id])
-  @@index([organization_id])
-  @@index([figma_user_id])
-}
-
-// Track processed Figma comments to prevent duplicate processing
-model processed_figma_comments {
-  id                   String   @id @default(cuid())
-  figma_integration_id String
-  comment_id           String // Figma's comment ID
-  file_key             String
-  processed_at         DateTime @default(now())
-
-  figma_integration figma_integrations @relation(fields: [figma_integration_id], references: [id], onDelete: Cascade)
-
-  @@unique([figma_integration_id, comment_id]) // Prevent processing the same comment twice
-  @@index([figma_integration_id])
-  @@index([file_key])
-  @@index([processed_at])
-}
-
-// Track Figma webhooks created for automations
-// Team-level webhooks: one per team per event type per integration
-// Multiple automations can share the same team-level webhook
-model figma_webhooks {
-  id                   String   @id @default(cuid())
-  figma_integration_id String
-  webhook_id           String // Figma's webhook ID
-  team_id              String // Team ID (required for team-level webhooks)
-  endpoint_url         String // Our webhook endpoint URL
-  passcode             String // Secure passcode for webhook verification
-  event_type           String   @default("FILE_UPDATE") // Event type: FILE_COMMENT or FILE_UPDATE
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
-
-  figma_integration figma_integrations @relation(fields: [figma_integration_id], references: [id], onDelete: Cascade)
-
-  @@unique([figma_integration_id, team_id, event_type]) // One webhook per team per event type per integration
-  @@index([figma_integration_id])
-  @@index([team_id])
-  @@index([webhook_id])
-  @@index([event_type])
-}
-
-// Store enriched comment context for AI/documentation
-model figma_comment_context {
-  id                   String    @id @default(cuid())
-  figma_integration_id String
-  comment_id           String
-  file_key             String
-  node_id              String? // Node ID the comment is attached to
-  comment_data         Json // Full comment data from Figma API
-  file_metadata        Json? // File metadata (from GET /v1/files/:key/meta)
-  positioning_data     Json? // Parsed client_meta positioning data (Vector/FrameOffset/Region/etc.)
-  matched_node_ids     String[] // Array of node IDs that match the comment position
-  image_urls           Json? // Object with image URLs (e.g., { nodeImage: "...", contextImage: "...", fullFrame: "..." })
-  image_expiry         DateTime? // Images expire after 24-48 hours per Figma API
-  created_at           DateTime  @default(now())
-  updated_at           DateTime  @updatedAt
-
-  figma_integration figma_integrations @relation(fields: [figma_integration_id], references: [id], onDelete: Cascade)
-
-  @@unique([figma_integration_id, comment_id])
-  @@index([figma_integration_id])
-  @@index([file_key])
-  @@index([node_id])
-  @@index([created_at])
 }
 
 model posthog_integrations {
@@ -474,11 +365,8 @@ model automation_inputs {
   slack_config        automation_slack_configs?
   notion_config       automation_notion_configs?
   linear_config       automation_linear_configs?
-  jira_config         automation_jira_configs?
-  confluence_config   automation_confluence_configs?
   github_config       automation_github_configs?
   gmail_config        automation_gmail_configs?
-  figma_config        automation_figma_configs?
   time_trigger_config automation_time_trigger_configs?
   workos_config       automation_workos_configs?
   attio_config        automation_attio_configs?
@@ -503,14 +391,11 @@ model automation_outputs {
   slack_config         automation_slack_configs?
   notion_config        automation_notion_configs?
   linear_config        automation_linear_configs?
-  jira_config          automation_jira_configs?
-  confluence_config    automation_confluence_configs?
   github_config        automation_github_configs?
   gmail_config         automation_gmail_configs?
   posthog_config       automation_posthog_configs?
   datadog_config       automation_datadog_configs?
   launchdarkly_config  automation_launchdarkly_configs?
-  figma_config         automation_figma_configs?
   workos_output_config automation_workos_output_configs?
   attio_config         automation_attio_configs?
   snowflake_config     automation_snowflake_configs?
@@ -655,6 +540,7 @@ model automation_slack_configs {
   channel_name       String? // Channel display name (for UI, optional)
   listen_to_user_dms Boolean  @default(false) // This integration should include listening to user DMs
   user_ids           String[] // User IDs to listen to
+  event_types        String[] @default([])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -693,6 +579,7 @@ model automation_linear_configs {
   team_name    String? // Team display name (for UI, optional)
   project_id   String? // Project ID (optional - scopes to specific project)
   project_name String? // Project display name (for UI, optional)
+  event_types  String[] @default([])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -702,47 +589,6 @@ model automation_linear_configs {
 
   @@index([project_id])
   @@index([team_id])
-}
-
-// Jira Configuration
-model automation_jira_configs {
-  id                   String  @id @default(cuid())
-  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
-  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
-
-  project_key String? // Project key (optional - can override connection default)
-  project_id  String? // Project ID (optional - can be used instead of key)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
-  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
-
-  @@index([project_key])
-  @@index([project_id])
-}
-
-// Confluence Configuration
-model automation_confluence_configs {
-  id                   String  @id @default(cuid())
-  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
-  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
-
-  space_id   String // Space ID (optional - can be used to target specific space)
-  space_name String // Space name (optional - can be used instead of space_id)
-  page_id    String // Page ID (required for outputs - specific page to write to)
-  page_name  String // Page display name (for UI, optional)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
-  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
-
-  @@index([space_name])
-  @@index([space_id])
-  @@index([page_id])
 }
 
 // GitHub Configuration
@@ -792,26 +638,6 @@ model automation_attio_configs {
 
   automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
-}
-
-// Figma Configuration
-model automation_figma_configs {
-  id                   String  @id @default(cuid())
-  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
-  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
-
-  file_key  String // Figma file key (required for inputs - specifies which file to monitor)
-  file_name String? // File display name (for UI, optional)
-  team_id   String? // Figma team ID (required for webhook creation)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
-  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
-
-  @@index([file_key])
-  @@index([team_id])
 }
 
 // Time Trigger Configuration
@@ -875,12 +701,9 @@ enum IntegrationType {
   GITHUB
   GMAIL
   LINEAR
-  JIRA
-  CONFLUENCE
   SLACK
   NOTION
   NOTION_PAGE
-  FIGMA
   TERSE
   POSTHOG
   CRON_JOB
@@ -894,14 +717,11 @@ enum IntegrationType {
 
 enum InputConfigType {
   GMAIL
-  FIGMA
   SLACK
   NOTION_PAGE
   NOTION_DATABASE
   LINEAR
   GITHUB
-  JIRA
-  CONFLUENCE
   POSTHOG
   TIME_TRIGGER
   WORKOS_INPUT
@@ -910,9 +730,7 @@ enum InputConfigType {
 
 enum OutputConfigType {
   NOTION
-  CONFLUENCE
   LINEAR_TICKET
-  JIRA_TICKET
   SLACK_CHANNEL
   GMAIL
   GMAIL_DRAFT

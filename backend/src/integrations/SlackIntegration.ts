@@ -1,12 +1,14 @@
 import { InputConfigType } from "@prisma/client"
-import { KnownBlock } from "@slack/types"
 import { LogLevel, WebClient } from "@slack/web-api"
+import { Reaction } from "@slack/web-api/dist/types/response/ChannelsHistoryResponse"
+import { Channel as SlackChannel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse"
+import { User as SlackUser } from "@slack/web-api/dist/types/response/UsersInfoResponse"
 import { Member as SlackUserMember } from "@slack/web-api/dist/types/response/UsersListResponse"
 import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { ConfigData, ConfigType, SlackConfigSchema, SlackEventType } from "terse-types/Configs"
+import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage, SlackTrigger } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -19,7 +21,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { SlackAttachment, SlackFile, SlackMessageImage, extractImagesFromMessage, extractTextFromAttachments, extractTextFromBlocks, pickSlackFileUrl } from "../slack/blockKitHelpers"
+import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { Jwt } from "../utility/jwt"
@@ -30,11 +32,11 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "./SlackClient"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class SlackIntegrationManager
-    implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
+    implements Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.SLACK
@@ -127,7 +129,7 @@ export class SlackIntegrationManager
         }))
     }
 
-    async processWebhookEvent(event: SlackMessageEvent): Promise<void> {
+    async processWebhookEvent(event: SimplifiedSlackEvent): Promise<void> {
         // For event_callback types, check if we've already processed this event
         const { team_id, event_id, type, authorizations } = event
 
@@ -180,9 +182,16 @@ export class SlackIntegrationManager
                     await tokensEvent.tokens?.oauth?.forEach(deactivateToken)
                     break
                 case "message":
-                    // Process message asynchronously (fire and forget - errors are logged but don't affect Slack)
-                    handleSlackMessage(event, team_id, authorizations as SlackAuthorizations[]).catch(error => {
+                case "app_mention":
+                    handleSlackMessageLikeEvent(event, team_id).catch(error => {
                         logger.error("Error processing Slack message in background", {
+                            error
+                        })
+                    })
+                    break
+                case "reaction_added":
+                    handleSlackReactionAdded(event, team_id).catch(error => {
+                        logger.error("Error processing Slack reaction in background", {
                             error
                         })
                     })
@@ -531,7 +540,7 @@ export class SlackIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.SLACK) {
             return []
         }
@@ -557,18 +566,13 @@ export class SlackIntegrationManager
 
         const client = new WebClient(token, { logLevel: LogLevel.ERROR })
         const teamId = userSlackIntegration.slack_integration.team_id
+        const selectedEventTypes = slackConfig.eventTypes ?? []
+        const supportsMessageSamples = selectedEventTypes.includes(SlackEventType.MESSAGE) || selectedEventTypes.includes(SlackEventType.APP_MENTION)
+        if (!supportsMessageSamples) {
+            return []
+        }
 
-        let messages: Array<{
-            channel: string
-            ts: string
-            user?: string
-            text?: string
-            thread_ts?: string
-            channel_type?: SlackChannelType
-            blocks?: unknown[]
-            attachments?: unknown[]
-            files?: unknown[]
-        }> = []
+        let messages: SlackMessageLookup[] = []
 
         if (slackConfig.listenToUserDms) {
             const imList = await client.conversations.list({
@@ -631,60 +635,31 @@ export class SlackIntegrationManager
             return []
         }
 
-        const events: InputEvent[] = []
+        const events: TriggerRuntime[] = []
         for (const msg of messages) {
-            const [channelInfo, userInfo, permalinkResult, fullMessageResult] = await Promise.allSettled([
-                client.conversations.info({ channel: msg.channel }),
-                client.users.info({ user: msg.user! }),
-                client.chat.getPermalink({ channel: msg.channel, message_ts: msg.ts }),
-                client.conversations.history({
-                    channel: msg.channel,
-                    oldest: msg.ts,
-                    latest: msg.ts,
-                    inclusive: true,
-                    limit: 1
-                })
-            ])
-
-            const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>, "Channel info", "Failed to fetch channel info")
-            const userResult = processSlackApiResult<{ user?: SlackUser }>(userInfo as SlackApiSettledResult<{ user?: SlackUser }>, "User info", "Failed to fetch user info")
-            const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(
-                permalinkResult as SlackApiSettledResult<{ permalink?: string }>,
-                "Message permalink",
-                "Failed to fetch message permalink"
-            )
-            const channelName = extractChannelName(channelResult, userResult, msg.user!, msg.channel)
-            const userName = extractUserName(userResult)
-            const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined
-
-            let blocks = msg.blocks as KnownBlock[] | undefined
-            let attachments = msg.attachments as SlackAttachment[] | undefined
-            let files = msg.files as SlackFile[] | undefined
-            let text = msg.text || ""
-            if (fullMessageResult.status === PromiseSettledStatus.FULFILLED && fullMessageResult.value.ok && fullMessageResult.value.messages?.[0]) {
-                const full = fullMessageResult.value.messages[0]
-                if (!blocks && full.blocks) blocks = full.blocks as KnownBlock[]
-                if (!attachments && full.attachments) attachments = full.attachments as SlackAttachment[]
-                if (!files && full.files) files = full.files as SlackFile[]
-                if (!text && full.text) text = full.text
+            const enrichedMessage = await fetchEnrichedSlackMessageData(client, msg)
+            const inferredEventType = selectedEventTypes.includes(SlackEventType.APP_MENTION) && enrichedMessage.text.includes("<@") ? SlackEventType.APP_MENTION : SlackEventType.MESSAGE
+            if (!selectedEventTypes.includes(inferredEventType)) {
+                continue
             }
 
-            const slackEventData: SlackEventData = {
+            const slackEventData = buildSlackTriggerData({
+                eventType: inferredEventType,
                 channelId: msg.channel,
-                channelName,
-                userId: msg.user!,
-                userName,
-                text,
+                channelName: enrichedMessage.channelName || null,
+                userId: msg.user,
+                userName: enrichedMessage.userName || null,
+                text: enrichedMessage.text,
                 timestamp: msg.ts,
-                threadTimestamp: msg.thread_ts,
+                threadTimestamp: msg.thread_ts || null,
                 teamId,
-                permalink,
-                channelType: msg.channel_type,
-                blocks,
-                attachments,
-                files
-            }
-            events.push(new SlackEvent(slackEventData))
+                permalink: enrichedMessage.permalink || null,
+                channelType: inferSlackChannelType(msg.channel, msg.channel_type || null),
+                blocks: enrichedMessage.blocks || null,
+                attachments: enrichedMessage.attachments || null,
+                files: enrichedMessage.files || null
+            })
+            events.push(new SlackTriggerRuntime(slackEventData))
         }
         return events
     }
@@ -896,68 +871,18 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
 
 // MARK: - SLACK Event
 
-export class SlackEvent extends InputEvent implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.SLACK
-    readonly eventType: SlackEventType = SlackEventType.MESSAGE
-    data: SlackEventData
+export class SlackTriggerRuntime extends TriggerRuntime<SlackTrigger> implements Identifiable {
+    readonly integrationType = IntegrationType.SLACK
+    data: SlackTrigger
     entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
     entityId: string
+    private storedFiles: StoredFile[]
 
-    constructor(data: SlackEventData) {
+    constructor(data: SlackTrigger, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.entityId = `${data.teamId}:${data.permalink || ""}`
-    }
-
-    formatForAgentRunner(): string {
-        // Extract rich content from blocks and attachments (used by third-party apps)
-        const blockContent = this.data.blocks ? extractTextFromBlocks(this.data.blocks) : ""
-        const attachmentContent = this.data.attachments ? extractTextFromAttachments(this.data.attachments) : ""
-
-        // Determine the main message content
-        // If text is empty but we have block/attachment content, note that
-        const messageText = this.data.text || "(no plain text)"
-
-        return `
-        Incoming Slack Message Event.
-
-        Slack Event:
-        Channel: ${this.data.channelName || this.data.channelId}
-        User: ${this.data.userName || this.data.userId}
-        Message: ${messageText}
-        Timestamp: ${this.data.timestamp}
-        ${this.data.threadTimestamp ? `Thread: ${this.data.threadTimestamp}` : ""}
-        Team ID: ${this.data.teamId}
-        ${
-            blockContent
-                ? `
-        Rich Content (from blocks):
-        ${blockContent}`
-                : ""
-        }
-        ${
-            attachmentContent
-                ? `
-        Attachment Content:
-        ${attachmentContent}`
-                : ""
-        }
-        `
-    }
-
-    /**
-     * Extract all images from the Slack message
-     * Images can come from:
-     * - Block Kit image blocks
-     * - Section block accessories
-     * - Context block elements
-     * - Attachments (image_url, thumb_url)
-     * - File uploads (files array)
-     *
-     * @returns Array of image objects with URLs and metadata
-     */
-    getImages(): SlackMessageImage[] {
-        return extractImagesFromMessage(this.data)
+        this.storedFiles = storedFiles
     }
 
     /**
@@ -965,8 +890,8 @@ export class SlackEvent extends InputEvent implements Identifiable {
      * Includes both private files cached in GCS and public block/attachment images
      */
     getFiles(): StoredFile[] {
-        const files: StoredFile[] = [...(this.data.storedFiles || [])]
-        const publicImages = this.getImages().filter(img => !img.requiresAuth)
+        const files: StoredFile[] = [...(this.storedFiles || [])]
+        const publicImages = extractImagesFromMessage(this.data).filter(img => !img.requiresAuth)
         for (const img of publicImages) {
             files.push({
                 url: img.url,
@@ -975,29 +900,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
             })
         }
         return files
-    }
-
-    debugLog(): string {
-        const isDM = this.data.channelType === SlackChannelType.IM
-        return `Slack Event: ${isDM ? "DM" : this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId}}`
-    }
-
-    serializeMetadata(): Record<string, unknown> {
-        return {
-            channelId: this.data.channelId,
-            channelName: this.data.channelName,
-            userId: this.data.userId,
-            userName: this.data.userName,
-            text: this.data.text,
-            timestamp: this.data.timestamp,
-            threadTs: this.data.threadTimestamp,
-            teamId: this.data.teamId,
-            permalink: this.data.permalink,
-            channelType: this.data.channelType,
-            blocks: this.data.blocks,
-            attachments: this.data.attachments,
-            files: this.data.files
-        }
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -1010,6 +912,9 @@ export class SlackEvent extends InputEvent implements Identifiable {
         // Otherwise, all Slack events match (no channel filtering)
         const slackConfig = agentTrigger.slack_config
         if (!slackConfig) {
+            return false
+        }
+        if (slackConfig.event_types && slackConfig.event_types.length > 0 && !slackConfig.event_types.includes(this.data.eventType)) {
             return false
         }
 
@@ -1026,12 +931,12 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
     createTriggerMetadata(): RunHistoryTrigger {
         return {
-            event: "message_received",
+            event: this.data.eventType,
             integration: IntegrationType.SLACK,
             source: this.data.channelName || this.data.channelId,
-            title: this.data.text.substring(0, 100), // First 100 chars of message
+            title: this.data.text.substring(0, 100) || this.data.eventType,
             subheader: this.data.userName || this.data.userId,
-            url: this.data.permalink
+            url: this.data.permalink || undefined
         }
     }
 }
@@ -1201,17 +1106,282 @@ function extractUserName(userResult: { success: boolean; data?: { user?: SlackUs
     return userName
 }
 
-async function handleSlackMessage(event: SlackMessageEvent, teamId: string, authorizations: SlackAuthorizations[]) {
+type SlackMessageLookup = Pick<SlackMessage, "text" | "thread_ts" | "blocks" | "attachments" | "files"> & {
+    channel: string
+    user: string
+    ts: string
+    channel_type?: SlackChannelType
+}
+
+type EnrichedSlackMessageData = {
+    channelName?: string
+    userName?: string
+    permalink?: string
+    text: string
+    blocks?: SlackBlocks
+    attachments?: SlackAttachments
+    files?: SlackFiles
+}
+
+async function fetchEnrichedSlackMessageData(client: WebClient, message: SlackMessageLookup): Promise<EnrichedSlackMessageData> {
+    const [channelInfo, userInfo, permalinkResult, fullMessageResult] = await Promise.allSettled([
+        client.conversations.info({
+            channel: message.channel
+        }),
+        client.users.info({
+            user: message.user
+        }),
+        client.chat.getPermalink({
+            channel: message.channel,
+            message_ts: message.ts
+        }),
+        client.conversations.history({
+            channel: message.channel,
+            oldest: message.ts,
+            latest: message.ts,
+            inclusive: true,
+            limit: 1
+        })
+    ])
+
+    const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>, "Channel info", "Failed to fetch channel info")
+    const userResult = processSlackApiResult<{ user?: SlackUser }>(userInfo as SlackApiSettledResult<{ user?: SlackUser }>, "User info", "Failed to fetch user info")
+    const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(permalinkResult as SlackApiSettledResult<{ permalink?: string }>, "Message permalink", "Failed to fetch message permalink")
+
+    const channelName = extractChannelName(channelResult, userResult, message.user, message.channel)
+    const userName = extractUserName(userResult)
+    const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined
+
+    if (permalink) {
+        logger.debug(`✓ Fetched message permalink: ${permalink}`, {
+            permalink,
+            channel: message.channel,
+            messageTs: message.ts
+        })
+    }
+
+    let blocks = message.blocks
+    let attachments = message.attachments
+    let files = message.files
+    let text = message.text || ""
+
+    if (fullMessageResult.status === PromiseSettledStatus.FULFILLED && fullMessageResult.value.ok && fullMessageResult.value.messages?.[0]) {
+        const fullMessage = fullMessageResult.value.messages[0]
+
+        if (!blocks && fullMessage.blocks) {
+            blocks = fullMessage.blocks
+            logger.debug(`✓ Extracted blocks from full message API (${blocks.length} blocks)`, { channel: message.channel, messageTs: message.ts })
+        }
+        if (!attachments && fullMessage.attachments) {
+            attachments = fullMessage.attachments
+            logger.debug(`✓ Extracted attachments from full message API (${attachments.length} attachments)`, { channel: message.channel, messageTs: message.ts })
+        }
+        if (!files && fullMessage.files) {
+            files = fullMessage.files
+            logger.debug(`✓ Extracted files from full message API (${files.length} files)`, { channel: message.channel, messageTs: message.ts })
+        }
+        if (!text && fullMessage.text) {
+            text = fullMessage.text
+            logger.debug("✓ Extracted text from full message API", {
+                channel: message.channel,
+                messageTs: message.ts
+            })
+        }
+    }
+
+    return {
+        channelName,
+        userName,
+        permalink,
+        text,
+        blocks,
+        attachments,
+        files
+    }
+}
+
+function inferSlackChannelType(channelId: string, fallback?: SlackChannelType | null): SlackChannelType | null {
+    if (fallback) {
+        return fallback
+    }
+    const prefix = channelId.charAt(0).toUpperCase()
+    if (prefix === "D") return SlackChannelType.IM
+    if (prefix === "G") return SlackChannelType.GROUP
+    if (prefix === "C") return SlackChannelType.CHANNEL
+    return null
+}
+
+function buildSlackTriggerData(params: {
+    eventType: SlackEventType
+    channelId: string
+    channelName?: string | null
+    userId: string
+    userName?: string | null
+    text: string
+    timestamp: string
+    threadTimestamp?: string | null
+    teamId: string
+    permalink?: string | null
+    channelType?: SlackChannelType | null
+    blocks?: SlackBlocks | null
+    attachments?: SlackAttachments | null
+    files?: SlackFiles | null
+    reaction?: string | null
+    itemType?: string | null
+    itemUserId?: string | null
+    itemChannelId?: string | null
+    itemTimestamp?: string | null
+}): SlackTrigger {
+    const commonFields = {
+        integrationType: IntegrationType.SLACK as const,
+        channelId: params.channelId,
+        channelName: params.channelName || null,
+        userId: params.userId,
+        userName: params.userName || null,
+        text: params.text,
+        timestamp: params.timestamp,
+        threadTimestamp: params.threadTimestamp || null,
+        teamId: params.teamId,
+        permalink: params.permalink || null,
+        channelType: params.channelType || null,
+        blocks: params.blocks || null,
+        attachments: params.attachments || null,
+        files: params.files || null
+    }
+
+    if (params.eventType === SlackEventType.REACTION_ADDED) {
+        return {
+            ...commonFields,
+            eventType: SlackEventType.REACTION_ADDED,
+            reaction: params.reaction || "unknown",
+            itemType: params.itemType || null,
+            itemUserId: params.itemUserId || null,
+            itemChannelId: params.itemChannelId || null,
+            itemTimestamp: params.itemTimestamp || null
+        }
+    }
+
+    return {
+        ...commonFields,
+        eventType: params.eventType
+    }
+}
+
+async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: string, channelType: SlackChannelType | null): Promise<UserSlackIntegrationWithUser[]> {
+    const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
+        where: {
+            slack_team_id: teamId
+        },
+        include: {
+            user: true,
+            slack_integration: true
+        }
+    })
+
+    const resolvedChannelType = inferSlackChannelType(channelId, channelType)
+    const isPublicChannel = resolvedChannelType === SlackChannelType.CHANNEL
+
+    const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
+        try {
+            const botClient = await initializeSlackWebClient(integration)
+
+            let membersRes: Awaited<ReturnType<typeof botClient.conversations.members>> | undefined
+            try {
+                membersRes = await botClient.conversations.members({
+                    channel: channelId
+                })
+            } catch (error) {
+                logger.error(`Error getting members`, {
+                    error,
+                    channel: channelId,
+                    teamId
+                })
+                return false
+            }
+
+            if (membersRes.ok && membersRes.members && membersRes.members.length > 0) {
+                const channelMemberIds = membersRes.members
+                return channelMemberIds.includes(integration.authed_user_id) || channelMemberIds.includes(integration.slack_integration.bot_user_id)
+            } else {
+                const errorMsg = membersRes.error || (membersRes.members?.length === 0 ? "no members" : "unknown error")
+                logger.warn(`⚠ Could not get members - ${errorMsg}`, {
+                    error: errorMsg,
+                    channel: channelId,
+                    teamId
+                })
+                return false
+            }
+        } catch (error) {
+            logger.error(`Error getting members`, {
+                error,
+                channel: channelId,
+                teamId
+            })
+            return false
+        }
+    }
+
+    if (isPublicChannel) {
+        return workspaceUserIntegrations
+    }
+
+    const channelMembershipChecks = await Promise.all(
+        workspaceUserIntegrations.map(async integration => ({
+            integration,
+            isMember: await isInChannel(integration)
+        }))
+    )
+    return channelMembershipChecks.filter(({ isMember }) => isMember).map(({ integration }) => integration)
+}
+
+async function processSlackAutomationForUsers(args: { filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]; slackEvent: SlackTriggerRuntime; teamId: string; sourceChannelId?: string }) {
+    const { filteredWorkspaceUserIntegrations, slackEvent, teamId, sourceChannelId } = args
+    let totalMatches = 0
+    for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
+        try {
+            const organizationId = userSlackIntegration.organization_id
+            if (!organizationId) continue
+            const fullUser = await getUserForOrg(userSlackIntegration.user.id, organizationId)
+            if (!fullUser) continue
+            await runWithUserContext(fullUser, async () => {
+                const eventProcessor = new EventProcessor(slackEvent, fullUser)
+                const results = await eventProcessor.process()
+
+                if (results.length > 0 && results.some(r => r.success || r.agentConfig !== null)) {
+                    totalMatches += results.filter(r => r.success || r.agentConfig !== null).length
+                    logger.info(`User ${fullUser.email}: ${results.length} automation(s) matched`, {
+                        userId: fullUser.id,
+                        email: fullUser.email,
+                        resultsCount: results.length,
+                        teamId
+                    })
+                }
+            })
+        } catch (error) {
+            logger.error(`Error processing automations for user ${userSlackIntegration.user.id}`, {
+                error,
+                userId: userSlackIntegration.user.id
+            })
+        }
+    }
+
+    logger.info(`Slack event processed - ${totalMatches} total automation(s) matched across all workspace users`, {
+        totalMatches,
+        teamId,
+        channel: sourceChannelId
+    })
+}
+
+async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: string) {
     try {
-        logger.debug("Processing Slack message event", {
+        logger.debug("Processing Slack message-like event", {
             event: JSON.stringify(event, null, 2),
             teamId
         })
 
-        // Extract the actual message event from the full payload
         const messageEvent = event.event
-        if (!messageEvent || messageEvent.type !== "message") {
-            logger.debug("Event is not a message event", {
+        if (!messageEvent || (messageEvent.type !== "message" && messageEvent.type !== "app_mention")) {
+            logger.debug("Event is not a message-like event", {
                 eventType: messageEvent?.type,
                 teamId
             })
@@ -1230,74 +1400,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return
         }
 
-        const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
-            where: {
-                slack_team_id: teamId
-            },
-            include: {
-                user: true,
-                slack_integration: true
-            }
-        })
-
-        const channelType = messageEvent.channel_type
-        const isPublicChannel = channelType === SlackChannelType.CHANNEL
-
-        const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
-            try {
-                const botClient = await initializeSlackWebClient(integration)
-
-                let membersRes: Awaited<ReturnType<typeof botClient.conversations.members>> | undefined
-                try {
-                    membersRes = await botClient.conversations.members({
-                        channel: messageEvent.channel!
-                    })
-                } catch (error) {
-                    logger.error(`Error getting members`, {
-                        error,
-                        channel: messageEvent.channel,
-                        teamId
-                    })
-                    return false
-                }
-
-                if (membersRes.ok && membersRes.members && membersRes.members.length > 0) {
-                    const channelMemberIds = membersRes.members
-                    return channelMemberIds.includes(integration.authed_user_id) || channelMemberIds.includes(integration.slack_integration.bot_user_id)
-                } else {
-                    const errorMsg = membersRes.error || (membersRes.members?.length === 0 ? "no members" : "unknown error")
-                    logger.warn(`⚠ Could not get members - ${errorMsg}`, {
-                        error: errorMsg,
-                        channel: messageEvent.channel,
-                        teamId
-                    })
-                    return false
-                }
-            } catch (error) {
-                logger.error(`Error getting members`, {
-                    error,
-                    channel: messageEvent.channel,
-                    teamId
-                })
-                return false
-            }
-        }
-
-        // Filter integrations: public channels include all, private/DM channels only include users who are members
-        let filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]
-        if (isPublicChannel) {
-            // Public channels: include all workspace integrations
-            filteredWorkspaceUserIntegrations = workspaceUserIntegrations
-        } else {
-            // Private channels or DMs: only include integrations where the user is in the channel
-            const channelMembershipChecks = await Promise.all(
-                workspaceUserIntegrations.map(async integration => ({
-                    integration,
-                    isMember: await isInChannel(integration)
-                }))
-            )
-            filteredWorkspaceUserIntegrations = channelMembershipChecks.filter(({ isMember }) => isMember).map(({ integration }) => integration)
-        }
+        const filteredWorkspaceUserIntegrations = await getFilteredWorkspaceUserIntegrations(teamId, messageEvent.channel!, messageEvent.channel_type || null)
 
         if (filteredWorkspaceUserIntegrations.length === 0) {
             logger.info("No users found with Slack integrations for this workspace", {
@@ -1315,107 +1418,22 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             teamId
         })
 
-        // Fetch all available data from Slack API in parallel
-        // Include full message fetch to get blocks/attachments (not always in event payload)
-        const [channelInfo, userInfo, permalinkResult, fullMessageResult] = await Promise.allSettled([
-            // Fetch channel information
-            client.conversations.info({
-                channel: messageEvent.channel!
-            }),
-            // Fetch user information
-            client.users.info({
-                user: messageEvent.user!
-            }),
-            // Get message permalink
-            client.chat.getPermalink({
-                channel: messageEvent.channel!,
-                message_ts: messageEvent.ts!
-            }),
-            // Fetch full message to get blocks/attachments (Slack Events API often omits these)
-            client.conversations.history({
-                channel: messageEvent.channel!,
-                oldest: messageEvent.ts!,
-                latest: messageEvent.ts!,
-                inclusive: true,
-                limit: 1
-            })
-        ])
-
-        // Process all API results
-        const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>, "Channel info", "Failed to fetch channel info")
-
-        const userResult = processSlackApiResult<{ user?: SlackUser }>(userInfo as SlackApiSettledResult<{ user?: SlackUser }>, "User info", "Failed to fetch user info")
-
-        const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(
-            permalinkResult as SlackApiSettledResult<{ permalink?: string }>,
-            "Message permalink",
-            "Failed to fetch message permalink"
-        )
-
-        // Extract channel name and metadata
-        const channelName = extractChannelName(channelResult, userResult, messageEvent.user!, messageEvent.channel!)
-
-        // Extract user information
-        const userName = extractUserName(userResult)
-
-        // Extract permalink
-        const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined
-        if (permalink) {
-            logger.debug(`✓ Fetched message permalink: ${permalink}`, {
-                permalink,
-                channel: messageEvent.channel,
-                messageTs: messageEvent.ts
-            })
-        }
-
-        // Extract blocks/attachments from full message API call (Events API often omits these)
-        const fullMessageApiResult = processSlackApiResult<SlackFullMessageResponse>(
-            fullMessageResult as SlackApiSettledResult<SlackFullMessageResponse>,
-            "Full message",
-            "Failed to fetch full message"
-        )
-
-        // Use blocks/attachments/files from API if not in event payload
-        let blocks = messageEvent.blocks as KnownBlock[] | undefined
-        let attachments = messageEvent.attachments as SlackAttachment[] | undefined
-        let files = messageEvent.files as SlackFile[] | undefined
-        let text = messageEvent.text || ""
-
-        if (fullMessageApiResult.success && fullMessageApiResult.data?.messages?.[0]) {
-            // Since we limit the API call to 1 message (oldest=ts, latest=ts, limit=1),
-            // the first item in the array is always the exact message we requested
-            const fullMessage = fullMessageApiResult.data.messages[0]
-
-            // Use API blocks/attachments if event payload didn't have them
-            if (!blocks && fullMessage.blocks) {
-                blocks = fullMessage.blocks as KnownBlock[]
-                logger.debug(`✓ Extracted blocks from full message API (${blocks.length} blocks)`, { channel: messageEvent.channel, messageTs: messageEvent.ts })
-            }
-            if (!attachments && fullMessage.attachments) {
-                attachments = fullMessage.attachments as SlackAttachment[]
-                logger.debug(`✓ Extracted attachments from full message API (${attachments.length} attachments)`, { channel: messageEvent.channel, messageTs: messageEvent.ts })
-            }
-            if (!files && fullMessage.files) {
-                files = fullMessage.files as SlackFile[]
-                logger.debug(`✓ Extracted files from full message API (${files.length} files)`, { channel: messageEvent.channel, messageTs: messageEvent.ts })
-            }
-            // Also update text if it was empty in the event but present in full message
-            if (!text && fullMessage.text) {
-                text = fullMessage.text
-                logger.debug(`✓ Extracted text from full message API`, {
-                    channel: messageEvent.channel,
-                    messageTs: messageEvent.ts
-                })
-            }
-        }
+        const enrichedMessage = await fetchEnrichedSlackMessageData(client, {
+            channel: messageEvent.channel!,
+            user: messageEvent.user!,
+            ts: messageEvent.ts!,
+            text: messageEvent.text,
+            thread_ts: messageEvent.thread_ts,
+            channel_type: messageEvent.channel_type
+        })
 
         // Supports: images, PDFs
         let storedFiles: StoredFile[] = []
-        if (files && files.length > 0) {
+        if (enrichedMessage.files && enrichedMessage.files.length > 0) {
             const botToken = await getSecret(IntegrationType.SLACK, filteredWorkspaceUserIntegrations[0].slack_integration.id, SecretField.AccessToken)
 
             if (botToken) {
-                storedFiles = await downloadSlackFiles(files, teamId, botToken)
+                storedFiles = await downloadSlackFiles(enrichedMessage.files, teamId, botToken)
             } else {
                 logger.warn("No Slack bot token available for file download", {
                     teamId
@@ -1423,80 +1441,100 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             }
         }
 
-        // Build SlackEventData with all available information
-        const slackEventData: SlackEventData = {
+        // Build the canonical Slack trigger event with all available information
+        const slackEventData = buildSlackTriggerData({
+            eventType: messageEvent.type === "app_mention" ? SlackEventType.APP_MENTION : SlackEventType.MESSAGE,
             channelId: messageEvent.channel!,
-            channelName: channelName,
+            channelName: enrichedMessage.channelName || null,
             userId: messageEvent.user!,
-            userName: userName,
-            text: text,
+            userName: enrichedMessage.userName || null,
+            text: enrichedMessage.text,
             timestamp: messageEvent.ts!,
-            threadTimestamp: messageEvent.thread_ts,
-            teamId: teamId,
-            permalink: permalink,
-            channelType: messageEvent.channel_type,
-            // Include blocks, attachments, and files (from event or API)
-            blocks: blocks,
-            attachments: attachments,
-            files: files,
-            storedFiles: storedFiles.length > 0 ? storedFiles : undefined
-        }
+            threadTimestamp: messageEvent.thread_ts || null,
+            teamId,
+            permalink: enrichedMessage.permalink || null,
+            channelType: inferSlackChannelType(messageEvent.channel!, messageEvent.channel_type || null),
+            blocks: enrichedMessage.blocks || null,
+            attachments: enrichedMessage.attachments || null,
+            files: enrichedMessage.files || null
+        })
 
-        // Create SlackEvent once
-        const slackEvent = new SlackEvent(slackEventData)
-
-        // Process the event against automations for all users in this workspace
-        // This ensures messages from any workspace user can trigger automations
-        let totalMatches = 0
-        for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
-            try {
-                const organizationId = userSlackIntegration.organization_id
-                if (!organizationId) continue
-                const fullUser = await getUserForOrg(userSlackIntegration.user.id, organizationId)
-                if (!fullUser) continue
-                await runWithUserContext(fullUser, async () => {
-                    const eventProcessor = new EventProcessor(slackEvent, fullUser)
-                    const results = await eventProcessor.process()
-
-                    // Log results for this user
-                    if (results.length > 0 && results.some(r => r.success || r.agentConfig !== null)) {
-                        totalMatches += results.filter(r => r.success || r.agentConfig !== null).length
-                        logger.info(`User ${fullUser.email}: ${results.length} automation(s) matched`, {
-                            userId: fullUser.id,
-                            email: fullUser.email,
-                            resultsCount: results.length,
-                            teamId
-                        })
-                        for (const result of results) {
-                            if (result.success) {
-                                logger.debug(`  ✓ Agent "${result.agentConfig?.name}" processed successfully`, {
-                                    agentName: result.agentConfig?.name,
-                                    userId: fullUser.id
-                                })
-                            } else if (result.agentConfig) {
-                                logger.warn(`  ⚠ Agent "${result.agentConfig?.name}": ${result.message}`, {
-                                    agentName: result.agentConfig?.name,
-                                    message: result.message,
-                                    userId: fullUser.id
-                                })
-                            }
-                        }
-                    }
-                })
-            } catch (error) {
-                logger.error(`Error processing automations for user ${userSlackIntegration.user.id}`, {
-                    error,
-                    userId: userSlackIntegration.user.id
-                })
-                // Continue processing other users even if one fails
-            }
-        }
-
-        logger.info(`Slack message processed - ${totalMatches} total automation(s) matched across all workspace users`, { totalMatches, teamId, channel: messageEvent.channel })
+        const slackEvent = new SlackTriggerRuntime(slackEventData, storedFiles)
+        await processSlackAutomationForUsers({
+            filteredWorkspaceUserIntegrations,
+            slackEvent,
+            teamId,
+            sourceChannelId: messageEvent.channel
+        })
     } catch (error) {
-        logger.error("Error handling Slack message", { error, teamId })
-        // Note: We don't send error messages back to Slack anymore since this is now
-        // event-driven automations, not interactive bot responses
+        logger.error("Error handling Slack message-like event", { error, teamId })
+    }
+}
+
+async function handleSlackReactionAdded(event: SimplifiedSlackEvent, teamId: string) {
+    try {
+        logger.debug("Processing Slack reaction_added event", {
+            event: JSON.stringify(event, null, 2),
+            teamId
+        })
+
+        const reactionEvent = event.event
+        if (!reactionEvent || reactionEvent.type !== "reaction_added" || !reactionEvent.item?.channel || !reactionEvent.item.ts || !reactionEvent.user) {
+            logger.debug("Event is not a valid reaction_added event", {
+                eventType: reactionEvent?.type,
+                teamId
+            })
+            return
+        }
+
+        const filteredWorkspaceUserIntegrations = await getFilteredWorkspaceUserIntegrations(teamId, reactionEvent.item.channel, null)
+        if (filteredWorkspaceUserIntegrations.length === 0) {
+            logger.info("No users found with Slack integrations for this workspace", {
+                teamId
+            })
+            return
+        }
+
+        const client: WebClient = await initializeSlackWebClient(filteredWorkspaceUserIntegrations[0])
+        const enrichedMessage = await fetchEnrichedSlackMessageData(client, {
+            channel: reactionEvent.item.channel,
+            user: reactionEvent.item_user || reactionEvent.user,
+            ts: reactionEvent.item.ts,
+            text: "",
+            channel_type: inferSlackChannelType(reactionEvent.item.channel, null) || undefined
+        })
+
+        const slackEventData = buildSlackTriggerData({
+            eventType: SlackEventType.REACTION_ADDED,
+            channelId: reactionEvent.item.channel,
+            channelName: enrichedMessage.channelName || null,
+            userId: reactionEvent.user,
+            userName: null,
+            text: enrichedMessage.text,
+            timestamp: reactionEvent.event_ts || reactionEvent.item.ts,
+            threadTimestamp: null,
+            teamId,
+            permalink: enrichedMessage.permalink || null,
+            channelType: inferSlackChannelType(reactionEvent.item.channel, null),
+            blocks: enrichedMessage.blocks || null,
+            attachments: enrichedMessage.attachments || null,
+            files: enrichedMessage.files || null,
+            reaction: reactionEvent.reaction || null,
+            itemType: reactionEvent.item.type || null,
+            itemUserId: reactionEvent.item_user || null,
+            itemChannelId: reactionEvent.item.channel,
+            itemTimestamp: reactionEvent.item.ts
+        })
+
+        const slackEvent = new SlackTriggerRuntime(slackEventData)
+        await processSlackAutomationForUsers({
+            filteredWorkspaceUserIntegrations,
+            slackEvent,
+            teamId,
+            sourceChannelId: reactionEvent.item.channel
+        })
+    } catch (error) {
+        logger.error("Error handling Slack reaction_added", { error, teamId })
     }
 }
 
@@ -1579,13 +1617,10 @@ export async function validateSlackUserIds(accessToken: string, userIds: string[
     }
 }
 
-// Re-export from SlackClient for backwards compatibility
-export { initializeSlackWebClient } from "./SlackClient"
-
-export async function downloadSlackFiles(files: SlackFile[], teamId: string, botToken: string): Promise<StoredFile[]> {
+export async function downloadSlackFiles(files: SlackFiles, teamId: string, botToken: string): Promise<StoredFile[]> {
     try {
         const supportedFiles = filterSupportedSlackFiles(files)
-        if (supportedFiles.length === 0) return []
+        if (!supportedFiles || supportedFiles.length === 0) return []
 
         // Check if bot has files:read permission before attempting downloads
         const canReadFiles = await hasFilesReadScope(botToken)
@@ -1606,13 +1641,14 @@ export async function downloadSlackFiles(files: SlackFile[], teamId: string, bot
         logger.error(`Failed to download Slack files`, {
             error,
             teamId,
-            fileCount: files.length
+            fileCount: files ? files.length : 0
         })
         return []
     }
 }
 
-function filterSupportedSlackFiles(files: SlackFile[]): SlackFile[] {
+function filterSupportedSlackFiles(files: SlackFiles): SlackFiles {
+    if (!files) return []
     return files.filter(file => {
         const mimetype = file.mimetype ?? ""
         const filename = file.name ?? file.title ?? ""
@@ -1627,6 +1663,13 @@ async function processSlackFile(args: { file: SlackFile; teamId: string; botToke
         const downloadUrl = pickSlackFileUrl(file)
         if (!downloadUrl) {
             logger.warn(`No download URL found for Slack file`, {
+                fileId: file.id,
+                teamId
+            })
+            return null
+        }
+        if (!file.id) {
+            logger.warn(`No file ID found for Slack file`, {
                 fileId: file.id,
                 teamId
             })
@@ -1707,7 +1750,7 @@ async function downloadSlackFile(args: { downloadUrl: string; botToken: string; 
     const buffer = Buffer.from(await response.arrayBuffer())
     const mimeType = file.mimetype || response.headers.get("content-type") || "application/octet-stream"
 
-    const filename = file.name || file.title
+    const filename = file.name || file.title || undefined
 
     logger.debug(`Successfully downloaded Slack file`, {
         fileId: file.id,
@@ -1730,131 +1773,9 @@ type SlackApiResponse<T = unknown> = { ok: boolean; error?: string } & T
 type SlackApiSettledResult<T = unknown> = PromiseSettledResult<SlackApiResponse<T>>
 
 /**
- * Response type for conversations.history API call
- * Used to fetch full message content including blocks/attachments
+ * Relevant Slack event data simplified for Terse
  */
-type SlackFullMessageResponse = {
-    messages?: Array<{
-        blocks?: unknown[]
-        attachments?: unknown[]
-        files?: unknown[]
-        text?: string
-    }>
-}
-
-/**
- * Slack event data
- * Processed Slack message event data used for channel events
- */
-export interface SlackEventData {
-    channelId: string
-    channelName?: string
-    userId: string
-    userName?: string
-    text: string
-    timestamp: string
-    threadTimestamp?: string
-    teamId: string
-    // Permalink for the message (if available)
-    permalink?: string
-    channelType?: SlackChannelType
-    // Block Kit content from third-party apps
-    blocks?: KnownBlock[]
-    // Legacy attachments
-    attachments?: SlackAttachment[]
-    // File attachments (including images)
-    files?: SlackFile[]
-    storedFiles?: StoredFile[]
-}
-
-/**
- * Slack user profile object from users.info API
- */
-interface SlackUserProfile {
-    avatar_hash?: string
-    status_text?: string
-    status_emoji?: string
-    real_name?: string
-    display_name?: string
-    real_name_normalized?: string
-    display_name_normalized?: string
-    email?: string
-    image_original?: string
-    image_24?: string
-    image_32?: string
-    image_48?: string
-    image_72?: string
-    image_192?: string
-    image_512?: string
-    team?: string
-}
-
-/**
- * Slack user object from users.info API
- */
-interface SlackUser {
-    id: string
-    team_id?: string
-    name?: string
-    deleted?: boolean
-    color?: string
-    real_name?: string
-    tz?: string
-    tz_label?: string
-    tz_offset?: number
-    profile?: SlackUserProfile
-    is_admin?: boolean
-    is_owner?: boolean
-    is_primary_owner?: boolean
-    is_restricted?: boolean
-    is_ultra_restricted?: boolean
-    is_bot?: boolean
-    updated?: number
-    is_app_user?: boolean
-    has_2fa?: boolean
-}
-
-/**
- * Slack channel/conversation object from conversations.info API
- * Can represent public channels, private channels, DMs, or group DMs
- */
-interface SlackChannel {
-    id: string
-    name?: string
-    is_channel?: boolean
-    is_group?: boolean
-    is_im?: boolean
-    is_mpim?: boolean
-    is_private?: boolean
-    is_archived?: boolean
-    is_general?: boolean
-    is_shared?: boolean
-    is_org_shared?: boolean
-    is_member?: boolean
-    created?: number
-    creator?: string
-    name_normalized?: string
-    user?: string // For DMs, the user ID of the other person
-    last_read?: string
-    members?: string[]
-    topic?: {
-        value?: string
-        creator?: string
-        last_set?: number
-    }
-    purpose?: {
-        value?: string
-        creator?: string
-        last_set?: number
-    }
-    previous_names?: string[]
-}
-
-/**
- * Full Slack event payload structure
- * This represents the complete payload sent by Slack, not just the event portion
- */
-export interface SlackMessageEvent {
+export interface SimplifiedSlackEvent {
     // Top-level payload fields
     type: "event_callback" | "app_uninstalled" | "tokens_revoked" | "url_verification"
     team_id: string
@@ -1868,7 +1789,7 @@ export interface SlackMessageEvent {
 
     // The actual event data (for event_callback type)
     event?: {
-        type: "message" | "app_uninstalled" | "tokens_revoked"
+        type: "message" | "app_mention" | "reaction_added" | "app_uninstalled" | "tokens_revoked"
         channel?: string
         user?: string
         text?: string
@@ -1881,47 +1802,7 @@ export interface SlackMessageEvent {
             user: string
             ts: string
         }
-        files?: Array<{
-            id: string
-            name: string
-            title: string
-            mimetype: string
-            filetype: string
-            pretty_type: string
-            user: string
-            size: number
-            url_private?: string
-            url_private_download?: string
-            permalink?: string
-            permalink_public?: string
-        }>
-        reactions?: Array<{
-            name: string
-            users: string[]
-            count: number
-        }>
-        attachments?: Array<{
-            fallback?: string
-            color?: string
-            pretext?: string
-            author_name?: string
-            author_link?: string
-            author_icon?: string
-            title?: string
-            title_link?: string
-            text?: string
-            fields?: Array<{
-                title: string
-                value: string
-                short: boolean
-            }>
-            image_url?: string
-            thumb_url?: string
-            footer?: string
-            footer_icon?: string
-            ts?: number
-        }>
-        blocks?: unknown[]
+        reactions?: Reaction[]
         client_msg_id?: string
         parent_user_id?: string
         reply_count?: number
@@ -1931,6 +1812,13 @@ export interface SlackMessageEvent {
         team?: string
         event_ts?: string
         channel_type?: SlackChannelType
+        reaction?: string
+        item_user?: string
+        item?: {
+            type: string
+            channel?: string
+            ts?: string
+        }
         tokens?: {
             bot?: string[]
             oauth?: string[]

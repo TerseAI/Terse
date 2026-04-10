@@ -10,16 +10,7 @@ type ExportModule = Record<string, unknown>
  * Default derivation: strip trailing "Schema", capitalize first letter, then apply
  * *Config -> *ConfigInstance and *Integration -> *IntegrationInstance patterns.
  */
-const SCHEMA_NAME_OVERRIDES: Record<string, string> = {
-    // Base types that need "Base" prefix
-    ConfigInstanceSchema: "BaseConfigInstance",
-    IntegrationInstanceSchema: "BaseIntegrationInstance",
-    // Name differs from export key
-    slackUserResponseSchema: "SlackUserSummary",
-    runHistoryActionBaseSchema: "RunHistoryAction",
-    // GitHub capitalization fix
-    GithubIntegrationSchema: "GitHubIntegrationInstance"
-}
+const SCHEMA_NAME_OVERRIDES: Record<string, string> = {}
 
 function isZodSchema(value: unknown): value is z.ZodTypeAny {
     return !!value && typeof value === "object" && "_zod" in value

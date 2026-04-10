@@ -1,74 +1,71 @@
-"""Input event models for the Python SDK."""
+"""Canonical trigger-event models for the Python SDK."""
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, TypeAlias
-
-from pydantic import Field
+from typing import Any, Generic, TypeAlias, TypeVar
 
 from ._base import TerseModel
-from .enums import SlackChannelType
-
-
-class InputEvent(TerseModel):
-    integration_type: str
-    event_type: str = "unknown"
-    formatted_content: str = ""
-    debug_log: str = ""
-    metadata: dict[str, Any] | None = None
-
-
-class GithubRepository(TerseModel):
-    id: int
-    name: str
-    owner: str
-    default_branch: str = "main"
-
-
-class GithubUser(TerseModel):
-    login: str
-    email: str | None = None
-
-
-class GithubFileDiff(TerseModel):
-    filename: str
-    diff: str
-
-
-class GithubCommit(TerseModel):
-    sha: str
-    message: str
-    file_diffs: list[GithubFileDiff] = Field(default_factory=list)
-
-
-class GithubPRRef(TerseModel):
-    ref: str
-    sha: str
-
-
-class GithubPRData(TerseModel):
-    number: int
-    title: str
-    body: str | None = None
-    state: Literal["open", "closed"]
-    merged: bool = False
-    head: GithubPRRef
-    base: GithubPRRef
-    author: GithubUser
-    url: str
-
-
-class GithubEventMetadata(TerseModel):
-    repository: GithubRepository | None = None
-    sender: GithubUser | None = None
-    commits: list[GithubCommit] = Field(default_factory=list)
-    pull_request: GithubPRData | None = None
-    branch: str | None = None
-
-
-class GithubInputEvent(InputEvent):
-    integration_type: Literal["github"] = "github"
-    metadata: GithubEventMetadata | None = None
+from ._generated import (
+    Commit,
+    FileDiff,
+    GithubRepository,
+    PullRequest,
+    PullRequestRef,
+    Sender,
+    WorkOSTriggerInvitation,
+    WorkOSTriggerMembership,
+    WorkOSTriggerOrganization,
+    WorkOSTriggerUser,
+)
+from ._generated import CronTrigger as _RawCronTrigger
+from ._generated import GithubPRClosedTrigger as _RawGithubPRClosedTrigger
+from ._generated import GithubPRMergedTrigger as _RawGithubPRMergedTrigger
+from ._generated import GithubPROpenedTrigger as _RawGithubPROpenedTrigger
+from ._generated import GithubPRSynchronizedTrigger as _RawGithubPRSynchronizedTrigger
+from ._generated import GithubPRTrigger as _RawGithubPRTrigger
+from ._generated import GithubPushTrigger as _RawGithubPushTrigger
+from ._generated import GithubTrigger as _RawGithubTrigger
+from ._generated import GmailTrigger as _RawGmailTrigger
+from ._generated import LinearCommentCreatedTrigger as _RawLinearCommentCreatedTrigger
+from ._generated import LinearIssueCreatedTrigger as _RawLinearIssueCreatedTrigger
+from ._generated import LinearIssueUpdatedTrigger as _RawLinearIssueUpdatedTrigger
+from ._generated import LinearTrigger as _RawLinearTrigger
+from ._generated import ManualSampleTrigger as _RawManualSampleTrigger
+from ._generated import SlackAppMentionTrigger as _RawSlackAppMentionTrigger
+from ._generated import SlackMessageTrigger as _RawSlackMessageTrigger
+from ._generated import SlackReactionAddedTrigger as _RawSlackReactionAddedTrigger
+from ._generated import SlackTrigger as _RawSlackTrigger
+from ._generated import Trigger as _RawTrigger
+from ._generated import WebhookTrigger as _RawWebhookTrigger
+from ._generated import (
+    WorkOSInvitationAcceptedTrigger as _RawWorkOSInvitationAcceptedTrigger,
+)
+from ._generated import (
+    WorkOSInvitationCreatedTrigger as _RawWorkOSInvitationCreatedTrigger,
+)
+from ._generated import (
+    WorkOSInvitationResentTrigger as _RawWorkOSInvitationResentTrigger,
+)
+from ._generated import (
+    WorkOSInvitationRevokedTrigger as _RawWorkOSInvitationRevokedTrigger,
+)
+from ._generated import WorkOSInvitationTrigger as _RawWorkOSInvitationTrigger
+from ._generated import WorkOSMembershipTrigger as _RawWorkOSMembershipTrigger
+from ._generated import (
+    WorkOSOrganizationMembershipCreatedTrigger as _RawWorkOSOrganizationMembershipCreatedTrigger,
+)
+from ._generated import (
+    WorkOSOrganizationMembershipDeletedTrigger as _RawWorkOSOrganizationMembershipDeletedTrigger,
+)
+from ._generated import (
+    WorkOSOrganizationMembershipUpdatedTrigger as _RawWorkOSOrganizationMembershipUpdatedTrigger,
+)
+from ._generated import WorkOSOrganizationTrigger as _RawWorkOSOrganizationTrigger
+from ._generated import WorkOSTrigger as _RawWorkOSTrigger
+from ._generated import WorkOSUserCreatedTrigger as _RawWorkOSUserCreatedTrigger
+from ._generated import WorkOSUserDeletedTrigger as _RawWorkOSUserDeletedTrigger
+from ._generated import WorkOSUserTrigger as _RawWorkOSUserTrigger
+from ._generated import WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 
 
 class SlackAttachmentField(TerseModel):
@@ -116,172 +113,178 @@ class SlackFile(TerseModel):
     original_h: int | None = None
 
 
-class SlackInputEvent(InputEvent):
-    integration_type: Literal["slack"] = "slack"
-    channel_id: str = ""
-    channel_name: str | None = None
-    user_id: str = ""
-    user_name: str | None = None
-    text: str = ""
-    timestamp: str = ""
-    thread_ts: str | None = None
-    team_id: str = ""
-    permalink: str | None = None
-    channel_type: SlackChannelType | None = None
-    blocks: list[dict[str, Any]] | None = None
-    attachments: list[SlackAttachment] | None = None
-    files: list[SlackFile] | None = None
+GitHubFileDiff = FileDiff
+GitHubCommit = Commit
+GitHubUser = Sender
+GitHubPullRequestRef = PullRequestRef
+GitHubPullRequestData = PullRequest
+
+_T = TypeVar("_T")
+
+
+class SDKTrigger(Generic[_T]):
+    """Trigger event enriched with ``formatted_content`` and ``debug_log``.
+
+    Mirrors the TypeScript ``SDKTrigger<T>`` intersection type.  Trigger
+    fields are accessible directly via ``__getattr__`` delegation (e.g.
+    ``event.text``), and type-safe access is available through ``event.data``.
+    """
+
+    __slots__ = ("_trigger", "_formatted_content", "_debug_log")
+
+    def __init__(self, trigger: _T, formatted_content: str, debug_log: str) -> None:
+        self._trigger = trigger
+        self._formatted_content = formatted_content
+        self._debug_log = debug_log
 
     @property
-    def thread_timestamp(self) -> str | None:
-        return self.thread_ts
+    def data(self) -> _T:
+        return self._trigger
+
+    @property
+    def formatted_content(self) -> str:
+        return self._formatted_content
+
+    @property
+    def debug_log(self) -> str:
+        return self._debug_log
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._trigger, name)
+
+    def __repr__(self) -> str:
+        return f"SDKTrigger({self._trigger!r})"
 
 
-class LinearInputEvent(InputEvent):
-    integration_type: Literal["linear"] = "linear"
+# ---------------------------------------------------------------------------
+# Public SDK-wrapped trigger type aliases.
+# Users write e.g. ``event: CronTrigger`` and get ``formatted_content``
+# ---------------------------------------------------------------------------
 
+Trigger: TypeAlias = SDKTrigger[_RawTrigger]
+CronTrigger: TypeAlias = SDKTrigger[_RawCronTrigger]
+GithubPRClosedTrigger: TypeAlias = SDKTrigger[_RawGithubPRClosedTrigger]
+GithubPRMergedTrigger: TypeAlias = SDKTrigger[_RawGithubPRMergedTrigger]
+GithubPROpenedTrigger: TypeAlias = SDKTrigger[_RawGithubPROpenedTrigger]
+GithubPRSynchronizedTrigger: TypeAlias = SDKTrigger[_RawGithubPRSynchronizedTrigger]
+GithubPRTrigger: TypeAlias = SDKTrigger[_RawGithubPRTrigger]
+GithubPushTrigger: TypeAlias = SDKTrigger[_RawGithubPushTrigger]
+GithubTrigger: TypeAlias = SDKTrigger[_RawGithubTrigger]
+GmailTrigger: TypeAlias = SDKTrigger[_RawGmailTrigger]
+LinearCommentCreatedTrigger: TypeAlias = SDKTrigger[_RawLinearCommentCreatedTrigger]
+LinearIssueCreatedTrigger: TypeAlias = SDKTrigger[_RawLinearIssueCreatedTrigger]
+LinearIssueUpdatedTrigger: TypeAlias = SDKTrigger[_RawLinearIssueUpdatedTrigger]
+LinearTrigger: TypeAlias = SDKTrigger[_RawLinearTrigger]
+ManualSampleTrigger: TypeAlias = SDKTrigger[_RawManualSampleTrigger]
+SlackAppMentionTrigger: TypeAlias = SDKTrigger[_RawSlackAppMentionTrigger]
+SlackMessageTrigger: TypeAlias = SDKTrigger[_RawSlackMessageTrigger]
+SlackReactionAddedTrigger: TypeAlias = SDKTrigger[_RawSlackReactionAddedTrigger]
+SlackTrigger: TypeAlias = SDKTrigger[_RawSlackTrigger]
+WebhookTrigger: TypeAlias = SDKTrigger[_RawWebhookTrigger]
+WorkOSInvitationAcceptedTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationAcceptedTrigger]
+WorkOSInvitationCreatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationCreatedTrigger]
+WorkOSInvitationResentTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationResentTrigger]
+WorkOSInvitationRevokedTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationRevokedTrigger]
+WorkOSInvitationTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationTrigger]
+WorkOSMembershipTrigger: TypeAlias = SDKTrigger[_RawWorkOSMembershipTrigger]
+WorkOSOrganizationMembershipCreatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSOrganizationMembershipCreatedTrigger]
+WorkOSOrganizationMembershipDeletedTrigger: TypeAlias = SDKTrigger[_RawWorkOSOrganizationMembershipDeletedTrigger]
+WorkOSOrganizationMembershipUpdatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSOrganizationMembershipUpdatedTrigger]
+WorkOSOrganizationTrigger: TypeAlias = SDKTrigger[_RawWorkOSOrganizationTrigger]
+WorkOSTrigger: TypeAlias = SDKTrigger[_RawWorkOSTrigger]
+WorkOSUserCreatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSUserCreatedTrigger]
+WorkOSUserDeletedTrigger: TypeAlias = SDKTrigger[_RawWorkOSUserDeletedTrigger]
+WorkOSUserTrigger: TypeAlias = SDKTrigger[_RawWorkOSUserTrigger]
+WorkOSUserUpdatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSUserUpdatedTrigger]
 
-class AtlassianInputEvent(InputEvent):
-    integration_type: Literal["atlassian"] = "atlassian"
-
-
-class GmailInputEvent(InputEvent):
-    integration_type: Literal["gmail"] = "gmail"
-
-
-class NotionInputEvent(InputEvent):
-    integration_type: Literal["notion"] = "notion"
-
-
-class FigmaInputEvent(InputEvent):
-    integration_type: Literal["figma"] = "figma"
-
-
-class PosthogInputEvent(InputEvent):
-    integration_type: Literal["posthog"] = "posthog"
-
-
-class DatadogInputEvent(InputEvent):
-    integration_type: Literal["datadog"] = "datadog"
-
-
-class TerseInputEvent(InputEvent):
-    integration_type: Literal["terse"] = "terse"
-
-
-class CronJobInputEvent(InputEvent):
-    integration_type: Literal["cron_job"] = "cron_job"
-
-
-class LaunchDarklyInputEvent(InputEvent):
-    integration_type: Literal["launchdarkly"] = "launchdarkly"
-
-
-class WorkOSEventUser(TerseModel):
-    id: str
-    email: str
-    first_name: str | None = None
-    last_name: str | None = None
-    email_verified: bool
-    profile_picture_url: str | None = None
-
-
-class WorkOSEventMembership(TerseModel):
-    id: str
-    user_id: str
-    organization_id: str
-    role: dict[str, str]
-    status: str
-
-
-class WorkOSEventInvitation(TerseModel):
-    id: str
-    email: str
-    organization_id: str
-    inviter_email: str | None = None
-    state: str
-    accepted_at: str | None = None
-
-
-class WorkOSEventMetadata(TerseModel):
-    event_id: str | None = None
-    created_at: str | None = None
-    user: WorkOSEventUser | None = None
-    membership: WorkOSEventMembership | None = None
-    invitation: WorkOSEventInvitation | None = None
-
-
-class WorkOSInputEvent(InputEvent):
-    integration_type: Literal["workos"] = "workos"
-    metadata: WorkOSEventMetadata | None = None
-
-
-class AttioInputEvent(InputEvent):
-    integration_type: Literal["attio"] = "attio"
-
-
-class SnowflakeInputEvent(InputEvent):
-    integration_type: Literal["snowflake"] = "snowflake"
-
-
-class SerializedEventInputEvent(InputEvent):
-    """Fallback event for integrations without a dedicated typed model yet."""
-
-
-KnownInputEvent: TypeAlias = Annotated[
-    GithubInputEvent
-    | SlackInputEvent
-    | LinearInputEvent
-    | AtlassianInputEvent
-    | GmailInputEvent
-    | NotionInputEvent
-    | FigmaInputEvent
-    | PosthogInputEvent
-    | DatadogInputEvent
-    | TerseInputEvent
-    | CronJobInputEvent
-    | LaunchDarklyInputEvent
-    | WorkOSInputEvent
-    | AttioInputEvent
-    | SnowflakeInputEvent,
-    Field(discriminator="integration_type"),
-]
-
-AnyInputEvent: TypeAlias = KnownInputEvent | SerializedEventInputEvent
+AnyTrigger: TypeAlias = (
+    Trigger
+    | CronTrigger
+    | SlackMessageTrigger
+    | SlackAppMentionTrigger
+    | SlackReactionAddedTrigger
+    | SlackTrigger
+    | GithubPRClosedTrigger
+    | GithubPRMergedTrigger
+    | GithubPROpenedTrigger
+    | GithubPRSynchronizedTrigger
+    | GithubPRTrigger
+    | GithubPushTrigger
+    | GithubTrigger
+    | GmailTrigger
+    | LinearCommentCreatedTrigger
+    | LinearIssueCreatedTrigger
+    | LinearIssueUpdatedTrigger
+    | LinearTrigger
+    | WebhookTrigger
+    | WorkOSInvitationAcceptedTrigger
+    | WorkOSInvitationCreatedTrigger
+    | WorkOSInvitationResentTrigger
+    | WorkOSInvitationRevokedTrigger
+    | WorkOSInvitationTrigger
+    | WorkOSMembershipTrigger
+    | WorkOSOrganizationMembershipCreatedTrigger
+    | WorkOSOrganizationMembershipDeletedTrigger
+    | WorkOSOrganizationMembershipUpdatedTrigger
+    | WorkOSOrganizationTrigger
+    | WorkOSTrigger
+    | WorkOSUserCreatedTrigger
+    | WorkOSUserDeletedTrigger
+    | WorkOSUserTrigger
+    | WorkOSUserUpdatedTrigger
+    | ManualSampleTrigger
+)
 
 
 __all__ = [
-    "AnyInputEvent",
-    "AtlassianInputEvent",
-    "AttioInputEvent",
-    "CronJobInputEvent",
-    "DatadogInputEvent",
-    "FigmaInputEvent",
-    "GithubCommit",
-    "GithubEventMetadata",
-    "GithubFileDiff",
-    "GithubInputEvent",
-    "GithubPRData",
-    "GithubPRRef",
+    "AnyTrigger",
+    "SDKTrigger",
+    "CronTrigger",
+    "GitHubCommit",
+    "GitHubFileDiff",
+    "GitHubPullRequestData",
+    "GitHubPullRequestRef",
+    "GithubPRClosedTrigger",
+    "GithubPRMergedTrigger",
+    "GithubPROpenedTrigger",
+    "GithubPRSynchronizedTrigger",
+    "GithubPRTrigger",
+    "GithubPushTrigger",
     "GithubRepository",
-    "GithubUser",
-    "GmailInputEvent",
-    "InputEvent",
-    "KnownInputEvent",
-    "LaunchDarklyInputEvent",
-    "LinearInputEvent",
-    "NotionInputEvent",
-    "PosthogInputEvent",
-    "SerializedEventInputEvent",
+    "GithubTrigger",
+    "GitHubUser",
+    "GmailTrigger",
+    "LinearCommentCreatedTrigger",
+    "LinearIssueCreatedTrigger",
+    "LinearIssueUpdatedTrigger",
+    "LinearTrigger",
     "SlackAttachment",
     "SlackAttachmentField",
     "SlackFile",
-    "SlackInputEvent",
-    "SnowflakeInputEvent",
-    "TerseInputEvent",
-    "WorkOSEventInvitation",
-    "WorkOSEventMembership",
-    "WorkOSEventMetadata",
-    "WorkOSEventUser",
-    "WorkOSInputEvent",
+    "SlackAppMentionTrigger",
+    "SlackMessageTrigger",
+    "SlackReactionAddedTrigger",
+    "SlackTrigger",
+    "Trigger",
+    "ManualSampleTrigger",
+    "WebhookTrigger",
+    "WorkOSInvitationAcceptedTrigger",
+    "WorkOSInvitationCreatedTrigger",
+    "WorkOSInvitationResentTrigger",
+    "WorkOSInvitationRevokedTrigger",
+    "WorkOSInvitationTrigger",
+    "WorkOSMembershipTrigger",
+    "WorkOSOrganizationMembershipCreatedTrigger",
+    "WorkOSOrganizationMembershipDeletedTrigger",
+    "WorkOSOrganizationMembershipUpdatedTrigger",
+    "WorkOSOrganizationTrigger",
+    "WorkOSTrigger",
+    "WorkOSTriggerInvitation",
+    "WorkOSTriggerMembership",
+    "WorkOSTriggerOrganization",
+    "WorkOSTriggerUser",
+    "WorkOSUserCreatedTrigger",
+    "WorkOSUserDeletedTrigger",
+    "WorkOSUserTrigger",
+    "WorkOSUserUpdatedTrigger",
 ]
