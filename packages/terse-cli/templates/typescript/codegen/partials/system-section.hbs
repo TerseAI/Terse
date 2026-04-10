@@ -2,7 +2,7 @@
 
 export const Schedule = {
     /** Use in `triggers[]` — run on a cron schedule */
-    cron(opts: { expression: string }): TypedTrigger<CronTriggerEvent> {
+    cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
         return new TimeTriggerConfig(opts.expression) 
     },
 }
@@ -11,7 +11,7 @@ export const Schedule = {
 
 export const Webhook = {
     /** Use in `triggers[]` — trigger via an external HTTP request to a generated URL */
-    onRequest(): TypedTrigger<WebhookTriggerEvent> {
+    onRequest(): TypedTrigger<WebhookTrigger> {
         return new WebhookInputConfig()
     },
 }

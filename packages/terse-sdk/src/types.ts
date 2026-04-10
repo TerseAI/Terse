@@ -1,18 +1,5 @@
-import { GitHubEventType, IntegrationType, WorkOSEventType, debugTriggerEvent, formatTriggerEventForAgent, parseTriggerEvent } from "terse-types"
-import type {
-    ConfigData,
-    GitHubPullRequestTriggerEvent,
-    GitHubPushTriggerEvent,
-    GitHubTriggerEvent,
-    SerializedEvent,
-    TriggerEvent,
-    WebhookTriggerEvent,
-    WorkOSInvitationTriggerEvent,
-    WorkOSMembershipTriggerEvent,
-    WorkOSOrganizationTriggerEvent,
-    WorkOSTriggerEvent,
-    WorkOSUserTriggerEvent
-} from "terse-types"
+import { IntegrationType } from "terse-types"
+import type { ConfigData, SerializedEvent, Trigger } from "terse-types"
 
 /**
  * Lightweight interface for toolbox entries.
@@ -24,21 +11,27 @@ export interface ToolboxEntry {
     displayName: string
 }
 
-export type SDKTriggerEvent<TEvent extends TriggerEvent = TriggerEvent> = {
-    data: TEvent
+export type SDKTrigger<TEvent extends Trigger = Trigger> = TEvent & {
     formatForAgentRunner(): string
     debugLog(): string
+}
+
+export function createSDKTrigger(serialized: SerializedEvent): SDKTrigger {
+    return Object.assign({}, serialized.data, {
+        formatForAgentRunner: () => serialized.formattedContent,
+        debugLog: () => serialized.debugLog
+    }) as SDKTrigger
 }
 
 // ---------------------------------------------------------------------------
 // TypedTrigger – phantom-typed ConfigData for generic event inference
 // ---------------------------------------------------------------------------
 
-export type TypedTrigger<TEvent extends TriggerEvent = TriggerEvent> = ConfigData & {
+export type TypedTrigger<TEvent extends Trigger = Trigger> = ConfigData & {
     readonly __eventType?: TEvent
 }
 
-export type InferEvent<T> = T extends TypedTrigger<infer E> ? SDKTriggerEvent<E> : SDKTriggerEvent
+export type InferEvent<T> = T extends TypedTrigger<infer E> ? SDKTrigger<E> : SDKTrigger
 export type InferEvents<T extends readonly unknown[]> = InferEvent<T[number]>
 
 // ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ from ._generated import (
     GitHubPullRequestTriggerEvent,
     GitHubPushTriggerEvent,
     GitHubRepository,
-    GitHubTriggerEvent,
+    GithubTriggerEvent,
     GmailTriggerEvent,
     LinearCommentCreatedTriggerEvent,
     LinearIssueCreatedTriggerEvent,
@@ -109,7 +109,7 @@ KnownTriggerEvent: TypeAlias = (
     SlackMessageTriggerEvent
     | SlackAppMentionTriggerEvent
     | SlackReactionAddedTriggerEvent
-    | GitHubTriggerEvent
+    | GithubTriggerEvent
     | GmailTriggerEvent
     | LinearTriggerEvent
     | WebhookTriggerEvent
@@ -165,7 +165,7 @@ __all__ = [
     "GitHubPullRequestTriggerEvent",
     "GitHubPushTriggerEvent",
     "GitHubRepository",
-    "GitHubTriggerEvent",
+    "GithubTriggerEvent",
     "GitHubUser",
     "GmailTriggerEvent",
     "KnownTriggerEvent",

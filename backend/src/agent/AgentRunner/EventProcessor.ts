@@ -3,7 +3,7 @@ import { ConfigData } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
-import { TriggerEventRuntime } from "../../integrations/abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
@@ -52,11 +52,11 @@ export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
 }
 
 export class EventProcessor {
-    private inputEvent: TriggerEventRuntime
+    private inputEvent: TriggerRuntime
     private user: User
     private isManuallyTriggered: boolean
 
-    constructor(inputEvent: TriggerEventRuntime, user: User, options?: { isManuallyTriggered?: boolean }) {
+    constructor(inputEvent: TriggerRuntime, user: User, options?: { isManuallyTriggered?: boolean }) {
         this.inputEvent = inputEvent
         this.user = user
         this.isManuallyTriggered = options?.isManuallyTriggered ?? false

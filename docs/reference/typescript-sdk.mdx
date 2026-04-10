@@ -16,7 +16,7 @@ Import these from `terse-sdk`:
 - `Terse`: the SDK client
 - `TerseAgent`: the runtime object inside `onTrigger`
 - `TriggerEvent`: the base event interface
-- Specific event types: `GitHubTriggerEvent`, `GitHubPullRequestTriggerEvent`, `CronTriggerEvent`, `ManualSampleTriggerEvent`
+- Specific event types: `GithubTriggerEvent`, `GitHubPullRequestTriggerEvent`, `CronTriggerEvent`, `ManualSampleTriggerEvent`
 
 ## `Terse`
 
@@ -30,28 +30,24 @@ const client = new Terse()
 
 Defines the workflow contract.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `string` | Unique workflow identifier. Used to match workflows across deploys. |
-| `triggers` | `Trigger[]` | One or more triggers that start the workflow. |
-| `skills` | `Skill[]` | Capabilities available to the model during `run` and `runAndWait`. |
-| `toolApprovals` | `string[]` | Tool names that require human approval before execution. See [tool approvals](#tool-approvals). |
-| `filter` | `(event) => boolean` | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
-| `onTrigger` | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event. |
-| `webhookURL` | `string` | Optional URL to notify after each run completes. |
+| Field           | Type                              | Description                                                                                       |
+| --------------- | --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `name`          | `string`                          | Unique workflow identifier. Used to match workflows across deploys.                               |
+| `triggers`      | `Trigger[]`                       | One or more triggers that start the workflow.                                                     |
+| `skills`        | `Skill[]`                         | Capabilities available to the model during `run` and `runAndWait`.                                |
+| `toolApprovals` | `string[]`                        | Tool names that require human approval before execution. See [tool approvals](#tool-approvals).   |
+| `filter`        | `(event) => boolean`              | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
+| `onTrigger`     | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event.                                              |
+| `webhookURL`    | `string`                          | Optional URL to notify after each run completes.                                                  |
 
 ```ts
 await client.createJob({
-  name: "new-deal-enrichment",
-  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-  skills: [
-    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-    Apollo.skill(),
-    Slack.skill({ channel: SlackChannel.DealDesk }),
-  ],
-  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
-    // workflow logic
-  },
+    name: "new-deal-enrichment",
+    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
+    onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
+        // workflow logic
+    }
 })
 ```
 
@@ -65,7 +61,7 @@ Streams the model run. Returns an async iterable of output chunks.
 
 ```ts
 for await (const chunk of agent.run("Summarize pipeline risk.", event)) {
-  process.stdout.write(chunk)
+    process.stdout.write(chunk)
 }
 ```
 
@@ -87,9 +83,9 @@ Calls a named tool directly, bypassing the LLM.
 
 ```ts
 await agent.executeTool("attio.updateRecord", {
-  list: AttioList.Pipeline.NewDeals,
-  recordId: "rec_123",
-  fields: { fit_score: 92 },
+    list: AttioList.Pipeline.NewDeals,
+    recordId: "rec_123",
+    fields: { fit_score: 92 }
 })
 ```
 
@@ -101,12 +97,12 @@ Generated helpers attach deterministic wrappers under `agent.tools.*`. These cal
 
 ```ts
 const enrichment = await agent.tools.apollo.enrichCompany({
-  domain: "northstarlogistics.com",
+    domain: "northstarlogistics.com"
 })
 
 await agent.tools.slack.sendMessage({
-  channelId: SlackChannel.DealDesk.channelId,
-  message: `Industry: ${enrichment.industry}, Employees: ${enrichment.employeeCount}`,
+    channelId: SlackChannel.DealDesk.channelId,
+    message: `Industry: ${enrichment.industry}, Employees: ${enrichment.employeeCount}`
 })
 ```
 
@@ -120,25 +116,25 @@ Use `agent.tools.*` for guaranteed side effects. These wrappers are available wh
 
 ```ts
 const result = await agent.runAndWait(
-  [
-    "Score this company from 1-100 for ICP fit.",
-    "Respond with ONLY a JSON object: { \"score\": <number>, \"rationale\": \"<string>\" }",
-    `Company: ${event.record.values.company_name}`,
-    `Industry: ${company.industry}`,
-    `Employees: ${company.employeeCount}`,
-  ].join("\n"),
-  event,
+    [
+        "Score this company from 1-100 for ICP fit.",
+        'Respond with ONLY a JSON object: { "score": <number>, "rationale": "<string>" }',
+        `Company: ${event.record.values.company_name}`,
+        `Industry: ${company.industry}`,
+        `Employees: ${company.employeeCount}`
+    ].join("\n"),
+    event
 )
 
 const parsed = JSON.parse(result) as { score: number; rationale: string }
 
 await agent.tools.attio.updateRecord({
-  list: AttioList.Pipeline.NewDeals,
-  recordId: event.record.id,
-  fields: {
-    fit_score: parsed.score,
-    scoring_notes: parsed.rationale,
-  },
+    list: AttioList.Pipeline.NewDeals,
+    recordId: event.record.id,
+    fields: {
+        fit_score: parsed.score,
+        scoring_notes: parsed.rationale
+    }
 })
 ```
 
@@ -148,17 +144,20 @@ await agent.tools.attio.updateRecord({
 - Use `JSON.parse()` and handle the failure case, since the model may include markdown fencing or extra text.
 - For critical writes, validate the parsed result before passing it to `agent.tools.*`.
 
-```ts
+````ts
 const raw = await agent.runAndWait(prompt, event)
 
 // Strip markdown code fences if present
-const cleaned = raw.replace(/```json?\n?/g, "").replace(/```/g, "").trim()
+const cleaned = raw
+    .replace(/```json?\n?/g, "")
+    .replace(/```/g, "")
+    .trim()
 const parsed = JSON.parse(cleaned) as { score: number; rationale: string }
 
 if (parsed.score < 0 || parsed.score > 100) {
-  throw new Error(`Invalid score: ${parsed.score}`)
+    throw new Error(`Invalid score: ${parsed.score}`)
 }
-```
+````
 
 ## Filtering events
 
@@ -166,20 +165,16 @@ Use `filter` to skip runs for events that don't match your criteria. Return `tru
 
 ```ts
 await client.createJob({
-  name: "contract-alerts",
-  triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
-  skills: [
-    Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }),
-    Slack.skill({ channel: SlackChannel.DealDesk }),
-  ],
-  filter: (event: TriggerEvent) =>
-    event.record.values.stage === "contract-sent",
-  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
-    await agent.tools.slack.sendMessage({
-      channelId: SlackChannel.DealDesk.channelId,
-      message: `Contract sent for ${event.record.values.company_name}.`,
-    })
-  },
+    name: "contract-alerts",
+    triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
+    skills: [Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }), Slack.skill({ channel: SlackChannel.DealDesk })],
+    filter: (event: TriggerEvent) => event.record.values.stage === "contract-sent",
+    onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
+        await agent.tools.slack.sendMessage({
+            channelId: SlackChannel.DealDesk.channelId,
+            message: `Contract sent for ${event.record.values.company_name}.`
+        })
+    }
 })
 ```
 
@@ -189,41 +184,32 @@ List tool names in `toolApprovals` to require human approval before those tools 
 
 ```ts
 await client.createJob({
-  name: "deal-enrichment-with-approval",
-  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-  skills: [
-    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-    Apollo.skill(),
-    Slack.skill({ channel: SlackChannel.DealDesk }),
-  ],
-  toolApprovals: ["attio.updateRecord", "slack.sendMessage"],
-  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
-    const company = await agent.tools.apollo.enrichCompany({
-      domain: event.record.values.company_domain,
-    })
+    name: "deal-enrichment-with-approval",
+    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
+    toolApprovals: ["attio.updateRecord", "slack.sendMessage"],
+    onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
+        const company = await agent.tools.apollo.enrichCompany({
+            domain: event.record.values.company_domain
+        })
 
-    const summary = await agent.runAndWait(
-      [
-        "Summarize this company for the account owner.",
-        `Company: ${event.record.values.company_name}`,
-        `Industry: ${company.industry}`,
-        `Employees: ${company.employeeCount}`,
-      ].join("\n"),
-      event,
-    )
+        const summary = await agent.runAndWait(
+            ["Summarize this company for the account owner.", `Company: ${event.record.values.company_name}`, `Industry: ${company.industry}`, `Employees: ${company.employeeCount}`].join("\n"),
+            event
+        )
 
-    // These two calls will pause and wait for human approval
-    await agent.tools.attio.updateRecord({
-      list: AttioList.Pipeline.NewDeals,
-      recordId: event.record.id,
-      fields: { research_summary: summary },
-    })
+        // These two calls will pause and wait for human approval
+        await agent.tools.attio.updateRecord({
+            list: AttioList.Pipeline.NewDeals,
+            recordId: event.record.id,
+            fields: { research_summary: summary }
+        })
 
-    await agent.tools.slack.sendMessage({
-      channelId: SlackChannel.DealDesk.channelId,
-      message: `New deal enriched: ${event.record.values.company_name}\n\n${summary}`,
-    })
-  },
+        await agent.tools.slack.sendMessage({
+            channelId: SlackChannel.DealDesk.channelId,
+            message: `New deal enriched: ${event.record.values.company_name}\n\n${summary}`
+        })
+    }
 })
 ```
 
@@ -233,13 +219,13 @@ Use `toolApprovals` for workflows that write to production systems during early 
 
 Event typing depends on the trigger.
 
-| Trigger source | Event type |
-| --- | --- |
-| Attio record events | `TriggerEvent` |
-| Slack actions | Typed Slack action payloads |
-| Scheduled cron triggers | `CronTriggerEvent` |
-| Scheduled interval triggers | `CronTriggerEvent` |
-| Manual trigger | `ManualSampleTriggerEvent` |
+| Trigger source              | Event type                  |
+| --------------------------- | --------------------------- |
+| Attio record events         | `TriggerEvent`              |
+| Slack actions               | Typed Slack action payloads |
+| Scheduled cron triggers     | `CronTriggerEvent`          |
+| Scheduled interval triggers | `CronTriggerEvent`          |
+| Manual trigger              | `ManualSampleTriggerEvent`  |
 
 `TriggerEvent` is the common base interface. Use the most specific trigger event type your trigger exposes.
 
@@ -254,54 +240,43 @@ It exports:
 - Workspace resource constants: `AttioList`, `SlackChannel`, `AttioOwner`
 - Deterministic tool wrappers exposed through `agent.tools.*`
 
-<Warning>
-  Re-run `terse generate` when your integration context changes.
-  Do not edit `src/terse.generated.ts` by hand.
-</Warning>
+<Warning>Re-run `terse generate` when your integration context changes. Do not edit `src/terse.generated.ts` by hand.</Warning>
 
 ## Bring your own API
 
 Use the `Http` skill to call any REST API that Terse does not have a native integration for. This is useful for enrichment providers, internal services, or any system with an HTTP API.
 
 ```ts
-import { TriggerEvent, Terse, TerseAgent } from "terse-sdk"
+import { Terse, TerseAgent, TriggerEvent } from "terse-sdk"
+
 import { Attio, AttioList, Http } from "./terse.generated"
 
 const client = new Terse()
 
 await client.createJob({
-  name: "custom-enrichment",
-  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-  skills: [
-    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-    Http.skill(),
-  ],
-  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
-    // Call any REST API directly
-    const response = await agent.tools.http.request({
-      method: "GET",
-      url: `https://api.example.com/companies?domain=${event.record.values.company_domain}`,
-      headers: {
-        Authorization: `Bearer ${process.env.EXAMPLE_API_KEY}`,
-      },
-    })
+    name: "custom-enrichment",
+    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Http.skill()],
+    onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
+        // Call any REST API directly
+        const response = await agent.tools.http.request({
+            method: "GET",
+            url: `https://api.example.com/companies?domain=${event.record.values.company_domain}`,
+            headers: {
+                Authorization: `Bearer ${process.env.EXAMPLE_API_KEY}`
+            }
+        })
 
-    const company = JSON.parse(response.body)
+        const company = JSON.parse(response.body)
 
-    const summary = await agent.runAndWait(
-      [
-        "Summarize this company for the account owner.",
-        `Data: ${JSON.stringify(company)}`,
-      ].join("\n"),
-      event,
-    )
+        const summary = await agent.runAndWait(["Summarize this company for the account owner.", `Data: ${JSON.stringify(company)}`].join("\n"), event)
 
-    await agent.tools.attio.updateRecord({
-      list: AttioList.Pipeline.NewDeals,
-      recordId: event.record.id,
-      fields: { research_summary: summary },
-    })
-  },
+        await agent.tools.attio.updateRecord({
+            list: AttioList.Pipeline.NewDeals,
+            recordId: event.record.id,
+            fields: { research_summary: summary }
+        })
+    }
 })
 ```
 

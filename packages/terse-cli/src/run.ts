@@ -38,7 +38,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     try {
         parsed = serializedEventSchema.parse(eventJson)
     } catch (error) {
-        console.error(chalk.red("Error: --event does not match the canonical TriggerEvent schema."))
+        console.error(chalk.red("Error: --event does not match the canonical Trigger schema."))
         console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
         process.exit(1)
     }

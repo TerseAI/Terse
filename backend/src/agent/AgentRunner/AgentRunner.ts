@@ -3,10 +3,10 @@ import { RunHistoryActionType } from "@prisma/client"
 import { EntityType } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ChangeEventType, ChangedItem, ModelEvent } from "terse-types"
-import type { ConfigData, RunHistoryAction, TrackingParams, TriggerEvent } from "terse-types"
+import type { ConfigData, RunHistoryAction, TrackingParams, Trigger } from "terse-types"
 
 import { settings } from "../../config/settings"
-import { TriggerEventRuntime } from "../../integrations/abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
@@ -38,7 +38,7 @@ type UserMessageContent = AgentInputText | AgentInputImage | AgentInputFile
 
 export class AgentRunner<T extends Session, TConfig extends ConfigData> extends BaseAgentRunner<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> {
     private session: T
-    private inputEvent: TriggerEventRuntime | null = null
+    private inputEvent: TriggerRuntime | null = null
     private agentConfig: AgentWithRelations
     private outputs: Output<TConfig>[]
     private tools: Tool<SessionWithTracking<T>>[] = []
@@ -222,7 +222,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         this.activeStreamEventEmitter = undefined
     }
 
-    setInputEvent(event: TriggerEventRuntime): void {
+    setInputEvent(event: TriggerRuntime): void {
         this.inputEvent = event
     }
 
@@ -379,7 +379,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         }
     }
 
-    private buildTextContent(inputEvent: TriggerEventRuntime): string {
+    private buildTextContent(inputEvent: TriggerRuntime): string {
         return buildRunTriggerContextMessage({
             userContext: UserFormatter.formatForAgent(this.session.user),
             userInstructions: this.agentConfig.prompt?.content,

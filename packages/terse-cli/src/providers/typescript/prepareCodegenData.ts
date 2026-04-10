@@ -339,13 +339,13 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
         "GitHubEventType",
         "TypedTrigger",
         "TypedSkill",
-        "GitHubPullRequestOpenedTriggerEvent",
-        "GitHubPullRequestMergedTriggerEvent",
-        "GitHubPullRequestClosedTriggerEvent",
-        "GitHubPullRequestSynchronizedTriggerEvent",
-        "GitHubPullRequestTriggerEvent",
-        "GitHubPushTriggerEvent",
-        "GitHubTriggerEvent"
+        "GitHubPullRequestOpenedTrigger",
+        "GitHubPullRequestMergedTrigger",
+        "GitHubPullRequestClosedTrigger",
+        "GitHubPullRequestSynchronizedTrigger",
+        "GitHubPullRequestTrigger",
+        "GitHubPushTrigger",
+        "GithubTrigger"
     ]
     const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
 
@@ -400,7 +400,7 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
 
 function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDefinition[]): SectionContext<GmailSectionContext> {
     if (instances.length === 0) return sectionData([])
-    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType", "GmailTriggerEvent"], {
+    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType", "GmailTrigger"], {
         id: instances[0].id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "gmail")
     })
@@ -410,17 +410,7 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
     return sectionData(
-        [
-            "SlackAppMentionTriggerEvent",
-            "SlackConfig",
-            "SlackMessageTriggerEvent",
-            "SlackOutputConfig",
-            "SlackReactionAddedTriggerEvent",
-            "TypedSkill",
-            "SlackEventType",
-            "TypedTrigger",
-            "SlackTriggerEvent"
-        ],
+        ["SlackAppMentionTrigger", "SlackConfig", "SlackMessageTrigger", "SlackOutputConfig", "SlackReactionAddedTrigger", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTrigger"],
         {
             id: inst.id,
             skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
@@ -447,10 +437,10 @@ function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefini
             "TypedSkill",
             "TypedTrigger",
             "LinearEventType",
-            "LinearIssueCreatedTriggerEvent",
-            "LinearIssueUpdatedTriggerEvent",
-            "LinearCommentCreatedTriggerEvent",
-            "LinearTriggerEvent"
+            "LinearIssueCreatedTrigger",
+            "LinearIssueUpdatedTrigger",
+            "LinearCommentCreatedTrigger",
+            "LinearTrigger"
         ],
         {
             id: inst.id,
@@ -551,21 +541,21 @@ function prepareWorkOSSection(instances: IntegrationInstanceData[], tools: ToolD
             "WorkOSEventType",
             "TypedSkill",
             "TypedTrigger",
-            "WorkOSTriggerEvent",
-            "WorkOSUserCreatedTriggerEvent",
-            "WorkOSUserUpdatedTriggerEvent",
-            "WorkOSUserDeletedTriggerEvent",
-            "WorkOSUserTriggerEvent",
-            "WorkOSOrganizationMembershipCreatedTriggerEvent",
-            "WorkOSOrganizationMembershipUpdatedTriggerEvent",
-            "WorkOSOrganizationMembershipDeletedTriggerEvent",
-            "WorkOSMembershipTriggerEvent",
-            "WorkOSInvitationCreatedTriggerEvent",
-            "WorkOSInvitationAcceptedTriggerEvent",
-            "WorkOSInvitationResentTriggerEvent",
-            "WorkOSInvitationRevokedTriggerEvent",
-            "WorkOSInvitationTriggerEvent",
-            "WorkOSOrganizationTriggerEvent"
+            "WorkOSTrigger",
+            "WorkOSUserCreatedTrigger",
+            "WorkOSUserUpdatedTrigger",
+            "WorkOSUserDeletedTrigger",
+            "WorkOSUserTrigger",
+            "WorkOSOrganizationMembershipCreatedTrigger",
+            "WorkOSOrganizationMembershipUpdatedTrigger",
+            "WorkOSOrganizationMembershipDeletedTrigger",
+            "WorkOSMembershipTrigger",
+            "WorkOSInvitationCreatedTrigger",
+            "WorkOSInvitationAcceptedTrigger",
+            "WorkOSInvitationResentTrigger",
+            "WorkOSInvitationRevokedTrigger",
+            "WorkOSInvitationTrigger",
+            "WorkOSOrganizationTrigger"
         ],
         {
             id: instances[0].id,
@@ -1005,7 +995,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
 }
 
 function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSectionContext> {
-    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookTriggerEvent", "CronTriggerEvent", "TypedTrigger"], {
+    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookTrigger", "CronTrigger", "TypedTrigger"], {
         skillToolType: buildSkillToolTypeForIntegration(tools, "terse")
     })
 }

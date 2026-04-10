@@ -1,52 +1,12 @@
 {{#if linear}}
 
-
-# === Linear ===
-
-
-class Linear:
-    @staticmethod
-    def on_issue_created(*, project_id: str | None = None, project_name: str | None = None) -> TriggerConfig[LinearIssueCreatedTriggerEvent]:
-        return TriggerConfig(
-            integration_id={{{linear.instanceIdRepr}}},
-            integration_type='linear',
-            config_type='linear_input',
-            config=_compact_dict(projectId=project_id, projectName=project_name, eventTypes=[LinearEventType.issue_created]),
-        )
-
-    @staticmethod
-    def on_issue_updated(*, project_id: str | None = None, project_name: str | None = None) -> TriggerConfig[LinearIssueUpdatedTriggerEvent]:
-        return TriggerConfig(
-            integration_id={{{linear.instanceIdRepr}}},
-            integration_type='linear',
-            config_type='linear_input',
-            config=_compact_dict(projectId=project_id, projectName=project_name, eventTypes=[LinearEventType.issue_updated]),
-        )
-
-    @staticmethod
-    def on_comment(*, project_id: str | None = None, project_name: str | None = None) -> TriggerConfig[LinearCommentCreatedTriggerEvent]:
-        return TriggerConfig(
-            integration_id={{{linear.instanceIdRepr}}},
-            integration_type='linear',
-            config_type='linear_input',
-            config=_compact_dict(projectId=project_id, projectName=project_name, eventTypes=[LinearEventType.comment_created]),
-        )
-
-    @staticmethod
-    def trigger(
-        *,
-        project_id: str | None = None,
-        project_name: str | None = None,
-        event_types: Sequence[LinearEventType] | None = None,
-    ) -> TriggerConfig[LinearTriggerEvent]:
-        return TriggerConfig(
-            integration_id={{{linear.instanceIdRepr}}},
-            integration_type='linear',
-            config_type='linear_input',
-            config=_compact_dict(
-                projectId=project_id,
-                projectName=project_name,
-                eventTypes=list(event_types) if event_types is not None else None,
-            ),
-        )
+    # === Linear === class Linear: @staticmethod def on_issue_created(*, project_id: str | None = None, project_name: str | None = None) -> TriggerConfig[LinearIssueCreatedTrigger]: return
+    TriggerConfig( integration_id={{{linear.instanceIdRepr}}}, integration_type='linear', config_type='linear_input', config=_compact_dict(projectId=project_id, projectName=project_name,
+    eventTypes=[LinearEventType.issue_created]), ) @staticmethod def on_issue_updated(*, project_id: str | None = None, project_name: str | None = None) -> TriggerConfig[LinearIssueUpdatedTrigger]:
+    return TriggerConfig( integration_id={{{linear.instanceIdRepr}}}, integration_type='linear', config_type='linear_input', config=_compact_dict(projectId=project_id, projectName=project_name,
+    eventTypes=[LinearEventType.issue_updated]), ) @staticmethod def on_comment(*, project_id: str | None = None, project_name: str | None = None) -> TriggerConfig[LinearCommentCreatedTrigger]: return
+    TriggerConfig( integration_id={{{linear.instanceIdRepr}}}, integration_type='linear', config_type='linear_input', config=_compact_dict(projectId=project_id, projectName=project_name,
+    eventTypes=[LinearEventType.comment_created]), ) @staticmethod def trigger( *, project_id: str | None = None, project_name: str | None = None, event_types: Sequence[LinearEventType] | None = None,
+    ) -> TriggerConfig[LinearTrigger]: return TriggerConfig( integration_id={{{linear.instanceIdRepr}}}, integration_type='linear', config_type='linear_input', config=_compact_dict(
+    projectId=project_id, projectName=project_name, eventTypes=list(event_types) if event_types is not None else None, ), )
 {{/if}}

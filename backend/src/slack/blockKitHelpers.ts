@@ -1,6 +1,6 @@
 import type { AppMentionEvent, Button, GenericMessageEvent, KnownBlock, ModalView } from "@slack/types"
 import { WebClient } from "@slack/web-api"
-import { SlackAttachment, SlackBlock, SlackBlocks, SlackFile, SlackFiles, SlackTriggerEvent } from "terse-types"
+import { SlackAttachment, SlackBlock, SlackBlocks, SlackFile, SlackFiles, SlackTrigger } from "terse-types"
 
 import { ConfigurationFieldDefinition, FormFieldDefinition } from "../integrations/abstract/Integration"
 import logger from "../logger"
@@ -595,7 +595,7 @@ export interface SlackMessageImage {
  * Extract all images from a Slack message
  * Searches blocks, attachments, and files for images
  */
-export function extractImagesFromMessage(event: SlackTriggerEvent): SlackMessageImage[] {
+export function extractImagesFromMessage(event: SlackTrigger): SlackMessageImage[] {
     const images: SlackMessageImage[] = []
 
     // Extract from blocks

@@ -1,19 +1,19 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
-import { WebhookTriggerEvent } from "terse-types"
+import { WebhookTrigger } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { TriggerEventRuntime } from "../integrations/abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "../integrations/abstract/TriggerRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
-export class WebhookTriggerEventRuntime extends TriggerEventRuntime<WebhookTriggerEvent> {
+export class WebhookTriggerRuntime extends TriggerRuntime<WebhookTrigger> {
     readonly integrationType = IntegrationType.WEBHOOK
-    readonly data: WebhookTriggerEvent
+    readonly data: WebhookTrigger
     private readonly agentId: string
 
     constructor(opts: { body: Record<string, unknown>; headers: Record<string, string>; method: string; agentId: string }) {
@@ -93,7 +93,7 @@ export async function handleWebhookTrigger(req: Request, res: Response) {
             if (typeof value === "string") headers[key] = value
         }
 
-        const webhookEvent = new WebhookTriggerEventRuntime({
+        const webhookEvent = new WebhookTriggerRuntime({
             body: (req.body as Record<string, unknown>) ?? {},
             headers,
             method: req.method,

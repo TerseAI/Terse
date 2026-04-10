@@ -67,7 +67,7 @@ from .events import (
     GitHubPullRequestTriggerEvent,
     GitHubPushTriggerEvent,
     GitHubRepository,
-    GitHubTriggerEvent,
+    GithubTriggerEvent,
     GitHubUser,
     GmailTriggerEvent,
     KnownTriggerEvent,

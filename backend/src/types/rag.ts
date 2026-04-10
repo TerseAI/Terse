@@ -1,8 +1,8 @@
-import type { GithubTriggerEventRuntime } from "../integrations/GithubIntegration"
-import type { GmailTriggerEventRuntime } from "../integrations/GmailIntegration"
-import type { LinearTriggerEventRuntime } from "../integrations/LinearIntegration"
-import type { SlackTriggerEventRuntime } from "../integrations/SlackIntegration"
-import type { WorkOSTriggerEventRuntime } from "../integrations/WorkOSIntegration"
+import type { GithubTriggerRuntime } from "../integrations/GithubIntegration"
+import type { GmailTriggerRuntime } from "../integrations/GmailIntegration"
+import type { LinearTriggerRuntime } from "../integrations/LinearIntegration"
+import type { SlackTriggerRuntime } from "../integrations/SlackIntegration"
+import type { WorkOSTriggerRuntime } from "../integrations/WorkOSIntegration"
 import logger from "../logger"
 import type { IdentifiableRunHistoryRawEvent } from "../rag/runHistoryRag/hydrator"
 
@@ -35,11 +35,11 @@ export function requireHydratorType(value: string): HydratorType {
 
 export type HydratorTypeMap = {
     [HydratorType.RUN_HISTORY_RAW_EVENT]: IdentifiableRunHistoryRawEvent
-    [HydratorType.SLACK_MESSAGE_EVENT]: SlackTriggerEventRuntime
-    [HydratorType.GITHUB_EVENT]: GithubTriggerEventRuntime
-    [HydratorType.LINEAR_EVENT]: LinearTriggerEventRuntime
-    [HydratorType.GMAIL_EVENT]: GmailTriggerEventRuntime
-    [HydratorType.WORKOS_EVENT]: WorkOSTriggerEventRuntime
+    [HydratorType.SLACK_MESSAGE_EVENT]: SlackTriggerRuntime
+    [HydratorType.GITHUB_EVENT]: GithubTriggerRuntime
+    [HydratorType.LINEAR_EVENT]: LinearTriggerRuntime
+    [HydratorType.GMAIL_EVENT]: GmailTriggerRuntime
+    [HydratorType.WORKOS_EVENT]: WorkOSTriggerRuntime
 }
 
 export enum RAGNamespace {

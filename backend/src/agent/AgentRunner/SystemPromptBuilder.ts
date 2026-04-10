@@ -4,7 +4,7 @@ import { ConfigData, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"
-import { TriggerEventRuntime } from "../../integrations/abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { Output } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
@@ -162,7 +162,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigData> 
     /**
      * Precursor support for RAG, keeping around if we want to use this again in the future.
      */
-    withSimilarEventsSection(inputEvent: TriggerEventRuntime): this {
+    withSimilarEventsSection(inputEvent: TriggerRuntime): this {
         return this.withSection(() => this.buildSimilarEventsSection(inputEvent))
     }
 
@@ -246,7 +246,7 @@ This is event #${eventPosition} processed by this automation.`
         }
     }
 
-    protected async buildSimilarEventsSection(inputEvent: TriggerEventRuntime): Promise<Section | null> {
+    protected async buildSimilarEventsSection(inputEvent: TriggerRuntime): Promise<Section | null> {
         try {
             if (!this.deps.agent.user_id) {
                 return null

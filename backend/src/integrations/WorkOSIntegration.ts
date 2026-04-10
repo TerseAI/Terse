@@ -1,5 +1,5 @@
 import { InputConfigType } from "@prisma/client"
-import { WorkOSTriggerEvent, WorkOSWebhookPayload } from "terse-types"
+import { WorkOSTrigger, WorkOSWebhookPayload } from "terse-types"
 import { ConfigData, ConfigType, WorkOSEventType, WorkOSInputConfigSchema } from "terse-types/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -16,7 +16,7 @@ import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"
 
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
-import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]
 
@@ -86,7 +86,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
 
         const apiKey = await getSecret(IntegrationType.WORKOS, integrationId, SecretField.ApiKey)
         const enrichedPayload = apiKey ? await enrichWorkOSEventPayload(payload, apiKey) : payload
-        const event = new WorkOSTriggerEventRuntime(enrichedPayload, integrationId)
+        const event = new WorkOSTriggerRuntime(enrichedPayload, integrationId)
         const processor = new EventProcessor(event, user)
         const results = await processor.process()
 
@@ -240,7 +240,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         options?: {
             limit?: number
         }
-    ): Promise<TriggerEventRuntime[]> {
+    ): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.WORKOS_INPUT) {
             return []
         }
@@ -259,7 +259,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         const events = await fetchWorkOSEvents(apiKey, workosConfig.eventTypes, limit)
         const enrichedEvents = await Promise.all(events.map(event => enrichWorkOSEventPayload(event, apiKey)))
 
-        return enrichedEvents.map(evt => new WorkOSTriggerEventRuntime(evt, integrationId))
+        return enrichedEvents.map(evt => new WorkOSTriggerRuntime(evt, integrationId))
     }
 }
 
@@ -314,18 +314,18 @@ export interface WorkOSWebhookRequest {
     payload: WorkOSWebhookPayload
 }
 
-export class WorkOSTriggerEventRuntime extends TriggerEventRuntime<WorkOSTriggerEvent> implements Identifiable {
+export class WorkOSTriggerRuntime extends TriggerRuntime<WorkOSTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.WORKOS
     entityType = HydratorType.WORKOS_EVENT
     entityId: string
-    data: WorkOSTriggerEvent
+    data: WorkOSTrigger
 
     constructor(
         payload: WorkOSWebhookPayload,
         private integrationId: string
     ) {
         super()
-        this.data = buildWorkOSTriggerEvent(payload)
+        this.data = buildWorkOSTrigger(payload)
         this.entityId = `${integrationId}:${payload.id}`
     }
 
@@ -357,7 +357,7 @@ export class WorkOSTriggerEventRuntime extends TriggerEventRuntime<WorkOSTrigger
     }
 }
 
-function getWorkOSMetadataUserName(event: WorkOSTriggerEvent): string {
+function getWorkOSMetadataUserName(event: WorkOSTrigger): string {
     const user = "user" in event ? event.user : undefined
     if (user) {
         return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Unknown"
@@ -368,7 +368,7 @@ function getWorkOSMetadataUserName(event: WorkOSTriggerEvent): string {
     return "Unknown"
 }
 
-function buildWorkOSTriggerEvent(payload: WorkOSWebhookPayload): WorkOSTriggerEvent {
+function buildWorkOSTrigger(payload: WorkOSWebhookPayload): WorkOSTrigger {
     const data = payload.data
     const eventType = payload.event as WorkOSEventType
     const baseEvent = {

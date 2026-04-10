@@ -1,5 +1,5 @@
 import { InputConfigType } from "@prisma/client"
-import { ApiRoutes, CronTriggerEvent, buildRoute } from "terse-types"
+import { ApiRoutes, CronTrigger, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -13,7 +13,7 @@ import { SchedulerClient, createSchedulerClient } from "../utility/schedulerClie
 import { getUserForOrg } from "../utility/workos"
 
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
-import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export interface ScheduleWebhookEvent {
     inputId: string
@@ -111,7 +111,7 @@ export class CronJobIntegrationManager
 
         // Process with user context for logging
         await runWithUserContext(user, async () => {
-            const cronJobEvent = new CronTriggerEventRuntime(event)
+            const cronJobEvent = new CronTriggerRuntime(event)
             const eventProcessor = new EventProcessor(cronJobEvent, user, { isManuallyTriggered: !!isManualTrigger })
             await eventProcessor.processSingleAgent(agentTrigger.automation.id)
         })
@@ -249,9 +249,9 @@ function isSchedulerJobNotFoundError(error: unknown): boolean {
     return typeof anyError.message === "string" && anyError.message.includes("NOT_FOUND")
 }
 
-export class CronTriggerEventRuntime extends TriggerEventRuntime<CronTriggerEvent> {
+export class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {
     readonly integrationType = IntegrationType.CRON_JOB
-    data: CronTriggerEvent
+    data: CronTrigger
 
     constructor(data: ScheduleWebhookEvent) {
         super()

@@ -2,7 +2,7 @@ import { LinearClient } from "@linear/sdk"
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { LinearTriggerEvent, LinearWebhookPayload } from "terse-types"
+import { LinearTrigger, LinearWebhookPayload } from "terse-types"
 import { ConfigData, ConfigType, LinearEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "terse-types/Integrations"
@@ -27,7 +27,7 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
-import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class LinearIntegrationManager
     implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR>
@@ -137,7 +137,7 @@ export class LinearIntegrationManager
             }
             try {
                 await runWithUserContext(user, async () => {
-                    const linearEvent = new LinearTriggerEventRuntime(event, integration.id)
+                    const linearEvent = new LinearTriggerRuntime(event, integration.id)
                     const eventProcessor = new EventProcessor(linearEvent, user)
                     await eventProcessor.process()
                 })
@@ -482,7 +482,7 @@ export class LinearIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerEventRuntime[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.LINEAR_INPUT) {
             return []
         }
@@ -506,7 +506,7 @@ export class LinearIntegrationManager
             orderBy: "updatedAt" as any
         })
 
-        const events: TriggerEventRuntime[] = []
+        const events: TriggerRuntime[] = []
         for (const issue of issuesResponse.nodes) {
             const [team, state, assignee, creator] = await Promise.all([issue.team, issue.state, issue.assignee, issue.creator])
 
@@ -561,7 +561,7 @@ export class LinearIntegrationManager
                 webhookTimestamp: Date.now(),
                 webhookId: "sample"
             }
-            events.push(new LinearTriggerEventRuntime(payload, integrationId))
+            events.push(new LinearTriggerRuntime(payload, integrationId))
         }
         return events
     }
@@ -616,16 +616,16 @@ export async function validateLinearProjectExists(integrationId: string, project
     }
 }
 
-export class LinearTriggerEventRuntime extends TriggerEventRuntime<LinearTriggerEvent> implements Identifiable {
+export class LinearTriggerRuntime extends TriggerRuntime<LinearTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.LINEAR
     entityType = HydratorType.LINEAR_EVENT
     entityId: string
-    data: LinearTriggerEvent
+    data: LinearTrigger
     private integrationId: string
 
     constructor(data: LinearWebhookPayload, integrationId: string) {
         super()
-        this.data = buildLinearTriggerEvent(data)
+        this.data = buildLinearTrigger(data)
         this.integrationId = integrationId
         const dataId = (data.data as { id?: string })?.id
         this.entityId = `${integrationId}:${dataId ?? "unknown"}`
@@ -698,7 +698,7 @@ export class LinearTriggerEventRuntime extends TriggerEventRuntime<LinearTrigger
     }
 }
 
-function buildLinearTriggerEvent(data: LinearWebhookPayload): LinearTriggerEvent {
+function buildLinearTrigger(data: LinearWebhookPayload): LinearTrigger {
     if (data.type === "Issue" && data.action === "create") {
         return {
             ...data,

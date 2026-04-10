@@ -1,14 +1,4 @@
 
 
-# === Webhook ===
-
-
-class Webhook:
-    @staticmethod
-    def on_request() -> TriggerConfig[WebhookTriggerEvent]:
-        return TriggerConfig(
-            integration_id='system',
-            integration_type='webhook',
-            config_type='webhook_input',
-            config={},
-        )
+# === Webhook === class Webhook: @staticmethod def on_request() -> TriggerConfig[WebhookTrigger]: return TriggerConfig( integration_id='system', integration_type='webhook',
+config_type='webhook_input', config={}, )

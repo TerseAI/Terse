@@ -1,8 +1,8 @@
 import { LinearClient } from "@linear/sdk"
 import { IntegrationType } from "terse-types"
-import { LinearTriggerEvent } from "terse-types"
+import { LinearTrigger } from "terse-types"
 
-import { LinearTriggerEventRuntime } from "../../integrations/LinearIntegration"
+import { LinearTriggerRuntime } from "../../integrations/LinearIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
@@ -10,14 +10,14 @@ import { db } from "../../prismaClient"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
-export class LinearEventHydrator extends Hydrator<LinearTriggerEventRuntime> {
+export class LinearEventHydrator extends Hydrator<LinearTriggerRuntime> {
     readonly entityType = HydratorType.LINEAR_EVENT
 
     constructor(ctx: HydrationContext) {
         super(ctx)
     }
 
-    async hydrate(ref: Identifiable): Promise<LinearTriggerEventRuntime> {
+    async hydrate(ref: Identifiable): Promise<LinearTriggerRuntime> {
         const event = await this.fetchFromLinear(ref.entityId)
         if (!event) {
             throw new Error(`Failed to hydrate Linear event: ${ref.entityId}`)
@@ -25,7 +25,7 @@ export class LinearEventHydrator extends Hydrator<LinearTriggerEventRuntime> {
         return event
     }
 
-    async hydrateBulk(refs: Identifiable[]): Promise<LinearTriggerEventRuntime[]> {
+    async hydrateBulk(refs: Identifiable[]): Promise<LinearTriggerRuntime[]> {
         const results = await Promise.all(refs.map(ref => this.fetchFromLinear(ref.entityId)))
         return results.map((event, i) => {
             if (!event) {
@@ -35,7 +35,7 @@ export class LinearEventHydrator extends Hydrator<LinearTriggerEventRuntime> {
         })
     }
 
-    private async fetchFromLinear(entityId: string): Promise<LinearTriggerEventRuntime | null> {
+    private async fetchFromLinear(entityId: string): Promise<LinearTriggerRuntime | null> {
         const parts = entityId.split(":")
         if (parts.length < 2) {
             logger.error(`Invalid Linear entityId format: ${entityId}`)
@@ -79,7 +79,7 @@ export class LinearEventHydrator extends Hydrator<LinearTriggerEventRuntime> {
 
             const state = await issue.state
             const team = await issue.team
-            const payload: LinearTriggerEvent = {
+            const payload: LinearTrigger = {
                 integrationType: IntegrationType.LINEAR,
                 eventType: "issue.updated",
                 action: "update",
@@ -136,7 +136,7 @@ export class LinearEventHydrator extends Hydrator<LinearTriggerEventRuntime> {
                 }
             }
 
-            return new LinearTriggerEventRuntime(payload, integrationId)
+            return new LinearTriggerRuntime(payload, integrationId)
         } catch (error) {
             logger.error(`Failed to fetch Linear issue ${issueId}`, { error, entityId })
             return null

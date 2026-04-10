@@ -5,7 +5,7 @@ import logger from "../../logger"
 import { validateUserOwnsIntegration } from "../../routes/agents"
 
 import { INTEGRATION_REGISTRY } from "./IntegrationRegistry"
-import type { TriggerEventRuntime } from "./TriggerEventRuntime"
+import type { TriggerRuntime } from "./TriggerRuntime"
 
 /**
  * Fetch sample events for a given integration trigger config.
@@ -18,7 +18,7 @@ export async function fetchSampleEvents(
     organizationId: string,
     userId: string,
     options?: { limit?: number }
-): Promise<TriggerEventRuntime[]> {
+): Promise<TriggerRuntime[]> {
     const limit = options?.limit ?? 5
 
     const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)

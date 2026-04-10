@@ -3,7 +3,7 @@ import { Request, Response } from "express"
 import { CONFIG_DETAILS, ConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
-import { debugTriggerEvent, formatTriggerEventForAgent } from "terse-types/TriggerEvents"
+import { debugTriggerEvent, formatTriggerEventForAgent } from "terse-types/Triggers"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
 

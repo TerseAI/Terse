@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import type { TriggerEvent } from "terse-types"
+import type { Trigger } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEventParamsSchema, triggerWithEventRequestSchema } from "terse-types/types"
@@ -7,7 +7,7 @@ import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEvent
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { cloudScheduler } from "../config/settings"
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
-import { TriggerEventRuntime } from "../integrations/abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "../integrations/abstract/TriggerRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
@@ -17,11 +17,11 @@ export interface ManualTriggerRequest {
     context?: string
 }
 
-class SyntheticTriggerEventRuntime extends TriggerEventRuntime<TriggerEvent> {
-    readonly integrationType: TriggerEvent["integrationType"]
-    readonly data: TriggerEvent
+class SyntheticTriggerRuntime extends TriggerRuntime<Trigger> {
+    readonly integrationType: Trigger["integrationType"]
+    readonly data: Trigger
 
-    constructor(event: TriggerEvent) {
+    constructor(event: Trigger) {
         super()
         this.data = event
         this.integrationType = event.integrationType
@@ -134,7 +134,7 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
     res.status(200).json({ received: true, message: "Trigger with event initiated" })
 
     runWithUserContext(user, async () => {
-        const syntheticEvent = new SyntheticTriggerEventRuntime(event)
+        const syntheticEvent = new SyntheticTriggerRuntime(event)
         const eventProcessor = new EventProcessor(syntheticEvent, user, { isManuallyTriggered: true })
         await eventProcessor.processSingleAgent(automationId)
     }).catch(error => {

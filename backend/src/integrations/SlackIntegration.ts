@@ -8,7 +8,7 @@ import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage, SlackTriggerEvent } from "terse-types"
+import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage, SlackTrigger } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -33,7 +33,7 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "./SlackClient"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
-import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class SlackIntegrationManager
     implements Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
@@ -540,7 +540,7 @@ export class SlackIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerEventRuntime[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.SLACK) {
             return []
         }
@@ -635,7 +635,7 @@ export class SlackIntegrationManager
             return []
         }
 
-        const events: TriggerEventRuntime[] = []
+        const events: TriggerRuntime[] = []
         for (const msg of messages) {
             const enrichedMessage = await fetchEnrichedSlackMessageData(client, msg)
             const inferredEventType = selectedEventTypes.includes(SlackEventType.APP_MENTION) && enrichedMessage.text.includes("<@") ? SlackEventType.APP_MENTION : SlackEventType.MESSAGE
@@ -643,7 +643,7 @@ export class SlackIntegrationManager
                 continue
             }
 
-            const slackEventData = buildSlackTriggerEventData({
+            const slackEventData = buildSlackTriggerData({
                 eventType: inferredEventType,
                 channelId: msg.channel,
                 channelName: enrichedMessage.channelName || null,
@@ -659,7 +659,7 @@ export class SlackIntegrationManager
                 attachments: enrichedMessage.attachments || null,
                 files: enrichedMessage.files || null
             })
-            events.push(new SlackTriggerEventRuntime(slackEventData))
+            events.push(new SlackTriggerRuntime(slackEventData))
         }
         return events
     }
@@ -871,14 +871,14 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
 
 // MARK: - SLACK Event
 
-export class SlackTriggerEventRuntime extends TriggerEventRuntime<SlackTriggerEvent> implements Identifiable {
+export class SlackTriggerRuntime extends TriggerRuntime<SlackTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.SLACK
-    data: SlackTriggerEvent
+    data: SlackTrigger
     entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
     entityId: string
     private storedFiles: StoredFile[]
 
-    constructor(data: SlackTriggerEvent, storedFiles: StoredFile[] = []) {
+    constructor(data: SlackTrigger, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.entityId = `${data.teamId}:${data.permalink || ""}`
@@ -1211,7 +1211,7 @@ function inferSlackChannelType(channelId: string, fallback?: SlackChannelType | 
     return null
 }
 
-function buildSlackTriggerEventData(params: {
+function buildSlackTriggerData(params: {
     eventType: SlackEventType
     channelId: string
     channelName?: string | null
@@ -1231,7 +1231,7 @@ function buildSlackTriggerEventData(params: {
     itemUserId?: string | null
     itemChannelId?: string | null
     itemTimestamp?: string | null
-}): SlackTriggerEvent {
+}): SlackTrigger {
     const commonFields = {
         integrationType: IntegrationType.SLACK as const,
         channelId: params.channelId,
@@ -1334,12 +1334,7 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
     return channelMembershipChecks.filter(({ isMember }) => isMember).map(({ integration }) => integration)
 }
 
-async function processSlackAutomationForUsers(args: {
-    filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]
-    slackEvent: SlackTriggerEventRuntime
-    teamId: string
-    sourceChannelId?: string
-}) {
+async function processSlackAutomationForUsers(args: { filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]; slackEvent: SlackTriggerRuntime; teamId: string; sourceChannelId?: string }) {
     const { filteredWorkspaceUserIntegrations, slackEvent, teamId, sourceChannelId } = args
     let totalMatches = 0
     for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
@@ -1447,7 +1442,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
         }
 
         // Build the canonical Slack trigger event with all available information
-        const slackEventData = buildSlackTriggerEventData({
+        const slackEventData = buildSlackTriggerData({
             eventType: messageEvent.type === "app_mention" ? SlackEventType.APP_MENTION : SlackEventType.MESSAGE,
             channelId: messageEvent.channel!,
             channelName: enrichedMessage.channelName || null,
@@ -1464,7 +1459,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             files: enrichedMessage.files || null
         })
 
-        const slackEvent = new SlackTriggerEventRuntime(slackEventData, storedFiles)
+        const slackEvent = new SlackTriggerRuntime(slackEventData, storedFiles)
         await processSlackAutomationForUsers({
             filteredWorkspaceUserIntegrations,
             slackEvent,
@@ -1509,7 +1504,7 @@ async function handleSlackReactionAdded(event: SimplifiedSlackEvent, teamId: str
             channel_type: inferSlackChannelType(reactionEvent.item.channel, null) || undefined
         })
 
-        const slackEventData = buildSlackTriggerEventData({
+        const slackEventData = buildSlackTriggerData({
             eventType: SlackEventType.REACTION_ADDED,
             channelId: reactionEvent.item.channel,
             channelName: enrichedMessage.channelName || null,
@@ -1531,7 +1526,7 @@ async function handleSlackReactionAdded(event: SimplifiedSlackEvent, teamId: str
             itemTimestamp: reactionEvent.item.ts
         })
 
-        const slackEvent = new SlackTriggerEventRuntime(slackEventData)
+        const slackEvent = new SlackTriggerRuntime(slackEventData)
         await processSlackAutomationForUsers({
             filteredWorkspaceUserIntegrations,
             slackEvent,

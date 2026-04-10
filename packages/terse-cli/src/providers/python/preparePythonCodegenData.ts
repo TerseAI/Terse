@@ -206,46 +206,46 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
     const hasAnyToolNameTypes = (attio?.approvableTools.length ?? 0) > 0 || (slack?.approvableTools.length ?? 0) > 0 || (snowflake?.approvableTools.length ?? 0) > 0
     const hasAnyDeterministicTools = hasAttioTools || hasSlackTools || hasSnowflakeTools
 
-    const sdkImports = ["CronTriggerEvent", "SkillConfig", "TerseAgent as _SdkTerseAgent", "TriggerConfig", "WebhookTriggerEvent"]
+    const sdkImports = ["CronTrigger", "SkillConfig", "TerseAgent as _SdkTerseAgent", "TriggerConfig", "WebhookTrigger"]
     if (hasGithub) {
         sdkImports.push(
             "GitHubEventType",
-            "GitHubPullRequestClosedTriggerEvent",
-            "GitHubPullRequestMergedTriggerEvent",
-            "GitHubPullRequestOpenedTriggerEvent",
-            "GitHubPullRequestSynchronizedTriggerEvent",
-            "GitHubPullRequestTriggerEvent",
-            "GitHubPushTriggerEvent",
-            "GitHubTriggerEvent"
+            "GitHubPullRequestClosedTrigger",
+            "GitHubPullRequestMergedTrigger",
+            "GitHubPullRequestOpenedTrigger",
+            "GitHubPullRequestSynchronizedTrigger",
+            "GitHubPullRequestTrigger",
+            "GitHubPushTrigger",
+            "GithubTrigger"
         )
     }
     if (hasGmail) {
-        sdkImports.push("GmailEventType", "GmailTriggerEvent")
+        sdkImports.push("GmailEventType", "GmailTrigger")
     }
     if (hasLinear) {
-        sdkImports.push("LinearCommentCreatedTriggerEvent", "LinearEventType", "LinearIssueCreatedTriggerEvent", "LinearIssueUpdatedTriggerEvent", "LinearTriggerEvent")
+        sdkImports.push("LinearCommentCreatedTrigger", "LinearEventType", "LinearIssueCreatedTrigger", "LinearIssueUpdatedTrigger", "LinearTrigger")
     }
     if (hasSlack) {
-        sdkImports.push("SlackAppMentionTriggerEvent", "SlackEventType", "SlackMessageTriggerEvent", "SlackReactionAddedTriggerEvent", "SlackTriggerEvent")
+        sdkImports.push("SlackAppMentionTrigger", "SlackEventType", "SlackMessageTrigger", "SlackReactionAddedTrigger", "SlackTrigger")
     }
     if (hasWorkOS) {
         sdkImports.push(
             "WorkOSEventType",
-            "WorkOSInvitationAcceptedTriggerEvent",
-            "WorkOSInvitationCreatedTriggerEvent",
-            "WorkOSInvitationResentTriggerEvent",
-            "WorkOSInvitationRevokedTriggerEvent",
-            "WorkOSInvitationTriggerEvent",
-            "WorkOSMembershipTriggerEvent",
-            "WorkOSOrganizationMembershipCreatedTriggerEvent",
-            "WorkOSOrganizationMembershipDeletedTriggerEvent",
-            "WorkOSOrganizationMembershipUpdatedTriggerEvent",
-            "WorkOSOrganizationTriggerEvent",
-            "WorkOSTriggerEvent",
-            "WorkOSUserCreatedTriggerEvent",
-            "WorkOSUserDeletedTriggerEvent",
-            "WorkOSUserTriggerEvent",
-            "WorkOSUserUpdatedTriggerEvent"
+            "WorkOSInvitationAcceptedTrigger",
+            "WorkOSInvitationCreatedTrigger",
+            "WorkOSInvitationResentTrigger",
+            "WorkOSInvitationRevokedTrigger",
+            "WorkOSInvitationTrigger",
+            "WorkOSMembershipTrigger",
+            "WorkOSOrganizationMembershipCreatedTrigger",
+            "WorkOSOrganizationMembershipDeletedTrigger",
+            "WorkOSOrganizationMembershipUpdatedTrigger",
+            "WorkOSOrganizationTrigger",
+            "WorkOSTrigger",
+            "WorkOSUserCreatedTrigger",
+            "WorkOSUserDeletedTrigger",
+            "WorkOSUserTrigger",
+            "WorkOSUserUpdatedTrigger"
         )
     }
     if (hasAttioAttrs && hasAttioTools) {

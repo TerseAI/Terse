@@ -2,8 +2,8 @@ import { select } from "@inquirer/prompts"
 import chalk from "chalk"
 import ora from "ora"
 import { IntegrationType } from "terse-sdk"
-import { ApiRoutes, debugTriggerEvent, formatTriggerEventForAgent } from "terse-types"
-import type { SerializedEvent, TriggerEvent } from "terse-types"
+import { ApiRoutes, debugTrigger, formatTriggerForAgent } from "terse-types"
+import type { SerializedEvent, Trigger } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 import { assertProjectRoot } from "./assertProjectRoot.js"
@@ -93,12 +93,12 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     await provider.executeJob(job, events[choice], { verbose: !!verbose })
 }
 
-function serializeEvent(event: TriggerEvent): SerializedEvent {
+function serializeEvent(event: Trigger): SerializedEvent {
     return {
         integrationType: event.integrationType,
         eventType: event.eventType,
-        formattedContent: formatTriggerEventForAgent(event),
-        debugLog: debugTriggerEvent(event),
+        formattedContent: formatTriggerForAgent(event),
+        debugLog: debugTrigger(event),
         data: event
     }
 }

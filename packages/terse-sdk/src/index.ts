@@ -1,59 +1,13 @@
-import type { ConfigData } from "terse-types"
-import type {
-    CronTriggerEvent as BaseCronTriggerEvent,
-    GitHubPullRequestClosedTriggerEvent as BaseGitHubPullRequestClosedTriggerEvent,
-    GitHubPullRequestMergedTriggerEvent as BaseGitHubPullRequestMergedTriggerEvent,
-    GitHubPullRequestOpenedTriggerEvent as BaseGitHubPullRequestOpenedTriggerEvent,
-    GitHubPullRequestSynchronizedTriggerEvent as BaseGitHubPullRequestSynchronizedTriggerEvent,
-    GitHubPullRequestTriggerEvent as BaseGitHubPullRequestTriggerEvent,
-    GitHubPushTriggerEvent as BaseGitHubPushTriggerEvent,
-    GitHubTriggerEvent as BaseGitHubTriggerEvent,
-    GmailTriggerEvent as BaseGmailTriggerEvent,
-    LinearCommentCreatedTriggerEvent as BaseLinearCommentCreatedTriggerEvent,
-    LinearIssueCreatedTriggerEvent as BaseLinearIssueCreatedTriggerEvent,
-    LinearIssueUpdatedTriggerEvent as BaseLinearIssueUpdatedTriggerEvent,
-    LinearTriggerEvent as BaseLinearTriggerEvent,
-    ManualSampleTriggerEvent as BaseManualSampleTriggerEvent,
-    SdkAgentRunOptionsPayload as BaseSdkAgentRunOptionsPayload,
-    SlackAppMentionTriggerEvent as BaseSlackAppMentionTriggerEvent,
-    SlackMessageTriggerEvent as BaseSlackMessageTriggerEvent,
-    SlackReactionAddedTriggerEvent as BaseSlackReactionAddedTriggerEvent,
-    SlackTriggerEvent as BaseSlackTriggerEvent,
-    TriggerEvent as BaseTriggerEvent,
-    WebhookTriggerEvent as BaseWebhookTriggerEvent,
-    WorkOSInvitationAcceptedTriggerEvent as BaseWorkOSInvitationAcceptedTriggerEvent,
-    WorkOSInvitationCreatedTriggerEvent as BaseWorkOSInvitationCreatedTriggerEvent,
-    WorkOSInvitationResentTriggerEvent as BaseWorkOSInvitationResentTriggerEvent,
-    WorkOSInvitationRevokedTriggerEvent as BaseWorkOSInvitationRevokedTriggerEvent,
-    WorkOSInvitationTriggerEvent as BaseWorkOSInvitationTriggerEvent,
-    WorkOSMembershipTriggerEvent as BaseWorkOSMembershipTriggerEvent,
-    WorkOSOrganizationMembershipCreatedTriggerEvent as BaseWorkOSOrganizationMembershipCreatedTriggerEvent,
-    WorkOSOrganizationMembershipDeletedTriggerEvent as BaseWorkOSOrganizationMembershipDeletedTriggerEvent,
-    WorkOSOrganizationMembershipUpdatedTriggerEvent as BaseWorkOSOrganizationMembershipUpdatedTriggerEvent,
-    WorkOSOrganizationTriggerEvent as BaseWorkOSOrganizationTriggerEvent,
-    WorkOSTriggerEvent as BaseWorkOSTriggerEvent,
-    WorkOSUserCreatedTriggerEvent as BaseWorkOSUserCreatedTriggerEvent,
-    WorkOSUserDeletedTriggerEvent as BaseWorkOSUserDeletedTriggerEvent,
-    WorkOSUserTriggerEvent as BaseWorkOSUserTriggerEvent,
-    WorkOSUserUpdatedTriggerEvent as BaseWorkOSUserUpdatedTriggerEvent,
-    RunHistoryAction,
-    SdkAgentRunRequestBody,
-    SdkAgentRunResponseBody,
-    SdkAgentStreamEvent,
-    SdkApprovalDecisionRequestBody,
-    ToolInputByName,
-    ToolOutputByName
-} from "terse-types"
-import { IntegrationType } from "terse-types"
-import { ApiRoutes } from "terse-types"
-import { sdkAgentRunRequestBodySchema } from "terse-types"
+import type { ConfigData, RunHistoryAction, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody, Trigger } from "terse-types"
+import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema } from "terse-types"
 
-import type { InferEvents, InferToolApprovals, SDKTriggerEvent, TypedSkill, TypedTrigger } from "./types.js"
+import type { InferEvents, InferToolApprovals, TypedSkill, TypedTrigger } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
 // Re-export SDK-specific types
-export type { ToolboxEntry, SDKTriggerEvent, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
+export { createSDKTrigger } from "./types.js"
+export type { ToolboxEntry, SDKTrigger, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 
 // Re-export shared types for consumer convenience
 export {
@@ -83,47 +37,56 @@ export {
     LinearEventType,
     GmailEventType,
     WorkOSEventType,
-    debugTriggerEvent,
-    formatTriggerEventForAgent
+    debugTrigger,
+    formatTriggerForAgent
 } from "terse-types"
 
-export type SdkAgentRunOptionsPayload = BaseSdkAgentRunOptionsPayload
-export type TriggerEvent = SDKTriggerEvent<BaseTriggerEvent>
-export type CronTriggerEvent = SDKTriggerEvent<BaseCronTriggerEvent>
-export type GitHubPullRequestClosedTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestClosedTriggerEvent>
-export type GitHubPullRequestMergedTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestMergedTriggerEvent>
-export type GitHubPullRequestOpenedTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestOpenedTriggerEvent>
-export type GitHubPullRequestSynchronizedTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestSynchronizedTriggerEvent>
-export type GitHubPullRequestTriggerEvent = SDKTriggerEvent<BaseGitHubPullRequestTriggerEvent>
-export type GitHubPushTriggerEvent = SDKTriggerEvent<BaseGitHubPushTriggerEvent>
-export type GitHubTriggerEvent = SDKTriggerEvent<BaseGitHubTriggerEvent>
-export type GmailTriggerEvent = SDKTriggerEvent<BaseGmailTriggerEvent>
-export type LinearCommentCreatedTriggerEvent = SDKTriggerEvent<BaseLinearCommentCreatedTriggerEvent>
-export type LinearIssueCreatedTriggerEvent = SDKTriggerEvent<BaseLinearIssueCreatedTriggerEvent>
-export type LinearIssueUpdatedTriggerEvent = SDKTriggerEvent<BaseLinearIssueUpdatedTriggerEvent>
-export type LinearTriggerEvent = SDKTriggerEvent<BaseLinearTriggerEvent>
-export type ManualSampleTriggerEvent = SDKTriggerEvent<BaseManualSampleTriggerEvent>
-export type SlackAppMentionTriggerEvent = SDKTriggerEvent<BaseSlackAppMentionTriggerEvent>
-export type SlackMessageTriggerEvent = SDKTriggerEvent<BaseSlackMessageTriggerEvent>
-export type SlackReactionAddedTriggerEvent = SDKTriggerEvent<BaseSlackReactionAddedTriggerEvent>
-export type SlackTriggerEvent = SDKTriggerEvent<BaseSlackTriggerEvent>
-export type WebhookTriggerEvent = SDKTriggerEvent<BaseWebhookTriggerEvent>
-export type WorkOSInvitationAcceptedTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationAcceptedTriggerEvent>
-export type WorkOSInvitationCreatedTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationCreatedTriggerEvent>
-export type WorkOSInvitationTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationTriggerEvent>
-export type WorkOSInvitationResentTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationResentTriggerEvent>
-export type WorkOSInvitationRevokedTriggerEvent = SDKTriggerEvent<BaseWorkOSInvitationRevokedTriggerEvent>
-export type WorkOSOrganizationMembershipCreatedTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationMembershipCreatedTriggerEvent>
-export type WorkOSOrganizationMembershipDeletedTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationMembershipDeletedTriggerEvent>
-export type WorkOSOrganizationMembershipUpdatedTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationMembershipUpdatedTriggerEvent>
-export type WorkOSMembershipTriggerEvent = SDKTriggerEvent<BaseWorkOSMembershipTriggerEvent>
-export type WorkOSOrganizationTriggerEvent = SDKTriggerEvent<BaseWorkOSOrganizationTriggerEvent>
-export type WorkOSTriggerEvent = SDKTriggerEvent<BaseWorkOSTriggerEvent>
-export type WorkOSUserCreatedTriggerEvent = SDKTriggerEvent<BaseWorkOSUserCreatedTriggerEvent>
-export type WorkOSUserDeletedTriggerEvent = SDKTriggerEvent<BaseWorkOSUserDeletedTriggerEvent>
-export type WorkOSUserUpdatedTriggerEvent = SDKTriggerEvent<BaseWorkOSUserUpdatedTriggerEvent>
-export type WorkOSUserTriggerEvent = SDKTriggerEvent<BaseWorkOSUserTriggerEvent>
-export type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName }
+// Re-export trigger event types directly from terse-types.
+// The InferEvents machinery automatically wraps these with SDKTrigger (adding
+// formatForAgentRunner/debugLog methods) for onTrigger/filter callback parameters.
+export type {
+    Trigger,
+    CronTrigger,
+    GitHubPullRequestClosedTrigger,
+    GitHubPullRequestMergedTrigger,
+    GitHubPullRequestOpenedTrigger,
+    GitHubPullRequestSynchronizedTrigger,
+    GitHubPullRequestTrigger,
+    GitHubPushTrigger,
+    GithubTrigger,
+    GmailTrigger,
+    LinearCommentCreatedTrigger,
+    LinearIssueCreatedTrigger,
+    LinearIssueUpdatedTrigger,
+    LinearTrigger,
+    ManualSampleTrigger,
+    SlackAppMentionTrigger,
+    SlackMessageTrigger,
+    SlackReactionAddedTrigger,
+    SlackTrigger,
+    WebhookTrigger,
+    WorkOSInvitationAcceptedTrigger,
+    WorkOSInvitationCreatedTrigger,
+    WorkOSInvitationTrigger,
+    WorkOSInvitationResentTrigger,
+    WorkOSInvitationRevokedTrigger,
+    WorkOSOrganizationMembershipCreatedTrigger,
+    WorkOSOrganizationMembershipDeletedTrigger,
+    WorkOSOrganizationMembershipUpdatedTrigger,
+    WorkOSMembershipTrigger,
+    WorkOSOrganizationTrigger,
+    WorkOSTrigger,
+    WorkOSUserCreatedTrigger,
+    WorkOSUserDeletedTrigger,
+    WorkOSUserUpdatedTrigger,
+    WorkOSUserTrigger,
+    SdkAgentRunOptionsPayload,
+    SdkAgentRunRequestBody,
+    SdkAgentRunResponseBody,
+    SdkAgentStreamEvent,
+    ToolInputByName,
+    ToolOutputByName
+} from "terse-types"
 export { IntegrationType } from "terse-types"
 
 export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
@@ -189,7 +152,7 @@ export class TerseAgent {
         this.toolApprovals = toolApprovals
     }
 
-    async *run(prompt: string, event?: BaseTriggerEvent): AsyncGenerator<TerseAgentResult> {
+    async *run(prompt: string, event?: Trigger): AsyncGenerator<TerseAgentResult> {
         const resolvedEvent = event
 
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
@@ -237,7 +200,7 @@ export class TerseAgent {
      * Runs the agent to completion and discards streamed output.
      * Useful when you only care that the run finished (or threw).
      */
-    async runAndWait(prompt: string, event?: BaseTriggerEvent): Promise<string> {
+    async runAndWait(prompt: string, event?: Trigger): Promise<string> {
         for await (const chunk of this.run(prompt, event)) {
             if (chunk.type === EventType.FINAL_OUTPUT) {
                 return (chunk as FinalOutputResult).finalOutput

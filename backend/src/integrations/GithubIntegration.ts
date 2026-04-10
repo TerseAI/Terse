@@ -4,7 +4,7 @@ import { InputConfigType } from "@prisma/client"
 import axios, { AxiosResponse } from "axios"
 import * as cheerio from "cheerio"
 import { Request, Response } from "express"
-import { GitHubTriggerEvent } from "terse-types"
+import { GithubTrigger } from "terse-types"
 import { ConfigData, ConfigType, GitHubConfigSchema, GitHubEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
@@ -30,11 +30,9 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
-import { TriggerEventRuntime } from "./abstract/TriggerEventRuntime"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
-export class GithubIntegrationManager
-    implements Integration<GithubIntegration, GitHubTriggerEvent, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB>
-{
+export class GithubIntegrationManager implements Integration<GithubIntegration, GithubTrigger, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.GITHUB
 
@@ -117,7 +115,7 @@ export class GithubIntegrationManager
         }))
     }
 
-    async processWebhookEvent(event: GitHubTriggerEvent): Promise<void> {
+    async processWebhookEvent(event: GithubTrigger): Promise<void> {
         const users: PrismaUser[] = await resolveUsersForGithubInstallation(event.installationId)
 
         if (users.length === 0) {
@@ -146,7 +144,7 @@ export class GithubIntegrationManager
             // Attach any images or files from the event
             const storedFiles: StoredFile[] = await getPullRequestFiles(event, accessToken, event.installationId.toString())
             await runWithUserContext(fullUser, async () => {
-                const githubEvent = new GithubTriggerEventRuntime(event, storedFiles)
+                const githubEvent = new GithubTriggerRuntime(event, storedFiles)
                 const eventProcessor = new EventProcessor(githubEvent, fullUser)
                 await eventProcessor.process()
             })
@@ -348,7 +346,7 @@ export class GithubIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerEventRuntime[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.GITHUB) {
             return []
         }
@@ -400,13 +398,13 @@ export class GithubIntegrationManager
         const wantsPR = requestedPRTypes.length > 0
         const prApiState = derivePRApiState(requestedPRTypes)
 
-        const events: TriggerEventRuntime[] = []
+        const events: TriggerRuntime[] = []
         for (const repo of repos) {
             if (wantsPush) {
                 const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 5)
                 for (const commit of commits) {
                     const eventData = await createPushEventData(commit, repo, installationIdNum, accessToken)
-                    if (eventData) events.push(new GithubTriggerEventRuntime(eventData, []))
+                    if (eventData) events.push(new GithubTriggerRuntime(eventData, []))
                 }
             }
             if (wantsPR) {
@@ -416,7 +414,7 @@ export class GithubIntegrationManager
                     const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
                     if (!eventData) continue
                     const storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
-                    events.push(new GithubTriggerEventRuntime(eventData, storedFiles))
+                    events.push(new GithubTriggerRuntime(eventData, storedFiles))
                 }
             }
             if (events.length >= maxEvents) break
@@ -426,16 +424,16 @@ export class GithubIntegrationManager
     }
 }
 
-// MARK: - GithubTriggerEventRuntime
+// MARK: - GithubTriggerRuntime
 
-export class GithubTriggerEventRuntime extends TriggerEventRuntime<GitHubTriggerEvent> implements Identifiable {
+export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.GITHUB
     entityType = HydratorType.GITHUB_EVENT
     entityId: string
-    data: GitHubTriggerEvent
+    data: GithubTrigger
     private storedFiles: StoredFile[]
 
-    constructor(data: GitHubTriggerEvent, storedFiles: StoredFile[] = []) {
+    constructor(data: GithubTrigger, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.storedFiles = storedFiles
@@ -456,7 +454,7 @@ export class GithubTriggerEventRuntime extends TriggerEventRuntime<GitHubTrigger
 
         // Make sure the repository is in the list of repositories configured for the channel
         if (!githubConfig?.repository_ids.includes(this.data.repository.id)) {
-            logger.debug("GithubTriggerEventRuntime matchesAgentTrigger - repository not found in channel", {
+            logger.debug("GithubTriggerRuntime matchesAgentTrigger - repository not found in channel", {
                 repositoryId: this.data.repository.id,
                 repositoryIds: githubConfig?.repository_ids,
                 agentTriggerId: agentTrigger.id
@@ -818,7 +816,7 @@ async function createPushEventData(
     repo: { id: number; owner: string; name: string; defaultBranch: string },
     installationId: number,
     accessToken: string
-): Promise<GitHubTriggerEvent | null> {
+): Promise<GithubTrigger | null> {
     try {
         const commitDetails = await fetchCommitDiffForSample(accessToken, repo.owner, repo.name, commit.sha)
         if (!commitDetails) return null
@@ -864,7 +862,7 @@ async function createPullRequestEventData(
     repo: { id: number; owner: string; name: string; defaultBranch: string },
     installationId: number,
     accessToken: string
-): Promise<GitHubTriggerEvent | null> {
+): Promise<GithubTrigger | null> {
     try {
         let eventType: "pull_request.opened" | "pull_request.merged" | "pull_request.closed" = pr.merged_at
             ? "pull_request.merged"
@@ -923,7 +921,7 @@ async function createPullRequestEventData(
     }
 }
 
-export async function getPullRequestFiles(event: GitHubTriggerEvent, token: string, integrationId: string): Promise<StoredFile[]> {
+export async function getPullRequestFiles(event: GithubTrigger, token: string, integrationId: string): Promise<StoredFile[]> {
     if (!event.pullRequest) {
         return []
     }

@@ -4,8 +4,8 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { ApprovalRequestInfo, CreateJobParameters } from "terse-sdk"
-import { TerseAgent } from "terse-sdk"
-import { type SerializedEvent, SerializedTriggerEventRuntime, type TriggerEvent } from "terse-types"
+import { TerseAgent, createSDKTrigger } from "terse-sdk"
+import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
 import { BACKEND_URL } from "../../config.js"
@@ -109,7 +109,7 @@ export class TypeScriptProvider implements LanguageProvider {
     async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
         const isVerbose = opts?.verbose ?? false
 
-        const serializedEventRuntime = new SerializedTriggerEventRuntime(event)
+        const serializedEventRuntime = createSDKTrigger(event)
 
         const apiKey = process.env.TERSE_API_KEY ?? null
         let sessionId: string | undefined

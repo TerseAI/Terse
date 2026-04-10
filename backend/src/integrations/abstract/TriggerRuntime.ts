@@ -1,11 +1,11 @@
-import type { RunHistoryTrigger, SerializedEvent, TriggerEvent } from "terse-types"
-import { debugTriggerEvent, formatTriggerEventForAgent } from "terse-types"
+import type { RunHistoryTrigger, SerializedEvent, Trigger } from "terse-types"
+import { debugTrigger, formatTriggerForAgent } from "terse-types"
 
 import { Identifiable } from "../../rag/Hydrator"
 import { StoredFile } from "../../services/FileStorageService"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
-export abstract class TriggerEventRuntime<TEvent extends TriggerEvent = TriggerEvent> {
+export abstract class TriggerRuntime<TEvent extends Trigger = Trigger> {
     abstract readonly integrationType: TEvent["integrationType"]
     abstract readonly data: TEvent
 
@@ -14,11 +14,11 @@ export abstract class TriggerEventRuntime<TEvent extends TriggerEvent = TriggerE
     }
 
     formatForAgentRunner(): string {
-        return formatTriggerEventForAgent(this.data)
+        return formatTriggerForAgent(this.data)
     }
 
     debugLog(): string {
-        return debugTriggerEvent(this.data)
+        return debugTrigger(this.data)
     }
 
     abstract matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean
@@ -28,7 +28,7 @@ export abstract class TriggerEventRuntime<TEvent extends TriggerEvent = TriggerE
         return []
     }
 
-    isIdentifiable(): this is TriggerEventRuntime<TEvent> & Identifiable {
+    isIdentifiable(): this is TriggerRuntime<TEvent> & Identifiable {
         return "entityType" in this && "entityId" in this
     }
 

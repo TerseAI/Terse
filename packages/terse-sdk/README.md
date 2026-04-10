@@ -33,7 +33,7 @@ client.createJob({
 - **Triggers** — Config instances (e.g. `GitHub.onPROpened()`) that define when a job fires.
 - **Skills** — Integration configs (e.g. `Slack.skill()`) that give the model access to tools during `run()` / `runAndWait()`.
 - **Deterministic wrappers** — Generated `agent.tools.*` helpers that you call directly; these can be available from trigger integrations as well as declared skills.
-- **Events** — Typed trigger events (`GitHubPullRequestTriggerEvent`, `WorkOSUserTriggerEvent`, etc.) with type guards like `isGitHubPullRequestTriggerEvent()`.
+- **Events** — Typed trigger events (`GitHubPullRequestTrigger`, `WorkOSUserTrigger`, etc.) with type guards like `isGitHubPullRequestTrigger()`.
 
 ## API
 
@@ -49,8 +49,8 @@ client.createJob({
 
 The SDK provides typed event classes and type guards for supported integrations:
 
-- **GitHub**: `GitHubTriggerEvent`, `GitHubPullRequestTriggerEvent`, `GitHubPushTriggerEvent`
-- **WorkOS**: `WorkOSTriggerEvent`, `WorkOSUserTriggerEvent`, `WorkOSMembershipTriggerEvent`, `WorkOSInvitationTriggerEvent`
+- **GitHub**: `GithubTrigger`, `GitHubPullRequestTrigger`, `GitHubPushTrigger`
+- **WorkOS**: `WorkOSTrigger`, `WorkOSUserTrigger`, `WorkOSMembershipTrigger`, `WorkOSInvitationTrigger`
 
 ## Environment Variables
 
