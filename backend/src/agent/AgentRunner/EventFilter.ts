@@ -5,7 +5,7 @@ import { SocketEvents, SocketRooms } from "terse-types"
 import { z } from "zod"
 
 import { settings } from "../../config/settings"
-import { InputEvent } from "../../integrations/abstract/InputEvent"
+import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { getRealtimeSocket } from "../../realtimeSocket"
 import { AgentPrompt, AgentWithRelations } from "../../types/prisma"
@@ -117,7 +117,7 @@ function buildFilterAgent(trackingParams: TrackingParams): Agent<Session, typeof
     })
 }
 
-function buildFilterHistory(agentPrompt: AgentPrompt, event: InputEvent): AgentInputItem[] {
+function buildFilterHistory(agentPrompt: AgentPrompt, event: TriggerRuntime): AgentInputItem[] {
     return [buildUserMessage(buildFilterUserPrompt(agentPrompt.content || "No specific instructions provided", event.formatForAgentRunner()))]
 }
 
@@ -141,7 +141,7 @@ async function seedEventContextForFilteredRunIfNeeded(runId: string, eventContex
  *
  * If isStreaming is true and trackingParams are provided, automatically handles storing events and emitting them via Socket.IO
  */
-export async function filterEvent(event: InputEvent, agentWithRelations: AgentWithRelations, isStreaming: boolean, trackingParams: TrackingParams): Promise<{ result: EventFilterResult }> {
+export async function filterEvent(event: TriggerRuntime, agentWithRelations: AgentWithRelations, isStreaming: boolean, trackingParams: TrackingParams): Promise<{ result: EventFilterResult }> {
     if (event.integrationType === IntegrationType.CRON_JOB) {
         return {
             result: {

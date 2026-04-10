@@ -1,5 +1,5 @@
 import { InputConfigType } from "@prisma/client"
-import { ApiRoutes, buildRoute } from "terse-types"
+import { ApiRoutes, CronTrigger, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -12,8 +12,8 @@ import { AgentTriggerWithConfigs } from "../types/prisma"
 import { SchedulerClient, createSchedulerClient } from "../utility/schedulerClient"
 import { getUserForOrg } from "../utility/workos"
 
-import { InputEvent } from "./abstract/InputEvent"
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export interface ScheduleWebhookEvent {
     inputId: string
@@ -111,7 +111,7 @@ export class CronJobIntegrationManager
 
         // Process with user context for logging
         await runWithUserContext(user, async () => {
-            const cronJobEvent = new CronJobEvent(event)
+            const cronJobEvent = new CronTriggerRuntime(event)
             const eventProcessor = new EventProcessor(cronJobEvent, user, { isManuallyTriggered: !!isManualTrigger })
             await eventProcessor.processSingleAgent(agentTrigger.automation.id)
         })
@@ -249,34 +249,19 @@ function isSchedulerJobNotFoundError(error: unknown): boolean {
     return typeof anyError.message === "string" && anyError.message.includes("NOT_FOUND")
 }
 
-export class CronJobEvent extends InputEvent {
-    readonly integrationType: IntegrationType = IntegrationType.CRON_JOB
-    readonly eventType: string = "cron"
-    data: ScheduleWebhookEvent
+export class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {
+    readonly integrationType = IntegrationType.CRON_JOB
+    data: CronTrigger
 
     constructor(data: ScheduleWebhookEvent) {
         super()
-        this.data = data
-    }
-
-    formatForAgentRunner(): string {
-        const { isManualTrigger, manualContext } = this.data
-
-        if (isManualTrigger) {
-            let message = `This is a manually triggered event for the channel input ${this.data.inputId}.`
-
-            if (manualContext) {
-                message += `\n\nUser provided context for this manual trigger:\n${manualContext}`
-            }
-
-            return message
+        this.data = {
+            integrationType: IntegrationType.CRON_JOB,
+            eventType: "cron",
+            inputId: data.inputId,
+            isManualTrigger: data.isManualTrigger,
+            manualContext: data.manualContext
         }
-
-        return `This is a scheduled event for the channel input ${this.data.inputId}. The channel input is configured to run at the following cron expression.`
-    }
-
-    debugLog(): string {
-        return this.data.isManualTrigger ? `Manual Trigger` : `Scheduled Event`
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {

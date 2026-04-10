@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from terse_sdk.types._generated import LinearTeam, NotionPageBlock, PosthogConfigInstance
+from terse_sdk.types._generated import (
+    LinearTeam,
+    NotionPageBlock,
+    PosthogConfigInstance,
+)
 from terse_sdk.types.enums import ConfigType
 
 
@@ -47,7 +51,8 @@ def test_generated_posthog_config_uses_snake_case_with_camel_case_aliases() -> N
 
     assert config.integration_id == "int_123"
     assert config.integration_type == "posthog"
-    assert config.config_type == ConfigType.POSTHOG
+    assert config.config_type == ConfigType.posthog
     assert config.project_id == "proj_123"
+    assert config.project_name is not None
     assert config.project_name == "Analytics"
     assert config.model_dump(by_alias=True)["configType"] == "POSTHOG"

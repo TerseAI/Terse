@@ -1,5 +1,6 @@
 import chalk from "chalk"
 import fs from "fs"
+import { serializedEventSchema } from "terse-types"
 import type { SerializedEvent } from "terse-types"
 
 import { readApiKey } from "./api.js"
@@ -32,9 +33,10 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 
     let parsed: SerializedEvent
     try {
-        parsed = JSON.parse(eventJson) as SerializedEvent
-    } catch {
-        console.error(chalk.red("Error: --event value is not valid JSON."))
+        parsed = serializedEventSchema.parse(eventJson)
+    } catch (error) {
+        console.error(chalk.red("Error: --event does not match the canonical Trigger schema."))
+        console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
         process.exit(1)
     }
 

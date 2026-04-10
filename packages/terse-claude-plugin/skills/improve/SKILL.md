@@ -50,8 +50,8 @@ Python: `event.formatted_content`
 
 #### Type Safety and language fit
 
-- **Event type**: Is the event typed with the correct class for the language? Use `GithubPRInputEvent` in TypeScript, or the matching `terse_sdk` event class in Python.
-- **Type guards**: When handling events from multiple trigger types, use `isGithubPREvent()`, `isGithubPushEvent()`, etc.
+- **Event type**: Is the event typed with the correct class for the language? Use `GithubPRTrigger` in TypeScript, or the matching `terse_sdk` event class in Python.
+- **Type guards**: When handling events from multiple trigger types, use `isGithubPRTrigger()`, `isGithubPushTrigger()`, etc.
 - **Imports**: Are trigger and skill types imported from the correct generated file?
 - **Method names**: Does the code use the right runtime API for the language? TypeScript uses `runAndWait()` / `executeTool()`. Python uses `run_and_wait()` / `execute_tool()`.
 - **Python generated surface**: If the project is Python, are you only using helpers that actually exist in `src/terse_generated.py`?
@@ -92,10 +92,10 @@ The examples below are in TypeScript. Apply the same reasoning in Python project
 onTrigger: async (event, Agent) => { ... }
 
 // AFTER: skip bot events
-filter: async (event: GithubPRInputEvent) => {
+filter: async (event: GithubPRTrigger) => {
     return !event.sender.login.includes("[bot]") && !event.pullRequest.merged
 },
-onTrigger: async (event: GithubPRInputEvent, Agent: TerseAgent) => { ... }
+onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => { ... }
 ```
 
 ### Improve prompt specificity
@@ -141,10 +141,10 @@ onTrigger: async (event, Agent) => {
 }
 
 // AFTER: typed event with type guard
-import { GithubPRInputEvent, isGithubPREvent } from "terse-sdk"
+import { GithubPRTrigger, isGithubPRTrigger } from "terse-sdk"
 
-onTrigger: async (event: GithubPRInputEvent, Agent: TerseAgent) => {
-    if (!isGithubPREvent(event)) return
+onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => {
+    if (!isGithubPRTrigger(event)) return
     const { title, url } = event.pullRequest
     await Agent.runAndWait(
         `Review PR "${title}" at ${url}. Context: ${event.formatForAgentRunner()}`

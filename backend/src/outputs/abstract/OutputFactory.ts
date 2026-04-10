@@ -2,12 +2,10 @@ import { OutputConfigType } from "@prisma/client"
 import {
     AttioOutputConfig,
     ConfigData,
-    ConfluenceConfig,
     DatadogConfig,
     GitHubConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
-    JiraConfig,
     LaunchDarklyConfig,
     LinearOutputConfig,
     NotionConfig,
@@ -20,13 +18,11 @@ import {
 
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
 import { convertPrismaOutputConfigToConfigData } from "../../utility/typeConverters"
-import { ConfluenceOutput } from "../ConfluenceOutput"
 import { AttioOutput } from "../attio/AttioOutput"
 import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
 import { GithubSkillOutput } from "../github/GithubSkillOutput"
 import { GmailDraftOutput } from "../gmail/GmailDraftOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
-import { JiraTicketOutput } from "../jira/JiraTicketOutput"
 import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
 import { NotionOutput } from "../notion/NotionOutput"
@@ -46,9 +42,7 @@ import { Output } from "./Output"
 export class OutputFactory {
     public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigData>> = new Map<OutputConfigType, () => Output<ConfigData>>([
         [OutputConfigType.NOTION, () => new NotionOutput()],
-        [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
         [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
-        [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()],
         [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
         [OutputConfigType.GMAIL, () => new GmailOutput()],
         [OutputConfigType.GMAIL_DRAFT, () => new GmailDraftOutput()],
@@ -79,14 +73,8 @@ export class OutputFactory {
             case OutputConfigType.NOTION:
                 ;(output as Output<NotionConfig>).configs = configs as NotionConfig[]
                 break
-            case OutputConfigType.CONFLUENCE:
-                ;(output as Output<ConfluenceConfig>).configs = configs as ConfluenceConfig[]
-                break
             case OutputConfigType.LINEAR_TICKET:
                 ;(output as Output<LinearOutputConfig>).configs = configs as LinearOutputConfig[]
-                break
-            case OutputConfigType.JIRA_TICKET:
-                ;(output as Output<JiraConfig>).configs = configs as JiraConfig[]
                 break
             case OutputConfigType.SLACK_CHANNEL:
                 ;(output as Output<SlackOutputConfig>).configs = configs as SlackOutputConfig[]

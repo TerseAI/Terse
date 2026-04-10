@@ -261,7 +261,7 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
         throw new Error(`Agent not found: ${agent.id}`)
     }
 
-    // Set up agent triggers (e.g., create webhooks for Figma)
+    // Set up agent triggers
     await setupAgentTriggers(agentWithRelations)
 
     // Invalidate recent agents and agent list caches
@@ -340,8 +340,6 @@ export async function updateAgentForUser(userId: string, organizationId: string,
             await tx.automation_inputs.deleteMany({
                 where: { automation_id: agentId }
             })
-
-            // Tear down old triggers (e.g., delete webhooks for Figma)
             await tearDownAgentTriggers(existingAgent)
 
             // Create new triggers
@@ -429,8 +427,6 @@ export async function updateAgentForUser(userId: string, organizationId: string,
     if (!agentWithTriggerRelations) {
         throw new Error(`Agent not found: ${agentId}`)
     }
-
-    // Set up agent triggers (e.g., create webhooks for Figma)
     await setupAgentTriggers(agentWithTriggerRelations)
 
     // Invalidate recent agents cache
@@ -719,8 +715,6 @@ export async function deleteAgent(req: Request, res: Response) {
             res.status(404).json({ error: "Agent not found" })
             return
         }
-
-        // Tear down agent triggers (e.g., delete webhooks for Figma)
         await tearDownAgentTriggers(existingAgent)
 
         // Clean up orphaned records and delete agent in a single transaction

@@ -1,10 +1,8 @@
-import type { JiraEvent } from "../integrations/AtlassianIntegration"
-import type { FigmaCommentEvent } from "../integrations/FigmaIntegration"
-import type { GithubEvent } from "../integrations/GithubIntegration"
-import type { GmailEvent } from "../integrations/GmailIntegration"
-import type { LinearEvent } from "../integrations/LinearIntegration"
-import type { SlackEvent } from "../integrations/SlackIntegration"
-import type { WorkOSEvent } from "../integrations/WorkOSIntegration"
+import type { GithubTriggerRuntime } from "../integrations/GithubIntegration"
+import type { GmailTriggerRuntime } from "../integrations/GmailIntegration"
+import type { LinearTriggerRuntime } from "../integrations/LinearIntegration"
+import type { SlackTriggerRuntime } from "../integrations/SlackIntegration"
+import type { WorkOSTriggerRuntime } from "../integrations/WorkOSIntegration"
 import logger from "../logger"
 import type { IdentifiableRunHistoryRawEvent } from "../rag/runHistoryRag/hydrator"
 
@@ -14,8 +12,6 @@ export enum HydratorType {
     GITHUB_EVENT = "github_event",
     LINEAR_EVENT = "linear_event",
     GMAIL_EVENT = "gmail_event",
-    FIGMA_COMMENT_EVENT = "figma_comment_event",
-    JIRA_EVENT = "jira_event",
     WORKOS_EVENT = "workos_event"
 }
 
@@ -39,13 +35,11 @@ export function requireHydratorType(value: string): HydratorType {
 
 export type HydratorTypeMap = {
     [HydratorType.RUN_HISTORY_RAW_EVENT]: IdentifiableRunHistoryRawEvent
-    [HydratorType.SLACK_MESSAGE_EVENT]: SlackEvent
-    [HydratorType.GITHUB_EVENT]: GithubEvent
-    [HydratorType.LINEAR_EVENT]: LinearEvent
-    [HydratorType.GMAIL_EVENT]: GmailEvent
-    [HydratorType.FIGMA_COMMENT_EVENT]: FigmaCommentEvent
-    [HydratorType.JIRA_EVENT]: JiraEvent
-    [HydratorType.WORKOS_EVENT]: WorkOSEvent
+    [HydratorType.SLACK_MESSAGE_EVENT]: SlackTriggerRuntime
+    [HydratorType.GITHUB_EVENT]: GithubTriggerRuntime
+    [HydratorType.LINEAR_EVENT]: LinearTriggerRuntime
+    [HydratorType.GMAIL_EVENT]: GmailTriggerRuntime
+    [HydratorType.WORKOS_EVENT]: WorkOSTriggerRuntime
 }
 
 export enum RAGNamespace {

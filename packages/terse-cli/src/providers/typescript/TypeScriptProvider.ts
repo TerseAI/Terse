@@ -5,12 +5,11 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { ApprovalRequestInfo, CreateJobParameters } from "terse-sdk"
-import { TerseAgent } from "terse-sdk"
+import { TerseAgent, createSDKTrigger } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
 import { BACKEND_URL } from "../../config.js"
-import { convertSerializedEventToInputEvent } from "../../util.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { openSessionStream, promptForToolApproval } from "../shared/sessionStream.js"
@@ -127,8 +126,9 @@ export class TypeScriptProvider implements LanguageProvider {
     }
 
     async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
-        const inputEvent = convertSerializedEventToInputEvent(event)
         const isVerbose = opts?.verbose ?? false
+
+        const serializedEventRuntime = createSDKTrigger(event)
 
         const apiKey = process.env.TERSE_API_KEY ?? null
         let sessionId: string | undefined
@@ -159,7 +159,7 @@ export class TypeScriptProvider implements LanguageProvider {
 
         try {
             if (job.filter) {
-                const shouldRun = await job.filter(inputEvent)
+                const shouldRun = await job.filter(serializedEventRuntime)
                 if (!shouldRun) {
                     console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
                     return
@@ -169,7 +169,7 @@ export class TypeScriptProvider implements LanguageProvider {
             if (isVerbose) {
                 console.log(chalk.cyan(`  Job "${job.name}" started`))
             }
-            await job.onTrigger(inputEvent, agent)
+            await job.onTrigger(serializedEventRuntime, agent)
             console.log(chalk.green(`\n  Job "${job.name}" completed successfully.\n`))
         } catch (error) {
             console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))

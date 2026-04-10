@@ -48,45 +48,6 @@ export function NotionIcon() {
     return <img src="/notion.png" alt="Notion" className="w-full h-full object-contain" />
 }
 
-export function FigmaIcon() {
-    return (
-        <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 24C10.2091 24 12 22.2091 12 20V16H8C5.79086 16 4 17.7909 4 20C4 22.2091 5.79086 24 8 24Z" fill="#0ACF83" />
-            <path d="M4 12C4 9.79086 5.79086 8 8 8H12V16H8C5.79086 16 4 14.2091 4 12Z" fill="#A259FF" />
-            <path d="M4 4C4 1.79086 5.79086 0 8 0H12V8H8C5.79086 8 4 6.20914 4 4Z" fill="#F24E1E" />
-            <path d="M12 0H16C18.2091 0 20 1.79086 20 4C20 6.20914 18.2091 8 16 8H12V0Z" fill="#FF7262" />
-            <path d="M20 12C20 14.2091 18.2091 16 16 16C13.7909 16 12 14.2091 12 12C12 9.79086 13.7909 8 16 8C18.2091 8 20 9.79086 20 12Z" fill="#1ABCFE" />
-        </svg>
-    )
-}
-
-export function JiraIcon() {
-    return <img src="/jira.svg" alt="Jira" className="w-full h-full object-contain" />
-}
-
-export function ConfluenceIcon() {
-    return <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />
-}
-
-export function AtlassianIcon() {
-    return (
-        <svg className="w-full h-full" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="atlassian-gradient" x1="99.68%" y1="15.56%" x2="14.88%" y2="68.84%">
-                    <stop offset="0%" stopColor="#0052CC" />
-                    <stop offset="100%" stopColor="#2684FF" />
-                </linearGradient>
-            </defs>
-            <path d="M7.12 11.084a.683.683 0 00-1.16.126L.075 22.974a.703.703 0 00.63 1.018h8.19a.678.678 0 00.63-.39c1.767-3.65.696-9.203-2.406-12.52z" fill="url(#atlassian-gradient)" />
-            <path d="M11.434.386a15.515 15.515 0 00-.906 15.317l3.95 7.9a.703.703 0 00.628.388h8.19a.703.703 0 00.63-1.017L12.63.38a.664.664 0 00-1.196.006z" fill="#2684FF" />
-        </svg>
-    )
-}
-
-export function JiraConfluenceIcon() {
-    return <AtlassianIcon />
-}
-
 export function TerseIcon() {
     return <img src="/terse.png" alt="Terse" className="w-full h-full object-contain" />
 }

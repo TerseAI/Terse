@@ -1,26 +1,34 @@
-import { IntegrationType } from "./Integrations"
+import * as z from "zod"
 
-export type ApprovalActionType = "open_run_history" | "approve_action" | "reject_action"
-export type ApprovalRequestStatus = "pending" | "in_progress" | "completed"
+import { integrationTypeEnum } from "./Integrations"
+
+export const approvalActionTypeSchema = z.enum(["open_run_history", "approve_action", "reject_action"])
+export type ApprovalActionType = z.infer<typeof approvalActionTypeSchema>
+
+export const approvalRequestStatusSchema = z.enum(["pending", "in_progress", "completed"])
+export type ApprovalRequestStatus = z.infer<typeof approvalRequestStatusSchema>
+
 export type ApprovalRequestFilter = ApprovalRequestStatus | "all"
 
-export type ApprovalAction = {
-    type: ApprovalActionType
-    label: string
-    deepLink: string
-}
+export const approvalActionSchema = z.object({
+    type: approvalActionTypeSchema,
+    label: z.string(),
+    deepLink: z.string()
+})
+export type ApprovalAction = z.infer<typeof approvalActionSchema>
 
-export type ApprovalRequest = {
-    id: string
-    icon: IntegrationType
-    title: string
-    subheader: string
-    timestamp: string
-    status: ApprovalRequestStatus
-    actions: ApprovalAction[]
-    runId: string
-    agentId: string
-}
+export const approvalRequestSchema = z.object({
+    id: z.string(),
+    icon: integrationTypeEnum,
+    title: z.string(),
+    subheader: z.string(),
+    timestamp: z.string(),
+    status: approvalRequestStatusSchema,
+    actions: z.array(approvalActionSchema),
+    runId: z.string(),
+    agentId: z.string()
+})
+export type ApprovalRequest = z.infer<typeof approvalRequestSchema>
 
 export type GetPendingApprovalsResponse = {
     items: ApprovalRequest[]

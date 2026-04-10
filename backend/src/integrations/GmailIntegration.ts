@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { gmail_v1, google } from "googleapis"
-import { ConfigData, ConfigType, GmailConfigSchema, GmailEventType } from "terse-types/Configs"
+import { ConfigData, ConfigType, GmailEventType, GmailMessagePayload, GmailParsedAttachment, GmailTrigger } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -23,8 +23,8 @@ import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
-import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose"]
@@ -141,7 +141,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                             continue
                         }
 
-                        const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId)
+                        const parsedEmail: GmailMessagePayload | null = await fetchAndParseEmail(gmail, messageId)
 
                         if (parsedEmail) {
                             const emailTimestamp = parseInt(parsedEmail.internalDate, 10)
@@ -172,11 +172,9 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
                             // Download attachments and store in GCS (if configured)
                             const allAttachments = parsedEmail.attachments || []
+                            let storedFiles: StoredFile[] = []
                             if (allAttachments.length > 0) {
-                                const storedFiles = await downloadGmailAttachments(gmail, parsedEmail.id, allAttachments, integration.id)
-                                if (storedFiles.length > 0) {
-                                    parsedEmail.storedFiles = storedFiles
-                                }
+                                storedFiles = await downloadGmailAttachments(gmail, parsedEmail.id, allAttachments, integration.id)
                             }
 
                             // Process email through automations (non-blocking)
@@ -187,11 +185,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                                 to: parsedEmail.to,
                                 date: emailDate.toISOString(),
                                 integrationId: integration.id,
-                                messageId: parsedEmail.id,
-                                fileCount: parsedEmail.storedFiles?.length || 0
+                                messageId: parsedEmail.id
                             })
 
-                            const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id), fullUser)
+                            const eventProcessor = new EventProcessor(new GmailTriggerRuntime(parsedEmail, integration.id, storedFiles), fullUser)
                             const results = await eventProcessor.process()
 
                             let hasSuccess = false
@@ -519,7 +516,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.GMAIL) {
             return []
         }
@@ -547,57 +544,35 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             maxResults: limit
         })
         const messageIds = (listResponse.data.messages?.map(m => m.id).filter(Boolean) as string[]) || []
-        const events: InputEvent[] = []
+        const events: TriggerRuntime[] = []
         for (const messageId of messageIds) {
             const eventData = await fetchAndParseEmail(gmail, messageId)
             if (eventData) {
-                events.push(new GmailEvent(eventData, integrationId))
+                events.push(new GmailTriggerRuntime(eventData, integrationId))
             }
         }
         return events
     }
 }
 
-export class GmailEvent extends InputEvent implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.GMAIL
-    readonly eventType: GmailEventType = GmailEventType.EMAIL_RECEIVED
+export class GmailTriggerRuntime extends TriggerRuntime<GmailTrigger> implements Identifiable {
+    readonly integrationType = IntegrationType.GMAIL
     entityType = HydratorType.GMAIL_EVENT
     entityId: string
-    data: GmailEventData
+    data: GmailTrigger
     private integrationId: string
+    private storedFiles: StoredFile[]
 
-    constructor(data: GmailEventData, integrationId: string) {
+    constructor(data: GmailMessagePayload, integrationId: string, storedFiles: StoredFile[] = []) {
         super()
-        this.data = data
+        this.data = {
+            integrationType: IntegrationType.GMAIL,
+            eventType: GmailEventType.EMAIL_RECEIVED,
+            ...data
+        }
         this.integrationId = integrationId
         this.entityId = `${integrationId}:${data.id}`
-    }
-
-    formatForAgentRunner(): string {
-        const getAttachmentLog = (attachment: GmailParsedAttachment) => {
-            return `- ${attachment.filename} ${attachment.isInline ? "Inline" : "Attachment"}  (${attachment.mimeType})`
-        }
-        const attachmentInfo = this.data.attachments?.map(getAttachmentLog).join("\n") || "No attachments"
-
-        return `
-        Incoming Email Event.
-
-        Gmail Event:
-        Subject: ${this.data.subject}
-        From: ${this.data.from}
-        To: ${this.data.to}
-        Date: ${this.data.date}
-        Message ID: ${this.data.messageId}
-        Thread ID: ${this.data.threadId}
-        Body: ${this.data.body}
-        Snippet: ${this.data.snippet}
-        Attachments (if any listed, actual files should be added below):
-        ${attachmentInfo}
-        `
-    }
-
-    debugLog(): string {
-        return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`
+        this.storedFiles = storedFiles
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -643,7 +618,7 @@ export class GmailEvent extends InputEvent implements Identifiable {
     }
 
     getFiles(): StoredFile[] {
-        return this.data.storedFiles || []
+        return this.storedFiles || []
     }
 }
 
@@ -876,7 +851,7 @@ async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistor
     return messageIds
 }
 
-export async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailEventData | null> {
+export async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailMessagePayload | null> {
     try {
         const messageResponse = await gmail.users.messages.get({
             userId: "me",
@@ -973,35 +948,6 @@ export async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: strin
 export type GmailWebhookEvent = {
     emailAddress: string
     historyId: number
-}
-
-/**
- * Parsed attachment from a Gmail message (images, documents, etc.)
- */
-export interface GmailParsedAttachment {
-    attachmentId: string
-    filename: string
-    mimeType: string
-    contentId?: string
-    isInline: boolean
-}
-
-export interface GmailEventData {
-    id: string
-    threadId: string
-    subject: string
-    from: string
-    to: string
-    date: string // Header date string (for display)
-    internalDate: string // Gmail's internal timestamp (milliseconds since epoch)
-    messageId: string
-    body: string
-    snippet: string
-    labelIds: string[]
-    // Parsed attachments (images, documents, etc.)
-    attachments?: GmailParsedAttachment[]
-    // Stored files with full metadata (category, mimeType, url)
-    storedFiles?: StoredFile[]
 }
 
 type ProcessedWebhookClaim =

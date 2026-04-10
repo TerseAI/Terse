@@ -1,0 +1,43 @@
+---
+title: "Hosting & Deployment"
+description: "How terse deploy takes your local code and turns it into a live, trigger-ready workflow. No Dockerfile, no build step, no infrastructure to manage."
+icon: "cloud-upload"
+---
+
+When you run `terse deploy`, your workflow goes from local code to a hosted, trigger-ready automation in seconds. There's no build step, no Dockerfile, and no infrastructure to configure.
+
+## What happens when you deploy
+
+<Steps>
+    <Step title="Your code is zipped and uploaded">
+        The CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. Archives are content-addressed by SHA-256 hash, so identical code across deploys is automatically deduplicated.
+    </Step>
+    <Step title="Triggers and skills are registered">
+        Each job's triggers (e.g. a GitHub webhook, a cron schedule) and skills (e.g. Slack, Apollo) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never need to reconfigure external services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.
+    </Step>
+    <Step title="A trigger fires">
+        When an event matches one of your triggers, Terse spins up an isolated [Modal](https://modal.com) sandbox with the right runtime: `node:22-slim` for TypeScript or `python:3.11-slim` for Python, detected automatically from your `package.json` or `pyproject.toml`.
+    </Step>
+    <Step title="Your handler executes">
+        Inside the container, your code is extracted, dependencies are installed, and `terse run` loads your job. A `TerseAgent` is created with the skills you defined, and your `onTrigger` handler executes. It can call tools deterministically, prompt the agent, or both. When the run completes, the container is torn down and results are logged.
+    </Step>
+</Steps>
+
+## Security
+
+Each execution runs in its own isolated [Modal](https://modal.com) sandbox with a scoped, time-limited API token that is automatically revoked when the run finishes. Your code and credentials are never shared across runs or organizations.
+
+## What gets uploaded
+
+The CLI respects standard ignore patterns. The following are always excluded:
+
+<Tabs>
+    <Tab title="TypeScript">
+        `node_modules`, `.git`, `dist`, `.next`, `.turbo`, `.env`, `.DS_Store`
+    </Tab>
+    <Tab title="Python">
+        `.venv`, `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.git`, `.env`, `.DS_Store`
+    </Tab>
+</Tabs>
+
+Everything else in your project directory is included in the deploy.

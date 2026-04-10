@@ -1,9 +1,9 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
 import { ConfigData } from "terse-types"
 import { RunHistoryAction } from "terse-types"
-import { SerializedEvent, User } from "terse-types"
+import { User } from "terse-types"
 
-import { InputEvent } from "../../integrations/abstract/InputEvent"
+import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
@@ -53,11 +53,11 @@ export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
 }
 
 export class EventProcessor {
-    private inputEvent: InputEvent
+    private inputEvent: TriggerRuntime
     private user: User
     private isManuallyTriggered: boolean
 
-    constructor(inputEvent: InputEvent, user: User, options?: { isManuallyTriggered?: boolean }) {
+    constructor(inputEvent: TriggerRuntime, user: User, options?: { isManuallyTriggered?: boolean }) {
         this.inputEvent = inputEvent
         this.user = user
         this.isManuallyTriggered = options?.isManuallyTriggered ?? false
@@ -417,14 +417,7 @@ export class EventProcessor {
     private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
-        const serializedEvent: SerializedEvent = {
-            integrationType: this.inputEvent.integrationType,
-            eventType: this.inputEvent.eventType,
-            formattedContent: this.inputEvent.formatForAgentRunner(),
-            debugLog: this.inputEvent.debugLog(),
-            metadata: this.inputEvent.serializeMetadata()
-        }
-        const eventJson = JSON.stringify(serializedEvent)
+        const eventJson = JSON.stringify(this.inputEvent.getSerializedEvent())
 
         const gcsKey = agent.prompt?.source_code_gcs_key
         if (!gcsKey) {

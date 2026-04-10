@@ -1,20 +1,21 @@
 import { IntegrationType } from "terse-types"
+import { WorkOSWebhookPayload } from "terse-types"
 
-import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSEvent, WorkOSWebhookPayload, enrichWorkOSEventPayload } from "../../integrations/WorkOSIntegration"
+import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSTriggerRuntime, enrichWorkOSEventPayload } from "../../integrations/WorkOSIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
 import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
-export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
+export class WorkOSEventHydrator extends Hydrator<WorkOSTriggerRuntime> {
     readonly entityType = HydratorType.WORKOS_EVENT
 
     constructor(ctx: HydrationContext) {
         super(ctx)
     }
 
-    async hydrate(ref: Identifiable): Promise<WorkOSEvent> {
+    async hydrate(ref: Identifiable): Promise<WorkOSTriggerRuntime> {
         const event = await this.fetchFromWorkOS(ref.entityId)
         if (!event) {
             throw new Error(`Failed to hydrate WorkOS event: ${ref.entityId}`)
@@ -22,7 +23,7 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
         return event
     }
 
-    async hydrateBulk(refs: Identifiable[]): Promise<WorkOSEvent[]> {
+    async hydrateBulk(refs: Identifiable[]): Promise<WorkOSTriggerRuntime[]> {
         const results = await Promise.all(refs.map(ref => this.fetchFromWorkOS(ref.entityId)))
         return results.map((event, i) => {
             if (!event) {
@@ -32,7 +33,7 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
         })
     }
 
-    private async fetchFromWorkOS(entityId: string): Promise<WorkOSEvent | null> {
+    private async fetchFromWorkOS(entityId: string): Promise<WorkOSTriggerRuntime | null> {
         // entityId format: "integrationId:eventId"
         const colonIndex = entityId.indexOf(":")
         if (colonIndex === -1) {
@@ -102,7 +103,7 @@ export class WorkOSEventHydrator extends Hydrator<WorkOSEvent> {
                 const match = json.data.find(evt => evt.id === eventId)
                 if (match) {
                     const enrichedMatch = await enrichWorkOSEventPayload(match, apiKey)
-                    return new WorkOSEvent(enrichedMatch, integrationId)
+                    return new WorkOSTriggerRuntime(enrichedMatch, integrationId)
                 }
 
                 // No more pages

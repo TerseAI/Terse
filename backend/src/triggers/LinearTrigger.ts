@@ -26,7 +26,8 @@ export class LinearTrigger implements Trigger<LinearInputConfig> {
             data: {
                 automation_input_id: agentTriggerId,
                 project_id: trigger.projectId || null,
-                project_name: trigger.projectName || null
+                project_name: trigger.projectName || null,
+                event_types: trigger.eventTypes || []
             }
         })
     }

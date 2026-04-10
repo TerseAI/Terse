@@ -1,6 +1,6 @@
 import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
-import { ConfigData, buildRoute } from "terse-types"
+import { ConfigData, CronTrigger, Trigger, buildRoute } from "terse-types"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { RunHistoryStatus, TrackingParams } from "terse-types"
@@ -10,10 +10,10 @@ import { z } from "zod"
 import { filterEvent } from "../../agent/AgentRunner/EventFilter"
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
 import { generateEventSummary } from "../../agent/EventSummaryAgent/EventSummaryAgent"
-import { CronJobEvent } from "../../integrations/CronJobIntegration"
+import { CronTriggerRuntime } from "../../integrations/CronJobIntegration"
 import { FetchResourcesOptions, FetchResourcesOptionsSchema } from "../../integrations/abstract/FetchResourcesOptions"
-import { InputEvent } from "../../integrations/abstract/InputEvent"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
 import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
@@ -293,7 +293,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User is required to trigger agent run")
                 }
 
-                let inputEvent: InputEvent
+                let inputEvent: TriggerRuntime
                 let resolvedEntityType: string
                 let resolvedEntityId: string
                 const userEntityId = entityId != null && String(entityId).trim() !== "" ? entityId.trim() : null
@@ -308,7 +308,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                         entityType: hydratorType,
                         entityId: userEntityId
                     })
-                    inputEvent = hydrated as InputEvent
+                    inputEvent = hydrated as TriggerRuntime<Trigger>
                     resolvedEntityType = userEntityType
                     resolvedEntityId = userEntityId
                     logger.info("[triggerAgentRun] Hydrated event", {
@@ -325,12 +325,12 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     if (!agent) throw new Error("Agent not found")
                     const timeTriggerInput = agent.inputs.find(i => i.config_type === "TIME_TRIGGER" && i.time_trigger_config)
                     if (!timeTriggerInput) throw new Error("Agent does not have a time trigger input")
-                    const cronJobEvent = new CronJobEvent({
+                    const cronJobEvent = new CronTriggerRuntime({
                         inputId: timeTriggerInput.id,
                         isManualTrigger: true,
                         manualContext: manualContext ?? undefined
                     })
-                    inputEvent = cronJobEvent
+                    inputEvent = cronJobEvent as TriggerRuntime<CronTrigger>
                     resolvedEntityType = "cron_trigger"
                     resolvedEntityId = timeTriggerInput.id
                 }

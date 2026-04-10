@@ -6,181 +6,162 @@ icon: "terminal"
 
 The `terse` CLI scaffolds, generates, tests, runs, and deploys Terse projects in both TypeScript and Python.
 
-Use `terse init --language <ts|python>` to choose the project language. All other commands auto-detect the language from the current directory.
+All commands auto-detect the project language from the current directory based on marker files.
 
-Python projects use [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency installation and local execution. Install it before scaffolding or running Python projects.
+| Language   | Project markers                 | Entry file     | Generated file           |
+| ---------- | ------------------------------- | -------------- | ------------------------ |
+| TypeScript | `package.json`, `src/index.ts`  | `src/index.ts` | `src/terse.generated.ts` |
+| Python     | `pyproject.toml`, `src/main.py` | `src/main.py`  | `src/terse_generated.py` |
 
-## Supported languages
-
-| Language | Project markers | Entry file | Generated file |
-| -------- | --------------- | ---------- | -------------- |
-| TypeScript | `package.json`, `tsconfig.json` | `src/terse.jobs.ts` | `src/terse.generated.ts` |
-| Python | `pyproject.toml`, `src/main.py` | `src/main.py` | `src/terse_generated.py` |
-
-## Command summary
-
-| Command | What it does |
-| ------- | ------------ |
-| `terse init [project-name]` | Scaffold a new Terse project |
-| `terse login` | Authenticate with Terse via your browser |
-| `terse generate` | Generate language-specific helpers from connected integrations |
-| `terse integrate` | Open the Terse integrations page in the browser |
-| `terse run [job-name] --event <json>` | Run a job with serialized event JSON |
-| `terse run [job-name] --event-file <path>` | Run a job with serialized event JSON from a file |
-| `terse test [job-name]` | Run a job locally against a selected sample event |
-| `terse deploy` | Sync all registered jobs to Terse |
-
-## Global options
-
-- `--help`, `-h`: Print usage information for any command.
-
-```bash
-terse --help
-terse test --help
-```
+Python projects require [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency management and local execution.
 
 ## `terse init [project-name]`
 
-Scaffolds a new project and prompts you for an API token.
+Scaffolds a new project and runs the full setup flow: installs dependencies, authenticates, connects integrations, and generates your SDK.
 
-```bash
-terse init acme-revenue
-terse init acme-revenue --language python
-```
+<CodeGroup>```bash TypeScript terse init my-project ``` ```bash Python terse init my-project --language python ```</CodeGroup>
 
-Options:
+**Options:**
 
-- `--language <ts|typescript|py|python>`: choose the project language. Defaults to `ts`.
+| Flag                    | Description                           | Default |
+| ----------------------- | ------------------------------------- | ------- |
+| `-l, --language <lang>` | `ts`, `typescript`, `py`, or `python` | `ts`    |
 
-Attach mode:
+**What it does in order:**
 
-- If you run `terse init` inside an existing npm project with no `project-name`, the CLI switches to attach mode instead of overwriting `package.json`.
-- In attach mode, the CLI asks whether you want to self-host or use serverless.
-- Self-hosted means your jobs run on your own infrastructure via `TERSE_JOB_URL`, and no source code is uploaded.
-- Serverless means `terse deploy` will zip the current project directory and store it in GCS before running on Terse-managed infrastructure.
-
-TypeScript scaffolds:
-
-- `src/terse.jobs.ts`
-- `src/terse.generated.ts` after `terse generate`
-- `package.json`
-- `tsconfig.json`
-
-Python scaffolds:
-
-- `src/main.py`
-- `src/terse_generated.py` after `terse generate`
-- `pyproject.toml`
-- `.python-version`
-
-## `terse generate`
-
-Fetches integration details and writes the generated helper file for the current project language.
-
-```bash
-terse generate
-```
-
-Outputs:
-
-- TypeScript: `src/terse.generated.ts`
-- Python: `src/terse_generated.py`
-
-Use it after:
-
-- connecting a new integration
-- changing available resources in a connected integration
-- updating the generated tool surface you want your workflows to use
-
-Current Python code generation includes `Schedule`, `Attio`, `Slack`, `Snowflake`, and deterministic wrappers for supported Attio, Slack, and Snowflake tools. In Python, `agent.tools.slack.*` is direct deterministic access, while `skills=[Slack.skill(...)]` controls model-visible Slack access during `run` and `run_and_wait`.
+1. Creates the project directory and scaffolds files (config, `.gitignore`, entry file)
+2. Detects your package manager (pnpm/npm for TypeScript, uv for Python) and installs dependencies
+3. Runs `terse login` to authenticate
+4. Runs `terse integrate` to check and connect integrations
+5. Runs `terse generate` to produce your typed SDK
 
 ## `terse login`
 
-Authenticates with Terse and writes `TERSE_API_KEY` into your project `.env`.
+Authenticates with Terse using a device authorization flow and writes `TERSE_API_KEY` to your project's `.env` file.
 
 ```bash
 terse login
 ```
 
+**How it works:**
+
+1. Requests a device code from WorkOS
+2. Opens your browser to a verification page
+3. Polls until you complete the browser authorization
+4. Exchanges the token with the Terse backend for an API key
+5. Writes `TERSE_API_KEY` to `.env` (creates or updates)
+
+If a valid API key already exists, you'll be prompted before re-authenticating.
+
 ## `terse integrate`
 
-Opens the integrations page in the Terse web app.
+Connects third-party integrations to your Terse workspace from the CLI. After connecting, automatically re-runs `terse generate` to update your SDK.
 
 ```bash
 terse integrate
 ```
 
-Equivalent UI destination: `https://app.useterse.ai/app/integrations`
+**How it works:**
 
-## `terse run [job-name]`
+1. Fetches your currently connected integrations and displays their status
+2. Prompts you to select an integration to connect
+3. Walks you through the connection flow (varies by integration type)
+4. Re-runs `terse generate` after any changes
 
-Runs a job locally with an explicit serialized event payload.
+**Connection types:**
+
+| Type  | Flow                                                                  | Integrations                                     |
+| ----- | --------------------------------------------------------------------- | ------------------------------------------------ |
+| OAuth | Opens browser for authorization, polls until connected                | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
+| Form  | Prompts for credentials (API keys, account IDs, etc.) in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
+
+## `terse generate`
+
+Fetches your connected integrations and their resources from the Terse backend, then writes a typed SDK file for your project language.
 
 ```bash
-terse run --event '{"integrationType":"cron_job","formattedContent":"Manual trigger","debugLog":"Manual trigger"}'
-terse run weekly-pipeline-digest --event-file ./event.json
+terse generate
 ```
 
-Options:
+**Outputs:**
 
-- `--event <json>`: inline serialized event JSON
-- `--event-file <path>`: read serialized event JSON from a file
+<CodeGroup>```text TypeScript src/terse.generated.ts ``` ```text Python src/terse_generated.py ```</CodeGroup>
+
+**What's in the generated file:**
+
+| Category                    | Examples                                                              |
+| --------------------------- | --------------------------------------------------------------------- |
+| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Deals`   |
+| Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`         |
+| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                    |
+| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()` |
+
+Each integration generates typed helpers based on the actual resources in your workspace (repos, channels, lists, projects, etc.), so your code references real names instead of raw IDs.
+
+**When to re-run:**
+
+- After connecting or disconnecting an integration
+- After adding resources to a connected integration (new Slack channel, new GitHub repo, etc.)
+- After upgrading `terse-cli` (new tool definitions may be available)
 
 ## `terse test [job-name]`
 
-Fetches sample events for the selected job and runs it locally.
+Fetches real sample events from the Terse backend and runs your job locally against a selected event.
 
 ```bash
 terse test
-terse test weekly-pipeline-digest --verbose
+terse test my-job
 ```
 
-Options:
+**Options:**
 
-- `--verbose`, `-v`: show model stream output during the run
+| Flag            | Description                             | Default |
+| --------------- | --------------------------------------- | ------- |
+| `-v, --verbose` | Show agent stream output during the run | Enabled |
+
+**How it works:**
+
+1. Loads your job registry from the entry file
+2. Fetches sample events from the backend for integration-based triggers (e.g. real GitHub PR events, real Slack messages)
+3. Generates synthetic events for cron and webhook triggers
+4. Prompts you to select an event
+5. Executes your job's `onTrigger` handler locally
+
+If you only have one job, it's selected automatically.
+
+## `terse run [job-name]`
+
+Runs a job locally with an explicit event payload. Unlike `test`, this is non-interactive and does not fetch sample events.
+
+```bash
+terse run --event '{"integrationType":"cron_job","eventType":"cron","inputId":"trigger_123","isManualTrigger":true,"manualContext":"Manual trigger"}'
+terse run my-job --event-file ./event.json
+```
+
+**Options:**
+
+| Flag                  | Description                              |
+| --------------------- | ---------------------------------------- |
+| `--event <json>`      | Inline canonical `Trigger` JSON          |
+| `--event-file <path>` | Path to a JSON file containing the event |
+
+One of `--event` or `--event-file` is required.
 
 ## `terse deploy`
 
-Syncs every registered job in the project to Terse.
+Packages your project and deploys all jobs to the Terse platform. [Learn more about how deployment works.](/hosting)
 
 ```bash
 terse deploy
 ```
 
-Behavior to remember:
+**What happens:**
 
-- new local workflows are created remotely
-- existing local workflows are updated remotely
-- workflows removed locally are removed remotely on the next deploy
-- if `TERSE_JOB_URL` is set, deploy uses your own infrastructure and does not upload source code
-- if `TERSE_JOB_URL` is not set, deploy warns before uploading a zip of the current project directory to GCS
+- New jobs are created on the platform
+- Existing jobs are updated (webhook URLs remain stable)
+- Jobs removed from your code are removed from the platform
+- Your entire project is zipped, uploaded, and hosted serverlessly
 
 ## Required environment variable
 
-- `TERSE_API_KEY`: required for `terse generate`, `terse test`, `terse deploy`, and any `terse run` invocation that needs agent or tool access
-
-## Common workflows
-
-**TypeScript:**
-
-```bash
-npm install -g terse-cli
-terse init acme-revenue
-cd acme-revenue
-terse integrate
-terse generate
-terse test --verbose
-terse deploy
-```
-
-**Python:**
-
-```bash
-npm install -g terse-cli
-terse init acme-revenue --language python
-cd acme-revenue
-terse integrate
-terse generate
-terse test --verbose
-terse deploy
-```
+All commands except `terse login` and `terse init` require `TERSE_API_KEY` in your project's `.env` file. This is set automatically by `terse login`.

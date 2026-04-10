@@ -1,11 +1,10 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
+import type { SerializedEvent } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
-    AtlassianIntegration,
     AttioIntegration,
     DatadogIntegration,
-    FigmaIntegration,
     GithubIntegration,
     GmailIntegration,
     InstallationOptionsFor,
@@ -27,19 +26,17 @@ import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsRespon
 import {
     Agent,
     AgentTemplate,
+    type AgentTrigger,
     AgentUpdate,
     AgentsResponse,
     ApiToken,
     ApiTokenCreateResponse,
     ApplyImprovementResponse,
     AttioObjectWithAttributes,
-    ConfluenceResourcesResponse,
     DatadogIndexesResponse,
     DismissImprovementResponse,
     GetAgentImprovementsResponse,
     GetGithubRepositoriesForIntegrationResponse,
-    JiraCredentialsValidationResponse,
-    JiraResourcesResponse,
     LaunchDarklyEnvironmentsResponse,
     LaunchDarklyProjectsResponse,
     LinearTeam,
@@ -48,13 +45,11 @@ import {
     PosthogProjectsResponse,
     RecentAgent,
     SdkJobServerCheckResponse,
-    SerializedEvent,
     SlackChannelsResponse,
     SlackUsersResponse,
     StatsInterval,
     StatsResponse,
-    ToggleImprovementsEnabledResponse,
-    TriggerPayload
+    ToggleImprovementsEnabledResponse
 } from "terse-types/types"
 
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
@@ -138,36 +133,6 @@ interface BackendService {
     getCurrentSlackIntegration(): Promise<SlackIntegration>
 
     /**
-     * Gets the Jira API key
-     */
-    getJiraApiKey(): Promise<AtlassianIntegration>
-
-    /**
-     * Sets the Jira API key
-     */
-    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>
-
-    /**
-     * Validates Jira credentials and fetches available projects
-     */
-    validateJiraCredentials(baseUrl: string, email: string, apiKey: string): Promise<JiraCredentialsValidationResponse>
-
-    /**
-     * Deletes the Jira API key
-     */
-    deleteJiraApiKey(): Promise<void>
-
-    /**
-     * Searches Confluence pages by title (search is optional, empty returns all)
-     */
-    getConfluenceResources(integrationId: string, search?: string): Promise<ConfluenceResourcesResponse>
-
-    /**
-     * Gets Jira resources (projects) for a specific integration
-     */
-    getJiraResources(integrationId: string): Promise<JiraResourcesResponse>
-
-    /**
      * Gets Linear teams for a specific integration
      */
     getLinearTeams(integrationId: string): Promise<LinearTeam[]>
@@ -176,16 +141,6 @@ interface BackendService {
      * Gets all Gmail integrations for the current user
      */
     getGmailIntegrations(): Promise<GmailIntegration[]>
-
-    /**
-     * Gets all Atlassian integrations for the current user
-     */
-    getAtlassianIntegrations(): Promise<AtlassianIntegration[]>
-
-    /**
-     * Gets all Figma integrations for the current user
-     */
-    getFigmaIntegrations(): Promise<FigmaIntegration[]>
 
     /**
      * Gets all GitHub integrations for the current user
@@ -459,7 +414,7 @@ interface BackendService {
     /**
      * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
      */
-    fetchSampleEvents(triggers: TriggerPayload[]): Promise<{ events: SerializedEvent[] }>
+    fetchSampleEvents(triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>): Promise<{ events: SerializedEvent[] }>
 
     /**
      * Triggers an automation with a specific event payload (e.g. a sample event)
@@ -694,72 +649,6 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    getJiraApiKey: () => {
-        return axios
-            .get(`${backendBaseUrl}${ApiRoutes.JIRA.GET_API_KEY}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Jira API key:", error)
-                throw error
-            })
-    },
-
-    setJiraApiKey: (email: string, baseUrl: string, apiKey: string, projectKey?: string) => {
-        return axios
-            .post(`${backendBaseUrl}${ApiRoutes.JIRA.SET_API_KEY}`, { email, baseUrl, apiKey, projectKey }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error setting Jira API key:", error)
-                const errorMessage = error.response?.data?.error || "Failed to create Jira connection"
-                throw { success: false, error: errorMessage }
-            })
-    },
-
-    validateJiraCredentials: (baseUrl: string, email: string, apiKey: string) => {
-        return axios
-            .post(`${backendBaseUrl}${ApiRoutes.JIRA.VALIDATE_AND_FETCH_PROJECTS}`, { baseUrl, email, apiKey }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error validating Jira credentials:", error)
-                const errorMessage = error.response?.data?.error || "Failed to validate credentials"
-                return { valid: false, error: errorMessage }
-            })
-    },
-
-    deleteJiraApiKey: () => {
-        return axios
-            .delete(`${backendBaseUrl}${ApiRoutes.JIRA.DELETE_CREDENTIALS}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error deleting Jira API key:", error)
-                throw error
-            })
-    },
-
-    getConfluenceResources: (integrationId: string, search?: string) => {
-        const params = new URLSearchParams({ integrationId })
-        if (search) {
-            params.append("search", search)
-        }
-        return axios
-            .get<ConfluenceResourcesResponse>(`${backendBaseUrl}${ApiRoutes.CONFLUENCE.RESOURCES}?${params.toString()}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error searching Confluence resources:", error)
-                throw error
-            })
-    },
-
-    getJiraResources: (integrationId: string) => {
-        return axios
-            .get<JiraResourcesResponse>(`${backendBaseUrl}${ApiRoutes.JIRA.RESOURCES}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching Jira resources:", error)
-                throw error
-            })
-    },
-
     getLinearTeams: (integrationId: string) => {
         return axios
             .get<LinearTeam[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
@@ -776,26 +665,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting Gmail integrations:", error)
-                throw error
-            })
-    },
-
-    getAtlassianIntegrations: () => {
-        return axios
-            .get<AtlassianIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATLASSIAN.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Atlassian integrations:", error)
-                throw error
-            })
-    },
-
-    getFigmaIntegrations: () => {
-        return axios
-            .get<FigmaIntegration[]>(`${backendBaseUrl}${ApiRoutes.FIGMA.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Figma integrations:", error)
                 throw error
             })
     },
@@ -1460,7 +1329,7 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    fetchSampleEvents: (triggers: TriggerPayload[]) => {
+    fetchSampleEvents: (triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {
         return axios
             .post<{ events: SerializedEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
             .then(response => response.data)

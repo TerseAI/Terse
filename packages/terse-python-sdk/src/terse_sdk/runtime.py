@@ -8,12 +8,11 @@ import os
 import sys
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Any, TypeVar, cast
 
 import httpx
 from httpx_sse import connect_sse
-from pydantic import ValidationError
+from pydantic import BaseModel, RootModel, ValidationError
 
 from ._http_utils import (
     _buffer_response_content,
@@ -22,110 +21,35 @@ from ._http_utils import (
     _debug_log_response_payload,
     _read_response_detail,
 )
+from ._logging_utils import LOGGER, _configure_debug_logging
+from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
+from .types._generated import ConfigData, SerializedEvent
+from .types._generated import ManualSampleTrigger as _RawManualSampleTrigger
 from .types.config import TerseSettings
-from .types.events import (
-    AnyInputEvent,
-    AtlassianInputEvent,
-    AttioInputEvent,
-    CronJobInputEvent,
-    DatadogInputEvent,
-    FigmaInputEvent,
-    GithubInputEvent,
-    GmailInputEvent,
-    InputEvent,
-    LaunchDarklyInputEvent,
-    LinearInputEvent,
-    NotionInputEvent,
-    PosthogInputEvent,
-    SerializedEventInputEvent,
-    SlackInputEvent,
-    SnowflakeInputEvent,
-    TerseInputEvent,
-    WorkOSInputEvent,
-)
+from .types.events import AnyTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
     SdkAgentRunRequestBody,
     SdkAgentRunResponseBody,
-    SdkAgentSkillPayload,
-    SerializedEvent,
 )
 from .types.stream_events import (
+    Done,
+    Error,
+    FinalOutput,
     SdkAgentStreamEvent,
-    SdkAgentStreamEventAction,
-    SdkAgentStreamEventDone,
-    SdkAgentStreamEventError,
-    SdkAgentStreamEventFinalOutput,
-    SdkAgentStreamEventRunStarted,
-    SdkAgentStreamEventText,
-    SdkAgentStreamEventToolApprovalRequested,
-    SdkAgentStreamEventToolCallCompleted,
-    SdkAgentStreamEventToolCallParams,
-    SdkAgentStreamEventToolCallStarted,
+    ToolCallCompleted,
 )
 
-JobEvent = AnyInputEvent
-JobHandler = Callable[[JobEvent, "TerseAgent"], None]
+# Type alias for readability.
+JobEvent = AnyTrigger
 JobFilter = Callable[[JobEvent], bool]
-AgentStreamEvent = (
-    SdkAgentStreamEventText
-    | SdkAgentStreamEventFinalOutput
-    | SdkAgentStreamEventToolCallParams
-    | SdkAgentStreamEventToolCallStarted
-    | SdkAgentStreamEventToolCallCompleted
-    | SdkAgentStreamEventAction
-    | SdkAgentStreamEventRunStarted
-    | SdkAgentStreamEventToolApprovalRequested
-)
 
-HandlerT = TypeVar("HandlerT", bound=Callable[..., object])
+# Type variables used for generics
 ResultT = TypeVar("ResultT")
 ToolApprovalT = TypeVar("ToolApprovalT", bound=str)
+JobEventT = TypeVar("JobEventT", bound=AnyTrigger)
 
 _JOB_REGISTRY: dict[str, RegisteredJob] = {}
-LOGGER = logging.getLogger("terse.sdk.runtime")
-_EVENT_MODEL_BY_INTEGRATION = {
-    "github": GithubInputEvent,
-    "slack": SlackInputEvent,
-    "linear": LinearInputEvent,
-    "atlassian": AtlassianInputEvent,
-    "gmail": GmailInputEvent,
-    "notion": NotionInputEvent,
-    "figma": FigmaInputEvent,
-    "posthog": PosthogInputEvent,
-    "datadog": DatadogInputEvent,
-    "terse": TerseInputEvent,
-    "cron_job": CronJobInputEvent,
-    "launchdarkly": LaunchDarklyInputEvent,
-    "workos": WorkOSInputEvent,
-    "attio": AttioInputEvent,
-    "snowflake": SnowflakeInputEvent,
-}
-
-
-class TerseRuntimeError(RuntimeError):
-    """Base runtime error for the Python SDK."""
-
-
-class MissingApiKeyError(TerseRuntimeError):
-    """Raised when a command requires ``TERSE_API_KEY`` and it is missing."""
-
-
-class TerseApiError(TerseRuntimeError):
-    """Raised when a backend request fails."""
-
-
-class EventType(StrEnum):
-    """Stream event type constants for agent runs."""
-
-    RUN_STARTED = "run_started"
-    TEXT = "text"
-    FINAL_OUTPUT = "final_output"
-    TOOL_CALL_PARAMS = "tool_call_params"
-    TOOL_CALL_STARTED = "tool_call_started"
-    TOOL_CALL_COMPLETED = "tool_call_completed"
-    TOOL_APPROVAL_REQUESTED = "tool_approval_requested"
-    ACTION = "action"
 
 
 @dataclass(frozen=True)
@@ -134,7 +58,7 @@ class RegisteredJob:
 
     name: str
     handler: Callable[..., object] = field(repr=False, compare=False)
-    triggers: list[TriggerConfig] = field(default_factory=list)
+    triggers: list[TriggerConfig[AnyTrigger]] = field(default_factory=list)
     skills: list[SkillConfig[Any]] = field(default_factory=list)
     filter: JobFilter | None = field(default=None, repr=False, compare=False)
     job_url: str | None = None
@@ -147,23 +71,28 @@ class Terse:
     def job(
         self,
         name: str,
-        triggers: Sequence[TriggerConfig] | None = None,
+        triggers: Sequence[TriggerConfig[JobEventT]] | None = None,
         skills: Sequence[SkillConfig[ToolApprovalT]] | None = None,
-        filter: JobFilter | None = None,
-        job_url: str | None = None,
+        filter: Callable[[JobEventT], bool] | None = None,
+        webhook_url: str | None = None,
         tool_approvals: Sequence[ToolApprovalT] | None = None,
-    ) -> Callable[[HandlerT], HandlerT]:
+    ) -> Callable[
+        [Callable[[JobEventT, TerseAgent], None]],
+        Callable[[JobEventT, TerseAgent], None],
+    ]:
         """Register a job and return the original handler."""
 
-        def decorator(handler: HandlerT) -> HandlerT:
+        def decorator(
+            handler: Callable[[JobEventT, TerseAgent], None],
+        ) -> Callable[[JobEventT, TerseAgent], None]:
             _JOB_REGISTRY[name] = RegisteredJob(
                 name=name,
                 handler=handler,
                 triggers=list(triggers or []),
                 skills=list(skills or []),
-                filter=filter,
-                job_url=job_url,
-                tool_approvals=list(tool_approvals) if tool_approvals else None,
+                filter=cast(JobFilter | None, filter),
+                webhook_url=webhook_url,
+                tool_approvals=list(tool_approvals or []),
             )
             return handler
 
@@ -264,21 +193,27 @@ class TerseAgent:
         self._tools = factory(self)
         return self._tools
 
-    def run(self, prompt: str, event: InputEvent | None = None) -> Generator[AgentStreamEvent, None, None]:
+    def run(self, prompt: str, event: AnyTrigger | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
+        _configure_debug_logging()
         api_key = _require_api_key()
-        request_body = SdkAgentRunRequestBody.model_validate(
-            {
-                "prompt": prompt,
-                "event": _serialize_run_event(event or _manual_event()),
-                "skills": [
-                    _serialize_skill_config(skill).model_dump(exclude_none=True, by_alias=True) for skill in self.skills
-                ],
-                "toolApprovals": self.tool_approvals,
-            }
+        request_body = _build_agent_run_request_body(
+            prompt=prompt,
+            event=event or _manual_event(),
+            skills=self.skills,
+            tool_approvals=self.tool_approvals,
         )
-        request_payload = request_body.model_dump(exclude_none=True, by_alias=True)
+        request_payload = _drop_top_level_none_values(
+            request_body.model_dump(
+                exclude_none=False,
+                by_alias=True,
+                mode="json",
+            )
+        )
+        event_payload = request_payload.get("event")
+        if request_body.event is not None and isinstance(event_payload, dict):
+            request_payload["event"] = _strip_optional_nones(cast(dict[str, object], event_payload), request_body.event)
         headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id)
         _debug_log_request(
             LOGGER,
@@ -307,23 +242,23 @@ class TerseAgent:
                         continue
 
                     stream_event = SdkAgentStreamEvent.model_validate_json(sse.data).root
-                    if isinstance(stream_event, SdkAgentStreamEventDone):
+                    if isinstance(stream_event, Done):
                         if failed_tool_calls:
                             raise TerseApiError(f"Run completed with failed tool calls: {'; '.join(failed_tool_calls)}")
                         return
-                    if isinstance(stream_event, SdkAgentStreamEventError):
+                    if isinstance(stream_event, Error):
                         raise TerseApiError(stream_event.message)
-                    if isinstance(stream_event, SdkAgentStreamEventToolCallCompleted):
+                    if isinstance(stream_event, ToolCallCompleted):
                         parsed = _parse_tool_call_completed(stream_event.tool_call_completed)
                         if parsed.get("status") and parsed["status"] != "completed":
                             failed_tool_calls.append(f"{parsed.get('tool', 'unknown_tool')}: {parsed['status']}")
-                    yield cast(AgentStreamEvent, stream_event)
+                    yield cast(SdkAgentStreamEvent, stream_event)
         except httpx.RequestError as exc:
             raise TerseApiError(f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}") from exc
         except ValidationError as exc:
             raise TerseApiError(f"Received invalid agent stream payload.\n  {exc}") from exc
 
-    def run_and_wait(self, prompt: str, event: InputEvent | None = None) -> str | None:
+    def run_and_wait(self, prompt: str, event: AnyTrigger | None = None) -> str | None:
         """Run the agent to completion and return the final output.
 
         Returns ``None`` if no final_output event was received.
@@ -331,7 +266,7 @@ class TerseAgent:
 
         final_output: str | None = None
         for chunk in self.run(prompt, event):
-            if isinstance(chunk, SdkAgentStreamEventFinalOutput):
+            if isinstance(chunk, FinalOutput):
                 final_output = chunk.final_output
         return final_output
 
@@ -415,42 +350,54 @@ def get_job_registry() -> dict[str, RegisteredJob]:
     return dict(_JOB_REGISTRY)
 
 
-def deserialize_input_event(
-    value: SerializedEvent | Mapping[str, object] | str,
-) -> AnyInputEvent:
-    """Convert a serialized backend event into the best matching SDK event model."""
+def create_sdk_trigger(
+    serialized: SerializedEvent | Mapping[str, object] | str,
+) -> AnyTrigger:
+    """Create an ``SDKTrigger`` from a ``SerializedEvent`` envelope."""
 
-    if isinstance(value, SerializedEvent):
-        payload = value.model_dump(exclude_none=True, by_alias=True)
-    elif isinstance(value, str):
-        parsed = json.loads(value)
-        if not isinstance(parsed, dict):
-            raise TerseRuntimeError("Serialized event JSON must be an object.")
-        payload = dict(parsed)
-    else:
-        payload = dict(value)
+    _configure_debug_logging()
+    if isinstance(serialized, str):
+        serialized = SerializedEvent.model_validate_json(serialized)
+    elif isinstance(serialized, Mapping):
+        serialized = SerializedEvent.model_validate(serialized)
+    trigger = cast(Any, _unwrap_root_models(serialized.data))
+    if LOGGER.isEnabledFor(logging.DEBUG):
+        trigger_payload = _serialize_run_event(trigger)
+        LOGGER.debug(
+            "Deserialized input event %s/%s with keys=%s",
+            trigger_payload.get("integrationType"),
+            trigger_payload.get("eventType"),
+            sorted(trigger_payload.keys()),
+        )
+    return cast(
+        AnyTrigger,
+        SDKTrigger(trigger, serialized.formatted_content, serialized.debug_log),
+    )
 
-    if _read_integration_type(payload) == "slack":
-        try:
-            return _deserialize_slack_input_event(payload)
-        except ValidationError:
-            return SerializedEventInputEvent.model_validate(payload)
 
-    event_class = _EVENT_MODEL_BY_INTEGRATION.get(_read_integration_type(payload))
-    if event_class is None:
-        return SerializedEventInputEvent.model_validate(payload)
-    try:
-        return event_class.model_validate(payload)
-    except ValidationError:
-        return SerializedEventInputEvent.model_validate(payload)
+def deserialize_input_event(value: Mapping[str, object] | str) -> AnyTrigger:
+    """Deserialize a ``SerializedEvent`` JSON envelope into an enriched ``SDKTrigger``.
+
+    This is the entry point used by the CLI runner script.
+    """
+
+    return create_sdk_trigger(value)
+
+
+def _unwrap_root_models(value: object) -> object:
+    current = value
+    while isinstance(current, RootModel):
+        current = current.root
+    return current
 
 
 def execute_registered_job(
     job: RegisteredJob,
-    event: AnyInputEvent,
+    event: AnyTrigger | SDKTrigger[Any],
     agent: TerseAgent | None = None,
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
+    sdk_event: AnyTrigger = event if isinstance(event, SDKTrigger) else SDKTrigger(event, "", "")
 
     manual_tool_configs = [*job.skills, *job.triggers]
     runtime_agent = agent or TerseAgent(
@@ -463,23 +410,31 @@ def execute_registered_job(
     runtime_agent.ensure_generated_tools()
 
     if job.filter is not None:
-        should_run = _run_callable(job.filter, event)
+        should_run = job.filter(sdk_event)
         if not should_run:
             return True
 
-    _run_callable(job.handler, event, runtime_agent)
+    job.handler(sdk_event, runtime_agent)
     return False
 
 
-def _serialize_skill_config(skill: SkillConfig[Any]) -> SdkAgentSkillPayload:
+def _serialize_skill_config(skill: SkillConfig[Any]) -> ConfigData:
     config = {k: v for k, v in skill.config.items() if v is not None}
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type
-    return SdkAgentSkillPayload.model_validate({"configType": skill.config_type, "config": config})
+    return ConfigData.model_validate(config)
 
 
 def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
+    """Discover the ``create_tools`` factory from a project's ``terse_generated`` module.
+
+    When users run ``terse generate``, a ``terse_generated.py`` file is scaffolded
+    containing typed wrappers for deterministic tool calls (e.g. ``agent.tools.snowflake``).
+    This function scans ``sys.modules`` for that module so the SDK can auto-attach
+    the wrappers to a :class:`TerseAgent` without requiring explicit registration.
+    """
+
     module = sys.modules.get("terse_generated")
     factory = getattr(module, "create_tools", None) if module is not None else None
     if callable(factory):
@@ -496,20 +451,74 @@ def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
     return None
 
 
-def _serialize_run_event(event: InputEvent) -> dict[str, str]:
-    return {
-        "integrationType": event.integration_type,
-        "formattedContent": event.formatted_content,
-        "debugLog": event.debug_log,
-    }
+def _strip_optional_nones(data: dict[str, object], model: object) -> dict[str, object]:
+    """Strip ``None`` values from fields that have defaults (Zod ``.optional()``),
+    while preserving ``null`` for required-nullable fields (Zod ``.nullable()``).
+
+    This prevents Zod validation failures when the SDK sends JSON ``null`` for
+    fields that the backend schema marks as ``.optional()`` (accepts
+    ``undefined`` but not ``null``).
+    """
+    while isinstance(model, RootModel):
+        model = model.root
+    if not isinstance(model, BaseModel):
+        return data
+
+    model_cls = type(model)
+    keys_to_drop: list[str] = []
+
+    for field_name, field_info in model_cls.model_fields.items():
+        key = field_info.alias or field_name
+        if key not in data:
+            continue
+
+        value = data[key]
+
+        if value is None and not field_info.is_required():
+            keys_to_drop.append(key)
+            continue
+
+        if isinstance(value, dict):
+            nested = getattr(model, field_name, None)
+            if nested is not None and isinstance(nested, (BaseModel, RootModel)):
+                data[key] = _strip_optional_nones(cast(dict[str, object], value), nested)
+        elif isinstance(value, list):
+            nested_list = getattr(model, field_name, None)
+            if isinstance(nested_list, list):
+                new_items: list[object] = []
+                for i, item in enumerate(value):
+                    if (
+                        isinstance(item, dict)
+                        and i < len(nested_list)
+                        and isinstance(nested_list[i], (BaseModel, RootModel))
+                    ):
+                        new_items.append(_strip_optional_nones(cast(dict[str, object], item), nested_list[i]))
+                    else:
+                        new_items.append(item)
+                data[key] = new_items
+
+    for key in keys_to_drop:
+        del data[key]
+
+    return data
 
 
-def _manual_event() -> TerseInputEvent:
-    return TerseInputEvent(
-        event_type="manual",
-        formatted_content="Manual trigger from terse run",
-        debug_log="[MockInputEvent] Manual trigger via SDK",
+def _serialize_run_event(
+    event: AnyTrigger | _RawManualSampleTrigger,
+) -> dict[str, object]:
+    raw = event.data if isinstance(event, SDKTrigger) else event
+    return cast(
+        dict[str, object],
+        raw.model_dump(
+            exclude_none=False,
+            by_alias=True,
+            mode="json",
+        ),
     )
+
+
+def _manual_event() -> _RawManualSampleTrigger:
+    return _RawManualSampleTrigger.model_validate({"integrationType": "terse", "eventType": "manual_sample"})
 
 
 def _build_auth_headers(
@@ -570,39 +579,6 @@ def _as_object_dict(value: object) -> dict[str, object] | None:
     return None
 
 
-def _read_integration_type(payload: Mapping[str, object]) -> str:
-    raw_value = payload.get("integrationType", payload.get("integration_type"))
-    return str(raw_value or "")
-
-
-def _deserialize_slack_input_event(payload: Mapping[str, object]) -> SlackInputEvent:
-    metadata = payload.get("metadata")
-    metadata_dict = dict(metadata) if isinstance(metadata, Mapping) else {}
-
-    return SlackInputEvent.model_validate(
-        {
-            "integrationType": "slack",
-            "eventType": payload.get("eventType", payload.get("event_type", "unknown")),
-            "formattedContent": payload.get("formattedContent", payload.get("formatted_content", "")),
-            "debugLog": payload.get("debugLog", payload.get("debug_log", "")),
-            "metadata": metadata_dict or None,
-            "channelId": metadata_dict.get("channelId", payload.get("channelId", payload.get("channel_id", ""))),
-            "channelName": metadata_dict.get("channelName", payload.get("channelName", payload.get("channel_name"))),
-            "userId": metadata_dict.get("userId", payload.get("userId", payload.get("user_id", ""))),
-            "userName": metadata_dict.get("userName", payload.get("userName", payload.get("user_name"))),
-            "text": metadata_dict.get("text", payload.get("text", "")),
-            "timestamp": metadata_dict.get("timestamp", payload.get("timestamp", "")),
-            "threadTs": metadata_dict.get("threadTs", payload.get("threadTs", payload.get("thread_ts"))),
-            "teamId": metadata_dict.get("teamId", payload.get("teamId", payload.get("team_id", ""))),
-            "permalink": metadata_dict.get("permalink", payload.get("permalink")),
-            "channelType": metadata_dict.get("channelType", payload.get("channelType", payload.get("channel_type"))),
-            "blocks": metadata_dict.get("blocks", payload.get("blocks")),
-            "attachments": metadata_dict.get("attachments", payload.get("attachments")),
-            "files": metadata_dict.get("files", payload.get("files")),
-        }
-    )
-
-
 def _parse_tool_call_completed(raw: str) -> dict[str, str]:
     try:
         payload = json.loads(raw)
@@ -624,5 +600,39 @@ def _require_api_key() -> str:
     return api_key
 
 
-def _run_callable(func: Callable[..., ResultT], *args: object) -> ResultT:
-    return func(*args)
+def _build_agent_run_request_body(
+    *,
+    prompt: str,
+    event: AnyTrigger | _RawManualSampleTrigger,
+    skills: Sequence[SkillConfig[Any]],
+    tool_approvals: list[str] | None,
+) -> SdkAgentRunRequestBody:
+    serialized_event = _serialize_run_event(event)
+    skill_payloads = [
+        _serialize_skill_config(skill).model_dump(
+            exclude_none=True,
+            by_alias=True,
+            mode="json",
+        )
+        for skill in skills
+    ]
+    if LOGGER.isEnabledFor(logging.DEBUG):
+        LOGGER.debug(
+            "Building /sdk/agent-run request for %s/%s with event keys=%s and %d skill(s)",
+            serialized_event.get("integrationType"),
+            serialized_event.get("eventType"),
+            sorted(serialized_event.keys()),
+            len(skill_payloads),
+        )
+    return SdkAgentRunRequestBody.model_validate(
+        {
+            "prompt": prompt,
+            "event": serialized_event,
+            "skills": skill_payloads,
+            "toolApprovals": tool_approvals,
+        }
+    )
+
+
+def _drop_top_level_none_values(payload: dict[str, object]) -> dict[str, object]:
+    return {key: value for key, value in payload.items() if value is not None}
