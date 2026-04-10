@@ -133,17 +133,36 @@ If you only have one job, it's selected automatically.
 
 Runs a job locally with an explicit event payload. Unlike `test`, this is non-interactive and does not fetch sample events.
 
+Pass a **serialized event**: JSON with `integrationType`, `eventType`, `formattedContent`, `debugLog`, and `data`. The `data` field is the full canonical trigger object (the same discriminated shape live runs use). Use `terse test` and inspect a sample, or copy the structure from Activity when debugging.
+
 ```bash
-terse run --event '{"integrationType":"cron_job","eventType":"cron","inputId":"trigger_123","isManualTrigger":true,"manualContext":"Manual trigger"}'
 terse run my-job --event-file ./event.json
+```
+
+Example `event.json` for a manual cron-style run (`formattedContent` and `debugLog` should match what the platform would produce for the same `data` payload):
+
+```json
+{
+  "integrationType": "cron_job",
+  "eventType": "cron",
+  "formattedContent": "This is a manually triggered event for the channel input trigger_123.\n\nUser provided context for this manual trigger:\nManual trigger",
+  "debugLog": "Manual Trigger",
+  "data": {
+    "integrationType": "cron_job",
+    "eventType": "cron",
+    "inputId": "trigger_123",
+    "isManualTrigger": true,
+    "manualContext": "Manual trigger"
+  }
+}
 ```
 
 **Options:**
 
-| Flag                  | Description                              |
-| --------------------- | ---------------------------------------- |
-| `--event <json>`      | Inline canonical `Trigger` JSON          |
-| `--event-file <path>` | Path to a JSON file containing the event |
+| Flag                  | Description                                              |
+| --------------------- | -------------------------------------------------------- |
+| `--event <json>`      | Inline serialized event JSON                             |
+| `--event-file <path>` | Path to a JSON file containing the serialized event      |
 
 One of `--event` or `--event-file` is required.
 

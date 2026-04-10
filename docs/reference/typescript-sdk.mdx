@@ -16,7 +16,17 @@ Import these from `terse-sdk`:
 - `Terse`: the SDK client
 - `TerseAgent`: the runtime object inside `onTrigger`
 - `Trigger`: the base event interface
-- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`
+- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, and other per-integration exports (see `terse-sdk` package entry)
+- `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
+
+## Trigger payloads
+
+Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
+
+- `formatForAgentRunner()` — string to include in agent prompts (matches how the platform formats the event for the model)
+- `debugLog()` — one-line description for logs and CLI sample lists
+
+Your `onTrigger` and `filter` callbacks receive these enriched objects, so you can call `event.formatForAgentRunner()` directly. For plain `Trigger` values (for example in tests), use `formatTriggerForAgent(event)` and `debugTrigger(event)` from `terse-sdk`.
 
 ## `Terse`
 
