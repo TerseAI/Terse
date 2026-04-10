@@ -1,4 +1,5 @@
 import { LinearClient } from "@linear/sdk"
+import type { IssueFilter, IssuesQueryVariables, PaginationOrderBy } from "@linear/sdk/dist/_generated_documents"
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
@@ -501,10 +502,24 @@ export class LinearIntegrationManager
         }
 
         const client = new LinearClient({ apiKey: accessToken })
-        const issuesResponse = await client.issues({
+
+        const teamId = triggerConfig.teamId?.trim() || undefined
+        const projectId = triggerConfig.projectId?.trim() || undefined
+        const filter: IssueFilter = {}
+        if (teamId) {
+            filter.team = { id: { eq: teamId } }
+        }
+        if (projectId) {
+            filter.project = { id: { eq: projectId } }
+        }
+        const hasIssueFilter = Object.keys(filter).length > 0
+
+        const listParams: IssuesQueryVariables = {
             first: limit,
-            orderBy: "updatedAt" as any
-        })
+            orderBy: "updatedAt" as PaginationOrderBy,
+            ...(hasIssueFilter ? { filter } : {})
+        }
+        const issuesResponse = await client.issues(listParams)
 
         const events: TriggerRuntime[] = []
         for (const issue of issuesResponse.nodes) {
@@ -554,7 +569,8 @@ export class LinearIntegrationManager
                     },
                     labels: [],
                     description: issue.description ?? undefined,
-                    assignee: assignee ? { id: assignee.id, name: assignee.name } : undefined
+                    assignee: assignee ? { id: assignee.id, name: assignee.name } : undefined,
+                    ...(issue.projectId ? { projectId: issue.projectId } : {})
                 },
                 type: "Issue",
                 organizationId: linearIntegration.workspace_id,

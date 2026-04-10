@@ -514,6 +514,19 @@ importers:
         specifier: ^5.0.0
         version: 5.8.3
 
+  sandboxes/anotherOne:
+    dependencies:
+      terse-sdk:
+        specifier: link:/Users/olimorissette/Desktop/projects/Terse/packages/terse-sdk
+        version: link:../../packages/terse-sdk
+      terse-types:
+        specifier: link:/Users/olimorissette/Desktop/projects/Terse/terse-types
+        version: link:../../terse-types
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.8.3
+
   terse-types:
     dependencies:
       '@slack/types':
