@@ -237,9 +237,8 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
     if (hasGmail) {
         sdkImports.push("GmailEventType", "GmailTrigger")
     }
-    if (hasLinear) {
-        sdkImports.push("LinearCommentCreatedTrigger", "LinearEventType", "LinearIssueCreatedTrigger", "LinearIssueUpdatedTrigger", "LinearTrigger")
-    }
+    // Linear section is always emitted (placeholder when no integration); imports must match.
+    sdkImports.push("LinearCommentCreatedTrigger", "LinearEventType", "LinearIssueCreatedTrigger", "LinearIssueUpdatedTrigger", "LinearTrigger")
     if (hasSlack) {
         sdkImports.push("SlackAppMentionTrigger", "SlackEventType", "SlackMessageTrigger", "SlackReactionAddedTrigger", "SlackTrigger")
     }
@@ -568,7 +567,7 @@ function buildExportedNames(
 
     if (github) names.push("GitHub", "GitHubOwner", "GitHubRepo")
     if (gmail) names.push("Gmail")
-    if (linear) names.push("Linear", "LinearProject", "LinearTeam")
+    names.push("Linear", "LinearProject", "LinearTeam")
     names.push("Slack", "SlackChannel")
     names.push("Snowflake", "Webhook")
     if (workos) names.push("WorkOS")

@@ -39,16 +39,16 @@ class Linear:
     @staticmethod
     def on_issue_created(
         *,
-        team_id: str | None = None,
-        project_id: str | None = None,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
     ) -> TriggerConfig[LinearIssueCreatedTrigger]:
         return TriggerConfig(
             integration_id={{{linear.instanceIdRepr}}},
             integration_type='linear',
             config_type='linear_input',
             config=_compact_dict(
-                teamId=team_id,
-                projectId=project_id,
+                teamId=team.team_id if team is not None else None,
+                projectId=project.project_id if project is not None else None,
                 eventTypes=[LinearEventType.issue_created],
             ),
         )
@@ -56,16 +56,16 @@ class Linear:
     @staticmethod
     def on_issue_updated(
         *,
-        team_id: str | None = None,
-        project_id: str | None = None,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
     ) -> TriggerConfig[LinearIssueUpdatedTrigger]:
         return TriggerConfig(
             integration_id={{{linear.instanceIdRepr}}},
             integration_type='linear',
             config_type='linear_input',
             config=_compact_dict(
-                teamId=team_id,
-                projectId=project_id,
+                teamId=team.team_id if team is not None else None,
+                projectId=project.project_id if project is not None else None,
                 eventTypes=[LinearEventType.issue_updated],
             ),
         )
@@ -73,16 +73,16 @@ class Linear:
     @staticmethod
     def on_comment(
         *,
-        team_id: str | None = None,
-        project_id: str | None = None,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
     ) -> TriggerConfig[LinearCommentCreatedTrigger]:
         return TriggerConfig(
             integration_id={{{linear.instanceIdRepr}}},
             integration_type='linear',
             config_type='linear_input',
             config=_compact_dict(
-                teamId=team_id,
-                projectId=project_id,
+                teamId=team.team_id if team is not None else None,
+                projectId=project.project_id if project is not None else None,
                 eventTypes=[LinearEventType.comment_created],
             ),
         )
@@ -90,8 +90,8 @@ class Linear:
     @staticmethod
     def trigger(
         *,
-        team_id: str | None = None,
-        project_id: str | None = None,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
         event_types: Sequence[LinearEventType] | None = None,
     ) -> TriggerConfig[LinearTrigger]:
         return TriggerConfig(
@@ -99,9 +99,131 @@ class Linear:
             integration_type='linear',
             config_type='linear_input',
             config=_compact_dict(
-                teamId=team_id,
-                projectId=project_id,
+                teamId=team.team_id if team is not None else None,
+                projectId=project.project_id if project is not None else None,
                 eventTypes=list(event_types) if event_types is not None else None,
+            ),
+        )
+
+    @staticmethod
+    def skill(
+        *,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
+    ) -> SkillConfig[str]:
+        return SkillConfig(
+            integration_id={{{linear.instanceIdRepr}}},
+            integration_type='linear',
+            config_type='linear_output',
+            config=_compact_dict(
+                teamId=team.team_id if team is not None else None,
+                teamName=team.name if team is not None else None,
+                projectId=project.project_id if project is not None else None,
+            ),
+        )
+{{~else}}
+
+
+# === Linear ===
+
+
+class LinearTeam:
+    def __init__(self, team_id: str, name: str, key: str) -> None:
+        self.team_id = team_id
+        self.name = name
+        self.key = key
+
+
+class LinearProject:
+    def __init__(self, project_id: str, name: str) -> None:
+        self.project_id = project_id
+        self.name = name
+
+
+class Linear:
+    @staticmethod
+    def on_issue_created(
+        *,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
+    ) -> TriggerConfig[LinearIssueCreatedTrigger]:
+        return TriggerConfig(
+            integration_id='linear_placeholder',
+            integration_type='linear',
+            config_type='linear_input',
+            config=_compact_dict(
+                teamId=team.team_id if team is not None else None,
+                projectId=project.project_id if project is not None else None,
+                eventTypes=[LinearEventType.issue_created],
+            ),
+        )
+
+    @staticmethod
+    def on_issue_updated(
+        *,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
+    ) -> TriggerConfig[LinearIssueUpdatedTrigger]:
+        return TriggerConfig(
+            integration_id='linear_placeholder',
+            integration_type='linear',
+            config_type='linear_input',
+            config=_compact_dict(
+                teamId=team.team_id if team is not None else None,
+                projectId=project.project_id if project is not None else None,
+                eventTypes=[LinearEventType.issue_updated],
+            ),
+        )
+
+    @staticmethod
+    def on_comment(
+        *,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
+    ) -> TriggerConfig[LinearCommentCreatedTrigger]:
+        return TriggerConfig(
+            integration_id='linear_placeholder',
+            integration_type='linear',
+            config_type='linear_input',
+            config=_compact_dict(
+                teamId=team.team_id if team is not None else None,
+                projectId=project.project_id if project is not None else None,
+                eventTypes=[LinearEventType.comment_created],
+            ),
+        )
+
+    @staticmethod
+    def trigger(
+        *,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
+        event_types: list[LinearEventType] | None = None,
+    ) -> TriggerConfig[LinearTrigger]:
+        return TriggerConfig(
+            integration_id='linear_placeholder',
+            integration_type='linear',
+            config_type='linear_input',
+            config=_compact_dict(
+                teamId=team.team_id if team is not None else None,
+                projectId=project.project_id if project is not None else None,
+                eventTypes=list(event_types) if event_types is not None else None,
+            ),
+        )
+
+    @staticmethod
+    def skill(
+        *,
+        team: LinearTeam | None = None,
+        project: LinearProject | None = None,
+    ) -> SkillConfig[str]:
+        return SkillConfig(
+            integration_id='linear_placeholder',
+            integration_type='linear',
+            config_type='linear_output',
+            config=_compact_dict(
+                teamId=team.team_id if team is not None else None,
+                teamName=team.name if team is not None else None,
+                projectId=project.project_id if project is not None else None,
             ),
         )
 {{~/if}}
