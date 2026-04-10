@@ -7,50 +7,50 @@ from typing import Any, Generic, TypeAlias, TypeVar
 from ._base import TerseModel
 from ._generated import (
     Commit,
-    CronTrigger,
+    CronTrigger as _RawCronTrigger,
     FileDiff,
-    GithubPRClosedTrigger,
-    GithubPRMergedTrigger,
-    GithubPROpenedTrigger,
-    GithubPRSynchronizedTrigger,
-    GithubPRTrigger,
-    GithubPushTrigger,
+    GithubPRClosedTrigger as _RawGithubPRClosedTrigger,
+    GithubPRMergedTrigger as _RawGithubPRMergedTrigger,
+    GithubPROpenedTrigger as _RawGithubPROpenedTrigger,
+    GithubPRSynchronizedTrigger as _RawGithubPRSynchronizedTrigger,
+    GithubPRTrigger as _RawGithubPRTrigger,
+    GithubPushTrigger as _RawGithubPushTrigger,
     GithubRepository,
-    GithubTrigger,
-    GmailTrigger,
-    LinearCommentCreatedTrigger,
-    LinearIssueCreatedTrigger,
-    LinearIssueUpdatedTrigger,
-    LinearTrigger,
-    ManualSampleTrigger,
+    GithubTrigger as _RawGithubTrigger,
+    GmailTrigger as _RawGmailTrigger,
+    LinearCommentCreatedTrigger as _RawLinearCommentCreatedTrigger,
+    LinearIssueCreatedTrigger as _RawLinearIssueCreatedTrigger,
+    LinearIssueUpdatedTrigger as _RawLinearIssueUpdatedTrigger,
+    LinearTrigger as _RawLinearTrigger,
+    ManualSampleTrigger as _RawManualSampleTrigger,
     PullRequest,
     PullRequestRef,
     Sender,
-    SlackAppMentionTrigger,
-    SlackMessageTrigger,
-    SlackReactionAddedTrigger,
-    SlackTrigger,
-    Trigger,
-    WebhookTrigger,
-    WorkOSInvitationAcceptedTrigger,
-    WorkOSInvitationCreatedTrigger,
-    WorkOSInvitationResentTrigger,
-    WorkOSInvitationRevokedTrigger,
-    WorkOSInvitationTrigger,
-    WorkOSMembershipTrigger,
-    WorkOSOrganizationMembershipCreatedTrigger,
-    WorkOSOrganizationMembershipDeletedTrigger,
-    WorkOSOrganizationMembershipUpdatedTrigger,
-    WorkOSOrganizationTrigger,
-    WorkOSTrigger,
+    SlackAppMentionTrigger as _RawSlackAppMentionTrigger,
+    SlackMessageTrigger as _RawSlackMessageTrigger,
+    SlackReactionAddedTrigger as _RawSlackReactionAddedTrigger,
+    SlackTrigger as _RawSlackTrigger,
+    Trigger as _RawTrigger,
+    WebhookTrigger as _RawWebhookTrigger,
+    WorkOSInvitationAcceptedTrigger as _RawWorkOSInvitationAcceptedTrigger,
+    WorkOSInvitationCreatedTrigger as _RawWorkOSInvitationCreatedTrigger,
+    WorkOSInvitationResentTrigger as _RawWorkOSInvitationResentTrigger,
+    WorkOSInvitationRevokedTrigger as _RawWorkOSInvitationRevokedTrigger,
+    WorkOSInvitationTrigger as _RawWorkOSInvitationTrigger,
+    WorkOSMembershipTrigger as _RawWorkOSMembershipTrigger,
+    WorkOSOrganizationMembershipCreatedTrigger as _RawWorkOSOrganizationMembershipCreatedTrigger,
+    WorkOSOrganizationMembershipDeletedTrigger as _RawWorkOSOrganizationMembershipDeletedTrigger,
+    WorkOSOrganizationMembershipUpdatedTrigger as _RawWorkOSOrganizationMembershipUpdatedTrigger,
+    WorkOSOrganizationTrigger as _RawWorkOSOrganizationTrigger,
+    WorkOSTrigger as _RawWorkOSTrigger,
     WorkOSTriggerInvitation,
     WorkOSTriggerMembership,
     WorkOSTriggerOrganization,
     WorkOSTriggerUser,
-    WorkOSUserCreatedTrigger,
-    WorkOSUserDeletedTrigger,
-    WorkOSUserTrigger,
-    WorkOSUserUpdatedTrigger,
+    WorkOSUserCreatedTrigger as _RawWorkOSUserCreatedTrigger,
+    WorkOSUserDeletedTrigger as _RawWorkOSUserDeletedTrigger,
+    WorkOSUserTrigger as _RawWorkOSUserTrigger,
+    WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger,
 )
 
 
@@ -105,50 +105,6 @@ GitHubUser = Sender
 GitHubPullRequestRef = PullRequestRef
 GitHubPullRequestData = PullRequest
 
-KnownTrigger: TypeAlias = (
-    SlackMessageTrigger
-    | SlackAppMentionTrigger
-    | SlackReactionAddedTrigger
-    | GithubTrigger
-    | GmailTrigger
-    | LinearTrigger
-    | WebhookTrigger
-    | WorkOSTrigger
-    | CronTrigger
-    | ManualSampleTrigger
-)
-AnyTrigger: TypeAlias = KnownTrigger
-
-
-class _ManualTrigger(TerseModel):
-    integration_type: str
-    event_type: str = "manual_sample"
-
-
-class AttioTrigger(_ManualTrigger):
-    integration_type: str = "attio"
-
-
-class DatadogTrigger(_ManualTrigger):
-    integration_type: str = "datadog"
-
-
-class LaunchDarklyTrigger(_ManualTrigger):
-    integration_type: str = "launchdarkly"
-
-
-class NotionTrigger(_ManualTrigger):
-    integration_type: str = "notion"
-
-
-class PosthogTrigger(_ManualTrigger):
-    integration_type: str = "posthog"
-
-
-class SnowflakeTrigger(_ManualTrigger):
-    integration_type: str = "snowflake"
-
-
 _T = TypeVar("_T")
 
 
@@ -186,12 +142,67 @@ class SDKTrigger(Generic[_T]):
         return f"SDKTrigger({self._trigger!r})"
 
 
+# ---------------------------------------------------------------------------
+# Public SDK-wrapped trigger type aliases.
+# Users write e.g. ``event: CronTrigger`` and get ``formatted_content`` /
+# ``debug_log`` for free — matching the TypeScript SDK pattern.
+# ---------------------------------------------------------------------------
+
+Trigger: TypeAlias = SDKTrigger[_RawTrigger]
+CronTrigger: TypeAlias = SDKTrigger[_RawCronTrigger]
+GithubPRClosedTrigger: TypeAlias = SDKTrigger[_RawGithubPRClosedTrigger]
+GithubPRMergedTrigger: TypeAlias = SDKTrigger[_RawGithubPRMergedTrigger]
+GithubPROpenedTrigger: TypeAlias = SDKTrigger[_RawGithubPROpenedTrigger]
+GithubPRSynchronizedTrigger: TypeAlias = SDKTrigger[_RawGithubPRSynchronizedTrigger]
+GithubPRTrigger: TypeAlias = SDKTrigger[_RawGithubPRTrigger]
+GithubPushTrigger: TypeAlias = SDKTrigger[_RawGithubPushTrigger]
+GithubTrigger: TypeAlias = SDKTrigger[_RawGithubTrigger]
+GmailTrigger: TypeAlias = SDKTrigger[_RawGmailTrigger]
+LinearCommentCreatedTrigger: TypeAlias = SDKTrigger[_RawLinearCommentCreatedTrigger]
+LinearIssueCreatedTrigger: TypeAlias = SDKTrigger[_RawLinearIssueCreatedTrigger]
+LinearIssueUpdatedTrigger: TypeAlias = SDKTrigger[_RawLinearIssueUpdatedTrigger]
+LinearTrigger: TypeAlias = SDKTrigger[_RawLinearTrigger]
+ManualSampleTrigger: TypeAlias = SDKTrigger[_RawManualSampleTrigger]
+SlackAppMentionTrigger: TypeAlias = SDKTrigger[_RawSlackAppMentionTrigger]
+SlackMessageTrigger: TypeAlias = SDKTrigger[_RawSlackMessageTrigger]
+SlackReactionAddedTrigger: TypeAlias = SDKTrigger[_RawSlackReactionAddedTrigger]
+SlackTrigger: TypeAlias = SDKTrigger[_RawSlackTrigger]
+WebhookTrigger: TypeAlias = SDKTrigger[_RawWebhookTrigger]
+WorkOSInvitationAcceptedTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationAcceptedTrigger]
+WorkOSInvitationCreatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationCreatedTrigger]
+WorkOSInvitationResentTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationResentTrigger]
+WorkOSInvitationRevokedTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationRevokedTrigger]
+WorkOSInvitationTrigger: TypeAlias = SDKTrigger[_RawWorkOSInvitationTrigger]
+WorkOSMembershipTrigger: TypeAlias = SDKTrigger[_RawWorkOSMembershipTrigger]
+WorkOSOrganizationMembershipCreatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSOrganizationMembershipCreatedTrigger]
+WorkOSOrganizationMembershipDeletedTrigger: TypeAlias = SDKTrigger[_RawWorkOSOrganizationMembershipDeletedTrigger]
+WorkOSOrganizationMembershipUpdatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSOrganizationMembershipUpdatedTrigger]
+WorkOSOrganizationTrigger: TypeAlias = SDKTrigger[_RawWorkOSOrganizationTrigger]
+WorkOSTrigger: TypeAlias = SDKTrigger[_RawWorkOSTrigger]
+WorkOSUserCreatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSUserCreatedTrigger]
+WorkOSUserDeletedTrigger: TypeAlias = SDKTrigger[_RawWorkOSUserDeletedTrigger]
+WorkOSUserTrigger: TypeAlias = SDKTrigger[_RawWorkOSUserTrigger]
+WorkOSUserUpdatedTrigger: TypeAlias = SDKTrigger[_RawWorkOSUserUpdatedTrigger]
+
+KnownTrigger: TypeAlias = (
+    SlackMessageTrigger
+    | SlackAppMentionTrigger
+    | SlackReactionAddedTrigger
+    | GithubTrigger
+    | GmailTrigger
+    | LinearTrigger
+    | WebhookTrigger
+    | WorkOSTrigger
+    | CronTrigger
+    | ManualSampleTrigger
+)
+AnyTrigger: TypeAlias = KnownTrigger
+
+
 __all__ = [
     "AnyTrigger",
     "SDKTrigger",
-    "AttioTrigger",
     "CronTrigger",
-    "DatadogTrigger",
     "GitHubCommit",
     "GitHubFileDiff",
     "GitHubPullRequestData",
@@ -207,13 +218,10 @@ __all__ = [
     "GitHubUser",
     "GmailTrigger",
     "KnownTrigger",
-    "LaunchDarklyTrigger",
     "LinearCommentCreatedTrigger",
     "LinearIssueCreatedTrigger",
     "LinearIssueUpdatedTrigger",
     "LinearTrigger",
-    "NotionTrigger",
-    "PosthogTrigger",
     "SlackAttachment",
     "SlackAttachmentField",
     "SlackFile",
@@ -221,7 +229,6 @@ __all__ = [
     "SlackMessageTrigger",
     "SlackReactionAddedTrigger",
     "SlackTrigger",
-    "SnowflakeTrigger",
     "Trigger",
     "ManualSampleTrigger",
     "WebhookTrigger",

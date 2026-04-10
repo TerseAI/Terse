@@ -48,6 +48,12 @@ from terse_sdk import (
     execute_registered_job,
     get_job_registry,
 )
+from terse_sdk.types._generated import (
+    CronTrigger as _RawCronTrigger,
+    SlackMessageTrigger as _RawSlackMessageTrigger,
+    SlackTrigger as _RawSlackTrigger,
+    Trigger as _RawTrigger,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -105,7 +111,7 @@ def test_job_registration_and_registry_clear() -> None:
     app = Terse()
 
     @app.job(name="demo-job")
-    def demo(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
 
     registry = get_job_registry()
@@ -120,7 +126,7 @@ def test_job_registration_preserves_tool_approvals() -> None:
     app = Terse()
 
     @app.job(name="demo-job", tool_approvals=["attio_upsert_record"])
-    def demo(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
 
     assert get_job_registry()["demo-job"].tool_approvals == ["attio_upsert_record"]
@@ -131,16 +137,16 @@ def test_execute_registered_job_supports_sync_callables() -> None:
     filter_calls: list[str] = []
     app = Terse()
 
-    def allow_sync(event: SDKTrigger[CronTrigger]) -> bool:
+    def allow_sync(event: CronTrigger) -> bool:
         filter_calls.append(event.event_type)
         return bool(event.is_manual_trigger)
 
     @app.job(name="sync-job", filter=allow_sync)
-    def sync_handler(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
+    def sync_handler(event: CronTrigger, agent: TerseAgent) -> None:
         _ = agent
         handler_calls.append(event.manual_context or "")
 
-    event = CronTrigger(
+    event = _RawCronTrigger(
         event_type="cron",
         input_id="input_123",
         is_manual_trigger=True,
@@ -158,18 +164,18 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
     calls: list[str] = []
     app = Terse()
 
-    def never(event: SDKTrigger[CronTrigger]) -> bool:
+    def never(event: CronTrigger) -> bool:
         _ = event
         return False
 
     @app.job(name="demo-job", filter=never)
-    def demo(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
         calls.append("ran")
 
     skipped = execute_registered_job(
         get_job_registry()["demo-job"],
-        CronTrigger(
+        _RawCronTrigger(
             event_type="cron",
             input_id="input_123",
             is_manual_trigger=True,
@@ -193,7 +199,7 @@ def test_deserialize_trigger_event_supports_camel_case_payloads() -> None:
         }
     )
 
-    assert isinstance(event, CronTrigger)
+    assert isinstance(event, _RawCronTrigger)
     assert event.integration_type == "cron_job"
     assert event.input_id == "input_123"
     assert event.manual_context == "Scheduled job"
@@ -237,7 +243,7 @@ def test_deserialize_trigger_event_enriches_slack_metadata() -> None:
         }
     )
 
-    assert isinstance(event, SlackMessageTrigger)
+    assert isinstance(event, _RawSlackMessageTrigger)
     assert event.channel_id == "C123"
     assert event.channel_name == "alerts"
     assert event.user_id == "U123"
@@ -276,11 +282,11 @@ def test_deserialize_trigger_event_unwraps_generated_trigger_event_root_models()
         "files": None,
     }
 
-    generated_event = Trigger.model_validate(payload)
+    generated_event = _RawTrigger.model_validate(payload)
 
     event = deserialize_trigger_event(generated_event)
 
-    assert isinstance(event, SlackMessageTrigger)
+    assert isinstance(event, _RawSlackMessageTrigger)
     assert event.channel_id == "C123"
     assert event.event_type == "message"
 
@@ -305,11 +311,11 @@ def test_deserialize_trigger_event_unwraps_generated_integration_root_models() -
         "files": None,
     }
 
-    generated_event = SlackTrigger.model_validate(payload)
+    generated_event = _RawSlackTrigger.model_validate(payload)
 
     event = deserialize_trigger_event(generated_event)
 
-    assert isinstance(event, SlackMessageTrigger)
+    assert isinstance(event, _RawSlackMessageTrigger)
     assert event.channel_id == "C123"
     assert event.event_type == "message"
 
@@ -469,7 +475,7 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
     with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
         execute_registered_job(
             job,
-            CronTrigger(
+            _RawCronTrigger(
                 event_type="cron",
                 input_id="input_123",
                 is_manual_trigger=True,
@@ -567,7 +573,7 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         events = list(
             TerseAgent().run(
                 "hello",
-                CronTrigger(
+                _RawCronTrigger(
                     event_type="cron",
                     input_id="input_123",
                     is_manual_trigger=True,
@@ -762,7 +768,7 @@ def test_assert_sse_response_reads_streaming_error_details_list_on_http_error() 
 
 
 def test_sdk_trigger_delegates_attribute_access() -> None:
-    trigger = CronTrigger(
+    trigger = _RawCronTrigger(
         event_type="cron",
         input_id="input_123",
         is_manual_trigger=True,
@@ -781,7 +787,7 @@ def test_sdk_trigger_delegates_attribute_access() -> None:
 
 
 def test_sdk_trigger_raises_attribute_error_for_missing_attrs() -> None:
-    trigger = CronTrigger(event_type="cron", input_id="input_123")
+    trigger = _RawCronTrigger(event_type="cron", input_id="input_123")
     sdk = SDKTrigger(trigger, "", "")
 
     with pytest.raises(AttributeError):
@@ -805,7 +811,7 @@ def test_create_sdk_trigger_from_dict() -> None:
     sdk = create_sdk_trigger(envelope)
 
     assert isinstance(sdk, SDKTrigger)
-    assert isinstance(sdk.data, CronTrigger)
+    assert isinstance(sdk.data, _RawCronTrigger)
     assert sdk.formatted_content == "Scheduled job ran"
     assert sdk.debug_log == "cron triggered at 12:00"
     assert sdk.input_id == "input_123"
@@ -828,7 +834,7 @@ def test_create_sdk_trigger_from_json_string() -> None:
 
     sdk = create_sdk_trigger(envelope)
 
-    assert isinstance(sdk.data, CronTrigger)
+    assert isinstance(sdk.data, _RawCronTrigger)
     assert sdk.formatted_content == "cron fmt"
     assert sdk.debug_log == "cron dbg"
     assert sdk.input_id == "input_456"
@@ -863,7 +869,7 @@ def test_deserialize_input_event_matches_create_sdk_trigger() -> None:
     sdk = deserialize_input_event(envelope)
 
     assert isinstance(sdk, SDKTrigger)
-    assert isinstance(sdk.data, SlackMessageTrigger)
+    assert isinstance(sdk.data, _RawSlackMessageTrigger)
     assert sdk.formatted_content == "Slack message"
     assert sdk.debug_log == "slack debug"
     assert sdk.text == "hello"
@@ -875,10 +881,10 @@ def test_execute_registered_job_wraps_raw_trigger_in_sdk_trigger() -> None:
     app = Terse()
 
     @app.job(name="wrap-test")
-    def handler(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
+    def handler(event: CronTrigger, agent: TerseAgent) -> None:
         received_events.append(event)
 
-    raw = CronTrigger(
+    raw = _RawCronTrigger(
         event_type="cron",
         input_id="input_123",
         is_manual_trigger=True,
@@ -898,10 +904,10 @@ def test_execute_registered_job_passes_sdk_trigger_through() -> None:
     app = Terse()
 
     @app.job(name="passthrough-test")
-    def handler(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
+    def handler(event: CronTrigger, agent: TerseAgent) -> None:
         received_events.append(event)
 
-    raw = CronTrigger(
+    raw = _RawCronTrigger(
         event_type="cron",
         input_id="input_123",
     )

@@ -35,18 +35,6 @@ from .enums import (
 )
 
 
-def _config_type_discriminator(value: Any) -> str | None:
-    if isinstance(value, dict):
-        raw_value = value.get("configType", value.get("config_type"))
-    else:
-        raw_value = getattr(value, "config_type", getattr(value, "configType", None))
-
-    if raw_value is None:
-        return None
-
-    return str(raw_value)
-
-
 class IntegrationDetails(TerseModel):
     description: str
     is_input: bool | None = None

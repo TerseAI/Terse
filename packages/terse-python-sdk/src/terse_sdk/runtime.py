@@ -24,7 +24,8 @@ from ._http_utils import (
 )
 from .types._generated import ConfigData, SerializedEvent
 from .types.config import TerseSettings
-from .types.events import AnyTrigger, ManualSampleTrigger, SDKTrigger
+from .types._generated import ManualSampleTrigger as _RawManualSampleTrigger
+from .types.events import AnyTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
     SdkAgentRunRequestBody,
@@ -40,8 +41,8 @@ from .types.stream_events import (
 )
 
 JobEvent = AnyTrigger
-JobHandler = Callable[[SDKTrigger[JobEvent], "TerseAgent"], None]
-JobFilter = Callable[[SDKTrigger[JobEvent]], bool]
+JobHandler = Callable[[JobEvent, "TerseAgent"], None]
+JobFilter = Callable[[JobEvent], bool]
 
 HandlerT = TypeVar("HandlerT", bound=Callable[..., object])
 ResultT = TypeVar("ResultT")
@@ -98,18 +99,18 @@ class Terse:
         name: str,
         triggers: Sequence[TriggerConfig[JobEventT]] | None = None,
         skills: Sequence[SkillConfig[ToolApprovalT]] | None = None,
-        filter: Callable[[SDKTrigger[JobEventT]], bool] | None = None,
+        filter: Callable[[JobEventT], bool] | None = None,
         webhook_url: str | None = None,
         tool_approvals: Sequence[ToolApprovalT] | None = None,
     ) -> Callable[
-        [Callable[[SDKTrigger[JobEventT], TerseAgent], object]],
-        Callable[[SDKTrigger[JobEventT], TerseAgent], object],
+        [Callable[[JobEventT, TerseAgent], object]],
+        Callable[[JobEventT, TerseAgent], object],
     ]:
         """Register a job and return the original handler."""
 
         def decorator(
-            handler: Callable[[SDKTrigger[JobEventT], TerseAgent], object],
-        ) -> Callable[[SDKTrigger[JobEventT], TerseAgent], object]:
+            handler: Callable[[JobEventT, TerseAgent], object],
+        ) -> Callable[[JobEventT, TerseAgent], object]:
             _JOB_REGISTRY[name] = RegisteredJob(
                 name=name,
                 handler=handler,
@@ -348,18 +349,18 @@ def deserialize_trigger_event(
         raise TerseRuntimeError("Trigger event payload does not match the canonical schema.") from exc
 
 
-def create_sdk_trigger(serialized: SerializedEvent | Mapping[str, object] | str) -> SDKTrigger[AnyTrigger]:
+def create_sdk_trigger(serialized: SerializedEvent | Mapping[str, object] | str) -> AnyTrigger:
     """Create an ``SDKTrigger`` from a ``SerializedEvent`` envelope."""
 
     if isinstance(serialized, str):
         serialized = SerializedEvent.model_validate_json(serialized)
     elif isinstance(serialized, Mapping):
         serialized = SerializedEvent.model_validate(serialized)
-    trigger = cast(AnyTrigger, _unwrap_root_models(serialized.data))
+    trigger = _unwrap_root_models(serialized.data)
     return SDKTrigger(trigger, serialized.formatted_content, serialized.debug_log)
 
 
-def deserialize_input_event(value: Mapping[str, object] | str) -> SDKTrigger[AnyTrigger]:
+def deserialize_input_event(value: Mapping[str, object] | str) -> AnyTrigger:
     """Deserialize a ``SerializedEvent`` JSON envelope into an enriched ``SDKTrigger``.
 
     This is the entry point used by the CLI runner script.
@@ -377,12 +378,12 @@ def _unwrap_root_models(value: object) -> object:
 
 def execute_registered_job(
     job: RegisteredJob,
-    event: SDKTrigger[AnyTrigger] | AnyTrigger,
+    event: AnyTrigger | SDKTrigger[Any],
     agent: TerseAgent | None = None,
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
 
-    sdk_event: SDKTrigger[AnyTrigger] = event if isinstance(event, SDKTrigger) else SDKTrigger(event, "", "")
+    sdk_event: AnyTrigger = event if isinstance(event, SDKTrigger) else SDKTrigger(event, "", "")
 
     manual_tool_configs = [*job.skills, *job.triggers]
     runtime_agent = agent or TerseAgent(
@@ -428,12 +429,13 @@ def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
     return None
 
 
-def _serialize_run_event(event: AnyTrigger) -> dict[str, object]:
-    return event.model_dump(exclude_none=True, by_alias=True)
+def _serialize_run_event(event: AnyTrigger | _RawManualSampleTrigger) -> dict[str, object]:
+    raw = event.data if isinstance(event, SDKTrigger) else event
+    return raw.model_dump(exclude_none=True, by_alias=True)
 
 
-def _manual_event() -> ManualSampleTrigger:
-    return ManualSampleTrigger.model_validate({"integrationType": "terse", "eventType": "manual_sample"})
+def _manual_event() -> _RawManualSampleTrigger:
+    return _RawManualSampleTrigger.model_validate({"integrationType": "terse", "eventType": "manual_sample"})
 
 
 def _build_auth_headers(
