@@ -2383,7 +2383,7 @@ class GitHubRepository(TerseModel):
     default_branch: Annotated[str, Field(alias="defaultBranch")]
 
 
-class GithubPRClosedTriggerEvent(TerseModel):
+class GithubPRClosedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2403,7 +2403,7 @@ class GithubPRClosedTriggerEvent(TerseModel):
     )
 
 
-class GitHubPRMergedTriggerEvent(TerseModel):
+class GithubPRMergedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2423,7 +2423,7 @@ class GitHubPRMergedTriggerEvent(TerseModel):
     )
 
 
-class GitHubPROpenedTriggerEvent(TerseModel):
+class GithubPROpenedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2443,7 +2443,7 @@ class GitHubPROpenedTriggerEvent(TerseModel):
     )
 
 
-class GitHubPRSynchronizedTriggerEvent(TerseModel):
+class GithubPRSynchronizedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2463,23 +2463,23 @@ class GitHubPRSynchronizedTriggerEvent(TerseModel):
     ] = "pull_request.synchronize"
 
 
-class GitHubPRTriggerEvent(
+class GithubPRTrigger(
     RootModel[
-        GitHubPROpenedTriggerEvent
-        | GitHubPRSynchronizedTriggerEvent
-        | GithubPRClosedTriggerEvent
-        | GitHubPRMergedTriggerEvent
+        GithubPROpenedTrigger
+        | GithubPRSynchronizedTrigger
+        | GithubPRClosedTrigger
+        | GithubPRMergedTrigger
     ]
 ):
     root: (
-        GitHubPROpenedTriggerEvent
-        | GitHubPRSynchronizedTriggerEvent
-        | GithubPRClosedTriggerEvent
-        | GitHubPRMergedTriggerEvent
+        GithubPROpenedTrigger
+        | GithubPRSynchronizedTrigger
+        | GithubPRClosedTrigger
+        | GithubPRMergedTrigger
     )
 
 
-class GitHubPushTriggerEvent(TerseModel):
+class GithubPushTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2499,19 +2499,19 @@ class GitHubPushTriggerEvent(TerseModel):
 
 class GithubTriggerEvent(
     RootModel[
-        GitHubPushTriggerEvent
-        | GitHubPROpenedTriggerEvent
-        | GitHubPRSynchronizedTriggerEvent
-        | GithubPRClosedTriggerEvent
-        | GitHubPRMergedTriggerEvent
+        GithubPushTrigger
+        | GithubPROpenedTrigger
+        | GithubPRSynchronizedTrigger
+        | GithubPRClosedTrigger
+        | GithubPRMergedTrigger
     ]
 ):
     root: (
-        GitHubPushTriggerEvent
-        | GitHubPROpenedTriggerEvent
-        | GitHubPRSynchronizedTriggerEvent
-        | GithubPRClosedTriggerEvent
-        | GitHubPRMergedTriggerEvent
+        GithubPushTrigger
+        | GithubPRMergedTrigger
+        | GithubPRSynchronizedTrigger
+        | GithubPRClosedTrigger
+        | GithubPROpenedTrigger
     )
 
 

@@ -129,54 +129,49 @@ const GithubTriggerEventBaseSchema = z.object({
     sender: senderSchema
 })
 
-export const githubPushTriggerEventSchema = GithubTriggerEventBaseSchema.extend({
+export const GithubPushTriggerSchema = GithubTriggerEventBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PUSH),
     branch: z.string(),
     commits: z.array(commitSchema),
     pullRequest: z.undefined().optional()
 })
-export type GitHubPushTrigger = z.infer<typeof githubPushTriggerEventSchema>
+export type GithubPushTrigger = z.infer<typeof GithubPushTriggerSchema>
 
-const GitHubPRTriggerEventBaseSchema = GithubTriggerEventBaseSchema.extend({
+const GithubPRTriggerBaseSchema = GithubTriggerEventBaseSchema.extend({
     pullRequest: pullRequestSchema,
     branch: z.string().optional(),
     commits: z.array(commitSchema)
 })
 
-export const GitHubPROpenedTriggerEventSchema = GitHubPRTriggerEventBaseSchema.extend({
+export const GithubPROpenedTriggerSchema = GithubPRTriggerBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_OPENED)
 })
-export type GitHubPROpenedTrigger = z.infer<typeof GitHubPROpenedTriggerEventSchema>
+export type GithubPROpenedTrigger = z.infer<typeof GithubPRMergedTriggerSchema>
 
-export const GitHubPRSynchronizedTriggerEventSchema = GitHubPRTriggerEventBaseSchema.extend({
+export const GithubPRSynchronizedTriggerSchema = GithubPRTriggerBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_SYNCHRONIZE)
 })
-export type GitHubPRSynchronizedTrigger = z.infer<typeof GitHubPRSynchronizedTriggerEventSchema>
+export type GithubPRSynchronizedTrigger = z.infer<typeof GithubPRSynchronizedTriggerSchema>
 
-export const GithubPRClosedTriggerEventSchema = GitHubPRTriggerEventBaseSchema.extend({
+export const GithubPRClosedTriggerSchema = GithubPRTriggerBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_CLOSED)
 })
-export type GithubPRClosedTrigger = z.infer<typeof GithubPRClosedTriggerEventSchema>
+export type GithubPRClosedTrigger = z.infer<typeof GithubPRClosedTriggerSchema>
 
-export const GitHubPRMergedTriggerEventSchema = GitHubPRTriggerEventBaseSchema.extend({
+export const GithubPRMergedTriggerSchema = GithubPRTriggerBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_MERGED)
 })
-export type GitHubPRMergedTrigger = z.infer<typeof GitHubPRMergedTriggerEventSchema>
+export type GithubPRMergedTrigger = z.infer<typeof GithubPRMergedTriggerSchema>
 
-export const GitHubPRTriggerEventSchema = z.discriminatedUnion("eventType", [
-    GitHubPROpenedTriggerEventSchema,
-    GitHubPRSynchronizedTriggerEventSchema,
-    GithubPRClosedTriggerEventSchema,
-    GitHubPRMergedTriggerEventSchema
-])
-export type GitHubPRTrigger = z.infer<typeof GitHubPRTriggerEventSchema>
+export const GithubPRTriggerSchema = z.discriminatedUnion("eventType", [GithubPROpenedTriggerSchema, GithubPRSynchronizedTriggerSchema, GithubPRClosedTriggerSchema, GithubPRMergedTriggerSchema])
+export type GithubPRTrigger = z.infer<typeof GithubPRTriggerSchema>
 
 export const GithubTriggerEventSchema = z.discriminatedUnion("eventType", [
-    githubPushTriggerEventSchema,
-    GitHubPROpenedTriggerEventSchema,
-    GitHubPRSynchronizedTriggerEventSchema,
-    GithubPRClosedTriggerEventSchema,
-    GitHubPRMergedTriggerEventSchema
+    GithubPushTriggerSchema,
+    GithubPROpenedTriggerSchema,
+    GithubPRSynchronizedTriggerSchema,
+    GithubPRClosedTriggerSchema,
+    GithubPRMergedTriggerSchema
 ])
 export type GithubTrigger = z.infer<typeof GithubTriggerEventSchema>
 

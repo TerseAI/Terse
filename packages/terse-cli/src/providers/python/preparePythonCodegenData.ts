@@ -211,11 +211,11 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
         sdkImports.push(
             "GitHubEventType",
             "GithubPRClosedTrigger",
-            "GitHubPRMergedTrigger",
-            "GitHubPROpenedTrigger",
-            "GitHubPRSynchronizedTrigger",
-            "GitHubPRTrigger",
-            "GitHubPushTrigger",
+            "GithubPROpenedTrigger",
+            "GithubPRMergedTrigger",
+            "GithubPRSynchronizedTrigger",
+            "GithubPRTrigger",
+            "GithubPushTrigger",
             "GithubTrigger"
         )
     }

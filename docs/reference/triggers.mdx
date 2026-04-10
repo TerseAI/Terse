@@ -10,11 +10,11 @@ Triggers define the event that starts your workflow. Each trigger is tied to an 
 
 ### GitHub
 
-| Trigger                   | Event type               | Description                |
-| ------------------------- | ------------------------ | -------------------------- |
-| `GitHub.onPROpened()`     | `GitHubPRTriggerEvent`   | A pull request is opened   |
-| `GitHub.onPush()`         | `GitHubPushTriggerEvent` | Code is pushed to a branch |
-| `GitHub.onIssueCreated()` | `GithubTriggerEvent`     | An issue is created        |
+| Trigger                   | Event type           | Description                |
+| ------------------------- | -------------------- | -------------------------- |
+| `GitHub.onPROpened()`     | `GithubPRTrigger`    | A pull request is opened   |
+| `GitHub.onPush()`         | `GithubPushTrigger`  | Code is pushed to a branch |
+| `GitHub.onIssueCreated()` | `GithubTriggerEvent` | An issue is created        |
 
 **Config:** Scoped to specific repositories via `repo` parameter.
 

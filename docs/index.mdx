@@ -30,7 +30,7 @@ await client.createJob({
         GitHub.skill({ repos: [Repos.TerseAI.Terse] }),
         Slack.skill({ channel: SlackChannel.AllTerseInc })
     ],
-    onTrigger: async (event: GitHubPRTriggerEvent, Agent: TerseAgent) => {
+    onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => {
         // deterministically call a tool
         const message = await Agent.tools.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,

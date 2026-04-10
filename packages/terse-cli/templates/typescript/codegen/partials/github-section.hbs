@@ -31,15 +31,15 @@ export class Repos {
 
 export const GitHub = {
     /** Trigger on push to a repository */
-    onPush(opts: { repo: Repos }): TypedTrigger<GitHubPushTrigger> {
+    onPush(opts: { repo: Repos }): TypedTrigger<GithubPushTrigger> {
         return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PUSH])
     },
     /** Trigger when a pull request is opened */
-    onPROpened(opts: { repo: Repos }): TypedTrigger<GitHubPROpenedTrigger> {
+    onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> {
         return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED]) 
     },
     /** Trigger when a pull request is merged */
-    onPRMerged(opts: { repo: Repos }): TypedTrigger<GitHubPRMergedTrigger> {
+    onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> {
         return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_MERGED]) 
     },
     /** Trigger when a pull request is closed */
@@ -47,11 +47,11 @@ export const GitHub = {
         return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_CLOSED]) 
     },
     /** Trigger when a pull request is synchronized */
-    onPRSynchronized(opts: { repo: Repos }): TypedTrigger<GitHubPRSynchronizedTrigger> {
+    onPRSynchronized(opts: { repo: Repos }): TypedTrigger<GithubPRSynchronizedTrigger> {
         return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_SYNCHRONIZE]) 
     },
     /** Trigger on any pull request event */
-    onPR(opts: { repo: Repos }): TypedTrigger<GitHubPRTrigger> {
+    onPR(opts: { repo: Repos }): TypedTrigger<GithubPRTrigger> {
         return new GitHubConfig("{{escape id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED, GitHubEventType.PR_MERGED, GitHubEventType.PR_CLOSED, GitHubEventType.PR_SYNCHRONIZE])
     },
     /** Trigger on specific GitHub events for the given repositories */
