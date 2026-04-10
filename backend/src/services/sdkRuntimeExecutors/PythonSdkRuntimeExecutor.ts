@@ -23,10 +23,7 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         )
 
         return runSandboxExecStage(context, () =>
-            context.runSandboxCommand(
-                "terse run",
-                `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`
-            )
+            context.runSandboxCommand("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`)
         )
     }
 }
