@@ -7,49 +7,119 @@ from typing import Any, Generic, TypeAlias, TypeVar
 from ._base import TerseModel
 from ._generated import (
     Commit,
-    CronTrigger as _RawCronTrigger,
     FileDiff,
-    GithubPRClosedTrigger as _RawGithubPRClosedTrigger,
-    GithubPRMergedTrigger as _RawGithubPRMergedTrigger,
-    GithubPROpenedTrigger as _RawGithubPROpenedTrigger,
-    GithubPRSynchronizedTrigger as _RawGithubPRSynchronizedTrigger,
-    GithubPRTrigger as _RawGithubPRTrigger,
-    GithubPushTrigger as _RawGithubPushTrigger,
     GithubRepository,
-    GithubTrigger as _RawGithubTrigger,
-    GmailTrigger as _RawGmailTrigger,
-    LinearCommentCreatedTrigger as _RawLinearCommentCreatedTrigger,
-    LinearIssueCreatedTrigger as _RawLinearIssueCreatedTrigger,
-    LinearIssueUpdatedTrigger as _RawLinearIssueUpdatedTrigger,
-    LinearTrigger as _RawLinearTrigger,
-    ManualSampleTrigger as _RawManualSampleTrigger,
     PullRequest,
     PullRequestRef,
     Sender,
-    SlackAppMentionTrigger as _RawSlackAppMentionTrigger,
-    SlackMessageTrigger as _RawSlackMessageTrigger,
-    SlackReactionAddedTrigger as _RawSlackReactionAddedTrigger,
-    SlackTrigger as _RawSlackTrigger,
-    Trigger as _RawTrigger,
-    WebhookTrigger as _RawWebhookTrigger,
-    WorkOSInvitationAcceptedTrigger as _RawWorkOSInvitationAcceptedTrigger,
-    WorkOSInvitationCreatedTrigger as _RawWorkOSInvitationCreatedTrigger,
-    WorkOSInvitationResentTrigger as _RawWorkOSInvitationResentTrigger,
-    WorkOSInvitationRevokedTrigger as _RawWorkOSInvitationRevokedTrigger,
-    WorkOSInvitationTrigger as _RawWorkOSInvitationTrigger,
-    WorkOSMembershipTrigger as _RawWorkOSMembershipTrigger,
-    WorkOSOrganizationMembershipCreatedTrigger as _RawWorkOSOrganizationMembershipCreatedTrigger,
-    WorkOSOrganizationMembershipDeletedTrigger as _RawWorkOSOrganizationMembershipDeletedTrigger,
-    WorkOSOrganizationMembershipUpdatedTrigger as _RawWorkOSOrganizationMembershipUpdatedTrigger,
-    WorkOSOrganizationTrigger as _RawWorkOSOrganizationTrigger,
-    WorkOSTrigger as _RawWorkOSTrigger,
     WorkOSTriggerInvitation,
     WorkOSTriggerMembership,
     WorkOSTriggerOrganization,
     WorkOSTriggerUser,
+)
+from ._generated import (
+    CronTrigger as _RawCronTrigger,
+)
+from ._generated import (
+    GithubPRClosedTrigger as _RawGithubPRClosedTrigger,
+)
+from ._generated import (
+    GithubPRMergedTrigger as _RawGithubPRMergedTrigger,
+)
+from ._generated import (
+    GithubPROpenedTrigger as _RawGithubPROpenedTrigger,
+)
+from ._generated import (
+    GithubPRSynchronizedTrigger as _RawGithubPRSynchronizedTrigger,
+)
+from ._generated import (
+    GithubPRTrigger as _RawGithubPRTrigger,
+)
+from ._generated import (
+    GithubPushTrigger as _RawGithubPushTrigger,
+)
+from ._generated import (
+    GithubTrigger as _RawGithubTrigger,
+)
+from ._generated import (
+    GmailTrigger as _RawGmailTrigger,
+)
+from ._generated import (
+    LinearCommentCreatedTrigger as _RawLinearCommentCreatedTrigger,
+)
+from ._generated import (
+    LinearIssueCreatedTrigger as _RawLinearIssueCreatedTrigger,
+)
+from ._generated import (
+    LinearIssueUpdatedTrigger as _RawLinearIssueUpdatedTrigger,
+)
+from ._generated import (
+    LinearTrigger as _RawLinearTrigger,
+)
+from ._generated import (
+    ManualSampleTrigger as _RawManualSampleTrigger,
+)
+from ._generated import (
+    SlackAppMentionTrigger as _RawSlackAppMentionTrigger,
+)
+from ._generated import (
+    SlackMessageTrigger as _RawSlackMessageTrigger,
+)
+from ._generated import (
+    SlackReactionAddedTrigger as _RawSlackReactionAddedTrigger,
+)
+from ._generated import (
+    SlackTrigger as _RawSlackTrigger,
+)
+from ._generated import (
+    Trigger as _RawTrigger,
+)
+from ._generated import (
+    WebhookTrigger as _RawWebhookTrigger,
+)
+from ._generated import (
+    WorkOSInvitationAcceptedTrigger as _RawWorkOSInvitationAcceptedTrigger,
+)
+from ._generated import (
+    WorkOSInvitationCreatedTrigger as _RawWorkOSInvitationCreatedTrigger,
+)
+from ._generated import (
+    WorkOSInvitationResentTrigger as _RawWorkOSInvitationResentTrigger,
+)
+from ._generated import (
+    WorkOSInvitationRevokedTrigger as _RawWorkOSInvitationRevokedTrigger,
+)
+from ._generated import (
+    WorkOSInvitationTrigger as _RawWorkOSInvitationTrigger,
+)
+from ._generated import (
+    WorkOSMembershipTrigger as _RawWorkOSMembershipTrigger,
+)
+from ._generated import (
+    WorkOSOrganizationMembershipCreatedTrigger as _RawWorkOSOrganizationMembershipCreatedTrigger,
+)
+from ._generated import (
+    WorkOSOrganizationMembershipDeletedTrigger as _RawWorkOSOrganizationMembershipDeletedTrigger,
+)
+from ._generated import (
+    WorkOSOrganizationMembershipUpdatedTrigger as _RawWorkOSOrganizationMembershipUpdatedTrigger,
+)
+from ._generated import (
+    WorkOSOrganizationTrigger as _RawWorkOSOrganizationTrigger,
+)
+from ._generated import (
+    WorkOSTrigger as _RawWorkOSTrigger,
+)
+from ._generated import (
     WorkOSUserCreatedTrigger as _RawWorkOSUserCreatedTrigger,
+)
+from ._generated import (
     WorkOSUserDeletedTrigger as _RawWorkOSUserDeletedTrigger,
+)
+from ._generated import (
     WorkOSUserTrigger as _RawWorkOSUserTrigger,
+)
+from ._generated import (
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger,
 )
 
@@ -125,15 +195,15 @@ class SDKTrigger(Generic[_T]):
 
     @property
     def data(self) -> _T:
-        return self._trigger  # type: ignore[return-value]
+        return self._trigger
 
     @property
     def formatted_content(self) -> str:
-        return self._formatted_content  # type: ignore[return-value]
+        return self._formatted_content
 
     @property
     def debug_log(self) -> str:
-        return self._debug_log  # type: ignore[return-value]
+        return self._debug_log
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._trigger, name)

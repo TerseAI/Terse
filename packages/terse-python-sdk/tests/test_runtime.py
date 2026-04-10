@@ -27,10 +27,8 @@ from terse_sdk import (
     SlackChannelType,
     SlackListChannelsToolOutput,
     SlackListUsersToolOutput,
-    SlackMessageTrigger,
     SlackReadConversationToolOutput,
     SlackSendMessageToolOutput,
-    SlackTrigger,
     Terse,
     TerseAgent,
     TerseApiError,
@@ -39,7 +37,6 @@ from terse_sdk import (
     ToolApprovalRequest,
     ToolApprovalRequested,
     ToolCallCompleted,
-    Trigger,
     TriggerConfig,
     clear_job_registry,
     create_sdk_trigger,
@@ -50,8 +47,14 @@ from terse_sdk import (
 )
 from terse_sdk.types._generated import (
     CronTrigger as _RawCronTrigger,
+)
+from terse_sdk.types._generated import (
     SlackMessageTrigger as _RawSlackMessageTrigger,
+)
+from terse_sdk.types._generated import (
     SlackTrigger as _RawSlackTrigger,
+)
+from terse_sdk.types._generated import (
     Trigger as _RawTrigger,
 )
 

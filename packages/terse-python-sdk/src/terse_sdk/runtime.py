@@ -23,8 +23,8 @@ from ._http_utils import (
     _read_response_detail,
 )
 from .types._generated import ConfigData, SerializedEvent
-from .types.config import TerseSettings
 from .types._generated import ManualSampleTrigger as _RawManualSampleTrigger
+from .types.config import TerseSettings
 from .types.events import AnyTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
@@ -356,8 +356,8 @@ def create_sdk_trigger(serialized: SerializedEvent | Mapping[str, object] | str)
         serialized = SerializedEvent.model_validate_json(serialized)
     elif isinstance(serialized, Mapping):
         serialized = SerializedEvent.model_validate(serialized)
-    trigger = _unwrap_root_models(serialized.data)
-    return SDKTrigger(trigger, serialized.formatted_content, serialized.debug_log)
+    trigger = cast(Any, _unwrap_root_models(serialized.data))
+    return cast(AnyTrigger, SDKTrigger(trigger, serialized.formatted_content, serialized.debug_log))
 
 
 def deserialize_input_event(value: Mapping[str, object] | str) -> AnyTrigger:

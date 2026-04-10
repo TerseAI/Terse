@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from ._base import TerseModel
 from ._generated import (
     AgentNotificationSettings as NotificationSettings,
