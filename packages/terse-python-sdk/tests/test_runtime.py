@@ -21,6 +21,7 @@ from terse_sdk import (
     IntegrationType,
     MissingApiKeyError,
     RunStarted,
+    SDKTrigger,
     SdkAgentStreamEvent,
     SkillConfig,
     SlackChannelType,
@@ -41,6 +42,8 @@ from terse_sdk import (
     Trigger,
     TriggerConfig,
     clear_job_registry,
+    create_sdk_trigger,
+    deserialize_input_event,
     deserialize_trigger_event,
     execute_registered_job,
     get_job_registry,
@@ -102,7 +105,7 @@ def test_job_registration_and_registry_clear() -> None:
     app = Terse()
 
     @app.job(name="demo-job")
-    def demo(event: CronTrigger, agent: TerseAgent) -> None:
+    def demo(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
         _ = (event, agent)
 
     registry = get_job_registry()
@@ -117,7 +120,7 @@ def test_job_registration_preserves_tool_approvals() -> None:
     app = Terse()
 
     @app.job(name="demo-job", tool_approvals=["attio_upsert_record"])
-    def demo(event: CronTrigger, agent: TerseAgent) -> None:
+    def demo(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
         _ = (event, agent)
 
     assert get_job_registry()["demo-job"].tool_approvals == ["attio_upsert_record"]
@@ -128,12 +131,12 @@ def test_execute_registered_job_supports_sync_callables() -> None:
     filter_calls: list[str] = []
     app = Terse()
 
-    def allow_sync(event: CronTrigger) -> bool:
+    def allow_sync(event: SDKTrigger[CronTrigger]) -> bool:
         filter_calls.append(event.event_type)
         return bool(event.is_manual_trigger)
 
     @app.job(name="sync-job", filter=allow_sync)
-    def sync_handler(event: CronTrigger, agent: TerseAgent) -> None:
+    def sync_handler(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
         _ = agent
         handler_calls.append(event.manual_context or "")
 
@@ -155,12 +158,12 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
     calls: list[str] = []
     app = Terse()
 
-    def never(event: CronTrigger) -> bool:
+    def never(event: SDKTrigger[CronTrigger]) -> bool:
         _ = event
         return False
 
     @app.job(name="demo-job", filter=never)
-    def demo(event: CronTrigger, agent: TerseAgent) -> None:
+    def demo(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
         _ = (event, agent)
         calls.append("ran")
 
@@ -756,6 +759,158 @@ def test_assert_sse_response_reads_streaming_error_details_list_on_http_error() 
 
     assert "Invalid request body" in str(exc_info.value)
     assert "`skills[0].config.objectSlug` is required" in str(exc_info.value)
+
+
+def test_sdk_trigger_delegates_attribute_access() -> None:
+    trigger = CronTrigger(
+        event_type="cron",
+        input_id="input_123",
+        is_manual_trigger=True,
+        manual_context="hello",
+    )
+    sdk = SDKTrigger(trigger, "formatted text", "debug info")
+
+    assert sdk.data is trigger
+    assert sdk.formatted_content == "formatted text"
+    assert sdk.debug_log == "debug info"
+    assert sdk.event_type == trigger.event_type
+    assert sdk.input_id == "input_123"
+    assert sdk.is_manual_trigger is True
+    assert sdk.manual_context == "hello"
+    assert "SDKTrigger(" in repr(sdk)
+
+
+def test_sdk_trigger_raises_attribute_error_for_missing_attrs() -> None:
+    trigger = CronTrigger(event_type="cron", input_id="input_123")
+    sdk = SDKTrigger(trigger, "", "")
+
+    with pytest.raises(AttributeError):
+        _ = sdk.nonexistent_field
+
+
+def test_create_sdk_trigger_from_dict() -> None:
+    envelope = {
+        "integrationType": "cron_job",
+        "eventType": "cron",
+        "formattedContent": "Scheduled job ran",
+        "debugLog": "cron triggered at 12:00",
+        "data": {
+            "integrationType": "cron_job",
+            "eventType": "cron",
+            "inputId": "input_123",
+            "isManualTrigger": True,
+        },
+    }
+
+    sdk = create_sdk_trigger(envelope)
+
+    assert isinstance(sdk, SDKTrigger)
+    assert isinstance(sdk.data, CronTrigger)
+    assert sdk.formatted_content == "Scheduled job ran"
+    assert sdk.debug_log == "cron triggered at 12:00"
+    assert sdk.input_id == "input_123"
+
+
+def test_create_sdk_trigger_from_json_string() -> None:
+    envelope = json.dumps({
+        "integrationType": "cron_job",
+        "eventType": "cron",
+        "formattedContent": "cron fmt",
+        "debugLog": "cron dbg",
+        "data": {
+            "integrationType": "cron_job",
+            "eventType": "cron",
+            "inputId": "input_456",
+        },
+    })
+
+    sdk = create_sdk_trigger(envelope)
+
+    assert isinstance(sdk.data, CronTrigger)
+    assert sdk.formatted_content == "cron fmt"
+    assert sdk.debug_log == "cron dbg"
+    assert sdk.input_id == "input_456"
+
+
+def test_deserialize_input_event_matches_create_sdk_trigger() -> None:
+    envelope = {
+        "integrationType": "slack",
+        "eventType": "message",
+        "formattedContent": "Slack message",
+        "debugLog": "slack debug",
+        "data": {
+            "integrationType": "slack",
+            "eventType": "message",
+            "channelId": "C123",
+            "channelName": "general",
+            "userId": "U123",
+            "userName": "bot",
+            "text": "hello",
+            "timestamp": "1710000000.100000",
+            "threadTs": "1710000000.000001",
+            "threadTimestamp": "1710000000.000001",
+            "teamId": "T1",
+            "permalink": "https://example.com",
+            "channelType": "channel",
+            "blocks": None,
+            "attachments": None,
+            "files": None,
+        },
+    }
+
+    sdk = deserialize_input_event(envelope)
+
+    assert isinstance(sdk, SDKTrigger)
+    assert isinstance(sdk.data, SlackMessageTrigger)
+    assert sdk.formatted_content == "Slack message"
+    assert sdk.debug_log == "slack debug"
+    assert sdk.text == "hello"
+    assert sdk.channel_id == "C123"
+
+
+def test_execute_registered_job_wraps_raw_trigger_in_sdk_trigger() -> None:
+    received_events: list[Any] = []
+    app = Terse()
+
+    @app.job(name="wrap-test")
+    def handler(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
+        received_events.append(event)
+
+    raw = CronTrigger(
+        event_type="cron",
+        input_id="input_123",
+        is_manual_trigger=True,
+    )
+
+    execute_registered_job(get_job_registry()["wrap-test"], raw, agent=TerseAgent())
+
+    assert len(received_events) == 1
+    assert isinstance(received_events[0], SDKTrigger)
+    assert received_events[0].data is raw
+    assert received_events[0].formatted_content == ""
+    assert received_events[0].debug_log == ""
+
+
+def test_execute_registered_job_passes_sdk_trigger_through() -> None:
+    received_events: list[Any] = []
+    app = Terse()
+
+    @app.job(name="passthrough-test")
+    def handler(event: SDKTrigger[CronTrigger], agent: TerseAgent) -> None:
+        received_events.append(event)
+
+    raw = CronTrigger(
+        event_type="cron",
+        input_id="input_123",
+    )
+    sdk_event = SDKTrigger(raw, "pre-formatted", "pre-debug")
+
+    execute_registered_job(get_job_registry()["passthrough-test"], sdk_event, agent=TerseAgent())
+
+    assert len(received_events) == 1
+    assert received_events[0] is sdk_event
+    assert received_events[0].formatted_content == "pre-formatted"
+    assert received_events[0].debug_log == "pre-debug"
 
 
 def _json_response(

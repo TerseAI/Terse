@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypeAlias
+from typing import Any, Generic, TypeAlias, TypeVar
 
 from ._base import TerseModel
 from ._generated import (
@@ -149,8 +149,46 @@ class SnowflakeTrigger(_ManualTrigger):
     integration_type: str = "snowflake"
 
 
+_T = TypeVar("_T")
+
+
+class SDKTrigger(Generic[_T]):
+    """Trigger event enriched with ``formatted_content`` and ``debug_log``.
+
+    Mirrors the TypeScript ``SDKTrigger<T>`` intersection type.  Trigger
+    fields are accessible directly via ``__getattr__`` delegation (e.g.
+    ``event.text``), and type-safe access is available through ``event.data``.
+    """
+
+    __slots__ = ("_trigger", "_formatted_content", "_debug_log")
+
+    def __init__(self, trigger: _T, formatted_content: str, debug_log: str) -> None:
+        object.__setattr__(self, "_trigger", trigger)
+        object.__setattr__(self, "_formatted_content", formatted_content)
+        object.__setattr__(self, "_debug_log", debug_log)
+
+    @property
+    def data(self) -> _T:
+        return self._trigger  # type: ignore[return-value]
+
+    @property
+    def formatted_content(self) -> str:
+        return self._formatted_content  # type: ignore[return-value]
+
+    @property
+    def debug_log(self) -> str:
+        return self._debug_log  # type: ignore[return-value]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._trigger, name)
+
+    def __repr__(self) -> str:
+        return f"SDKTrigger({self._trigger!r})"
+
+
 __all__ = [
     "AnyTrigger",
+    "SDKTrigger",
     "AttioTrigger",
     "CronTrigger",
     "DatadogTrigger",

@@ -22,9 +22,9 @@ from ._http_utils import (
     _debug_log_response_payload,
     _read_response_detail,
 )
-from .types._generated import ConfigData
+from .types._generated import ConfigData, SerializedEvent
 from .types.config import TerseSettings
-from .types.events import AnyTrigger, ManualSampleTrigger
+from .types.events import AnyTrigger, ManualSampleTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
 from .types.sdk_types import (
     SdkAgentRunRequestBody,
@@ -40,8 +40,8 @@ from .types.stream_events import (
 )
 
 JobEvent = AnyTrigger
-JobHandler = Callable[[JobEvent, "TerseAgent"], None]
-JobFilter = Callable[[JobEvent], bool]
+JobHandler = Callable[[SDKTrigger[JobEvent], "TerseAgent"], None]
+JobFilter = Callable[[SDKTrigger[JobEvent]], bool]
 
 HandlerT = TypeVar("HandlerT", bound=Callable[..., object])
 ResultT = TypeVar("ResultT")
@@ -98,18 +98,18 @@ class Terse:
         name: str,
         triggers: Sequence[TriggerConfig[JobEventT]] | None = None,
         skills: Sequence[SkillConfig[ToolApprovalT]] | None = None,
-        filter: Callable[[JobEventT], bool] | None = None,
+        filter: Callable[[SDKTrigger[JobEventT]], bool] | None = None,
         webhook_url: str | None = None,
         tool_approvals: Sequence[ToolApprovalT] | None = None,
     ) -> Callable[
-        [Callable[[JobEventT, TerseAgent], object]],
-        Callable[[JobEventT, TerseAgent], object],
+        [Callable[[SDKTrigger[JobEventT], TerseAgent], object]],
+        Callable[[SDKTrigger[JobEventT], TerseAgent], object],
     ]:
         """Register a job and return the original handler."""
 
         def decorator(
-            handler: Callable[[JobEventT, TerseAgent], object],
-        ) -> Callable[[JobEventT, TerseAgent], object]:
+            handler: Callable[[SDKTrigger[JobEventT], TerseAgent], object],
+        ) -> Callable[[SDKTrigger[JobEventT], TerseAgent], object]:
             _JOB_REGISTRY[name] = RegisteredJob(
                 name=name,
                 handler=handler,
@@ -348,6 +348,26 @@ def deserialize_trigger_event(
         raise TerseRuntimeError("Trigger event payload does not match the canonical schema.") from exc
 
 
+def create_sdk_trigger(serialized: SerializedEvent | Mapping[str, object] | str) -> SDKTrigger[AnyTrigger]:
+    """Create an ``SDKTrigger`` from a ``SerializedEvent`` envelope."""
+
+    if isinstance(serialized, str):
+        serialized = SerializedEvent.model_validate_json(serialized)
+    elif isinstance(serialized, Mapping):
+        serialized = SerializedEvent.model_validate(serialized)
+    trigger = cast(AnyTrigger, _unwrap_root_models(serialized.data))
+    return SDKTrigger(trigger, serialized.formatted_content, serialized.debug_log)
+
+
+def deserialize_input_event(value: Mapping[str, object] | str) -> SDKTrigger[AnyTrigger]:
+    """Deserialize a ``SerializedEvent`` JSON envelope into an enriched ``SDKTrigger``.
+
+    This is the entry point used by the CLI runner script.
+    """
+
+    return create_sdk_trigger(value)
+
+
 def _unwrap_root_models(value: object) -> object:
     current = value
     while isinstance(current, RootModel):
@@ -357,10 +377,14 @@ def _unwrap_root_models(value: object) -> object:
 
 def execute_registered_job(
     job: RegisteredJob,
-    event: AnyTrigger,
+    event: SDKTrigger[AnyTrigger] | AnyTrigger,
     agent: TerseAgent | None = None,
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
+
+    sdk_event: SDKTrigger[AnyTrigger] = (
+        event if isinstance(event, SDKTrigger) else SDKTrigger(event, "", "")
+    )
 
     manual_tool_configs = [*job.skills, *job.triggers]
     runtime_agent = agent or TerseAgent(
@@ -373,11 +397,11 @@ def execute_registered_job(
     runtime_agent.ensure_generated_tools()
 
     if job.filter is not None:
-        should_run = _run_callable(job.filter, event)
+        should_run = _run_callable(job.filter, sdk_event)
         if not should_run:
             return True
 
-    _run_callable(job.handler, event, runtime_agent)
+    _run_callable(job.handler, sdk_event, runtime_agent)
     return False
 
 
