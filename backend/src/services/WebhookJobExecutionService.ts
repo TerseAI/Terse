@@ -1,3 +1,4 @@
+import { SerializedEvent } from "terse-types"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User, webhookJobTriggerResponseSchema } from "terse-types/types"
 
@@ -14,17 +15,15 @@ export interface WebhookJobExecutionParams {
     agentId: string
     orgId: string
     user: User
-    eventJson: string
+    event: SerializedEvent
     jobName: string
 }
 
 export class WebhookJobExecutionService {
     async execute(params: WebhookJobExecutionParams): Promise<void> {
-        const { jobUrl, runId, agentId, orgId, eventJson, jobName } = params
+        const { jobUrl, runId, agentId, orgId, event, jobName } = params
 
         try {
-            const event = JSON.parse(eventJson)
-
             const challenge = await runWebhookJobHandshakeChallenge({ jobUrl, organizationId: orgId })
             logger.info("Webhook job: handshake then deliver", { runId, agentId, triggerUrl: challenge.triggerUrl })
 

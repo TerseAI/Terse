@@ -1,5 +1,5 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
-import { ConfigData } from "terse-types"
+import { ConfigData, SerializedEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
@@ -239,8 +239,6 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
         }
 
-        console.log("WTF: Processing agent", { jobUrl: agent.prompt?.job_url, sourceCodeGcsKey: agent.prompt?.source_code_gcs_key })
-
         // SDK agents with a job_url trigger the user's own infrastructure via webhook
         if (agent.source === "SDK" && agent.prompt?.job_url) {
             return this.processWebhookAgent(agent, existingRunId)
@@ -453,14 +451,7 @@ export class EventProcessor {
     private async processWebhookAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
-        const serializedEvent: SerializedEvent = {
-            integrationType: this.inputEvent.integrationType,
-            eventType: this.inputEvent.eventType,
-            formattedContent: this.inputEvent.formatForAgentRunner(),
-            debugLog: this.inputEvent.debugLog(),
-            metadata: this.inputEvent.serializeMetadata()
-        }
-        const eventJson = JSON.stringify(serializedEvent)
+        const event = this.inputEvent.getSerializedEvent()
 
         const jobUrl = agent.prompt?.job_url
         if (!jobUrl) {
@@ -478,7 +469,7 @@ export class EventProcessor {
                 agentId: agent.id,
                 orgId: this.user.organizationId,
                 user: this.user,
-                eventJson,
+                event,
                 jobName: agent.name
             })
             .catch(error => {
