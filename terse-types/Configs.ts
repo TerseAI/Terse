@@ -513,8 +513,8 @@ export class NotionConfig extends BaseConfigInstance<IntegrationType.NOTION, Con
 export const LinearInputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.LINEAR),
     configType: z.literal(ConfigType.LINEAR_INPUT),
+    teamId: z.string().nullable(),
     projectId: z.string().nullable(),
-    projectName: z.string().nullable(),
     eventTypes: z.array(linearEventTypeSchema).nullable()
 })
 export type LinearInputConfigData = z.infer<typeof LinearInputConfigSchema>
@@ -524,8 +524,8 @@ export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR
     constructor(
         integrationId: string,
         public projectId: string | null = null,
-        public projectName: string | null = null,
-        public eventTypes: LinearEventType[] | null = null
+        public eventTypes: LinearEventType[] | null = null,
+        public teamId: string | null = null
     ) {
         super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_INPUT)
     }
@@ -536,9 +536,10 @@ export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR
 
     formatForAgent(): string {
         const parts = [`Type: Linear`, `Integration ID: ${this.integrationId}`]
-        if (this.projectName) {
-            parts.push(`Project: ${this.projectName}`)
-        } else if (this.projectId) {
+        if (this.teamId) {
+            parts.push(`Team ID: ${this.teamId}`)
+        }
+        if (this.projectId) {
             parts.push(`Project ID: ${this.projectId}`)
         }
         if (this.eventTypes?.length) {
@@ -553,8 +554,7 @@ export const LinearOutputConfigSchema = ConfigInstanceSchema.extend({
     configType: z.literal(ConfigType.LINEAR_OUTPUT),
     teamId: z.string().nullable(),
     teamName: z.string().nullable(),
-    projectId: z.string().nullable(),
-    projectName: z.string().nullable()
+    projectId: z.string().nullable()
 })
 export type LinearOutputConfigData = z.infer<typeof LinearOutputConfigSchema>
 export type LinearOutputConfigInstance = LinearOutputConfigData & ConfigBehavior
@@ -564,8 +564,7 @@ export class LinearOutputConfig extends BaseConfigInstance<IntegrationType.LINEA
         integrationId: string,
         public teamId: string | null = null,
         public teamName: string | null = null,
-        public projectId: string | null = null,
-        public projectName: string | null = null
+        public projectId: string | null = null
     ) {
         super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_OUTPUT)
     }
@@ -581,9 +580,7 @@ export class LinearOutputConfig extends BaseConfigInstance<IntegrationType.LINEA
         } else if (this.teamId) {
             parts.push(`Team ID: ${this.teamId}`)
         }
-        if (this.projectName) {
-            parts.push(`Project: ${this.projectName}`)
-        } else if (this.projectId) {
+        if (this.projectId) {
             parts.push(`Project ID: ${this.projectId}`)
         }
         return parts.join("\n")
@@ -998,9 +995,10 @@ export function formatConfigForAgent(config: ConfigData): string {
         }
         case ConfigType.LINEAR_INPUT: {
             const parts = [`Type: Linear`, `Integration ID: ${config.integrationId}`]
-            if (config.projectName) {
-                parts.push(`Project: ${config.projectName}`)
-            } else if (config.projectId) {
+            if (config.teamId) {
+                parts.push(`Team ID: ${config.teamId}`)
+            }
+            if (config.projectId) {
                 parts.push(`Project ID: ${config.projectId}`)
             }
             if (config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
@@ -1013,9 +1011,7 @@ export function formatConfigForAgent(config: ConfigData): string {
             } else if (config.teamId) {
                 parts.push(`Team ID: ${config.teamId}`)
             }
-            if (config.projectName) {
-                parts.push(`Project: ${config.projectName}`)
-            } else if (config.projectId) {
+            if (config.projectId) {
                 parts.push(`Project ID: ${config.projectId}`)
             }
             return parts.join("\n")

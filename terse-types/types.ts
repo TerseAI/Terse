@@ -12,6 +12,7 @@ import {
     attioRecordIdentifierSchema,
     attioRecordSchema,
     attioUpsertErrorSchema,
+    linearProjectSummarySchema,
     linearTeamSchema,
     slackUserResponseSchema
 } from "./Tools"
@@ -65,6 +66,7 @@ export const activityEventSchema = z.object({
 export type ActivityEvent = z.infer<typeof activityEventSchema>
 
 export type LinearTeam = z.infer<typeof linearTeamSchema>
+export type LinearProjectSummary = z.infer<typeof linearProjectSummarySchema>
 export type AttioObject = z.infer<typeof attioObjectSchema>
 export type AttioAttribute = z.infer<typeof attioAttributeSchema>
 export type AttioObjectWithAttributes = z.infer<typeof attioObjectWithAttributesSchema>
