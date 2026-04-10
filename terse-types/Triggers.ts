@@ -258,7 +258,9 @@ export const LinearWebhookDataSchema = z.object({
     labels: z.array(z.any()),
     description: z.string().optional(),
     descriptionData: z.string().optional(),
-    assignee: LinearWebhookAssigneeSchema.optional()
+    assignee: LinearWebhookAssigneeSchema.optional(),
+    /** Present on many issue webhooks; used for trigger scoping */
+    projectId: z.string().optional()
 })
 
 export const LinearWebhookCommentDataSchema = z

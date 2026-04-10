@@ -139,8 +139,23 @@ export interface PythonGmailCtx {
     instanceIdRepr: string
 }
 
+export interface PythonLinearTeamCtx {
+    staticName: string
+    teamIdRepr: string
+    nameRepr: string
+    keyRepr: string
+}
+
+export interface PythonLinearProjectCtx {
+    staticName: string
+    projectIdRepr: string
+    nameRepr: string
+}
+
 export interface PythonLinearCtx {
     instanceIdRepr: string
+    teams: PythonLinearTeamCtx[]
+    projects: PythonLinearProjectCtx[]
 }
 
 export interface PythonWorkOSCtx {
@@ -261,7 +276,7 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
             typingImports.add(name)
         }
     }
-    if (hasGithub || hasSlack) {
+    if (hasGithub || hasLinear || hasSlack) {
         typingImports.add("ClassVar")
     }
     if (hasGithub || hasGmail || hasLinear || hasSlack || hasWorkOS) {
@@ -272,7 +287,7 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
     }
     const typingImportsLine = typingImports.size ? `from typing import ${Array.from(typingImports).sort().join(", ")}` : undefined
 
-    const pydanticImportsLine = hasAttio || hasGithub || hasSlack ? "from pydantic import BaseModel, ConfigDict" : undefined
+    const pydanticImportsLine = hasAttio || hasGithub || hasLinear || hasSlack ? "from pydantic import BaseModel, ConfigDict" : undefined
 
     const exportedNames = buildExportedNames(attio, github, gmail, linear, slack, snowflake, workos)
 
@@ -435,7 +450,20 @@ function buildSimpleIntegrationCtx(instance: IntegrationInstanceData): { instanc
 }
 
 function buildLinearCtx(instance: LinearInstanceData): PythonLinearCtx {
-    return { instanceIdRepr: pyRepr(instance.id) }
+    const usedTeamNames = new Set<string>()
+    const teams = instance.teams.map(team => ({
+        staticName: uniqueName(toPascalCase(team.name || "Team") || "Team", usedTeamNames),
+        teamIdRepr: pyRepr(team.id),
+        nameRepr: pyRepr(team.name),
+        keyRepr: pyRepr(team.key)
+    }))
+    const usedProjectNames = new Set<string>()
+    const projects = instance.projects.map(proj => ({
+        staticName: uniqueName(toPascalCase(proj.name || "Project") || "Project", usedProjectNames),
+        projectIdRepr: pyRepr(proj.id),
+        nameRepr: pyRepr(proj.name)
+    }))
+    return { instanceIdRepr: pyRepr(instance.id), teams, projects }
 }
 
 function buildAttioObjectCtx(obj: AttioInstanceData["objects"][number], usedNames: Set<string>, hasAttrs: boolean): PythonAttioObjectCtx {
@@ -540,7 +568,7 @@ function buildExportedNames(
 
     if (github) names.push("GitHub", "GitHubOwner", "GitHubRepo")
     if (gmail) names.push("Gmail")
-    if (linear) names.push("Linear")
+    if (linear) names.push("Linear", "LinearProject", "LinearTeam")
     names.push("Slack", "SlackChannel")
     names.push("Snowflake", "Webhook")
     if (workos) names.push("WorkOS")

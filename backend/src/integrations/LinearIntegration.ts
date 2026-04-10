@@ -648,7 +648,29 @@ export class LinearTriggerRuntime extends TriggerRuntime<LinearTrigger> implemen
         if (!linearConfig || !linearConfig.event_types || linearConfig.event_types.length === 0) {
             return false
         }
-        return !linearConfig.event_types || linearConfig.event_types.length === 0 || linearConfig.event_types.includes(this.data.eventType)
+        if (!linearConfig.event_types.includes(this.data.eventType)) {
+            return false
+        }
+
+        // Team/project filters apply to issue payloads only (comment webhooks do not include issue team/project).
+        if (this.data.type === "Issue" && this.data.data) {
+            const d = this.data.data
+            if (linearConfig.team_id) {
+                const teamId = d.team?.id ?? d.teamId
+                if (teamId !== linearConfig.team_id) {
+                    return false
+                }
+            }
+            if (linearConfig.project_id) {
+                const issueRecord = d as Record<string, unknown>
+                const projectId = typeof issueRecord.projectId === "string" ? issueRecord.projectId : undefined
+                if (projectId !== linearConfig.project_id) {
+                    return false
+                }
+            }
+        }
+
+        return true
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
