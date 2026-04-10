@@ -80,6 +80,8 @@ export class WebhookJobExecutionService {
             if (filtered) {
                 await markRunSkipped(runId, "Job filter excluded this event")
                 logger.info("Webhook job: trigger delivered but job filter skipped the run", { runId, agentId, jobName })
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+                return
             } else {
                 logger.info("Webhook job: trigger delivered; awaiting SDK agent run for completion", { runId, agentId, jobName })
             }
