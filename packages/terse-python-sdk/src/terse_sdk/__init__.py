@@ -3,7 +3,6 @@
 """Terse Python SDK."""
 
 from .runtime import (
-    EventType,
     MissingApiKeyError,
     RegisteredJob,
     Terse,
@@ -11,11 +10,9 @@ from .runtime import (
     TerseApiError,
     TerseRuntimeError,
     clear_job_registry,
-    create_sdk_trigger,
-    deserialize_input_event,
-    deserialize_trigger_event,
     execute_registered_job,
     get_job_registry,
+    deserialize_input_event,
 )
 from .types._generated import (
     BaseTrigger,
@@ -67,6 +64,7 @@ from .types.enums import (
     SlackEventType,
     ToolCallExecutionStatus,
     WorkOSEventType,
+    EventType,
 )
 from .types.enums import __all__ as _enums_all
 from .types.events import (
@@ -243,9 +241,6 @@ __all__ = [
     "TerseApiError",
     "TerseRuntimeError",
     "clear_job_registry",
-    "create_sdk_trigger",
-    "deserialize_input_event",
-    "deserialize_trigger_event",
     "execute_registered_job",
     "get_job_registry",
     "SDKTrigger",
