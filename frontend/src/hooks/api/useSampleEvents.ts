@@ -12,9 +12,7 @@ export function useSampleEvents(triggers: AgentTrigger[], automationId?: string)
     const [events, setEvents] = useState<SerializedEvent[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-    const integrationTriggers = triggers.filter(
-        t => t.config.integrationType !== IntegrationType.CRON_JOB && t.config.integrationType !== IntegrationType.WEBHOOK
-    )
+    const integrationTriggers = triggers.filter(t => t.config.integrationType !== IntegrationType.CRON_JOB && t.config.integrationType !== IntegrationType.WEBHOOK)
     const hasIntegrationTriggers = integrationTriggers.length > 0
 
     const fetchSamples = useCallback(async () => {
