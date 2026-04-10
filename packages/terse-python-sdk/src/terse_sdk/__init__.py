@@ -11,6 +11,7 @@ from .runtime import (
     TerseRuntimeError,
     clear_job_registry,
     deserialize_input_event,
+    create_sdk_trigger,
     execute_registered_job,
     get_job_registry,
 )
