@@ -406,7 +406,7 @@ export class EventProcessor {
     private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
-        const eventJson = JSON.stringify(this.inputEvent.data)
+        const eventJson = JSON.stringify(this.inputEvent.getSerializedEvent())
 
         const gcsKey = agent.prompt?.source_code_gcs_key
         if (!gcsKey) {
