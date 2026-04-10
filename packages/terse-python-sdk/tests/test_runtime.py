@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from types import ModuleType, SimpleNamespace
@@ -14,7 +15,7 @@ import terse_sdk.runtime as runtime_module
 import terse_sdk.types as terse_types
 from terse_sdk import (
     ConfigType,
-    CronJobInputEvent,
+    CronTrigger,
     Done,
     EventType,
     FinalOutput,
@@ -22,10 +23,8 @@ from terse_sdk import (
     MissingApiKeyError,
     RunStarted,
     SdkAgentStreamEvent,
-    SerializedEventInputEvent,
+    SDKTrigger,
     SkillConfig,
-    SlackChannelType,
-    SlackInputEvent,
     SlackListChannelsToolOutput,
     SlackListUsersToolOutput,
     SlackReadConversationToolOutput,
@@ -40,14 +39,20 @@ from terse_sdk import (
     ToolCallCompleted,
     TriggerConfig,
     clear_job_registry,
-    deserialize_input_event,
+    create_sdk_trigger,
     execute_registered_job,
     get_job_registry,
+)
+from terse_sdk.types._generated import (
+    CronTrigger as _RawCronTrigger,
+)
+from terse_sdk.types._generated import (
+    SlackMessageTrigger as _RawSlackMessageTrigger,
 )
 
 
 @pytest.fixture(autouse=True)
-def clear_registry() -> None:
+def clear_registry():
     clear_job_registry()
     yield
     clear_job_registry()
@@ -101,7 +106,7 @@ def test_job_registration_and_registry_clear() -> None:
     app = Terse()
 
     @app.job(name="demo-job")
-    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
 
     registry = get_job_registry()
@@ -112,11 +117,32 @@ def test_job_registration_and_registry_clear() -> None:
     assert get_job_registry() == {}
 
 
+def test_job_registration_multiple_registrations() -> None:
+    app = Terse()
+
+    @app.job(name="demo-job")
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
+        _ = (event, agent)
+
+    @app.job(name="demo-job2")
+    def demo2(event: CronTrigger, agent: TerseAgent) -> None:
+        _ = (event, agent)
+
+    registry = get_job_registry()
+    assert "demo-job" in registry
+    assert registry["demo-job"].handler is demo
+    assert "demo-job2" in registry
+    assert registry["demo-job2"].handler is demo2
+
+    clear_job_registry()
+    assert get_job_registry() == {}
+
+
 def test_job_registration_preserves_tool_approvals() -> None:
     app = Terse()
 
     @app.job(name="demo-job", tool_approvals=["attio_upsert_record"])
-    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
 
     assert get_job_registry()["demo-job"].tool_approvals == ["attio_upsert_record"]
@@ -127,25 +153,26 @@ def test_execute_registered_job_supports_sync_callables() -> None:
     filter_calls: list[str] = []
     app = Terse()
 
-    def allow_sync(event: CronJobInputEvent) -> bool:
+    def allow_sync(event: CronTrigger) -> bool:
         filter_calls.append(event.event_type)
-        return event.event_type == "manual"
+        return bool(event.is_manual_trigger)
 
     @app.job(name="sync-job", filter=allow_sync)
-    def sync_handler(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    def sync_handler(event: CronTrigger, agent: TerseAgent) -> None:
         _ = agent
-        handler_calls.append(event.formatted_content)
+        handler_calls.append(event.manual_context or "")
 
-    event = CronJobInputEvent(
-        event_type="manual",
-        formatted_content="hello",
-        debug_log="world",
+    event = _RawCronTrigger(
+        event_type="cron",
+        input_id="input_123",
+        is_manual_trigger=True,
+        manual_context="hello",
     )
 
     sync_job = get_job_registry()["sync-job"]
 
     assert not execute_registered_job(sync_job, event, agent=TerseAgent())
-    assert filter_calls == ["manual"]
+    assert [value.root for value in filter_calls] == ["cron"]
     assert handler_calls == ["hello"]
 
 
@@ -153,112 +180,28 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
     calls: list[str] = []
     app = Terse()
 
-    def never(event: CronJobInputEvent) -> bool:
+    def never(event: CronTrigger) -> bool:
         _ = event
         return False
 
     @app.job(name="demo-job", filter=never)
-    def demo(event: CronJobInputEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
         calls.append("ran")
 
     skipped = execute_registered_job(
         get_job_registry()["demo-job"],
-        CronJobInputEvent(event_type="manual", formatted_content="demo", debug_log="demo"),
+        _RawCronTrigger(
+            event_type="cron",
+            input_id="input_123",
+            is_manual_trigger=True,
+            manual_context="demo",
+        ),
         agent=TerseAgent(),
     )
 
     assert skipped
     assert calls == []
-
-
-def test_deserialize_input_event_supports_camel_case_payloads() -> None:
-    event = deserialize_input_event(
-        {
-            "integrationType": "cron_job",
-            "eventType": "manual",
-            "formattedContent": "Scheduled job",
-            "debugLog": "cron",
-        }
-    )
-
-    assert isinstance(event, CronJobInputEvent)
-    assert event.integration_type == "cron_job"
-    assert event.formatted_content == "Scheduled job"
-
-
-def test_deserialize_input_event_enriches_slack_metadata() -> None:
-    event = deserialize_input_event(
-        {
-            "integrationType": "slack",
-            "eventType": "message",
-            "formattedContent": "Slack message",
-            "debugLog": "slack-debug",
-            "metadata": {
-                "channelId": "C123",
-                "channelName": "alerts",
-                "userId": "U123",
-                "userName": "Olivia",
-                "text": "Deploy finished",
-                "timestamp": "1710000000.100000",
-                "threadTs": "1710000000.000001",
-                "teamId": "T123",
-                "permalink": "https://slack.example/message",
-                "channelType": "im",
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {"type": "mrkdwn", "text": "Deploy finished"},
-                    }
-                ],
-                "attachments": [
-                    {
-                        "fallback": "fallback text",
-                        "author_name": "Terse",
-                    }
-                ],
-                "files": [
-                    {
-                        "id": "F123",
-                        "name": "deploy.log",
-                        "url_private": "https://files.example/deploy.log",
-                    }
-                ],
-            },
-        }
-    )
-
-    assert isinstance(event, SlackInputEvent)
-    assert event.channel_id == "C123"
-    assert event.channel_name == "alerts"
-    assert event.user_id == "U123"
-    assert event.user_name == "Olivia"
-    assert event.text == "Deploy finished"
-    assert event.timestamp == "1710000000.100000"
-    assert event.thread_ts == "1710000000.000001"
-    assert event.thread_timestamp == "1710000000.000001"
-    assert event.team_id == "T123"
-    assert event.permalink == "https://slack.example/message"
-    assert event.channel_type == SlackChannelType.im
-    assert event.blocks == [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}]
-    assert event.attachments is not None
-    assert event.attachments[0].author_name == "Terse"
-    assert event.files is not None
-    assert event.files[0].url_private == "https://files.example/deploy.log"
-
-
-def test_deserialize_input_event_falls_back_for_unknown_integrations() -> None:
-    event = deserialize_input_event(
-        {
-            "integrationType": "unknown_service",
-            "eventType": "manual",
-            "formattedContent": "Unknown",
-            "debugLog": "unknown",
-        }
-    )
-
-    assert isinstance(event, SerializedEventInputEvent)
-    assert event.integration_type == "unknown_service"
 
 
 def test_slack_tool_output_models_accept_backend_shapes() -> None:
@@ -406,10 +349,10 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
     with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
         execute_registered_job(
             job,
-            CronJobInputEvent(
-                event_type="manual",
-                formatted_content="manual trigger",
-                debug_log="manual",
+            _RawCronTrigger(
+                event_type="cron",
+                input_id="input_123",
+                is_manual_trigger=True,
             ),
             agent=TerseAgent(),
         )
@@ -504,10 +447,11 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         events = list(
             TerseAgent().run(
                 "hello",
-                CronJobInputEvent(
-                    event_type="manual",
-                    formatted_content="Scheduled event",
-                    debug_log="cron",
+                _RawCronTrigger(
+                    event_type="cron",
+                    input_id="input_123",
+                    is_manual_trigger=True,
+                    manual_context="Scheduled event",
                 ),
             )
         )
@@ -524,7 +468,8 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
     assert captured["method"] == "POST"
     assert captured["headers"]["Authorization"] == "Bearer terse_test_key"
     assert captured["json"]["event"]["integrationType"] == "cron_job"
-    assert captured["json"]["event"]["formattedContent"] == "Scheduled event"
+    assert captured["json"]["event"]["inputId"] == "input_123"
+    assert captured["json"]["event"]["manualContext"] == "Scheduled event"
 
 
 def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
@@ -694,6 +639,338 @@ def test_assert_sse_response_reads_streaming_error_details_list_on_http_error() 
 
     assert "Invalid request body" in str(exc_info.value)
     assert "`skills[0].config.objectSlug` is required" in str(exc_info.value)
+
+
+def test_sdk_trigger_delegates_attribute_access() -> None:
+    trigger = _RawCronTrigger(
+        event_type="cron",
+        input_id="input_123",
+        is_manual_trigger=True,
+        manual_context="hello",
+    )
+    sdk = SDKTrigger(trigger, "formatted text", "debug info")
+
+    assert sdk.data is trigger
+    assert sdk.formatted_content == "formatted text"
+    assert sdk.debug_log == "debug info"
+    assert sdk.event_type == trigger.event_type
+    assert sdk.input_id == "input_123"
+    assert sdk.is_manual_trigger is True
+    assert sdk.manual_context == "hello"
+    assert "SDKTrigger(" in repr(sdk)
+
+
+def test_sdk_trigger_raises_attribute_error_for_missing_attrs() -> None:
+    trigger = _RawCronTrigger(event_type="cron", input_id="input_123")
+    sdk = SDKTrigger(trigger, "", "")
+
+    with pytest.raises(AttributeError):
+        _ = sdk.nonexistent_field
+
+
+def test_create_sdk_trigger_from_dict() -> None:
+    envelope = {
+        "integrationType": "cron_job",
+        "eventType": "cron",
+        "formattedContent": "Scheduled job ran",
+        "debugLog": "cron triggered at 12:00",
+        "data": {
+            "integrationType": "cron_job",
+            "eventType": "cron",
+            "inputId": "input_123",
+            "isManualTrigger": True,
+        },
+    }
+
+    sdk = create_sdk_trigger(envelope)
+
+    assert isinstance(sdk, SDKTrigger)
+    assert isinstance(sdk.data, _RawCronTrigger)
+    assert sdk.formatted_content == "Scheduled job ran"
+    assert sdk.debug_log == "cron triggered at 12:00"
+    assert sdk.input_id == "input_123"
+
+
+def test_create_sdk_trigger_from_json_string() -> None:
+    envelope = json.dumps(
+        {
+            "integrationType": "cron_job",
+            "eventType": "cron",
+            "formattedContent": "cron fmt",
+            "debugLog": "cron dbg",
+            "data": {
+                "integrationType": "cron_job",
+                "eventType": "cron",
+                "inputId": "input_456",
+            },
+        }
+    )
+
+    sdk = create_sdk_trigger(envelope)
+
+    assert isinstance(sdk.data, _RawCronTrigger)
+    assert sdk.formatted_content == "cron fmt"
+    assert sdk.debug_log == "cron dbg"
+    assert sdk.input_id == "input_456"
+
+
+def test_deserialize_input_event_matches_create_sdk_trigger() -> None:
+    envelope = {
+        "integrationType": "slack",
+        "eventType": "message",
+        "formattedContent": "Slack message",
+        "debugLog": "slack debug",
+        "data": {
+            "integrationType": "slack",
+            "eventType": "message",
+            "channelId": "C123",
+            "channelName": "general",
+            "userId": "U123",
+            "userName": "bot",
+            "text": "hello",
+            "timestamp": "1710000000.100000",
+            "threadTs": "1710000000.000001",
+            "threadTimestamp": "1710000000.000001",
+            "teamId": "T1",
+            "permalink": "https://example.com",
+            "channelType": "channel",
+            "blocks": None,
+            "attachments": None,
+            "files": None,
+        },
+    }
+
+    sdk = runtime_module.deserialize_input_event(envelope)
+
+    assert isinstance(sdk, SDKTrigger)
+    assert isinstance(sdk.data, _RawSlackMessageTrigger)
+    assert sdk.formatted_content == "Slack message"
+    assert sdk.debug_log == "slack debug"
+    assert sdk.text == "hello"
+    assert sdk.channel_id == "C123"
+
+
+def test_create_sdk_trigger_emits_debug_logs_when_terse_debug_enabled(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TERSE_DEBUG", "1")
+    original_level = runtime_module.LOGGER.level
+
+    try:
+        with caplog.at_level(logging.DEBUG, logger="terse.sdk.runtime"):
+            create_sdk_trigger(
+                {
+                    "integrationType": "slack",
+                    "eventType": "message",
+                    "formattedContent": "Slack message",
+                    "debugLog": "slack debug",
+                    "data": {
+                        "integrationType": "slack",
+                        "eventType": "message",
+                        "channelId": "C123",
+                        "channelName": "general",
+                        "userId": "U123",
+                        "userName": "bot",
+                        "text": "hello",
+                        "timestamp": "1710000000.100000",
+                        "threadTs": None,
+                        "threadTimestamp": None,
+                        "teamId": "T1",
+                        "permalink": "https://example.com",
+                        "channelType": "channel",
+                        "blocks": None,
+                        "attachments": None,
+                        "files": None,
+                    },
+                }
+            )
+    finally:
+        runtime_module.LOGGER.setLevel(original_level)
+
+    assert "Deserialized input event slack/message" in caplog.text
+
+
+def test_serialize_run_event_preserves_nullable_fields_and_json_enum_values() -> None:
+    sdk = runtime_module.deserialize_input_event(
+        {
+            "integrationType": "slack",
+            "eventType": "message",
+            "formattedContent": "Slack message",
+            "debugLog": "slack debug",
+            "data": {
+                "integrationType": "slack",
+                "eventType": "message",
+                "channelId": "C123",
+                "channelName": "general",
+                "userId": "U123",
+                "userName": "bot",
+                "text": "hello",
+                "timestamp": "1710000000.100000",
+                "threadTs": None,
+                "threadTimestamp": None,
+                "teamId": "T1",
+                "permalink": "https://example.com",
+                "channelType": "channel",
+                "blocks": None,
+                "attachments": None,
+                "files": None,
+            },
+        }
+    )
+
+    serialized = runtime_module._serialize_run_event(sdk)
+
+    assert serialized["threadTs"] is None
+    assert serialized["threadTimestamp"] is None
+    assert serialized["channelType"] == "channel"
+    assert serialized["blocks"] is None
+    assert serialized["attachments"] is None
+    assert serialized["files"] is None
+
+
+def test_build_agent_run_request_body_preserves_nested_null_event_fields() -> None:
+    sdk = runtime_module.deserialize_input_event(
+        {
+            "integrationType": "slack",
+            "eventType": "message",
+            "formattedContent": "Slack message",
+            "debugLog": "slack debug",
+            "data": {
+                "integrationType": "slack",
+                "eventType": "message",
+                "channelId": "C123",
+                "channelName": "general",
+                "userId": "U123",
+                "userName": "bot",
+                "text": "hello",
+                "timestamp": "1710000000.100000",
+                "threadTs": None,
+                "threadTimestamp": None,
+                "teamId": "T1",
+                "permalink": "https://example.com",
+                "channelType": "channel",
+                "blocks": None,
+                "attachments": None,
+                "files": None,
+            },
+        }
+    )
+
+    request_body = runtime_module._build_agent_run_request_body(
+        prompt="hi",
+        event=sdk,
+        skills=[],
+        tool_approvals=[],
+    )
+    request_payload = runtime_module._drop_top_level_none_values(
+        request_body.model_dump(
+            by_alias=True,
+            mode="json",
+            exclude_none=False,
+        )
+    )
+
+    assert isinstance(request_payload["event"], dict)
+    assert request_payload["event"]["threadTs"] is None
+    assert request_payload["event"]["threadTimestamp"] is None
+    assert request_payload["event"]["channelType"] == "channel"
+    assert request_payload["event"]["blocks"] is None
+    assert request_payload["event"]["attachments"] is None
+    assert request_payload["event"]["files"] is None
+    assert "options" not in request_payload
+
+
+def test_build_agent_run_request_body_emits_debug_logs_when_terse_debug_enabled(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TERSE_DEBUG", "1")
+    original_level = runtime_module.LOGGER.level
+    sdk = runtime_module.deserialize_input_event(
+        {
+            "integrationType": "slack",
+            "eventType": "message",
+            "formattedContent": "Slack message",
+            "debugLog": "slack debug",
+            "data": {
+                "integrationType": "slack",
+                "eventType": "message",
+                "channelId": "C123",
+                "channelName": "general",
+                "userId": "U123",
+                "userName": "bot",
+                "text": "hello",
+                "timestamp": "1710000000.100000",
+                "threadTs": None,
+                "threadTimestamp": None,
+                "teamId": "T1",
+                "permalink": "https://example.com",
+                "channelType": "channel",
+                "blocks": None,
+                "attachments": None,
+                "files": None,
+            },
+        }
+    )
+
+    try:
+        with caplog.at_level(logging.DEBUG, logger="terse.sdk.runtime"):
+            runtime_module._build_agent_run_request_body(
+                prompt="hi",
+                event=sdk,
+                skills=[],
+                tool_approvals=[],
+            )
+    finally:
+        runtime_module.LOGGER.setLevel(original_level)
+
+    assert "Building /sdk/agent-run request for slack/message" in caplog.text
+
+
+def test_execute_registered_job_wraps_raw_trigger_in_sdk_trigger() -> None:
+    received_events: list[Any] = []
+    app = Terse()
+
+    @app.job(name="wrap-test")
+    def handler(event: CronTrigger, agent: TerseAgent) -> None:
+        received_events.append(event)
+
+    raw = _RawCronTrigger(
+        event_type="cron",
+        input_id="input_123",
+        is_manual_trigger=True,
+    )
+
+    execute_registered_job(get_job_registry()["wrap-test"], raw, agent=TerseAgent())
+
+    assert len(received_events) == 1
+    assert isinstance(received_events[0], SDKTrigger)
+    assert received_events[0].data is raw
+    assert received_events[0].formatted_content == ""
+    assert received_events[0].debug_log == ""
+
+
+def test_execute_registered_job_passes_sdk_trigger_through() -> None:
+    received_events: list[Any] = []
+    app = Terse()
+
+    @app.job(name="passthrough-test")
+    def handler(event: CronTrigger, agent: TerseAgent) -> None:
+        received_events.append(event)
+
+    raw = _RawCronTrigger(
+        event_type="cron",
+        input_id="input_123",
+    )
+    sdk_event = SDKTrigger(raw, "pre-formatted", "pre-debug")
+
+    execute_registered_job(get_job_registry()["passthrough-test"], sdk_event, agent=TerseAgent())
+
+    assert len(received_events) == 1
+    assert received_events[0] is sdk_event
+    assert received_events[0].formatted_content == "pre-formatted"
+    assert received_events[0].debug_log == "pre-debug"
 
 
 def _json_response(

@@ -1,4 +1,5 @@
 import { InputConfigType } from "@prisma/client"
+import { WorkOSTrigger, WorkOSWebhookPayload } from "terse-types"
 import { ConfigData, ConfigType, WorkOSEventType, WorkOSInputConfigSchema } from "terse-types/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -14,8 +15,8 @@ import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"
 
-import { InputEvent } from "./abstract/InputEvent"
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]
 
@@ -85,7 +86,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
 
         const apiKey = await getSecret(IntegrationType.WORKOS, integrationId, SecretField.ApiKey)
         const enrichedPayload = apiKey ? await enrichWorkOSEventPayload(payload, apiKey) : payload
-        const event = new WorkOSEvent(enrichedPayload, integrationId)
+        const event = new WorkOSTriggerRuntime(enrichedPayload, integrationId)
         const processor = new EventProcessor(event, user)
         const results = await processor.process()
 
@@ -239,7 +240,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         options?: {
             limit?: number
         }
-    ): Promise<InputEvent[]> {
+    ): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.WORKOS_INPUT) {
             return []
         }
@@ -258,7 +259,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         const events = await fetchWorkOSEvents(apiKey, workosConfig.eventTypes, limit)
         const enrichedEvents = await Promise.all(events.map(event => enrichWorkOSEventPayload(event, apiKey)))
 
-        return enrichedEvents.map(evt => new WorkOSEvent(evt, integrationId))
+        return enrichedEvents.map(evt => new WorkOSTriggerRuntime(evt, integrationId))
     }
 }
 
@@ -307,58 +308,25 @@ async function fetchWorkOSEvents(apiKey: string, eventTypes: string[], limit: nu
     return json.data
 }
 
-// WorkOS webhook event payload
-export interface WorkOSWebhookPayload {
-    id: string
-    event: string
-    data: Record<string, any>
-    created_at: string
-}
-
 // Combined type for processWebhookEvent (single parameter per interface contract)
 export interface WorkOSWebhookRequest {
     integrationId: string
     payload: WorkOSWebhookPayload
 }
 
-export class WorkOSEvent extends InputEvent implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.WORKOS
-    readonly eventType: WorkOSEventType
+export class WorkOSTriggerRuntime extends TriggerRuntime<WorkOSTrigger> implements Identifiable {
+    readonly integrationType = IntegrationType.WORKOS
     entityType = HydratorType.WORKOS_EVENT
     entityId: string
-    data: WorkOSWebhookPayload
+    data: WorkOSTrigger
 
     constructor(
         payload: WorkOSWebhookPayload,
         private integrationId: string
     ) {
         super()
-        this.data = payload
-        this.eventType = payload.event as WorkOSEventType
+        this.data = buildWorkOSTrigger(payload)
         this.entityId = `${integrationId}:${payload.id}`
-    }
-
-    formatForAgentRunner(): string {
-        const eventType = this.data.event
-        const data = this.data.data
-        const parts = [`WorkOS Event: ${eventType}`]
-
-        if (data.email) {
-            parts.push(`User Email: ${data.email}`)
-        }
-        if (data.first_name || data.last_name) {
-            parts.push(`User Name: ${[data.first_name, data.last_name].filter(Boolean).join(" ")}`)
-        }
-        if (data.id) {
-            parts.push(`User ID: ${data.id}`)
-        }
-
-        parts.push(`\nFull Event Data:\n${JSON.stringify(data, null, 2)}`)
-        return parts.join("\n")
-    }
-
-    debugLog(): string {
-        return `WorkOS ${this.data.event} (integration: ${this.integrationId})`
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -372,55 +340,12 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
         if (!config || !config.event_types || config.event_types.length === 0) {
             return false
         }
-        return config.event_types.includes(this.data.event)
-    }
-
-    serializeMetadata(): Record<string, unknown> {
-        const d = this.data.data
-        const eventType = this.data.event
-        const user = extractWorkOSUserFromPayload(d, eventType)
-        const meta: Record<string, unknown> = {
-            eventId: this.data.id,
-            createdAt: this.data.created_at
-        }
-
-        if (eventType.startsWith("user.") && user) {
-            meta.user = user
-        } else if (eventType.startsWith("organization_membership.")) {
-            meta.membership = {
-                id: d.id,
-                userId: d.user_id,
-                organizationId: d.organization_id,
-                role: d.role,
-                status: d.status
-            }
-        } else if (eventType === "invitation.accepted" || eventType === "invitation.created" || eventType === "invitation.resent" || eventType === "invitation.revoked") {
-            meta.invitation = {
-                id: d.id,
-                email: d.email,
-                organizationId: d.organization_id,
-                inviterEmail: d.inviter_email,
-                state: d.state,
-                acceptedAt: d.accepted_at
-            }
-            if (user) {
-                meta.user = user
-            }
-        } else if (eventType === "organization.created") {
-            meta.organization = {
-                id: d.id,
-                name: d.name
-            }
-        }
-
-        return meta
+        return !config.event_types || config.event_types.length === 0 || config.event_types.includes(this.data.eventType)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
-        const eventType = this.data.event
-        const data = this.data.data
-        const userEmail = data.email || data.user?.email
-        const userName = [data.first_name, data.last_name].filter(Boolean).join(" ") || userEmail || "Unknown"
+        const eventType = this.data.eventType
+        const userName = getWorkOSMetadataUserName(this.data)
 
         return {
             event: eventType,
@@ -430,6 +355,83 @@ export class WorkOSEvent extends InputEvent implements Identifiable {
             subheader: userName
         }
     }
+}
+
+function getWorkOSMetadataUserName(event: WorkOSTrigger): string {
+    const user = "user" in event ? event.user : undefined
+    if (user) {
+        return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Unknown"
+    }
+    if ("invitation" in event) {
+        return event.invitation.email || "Unknown"
+    }
+    return "Unknown"
+}
+
+function buildWorkOSTrigger(payload: WorkOSWebhookPayload): WorkOSTrigger {
+    const data = payload.data
+    const eventType = payload.event as WorkOSEventType
+    const baseEvent = {
+        integrationType: IntegrationType.WORKOS as const,
+        eventId: payload.id,
+        createdAt: payload.created_at
+    }
+    const user = extractWorkOSUserFromPayload(data, eventType)
+
+    switch (eventType) {
+        case WorkOSEventType.USER_CREATED:
+        case WorkOSEventType.USER_UPDATED:
+        case WorkOSEventType.USER_DELETED:
+            return {
+                ...baseEvent,
+                eventType,
+                user: user ?? buildWorkOSUserFromPayload(data, eventType)
+            }
+        case WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED:
+        case WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED:
+        case WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED:
+            return {
+                ...baseEvent,
+                eventType,
+                membership: {
+                    id: getString(data.id) ?? "",
+                    userId: getString(data.user_id) ?? getString(data.userId) ?? "",
+                    organizationId: getString(data.organization_id) ?? getString(data.organizationId) ?? "",
+                    role: {
+                        slug: getString(getNestedRecord(data.role)?.slug) ?? ""
+                    },
+                    status: getString(data.status) ?? ""
+                }
+            }
+        case WorkOSEventType.INVITATION_CREATED:
+        case WorkOSEventType.INVITATION_ACCEPTED:
+        case WorkOSEventType.INVITATION_RESENT:
+        case WorkOSEventType.INVITATION_REVOKED:
+            return {
+                ...baseEvent,
+                eventType,
+                invitation: {
+                    id: getString(data.id) ?? "",
+                    email: getString(data.email) ?? "",
+                    organizationId: getString(data.organization_id) ?? getString(data.organizationId) ?? "",
+                    inviterEmail: getString(data.inviter_email) ?? getString(data.inviterEmail),
+                    state: getString(data.state) ?? "",
+                    acceptedAt: getString(data.accepted_at) ?? getString(data.acceptedAt)
+                },
+                ...(user ? { user } : {})
+            }
+        case WorkOSEventType.ORGANIZATION_CREATED:
+            return {
+                ...baseEvent,
+                eventType,
+                organization: {
+                    id: getString(data.id) ?? "",
+                    name: getString(data.name) ?? ""
+                }
+            }
+    }
+
+    throw new Error(`Unsupported WorkOS trigger event: ${eventType}`)
 }
 
 function getNestedRecord(value: unknown): Record<string, any> | null {
@@ -456,6 +458,19 @@ function extractWorkOSUserFromPayload(data: Record<string, any>, eventType: stri
     return {
         id,
         email,
+        firstName: getString(data.first_name) || getString(data.firstName) || getString(nestedUser?.first_name) || getString(nestedUser?.firstName),
+        lastName: getString(data.last_name) || getString(data.lastName) || getString(nestedUser?.last_name) || getString(nestedUser?.lastName),
+        emailVerified: Boolean(data.email_verified ?? data.emailVerified ?? nestedUser?.email_verified ?? nestedUser?.emailVerified),
+        profilePictureUrl: getString(data.profile_picture_url) || getString(data.profilePictureUrl) || getString(nestedUser?.profile_picture_url) || getString(nestedUser?.profilePictureUrl)
+    }
+}
+
+function buildWorkOSUserFromPayload(data: Record<string, any>, eventType: string) {
+    const nestedUser = getNestedRecord(data.user)
+
+    return {
+        id: getWorkOSUserIdFromPayload(data, eventType) ?? "",
+        email: getString(data.email) || getString(nestedUser?.email) || "",
         firstName: getString(data.first_name) || getString(data.firstName) || getString(nestedUser?.first_name) || getString(nestedUser?.firstName),
         lastName: getString(data.last_name) || getString(data.lastName) || getString(nestedUser?.last_name) || getString(nestedUser?.lastName),
         emailVerified: Boolean(data.email_verified ?? data.emailVerified ?? nestedUser?.email_verified ?? nestedUser?.emailVerified),

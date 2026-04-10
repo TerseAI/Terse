@@ -38,21 +38,6 @@
         "INSTALLATION_DELETED": "/github/installation-deleted",
         "UNIFIED_EVENT": "/github/unified-event"
     },
-    "ATLASSIAN": {
-        "INTEGRATIONS": "/atlassian/integrations",
-        "OAUTH_CALLBACK": "/atlassian/oauth/callback"
-    },
-    "JIRA": {
-        "RESOURCES": "/jira/resources",
-        "GET_API_KEY": "/jira/get-api-key",
-        "SET_API_KEY": "/jira/set-api-key",
-        "VALIDATE_AND_FETCH_PROJECTS": "/jira/validate-and-fetch-projects",
-        "DELETE_CREDENTIALS": "/jira/delete-credentials"
-    },
-    "CONFLUENCE": {
-        "INTEGRATIONS": "/confluence/integrations",
-        "RESOURCES": "/confluence/resources"
-    },
     "GMAIL": {
         "INTEGRATIONS": "/gmail/integrations",
         "CALLBACK": "/gmail/callback",
@@ -63,10 +48,6 @@
         "OAUTH_CALLBACK": "/notion/oauth/callback",
         "RESOURCES": "/notion/resources",
         "DELETE_INTEGRATION": "/notion/delete-integration"
-    },
-    "FIGMA": {
-        "INTEGRATIONS": "/figma/integrations",
-        "OAUTH_CALLBACK": "/figma/oauth/callback"
     },
     "LINEAR": {
         "OAUTH_CALLBACK": "/linear/oauth/callback",
@@ -162,9 +143,7 @@
     },
     "WEBHOOKS": {
         "GMAIL": "/webhooks/gmail",
-        "FIGMA": "/webhooks/figma",
         "WORKOS": "/webhooks/workos",
-        "JIRA_BY_ACCOUNT_ID": "/webhooks/jira/:accountId",
         "LINEAR_BY_USER_ID": "/webhooks/linear/:userId",
         "SCHEDULE_BY_INPUT_ID": "/webhooks/schedule/:inputId",
         "WORKOS_TRIGGER_BY_INTEGRATION_ID": "/webhooks/workos-trigger/:integrationId",

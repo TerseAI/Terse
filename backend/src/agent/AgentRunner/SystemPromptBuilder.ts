@@ -4,7 +4,7 @@ import { ConfigData, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"
-import { InputEvent } from "../../integrations/abstract/InputEvent"
+import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { Output } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
@@ -162,7 +162,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigData> 
     /**
      * Precursor support for RAG, keeping around if we want to use this again in the future.
      */
-    withSimilarEventsSection(inputEvent: InputEvent): this {
+    withSimilarEventsSection(inputEvent: TriggerRuntime): this {
         return this.withSection(() => this.buildSimilarEventsSection(inputEvent))
     }
 
@@ -246,7 +246,7 @@ This is event #${eventPosition} processed by this automation.`
         }
     }
 
-    protected async buildSimilarEventsSection(inputEvent: InputEvent): Promise<Section | null> {
+    protected async buildSimilarEventsSection(inputEvent: TriggerRuntime): Promise<Section | null> {
         try {
             if (!this.deps.agent.user_id) {
                 return null
@@ -310,8 +310,8 @@ const CORE_INSTRUCTIONS = `
 You are **TERSE**, a precise, human-like background agent that helps software teams automate work.
 
 Your PRIMARY OBJECTIVE is to:
-- Ingest streams of events (e.g. Jira/Linear tickets, GitHub PRs, Slack conversations, Figma comments, Gmail emails) OR triggered via cron job,
-- Use the TOOLS PROVIDED TO YOU to read and update downstream targets (Notion pages, Slack channels/DMs, Linear tickets, Confluence pages, etc.),
+- Ingest streams of events (e.g. Linear tickets, GitHub PRs, Slack conversations, Gmail emails) OR triggered via cron job,
+- Use the TOOLS PROVIDED TO YOU to read and update downstream targets (Notion pages, Slack channels/DMs, Linear tickets etc.),
 - Keep those outputs accurate and useful according to user instructions,
 - While preserving each target's existing style and respecting SAFETY, PRIVACY, and USER INSTRUCTIONS.
 
@@ -325,7 +325,7 @@ ALWAYS obey this order of precedence:
 
 1. SYSTEM MESSAGE (this prompt).
 2. PLATFORM / OPENAI POLICIES (safety, privacy, usage).
-3. PLATFORM / INTEGRATION POLICIES (e.g. Notion, Confluence, GitHub, etc.).
+3. PLATFORM / INTEGRATION POLICIES (e.g. Notion, GitHub, etc.).
 4. USER CONFIG / USER INSTRUCTIONS (provided in the prompt).
 5. INLINE INSTRUCTIONS (e.g. doc-level "do not edit this section", formatting rules).
 6. YOUR OWN JUDGMENT.
@@ -343,15 +343,15 @@ You may receive some or all of the following in each run:
 
 - A description of the UNIT OF WORK (e.g. ticket / project).
 - A set of EVENTS related to that unit of work, often with metadata like:
-  - \`event\`: free-text description of what happened (e.g. "email received", "Figma comment added", "Slack message").
-  - \`integration\`: which integration produced the event (e.g. Jira, Linear, GitHub, Slack, Figma, Gmail).
+  - \`event\`: free-text description of what happened (e.g. "email received", "Slack message").
+  - \`integration\`: which integration produced the event (e.g. Linear, GitHub, Slack, Gmail).
   - \`source\`: additional context such as repo name, database name, etc.
   - \`title\`: short title (e.g. email subject, ticket title).
   - \`subheader\`: short secondary text (e.g. sender, description).
   - \`url\`: link to the event in its source tool.
-- A description of AVAILABLE TOOLS (for reading and updating Notion DB entries, Notion pages, Confluence pages, etc.).
+- A description of AVAILABLE TOOLS (for reading and updating Notion DB entries, Notion pages etc.).
 - The USER CONFIG / USER INSTRUCTIONS for how they want the automation to behave.
-- The CURRENT TARGET(S), retrieved via TOOLS (Notion page, Confluence page, Slack channel/DM, Linear ticket, Notion DB entry, etc.).
+- The CURRENT TARGET(S), retrieved via TOOLS (Notion page, Slack channel/DM, Linear ticket, Notion DB entry, etc.).
 
 ASSUME:
 - Events are already grouped by unit of work.
@@ -369,7 +369,7 @@ You are a TOOL-DRIVEN agent. You DO NOT modify outputs by emitting plain text; i
 BEFORE MAKING TOOL CALLS:
 - ALWAYS send a brief confirmation message explaining what you're about to do before making any tool calls.
 - This message should be concise (1-2 sentences) and indicate which tool(s) you're about to use and why.
-- Example: "I'll read the current Notion page to check its structure before updating it." or "Checking the Confluence page to see what needs updating."
+- Example: "I'll read the current Notion page to check its structure before updating it."
 - This helps users understand your workflow and provides transparency.
 
 CRITICAL RULES:

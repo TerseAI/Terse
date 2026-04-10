@@ -36,7 +36,7 @@ Use `src/main.py` to register workflows. Re-run `terse generate` whenever your c
 Import these from `terse_sdk`:
 
 - `Terse`: the runtime object used to register workflows
-- `CronJobInputEvent` and other typed event models
+- `CronTrigger` and other typed trigger event models
 - `FinalOutput` if you want to stream and inspect final output explicitly
 
 Import these from `terse_generated`:
@@ -58,18 +58,18 @@ app = Terse()
 
 Registers a workflow in the Python runtime.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `str` | Unique workflow identifier. Used to match workflows across deploys. |
-| `triggers` | `list[TriggerConfig]` | One or more triggers that start the workflow. |
-| `skills` | `list[SkillConfig]` | Capabilities available to the model during `run` and `run_and_wait`. |
-| `tool_approvals` | `list[str]` | Tool names that require human approval before execution. |
-| `filter` | `Callable[[event], bool]` | Optional function to skip the run for specific events. |
-| `webhook_url` | `str` | Optional URL to notify after each run completes. |
-| decorated function | `Callable[[event, agent], None]` | The workflow handler. |
+| Field              | Type                             | Description                                                          |
+| ------------------ | -------------------------------- | -------------------------------------------------------------------- |
+| `name`             | `str`                            | Unique workflow identifier. Used to match workflows across deploys.  |
+| `triggers`         | `list[TriggerConfig]`            | One or more triggers that start the workflow.                        |
+| `skills`           | `list[SkillConfig]`              | Capabilities available to the model during `run` and `run_and_wait`. |
+| `tool_approvals`   | `list[str]`                      | Tool names that require human approval before execution.             |
+| `filter`           | `Callable[[event], bool]`        | Optional function to skip the run for specific events.               |
+| `webhook_url`      | `str`                            | Optional URL to notify after each run completes.                     |
+| decorated function | `Callable[[event, agent], None]` | The workflow handler.                                                |
 
 ```python
-from terse_sdk import CronJobInputEvent, Terse
+from terse_sdk import CronTrigger, Terse
 from terse_generated import Schedule, TerseAgent
 
 app = Terse()
@@ -79,7 +79,7 @@ app = Terse()
     triggers=[Schedule.cron("0 9 * * 1")],
     skills=[],
 )
-def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
+def run_job(event: CronTrigger, agent: TerseAgent) -> None:
     summary = agent.run_and_wait(
         f"Summarize the most important pipeline changes this week. Context: {event.formatted_content}",
         event,
@@ -177,10 +177,7 @@ Today, Python generation focuses on:
 - deterministic wrappers on `agent.tools.snowflake`
 - generated `TerseAgent`, `GeneratedTools`, `create_tools()`, and `attach_tools()`
 
-<Warning>
-  Re-run `terse generate` when your integration context changes.
-  Do not edit `src/terse_generated.py` by hand.
-</Warning>
+<Warning>Re-run `terse generate` when your integration context changes. Do not edit `src/terse_generated.py` by hand.</Warning>
 
 ## Current Python surface
 
@@ -200,12 +197,12 @@ If a helper is not present in `src/terse_generated.py`, do not invent it. Re-run
 Use `filter` to skip runs for events that do not match your criteria. Return `True` to run, `False` to skip.
 
 ```python
-from terse_sdk import CronJobInputEvent, Terse
+from terse_sdk import CronTrigger, Terse
 from terse_generated import Schedule, TerseAgent
 
 app = Terse()
 
-def weekday_only(event: CronJobInputEvent) -> bool:
+def weekday_only(event: CronTrigger) -> bool:
     return "Sat" not in event.formatted_content and "Sun" not in event.formatted_content
 
 @app.job(
@@ -214,7 +211,7 @@ def weekday_only(event: CronJobInputEvent) -> bool:
     skills=[],
     filter=weekday_only,
 )
-def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
+def run_job(event: CronTrigger, agent: TerseAgent) -> None:
     summary = agent.run_and_wait(f"Summarize the workday context: {event.formatted_content}", event)
     print(summary)
 ```
@@ -224,7 +221,7 @@ def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
 List tool names in `tool_approvals` to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
 
 ```python
-from terse_sdk import CronJobInputEvent, Terse
+from terse_sdk import CronTrigger, Terse
 from terse_generated import Schedule, Snowflake, TerseAgent
 
 app = Terse()
@@ -235,7 +232,7 @@ app = Terse()
     skills=[Snowflake.skill()],
     tool_approvals=["snowflakeExecuteQuery"],
 )
-def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
+def run_job(event: CronTrigger, agent: TerseAgent) -> None:
     result = agent.tools.snowflake.execute_query(
         query="select current_date() as today",
     )

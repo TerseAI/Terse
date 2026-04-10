@@ -4,6 +4,7 @@ import { InputConfigType } from "@prisma/client"
 import axios, { AxiosResponse } from "axios"
 import * as cheerio from "cheerio"
 import { Request, Response } from "express"
+import { GithubTrigger } from "terse-types"
 import { ConfigData, ConfigType, GitHubConfigSchema, GitHubEventType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
@@ -16,14 +17,7 @@ import logger, { runWithUserContext } from "../logger"
 import { getGitHubAccessToken } from "../outputs/github/githubApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import {
-    GithubAppInstallation,
-    GithubAppInstallationRepository,
-    GithubAppInstallationRepositoryResponse,
-    GithubAppInstallationResponse,
-    GithubAppUnifiedEventRequest,
-    GithubAppUser
-} from "../routes/GithubTypes"
+import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretField, getSecret, storeSecret } from "../services/SecretService"
@@ -35,12 +29,10 @@ import { getUserForOrg } from "../utility/workos"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { InputEvent } from "./abstract/InputEvent"
 import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
-export class GithubIntegrationManager
-    implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB>
-{
+export class GithubIntegrationManager implements Integration<GithubIntegration, GithubTrigger, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() {}
     integrationType: IntegrationType = IntegrationType.GITHUB
 
@@ -123,7 +115,7 @@ export class GithubIntegrationManager
         }))
     }
 
-    async processWebhookEvent(event: GithubAppUnifiedEventRequest): Promise<void> {
+    async processWebhookEvent(event: GithubTrigger): Promise<void> {
         const users: PrismaUser[] = await resolveUsersForGithubInstallation(event.installationId)
 
         if (users.length === 0) {
@@ -152,7 +144,7 @@ export class GithubIntegrationManager
             // Attach any images or files from the event
             const storedFiles: StoredFile[] = await getPullRequestFiles(event, accessToken, event.installationId.toString())
             await runWithUserContext(fullUser, async () => {
-                const githubEvent = new GithubEvent(event, storedFiles)
+                const githubEvent = new GithubTriggerRuntime(event, storedFiles)
                 const eventProcessor = new EventProcessor(githubEvent, fullUser)
                 await eventProcessor.process()
             })
@@ -354,7 +346,7 @@ export class GithubIntegrationManager
         }
     }
 
-    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<InputEvent[]> {
+    async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.GITHUB) {
             return []
         }
@@ -397,19 +389,22 @@ export class GithubIntegrationManager
         }
 
         const requestedTypes = githubConfig.eventTypes ?? []
-        const wantsPush = requestedTypes.length === 0 || requestedTypes.includes(GitHubEventType.PUSH)
+        if (requestedTypes.length === 0) {
+            return []
+        }
+        const wantsPush = requestedTypes.includes(GitHubEventType.PUSH)
 
         const requestedPRTypes = requestedTypes.filter(t => t.startsWith("pull_request."))
-        const wantsPR = requestedTypes.length === 0 || requestedPRTypes.length > 0
-        const prApiState = derivePRApiState(requestedTypes.length === 0 ? [] : requestedPRTypes)
+        const wantsPR = requestedPRTypes.length > 0
+        const prApiState = derivePRApiState(requestedPRTypes)
 
-        const events: InputEvent[] = []
+        const events: TriggerRuntime[] = []
         for (const repo of repos) {
             if (wantsPush) {
                 const commits = await fetchRecentCommitsForSample(accessToken, repo.owner, repo.name, 5)
                 for (const commit of commits) {
                     const eventData = await createPushEventData(commit, repo, installationIdNum, accessToken)
-                    if (eventData) events.push(new GithubEvent(eventData, []))
+                    if (eventData) events.push(new GithubTriggerRuntime(eventData, []))
                 }
             }
             if (wantsPR) {
@@ -419,7 +414,7 @@ export class GithubIntegrationManager
                     const eventData = await createPullRequestEventData(pr, repo, installationIdNum, accessToken)
                     if (!eventData) continue
                     const storedFiles = await getPullRequestFiles(eventData, accessToken, installationIdNum.toString())
-                    events.push(new GithubEvent(eventData, storedFiles))
+                    events.push(new GithubTriggerRuntime(eventData, storedFiles))
                 }
             }
             if (events.length >= maxEvents) break
@@ -429,21 +424,19 @@ export class GithubIntegrationManager
     }
 }
 
-// MARK: - GithubEvent
+// MARK: - GithubTriggerRuntime
 
-export class GithubEvent extends InputEvent implements Identifiable {
-    readonly integrationType: IntegrationType = IntegrationType.GITHUB
-    readonly eventType: GitHubEventType
+export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implements Identifiable {
+    readonly integrationType = IntegrationType.GITHUB
     entityType = HydratorType.GITHUB_EVENT
     entityId: string
-    data: GithubAppUnifiedEventRequest
+    data: GithubTrigger
     private storedFiles: StoredFile[]
 
-    constructor(data: GithubAppUnifiedEventRequest, storedFiles: StoredFile[] = []) {
+    constructor(data: GithubTrigger, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
         this.storedFiles = storedFiles
-        this.eventType = data.eventType as GitHubEventType
         if (data.pullRequest) {
             this.entityId = `${data.installationId}:${data.repository.id}:pr/${data.pullRequest.number}`
         } else if (data.commits?.length) {
@@ -451,158 +444,6 @@ export class GithubEvent extends InputEvent implements Identifiable {
         } else {
             this.entityId = `${data.installationId}:${data.repository.id}:push/${data.branch ?? "main"}`
         }
-    }
-
-    formatForAgentRunner(): string {
-        const indentMultiline = (text: string): string =>
-            text
-                .split("\n")
-                .map(line => `        ${line}`)
-                .join("\n")
-
-        // Event type description
-        const eventTypeDescriptions: Record<string, string> = {
-            push: "Code Push Event",
-            "pull_request.opened": "Pull Request Opened",
-            "pull_request.synchronize": "Pull Request Updated (new commits added)",
-            "pull_request.closed": "Pull Request Closed",
-            "pull_request.merged": "Pull Request Merged"
-        }
-        const eventDescription = eventTypeDescriptions[this.data.eventType] || this.data.eventType
-
-        // Repository information
-        const repoInfo = [
-            `Repository: ${this.data.repository.owner}/${this.data.repository.name}`,
-            `Repository ID: ${this.data.repository.id}`,
-            `Default Branch: ${this.data.repository.defaultBranch}`,
-            `View on GitHub: https://github.com/${this.data.repository.owner}/${this.data.repository.name}`
-        ].join("\n")
-
-        // Sender/Actor information
-        const senderInfo = [`Actor: ${this.data.sender.login}`, ...(this.data.sender.email ? [`Email: ${this.data.sender.email}`] : [])].join("\n")
-
-        // Branch information (for push events)
-        const branchInfo = this.data.branch ? `Branch: ${this.data.branch}` : null
-
-        // Pull Request information (for PR events)
-        let prInfo = ""
-        if (this.data.pullRequest) {
-            const pr = this.data.pullRequest
-            const prLines = [
-                `Pull Request #${pr.number}: ${pr.title}`,
-                `State: ${pr.state}${pr.merged ? " (merged)" : ""}`,
-                `Author: ${pr.user.login}${pr.user.email ? ` (${pr.user.email})` : ""}`,
-                `Head Branch: ${pr.head.ref} (${pr.head.sha.substring(0, 7)})`,
-                `Base Branch: ${pr.base.ref} (${pr.base.sha.substring(0, 7)})`,
-                `View PR: https://github.com/${this.data.repository.owner}/${this.data.repository.name}/pull/${pr.number}`
-            ]
-            if (pr.body) {
-                prLines.push(`\nDescription:\n${indentMultiline(pr.body)}`)
-            }
-            prInfo = prLines.join("\n")
-        }
-
-        // Commits information
-        let commitsInfo = ""
-        if (this.data.commits && this.data.commits.length > 0) {
-            const commitLines: string[] = []
-            commitLines.push(`Commits (${this.data.commits.length}):`)
-
-            this.data.commits.forEach((commit, index) => {
-                const shortSha = commit.sha.substring(0, 7)
-                const commitUrl = `https://github.com/${this.data.repository.owner}/${this.data.repository.name}/commit/${commit.sha}`
-
-                commitLines.push(`\n${index + 1}. Commit ${shortSha}: ${commit.name}`)
-                commitLines.push(`   URL: ${commitUrl}`)
-
-                if (commit.fileDiffs && commit.fileDiffs.length > 0) {
-                    commitLines.push(`   Files Changed: ${commit.fileDiffs.length}`)
-
-                    // List files changed
-                    const fileList = commit.fileDiffs.map(f => `     - ${f.filename}`).join("\n")
-                    commitLines.push(`   Files:\n${fileList}`)
-
-                    // Show diffs for important files (limit to first 3 files to avoid overwhelming)
-                    const filesToShow = commit.fileDiffs.slice(0, 3)
-                    filesToShow.forEach(file => {
-                        if (file.diff) {
-                            // Truncate very long diffs
-                            const maxDiffLines = 50
-                            const diffLines = file.diff.split("\n")
-                            const truncatedDiff =
-                                diffLines.length > maxDiffLines ? diffLines.slice(0, maxDiffLines).join("\n") + `\n     ... (${diffLines.length - maxDiffLines} more lines)` : file.diff
-
-                            commitLines.push(`\n   Diff for ${file.filename}:`)
-                            commitLines.push(indentMultiline(truncatedDiff))
-                        }
-                    })
-
-                    if (commit.fileDiffs.length > 3) {
-                        commitLines.push(`\n   ... and ${commit.fileDiffs.length - 3} more file(s) changed`)
-                    }
-                }
-            })
-
-            commitsInfo = commitLines.join("\n")
-        }
-
-        // Stored image URLs for images that appeared in the PR description.
-        // The original GitHub asset URLs (github.com/user-attachments/...) require authentication
-        // and will not render in email clients or other external contexts.
-        let attachedImagesInfo: string | null = null
-        if (this.storedFiles.length > 0) {
-            const lines = this.storedFiles.map(f => `- ${f.filename || "image"} (${f.mimeType}): ${f.url}`)
-            attachedImagesInfo = `Attached Images (publicly accessible replacements for the GitHub image URLs in the PR description — use these, not the original github.com URLs):\n${lines.join("\n")}`
-        }
-
-        // Build the formatted output
-        const sections = [
-            `Incoming GitHub Event: ${eventDescription}`,
-            `\nRepository Information:\n${indentMultiline(repoInfo)}`,
-            `\nActor Information:\n${indentMultiline(senderInfo)}`,
-            ...(branchInfo ? [`\nBranch Information:\n${indentMultiline(branchInfo)}`] : []),
-            ...(prInfo ? [`\nPull Request Information:\n${indentMultiline(prInfo)}`] : []),
-            ...(commitsInfo ? [`\n${commitsInfo}`] : []),
-            ...(attachedImagesInfo ? [`\n${attachedImagesInfo}`] : [])
-        ].filter(Boolean)
-
-        const resp = sections.join("\n\n") + "\n"
-        return resp
-    }
-
-    debugLog(): string {
-        return `GitHub Event: ${this.data.eventType} - ${this.data.repositoryName} - ${this.data.username}`
-    }
-
-    serializeMetadata(): Record<string, unknown> {
-        const meta: Record<string, unknown> = {
-            repository: this.data.repository,
-            sender: this.data.sender,
-            commits:
-                this.data.commits?.map(c => ({
-                    sha: c.sha,
-                    message: c.name,
-                    fileDiffs: c.fileDiffs
-                })) ?? []
-        }
-        if (this.data.pullRequest) {
-            const pr = this.data.pullRequest
-            meta.pullRequest = {
-                number: pr.number,
-                title: pr.title,
-                body: pr.body,
-                state: pr.state,
-                merged: pr.merged,
-                head: pr.head,
-                base: pr.base,
-                author: pr.user,
-                url: `https://github.com/${this.data.repository.owner}/${this.data.repository.name}/pull/${pr.number}`
-            }
-        }
-        if (this.data.branch) {
-            meta.branch = this.data.branch
-        }
-        return meta
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -613,7 +454,7 @@ export class GithubEvent extends InputEvent implements Identifiable {
 
         // Make sure the repository is in the list of repositories configured for the channel
         if (!githubConfig?.repository_ids.includes(this.data.repository.id)) {
-            logger.debug("GithubEvent matchesAgentTrigger - repository not found in channel", {
+            logger.debug("GithubTriggerRuntime matchesAgentTrigger - repository not found in channel", {
                 repositoryId: this.data.repository.id,
                 repositoryIds: githubConfig?.repository_ids,
                 agentTriggerId: agentTrigger.id
@@ -622,7 +463,7 @@ export class GithubEvent extends InputEvent implements Identifiable {
         }
 
         // Check if the eventType is included in the eventTypes configured for the channel
-        return githubConfig.event_types.includes(this.data.eventType)
+        return !githubConfig.event_types || githubConfig.event_types.length === 0 || githubConfig.event_types.includes(this.data.eventType)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
@@ -975,7 +816,7 @@ async function createPushEventData(
     repo: { id: number; owner: string; name: string; defaultBranch: string },
     installationId: number,
     accessToken: string
-): Promise<GithubAppUnifiedEventRequest | null> {
+): Promise<GithubTrigger | null> {
     try {
         const commitDetails = await fetchCommitDiffForSample(accessToken, repo.owner, repo.name, commit.sha)
         if (!commitDetails) return null
@@ -986,6 +827,7 @@ async function createPushEventData(
         }))
 
         return {
+            integrationType: IntegrationType.GITHUB,
             username: commit.commit.author?.name || commit.author?.login || "unknown",
             installationId,
             repositoryName: `${repo.owner}/${repo.name}`,
@@ -1020,7 +862,7 @@ async function createPullRequestEventData(
     repo: { id: number; owner: string; name: string; defaultBranch: string },
     installationId: number,
     accessToken: string
-): Promise<GithubAppUnifiedEventRequest | null> {
+): Promise<GithubTrigger | null> {
     try {
         let eventType: "pull_request.opened" | "pull_request.merged" | "pull_request.closed" = pr.merged_at
             ? "pull_request.merged"
@@ -1045,6 +887,7 @@ async function createPullRequestEventData(
         )
 
         return {
+            integrationType: IntegrationType.GITHUB,
             username: pr.user?.login || "unknown",
             installationId,
             repositoryName: `${repo.owner}/${repo.name}`,
@@ -1078,7 +921,7 @@ async function createPullRequestEventData(
     }
 }
 
-export async function getPullRequestFiles(event: GithubAppUnifiedEventRequest, token: string, integrationId: string): Promise<StoredFile[]> {
+export async function getPullRequestFiles(event: GithubTrigger, token: string, integrationId: string): Promise<StoredFile[]> {
     if (!event.pullRequest) {
         return []
     }

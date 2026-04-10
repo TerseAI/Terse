@@ -1,5 +1,5 @@
 import type { CreateJobParameters } from "terse-sdk"
-import type { SerializedEvent } from "terse-types"
+import type { SerializedEvent, Trigger } from "terse-types"
 
 import type { CodegenInput } from "./codegenTypes"
 

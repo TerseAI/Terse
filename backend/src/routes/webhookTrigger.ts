@@ -1,38 +1,31 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
+import { WebhookTrigger } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { InputEvent } from "../integrations/abstract/InputEvent"
+import { TriggerRuntime } from "../integrations/abstract/TriggerRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
-export class WebhookEvent extends InputEvent {
+export class WebhookTriggerRuntime extends TriggerRuntime<WebhookTrigger> {
     readonly integrationType = IntegrationType.WEBHOOK
-    readonly eventType = "webhook"
-    readonly body: Record<string, unknown>
-    readonly headers: Record<string, string>
-    readonly method: string
+    readonly data: WebhookTrigger
     private readonly agentId: string
 
     constructor(opts: { body: Record<string, unknown>; headers: Record<string, string>; method: string; agentId: string }) {
         super()
-        this.body = opts.body
-        this.headers = opts.headers
-        this.method = opts.method
+        this.data = {
+            integrationType: IntegrationType.WEBHOOK,
+            eventType: "webhook",
+            body: opts.body,
+            headers: opts.headers,
+            method: opts.method
+        }
         this.agentId = opts.agentId
-    }
-
-    formatForAgentRunner(): string {
-        const bodyStr = JSON.stringify(this.body, null, 2)
-        return `Webhook request received.\n\nMethod: ${this.method}\n\nPayload:\n${bodyStr}`
-    }
-
-    debugLog(): string {
-        return `Webhook Trigger (${this.method})`
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -45,12 +38,8 @@ export class WebhookEvent extends InputEvent {
             integration: IntegrationType.WEBHOOK,
             source: "Webhook Trigger",
             title: "Webhook Trigger",
-            subheader: `${this.method} request`
+            subheader: `${this.data.method} request`
         }
-    }
-
-    serializeMetadata(): Record<string, unknown> {
-        return { body: this.body, headers: this.headers, method: this.method }
     }
 }
 
@@ -104,7 +93,7 @@ export async function handleWebhookTrigger(req: Request, res: Response) {
             if (typeof value === "string") headers[key] = value
         }
 
-        const webhookEvent = new WebhookEvent({
+        const webhookEvent = new WebhookTriggerRuntime({
             body: (req.body as Record<string, unknown>) ?? {},
             headers,
             method: req.method,

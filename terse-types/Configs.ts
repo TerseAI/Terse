@@ -6,15 +6,12 @@ export enum ConfigType {
     GMAIL = "gmail",
     GMAIL_OUTPUT = "gmail_output",
     GMAIL_DRAFT_OUTPUT = "gmail_draft_output",
-    FIGMA = "figma",
     SLACK = "slack",
     SLACK_OUTPUT = "slack_output",
     NOTION = "notion",
     LINEAR_INPUT = "linear_input",
     LINEAR_OUTPUT = "linear_output",
     GITHUB = "github",
-    JIRA = "jira",
-    CONFLUENCE = "confluence",
     POSTHOG = "POSTHOG",
     DATADOG = "DATADOG",
     TIME_TRIGGER = "time_trigger",
@@ -45,15 +42,6 @@ export const GmailConfigMetadata = {
     name: "Gmail",
     description: "Monitor incoming emails",
     integrationType: IntegrationType.GMAIL,
-    isInput: true,
-    isOutput: false
-} as const satisfies ConfigDetails
-
-export const FigmaConfigMetadata = {
-    configType: ConfigType.FIGMA,
-    name: "Figma",
-    description: "Monitor design changes in Figma files",
-    integrationType: IntegrationType.FIGMA,
     isInput: true,
     isOutput: false
 } as const satisfies ConfigDetails
@@ -127,24 +115,6 @@ export const GitHubConfigMetadata = {
     description: "Monitor and read Github repositories",
     integrationType: IntegrationType.GITHUB,
     isInput: true,
-    isOutput: true
-} as const satisfies ConfigDetails
-
-export const JiraConfigMetadata = {
-    configType: ConfigType.JIRA,
-    name: "Jira",
-    description: "Monitor and update Jira issues",
-    integrationType: IntegrationType.ATLASSIAN,
-    isInput: true,
-    isOutput: true
-} as const satisfies ConfigDetails
-
-export const ConfluenceConfigMetadata = {
-    configType: ConfigType.CONFLUENCE,
-    name: "Confluence",
-    description: "Update Confluence pages",
-    integrationType: IntegrationType.ATLASSIAN,
-    isInput: false,
     isOutput: true
 } as const satisfies ConfigDetails
 
@@ -244,15 +214,12 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.GMAIL]: GmailConfigMetadata,
     [ConfigType.GMAIL_OUTPUT]: GmailOutputConfigMetadata,
     [ConfigType.GMAIL_DRAFT_OUTPUT]: GmailDraftOutputConfigMetadata,
-    [ConfigType.FIGMA]: FigmaConfigMetadata,
     [ConfigType.SLACK]: SlackConfigMetadata,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfigMetadata,
     [ConfigType.NOTION]: NotionConfigMetadata,
     [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfigMetadata,
     [ConfigType.GITHUB]: GitHubConfigMetadata,
-    [ConfigType.JIRA]: JiraConfigMetadata,
-    [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
     [ConfigType.POSTHOG]: PosthogConfigMetadata,
     [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
@@ -285,17 +252,13 @@ export const GitHubEventType = {
 export const gitHubEventTypeSchema = z.enum(GitHubEventType)
 export type GitHubEventType = z.infer<typeof gitHubEventTypeSchema>
 
-export const linearEventTypeSchema = z.enum(["issue.created", "issue.updated", "comment.created"])
-export type LinearEventType = z.infer<typeof linearEventTypeSchema>
-
-export const jiraEventTypeSchema = z.enum(["issue.created", "issue.updated"])
-export type JiraEventType = z.infer<typeof jiraEventTypeSchema>
-
-export const FigmaEventType = {
-    FILE_COMMENT: "file_comment"
+export const LinearEventType = {
+    ISSUE_CREATED: "issue.created",
+    ISSUE_UPDATED: "issue.updated",
+    COMMENT_CREATED: "comment.created"
 } as const
-export const figmaEventTypeSchema = z.enum(FigmaEventType)
-export type FigmaEventType = z.infer<typeof figmaEventTypeSchema>
+export const linearEventTypeSchema = z.enum(LinearEventType)
+export type LinearEventType = z.infer<typeof linearEventTypeSchema>
 
 export const GmailEventType = {
     EMAIL_RECEIVED: "email.received"
@@ -368,44 +331,6 @@ export class GmailConfig extends BaseConfigInstance<IntegrationType.GMAIL, Confi
     }
 }
 
-export const FigmaConfigSchema = ConfigInstanceSchema.extend({
-    integrationType: z.literal(IntegrationType.FIGMA),
-    configType: z.literal(ConfigType.FIGMA),
-    fileKey: z.string(),
-    fileName: z.string(),
-    teamId: z.string(),
-    eventTypes: z.array(figmaEventTypeSchema).nullable()
-})
-export type FigmaConfigData = z.infer<typeof FigmaConfigSchema>
-export type FigmaConfigInstance = FigmaConfigData & ConfigBehavior
-
-export class FigmaConfig extends BaseConfigInstance<IntegrationType.FIGMA, ConfigType.FIGMA> implements FigmaConfigInstance {
-    constructor(
-        integrationId: string,
-        public fileKey: string,
-        public fileName: string,
-        public teamId: string,
-        public eventTypes: FigmaEventType[] | null = null
-    ) {
-        super(integrationId, IntegrationType.FIGMA, ConfigType.FIGMA)
-    }
-
-    isComplete(): boolean {
-        return !!(this.fileKey && this.teamId)
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Figma`, `Integration ID: ${this.integrationId}`]
-        if (this.fileName) {
-            parts.push(`File: ${this.fileName}`)
-        }
-        if (this.fileKey) {
-            parts.push(`File Key: ${this.fileKey}`)
-        }
-        return parts.join("\n")
-    }
-}
-
 export const SlackConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.SLACK),
     configType: z.literal(ConfigType.SLACK),
@@ -431,7 +356,6 @@ export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, Confi
     }
 
     isComplete(): boolean {
-        // Slack is complete if either channelId is set OR listenToUserDms is true
         return !!(this.channelId || this.listenToUserDms)
     }
 
@@ -448,6 +372,9 @@ export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, Confi
 
         if (this.userIds) {
             parts.push(`Users: ${this.userIds.join(", ")}`)
+        }
+        if (this.eventTypes?.length) {
+            parts.push(`Event Types: ${this.eventTypes.join(", ")}`)
         }
 
         return parts.join("\n")
@@ -604,7 +531,7 @@ export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR
     }
 
     isComplete(): boolean {
-        return true
+        return (this.eventTypes?.length ?? 0) > 0
     }
 
     formatForAgent(): string {
@@ -613,6 +540,9 @@ export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR
             parts.push(`Project: ${this.projectName}`)
         } else if (this.projectId) {
             parts.push(`Project ID: ${this.projectId}`)
+        }
+        if (this.eventTypes?.length) {
+            parts.push(`Event Types: ${this.eventTypes.join(", ")}`)
         }
         return parts.join("\n")
     }
@@ -679,7 +609,7 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
     }
 
     isComplete(): boolean {
-        return (this.repositoryIds?.length ?? 0) > 0
+        return (this.repositoryIds?.length ?? 0) > 0 && (this.eventTypes?.length ?? 0) > 0
     }
 
     formatForAgent(): string {
@@ -687,82 +617,8 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
         if (this.repositoryIds.length > 0) {
             parts.push(`Repositories: ${this.repositoryIds.join(", ")}`)
         }
-        return parts.join("\n")
-    }
-}
-
-export const JiraConfigSchema = ConfigInstanceSchema.extend({
-    integrationType: z.literal(IntegrationType.ATLASSIAN),
-    configType: z.literal(ConfigType.JIRA),
-    projectKey: z.string().nullable(),
-    projectId: z.string().nullable(),
-    eventTypes: z.array(jiraEventTypeSchema).nullable()
-})
-export type JiraConfigData = z.infer<typeof JiraConfigSchema>
-export type JiraConfigInstance = JiraConfigData & ConfigBehavior
-
-export class JiraConfig extends BaseConfigInstance<IntegrationType.ATLASSIAN, ConfigType.JIRA> implements JiraConfigInstance {
-    constructor(
-        integrationId: string,
-        public projectKey: string | null = null,
-        public projectId: string | null = null,
-        public eventTypes: JiraEventType[] | null = null
-    ) {
-        super(integrationId, IntegrationType.ATLASSIAN, ConfigType.JIRA)
-    }
-
-    isComplete(): boolean {
-        // Jira only requires integrationId (base check handled in isInputComplete)
-        return true
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Jira`, `Integration ID: ${this.integrationId}`]
-        if (this.projectKey) {
-            parts.push(`Project Key: ${this.projectKey}`)
-        } else if (this.projectId) {
-            parts.push(`Project ID: ${this.projectId}`)
-        }
-        return parts.join("\n")
-    }
-}
-
-export const ConfluenceConfigSchema = ConfigInstanceSchema.extend({
-    integrationType: z.literal(IntegrationType.ATLASSIAN),
-    configType: z.literal(ConfigType.CONFLUENCE),
-    spaceName: z.string(),
-    spaceId: z.string(),
-    pageId: z.string(),
-    pageName: z.string()
-})
-export type ConfluenceConfigData = z.infer<typeof ConfluenceConfigSchema>
-export type ConfluenceConfigInstance = ConfluenceConfigData & ConfigBehavior
-
-export class ConfluenceConfig extends BaseConfigInstance<IntegrationType.ATLASSIAN, ConfigType.CONFLUENCE> implements ConfluenceConfigInstance {
-    constructor(
-        integrationId: string,
-        public spaceName: string,
-        public spaceId: string,
-        public pageId: string, // Page ID (required for outputs - specific page to write to)
-        public pageName: string // Page display name (for UI, optional)
-    ) {
-        super(integrationId, IntegrationType.ATLASSIAN, ConfigType.CONFLUENCE)
-    }
-
-    isComplete(): boolean {
-        // Confluence only requires integrationId (base check handled in isInputComplete)
-        return true
-    }
-
-    formatForAgent(): string {
-        const parts = [`Type: Confluence`, `Integration ID: ${this.integrationId}`]
-        if (this.spaceName) {
-            parts.push(`Space: ${this.spaceName}`)
-        }
-        if (this.pageName) {
-            parts.push(`Page: ${this.pageName}`)
-        } else if (this.pageId) {
-            parts.push(`Page ID: ${this.pageId}`)
+        if (this.eventTypes?.length) {
+            parts.push(`Event Types: ${this.eventTypes.join(", ")}`)
         }
         return parts.join("\n")
     }
@@ -1035,7 +891,6 @@ export class WebhookInputConfig extends BaseConfigInstance<IntegrationType.WEBHO
 
 export const configDataSchema = z.union([
     GmailConfigSchema,
-    FigmaConfigSchema,
     SlackConfigSchema,
     SlackOutputConfigSchema,
     GmailOutputConfigSchema,
@@ -1044,8 +899,6 @@ export const configDataSchema = z.union([
     LinearInputConfigSchema,
     LinearOutputConfigSchema,
     GitHubConfigSchema,
-    JiraConfigSchema,
-    ConfluenceConfigSchema,
     PosthogConfigSchema,
     DatadogConfigSchema,
     TimeTriggerConfigSchema,
@@ -1068,14 +921,11 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.GMAIL:
         case ConfigType.GMAIL_OUTPUT:
         case ConfigType.GMAIL_DRAFT_OUTPUT:
+            return true
         case ConfigType.LINEAR_INPUT:
-        case ConfigType.JIRA:
-        case ConfigType.CONFLUENCE:
         case ConfigType.TERSE:
         case ConfigType.WEBHOOK_INPUT:
             return true
-        case ConfigType.FIGMA:
-            return !!(config.fileKey && config.teamId)
         case ConfigType.SLACK:
             return !!(config.channelId || config.listenToUserDms)
         case ConfigType.SLACK_OUTPUT:
@@ -1109,12 +959,6 @@ export function formatConfigForAgent(config: ConfigData): string {
     switch (config.configType) {
         case ConfigType.GMAIL:
             return `Type: Gmail\nIntegration ID: ${config.integrationId}`
-        case ConfigType.FIGMA: {
-            const parts = [`Type: Figma`, `Integration ID: ${config.integrationId}`]
-            if (config.fileName) parts.push(`File: ${config.fileName}`)
-            if (config.fileKey) parts.push(`File Key: ${config.fileKey}`)
-            return parts.join("\n")
-        }
         case ConfigType.SLACK: {
             const parts = [`Type: Slack`, `Integration ID: ${config.integrationId}`]
             if (config.channelName) {
@@ -1124,6 +968,7 @@ export function formatConfigForAgent(config: ConfigData): string {
             }
             if (config.listenToUserDms) parts.push(`Listening to user DMs: Yes`)
             if (config.userIds) parts.push(`Users: ${config.userIds.join(", ")}`)
+            if (config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
             return parts.join("\n")
         }
         case ConfigType.SLACK_OUTPUT: {
@@ -1158,6 +1003,7 @@ export function formatConfigForAgent(config: ConfigData): string {
             } else if (config.projectId) {
                 parts.push(`Project ID: ${config.projectId}`)
             }
+            if (config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
             return parts.join("\n")
         }
         case ConfigType.LINEAR_OUTPUT: {
@@ -1177,25 +1023,7 @@ export function formatConfigForAgent(config: ConfigData): string {
         case ConfigType.GITHUB: {
             const parts = [`Type: GitHub`, `Integration ID: ${config.integrationId}`]
             if (config.repositoryIds.length > 0) parts.push(`Repositories: ${config.repositoryIds.join(", ")}`)
-            return parts.join("\n")
-        }
-        case ConfigType.JIRA: {
-            const parts = [`Type: Jira`, `Integration ID: ${config.integrationId}`]
-            if (config.projectKey) {
-                parts.push(`Project Key: ${config.projectKey}`)
-            } else if (config.projectId) {
-                parts.push(`Project ID: ${config.projectId}`)
-            }
-            return parts.join("\n")
-        }
-        case ConfigType.CONFLUENCE: {
-            const parts = [`Type: Confluence`, `Integration ID: ${config.integrationId}`]
-            if (config.spaceName) parts.push(`Space: ${config.spaceName}`)
-            if (config.pageName) {
-                parts.push(`Page: ${config.pageName}`)
-            } else if (config.pageId) {
-                parts.push(`Page ID: ${config.pageId}`)
-            }
+            if (config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
             return parts.join("\n")
         }
         case ConfigType.POSTHOG: {
@@ -1247,7 +1075,6 @@ type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) 
 
 export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.GMAIL]: typeof GmailConfig
-    [ConfigType.FIGMA]: typeof FigmaConfig
     [ConfigType.SLACK]: typeof SlackConfig
     [ConfigType.SLACK_OUTPUT]: typeof SlackOutputConfig
     [ConfigType.GMAIL_OUTPUT]: typeof GmailOutputConfig
@@ -1256,8 +1083,6 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig
     [ConfigType.GITHUB]: typeof GitHubConfig
-    [ConfigType.JIRA]: typeof JiraConfig
-    [ConfigType.CONFLUENCE]: typeof ConfluenceConfig
     [ConfigType.POSTHOG]: typeof PosthogConfig
     [ConfigType.DATADOG]: typeof DatadogConfig
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig
@@ -1274,15 +1099,12 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.GMAIL]: GmailConfig,
     [ConfigType.GMAIL_OUTPUT]: GmailOutputConfig,
     [ConfigType.GMAIL_DRAFT_OUTPUT]: GmailDraftOutputConfig,
-    [ConfigType.FIGMA]: FigmaConfig,
     [ConfigType.SLACK]: SlackConfig,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfig,
     [ConfigType.NOTION]: NotionConfig,
     [ConfigType.LINEAR_INPUT]: LinearInputConfig,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfig,
     [ConfigType.GITHUB]: GitHubConfig,
-    [ConfigType.JIRA]: JiraConfig,
-    [ConfigType.CONFLUENCE]: ConfluenceConfig,
     [ConfigType.POSTHOG]: PosthogConfig,
     [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,

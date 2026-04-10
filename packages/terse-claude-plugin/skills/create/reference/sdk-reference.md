@@ -118,20 +118,9 @@ Linear.onIssueCreated({ team: LinearTeam.Engineering })
 Linear.onIssueUpdated({ team: LinearTeam.Engineering })
 ```
 
-### Jira
-```typescript
-Jira.onIssueCreated({ project: JiraProject.MyProject })
-Jira.onIssueUpdated({ project: JiraProject.MyProject })
-```
-
 ### Gmail
 ```typescript
 Gmail.onNewEmail()
-```
-
-### Figma
-```typescript
-Figma.onComment()
 ```
 
 ### WorkOS
@@ -160,8 +149,6 @@ skills: [
     Slack.skill({ channel: SlackChannel.General }),
     Linear.skill({ team: LinearTeam.Engineering }),
     Notion.skill({ database: NotionDB.Tasks }),
-    Jira.skill({ project: JiraProject.MyProject }),
-    Confluence.skill({ page: ConfluencePage.TeamDocs }),
     Gmail.skill(),
     PostHog.skill({ project: PostHogProject.Main }),
     Datadog.skill({ index: DatadogIndex.Main }),
@@ -174,7 +161,7 @@ skills: [
 
 ## Event Types
 
-### InputEvent Interface (all events)
+### Trigger interface
 ```typescript
 event.integrationType       // IntegrationType enum
 event.eventType             // specific event type string
@@ -184,7 +171,7 @@ event.debugLog()            // debug info string
 
 Python event classes expose the same event content through attributes like `event.integration_type`, `event.event_type`, `event.formatted_content`, and `event.debug_log`.
 
-### GithubPRInputEvent
+### GithubPRTrigger
 ```typescript
 event.pullRequest.number    // PR number
 event.pullRequest.title     // PR title
@@ -200,7 +187,7 @@ event.repository            // { id, name, owner, defaultBranch }
 event.commits               // [{ sha, message, fileDiffs: [{ filename, diff }] }]
 ```
 
-### GithubPushInputEvent
+### GithubPushTrigger
 ```typescript
 event.branch                // branch that was pushed to
 event.sender                // { login, email? }
@@ -210,22 +197,22 @@ event.commits               // [{ sha, message, fileDiffs: [{ filename, diff }] 
 
 ### WorkOS Events
 ```typescript
-// WorkOSUserInputEvent
+// WorkOSUserTrigger
 event.user.id / event.user.email / event.user.firstName / event.user.lastName
 
-// WorkOSMembershipInputEvent
+// WorkOSMembershipTrigger
 event.membership.userId / event.membership.organizationId / event.membership.role.slug
 
-// WorkOSInvitationInputEvent
+// WorkOSInvitationTrigger
 event.invitation.email / event.invitation.organizationId / event.invitation.state
 ```
 
 ### Type Guards
 ```typescript
-import { isGithubPREvent, isGithubPushEvent, isWorkOSUserEvent } from "terse-sdk"
+import { isGithubPRTrigger, isGithubPushTrigger, isWorkOSUserTrigger } from "terse-sdk"
 
-if (isGithubPREvent(event)) {
-    // event is typed as GithubPRInputEvent
+if (isGithubPRTrigger(event)) {
+    // event is typed as GithubPRTrigger
 }
 ```
 

@@ -108,7 +108,7 @@ Return the single-sentence "I'm going to ..." approvalSummary.`
     
     Examples:
     - Good: "I'm going to update the Notion My To-Do List with a task titled \"Read product requirements doc for data accuracy service\"."
-    - Good: "I'm going to update the Confluence \"Data Accuracy\" page with the latest API rate-limit details."
+    - Good: "I'm going to update the Notion \"Data Accuracy\" page with the latest API rate-limit details."
     - Bad: "There was a message_received event from Slack in all-terse-inc... I reviewed..."
     
     IMPORTANT: Return ONLY a valid JSON object with this exact format:

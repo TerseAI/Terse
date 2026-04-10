@@ -3,10 +3,7 @@ import {
     Prisma,
     PrismaClient,
     approval_slack_messages,
-    atlassian_integrations,
-    automation_confluence_configs,
     automation_inputs,
-    automation_jira_configs,
     automation_linear_configs,
     automation_notification_settings,
     automation_notion_configs,
@@ -34,8 +31,6 @@ export type User = users
 export type GithubRepository = github_repositories
 
 export type LinearIntegration = linear_integrations
-
-export type AtlassianIntegration = atlassian_integrations
 
 export type SlackIntegration = slack_integrations
 
@@ -77,11 +72,8 @@ export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
         slack_config: true
         notion_config: true
         linear_config: true
-        jira_config: true
-        confluence_config: true
         github_config: true
         gmail_config: true
-        figma_config: true
         time_trigger_config: true
         workos_config: true
         webhook_config: true
@@ -98,14 +90,11 @@ export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         slack_config: true
         notion_config: true
         linear_config: true
-        jira_config: true
-        confluence_config: true
         github_config: true
         gmail_config: true
         posthog_config: true
         datadog_config: true
         launchdarkly_config: true
-        figma_config: true
         workos_output_config: true
         attio_config: true
         snowflake_config: true
@@ -118,13 +107,8 @@ export type NotionIntegration = notion_integrations
 export type AutomationNotionConfig = automation_notion_configs
 export type AgentNotionConfig = automation_notion_configs // Alias for rebranding (formerly ChannelNotionConfig)
 
-export type AutomationConfluenceConfig = automation_confluence_configs
-export type AgentConfluenceConfig = automation_confluence_configs // Alias for rebranding (formerly ChannelConfluenceConfig)
-
 export type AutomationLinearConfig = automation_linear_configs
 export type AgentLinearConfig = automation_linear_configs // Alias for rebranding (formerly ChannelLinearConfig)
-
-export type AgentJiraConfig = automation_jira_configs
 
 export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
     include: {
@@ -133,11 +117,8 @@ export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
                 slack_config: true
                 notion_config: true
                 linear_config: true
-                jira_config: true
-                confluence_config: true
                 github_config: true
                 gmail_config: true
-                figma_config: true
                 time_trigger_config: true
                 workos_config: true
                 webhook_config: true
@@ -154,14 +135,11 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 slack_config: true
                 notion_config: true
                 linear_config: true
-                jira_config: true
-                confluence_config: true
                 github_config: true
                 gmail_config: true
                 posthog_config: true
                 datadog_config: true
                 launchdarkly_config: true
-                figma_config: true
                 workos_output_config: true
                 attio_config: true
                 snowflake_config: true
@@ -221,8 +199,6 @@ export type RunHistoryActionType = $Enums.RunHistoryActionType
 // Re-export the original types too
 export {
     approval_slack_messages,
-    atlassian_integrations,
-    automation_confluence_configs,
     automation_inputs,
     automation_linear_configs,
     automation_notification_settings,

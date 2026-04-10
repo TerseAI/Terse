@@ -7,31 +7,13 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel
+from pydantic import AwareDatetime, ConfigDict, EmailStr, Field, RootModel
 
 from terse_sdk.types._base import TerseModel
 
 
 class Model(RootModel[Any]):
     root: Any
-
-
-class AtlassianIntegrationInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        regex_engine="python-re",
-    )
-    id: str
-    base_url: Annotated[AnyUrl, Field(alias="baseUrl")]
-    email: Annotated[
-        EmailStr,
-        Field(
-            pattern="^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
-        ),
-    ]
-    site_name: Annotated[str | None, Field(alias="siteName")] = None
-    project_key: Annotated[str | None, Field(alias="projectKey")] = None
-    project_name: Annotated[str | None, Field(alias="projectName")] = None
 
 
 class AttioIntegrationInstance(TerseModel):
@@ -56,15 +38,12 @@ class ConfigTypeEnum(StrEnum):
     gmail = "gmail"
     gmail_output = "gmail_output"
     gmail_draft_output = "gmail_draft_output"
-    figma = "figma"
     slack = "slack"
     slack_output = "slack_output"
     notion = "notion"
     linear_input = "linear_input"
     linear_output = "linear_output"
     github = "github"
-    jira = "jira"
-    confluence = "confluence"
     posthog = "POSTHOG"
     datadog = "DATADOG"
     time_trigger = "time_trigger"
@@ -74,16 +53,15 @@ class ConfigTypeEnum(StrEnum):
     workos_output = "workos_output"
     attio_output = "attio_output"
     snowflake_output = "snowflake_output"
+    webhook_input = "webhook_input"
 
 
 class IntegrationTypeEnum(StrEnum):
     github = "github"
     gmail = "gmail"
     linear = "linear"
-    atlassian = "atlassian"
     slack = "slack"
     notion = "notion"
-    figma = "figma"
     terse = "terse"
     posthog = "posthog"
     datadog = "datadog"
@@ -92,28 +70,16 @@ class IntegrationTypeEnum(StrEnum):
     workos = "workos"
     attio = "attio"
     snowflake = "snowflake"
+    webhook = "webhook"
 
 
-class BaseConfigInstance(TerseModel):
+class ConfigInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
     integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
     config_type: Annotated[ConfigTypeEnum, Field(alias="configType")]
-
-
-class ConfluenceConfigInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["atlassian"], Field(alias="integrationType")] = "atlassian"
-    config_type: Annotated[Literal["confluence"], Field(alias="configType")] = "confluence"
-    space_name: Annotated[str, Field(alias="spaceName")]
-    space_id: Annotated[str, Field(alias="spaceId")]
-    page_id: Annotated[str, Field(alias="pageId")]
-    page_name: Annotated[str, Field(alias="pageName")]
 
 
 class DatadogConfigInstance(TerseModel):
@@ -132,33 +98,6 @@ class DatadogIntegrationInstance(TerseModel):
     )
     id: str
     region: str
-
-
-class FigmaEventType(StrEnum):
-    file_comment = "file_comment"
-
-
-class FigmaConfigInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["figma"], Field(alias="integrationType")] = "figma"
-    config_type: Annotated[Literal["figma"], Field(alias="configType")] = "figma"
-    file_key: Annotated[str, Field(alias="fileKey")]
-    file_name: Annotated[str, Field(alias="fileName")]
-    team_id: Annotated[str, Field(alias="teamId")]
-    event_types: Annotated[list[FigmaEventType] | None, Field(alias="eventTypes")]
-
-
-class FigmaIntegrationInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    handle: str
-    figma_user_id: str
-    token_expiry: AwareDatetime
 
 
 class GitHubEventType(StrEnum):
@@ -180,13 +119,187 @@ class GitHubConfigInstance(TerseModel):
     event_types: Annotated[list[GitHubEventType] | None, Field(alias="eventTypes")]
 
 
-class GitHubIntegrationInstance(TerseModel):
+class GithubIntegrationInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     id: str
     installation_id: int
     account_name: str | None = None
+
+
+class FileDiff(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: str
+    diff: str
+
+
+class Commit(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    sha: str
+    message: str | None = None
+    name: str
+    file_diffs: Annotated[list[FileDiff], Field(alias="fileDiffs")]
+
+
+class PullRequestUser(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    login: str
+    email: str | None = None
+
+
+class PullRequestRef(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    ref: str
+    sha: str
+
+
+class PullRequestState(StrEnum):
+    open = "open"
+    closed = "closed"
+
+
+class PullRequest(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    number: float
+    title: str
+    body: str | None = None
+    state: PullRequestState
+    merged: bool
+    head: PullRequestRef
+    base: PullRequestRef
+    user: PullRequestUser
+    author: PullRequestUser | None = None
+    url: str | None = None
+
+
+class Sender(PullRequestUser):
+    pass
+
+
+class GithubRepository(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: float
+    name: str
+    owner: str
+    default_branch: Annotated[str, Field(alias="defaultBranch")]
+
+
+class GithubPRClosedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GithubRepository
+    sender: Sender
+    pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
+    branch: str | None = None
+    commits: list[Commit]
+    event_type: Annotated[Literal["pull_request.closed"], Field(alias="eventType")] = "pull_request.closed"
+
+
+class GithubPRMergedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GithubRepository
+    sender: Sender
+    pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
+    branch: str | None = None
+    commits: list[Commit]
+    event_type: Annotated[Literal["pull_request.merged"], Field(alias="eventType")] = "pull_request.merged"
+
+
+class GithubPROpenedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GithubRepository
+    sender: Sender
+    pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
+    branch: str | None = None
+    commits: list[Commit]
+    event_type: Annotated[Literal["pull_request.opened"], Field(alias="eventType")] = "pull_request.opened"
+
+
+class GithubPRSynchronizedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GithubRepository
+    sender: Sender
+    pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
+    branch: str | None = None
+    commits: list[Commit]
+    event_type: Annotated[Literal["pull_request.synchronize"], Field(alias="eventType")] = "pull_request.synchronize"
+
+
+class GithubPRTrigger(
+    RootModel[GithubPROpenedTrigger | GithubPRSynchronizedTrigger | GithubPRClosedTrigger | GithubPRMergedTrigger]
+):
+    root: GithubPROpenedTrigger | GithubPRSynchronizedTrigger | GithubPRClosedTrigger | GithubPRMergedTrigger
+
+
+class GithubPushTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    username: str
+    installation_id: Annotated[float, Field(alias="installationId")]
+    repository_name: Annotated[str, Field(alias="repositoryName")]
+    repository: GithubRepository
+    sender: Sender
+    event_type: Annotated[Literal["push"], Field(alias="eventType")] = "push"
+    branch: str
+    commits: list[Commit]
+    pull_request: Annotated[Any | None, Field(alias="pullRequest")] = None
+
+
+class GithubTrigger(
+    RootModel[
+        GithubPushTrigger
+        | GithubPROpenedTrigger
+        | GithubPRSynchronizedTrigger
+        | GithubPRClosedTrigger
+        | GithubPRMergedTrigger
+    ]
+):
+    root: (
+        GithubPushTrigger
+        | GithubPROpenedTrigger
+        | GithubPRSynchronizedTrigger
+        | GithubPRClosedTrigger
+        | GithubPRMergedTrigger
+    )
 
 
 class GmailEventType(StrEnum):
@@ -237,7 +350,18 @@ class GmailOutputConfigInstance(TerseModel):
     config_type: Annotated[Literal["gmail_output"], Field(alias="configType")] = "gmail_output"
 
 
-class BaseIntegrationInstance(TerseModel):
+class GmailParsedAttachment(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    attachment_id: Annotated[str, Field(alias="attachmentId")]
+    filename: str
+    mime_type: Annotated[str, Field(alias="mimeType")]
+    content_id: Annotated[str | None, Field(alias="contentId")] = None
+    is_inline: Annotated[bool, Field(alias="isInline")]
+
+
+class IntegrationInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -250,23 +374,6 @@ class IntegrationWithStatus(TerseModel):
     )
     integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
     is_active: Annotated[bool, Field(alias="isActive")]
-
-
-class JiraEventType(StrEnum):
-    issue_created = "issue.created"
-    issue_updated = "issue.updated"
-
-
-class JiraConfigInstance(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["atlassian"], Field(alias="integrationType")] = "atlassian"
-    config_type: Annotated[Literal["jira"], Field(alias="configType")] = "jira"
-    project_key: Annotated[str | None, Field(alias="projectKey")]
-    project_id: Annotated[str | None, Field(alias="projectId")]
-    event_types: Annotated[list[JiraEventType] | None, Field(alias="eventTypes")]
 
 
 class LaunchDarklyConfigInstance(TerseModel):
@@ -332,6 +439,93 @@ class LinearOutputConfigInstance(TerseModel):
     team_name: Annotated[str | None, Field(alias="teamName")]
     project_id: Annotated[str | None, Field(alias="projectId")]
     project_name: Annotated[str | None, Field(alias="projectName")]
+
+
+class LinearWebhookAction(StrEnum):
+    create = "create"
+    update = "update"
+    remove = "remove"
+
+
+class LinearWebhookActor(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    name: str
+    email: str
+    url: str
+    type: str
+
+
+class LinearWebhookAssignee(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    name: str
+
+
+class LinearWebhookCommentData(TerseModel):
+    id: str
+    body: str | None = None
+    issue_id: Annotated[str | None, Field(alias="issueId")] = None
+
+
+class LinearWebhookTeam(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    key: str
+    name: str
+
+
+class LinearWebhookState(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    color: str
+    name: str
+    type: str
+
+
+class LinearWebhookData(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    created_at: Annotated[str, Field(alias="createdAt")]
+    updated_at: Annotated[str, Field(alias="updatedAt")]
+    number: float
+    title: str
+    priority: float
+    sort_order: Annotated[float, Field(alias="sortOrder")]
+    priority_sort_order: Annotated[float, Field(alias="prioritySortOrder")]
+    sla_type: Annotated[str, Field(alias="slaType")]
+    added_to_team_at: Annotated[str, Field(alias="addedToTeamAt")]
+    trashed: bool
+    label_ids: Annotated[list[str], Field(alias="labelIds")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    previous_identifiers: Annotated[list[str], Field(alias="previousIdentifiers")]
+    state_id: Annotated[str, Field(alias="stateId")]
+    reaction_data: Annotated[list[Any], Field(alias="reactionData")]
+    priority_label: Annotated[str, Field(alias="priorityLabel")]
+    bot_actor: Annotated[str | None, Field(alias="botActor")] = None
+    identifier: str
+    url: str
+    subscriber_ids: Annotated[list[str], Field(alias="subscriberIds")]
+    state: LinearWebhookState
+    team: LinearWebhookTeam
+    labels: list[Any]
+    description: str | None = None
+    description_data: Annotated[str | None, Field(alias="descriptionData")] = None
+    assignee: LinearWebhookAssignee | None = None
+
+
+class LinearWebhookType(RootModel[Literal["Issue"] | Literal["Comment"] | Literal["Project"] | str]):
+    root: Literal["Issue"] | Literal["Comment"] | Literal["Project"] | str
 
 
 class NotionConfigInstance(TerseModel):
@@ -466,6 +660,440 @@ class TimeTriggerConfigInstance(TerseModel):
     cron_expression: Annotated[str, Field(alias="cronExpression")]
 
 
+class ManualSampleTriggerType(RootModel[Literal["manual_sample"]]):
+    root: Literal["manual_sample"] = "manual_sample"
+
+
+class ManualSampleTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
+    event_type: Annotated[ManualSampleTriggerType, Field(alias="eventType")]
+
+
+class CronTriggerType(RootModel[Literal["cron"]]):
+    root: Literal["cron"] = "cron"
+
+
+class CronTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["cron_job"], Field(alias="integrationType")] = "cron_job"
+    event_type: Annotated[CronTriggerType, Field(alias="eventType")]
+    input_id: Annotated[str, Field(alias="inputId")]
+    is_manual_trigger: Annotated[bool | None, Field(alias="isManualTrigger")] = None
+    manual_context: Annotated[str | None, Field(alias="manualContext")] = None
+
+
+class WebhookTriggerType(RootModel[Literal["webhook"]]):
+    root: Literal["webhook"] = "webhook"
+
+
+class WebhookTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = "webhook"
+    event_type: Annotated[WebhookTriggerType, Field(alias="eventType")]
+    body: dict[str, Any]
+    headers: dict[str, str]
+    method: str
+
+
+class WorkOSTriggerOrganization(LinearWebhookAssignee):
+    pass
+
+
+class WorkOSOrganizationTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization.created"], Field(alias="eventType")] = "organization.created"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    organization: WorkOSTriggerOrganization
+
+
+class WorkOSTriggerUser(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    email: str
+    first_name: Annotated[str | None, Field(alias="firstName")] = None
+    last_name: Annotated[str | None, Field(alias="lastName")] = None
+    email_verified: Annotated[bool, Field(alias="emailVerified")]
+    profile_picture_url: Annotated[str | None, Field(alias="profilePictureUrl")] = None
+
+
+class WorkOSTriggerInvitation(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    email: str
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    inviter_email: Annotated[str | None, Field(alias="inviterEmail")] = None
+    state: str
+    accepted_at: Annotated[str | None, Field(alias="acceptedAt")] = None
+
+
+class WorkOSInvitationRevokedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.revoked"], Field(alias="eventType")] = "invitation.revoked"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    invitation: WorkOSTriggerInvitation
+    user: WorkOSTriggerUser | None = None
+
+
+class WorkOSInvitationResentTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.resent"], Field(alias="eventType")] = "invitation.resent"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    invitation: WorkOSTriggerInvitation
+    user: WorkOSTriggerUser | None = None
+
+
+class WorkOSInvitationAcceptedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.accepted"], Field(alias="eventType")] = "invitation.accepted"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    invitation: WorkOSTriggerInvitation
+    user: WorkOSTriggerUser | None = None
+
+
+class WorkOSInvitationCreatedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.created"], Field(alias="eventType")] = "invitation.created"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    invitation: WorkOSTriggerInvitation
+    user: WorkOSTriggerUser | None = None
+
+
+class WorkOSTriggerMembershipRole(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    slug: str
+
+
+class WorkOSTriggerMembership(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    user_id: Annotated[str, Field(alias="userId")]
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    role: WorkOSTriggerMembershipRole
+    status: str
+
+
+class WorkOSOrganizationMembershipDeletedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization_membership.deleted"], Field(alias="eventType")] = (
+        "organization_membership.deleted"
+    )
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    membership: WorkOSTriggerMembership
+
+
+class WorkOSOrganizationMembershipUpdatedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization_membership.updated"], Field(alias="eventType")] = (
+        "organization_membership.updated"
+    )
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    membership: WorkOSTriggerMembership
+
+
+class WorkOSOrganizationMembershipCreatedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization_membership.created"], Field(alias="eventType")] = (
+        "organization_membership.created"
+    )
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    membership: WorkOSTriggerMembership
+
+
+class WorkOSUserDeletedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.deleted"], Field(alias="eventType")] = "user.deleted"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    user: WorkOSTriggerUser
+
+
+class WorkOSUserUpdatedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.updated"], Field(alias="eventType")] = "user.updated"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    user: WorkOSTriggerUser
+
+
+class WorkOSUserCreatedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.created"], Field(alias="eventType")] = "user.created"
+    event_id: Annotated[str, Field(alias="eventId")]
+    created_at: Annotated[str, Field(alias="createdAt")]
+    user: WorkOSTriggerUser
+
+
+class WorkOSTrigger(
+    RootModel[
+        WorkOSUserCreatedTrigger
+        | WorkOSUserUpdatedTrigger
+        | WorkOSUserDeletedTrigger
+        | WorkOSOrganizationMembershipCreatedTrigger
+        | WorkOSOrganizationMembershipUpdatedTrigger
+        | WorkOSOrganizationMembershipDeletedTrigger
+        | WorkOSInvitationCreatedTrigger
+        | WorkOSInvitationAcceptedTrigger
+        | WorkOSInvitationResentTrigger
+        | WorkOSInvitationRevokedTrigger
+        | WorkOSOrganizationTrigger
+    ]
+):
+    root: (
+        WorkOSUserCreatedTrigger
+        | WorkOSUserUpdatedTrigger
+        | WorkOSUserDeletedTrigger
+        | WorkOSOrganizationMembershipCreatedTrigger
+        | WorkOSOrganizationMembershipUpdatedTrigger
+        | WorkOSOrganizationMembershipDeletedTrigger
+        | WorkOSInvitationCreatedTrigger
+        | WorkOSInvitationAcceptedTrigger
+        | WorkOSInvitationResentTrigger
+        | WorkOSInvitationRevokedTrigger
+        | WorkOSOrganizationTrigger
+    )
+
+
+class LinearCommentCreatedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    action: Literal["create"] = "create"
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+    event_type: Annotated[Literal["comment.created"], Field(alias="eventType")] = "comment.created"
+    type: Literal["Comment"] = "Comment"
+    data: LinearWebhookCommentData
+
+
+class LinearIssueUpdatedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    action: Literal["update"] = "update"
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+    event_type: Annotated[Literal["issue.updated"], Field(alias="eventType")] = "issue.updated"
+    type: Literal["Issue"] = "Issue"
+    data: LinearWebhookData
+
+
+class LinearIssueCreatedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    action: Literal["create"] = "create"
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+    event_type: Annotated[Literal["issue.created"], Field(alias="eventType")] = "issue.created"
+    type: Literal["Issue"] = "Issue"
+    data: LinearWebhookData
+
+
+class LinearTrigger(RootModel[LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger]):
+    root: LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger
+
+
+class GmailTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = "gmail"
+    event_type: Annotated[GmailEventType, Field(alias="eventType")]
+    id: str
+    thread_id: Annotated[str, Field(alias="threadId")]
+    subject: str
+    from_: Annotated[str, Field(alias="from")]
+    to: str
+    date: str
+    internal_date: Annotated[str, Field(alias="internalDate")]
+    message_id: Annotated[str, Field(alias="messageId")]
+    body: str
+    snippet: str
+    label_ids: Annotated[list[str], Field(alias="labelIds")]
+    attachments: list[GmailParsedAttachment] | None = None
+
+
+class SlackReactionAddedTriggerChannelType(StrEnum):
+    channel = "channel"
+    group = "group"
+    mpim = "mpim"
+    im = "im"
+
+
+class SlackReactionAddedTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[Literal["reaction_added"], Field(alias="eventType")] = "reaction_added"
+    channel_id: Annotated[str, Field(alias="channelId")]
+    channel_name: Annotated[str | None, Field(alias="channelName")]
+    user_id: Annotated[str, Field(alias="userId")]
+    user_name: Annotated[str | None, Field(alias="userName")]
+    text: str
+    timestamp: str
+    thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
+    thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    permalink: str | None
+    channel_type: Annotated[SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")]
+    blocks: list[Any] | None
+    attachments: list[Any] | None
+    files: list[Any] | None
+    reaction: str
+    item_type: Annotated[str | None, Field(alias="itemType")]
+    item_user_id: Annotated[str | None, Field(alias="itemUserId")]
+    item_channel_id: Annotated[str | None, Field(alias="itemChannelId")]
+    item_timestamp: Annotated[str | None, Field(alias="itemTimestamp")]
+
+
+class SlackAppMentionTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[Literal["app_mention"], Field(alias="eventType")] = "app_mention"
+    channel_id: Annotated[str, Field(alias="channelId")]
+    channel_name: Annotated[str | None, Field(alias="channelName")]
+    user_id: Annotated[str, Field(alias="userId")]
+    user_name: Annotated[str | None, Field(alias="userName")]
+    text: str
+    timestamp: str
+    thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
+    thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    permalink: str | None
+    channel_type: Annotated[SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")]
+    blocks: list[Any] | None
+    attachments: list[Any] | None
+    files: list[Any] | None
+
+
+class SlackMessageTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[Literal["message"], Field(alias="eventType")] = "message"
+    channel_id: Annotated[str, Field(alias="channelId")]
+    channel_name: Annotated[str | None, Field(alias="channelName")]
+    user_id: Annotated[str, Field(alias="userId")]
+    user_name: Annotated[str | None, Field(alias="userName")]
+    text: str
+    timestamp: str
+    thread_ts: Annotated[str | None, Field(alias="threadTs")] = None
+    thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
+    team_id: Annotated[str, Field(alias="teamId")]
+    permalink: str | None
+    channel_type: Annotated[SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")]
+    blocks: list[Any] | None
+    attachments: list[Any] | None
+    files: list[Any] | None
+
+
+class SlackTrigger(RootModel[SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger]):
+    root: SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger
+
+
+class Trigger(
+    RootModel[
+        SlackTrigger
+        | GithubTrigger
+        | GmailTrigger
+        | LinearTrigger
+        | WorkOSTrigger
+        | WebhookTrigger
+        | CronTrigger
+        | ManualSampleTrigger
+    ]
+):
+    root: (
+        SlackTrigger
+        | GithubTrigger
+        | GmailTrigger
+        | LinearTrigger
+        | WorkOSTrigger
+        | WebhookTrigger
+        | CronTrigger
+        | ManualSampleTrigger
+    )
+
+
+class TriggerArray(RootModel[list[Trigger]]):
+    root: list[Trigger]
+
+
 class WorkOSEventType(StrEnum):
     user_created = "user.created"
     user_updated = "user.updated"
@@ -478,6 +1106,39 @@ class WorkOSEventType(StrEnum):
     invitation_accepted = "invitation.accepted"
     invitation_resent = "invitation.resent"
     invitation_revoked = "invitation.revoked"
+
+
+class TriggerType(
+    RootModel[
+        SlackEventType
+        | GitHubEventType
+        | LinearEventType
+        | GmailEventType
+        | WorkOSEventType
+        | WebhookTriggerType
+        | CronTriggerType
+        | ManualSampleTriggerType
+    ]
+):
+    root: (
+        SlackEventType
+        | GitHubEventType
+        | LinearEventType
+        | GmailEventType
+        | WorkOSEventType
+        | WebhookTriggerType
+        | CronTriggerType
+        | ManualSampleTriggerType
+    )
+
+
+class WebhookInputConfigInstance(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_id: Annotated[Literal["system"], Field(alias="integrationId")] = "system"
+    integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = "webhook"
+    config_type: Annotated[Literal["webhook_input"], Field(alias="configType")] = "webhook_input"
 
 
 class WorkOSInputConfigInstance(TerseModel):
@@ -513,6 +1174,10 @@ class WorkOSOutputConfigInstance(TerseModel):
     config_type: Annotated[Literal["workos_output"], Field(alias="configType")] = "workos_output"
 
 
+class WorkOSWebhookData(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 class OutputItem(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -530,7 +1195,7 @@ class RunHistoryActionType(StrEnum):
     error = "error"
 
 
-class RunHistoryAction(TerseModel):
+class RunHistoryActionBase(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -550,7 +1215,7 @@ class Action(TerseModel):
         extra="forbid",
     )
     type: Literal["action"] = "action"
-    action: RunHistoryAction
+    action: RunHistoryActionBase
 
 
 class CommitAssociation(TerseModel):
@@ -610,7 +1275,6 @@ class AgentNotificationSettings(TerseModel):
 class ConfigData(
     RootModel[
         GmailConfigInstance
-        | FigmaConfigInstance
         | SlackConfigInstance
         | SlackOutputConfigInstance
         | GmailOutputConfigInstance
@@ -619,8 +1283,6 @@ class ConfigData(
         | LinearInputConfigInstance
         | LinearOutputConfigInstance
         | GitHubConfigInstance
-        | JiraConfigInstance
-        | ConfluenceConfigInstance
         | PosthogConfigInstance
         | DatadogConfigInstance
         | TimeTriggerConfigInstance
@@ -630,11 +1292,11 @@ class ConfigData(
         | WorkOSOutputConfigInstance
         | AttioOutputConfigInstance
         | SnowflakeOutputConfigInstance
+        | WebhookInputConfigInstance
     ]
 ):
     root: (
         GmailConfigInstance
-        | FigmaConfigInstance
         | SlackConfigInstance
         | SlackOutputConfigInstance
         | GmailOutputConfigInstance
@@ -643,8 +1305,6 @@ class ConfigData(
         | LinearInputConfigInstance
         | LinearOutputConfigInstance
         | GitHubConfigInstance
-        | JiraConfigInstance
-        | ConfluenceConfigInstance
         | PosthogConfigInstance
         | DatadogConfigInstance
         | TimeTriggerConfigInstance
@@ -654,6 +1314,7 @@ class ConfigData(
         | WorkOSOutputConfigInstance
         | AttioOutputConfigInstance
         | SnowflakeOutputConfigInstance
+        | WebhookInputConfigInstance
     )
 
 
@@ -665,8 +1326,20 @@ class AgentOutput(TerseModel):
     config: ConfigData
 
 
-class AgentTrigger(AgentOutput):
-    pass
+class TriggerMetadata(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    webhook_url: Annotated[str | None, Field(alias="webhookUrl")] = None
+
+
+class AgentTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    config: ConfigData
+    metadata: TriggerMetadata | None = None
 
 
 class AgentPrompt(TerseModel):
@@ -994,7 +1667,7 @@ class AggregateRumEventsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     query: str | None
     from_: Annotated[str, Field(alias="from")]
     to: str | None
@@ -1123,7 +1796,7 @@ class AttioListObjectsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     objects: list[AttioObjectWithAttributes]
     count: int
 
@@ -1189,7 +1862,7 @@ class AttioQueryRecordsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     records: list[AttioRecord]
     count: int
 
@@ -1244,7 +1917,7 @@ class AttioUpsertRecordToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     records: list[AttioRecord] | None = None
     count: int | None = None
     requested_count: Annotated[int | None, Field(alias="requestedCount")] = None
@@ -1252,6 +1925,14 @@ class AttioUpsertRecordToolOutput(TerseModel):
     failure_count: Annotated[int | None, Field(alias="failureCount")] = None
     partial: bool | None = None
     errors: list[AttioUpsertError] | None = None
+
+
+class BaseTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
+    event_type: Annotated[TriggerType, Field(alias="eventType")]
 
 
 class Button(TerseModel):
@@ -1401,226 +2082,6 @@ class ConfigurationFieldDefinition(TerseModel):
     options: list[ConfigurationOption]
     required: bool | None = None
     hint: str | None = None
-
-
-class ConfluenceAddCommentToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Confluence integration to use.",
-        ),
-    ]
-    page_id: Annotated[
-        str,
-        Field(alias="pageId", description="The Confluence page ID to add a comment to."),
-    ]
-    comment_text: Annotated[str, Field(description="The text content of the comment to add.")]
-    text_to_comment_on: Annotated[
-        str | None,
-        Field(
-            description="Optional: The specific text in the page that this comment refers to. If provided, the tool will try to find this text and attach the comment to it. If not provided, you must specify start_position and end_position."
-        ),
-    ] = None
-    start_position: Annotated[
-        int | None,
-        Field(
-            description="Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided."
-        ),
-    ] = None
-    end_position: Annotated[
-        int | None,
-        Field(
-            description="Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided."
-        ),
-    ] = None
-
-
-class ConfluenceAddCommentInput(RootModel[ConfluenceAddCommentToolInput]):
-    root: ConfluenceAddCommentToolInput
-
-
-class ConfluenceCommentPosition(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    start: int
-    end: int
-
-
-class ConfluenceAddCommentToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
-    comment_id: str
-    comment_text: str
-    position: ConfluenceCommentPosition
-    text_commented_on: str | None = None
-    message: str
-
-
-class ConfluenceBodyRepresentation(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    value: str
-    representation: str
-
-
-class ConfluenceBodyContent(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    storage: ConfluenceBodyRepresentation | None = None
-    view: ConfluenceBodyRepresentation | None = None
-    export_view: ConfluenceBodyRepresentation | None = None
-
-
-class ConfluencePageRelation(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    title: str
-    type: str
-
-
-class ConfluencePageVersionAuthor(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: str
-    username: str | None = None
-    user_key: Annotated[str | None, Field(alias="userKey")] = None
-    account_id: Annotated[str | None, Field(alias="accountId")] = None
-    display_name: Annotated[str | None, Field(alias="displayName")] = None
-
-
-class ConfluencePageVersion(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    number: int
-    when: str
-    message: str | None = None
-    by: ConfluencePageVersionAuthor | None = None
-
-
-class ConfluencePageSpace(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str | float
-    key: str
-    name: str
-    type: str
-
-
-class ConfluencePageQueryResult(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    page_id: str
-    title: str
-    type: str
-    status: str
-    space: ConfluencePageSpace | None = None
-    version: ConfluencePageVersion | None = None
-    created_date: str | None = None
-    last_modified: str | None = None
-    url: str | None = None
-    body: ConfluenceBodyContent
-    body_text: str
-    ancestors: list[ConfluencePageRelation]
-    descendants: list[ConfluencePageRelation]
-    ancestors_count: int
-    descendants_count: int
-
-
-class ConfluencePage(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    title: str
-    space_id: Annotated[str, Field(alias="spaceId")]
-    space_name: Annotated[str, Field(alias="spaceName")]
-    url: str
-    status: str
-    version: int
-
-
-class ConfluencePagesQuery(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    space_id: Annotated[str | None, Field(alias="spaceId")] = None
-    space_key: Annotated[str | None, Field(alias="spaceKey")] = None
-
-
-class ConfluencePagesResponse(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    pages: list[ConfluencePage]
-    space_id: Annotated[str, Field(alias="spaceId")]
-    total: int
-
-
-class ConfluenceQueryPageToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Confluence integration to use.",
-        ),
-    ]
-    page_id: Annotated[str, Field(alias="pageId", description="The Confluence page ID to query.")]
-
-
-class ConfluenceQueryPageInput(RootModel[ConfluenceQueryPageToolInput]):
-    root: ConfluenceQueryPageToolInput
-
-
-class ConfluenceQueryPageToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
-    page_id: str
-    title: str
-    type: str
-    status: str
-    space: ConfluencePageSpace | None = None
-    version: ConfluencePageVersion | None = None
-    created_date: str | None = None
-    last_modified: str | None = None
-    url: str | None = None
-    body: ConfluenceBodyContent
-    body_text: str
-    ancestors: list[ConfluencePageRelation]
-    descendants: list[ConfluencePageRelation]
-    ancestors_count: int
-    descendants_count: int
-
-
-class ConfluenceResourcesResponse(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    resources: list[ConfluencePage]
-    space_id: Annotated[str, Field(alias="spaceId")]
-    total: int
 
 
 class CountByString(TerseModel):
@@ -1839,194 +2300,6 @@ class Error(TerseModel):
     message: str
 
 
-class FigmaWebhookUser(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    handle: str
-    email: str
-    img_url: str
-
-
-class FigmaVectorData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    x: float
-    y: float
-
-
-class FigmaClientMeta(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    x: float
-    y: float
-    width: float
-    height: float
-    node_id: str
-    node_offset: FigmaVectorData
-
-
-class FigmaApiComment(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    message: str
-    client_meta: FigmaClientMeta | None
-    user: FigmaWebhookUser
-    created_at: str
-    resolved_at: str | None
-    parent_id: str | None = None
-    order_id: str | None = None
-    mentions: list[Any] | None = None
-    reactions: list[Any] | None = None
-
-
-class FigmaCommentImageUrls(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    node_image: Annotated[str | None, Field(alias="nodeImage")] = None
-    full_frame: Annotated[str | None, Field(alias="fullFrame")] = None
-
-
-class FigmaFrameOffsetRegionData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    node_id: str
-    node_offset: FigmaVectorData
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-class FigmaFrameOffsetRegionPositioning(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Literal["FrameOffsetRegion"] = "FrameOffsetRegion"
-    data: FigmaFrameOffsetRegionData
-
-
-class FigmaRegionData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-class FigmaRegionPositioning(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Literal["Region"] = "Region"
-    data: FigmaRegionData
-
-
-class FigmaFrameOffsetData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    node_id: str
-    node_offset: FigmaVectorData
-
-
-class FigmaFrameOffsetPositioning(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Literal["FrameOffset"] = "FrameOffset"
-    data: FigmaFrameOffsetData
-
-
-class FigmaVectorPositioning(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Literal["Vector"] = "Vector"
-    data: FigmaVectorData
-
-
-class FigmaPositioningData(
-    RootModel[
-        FigmaVectorPositioning
-        | FigmaFrameOffsetPositioning
-        | FigmaRegionPositioning
-        | FigmaFrameOffsetRegionPositioning
-    ]
-):
-    root: (
-        FigmaVectorPositioning
-        | FigmaFrameOffsetPositioning
-        | FigmaRegionPositioning
-        | FigmaFrameOffsetRegionPositioning
-    )
-
-
-class FigmaFileMetadata(TerseModel):
-    name: str | None = None
-    folder_name: str | None = None
-    url: str | None = None
-
-
-class FigmaCommentThreadEntry(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    message: str
-    author: FigmaWebhookUser
-    created_at: Annotated[str, Field(alias="createdAt")]
-    resolved_at: Annotated[str | None, Field(alias="resolvedAt")]
-    parent_id: Annotated[str | None, Field(alias="parentId")]
-    order_id: Annotated[str | None, Field(alias="orderId")] = None
-    is_root: Annotated[bool | None, Field(alias="isRoot")] = None
-
-
-class FigmaCommentEventData(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[str, Field(alias="integrationId")]
-    comment_id: Annotated[str, Field(alias="commentId")]
-    file_key: Annotated[str, Field(alias="fileKey")]
-    file_url: Annotated[str, Field(alias="fileUrl")]
-    node_id: Annotated[str | None, Field(alias="nodeId")] = None
-    message: str
-    author: FigmaWebhookUser
-    created_at: Annotated[str, Field(alias="createdAt")]
-    resolved: bool | None = None
-    thread: list[FigmaCommentThreadEntry] | None = None
-    file_metadata: Annotated[FigmaFileMetadata | None, Field(alias="fileMetadata")] = None
-    positioning_data: Annotated[FigmaPositioningData | None, Field(alias="positioningData")] = None
-    matched_node_ids: Annotated[list[str] | None, Field(alias="matchedNodeIds")] = None
-    image_urls: Annotated[FigmaCommentImageUrls | None, Field(alias="imageUrls")] = None
-
-
-class FigmaEventTypes(StrEnum):
-    file_comment = "FILE_COMMENT"
-
-
-class FigmaWebhookComment(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    message: str
-    client_meta: FigmaClientMeta
-    user: FigmaWebhookUser
-    created_at: str
-    resolved_at: str | None
-
-
 class FilterResult(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2215,7 +2488,7 @@ class GetLaunchDarklyFlagDetailsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     project_key: Annotated[str, Field(alias="projectKey")]
     flag: LaunchDarklyFlagMetadata
     environments: dict[str, LaunchDarklyEnvironmentConfigInstance]
@@ -2317,7 +2590,7 @@ class GetPosthogSessionEventsToolOutput(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     session_id: Annotated[str, Field(alias="sessionId")]
     session_url: Annotated[str, Field(alias="sessionUrl")]
     start_time: Annotated[str, Field(alias="startTime")]
@@ -2373,7 +2646,7 @@ class GetWorkOSUserToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     user: WorkOSUserSummary
     message: str
 
@@ -2584,7 +2857,7 @@ class GmailCreateDraftToolOutput(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     draft_id: str
     message_id: str
     thread_id: str
@@ -2674,7 +2947,7 @@ class GmailSendEmailToolOutput(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     message_id: str
     thread_id: str
     to: str
@@ -2759,7 +3032,7 @@ class GrepGitHubCodeToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     total_count: Annotated[int, Field(alias="totalCount")]
     results_returned: Annotated[int, Field(alias="resultsReturned")]
     pattern: str
@@ -2802,7 +3075,7 @@ class ImageEditToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     url: str
     image_url: str
     summary: str
@@ -2838,310 +3111,6 @@ class IntegrationPrompt(TerseModel):
     integration: str
     message: str
     state_token: Annotated[str | None, Field(alias="stateToken")] = None
-
-
-class JiraAssigneeInputJiraAssigneeInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    email: Annotated[str, Field(description="The assignee email")]
-
-
-class JiraAssigneeInput(RootModel[JiraAssigneeInputJiraAssigneeInput | None]):
-    root: JiraAssigneeInputJiraAssigneeInput | None
-
-
-class JiraCreateTicketToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Jira integration to use.",
-        ),
-    ]
-    title: Annotated[str, Field(description="The issue title/summary. This is required.")]
-    description: Annotated[
-        str | None,
-        Field(description="The issue description in plain text or markdown format."),
-    ] = None
-    project_key: Annotated[
-        str,
-        Field(
-            alias="projectKey",
-            description='The Jira project key (e.g., "PROJ", "TEAM"). This is required.',
-        ),
-    ]
-    issue_type: Annotated[
-        str | None,
-        Field(
-            alias="issueType",
-            description='The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")',
-        ),
-    ]
-    assignee: Annotated[JiraAssigneeInput | None, Field(description="The assignee of the ticket")] = None
-    priority: Annotated[
-        int | None,
-        Field(description="The priority of the ticket (number, typically 1-5)"),
-    ] = None
-    labels: Annotated[
-        list[str] | None,
-        Field(description="The labels for the ticket (array of label names)"),
-    ] = None
-    due_date: Annotated[
-        str | None,
-        Field(
-            alias="dueDate",
-            description='The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.',
-        ),
-    ] = None
-
-
-class JiraCreateTicketInput(RootModel[JiraCreateTicketToolInput]):
-    root: JiraCreateTicketToolInput
-
-
-class JiraIssueTypeRef(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    name: str
-
-
-class JiraIssueProjectRef(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    name: str
-    key: str
-
-
-class JiraIssueAssignee(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    name: str
-    email: str | None = None
-
-
-class JiraIssueState(JiraIssueTypeRef):
-    pass
-
-
-class JiraRichDescription(RootModel[str | dict[str, Any]]):
-    root: str | dict[str, Any]
-
-
-class JiraIssueSummary(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str | None = None
-    key: str
-    identifier: str
-    title: str | None = None
-    description: JiraRichDescription | None = None
-    state: JiraIssueState | None = None
-    priority: int | None = None
-    assignee: JiraIssueAssignee | None = None
-    labels: list[str] | None = None
-    due_date: Annotated[str | None, Field(alias="dueDate")] = None
-    project: JiraIssueProjectRef | None = None
-    issue_type: Annotated[JiraIssueTypeRef | None, Field(alias="issueType")] = None
-    url: str | None = None
-    created_at: Annotated[str | None, Field(alias="createdAt")] = None
-    updated_at: Annotated[str | None, Field(alias="updatedAt")] = None
-
-
-class JiraCreateTicketToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: bool
-    actions: list[RunHistoryAction] | None = None
-    issue: JiraIssueSummary
-
-
-class JiraProject(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    key: str
-    name: str
-
-
-class JiraCredentialsValidationResponse(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    valid: bool
-    projects: list[JiraProject] | None = None
-    error: str | None = None
-
-
-class JiraResourceProject(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: str
-    key: str
-    name: str
-    project_type_key: Annotated[str, Field(alias="projectTypeKey")]
-
-
-class JiraResourcesPayload(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    projects: list[JiraResourceProject]
-    base_url: Annotated[str, Field(alias="baseUrl")]
-    cloud_id: Annotated[str, Field(alias="cloudId")]
-
-
-class JiraResourcesResponse(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: bool
-    resources: JiraResourcesPayload
-
-
-class JiraSearchTicketToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Jira integration to use.",
-        ),
-    ]
-    jql: Annotated[
-        str | None,
-        Field(
-            description="JQL (Jira Query Language) query to search for issues. If not provided, will search all issues."
-        ),
-    ] = None
-    text: Annotated[
-        str | None,
-        Field(
-            description='Text to search for in issue titles and descriptions. If provided, will be converted to JQL: text ~ "search term"'
-        ),
-    ] = None
-    project_key: Annotated[
-        str | None,
-        Field(
-            alias="projectKey",
-            description='Filter by Jira project key (e.g., "PROJ", "TEAM")',
-        ),
-    ] = None
-    assignee_email: Annotated[
-        str | None,
-        Field(alias="assigneeEmail", description="Filter by assignee email address"),
-    ] = None
-    status: Annotated[
-        str | None,
-        Field(description='Filter by status name (e.g., "In Progress", "Done", "To Do")'),
-    ] = None
-    limit: Annotated[
-        int | None,
-        Field(description="Maximum number of issues to return. Defaults to 50 if not provided."),
-    ] = None
-    next_page_token: Annotated[
-        str | None,
-        Field(
-            alias="nextPageToken",
-            description="Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.",
-        ),
-    ] = None
-
-
-class JiraSearchTicketInput(RootModel[JiraSearchTicketToolInput]):
-    root: JiraSearchTicketToolInput
-
-
-class JiraSearchTicketToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: bool
-    actions: list[RunHistoryAction] | None = None
-    issues: list[JiraIssueSummary]
-    count: int
-    total: int
-    max_results: Annotated[int, Field(alias="maxResults")]
-    is_last: Annotated[bool, Field(alias="isLast")]
-    next_page_token: Annotated[str | None, Field(alias="nextPageToken")] = None
-    jql: str
-
-
-class JiraUpdateTicketToolInput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_id: Annotated[
-        str,
-        Field(
-            alias="integrationId",
-            description="The integration ID of the Atlassian/Jira integration to use.",
-        ),
-    ]
-    issue_key: Annotated[
-        str,
-        Field(
-            alias="issueKey",
-            description='The key of the Jira issue to update (e.g., "PROJ-123"). This is required.',
-        ),
-    ]
-    title: Annotated[str | None, Field(description="The issue title/summary.")] = None
-    description: Annotated[
-        str | None,
-        Field(description="The issue description in plain text or markdown format."),
-    ] = None
-    status: Annotated[
-        str | None,
-        Field(description='The status name to transition to (e.g., "In Progress", "Done", "To Do").'),
-    ] = None
-    assignee: Annotated[
-        JiraAssigneeInput | None,
-        Field(description="The assignee of the ticket. Set to null to unassign."),
-    ] = None
-    priority: Annotated[
-        int | None,
-        Field(description="The priority of the ticket (number, typically 1-5)."),
-    ] = None
-    labels: Annotated[
-        list[str] | None,
-        Field(description="The labels for the ticket (array of label names). This replaces all existing labels."),
-    ] = None
-    due_date: Annotated[
-        str | None,
-        Field(
-            alias="dueDate",
-            description='The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.',
-        ),
-    ] = None
-
-
-class JiraUpdateTicketInput(RootModel[JiraUpdateTicketToolInput]):
-    root: JiraUpdateTicketToolInput
-
-
-class JiraUpdateTicketToolOutput(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    success: bool
-    actions: list[RunHistoryAction] | None = None
-    issue: JiraIssueSummary
-    updated_fields: Annotated[list[str], Field(alias="updatedFields")]
 
 
 class LaunchDarklyEnvironment(TerseModel):
@@ -3222,7 +3191,7 @@ class LinearAddCommentToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     comment: LinearCommentHandle
 
 
@@ -3276,7 +3245,7 @@ class LinearCreateTicketToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     issue: LinearIssueHandle
 
 
@@ -3319,7 +3288,7 @@ class LinearGetLabelsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     labels: list[LinearLabelSummary]
 
 
@@ -3362,7 +3331,7 @@ class LinearGetProjectsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     projects: list[LinearProjectSummary]
 
 
@@ -3406,7 +3375,7 @@ class LinearGetStatesToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     states: list[LinearStateSummary]
 
 
@@ -3427,8 +3396,13 @@ class LinearGetTeamsInput(RootModel[LinearGetTeamsToolInput]):
     root: LinearGetTeamsToolInput
 
 
-class LinearTeam(JiraIssueProjectRef):
-    pass
+class LinearTeam(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    name: str
+    key: str
 
 
 class LinearGetTeamsToolOutput(TerseModel):
@@ -3436,7 +3410,7 @@ class LinearGetTeamsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     teams: list[LinearTeam]
 
 
@@ -3463,15 +3437,20 @@ class LinearGetUsersToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     users: list[LinearUserSummary]
 
 
-class LinearIssueAssignee(JiraIssueAssignee):
-    pass
+class LinearIssueAssignee(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    name: str
+    email: str | None = None
 
 
-class LinearIssueProject(JiraIssueTypeRef):
+class LinearIssueProject(LinearWebhookAssignee):
     pass
 
 
@@ -3561,7 +3540,7 @@ class LinearReadTicketToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     issue: LinearIssueDetail
     comments: list[LinearReadTicketComment] | None = None
 
@@ -3657,7 +3636,7 @@ class LinearSearchTicketToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     issues: list[LinearIssueSummary]
     count: int
     query: str
@@ -3733,7 +3712,22 @@ class LinearUpdateTicketToolOutput(LinearCreateTicketToolOutput):
     pass
 
 
-class LinearWorkspace(JiraIssueTypeRef):
+class LinearWebhookPayload(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    action: LinearWebhookAction
+    actor: LinearWebhookActor
+    created_at: Annotated[str, Field(alias="createdAt")]
+    data: LinearWebhookData
+    type: LinearWebhookType
+    url: str | None = None
+    organization_id: Annotated[str, Field(alias="organizationId")]
+    webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
+    webhook_id: Annotated[str, Field(alias="webhookId")]
+
+
+class LinearWorkspace(LinearWebhookAssignee):
     pass
 
 
@@ -3793,7 +3787,7 @@ class ListGitHubCommitsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     repository: str
     time_window: Annotated[str, Field(alias="timeWindow")]
     filters: str
@@ -3836,7 +3830,7 @@ class ListGitHubDirectoryToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     repository: str
     path: str
     recursive: bool
@@ -3917,7 +3911,7 @@ class ListGitHubPullRequestsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     repository: str
     time_window: Annotated[str, Field(alias="timeWindow")]
     summary: GitHubPullRequestListSummary
@@ -3964,7 +3958,7 @@ class ListLaunchDarklyFlagsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     project_key: Annotated[str, Field(alias="projectKey")]
     total_flags: Annotated[int, Field(alias="totalFlags")]
     flags: list[LaunchDarklyFlagSummary]
@@ -4026,7 +4020,7 @@ class ListRumEventsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     query: str | None
     total_events: Annotated[int, Field(alias="totalEvents")]
     events: list[DatadogRumEvent]
@@ -4089,7 +4083,7 @@ class ListWorkOSOrganizationsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     organizations: list[WorkOSOrganizationSummary]
     pagination: WorkOSPagination
     message: str
@@ -4138,7 +4132,7 @@ class ListWorkOSUsersToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     users: list[WorkOSUserSummary]
     pagination: WorkOSPagination
     message: str
@@ -4416,7 +4410,7 @@ class NotionDatabaseRowMutationResult(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     action: NotionDatabaseRowMutationResultAction
     page_id: str
     url: str | None = None
@@ -4459,8 +4453,8 @@ class NotionCreateOrUpdatePageToolOutput(NotionCreateOrUpdateDatabaseRowToolOutp
     pass
 
 
-class NotionPageParent(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
+class NotionPageParent(WorkOSWebhookData):
+    pass
 
 
 class NotionFileReference(TerseModel):
@@ -4560,7 +4554,7 @@ class NotionFetchRelatedEventsToolOutput(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     events_count: int
     events: str | None = None
     message: str
@@ -4605,7 +4599,7 @@ class NotionGetSchemaToolOutput(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     data_source_id: str
     database_name: str
     schema_: Annotated[dict[str, NotionSchemaProperty], Field(alias="schema")]
@@ -4633,7 +4627,7 @@ class NotionListUsersInput(RootModel[NotionListUsersToolInput]):
     root: NotionListUsersToolInput
 
 
-class NotionWorkspaceUser(JiraIssueAssignee):
+class NotionWorkspaceUser(LinearIssueAssignee):
     pass
 
 
@@ -4642,7 +4636,7 @@ class NotionListUsersToolOutput(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     users: list[NotionWorkspaceUser]
     count: int
 
@@ -4656,7 +4650,7 @@ class NotionModifyBlocksAppendResult(TerseModel):
         extra="forbid",
     )
     operation: Literal["append"] = "append"
-    actions: list[RunHistoryAction]
+    actions: list[RunHistoryActionBase]
     block_ids: list[str]
     blocks_count: int
 
@@ -4666,7 +4660,7 @@ class NotionModifyBlocksAppendSuccess(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     operation: Literal["append"] = "append"
     block_ids: list[str]
     blocks_count: int
@@ -4677,7 +4671,7 @@ class NotionModifyBlocksDeleteResult(TerseModel):
         extra="forbid",
     )
     operation: Literal["delete"] = "delete"
-    actions: list[RunHistoryAction]
+    actions: list[RunHistoryActionBase]
     block_id: str
 
 
@@ -4686,7 +4680,7 @@ class NotionModifyBlocksUpdateResult(TerseModel):
         extra="forbid",
     )
     operation: Literal["update"] = "update"
-    actions: list[RunHistoryAction]
+    actions: list[RunHistoryActionBase]
     block_id: str
 
 
@@ -4701,7 +4695,7 @@ class NotionModifyBlocksBatchSuccess(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     operations: list[NotionModifyBlocksOperationResult]
     block_ids: list[str]
     total_operations: int
@@ -4712,7 +4706,7 @@ class NotionModifyBlocksFailure(TerseModel):
         extra="forbid",
     )
     success: Literal[False] = False
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     error: str
     block_ids: list[str]
     operations: list[NotionModifyBlocksOperationResult] | None = None
@@ -4756,7 +4750,7 @@ class NotionModifyBlocksSingleBlockSuccess(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     operation: NotionModifyBlocksSingleBlockSuccessOperation
     block_id: str
 
@@ -4825,7 +4819,7 @@ class NotionQueryDatabaseFailure(TerseModel):
         extra="forbid",
     )
     success: Literal[False] = False
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     pages: list[NotionDatabaseQueryPage]
     total_returned: Literal[0] = 0
     has_more: Literal[False] = False
@@ -4907,7 +4901,7 @@ class NotionQueryDatabaseSuccess(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     pages: list[NotionDatabaseQueryPage]
     total_returned: int
     has_more: bool
@@ -4983,15 +4977,6 @@ class OrganizationUpdateRequest(TerseModel):
         extra="forbid",
     )
     name: str
-
-
-class PartialSdkAgentRunEventPayload(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[IntegrationTypeEnum | None, Field(alias="integrationType")] = None
-    formatted_content: Annotated[str | None, Field(alias="formattedContent")] = None
-    debug_log: Annotated[str | None, Field(alias="debugLog")] = None
 
 
 class PosthogEventCount(TerseModel):
@@ -5107,7 +5092,7 @@ class PosthogSearchSessionsFound(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     user_email: Annotated[str, Field(alias="userEmail")]
     project_id: Annotated[str, Field(alias="projectId")]
     person_found: Annotated[Literal[True], Field(alias="personFound")] = True
@@ -5125,7 +5110,7 @@ class PosthogSearchSessionsNotFound(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     user_email: Annotated[str, Field(alias="userEmail")]
     project_id: Annotated[str, Field(alias="projectId")]
     person_found: Annotated[Literal[False], Field(alias="personFound")] = False
@@ -5180,7 +5165,7 @@ class ReadGitHubFileToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     repository: str
     path: str
     url: str
@@ -5273,7 +5258,7 @@ class RunHistoryRecord(TerseModel):
     trigger: RunHistoryTrigger
     filtered: bool
     decision: RunHistoryDecision
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     status: RunHistoryStatus
     is_manually_triggered: Annotated[bool, Field(alias="isManuallyTriggered")]
 
@@ -5288,7 +5273,7 @@ class RunHistoryRecordWithAgent(TerseModel):
     trigger: RunHistoryTrigger
     filtered: bool
     decision: RunHistoryDecision
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     status: RunHistoryStatus
     is_manually_triggered: Annotated[bool, Field(alias="isManuallyTriggered")]
     agent_name: Annotated[str, Field(alias="agentName")]
@@ -5310,15 +5295,6 @@ class SandboxStage(StrEnum):
     running = "running"
 
 
-class SdkAgentRunEventPayload(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
-    formatted_content: Annotated[str, Field(alias="formattedContent")]
-    debug_log: Annotated[str, Field(alias="debugLog")]
-
-
 class SdkAgentRunNormalizedRequestOptions(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -5332,7 +5308,7 @@ class SdkAgentRunNormalizedRequest(TerseModel):
         extra="forbid",
     )
     prompt: str
-    event: SdkAgentRunEventPayload
+    event: Trigger
     skills: list[ConfigData]
     tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
     options: SdkAgentRunNormalizedRequestOptions
@@ -5351,7 +5327,7 @@ class SdkAgentRunRequestBody(TerseModel):
         extra="forbid",
     )
     prompt: str | None = None
-    event: PartialSdkAgentRunEventPayload | None = None
+    event: Trigger | None = None
     skills: list[ConfigData] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")] = None
@@ -5473,7 +5449,7 @@ class SdkDeployJob(TerseModel):
     webhook_url: Annotated[str | None, Field(alias="webhookURL")] = None
 
 
-class SdkDeployRemoved(JiraIssueTypeRef):
+class SdkDeployRemoved(LinearWebhookAssignee):
     pass
 
 
@@ -5485,6 +5461,14 @@ class SdkDeployRequestBody(TerseModel):
     source_zip_base64: Annotated[str, Field(alias="sourceZipBase64")]
 
 
+class SdkDeployResultTrigger(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    metadata: TriggerMetadata | None = None
+
+
 class SdkDeployResult(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -5492,6 +5476,7 @@ class SdkDeployResult(TerseModel):
     job_name: Annotated[str, Field(alias="jobName")]
     automation_id: Annotated[str, Field(alias="automationId")]
     is_update: Annotated[bool, Field(alias="isUpdate")]
+    triggers: list[SdkDeployResultTrigger] | None = None
 
 
 class SdkDeployResponseBody(TerseModel):
@@ -5505,7 +5490,7 @@ class SdkDeployResponseBody(TerseModel):
     details: str | None = None
 
 
-class TriggerPayload(TerseModel):
+class SdkSampleEventsRequestTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5518,7 +5503,7 @@ class SdkSampleEventsRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    triggers: Annotated[list[TriggerPayload], Field(min_length=1)]
+    triggers: Annotated[list[SdkSampleEventsRequestTrigger], Field(min_length=1)]
 
 
 class SdkToolExecuteRequest(TerseModel):
@@ -5580,7 +5565,7 @@ class SearchDatadogLogsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     query: str | None
     indexes: list[str]
     total_logs: Annotated[int, Field(alias="totalLogs")]
@@ -5654,7 +5639,7 @@ class SearchGitHubCodeToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     total_count: Annotated[int, Field(alias="totalCount")]
     results_returned: Annotated[int, Field(alias="resultsReturned")]
     query: str
@@ -5670,7 +5655,7 @@ class SearchPosthogEventsCountSummary(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     count_by_event_name_only: Annotated[Literal[True], Field(alias="countByEventNameOnly")] = True
     custom_events_only: Annotated[bool, Field(alias="customEventsOnly")]
     event_counts: Annotated[list[PosthogEventCount], Field(alias="eventCounts")]
@@ -5684,7 +5669,7 @@ class SearchPosthogEventsEventList(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     user_email: Annotated[str | None, Field(alias="userEmail")]
     event_name: Annotated[str | None, Field(alias="eventName")]
     project_id: Annotated[str, Field(alias="projectId")]
@@ -5860,7 +5845,7 @@ class SearchPosthogLogsToolOutput(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     user_email: Annotated[str | None, Field(alias="userEmail")]
     severity_levels: Annotated[list[PosthogSeverityLevel] | None, Field(alias="severityLevels")]
     message_search: Annotated[str | None, Field(alias="messageSearch")]
@@ -5978,10 +5963,10 @@ class SerializedEvent(TerseModel):
         extra="forbid",
     )
     integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
-    event_type: Annotated[str | None, Field(alias="eventType")] = None
+    event_type: Annotated[TriggerType, Field(alias="eventType")]
     formatted_content: Annotated[str, Field(alias="formattedContent")]
     debug_log: Annotated[str, Field(alias="debugLog")]
-    metadata: dict[str, Any] | None = None
+    data: Trigger
 
 
 class SlackChannelListItem(TerseModel):
@@ -6005,13 +5990,6 @@ class SlackChannel(TerseModel):
     is_private: Annotated[bool, Field(alias="isPrivate")]
     is_archived: Annotated[bool, Field(alias="isArchived")]
     is_mpim: Annotated[bool, Field(alias="isMPIM")]
-
-
-class SlackChannelType(StrEnum):
-    channel = "channel"
-    group = "group"
-    mpim = "mpim"
-    im = "im"
 
 
 class SlackChannelsResponse(TerseModel):
@@ -6087,7 +6065,7 @@ class SlackListChannelsToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     channels: list[SlackChannelListItem]
     count: int
     next_cursor: Annotated[str | None, Field(alias="nextCursor")]
@@ -6115,7 +6093,7 @@ class SlackListUsersInput(RootModel[SlackListUsersToolInput]):
     root: SlackListUsersToolInput
 
 
-class SlackUserSummary(JiraIssueTypeRef):
+class SlackUserResponse(LinearWebhookAssignee):
     pass
 
 
@@ -6124,8 +6102,8 @@ class SlackListUsersToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
-    users: list[SlackUserSummary]
+    actions: list[RunHistoryActionBase] | None = None
+    users: list[SlackUserResponse]
     count: int
 
 
@@ -6170,7 +6148,7 @@ class SlackReadConversationToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     channel_id: Annotated[str, Field(alias="channelId")]
     channel_name: Annotated[str | None, Field(alias="channelName")] = None
     messages: list[SlackConversationMessage]
@@ -6222,7 +6200,7 @@ class SlackSendMessageToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     message_ts: str | None = None
     channel: str
     thread_ts: str | None = None
@@ -6234,7 +6212,7 @@ class SlackUsersResponse(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    users: list[SlackUserSummary]
+    users: list[SlackUserResponse]
 
 
 class SnippetVariant(RootModel[Button | IntegrationPrompt | Navigate | MultipleChoice | Image]):
@@ -6262,7 +6240,7 @@ class SnowflakeExecuteQueryInput(RootModel[SnowflakeExecuteQueryToolInput]):
     root: SnowflakeExecuteQueryToolInput
 
 
-class SnowflakeQueryRow(NotionPageParent):
+class SnowflakeQueryRow(WorkOSWebhookData):
     pass
 
 
@@ -6271,7 +6249,7 @@ class SnowflakeExecuteQueryToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     rows: list[SnowflakeQueryRow]
     columns: list[str]
     row_count: Annotated[int, Field(alias="rowCount")]
@@ -6300,7 +6278,7 @@ class SnowflakeExplainQueryToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     explain_plan: Annotated[list[SnowflakeQueryRow], Field(alias="explainPlan")]
     columns: list[str]
     row_count: Annotated[int, Field(alias="rowCount")]
@@ -6386,7 +6364,7 @@ class SummarizeGitHubPullRequestDiffToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     repository: str
     pull_request: Annotated[GitHubPullRequestRef, Field(alias="pullRequest")]
     summary: dict[str, Any]
@@ -6432,7 +6410,7 @@ class ToolOutputBase(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
 
 
 class ToolOutputFailure(TerseModel):
@@ -6440,7 +6418,7 @@ class ToolOutputFailure(TerseModel):
         extra="forbid",
     )
     success: Literal[False] = False
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
 
 
 class ToolOutputSuccess(TerseModel):
@@ -6448,7 +6426,7 @@ class ToolOutputSuccess(TerseModel):
         extra="forbid",
     )
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
 
 
 class TransientAgentOutput(TerseModel):
@@ -6475,7 +6453,7 @@ class TriggerWithEventRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    event: SerializedEvent
+    event: Trigger
 
 
 class UpdateNotificationDestinationRequest(TerseModel):
@@ -6496,18 +6474,6 @@ class UpdateNotificationDestinationRequest(TerseModel):
     slack_user_id: Annotated[str | None, Field(alias="slackUserId")] = None
     slack_user_name: Annotated[str | None, Field(alias="slackUserName")] = None
     is_active: Annotated[bool | None, Field(alias="isActive")] = None
-
-
-class UseConfluenceResourcesReturnBase(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    resources: list[ConfluencePage]
-    response: ConfluenceResourcesResponse | None = None
-    is_loading: Annotated[bool, Field(alias="isLoading")]
-    is_error: Annotated[bool, Field(alias="isError")]
-    error: Any
-    is_validating: Annotated[bool, Field(alias="isValidating")]
 
 
 class UserNoOrganization(TerseModel):
@@ -6618,7 +6584,7 @@ class WebResearchToolOutput(TerseModel):
         extra="forbid",
     )
     success: bool
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     status: Literal["completed"] = "completed"
     request_id: str
     content: str | None = None
@@ -6702,6 +6668,50 @@ class WebhookWorkOSTriggerParams(TerseModel):
     integration_id: Annotated[str, Field(alias="integrationId")]
 
 
+class WorkOSInvitationTrigger(
+    RootModel[
+        WorkOSInvitationCreatedTrigger
+        | WorkOSInvitationAcceptedTrigger
+        | WorkOSInvitationResentTrigger
+        | WorkOSInvitationRevokedTrigger
+    ]
+):
+    root: (
+        WorkOSInvitationCreatedTrigger
+        | WorkOSInvitationAcceptedTrigger
+        | WorkOSInvitationResentTrigger
+        | WorkOSInvitationRevokedTrigger
+    )
+
+
+class WorkOSMembershipTrigger(
+    RootModel[
+        WorkOSOrganizationMembershipCreatedTrigger
+        | WorkOSOrganizationMembershipUpdatedTrigger
+        | WorkOSOrganizationMembershipDeletedTrigger
+    ]
+):
+    root: (
+        WorkOSOrganizationMembershipCreatedTrigger
+        | WorkOSOrganizationMembershipUpdatedTrigger
+        | WorkOSOrganizationMembershipDeletedTrigger
+    )
+
+
+class WorkOSUserTrigger(RootModel[WorkOSUserCreatedTrigger | WorkOSUserUpdatedTrigger | WorkOSUserDeletedTrigger]):
+    root: WorkOSUserCreatedTrigger | WorkOSUserUpdatedTrigger | WorkOSUserDeletedTrigger
+
+
+class WorkOSWebhookPayload(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    event: str
+    data: WorkOSWebhookData
+    created_at: str
+
+
 class WorkosWebhookSecretUpdateRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -6732,7 +6742,7 @@ class NotionQueryPageToolOutput(TerseModel):
     last_edited_by: NotionUserReference | None = None
     in_trash: bool | None = None
     success: Literal[True] = True
-    actions: list[RunHistoryAction] | None = None
+    actions: list[RunHistoryActionBase] | None = None
     properties: dict[str, NotionReadablePropertyValue | None]
     properties_raw: dict[str, Any] | None = None
     blocks: list[FieldSchema0]

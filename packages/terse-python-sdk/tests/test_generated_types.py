@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from terse_sdk.types._generated import LinearTeam, NotionPageBlock, PosthogConfigInstance
+from terse_sdk.types._generated import (
+    LinearTeam,
+    NotionPageBlock,
+    PosthogConfigInstance,
+)
 from terse_sdk.types.enums import ConfigType
 
 

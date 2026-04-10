@@ -1,6 +1,6 @@
-import { type InputEvent, deserializeInputEvent } from "terse-sdk"
-import { SerializedEvent } from "terse-types"
+import { SerializedEvent, Trigger } from "terse-types"
+import { TriggerSchema } from "terse-types"
 
-export function convertSerializedEventToInputEvent(serializedEvent: SerializedEvent): InputEvent {
-    return deserializeInputEvent(serializedEvent)
+export function convertSerializedEventToTrigger(serializedEvent: SerializedEvent): Trigger {
+    return TriggerSchema.parse(serializedEvent)
 }

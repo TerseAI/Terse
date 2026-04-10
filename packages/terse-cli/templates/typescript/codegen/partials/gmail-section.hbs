@@ -2,11 +2,11 @@
 
 export const Gmail = {
     /** Trigger when a new email is received */
-    onEmail(): GmailConfig {
+    onEmail(): TypedTrigger<GmailTrigger> {
         return new GmailConfig("{{escape id}}", [GmailEventType.EMAIL_RECEIVED])
     },
     /** Trigger on all Gmail events */
-    trigger(opts?: { eventTypes?: GmailEventType[] }): GmailConfig {
+    trigger(opts?: { eventTypes?: GmailEventType[] }): TypedTrigger<GmailTrigger> {
         return new GmailConfig("{{escape id}}", opts?.eventTypes)
     },
     /** Use in `skills[]` */

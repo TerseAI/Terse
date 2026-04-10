@@ -109,7 +109,7 @@ Verify:
 ## Example
 
 ```typescript
-import { Terse, TerseAgent, GithubPRInputEvent } from "terse-sdk"
+import { Terse, TerseAgent, GithubPRTrigger } from "terse-sdk"
 import { GitHub, Slack, Repos, SlackChannel } from "./terse.generated"
 
 const client = new Terse()
@@ -121,10 +121,10 @@ await client.createJob({
         GitHub.skill({ repos: [Repos.MyOrg.MyRepo] }),
         Slack.skill({ channel: SlackChannel.Engineering }),
     ],
-    filter: async (event: GithubPRInputEvent) => {
+    filter: async (event: GithubPRTrigger) => {
         return !event.sender.login.includes("[bot]")
     },
-    onTrigger: async (event: GithubPRInputEvent, Agent: TerseAgent) => {
+    onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => {
         const message = await Agent.tools.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
@@ -145,7 +145,7 @@ await client.createJob({
 Python example:
 
 ```python
-from terse_sdk import CronJobInputEvent, Terse
+from terse_sdk import CronTrigger, Terse
 from terse_generated import Attio, Schedule, TerseAgent
 
 app = Terse()
@@ -155,7 +155,7 @@ app = Terse()
     triggers=[Schedule.cron("0 9 * * 1")],
     skills=[Attio.skill()],
 )
-def run_job(event: CronJobInputEvent, agent: TerseAgent) -> None:
+def run_job(event: CronTrigger, agent: TerseAgent) -> None:
     summary = agent.run_and_wait(
         "Summarize the most important pipeline changes this week. "
         f"Context: {event.formatted_content}",

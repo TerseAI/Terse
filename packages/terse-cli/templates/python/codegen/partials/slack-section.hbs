@@ -1,4 +1,4 @@
-{{#if slack}}
+{{~#if slack}}
 
 
 # === Slack ===
@@ -12,8 +12,8 @@ class SlackChannel(BaseModel):
 {{#each slack.channels}}
     {{staticName}}: ClassVar["SlackChannel"]
 {{/each}}
-
 {{#each slack.channels}}
+
 SlackChannel.{{staticName}} = SlackChannel(channel_id={{{channelIdRepr}}}, name={{{nameRepr}}})
 {{/each}}
 {{/if}}
@@ -21,7 +21,11 @@ SlackChannel.{{staticName}} = SlackChannel(channel_id={{{channelIdRepr}}}, name=
 
 class Slack:
     @staticmethod
-    def on_message(channel: SlackChannel, *, user_ids: Sequence[str] | None = None) -> TriggerConfig:
+    def on_message(
+        channel: SlackChannel,
+        *,
+        user_ids: Sequence[str] | None = None,
+    ) -> TriggerConfig[SlackMessageTrigger]:
         return TriggerConfig(
             integration_id={{{slack.instanceIdRepr}}},
             integration_type='slack',
@@ -31,13 +35,13 @@ class Slack:
                 channelId=channel.channel_id,
                 channelName=channel.name,
                 listenToUserDms=False,
-                userIds=list(user_ids) if user_ids is not None else None,
+                userIds=list(user_ids) if user_ids is not None else [],
                 eventTypes=['message'],
             ),
         )
 
     @staticmethod
-    def on_dm(*, user_ids: Sequence[str] | None = None) -> TriggerConfig:
+    def on_dm(*, user_ids: Sequence[str] | None = None) -> TriggerConfig[SlackMessageTrigger]:
         return TriggerConfig(
             integration_id={{{slack.instanceIdRepr}}},
             integration_type='slack',
@@ -45,8 +49,48 @@ class Slack:
             config_type='slack',
             config=_compact_dict(
                 listenToUserDms=True,
-                userIds=list(user_ids) if user_ids is not None else None,
+                userIds=list(user_ids) if user_ids is not None else [],
                 eventTypes=['message'],
+            ),
+        )
+
+    @staticmethod
+    def on_app_mention(
+        channel: SlackChannel,
+        *,
+        user_ids: Sequence[str] | None = None,
+    ) -> TriggerConfig[SlackAppMentionTrigger]:
+        return TriggerConfig(
+            integration_id={{{slack.instanceIdRepr}}},
+            integration_type='slack',
+            event_type='app_mention',
+            config_type='slack',
+            config=_compact_dict(
+                channelId=channel.channel_id,
+                channelName=channel.name,
+                listenToUserDms=False,
+                userIds=list(user_ids) if user_ids is not None else [],
+                eventTypes=[SlackEventType.app_mention],
+            ),
+        )
+
+    @staticmethod
+    def on_reaction_added(
+        channel: SlackChannel,
+        *,
+        user_ids: Sequence[str] | None = None,
+    ) -> TriggerConfig[SlackReactionAddedTrigger]:
+        return TriggerConfig(
+            integration_id={{{slack.instanceIdRepr}}},
+            integration_type='slack',
+            event_type='reaction_added',
+            config_type='slack',
+            config=_compact_dict(
+                channelId=channel.channel_id,
+                channelName=channel.name,
+                listenToUserDms=False,
+                userIds=list(user_ids) if user_ids is not None else [],
+                eventTypes=[SlackEventType.reaction_added],
             ),
         )
 
@@ -57,7 +101,7 @@ class Slack:
         listen_to_user_dms: bool | None = None,
         user_ids: Sequence[str] | None = None,
         event_types: Sequence[SlackEventType] | None = None,
-    ) -> TriggerConfig:
+    ) -> TriggerConfig[SlackTrigger]:
         return TriggerConfig(
             integration_id={{{slack.instanceIdRepr}}},
             integration_type='slack',
@@ -66,7 +110,7 @@ class Slack:
                 channelId=channel.channel_id if channel is not None else None,
                 channelName=channel.name if channel is not None else None,
                 listenToUserDms=listen_to_user_dms,
-                userIds=list(user_ids) if user_ids is not None else None,
+                userIds=list(user_ids) if user_ids is not None else [],
                 eventTypes=list(event_types) if event_types is not None else None,
             ),
         )
@@ -86,12 +130,12 @@ class Slack:
             config=_compact_dict(
                 channelId=channel.channel_id if channel is not None else None,
                 channelName=channel.name if channel is not None else None,
-                userIds=list(user_ids) if user_ids is not None else None,
+                userIds=list(user_ids) if user_ids is not None else [],
                 userNames=list(user_names) if user_names is not None else None,
                 listenToUserDms=listen_to_user_dms,
             ),
         )
-{{else}}
+{{~else}}
 
 
 # === Slack ===
@@ -105,7 +149,11 @@ class SlackChannel:
 
 class Slack:
     @staticmethod
-    def on_message(channel: SlackChannel, *, user_ids: list[str] | None = None) -> TriggerConfig:
+    def on_message(
+        channel: SlackChannel,
+        *,
+        user_ids: list[str] | None = None,
+    ) -> TriggerConfig[SlackMessageTrigger]:
         return TriggerConfig(
             integration_id='slack_placeholder',
             integration_type='slack',
@@ -115,13 +163,13 @@ class Slack:
                 channelId=channel.channel_id,
                 channelName=channel.name,
                 listenToUserDms=False,
-                userIds=list(user_ids) if user_ids is not None else None,
+                userIds=list(user_ids) if user_ids is not None else [],
                 eventTypes=['message'],
             ),
         )
 
     @staticmethod
-    def on_dm(*, user_ids: list[str] | None = None) -> TriggerConfig:
+    def on_dm(*, user_ids: list[str] | None = None) -> TriggerConfig[SlackMessageTrigger]:
         return TriggerConfig(
             integration_id='slack_placeholder',
             integration_type='slack',
@@ -129,8 +177,48 @@ class Slack:
             config_type='slack',
             config=_compact_dict(
                 listenToUserDms=True,
-                userIds=list(user_ids) if user_ids is not None else None,
+                userIds=list(user_ids) if user_ids is not None else [],
                 eventTypes=['message'],
+            ),
+        )
+
+    @staticmethod
+    def on_app_mention(
+        channel: SlackChannel,
+        *,
+        user_ids: list[str] | None = None,
+    ) -> TriggerConfig[SlackAppMentionTrigger]:
+        return TriggerConfig(
+            integration_id='slack_placeholder',
+            integration_type='slack',
+            event_type='app_mention',
+            config_type='slack',
+            config=_compact_dict(
+                channelId=channel.channel_id,
+                channelName=channel.name,
+                listenToUserDms=False,
+                userIds=list(user_ids) if user_ids is not None else [],
+                eventTypes=[SlackEventType.app_mention],
+            ),
+        )
+
+    @staticmethod
+    def on_reaction_added(
+        channel: SlackChannel,
+        *,
+        user_ids: list[str] | None = None,
+    ) -> TriggerConfig[SlackReactionAddedTrigger]:
+        return TriggerConfig(
+            integration_id='slack_placeholder',
+            integration_type='slack',
+            event_type='reaction_added',
+            config_type='slack',
+            config=_compact_dict(
+                channelId=channel.channel_id,
+                channelName=channel.name,
+                listenToUserDms=False,
+                userIds=list(user_ids) if user_ids is not None else [],
+                eventTypes=[SlackEventType.reaction_added],
             ),
         )
 
@@ -141,7 +229,7 @@ class Slack:
         listen_to_user_dms: bool | None = None,
         user_ids: list[str] | None = None,
         event_types: list[str] | None = None,
-    ) -> TriggerConfig:
+    ) -> TriggerConfig[SlackTrigger]:
         return TriggerConfig(
             integration_id='slack_placeholder',
             integration_type='slack',
@@ -150,7 +238,7 @@ class Slack:
                 channelId=channel.channel_id if channel is not None else None,
                 channelName=channel.name if channel is not None else None,
                 listenToUserDms=listen_to_user_dms,
-                userIds=list(user_ids) if user_ids is not None else None,
+                userIds=list(user_ids) if user_ids is not None else [],
                 eventTypes=list(event_types) if event_types is not None else None,
             ),
         )
@@ -170,9 +258,9 @@ class Slack:
             config=_compact_dict(
                 channelId=channel.channel_id if channel is not None else None,
                 channelName=channel.name if channel is not None else None,
-                userIds=list(user_ids) if user_ids is not None else None,
-                userNames=list(user_names) if user_names is not None else None,
+                userIds=list(user_ids) if user_ids is not None else [],
+                userNames=list(user_names) if user_names is not None else [],
                 listenToUserDms=listen_to_user_dms,
             ),
         )
-{{/if}}
+{{~/if}}

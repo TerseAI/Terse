@@ -1,5 +1,6 @@
 import crypto from "crypto"
 import { Request, Response } from "express"
+import { linearWebhookPayloadSchema } from "terse-types"
 import { LinearTeam } from "terse-types/types"
 
 import { settings } from "../config/settings"
@@ -7,7 +8,6 @@ import { LinearIntegrationManager } from "../integrations/LinearIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { LinearAdapter } from "../ticketing/linear"
-import { LinearWebhookPayload } from "../utility/LinearWebhookPayload"
 
 /**
  * Verify Linear webhook signature
@@ -60,13 +60,7 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
         }
 
         // Parse JSON body
-        let body: LinearWebhookPayload
-        try {
-            body = JSON.parse(rawBody.toString("utf8")) as LinearWebhookPayload
-        } catch (error) {
-            logger.error("Failed to parse JSON body:", { error })
-            return res.sendStatus(400)
-        }
+        const body = linearWebhookPayloadSchema.parse(rawBody)
 
         // Ack early, avoid spamming the webhook
         res.status(200).json({ received: true })

@@ -1,10 +1,8 @@
 import { IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
 
-import { AtlassianIntegrationManager } from "../AtlassianIntegration"
 import { AttioIntegrationManager } from "../AttioIntegration"
 import { CronJobIntegrationManager } from "../CronJobIntegration"
 import { DatadogIntegrationManager } from "../DatadogIntegration"
-import { FigmaIntegrationManager } from "../FigmaIntegration"
 import { GithubIntegrationManager } from "../GithubIntegration"
 import { GmailIntegrationManager } from "../GmailIntegration"
 import { LaunchDarklyIntegrationManager } from "../LaunchDarklyIntegration"
@@ -27,9 +25,7 @@ export function isSystemIntegration(integrationType: IntegrationType): boolean {
 }
 
 export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
-    new AtlassianIntegrationManager(),
     new CronJobIntegrationManager(),
-    new FigmaIntegrationManager(),
     new GithubIntegrationManager(),
     new GmailIntegrationManager(),
     new LinearIntegrationManager(),

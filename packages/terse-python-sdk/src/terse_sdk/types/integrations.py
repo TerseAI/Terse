@@ -2,22 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from ._base import TerseModel
 from ._generated import (
     AgentNotificationSettings as NotificationSettings,
 )
 from ._generated import (
     AttioOutputConfigInstance,
-    ConfluenceConfigInstance,
+    ConfigInstance,
     DatadogConfigInstance,
-    FigmaConfigInstance,
     GitHubConfigInstance,
     GmailConfigInstance,
     GmailDraftOutputConfigInstance,
     GmailOutputConfigInstance,
-    JiraConfigInstance,
     LaunchDarklyConfigInstance,
     LinearInputConfigInstance,
     LinearOutputConfigInstance,
@@ -31,25 +27,10 @@ from ._generated import (
     WorkOSInputConfigInstance,
     WorkOSOutputConfigInstance,
 )
-from ._generated import (
-    BaseConfigInstance as ConfigInstance,
-)
 from .enums import (
     ConfigType,
     IntegrationType,
 )
-
-
-def _config_type_discriminator(value: Any) -> str | None:
-    if isinstance(value, dict):
-        raw_value = value.get("configType", value.get("config_type"))
-    else:
-        raw_value = getattr(value, "config_type", getattr(value, "configType", None))
-
-    if raw_value is None:
-        return None
-
-    return str(raw_value)
 
 
 class IntegrationDetails(TerseModel):
@@ -73,15 +54,12 @@ __all__ = [
     "AttioOutputConfigInstance",
     "ConfigDetails",
     "ConfigInstance",
-    "ConfluenceConfigInstance",
     "DatadogConfigInstance",
-    "FigmaConfigInstance",
     "GitHubConfigInstance",
     "GmailConfigInstance",
     "GmailDraftOutputConfigInstance",
     "GmailOutputConfigInstance",
     "IntegrationDetails",
-    "JiraConfigInstance",
     "LaunchDarklyConfigInstance",
     "LinearInputConfigInstance",
     "LinearOutputConfigInstance",

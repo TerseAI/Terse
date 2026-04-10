@@ -1,60 +1,58 @@
-import type { ConfigData } from "terse-types"
-import type { RunHistoryAction } from "terse-types"
-import type { SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
-import { IntegrationType } from "terse-types"
-import { ApiRoutes } from "terse-types"
+import type { ConfigData, Trigger as RawTrigger, RunHistoryAction, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
+import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema } from "terse-types"
+// Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
+// so users get the correct type when annotating onTrigger/filter callback parameters.
+import type {
+    CronTrigger as _RawCronTrigger,
+    GithubPRClosedTrigger as _RawGithubPRClosedTrigger,
+    GithubPRMergedTrigger as _RawGithubPRMergedTrigger,
+    GithubPROpenedTrigger as _RawGithubPROpenedTrigger,
+    GithubPRSynchronizedTrigger as _RawGithubPRSynchronizedTrigger,
+    GithubPRTrigger as _RawGithubPRTrigger,
+    GithubPushTrigger as _RawGithubPushTrigger,
+    GithubTrigger as _RawGithubTrigger,
+    GmailTrigger as _RawGmailTrigger,
+    LinearCommentCreatedTrigger as _RawLinearCommentCreatedTrigger,
+    LinearIssueCreatedTrigger as _RawLinearIssueCreatedTrigger,
+    LinearIssueUpdatedTrigger as _RawLinearIssueUpdatedTrigger,
+    LinearTrigger as _RawLinearTrigger,
+    ManualSampleTrigger as _RawManualSampleTrigger,
+    SlackAppMentionTrigger as _RawSlackAppMentionTrigger,
+    SlackMessageTrigger as _RawSlackMessageTrigger,
+    SlackReactionAddedTrigger as _RawSlackReactionAddedTrigger,
+    SlackTrigger as _RawSlackTrigger,
+    Trigger as _RawTrigger,
+    WebhookTrigger as _RawWebhookTrigger,
+    WorkOSInvitationAcceptedTrigger as _RawWorkOSInvitationAcceptedTrigger,
+    WorkOSInvitationCreatedTrigger as _RawWorkOSInvitationCreatedTrigger,
+    WorkOSInvitationResentTrigger as _RawWorkOSInvitationResentTrigger,
+    WorkOSInvitationRevokedTrigger as _RawWorkOSInvitationRevokedTrigger,
+    WorkOSInvitationTrigger as _RawWorkOSInvitationTrigger,
+    WorkOSMembershipTrigger as _RawWorkOSMembershipTrigger,
+    WorkOSOrganizationMembershipCreatedTrigger as _RawWorkOSOrganizationMembershipCreatedTrigger,
+    WorkOSOrganizationMembershipDeletedTrigger as _RawWorkOSOrganizationMembershipDeletedTrigger,
+    WorkOSOrganizationMembershipUpdatedTrigger as _RawWorkOSOrganizationMembershipUpdatedTrigger,
+    WorkOSOrganizationTrigger as _RawWorkOSOrganizationTrigger,
+    WorkOSTrigger as _RawWorkOSTrigger,
+    WorkOSUserCreatedTrigger as _RawWorkOSUserCreatedTrigger,
+    WorkOSUserDeletedTrigger as _RawWorkOSUserDeletedTrigger,
+    WorkOSUserTrigger as _RawWorkOSUserTrigger,
+    WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
+} from "terse-types"
 
-import type { InferEvents, InferToolApprovals, InputEvent, TypedSkill, TypedTrigger } from "./types.js"
+import type { InferEvents, InferToolApprovals, SDKTrigger, TypedSkill, TypedTrigger } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
 // Re-export SDK-specific types
-export type { InputEvent, ToolboxEntry, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
-export {
-    GithubInputEvent,
-    GithubPRInputEvent,
-    GithubPushInputEvent,
-    WorkOSInputEvent,
-    WorkOSUserInputEvent,
-    WorkOSMembershipInputEvent,
-    WorkOSInvitationInputEvent,
-    WorkOSOrganizationInputEvent,
-    SerializedEventInputEvent,
-    isGithubEvent,
-    isGithubPREvent,
-    isGithubPushEvent,
-    isWorkOSEvent,
-    isWorkOSUserEvent,
-    isWorkOSMembershipEvent,
-    isWorkOSInvitationEvent,
-    isWorkOSOrganizationEvent,
-    SlackMessageEvent,
-    WebhookInputEvent,
-    isWebhookEvent,
-    deserializeInputEvent
-} from "./types.js"
-export type { GithubRepository, GithubUser, GithubFileDiff, GithubCommit, GithubPRData, WorkOSEventUser, WorkOSEventMembership, WorkOSEventInvitation, WorkOSEventOrganization } from "./types.js"
-
-// Mock event for CLI's `terse run` command
-export class MockInputEvent implements InputEvent {
-    readonly integrationType = IntegrationType.TERSE
-    readonly eventType = "manual"
-
-    formatForAgentRunner(): string {
-        return "Manual trigger from terse run"
-    }
-
-    debugLog(): string {
-        return "[MockInputEvent] Manual trigger via CLI"
-    }
-}
+export { createSDKTrigger } from "./types.js"
+export type { ToolboxEntry, SDKTrigger, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
 
 // Re-export shared types for consumer convenience
 export {
     ConfigType,
     ConfigInstance,
     GmailConfig,
-    FigmaConfig,
     SlackConfig,
     SlackOutputConfig,
     GmailOutputConfig,
@@ -63,8 +61,6 @@ export {
     LinearInputConfig,
     LinearOutputConfig,
     GitHubConfig,
-    JiraConfig,
-    ConfluenceConfig,
     PosthogConfig,
     DatadogConfig,
     TimeTriggerConfig,
@@ -78,13 +74,49 @@ export {
     SlackEventType,
     GitHubEventType,
     LinearEventType,
-    JiraEventType,
-    FigmaEventType,
     GmailEventType,
-    WorkOSEventType
+    WorkOSEventType,
+    debugTrigger,
+    formatTriggerForAgent
 } from "terse-types"
 
-export type { SdkAgentRunEventPayload, SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
+export type Trigger = SDKTrigger<_RawTrigger>
+export type CronTrigger = SDKTrigger<_RawCronTrigger>
+export type GithubPRClosedTrigger = SDKTrigger<_RawGithubPRClosedTrigger>
+export type GithubPROpenedTrigger = SDKTrigger<_RawGithubPROpenedTrigger>
+export type GithubPRMergedTrigger = SDKTrigger<_RawGithubPRMergedTrigger>
+export type GithubPRSynchronizedTrigger = SDKTrigger<_RawGithubPRSynchronizedTrigger>
+export type GithubPRTrigger = SDKTrigger<_RawGithubPRTrigger>
+export type GithubPushTrigger = SDKTrigger<_RawGithubPushTrigger>
+export type GithubTrigger = SDKTrigger<_RawGithubTrigger>
+export type GmailTrigger = SDKTrigger<_RawGmailTrigger>
+export type LinearCommentCreatedTrigger = SDKTrigger<_RawLinearCommentCreatedTrigger>
+export type LinearIssueCreatedTrigger = SDKTrigger<_RawLinearIssueCreatedTrigger>
+export type LinearIssueUpdatedTrigger = SDKTrigger<_RawLinearIssueUpdatedTrigger>
+export type LinearTrigger = SDKTrigger<_RawLinearTrigger>
+export type ManualSampleTrigger = SDKTrigger<_RawManualSampleTrigger>
+export type SlackAppMentionTrigger = SDKTrigger<_RawSlackAppMentionTrigger>
+export type SlackMessageTrigger = SDKTrigger<_RawSlackMessageTrigger>
+export type SlackReactionAddedTrigger = SDKTrigger<_RawSlackReactionAddedTrigger>
+export type SlackTrigger = SDKTrigger<_RawSlackTrigger>
+export type WebhookTrigger = SDKTrigger<_RawWebhookTrigger>
+export type WorkOSInvitationAcceptedTrigger = SDKTrigger<_RawWorkOSInvitationAcceptedTrigger>
+export type WorkOSInvitationCreatedTrigger = SDKTrigger<_RawWorkOSInvitationCreatedTrigger>
+export type WorkOSInvitationTrigger = SDKTrigger<_RawWorkOSInvitationTrigger>
+export type WorkOSInvitationResentTrigger = SDKTrigger<_RawWorkOSInvitationResentTrigger>
+export type WorkOSInvitationRevokedTrigger = SDKTrigger<_RawWorkOSInvitationRevokedTrigger>
+export type WorkOSOrganizationMembershipCreatedTrigger = SDKTrigger<_RawWorkOSOrganizationMembershipCreatedTrigger>
+export type WorkOSOrganizationMembershipDeletedTrigger = SDKTrigger<_RawWorkOSOrganizationMembershipDeletedTrigger>
+export type WorkOSOrganizationMembershipUpdatedTrigger = SDKTrigger<_RawWorkOSOrganizationMembershipUpdatedTrigger>
+export type WorkOSMembershipTrigger = SDKTrigger<_RawWorkOSMembershipTrigger>
+export type WorkOSOrganizationTrigger = SDKTrigger<_RawWorkOSOrganizationTrigger>
+export type WorkOSTrigger = SDKTrigger<_RawWorkOSTrigger>
+export type WorkOSUserCreatedTrigger = SDKTrigger<_RawWorkOSUserCreatedTrigger>
+export type WorkOSUserDeletedTrigger = SDKTrigger<_RawWorkOSUserDeletedTrigger>
+export type WorkOSUserUpdatedTrigger = SDKTrigger<_RawWorkOSUserUpdatedTrigger>
+export type WorkOSUserTrigger = SDKTrigger<_RawWorkOSUserTrigger>
+
+export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
 export { IntegrationType } from "terse-types"
 
 export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
@@ -150,19 +182,15 @@ export class TerseAgent {
         this.toolApprovals = toolApprovals
     }
 
-    async *run(prompt: string, event?: InputEvent): AsyncGenerator<TerseAgentResult> {
-        const resolvedEvent = event ?? new MockInputEvent()
+    async *run(prompt: string, event?: RawTrigger): AsyncGenerator<TerseAgentResult> {
+        const resolvedEvent = event
 
-        const requestBody: SdkAgentRunRequestBody = {
+        const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
             prompt,
             toolApprovals: this.toolApprovals,
-            event: {
-                integrationType: resolvedEvent.integrationType,
-                formattedContent: resolvedEvent.formatForAgentRunner(),
-                debugLog: resolvedEvent.debugLog()
-            },
+            event: resolvedEvent,
             skills: this.skills
-        }
+        })
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
             method: "POST",
@@ -202,7 +230,7 @@ export class TerseAgent {
      * Runs the agent to completion and discards streamed output.
      * Useful when you only care that the run finished (or threw).
      */
-    async runAndWait(prompt: string, event?: InputEvent): Promise<string> {
+    async runAndWait(prompt: string, event?: RawTrigger): Promise<string> {
         for await (const chunk of this.run(prompt, event)) {
             if (chunk.type === EventType.FINAL_OUTPUT) {
                 return (chunk as FinalOutputResult).finalOutput

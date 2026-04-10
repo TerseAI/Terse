@@ -34,19 +34,6 @@ export interface NotionResourceData {
     type: string
 }
 
-export interface JiraProjectData {
-    id: string
-    key: string
-    name: string
-}
-
-export interface ConfluencePageData {
-    id: string
-    title: string
-    spaceId: string
-    spaceName: string
-}
-
 export interface PosthogProjectData {
     id: string
     name: string
@@ -94,11 +81,6 @@ export interface NotionInstanceData extends IntegrationInstanceData {
     pages: NotionResourceData[]
 }
 
-export interface AtlassianInstanceData extends IntegrationInstanceData {
-    jiraProjects: JiraProjectData[]
-    confluencePages: ConfluencePageData[]
-}
-
 export interface PosthogInstanceData extends IntegrationInstanceData {
     projects: PosthogProjectData[]
 }
@@ -128,9 +110,7 @@ export interface CodegenInput {
     github: GitHubInstanceData[]
     slack: SlackInstanceData[]
     gmail: IntegrationInstanceData[]
-    figma: IntegrationInstanceData[]
     linear: LinearInstanceData[]
-    atlassian: AtlassianInstanceData[]
     notion: NotionInstanceData[]
     posthog: PosthogInstanceData[]
     datadog: DatadogInstanceData[]

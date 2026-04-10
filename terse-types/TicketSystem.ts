@@ -1,5 +1,4 @@
 export enum TicketSystemType {
-    Jira = "jira",
     Linear = "linear"
     // Future ticket systems can be added here
 }
