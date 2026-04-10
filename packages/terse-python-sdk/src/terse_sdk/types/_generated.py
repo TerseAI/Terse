@@ -2383,7 +2383,7 @@ class GitHubRepository(TerseModel):
     default_branch: Annotated[str, Field(alias="defaultBranch")]
 
 
-class GitHubPullRequestClosedTriggerEvent(TerseModel):
+class GithubPRClosedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2403,7 +2403,7 @@ class GitHubPullRequestClosedTriggerEvent(TerseModel):
     )
 
 
-class GitHubPullRequestMergedTriggerEvent(TerseModel):
+class GitHubPRMergedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2423,7 +2423,7 @@ class GitHubPullRequestMergedTriggerEvent(TerseModel):
     )
 
 
-class GitHubPullRequestOpenedTriggerEvent(TerseModel):
+class GitHubPROpenedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2443,7 +2443,7 @@ class GitHubPullRequestOpenedTriggerEvent(TerseModel):
     )
 
 
-class GitHubPullRequestSynchronizedTriggerEvent(TerseModel):
+class GitHubPRSynchronizedTriggerEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2463,19 +2463,19 @@ class GitHubPullRequestSynchronizedTriggerEvent(TerseModel):
     ] = "pull_request.synchronize"
 
 
-class GitHubPullRequestTriggerEvent(
+class GitHubPRTriggerEvent(
     RootModel[
-        GitHubPullRequestOpenedTriggerEvent
-        | GitHubPullRequestSynchronizedTriggerEvent
-        | GitHubPullRequestClosedTriggerEvent
-        | GitHubPullRequestMergedTriggerEvent
+        GitHubPROpenedTriggerEvent
+        | GitHubPRSynchronizedTriggerEvent
+        | GithubPRClosedTriggerEvent
+        | GitHubPRMergedTriggerEvent
     ]
 ):
     root: (
-        GitHubPullRequestOpenedTriggerEvent
-        | GitHubPullRequestSynchronizedTriggerEvent
-        | GitHubPullRequestClosedTriggerEvent
-        | GitHubPullRequestMergedTriggerEvent
+        GitHubPROpenedTriggerEvent
+        | GitHubPRSynchronizedTriggerEvent
+        | GithubPRClosedTriggerEvent
+        | GitHubPRMergedTriggerEvent
     )
 
 
@@ -2500,18 +2500,18 @@ class GitHubPushTriggerEvent(TerseModel):
 class GithubTriggerEvent(
     RootModel[
         GitHubPushTriggerEvent
-        | GitHubPullRequestOpenedTriggerEvent
-        | GitHubPullRequestSynchronizedTriggerEvent
-        | GitHubPullRequestClosedTriggerEvent
-        | GitHubPullRequestMergedTriggerEvent
+        | GitHubPROpenedTriggerEvent
+        | GitHubPRSynchronizedTriggerEvent
+        | GithubPRClosedTriggerEvent
+        | GitHubPRMergedTriggerEvent
     ]
 ):
     root: (
         GitHubPushTriggerEvent
-        | GitHubPullRequestOpenedTriggerEvent
-        | GitHubPullRequestSynchronizedTriggerEvent
-        | GitHubPullRequestClosedTriggerEvent
-        | GitHubPullRequestMergedTriggerEvent
+        | GitHubPROpenedTriggerEvent
+        | GitHubPRSynchronizedTriggerEvent
+        | GithubPRClosedTriggerEvent
+        | GitHubPRMergedTriggerEvent
     )
 
 

@@ -339,11 +339,11 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
         "GitHubEventType",
         "TypedTrigger",
         "TypedSkill",
-        "GitHubPullRequestOpenedTrigger",
-        "GitHubPullRequestMergedTrigger",
-        "GitHubPullRequestClosedTrigger",
-        "GitHubPullRequestSynchronizedTrigger",
-        "GitHubPullRequestTrigger",
+        "GitHubPROpenedTrigger",
+        "GitHubPRMergedTrigger",
+        "GithubPRClosedTrigger",
+        "GitHubPRSynchronizedTrigger",
+        "GitHubPRTrigger",
         "GitHubPushTrigger",
         "GithubTrigger"
     ]

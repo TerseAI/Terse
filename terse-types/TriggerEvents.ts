@@ -137,46 +137,46 @@ export const githubPushTriggerEventSchema = GithubTriggerEventBaseSchema.extend(
 })
 export type GitHubPushTrigger = z.infer<typeof githubPushTriggerEventSchema>
 
-const githubPullRequestTriggerEventBaseSchema = GithubTriggerEventBaseSchema.extend({
+const GitHubPRTriggerEventBaseSchema = GithubTriggerEventBaseSchema.extend({
     pullRequest: pullRequestSchema,
     branch: z.string().optional(),
     commits: z.array(commitSchema)
 })
 
-export const githubPullRequestOpenedTriggerEventSchema = githubPullRequestTriggerEventBaseSchema.extend({
+export const GitHubPROpenedTriggerEventSchema = GitHubPRTriggerEventBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_OPENED)
 })
-export type GitHubPullRequestOpenedTrigger = z.infer<typeof githubPullRequestOpenedTriggerEventSchema>
+export type GitHubPROpenedTrigger = z.infer<typeof GitHubPROpenedTriggerEventSchema>
 
-export const githubPullRequestSynchronizedTriggerEventSchema = githubPullRequestTriggerEventBaseSchema.extend({
+export const GitHubPRSynchronizedTriggerEventSchema = GitHubPRTriggerEventBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_SYNCHRONIZE)
 })
-export type GitHubPullRequestSynchronizedTrigger = z.infer<typeof githubPullRequestSynchronizedTriggerEventSchema>
+export type GitHubPRSynchronizedTrigger = z.infer<typeof GitHubPRSynchronizedTriggerEventSchema>
 
-export const githubPullRequestClosedTriggerEventSchema = githubPullRequestTriggerEventBaseSchema.extend({
+export const GithubPRClosedTriggerEventSchema = GitHubPRTriggerEventBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_CLOSED)
 })
-export type GitHubPullRequestClosedTrigger = z.infer<typeof githubPullRequestClosedTriggerEventSchema>
+export type GithubPRClosedTrigger = z.infer<typeof GithubPRClosedTriggerEventSchema>
 
-export const githubPullRequestMergedTriggerEventSchema = githubPullRequestTriggerEventBaseSchema.extend({
+export const GitHubPRMergedTriggerEventSchema = GitHubPRTriggerEventBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_MERGED)
 })
-export type GitHubPullRequestMergedTrigger = z.infer<typeof githubPullRequestMergedTriggerEventSchema>
+export type GitHubPRMergedTrigger = z.infer<typeof GitHubPRMergedTriggerEventSchema>
 
-export const githubPullRequestTriggerEventSchema = z.discriminatedUnion("eventType", [
-    githubPullRequestOpenedTriggerEventSchema,
-    githubPullRequestSynchronizedTriggerEventSchema,
-    githubPullRequestClosedTriggerEventSchema,
-    githubPullRequestMergedTriggerEventSchema
+export const GitHubPRTriggerEventSchema = z.discriminatedUnion("eventType", [
+    GitHubPROpenedTriggerEventSchema,
+    GitHubPRSynchronizedTriggerEventSchema,
+    GithubPRClosedTriggerEventSchema,
+    GitHubPRMergedTriggerEventSchema
 ])
-export type GitHubPullRequestTrigger = z.infer<typeof githubPullRequestTriggerEventSchema>
+export type GitHubPRTrigger = z.infer<typeof GitHubPRTriggerEventSchema>
 
 export const GithubTriggerEventSchema = z.discriminatedUnion("eventType", [
     githubPushTriggerEventSchema,
-    githubPullRequestOpenedTriggerEventSchema,
-    githubPullRequestSynchronizedTriggerEventSchema,
-    githubPullRequestClosedTriggerEventSchema,
-    githubPullRequestMergedTriggerEventSchema
+    GitHubPROpenedTriggerEventSchema,
+    GitHubPRSynchronizedTriggerEventSchema,
+    GithubPRClosedTriggerEventSchema,
+    GitHubPRMergedTriggerEventSchema
 ])
 export type GithubTrigger = z.infer<typeof GithubTriggerEventSchema>
 

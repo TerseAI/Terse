@@ -171,7 +171,7 @@ event.debugLog()            // debug info string
 
 Python event classes expose the same event content through attributes like `event.integration_type`, `event.event_type`, `event.formatted_content`, and `event.debug_log`.
 
-### GitHubPullRequestTriggerEvent
+### GitHubPRTriggerEvent
 ```typescript
 event.pullRequest.number    // PR number
 event.pullRequest.title     // PR title
@@ -209,10 +209,10 @@ event.invitation.email / event.invitation.organizationId / event.invitation.stat
 
 ### Type Guards
 ```typescript
-import { isGitHubPullRequestTriggerEvent, isGitHubPushTriggerEvent, isWorkOSUserTriggerEvent } from "terse-sdk"
+import { isGitHubPRTriggerEvent, isGitHubPushTriggerEvent, isWorkOSUserTriggerEvent } from "terse-sdk"
 
-if (isGitHubPullRequestTriggerEvent(event)) {
-    // event is typed as GitHubPullRequestTriggerEvent
+if (isGitHubPRTriggerEvent(event)) {
+    // event is typed as GitHubPRTriggerEvent
 }
 ```
 

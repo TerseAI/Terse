@@ -109,7 +109,7 @@ Verify:
 ## Example
 
 ```typescript
-import { Terse, TerseAgent, GitHubPullRequestTriggerEvent } from "terse-sdk"
+import { Terse, TerseAgent, GitHubPRTriggerEvent } from "terse-sdk"
 import { GitHub, Slack, Repos, SlackChannel } from "./terse.generated"
 
 const client = new Terse()
@@ -121,10 +121,10 @@ await client.createJob({
         GitHub.skill({ repos: [Repos.MyOrg.MyRepo] }),
         Slack.skill({ channel: SlackChannel.Engineering }),
     ],
-    filter: async (event: GitHubPullRequestTriggerEvent) => {
+    filter: async (event: GitHubPRTriggerEvent) => {
         return !event.sender.login.includes("[bot]")
     },
-    onTrigger: async (event: GitHubPullRequestTriggerEvent, Agent: TerseAgent) => {
+    onTrigger: async (event: GitHubPRTriggerEvent, Agent: TerseAgent) => {
         const message = await Agent.tools.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,

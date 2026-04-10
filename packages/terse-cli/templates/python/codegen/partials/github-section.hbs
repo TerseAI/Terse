@@ -28,17 +28,16 @@
 
     class GitHub: @staticmethod def on_push(*, repo: GitHubRepo) -> TriggerConfig[GitHubPushTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github',
     config_type='github', config=_compact_dict(repositoryIds=[repo.repository_id], eventTypes=[GitHubEventType.push]), ) @staticmethod def on_pr_opened(*, repo: GitHubRepo) ->
-    TriggerConfig[GitHubPullRequestOpenedTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github',
+    TriggerConfig[GitHubPROpenedTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github',
     config=_compact_dict(repositoryIds=[repo.repository_id], eventTypes=[GitHubEventType.pull_request_opened]), ) @staticmethod def on_pr_merged(*, repo: GitHubRepo) ->
-    TriggerConfig[GitHubPullRequestMergedTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github',
+    TriggerConfig[GitHubPRMergedTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github',
     config=_compact_dict(repositoryIds=[repo.repository_id], eventTypes=[GitHubEventType.pull_request_merged]), ) @staticmethod def on_pr_closed(*, repo: GitHubRepo) ->
-    TriggerConfig[GitHubPullRequestClosedTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github',
+    TriggerConfig[GithubPRClosedTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github',
     config=_compact_dict(repositoryIds=[repo.repository_id], eventTypes=[GitHubEventType.pull_request_closed]), ) @staticmethod def on_pr_synchronized(*, repo: GitHubRepo) ->
-    TriggerConfig[GitHubPullRequestSynchronizedTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github',
-    config=_compact_dict(repositoryIds=[repo.repository_id], eventTypes=[GitHubEventType.pull_request_synchronize]), ) @staticmethod def on_pr(*, repo: GitHubRepo) ->
-    TriggerConfig[GitHubPullRequestTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github', config=_compact_dict(
-    repositoryIds=[repo.repository_id], eventTypes=[ GitHubEventType.pull_request_opened, GitHubEventType.pull_request_merged, GitHubEventType.pull_request_closed,
-    GitHubEventType.pull_request_synchronize, ], ), ) @staticmethod def trigger(*, repos: Sequence[GitHubRepo], event_types: Sequence[GitHubEventType] | None = None) -> TriggerConfig[GithubTrigger]:
-    return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github', config=_compact_dict( repositoryIds=[repo.repository_id for repo in repos],
-    eventTypes=list(event_types) if event_types is not None else None, ), )
+    TriggerConfig[GitHubPRSynchronizedTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github',
+    config=_compact_dict(repositoryIds=[repo.repository_id], eventTypes=[GitHubEventType.pull_request_synchronize]), ) @staticmethod def on_pr(*, repo: GitHubRepo) -> TriggerConfig[GitHubPRTrigger]:
+    return TriggerConfig( integration_id={{{github.instanceIdRepr}}}, integration_type='github', config_type='github', config=_compact_dict( repositoryIds=[repo.repository_id], eventTypes=[
+    GitHubEventType.pull_request_opened, GitHubEventType.pull_request_merged, GitHubEventType.pull_request_closed, GitHubEventType.pull_request_synchronize, ], ), ) @staticmethod def trigger(*, repos:
+    Sequence[GitHubRepo], event_types: Sequence[GitHubEventType] | None = None) -> TriggerConfig[GithubTrigger]: return TriggerConfig( integration_id={{{github.instanceIdRepr}}},
+    integration_type='github', config_type='github', config=_compact_dict( repositoryIds=[repo.repository_id for repo in repos], eventTypes=list(event_types) if event_types is not None else None, ), )
 {{/if}}

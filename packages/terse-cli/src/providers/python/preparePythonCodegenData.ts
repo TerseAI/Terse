@@ -210,11 +210,11 @@ export function preparePythonTemplateContext(input: CodegenInput): PythonTemplat
     if (hasGithub) {
         sdkImports.push(
             "GitHubEventType",
-            "GitHubPullRequestClosedTrigger",
-            "GitHubPullRequestMergedTrigger",
-            "GitHubPullRequestOpenedTrigger",
-            "GitHubPullRequestSynchronizedTrigger",
-            "GitHubPullRequestTrigger",
+            "GithubPRClosedTrigger",
+            "GitHubPRMergedTrigger",
+            "GitHubPROpenedTrigger",
+            "GitHubPRSynchronizedTrigger",
+            "GitHubPRTrigger",
             "GitHubPushTrigger",
             "GithubTrigger"
         )
