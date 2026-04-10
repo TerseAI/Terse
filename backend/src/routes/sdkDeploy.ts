@@ -142,12 +142,12 @@ async function updateExistingAutomation(
 
         await tx.automation_prompts.upsert({
             where: { automation_id: automationId },
-            update: { content: "[SDK]", source_code_gcs_key: gcsKey, job_url: jobUrl },
+            update: { content: "[SDK]", source_code_gcs_key: gcsKey ?? null, job_url: jobUrl ?? null },
             create: {
                 automation_id: automationId,
                 content: "[SDK]",
-                source_code_gcs_key: gcsKey,
-                job_url: jobUrl
+                source_code_gcs_key: gcsKey ?? null,
+                job_url: jobUrl ?? null
             }
         })
 
