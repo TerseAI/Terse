@@ -15,8 +15,8 @@ Import these from `terse-sdk`:
 
 - `Terse`: the SDK client
 - `TerseAgent`: the runtime object inside `onTrigger`
-- `TriggerEvent`: the base event interface
-- Specific event types: `GithubTriggerEvent`, `GithubPRTrigger`, `CronTriggerEvent`, `ManualSampleTriggerEvent`
+- `Trigger`: the base event interface
+- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`
 
 ## `Terse`
 
@@ -45,7 +45,7 @@ await client.createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
     skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-    onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger, agent: TerseAgent) => {
         // workflow logic
     }
 })
@@ -168,8 +168,8 @@ await client.createJob({
     name: "contract-alerts",
     triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
     skills: [Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }), Slack.skill({ channel: SlackChannel.DealDesk })],
-    filter: (event: TriggerEvent) => event.record.values.stage === "contract-sent",
-    onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
+    filter: (event: Trigger) => event.record.values.stage === "contract-sent",
+    onTrigger: async (event: Trigger, agent: TerseAgent) => {
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
             message: `Contract sent for ${event.record.values.company_name}.`
@@ -188,7 +188,7 @@ await client.createJob({
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
     skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
     toolApprovals: ["attio.updateRecord", "slack.sendMessage"],
-    onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger, agent: TerseAgent) => {
         const company = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
         })
@@ -221,13 +221,13 @@ Event typing depends on the trigger.
 
 | Trigger source              | Event type                  |
 | --------------------------- | --------------------------- |
-| Attio record events         | `TriggerEvent`              |
+| Attio record events         | `Trigger`                   |
 | Slack actions               | Typed Slack action payloads |
-| Scheduled cron triggers     | `CronTriggerEvent`          |
-| Scheduled interval triggers | `CronTriggerEvent`          |
-| Manual trigger              | `ManualSampleTriggerEvent`  |
+| Scheduled cron triggers     | `CronTrigger`               |
+| Scheduled interval triggers | `CronTrigger`               |
+| Manual trigger              | `ManualSampleTrigger`       |
 
-`TriggerEvent` is the common base interface. Use the most specific trigger event type your trigger exposes.
+`Trigger` is the common base interface. Use the most specific trigger event type your trigger exposes.
 
 ## Generated helpers
 
@@ -247,7 +247,7 @@ It exports:
 Use the `Http` skill to call any REST API that Terse does not have a native integration for. This is useful for enrichment providers, internal services, or any system with an HTTP API.
 
 ```ts
-import { Terse, TerseAgent, TriggerEvent } from "terse-sdk"
+import { Terse, TerseAgent, Trigger } from "terse-sdk"
 
 import { Attio, AttioList, Http } from "./terse.generated"
 
@@ -257,7 +257,7 @@ await client.createJob({
     name: "custom-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
     skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Http.skill()],
-    onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger, agent: TerseAgent) => {
         // Call any REST API directly
         const response = await agent.tools.http.request({
             method: "GET",

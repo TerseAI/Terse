@@ -3,16 +3,16 @@ import { z } from "zod"
 import { GitHubEventType, WorkOSEventType, gitHubEventTypeSchema, gmailEventTypeSchema, linearEventTypeSchema, slackEventTypeSchema, workOSEventTypeSchema } from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
-import { debugTriggerEvent as debugTriggerEventWithPresenter, formatTriggerEventForAgent as formatTriggerEventForAgentWithPresenter } from "./TriggerEventPresenters"
+import { debugTrigger as debugTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"
 
-const providerTriggerEventTypeSchema = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
+const providerTriggerTypeSchema = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
 
-const triggerEventHeaderSchema = z.object({
+const TriggerHeaderSchema = z.object({
     integrationType: integrationTypeEnum,
-    eventType: providerTriggerEventTypeSchema
+    eventType: providerTriggerTypeSchema
 })
 
-const slackTriggerEventBaseSchema = triggerEventHeaderSchema.extend({
+const slackTriggerBaseSchema = TriggerHeaderSchema.extend({
     integrationType: z.literal(IntegrationType.SLACK),
     eventType: slackEventTypeSchema,
     channelId: z.string(),
@@ -31,27 +31,27 @@ const slackTriggerEventBaseSchema = triggerEventHeaderSchema.extend({
     attachments: z.array(z.unknown()).nullable(),
     files: z.array(z.unknown()).nullable()
 })
-export const slackMessageTriggerEventSchema = slackTriggerEventBaseSchema.extend({
+export const slackMessageTriggerSchema = slackTriggerBaseSchema.extend({
     eventType: z.literal("message")
 })
-type SlackMessageTriggerEventSchemaShape = z.infer<typeof slackMessageTriggerEventSchema>
-export type SlackMessageTrigger = Omit<SlackMessageTriggerEventSchemaShape, "blocks" | "attachments" | "files"> & {
+type SlackMessageTriggerSchemaShape = z.infer<typeof slackMessageTriggerSchema>
+export type SlackMessageTrigger = Omit<SlackMessageTriggerSchemaShape, "blocks" | "attachments" | "files"> & {
     blocks: SlackBlocks | null
     attachments: SlackAttachments | null
     files: SlackFiles | null
 }
 
-export const slackAppMentionTriggerEventSchema = slackTriggerEventBaseSchema.extend({
+export const slackAppMentionTriggerSchema = slackTriggerBaseSchema.extend({
     eventType: z.literal("app_mention")
 })
-type SlackAppMentionTriggerEventSchemaShape = z.infer<typeof slackAppMentionTriggerEventSchema>
-export type SlackAppMentionTrigger = Omit<SlackAppMentionTriggerEventSchemaShape, "blocks" | "attachments" | "files"> & {
+type SlackAppMentionTriggerSchemaShape = z.infer<typeof slackAppMentionTriggerSchema>
+export type SlackAppMentionTrigger = Omit<SlackAppMentionTriggerSchemaShape, "blocks" | "attachments" | "files"> & {
     blocks: SlackBlocks | null
     attachments: SlackAttachments | null
     files: SlackFiles | null
 }
 
-export const slackReactionAddedTriggerEventSchema = slackTriggerEventBaseSchema.extend({
+export const slackReactionAddedTriggerSchema = slackTriggerBaseSchema.extend({
     eventType: z.literal("reaction_added"),
     reaction: z.string(),
     itemType: z.string().nullable(),
@@ -59,14 +59,14 @@ export const slackReactionAddedTriggerEventSchema = slackTriggerEventBaseSchema.
     itemChannelId: z.string().nullable(),
     itemTimestamp: z.string().nullable()
 })
-type SlackReactionAddedTriggerEventSchemaShape = z.infer<typeof slackReactionAddedTriggerEventSchema>
-export type SlackReactionAddedTrigger = Omit<SlackReactionAddedTriggerEventSchemaShape, "blocks" | "attachments" | "files"> & {
+type SlackReactionAddedTriggerSchemaShape = z.infer<typeof slackReactionAddedTriggerSchema>
+export type SlackReactionAddedTrigger = Omit<SlackReactionAddedTriggerSchemaShape, "blocks" | "attachments" | "files"> & {
     blocks: SlackBlocks | null
     attachments: SlackAttachments | null
     files: SlackFiles | null
 }
 
-export const slackTriggerEventSchema = z.discriminatedUnion("eventType", [slackMessageTriggerEventSchema, slackAppMentionTriggerEventSchema, slackReactionAddedTriggerEventSchema])
+export const slackTriggerSchema = z.discriminatedUnion("eventType", [slackMessageTriggerSchema, slackAppMentionTriggerSchema, slackReactionAddedTriggerSchema])
 export type SlackTrigger = SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger
 
 // Github Event Data
@@ -120,7 +120,7 @@ export const senderSchema = z.object({
     email: z.string().optional()
 })
 
-const GithubTriggerEventBaseSchema = z.object({
+const GithubTriggerBaseSchema = z.object({
     integrationType: z.literal(IntegrationType.GITHUB),
     username: z.string(),
     installationId: z.number(),
@@ -129,7 +129,7 @@ const GithubTriggerEventBaseSchema = z.object({
     sender: senderSchema
 })
 
-export const GithubPushTriggerSchema = GithubTriggerEventBaseSchema.extend({
+export const GithubPushTriggerSchema = GithubTriggerBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PUSH),
     branch: z.string(),
     commits: z.array(commitSchema),
@@ -137,7 +137,7 @@ export const GithubPushTriggerSchema = GithubTriggerEventBaseSchema.extend({
 })
 export type GithubPushTrigger = z.infer<typeof GithubPushTriggerSchema>
 
-const GithubPRTriggerBaseSchema = GithubTriggerEventBaseSchema.extend({
+const GithubPRTriggerBaseSchema = GithubTriggerBaseSchema.extend({
     pullRequest: pullRequestSchema,
     branch: z.string().optional(),
     commits: z.array(commitSchema)
@@ -166,14 +166,14 @@ export type GithubPRMergedTrigger = z.infer<typeof GithubPRMergedTriggerSchema>
 export const GithubPRTriggerSchema = z.discriminatedUnion("eventType", [GithubPROpenedTriggerSchema, GithubPRSynchronizedTriggerSchema, GithubPRClosedTriggerSchema, GithubPRMergedTriggerSchema])
 export type GithubPRTrigger = z.infer<typeof GithubPRTriggerSchema>
 
-export const GithubTriggerEventSchema = z.discriminatedUnion("eventType", [
+export const GithubTriggerSchema = z.discriminatedUnion("eventType", [
     GithubPushTriggerSchema,
     GithubPROpenedTriggerSchema,
     GithubPRSynchronizedTriggerSchema,
     GithubPRClosedTriggerSchema,
     GithubPRMergedTriggerSchema
 ])
-export type GithubTrigger = z.infer<typeof GithubTriggerEventSchema>
+export type GithubTrigger = z.infer<typeof GithubTriggerSchema>
 
 export const GmailParsedAttachmentSchema = z.object({
     attachmentId: z.string(),
@@ -296,42 +296,42 @@ export type WorkOSWebhookPayload = z.infer<typeof workOSWebhookPayloadSchema>
 
 // MARK: Canonical Trigger Events
 
-export const webhookTriggerEventTypeSchema = z.literal("webhook")
-export type WebhookTriggerEventType = z.infer<typeof webhookTriggerEventTypeSchema>
+export const webhookTriggerTypeSchema = z.literal("webhook")
+export type WebhookTriggerType = z.infer<typeof webhookTriggerTypeSchema>
 
-export const cronTriggerEventTypeSchema = z.literal("cron")
-export type CronTriggerEventType = z.infer<typeof cronTriggerEventTypeSchema>
+export const cronTriggerTypeSchema = z.literal("cron")
+export type CronTriggerType = z.infer<typeof cronTriggerTypeSchema>
 
-export const manualSampleTriggerEventTypeSchema = z.literal("manual_sample")
-export type ManualSampleTriggerEventType = z.infer<typeof manualSampleTriggerEventTypeSchema>
+export const manualSampleTriggerTypeSchema = z.literal("manual_sample")
+export type ManualSampleTriggerType = z.infer<typeof manualSampleTriggerTypeSchema>
 
-export const triggerEventTypeSchema = z.union([
+export const TriggerTypeSchema = z.union([
     slackEventTypeSchema,
     gitHubEventTypeSchema,
     linearEventTypeSchema,
     gmailEventTypeSchema,
     workOSEventTypeSchema,
-    webhookTriggerEventTypeSchema,
-    cronTriggerEventTypeSchema,
-    manualSampleTriggerEventTypeSchema
+    webhookTriggerTypeSchema,
+    cronTriggerTypeSchema,
+    manualSampleTriggerTypeSchema
 ])
-export type TriggerEventType = z.infer<typeof triggerEventTypeSchema>
+export type TriggerType = z.infer<typeof TriggerTypeSchema>
 
-export const baseTriggerEventSchema = z.object({
+export const baseTriggerSchema = z.object({
     integrationType: integrationTypeEnum,
-    eventType: triggerEventTypeSchema
+    eventType: TriggerTypeSchema
 })
-export type BaseTrigger = z.infer<typeof baseTriggerEventSchema>
+export type BaseTrigger = z.infer<typeof baseTriggerSchema>
 
-export const gmailTriggerEventSchema = baseTriggerEventSchema
+export const gmailTriggerSchema = baseTriggerSchema
     .extend({
         integrationType: z.literal(IntegrationType.GMAIL),
         eventType: gmailEventTypeSchema
     })
     .merge(gmailMessagePayloadSchema)
-export type GmailTrigger = z.infer<typeof gmailTriggerEventSchema>
+export type GmailTrigger = z.infer<typeof gmailTriggerSchema>
 
-const linearTriggerEventBaseSchema = z.object({
+const linearTriggerBaseSchema = z.object({
     integrationType: z.literal(IntegrationType.LINEAR),
     action: LinearWebhookActionSchema,
     actor: LinearWebhookActorSchema,
@@ -342,32 +342,32 @@ const linearTriggerEventBaseSchema = z.object({
     webhookId: z.string()
 })
 
-export const linearIssueCreatedTriggerEventSchema = linearTriggerEventBaseSchema.extend({
+export const linearIssueCreatedTriggerSchema = linearTriggerBaseSchema.extend({
     eventType: z.literal("issue.created"),
     action: z.literal("create"),
     type: z.literal("Issue"),
     data: LinearWebhookDataSchema
 })
-export type LinearIssueCreatedTrigger = z.infer<typeof linearIssueCreatedTriggerEventSchema>
+export type LinearIssueCreatedTrigger = z.infer<typeof linearIssueCreatedTriggerSchema>
 
-export const linearIssueUpdatedTriggerEventSchema = linearTriggerEventBaseSchema.extend({
+export const linearIssueUpdatedTriggerSchema = linearTriggerBaseSchema.extend({
     eventType: z.literal("issue.updated"),
     action: z.literal("update"),
     type: z.literal("Issue"),
     data: LinearWebhookDataSchema
 })
-export type LinearIssueUpdatedTrigger = z.infer<typeof linearIssueUpdatedTriggerEventSchema>
+export type LinearIssueUpdatedTrigger = z.infer<typeof linearIssueUpdatedTriggerSchema>
 
-export const linearCommentCreatedTriggerEventSchema = linearTriggerEventBaseSchema.extend({
+export const linearCommentCreatedTriggerSchema = linearTriggerBaseSchema.extend({
     eventType: z.literal("comment.created"),
     action: z.literal("create"),
     type: z.literal("Comment"),
     data: LinearWebhookCommentDataSchema
 })
-export type LinearCommentCreatedTrigger = z.infer<typeof linearCommentCreatedTriggerEventSchema>
+export type LinearCommentCreatedTrigger = z.infer<typeof linearCommentCreatedTriggerSchema>
 
-export const linearTriggerEventSchema = z.discriminatedUnion("eventType", [linearIssueCreatedTriggerEventSchema, linearIssueUpdatedTriggerEventSchema, linearCommentCreatedTriggerEventSchema])
-export type LinearTrigger = z.infer<typeof linearTriggerEventSchema>
+export const linearTriggerSchema = z.discriminatedUnion("eventType", [linearIssueCreatedTriggerSchema, linearIssueUpdatedTriggerSchema, linearCommentCreatedTriggerSchema])
+export type LinearTrigger = z.infer<typeof linearTriggerSchema>
 
 export const workOSTriggerUserSchema = z.object({
     id: z.string(),
@@ -406,181 +406,181 @@ export const workOSTriggerOrganizationSchema = z.object({
 })
 export type WorkOSTriggerOrganization = z.infer<typeof workOSTriggerOrganizationSchema>
 
-const workOSTriggerEventBaseSchema = baseTriggerEventSchema.extend({
+const workOSTriggerBaseSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.WORKOS),
     eventType: workOSEventTypeSchema,
     eventId: z.string(),
     createdAt: z.string()
 })
 
-export const workOSUserCreatedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSUserCreatedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.USER_CREATED),
     user: workOSTriggerUserSchema
 })
-export type WorkOSUserCreatedTrigger = z.infer<typeof workOSUserCreatedTriggerEventSchema>
+export type WorkOSUserCreatedTrigger = z.infer<typeof workOSUserCreatedTriggerSchema>
 
-export const workOSUserUpdatedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSUserUpdatedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.USER_UPDATED),
     user: workOSTriggerUserSchema
 })
-export type WorkOSUserUpdatedTrigger = z.infer<typeof workOSUserUpdatedTriggerEventSchema>
+export type WorkOSUserUpdatedTrigger = z.infer<typeof workOSUserUpdatedTriggerSchema>
 
-export const workOSUserDeletedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSUserDeletedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.USER_DELETED),
     user: workOSTriggerUserSchema
 })
-export type WorkOSUserDeletedTrigger = z.infer<typeof workOSUserDeletedTriggerEventSchema>
+export type WorkOSUserDeletedTrigger = z.infer<typeof workOSUserDeletedTriggerSchema>
 
-export const workOSUserTriggerEventSchema = z.discriminatedUnion("eventType", [workOSUserCreatedTriggerEventSchema, workOSUserUpdatedTriggerEventSchema, workOSUserDeletedTriggerEventSchema])
-export type WorkOSUserTrigger = z.infer<typeof workOSUserTriggerEventSchema>
+export const workOSUserTriggerSchema = z.discriminatedUnion("eventType", [workOSUserCreatedTriggerSchema, workOSUserUpdatedTriggerSchema, workOSUserDeletedTriggerSchema])
+export type WorkOSUserTrigger = z.infer<typeof workOSUserTriggerSchema>
 
-export const workOSOrganizationMembershipCreatedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSOrganizationMembershipCreatedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED),
     membership: workOSTriggerMembershipSchema
 })
-export type WorkOSOrganizationMembershipCreatedTrigger = z.infer<typeof workOSOrganizationMembershipCreatedTriggerEventSchema>
+export type WorkOSOrganizationMembershipCreatedTrigger = z.infer<typeof workOSOrganizationMembershipCreatedTriggerSchema>
 
-export const workOSOrganizationMembershipUpdatedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSOrganizationMembershipUpdatedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED),
     membership: workOSTriggerMembershipSchema
 })
-export type WorkOSOrganizationMembershipUpdatedTrigger = z.infer<typeof workOSOrganizationMembershipUpdatedTriggerEventSchema>
+export type WorkOSOrganizationMembershipUpdatedTrigger = z.infer<typeof workOSOrganizationMembershipUpdatedTriggerSchema>
 
-export const workOSOrganizationMembershipDeletedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSOrganizationMembershipDeletedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED),
     membership: workOSTriggerMembershipSchema
 })
-export type WorkOSOrganizationMembershipDeletedTrigger = z.infer<typeof workOSOrganizationMembershipDeletedTriggerEventSchema>
+export type WorkOSOrganizationMembershipDeletedTrigger = z.infer<typeof workOSOrganizationMembershipDeletedTriggerSchema>
 
-export const workOSMembershipTriggerEventSchema = z.discriminatedUnion("eventType", [
-    workOSOrganizationMembershipCreatedTriggerEventSchema,
-    workOSOrganizationMembershipUpdatedTriggerEventSchema,
-    workOSOrganizationMembershipDeletedTriggerEventSchema
+export const workOSMembershipTriggerSchema = z.discriminatedUnion("eventType", [
+    workOSOrganizationMembershipCreatedTriggerSchema,
+    workOSOrganizationMembershipUpdatedTriggerSchema,
+    workOSOrganizationMembershipDeletedTriggerSchema
 ])
-export type WorkOSMembershipTrigger = z.infer<typeof workOSMembershipTriggerEventSchema>
+export type WorkOSMembershipTrigger = z.infer<typeof workOSMembershipTriggerSchema>
 
-export const workOSInvitationCreatedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSInvitationCreatedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.INVITATION_CREATED),
     invitation: workOSTriggerInvitationSchema,
     user: workOSTriggerUserSchema.optional()
 })
-export type WorkOSInvitationCreatedTrigger = z.infer<typeof workOSInvitationCreatedTriggerEventSchema>
+export type WorkOSInvitationCreatedTrigger = z.infer<typeof workOSInvitationCreatedTriggerSchema>
 
-export const workOSInvitationAcceptedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSInvitationAcceptedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.INVITATION_ACCEPTED),
     invitation: workOSTriggerInvitationSchema,
     user: workOSTriggerUserSchema.optional()
 })
-export type WorkOSInvitationAcceptedTrigger = z.infer<typeof workOSInvitationAcceptedTriggerEventSchema>
+export type WorkOSInvitationAcceptedTrigger = z.infer<typeof workOSInvitationAcceptedTriggerSchema>
 
-export const workOSInvitationResentTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSInvitationResentTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.INVITATION_RESENT),
     invitation: workOSTriggerInvitationSchema,
     user: workOSTriggerUserSchema.optional()
 })
-export type WorkOSInvitationResentTrigger = z.infer<typeof workOSInvitationResentTriggerEventSchema>
+export type WorkOSInvitationResentTrigger = z.infer<typeof workOSInvitationResentTriggerSchema>
 
-export const workOSInvitationRevokedTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSInvitationRevokedTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.INVITATION_REVOKED),
     invitation: workOSTriggerInvitationSchema,
     user: workOSTriggerUserSchema.optional()
 })
-export type WorkOSInvitationRevokedTrigger = z.infer<typeof workOSInvitationRevokedTriggerEventSchema>
+export type WorkOSInvitationRevokedTrigger = z.infer<typeof workOSInvitationRevokedTriggerSchema>
 
-export const workOSInvitationTriggerEventSchema = z.discriminatedUnion("eventType", [
-    workOSInvitationCreatedTriggerEventSchema,
-    workOSInvitationAcceptedTriggerEventSchema,
-    workOSInvitationResentTriggerEventSchema,
-    workOSInvitationRevokedTriggerEventSchema
+export const workOSInvitationTriggerSchema = z.discriminatedUnion("eventType", [
+    workOSInvitationCreatedTriggerSchema,
+    workOSInvitationAcceptedTriggerSchema,
+    workOSInvitationResentTriggerSchema,
+    workOSInvitationRevokedTriggerSchema
 ])
-export type WorkOSInvitationTrigger = z.infer<typeof workOSInvitationTriggerEventSchema>
+export type WorkOSInvitationTrigger = z.infer<typeof workOSInvitationTriggerSchema>
 
-export const workOSOrganizationTriggerEventSchema = workOSTriggerEventBaseSchema.extend({
+export const workOSOrganizationTriggerSchema = workOSTriggerBaseSchema.extend({
     eventType: z.literal(WorkOSEventType.ORGANIZATION_CREATED),
     organization: workOSTriggerOrganizationSchema
 })
-export type WorkOSOrganizationTrigger = z.infer<typeof workOSOrganizationTriggerEventSchema>
+export type WorkOSOrganizationTrigger = z.infer<typeof workOSOrganizationTriggerSchema>
 
-export const workOSTriggerEventSchema = z.discriminatedUnion("eventType", [
-    workOSUserCreatedTriggerEventSchema,
-    workOSUserUpdatedTriggerEventSchema,
-    workOSUserDeletedTriggerEventSchema,
-    workOSOrganizationMembershipCreatedTriggerEventSchema,
-    workOSOrganizationMembershipUpdatedTriggerEventSchema,
-    workOSOrganizationMembershipDeletedTriggerEventSchema,
-    workOSInvitationCreatedTriggerEventSchema,
-    workOSInvitationAcceptedTriggerEventSchema,
-    workOSInvitationResentTriggerEventSchema,
-    workOSInvitationRevokedTriggerEventSchema,
-    workOSOrganizationTriggerEventSchema
+export const workOSTriggerSchema = z.discriminatedUnion("eventType", [
+    workOSUserCreatedTriggerSchema,
+    workOSUserUpdatedTriggerSchema,
+    workOSUserDeletedTriggerSchema,
+    workOSOrganizationMembershipCreatedTriggerSchema,
+    workOSOrganizationMembershipUpdatedTriggerSchema,
+    workOSOrganizationMembershipDeletedTriggerSchema,
+    workOSInvitationCreatedTriggerSchema,
+    workOSInvitationAcceptedTriggerSchema,
+    workOSInvitationResentTriggerSchema,
+    workOSInvitationRevokedTriggerSchema,
+    workOSOrganizationTriggerSchema
 ])
-export type WorkOSTrigger = z.infer<typeof workOSTriggerEventSchema>
+export type WorkOSTrigger = z.infer<typeof workOSTriggerSchema>
 
-export const webhookTriggerEventSchema = baseTriggerEventSchema.extend({
+export const webhookTriggerSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.WEBHOOK),
-    eventType: webhookTriggerEventTypeSchema,
+    eventType: webhookTriggerTypeSchema,
     body: z.record(z.string(), z.unknown()),
     headers: z.record(z.string(), z.string()),
     method: z.string()
 })
-export type WebhookTrigger = z.infer<typeof webhookTriggerEventSchema>
+export type WebhookTrigger = z.infer<typeof webhookTriggerSchema>
 
-export const cronTriggerEventSchema = baseTriggerEventSchema.extend({
+export const cronTriggerSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.CRON_JOB),
-    eventType: cronTriggerEventTypeSchema,
+    eventType: cronTriggerTypeSchema,
     inputId: z.string(),
     isManualTrigger: z.boolean().optional(),
     manualContext: z.string().optional()
 })
-export type CronTrigger = z.infer<typeof cronTriggerEventSchema>
+export type CronTrigger = z.infer<typeof cronTriggerSchema>
 
-export const manualSampleTriggerEventSchema = baseTriggerEventSchema.extend({
-    eventType: manualSampleTriggerEventTypeSchema
+export const manualSampleTriggerSchema = baseTriggerSchema.extend({
+    eventType: manualSampleTriggerTypeSchema
 })
-export type ManualSampleTrigger = z.infer<typeof manualSampleTriggerEventSchema>
+export type ManualSampleTrigger = z.infer<typeof manualSampleTriggerSchema>
 
-export const triggerEventSchema = z.union([
-    slackTriggerEventSchema,
-    GithubTriggerEventSchema,
-    gmailTriggerEventSchema,
-    linearTriggerEventSchema,
-    workOSTriggerEventSchema,
-    webhookTriggerEventSchema,
-    cronTriggerEventSchema,
-    manualSampleTriggerEventSchema
+export const TriggerSchema = z.union([
+    slackTriggerSchema,
+    GithubTriggerSchema,
+    gmailTriggerSchema,
+    linearTriggerSchema,
+    workOSTriggerSchema,
+    webhookTriggerSchema,
+    cronTriggerSchema,
+    manualSampleTriggerSchema
 ])
-export type Trigger = z.infer<typeof triggerEventSchema>
+export type Trigger = z.infer<typeof TriggerSchema>
 
-export function parseTriggerEvent(value: unknown): Trigger {
-    return triggerEventSchema.parse(value)
+export function parseTrigger(value: unknown): Trigger {
+    return TriggerSchema.parse(value)
 }
 
-export function createManualTriggerEvent(
+export function createManualTrigger(
     params: {
         integrationType?: IntegrationType
     } = {}
 ): Trigger {
-    return parseTriggerEvent({
+    return parseTrigger({
         integrationType: params.integrationType ?? IntegrationType.TERSE,
         eventType: "manual_sample"
     })
 }
 
 export function formatTriggerForAgent(event: Trigger): string {
-    return formatTriggerEventForAgentWithPresenter(event)
+    return formatTriggerForAgentWithPresenter(event)
 }
 
 export function debugTrigger(event: Trigger): string {
-    return debugTriggerEventWithPresenter(event)
+    return debugTriggerWithPresenter(event)
 }
 
-export const triggerEventArraySchema = z.array(triggerEventSchema)
+export const TriggerArraySchema = z.array(TriggerSchema)
 
 export const serializedEventSchema = z.object({
     integrationType: integrationTypeEnum,
-    eventType: triggerEventTypeSchema,
+    eventType: TriggerTypeSchema,
     formattedContent: z.string(),
     debugLog: z.string(),
-    data: triggerEventSchema
+    data: TriggerSchema
 })
 export type SerializedEvent = z.infer<typeof serializedEventSchema>

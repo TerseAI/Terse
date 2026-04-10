@@ -70,10 +70,10 @@ terse integrate
 
 **Connection types:**
 
-| Type  | Flow                                                                  | Integrations                                        |
-| ----- | --------------------------------------------------------------------- | --------------------------------------------------- |
-| OAuth | Opens browser for authorization, polls until connected                | GitHub, Slack, Gmail, Linear, Notion, WorkOS |
-| Form  | Prompts for credentials (API keys, account IDs, etc.) in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio    |
+| Type  | Flow                                                                  | Integrations                                     |
+| ----- | --------------------------------------------------------------------- | ------------------------------------------------ |
+| OAuth | Opens browser for authorization, polls until connected                | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
+| Form  | Prompts for credentials (API keys, account IDs, etc.) in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
 
 ## `terse generate`
 
@@ -142,7 +142,7 @@ terse run my-job --event-file ./event.json
 
 | Flag                  | Description                              |
 | --------------------- | ---------------------------------------- |
-| `--event <json>`      | Inline canonical `TriggerEvent` JSON     |
+| `--event <json>`      | Inline canonical `Trigger` JSON          |
 | `--event-file <path>` | Path to a JSON file containing the event |
 
 One of `--event` or `--event-file` is required.

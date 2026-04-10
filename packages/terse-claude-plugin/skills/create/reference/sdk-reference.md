@@ -161,7 +161,7 @@ skills: [
 
 ## Event Types
 
-### TriggerEvent interface
+### Trigger interface
 ```typescript
 event.integrationType       // IntegrationType enum
 event.eventType             // specific event type string
@@ -197,19 +197,19 @@ event.commits               // [{ sha, message, fileDiffs: [{ filename, diff }] 
 
 ### WorkOS Events
 ```typescript
-// WorkOSUserTriggerEvent
+// WorkOSUserTrigger
 event.user.id / event.user.email / event.user.firstName / event.user.lastName
 
-// WorkOSMembershipTriggerEvent
+// WorkOSMembershipTrigger
 event.membership.userId / event.membership.organizationId / event.membership.role.slug
 
-// WorkOSInvitationTriggerEvent
+// WorkOSInvitationTrigger
 event.invitation.email / event.invitation.organizationId / event.invitation.state
 ```
 
 ### Type Guards
 ```typescript
-import { isGithubPRTrigger, isGithubPushTrigger, isWorkOSUserTriggerEvent } from "terse-sdk"
+import { isGithubPRTrigger, isGithubPushTrigger, isWorkOSUserTrigger } from "terse-sdk"
 
 if (isGithubPRTrigger(event)) {
     // event is typed as GithubPRTrigger

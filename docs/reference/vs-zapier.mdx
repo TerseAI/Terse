@@ -6,41 +6,42 @@ icon: "scale"
 
 ## Comparison
 
-| | Zapier / Make | Terse |
-| --- | --- | --- |
-| Where logic lives | Visual steps | TypeScript in your repo |
-| Workspace context | IDs and step wiring | Generated typed helpers |
-| Branching | Visual paths | Normal code |
-| Reviews and versioning | Limited | Git |
-| AI + deterministic tools | Add-on | Native pattern |
+|                          | Zapier / Make       | Terse                   |
+| ------------------------ | ------------------- | ----------------------- |
+| Where logic lives        | Visual steps        | TypeScript in your repo |
+| Workspace context        | IDs and step wiring | Generated typed helpers |
+| Branching                | Visual paths        | Normal code             |
+| Reviews and versioning   | Limited             | Git                     |
+| AI + deterministic tools | Add-on              | Native pattern          |
 
 ## Example: enrichment workflow
 
 A multi-step Zapier flow becomes a single TypeScript file:
 
 ```ts
-import { TriggerEvent, Terse, TerseAgent } from "terse-sdk"
+import { Terse, TerseAgent, Trigger } from "terse-sdk"
+
 import { Apollo, Attio, AttioList } from "./terse.generated"
 
 const client = new Terse()
 
 await client.createJob({
-  name: "new-deal-enrichment",
-  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-  skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()],
-  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
-    const company = await agent.tools.apollo.enrichCompany({
-      domain: event.record.values.company_domain,
-    })
+    name: "new-deal-enrichment",
+    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()],
+    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+        const company = await agent.tools.apollo.enrichCompany({
+            domain: event.record.values.company_domain
+        })
 
-    const summary = await agent.runAndWait("Summarize fit and recommend a next step.", event)
+        const summary = await agent.runAndWait("Summarize fit and recommend a next step.", event)
 
-    await agent.tools.attio.updateRecord({
-      list: AttioList.Pipeline.NewDeals,
-      recordId: event.record.id,
-      fields: { fit_score: company.score, research_summary: summary },
-    })
-  },
+        await agent.tools.attio.updateRecord({
+            list: AttioList.Pipeline.NewDeals,
+            recordId: event.record.id,
+            fields: { fit_score: company.score, research_summary: summary }
+        })
+    }
 })
 ```
 

@@ -25,7 +25,7 @@ from ._generated import (
     IntegrationTypeEnum as IntegrationType,
 )
 from ._generated import (
-    SlackReactionAddedTriggerEventChannelType as SlackChannelType,
+    SlackReactionAddedTriggerChannelType as SlackChannelType,
 )
 
 __all__ = [

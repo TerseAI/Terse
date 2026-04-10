@@ -15,7 +15,7 @@ import {
     linearTeamSchema,
     slackUserResponseSchema
 } from "./Tools"
-import { triggerEventSchema } from "./TriggerEvents"
+import { TriggerSchema } from "./Triggers"
 
 export const roleSchema = z.enum(["admin", "user"])
 export type Role = z.infer<typeof roleSchema>
@@ -570,7 +570,7 @@ export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayload
 
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
-    event: triggerEventSchema.optional(),
+    event: TriggerSchema.optional(),
     skills: z.array(configDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
@@ -589,7 +589,7 @@ export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
 
 export const sdkAgentRunNormalizedRequestSchema = z.object({
     prompt: z.string(),
-    event: triggerEventSchema,
+    event: TriggerSchema,
     skills: z.array(configDataSchema),
     toolApprovals: z.array(z.string()),
     options: sdkAgentRunNormalizedRequestOptionsSchema
@@ -801,6 +801,6 @@ export const sdkSampleEventsRequestSchema = z.object({
 export type SdkSampleEventsRequest = z.infer<typeof sdkSampleEventsRequestSchema>
 
 export const triggerWithEventRequestSchema = z.object({
-    event: triggerEventSchema
+    event: TriggerSchema
 })
 export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSchema>

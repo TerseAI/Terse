@@ -145,7 +145,7 @@ await client.createJob({
 Python example:
 
 ```python
-from terse_sdk import CronTriggerEvent, Terse
+from terse_sdk import CronTrigger, Terse
 from terse_generated import Attio, Schedule, TerseAgent
 
 app = Terse()
@@ -155,7 +155,7 @@ app = Terse()
     triggers=[Schedule.cron("0 9 * * 1")],
     skills=[Attio.skill()],
 )
-def run_job(event: CronTriggerEvent, agent: TerseAgent) -> None:
+def run_job(event: CronTrigger, agent: TerseAgent) -> None:
     summary = agent.run_and_wait(
         "Summarize the most important pipeline changes this week. "
         f"Context: {event.formatted_content}",

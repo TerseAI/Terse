@@ -25,33 +25,31 @@ terse generate
 ## Core workflow
 
 ```ts
-import { CronTriggerEvent, Terse, TerseAgent } from "terse-sdk"
+import { CronTrigger, Terse, TerseAgent } from "terse-sdk"
+
 import { Attio, AttioList, Schedule, Slack, SlackChannel } from "./terse.generated"
 
 const client = new Terse()
 
 await client.createJob({
-  name: "weekly-pipeline-digest",
-  triggers: [Schedule.cron({ expression: "0 9 * * 1" })],
-  skills: [
-    Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }),
-    Slack.skill({ channel: SlackChannel.RevenueTeam }),
-  ],
-  onTrigger: async (event: CronTriggerEvent, agent: TerseAgent) => {
-    const prompt = [
-      `Summarize open pipeline for ${event.window.label}.`,
-      `Window start: ${event.window.startsAt}`,
-      `Window end: ${event.window.endsAt}`,
-      "Call out risk and recommend next actions.",
-    ].join("\n")
+    name: "weekly-pipeline-digest",
+    triggers: [Schedule.cron({ expression: "0 9 * * 1" })],
+    skills: [Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }), Slack.skill({ channel: SlackChannel.RevenueTeam })],
+    onTrigger: async (event: CronTrigger, agent: TerseAgent) => {
+        const prompt = [
+            `Summarize open pipeline for ${event.window.label}.`,
+            `Window start: ${event.window.startsAt}`,
+            `Window end: ${event.window.endsAt}`,
+            "Call out risk and recommend next actions."
+        ].join("\n")
 
-    const digest = await agent.runAndWait(prompt, event)
+        const digest = await agent.runAndWait(prompt, event)
 
-    await agent.tools.slack.sendMessage({
-      channelId: SlackChannel.RevenueTeam.channelId,
-      message: digest,
-    })
-  },
+        await agent.tools.slack.sendMessage({
+            channelId: SlackChannel.RevenueTeam.channelId,
+            message: digest
+        })
+    }
 })
 ```
 

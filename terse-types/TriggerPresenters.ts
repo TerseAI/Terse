@@ -1,42 +1,42 @@
 import { IntegrationType } from "./Integrations"
-import type { CronTrigger, GithubTrigger, GmailTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebhookTrigger, WorkOSTrigger } from "./TriggerEvents"
+import type { CronTrigger, GithubTrigger, GmailTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
 
-interface TriggerEventPresenter<TEvent extends Trigger> {
+interface TriggerPresenter<TEvent extends Trigger> {
     formatForAgent(event: TEvent): string
     debug(event: TEvent): string
 }
 
-type IntegrationTriggerEvent = Exclude<Trigger, ManualSampleTrigger>
-type SupportedIntegrationType = IntegrationTriggerEvent["integrationType"]
+type IntegrationTrigger = Exclude<Trigger, ManualSampleTrigger>
+type SupportedIntegrationType = IntegrationTrigger["integrationType"]
 
-type TriggerEventPresenterRegistry = {
-    manual_sample: TriggerEventPresenter<ManualSampleTrigger>
+type TriggerPresenterRegistry = {
+    manual_sample: TriggerPresenter<ManualSampleTrigger>
 } & {
-    [K in SupportedIntegrationType]: TriggerEventPresenter<Extract<IntegrationTriggerEvent, { integrationType: K }>>
+    [K in SupportedIntegrationType]: TriggerPresenter<Extract<IntegrationTrigger, { integrationType: K }>>
 }
 
-const triggerEventPresenters = {
+const TriggerPresenters = {
     manual_sample: {
         formatForAgent: (event: ManualSampleTrigger): string => `Manual sample event for ${event.integrationType}.`,
         debug: (event: ManualSampleTrigger): string => `${event.integrationType} ${event.eventType}`
     },
     [IntegrationType.GITHUB]: {
-        formatForAgent: formatGithubTriggerEvent,
+        formatForAgent: formatGithubTrigger,
         debug: (event: GithubTrigger): string => `GitHub Event: ${event.eventType} - ${event.repository.owner}/${event.repository.name} - ${event.sender.login}`
     },
     [IntegrationType.SLACK]: {
-        formatForAgent: formatSlackTriggerEvent,
+        formatForAgent: formatSlackTrigger,
         debug: (event: SlackTrigger): string => {
             const isDM = event.channelType === "im"
             return `Slack Event: ${event.eventType} - ${isDM ? "DM" : event.channelName || event.channelId} - ${event.userName || event.userId}`
         }
     },
     [IntegrationType.GMAIL]: {
-        formatForAgent: formatGmailTriggerEvent,
+        formatForAgent: formatGmailTrigger,
         debug: (event: GmailTrigger): string => `Gmail Event: ${event.subject} message ID: ${event.messageId}`
     },
     [IntegrationType.LINEAR]: {
-        formatForAgent: formatLinearTriggerEvent,
+        formatForAgent: formatLinearTrigger,
         debug: (event: LinearTrigger): string => {
             if (event.type === "Issue") {
                 return `Linear ${event.type} Event: ${event.data.identifier} - ${event.data.title} (${event.action})`
@@ -45,38 +45,38 @@ const triggerEventPresenters = {
         }
     },
     [IntegrationType.WORKOS]: {
-        formatForAgent: formatWorkOSTriggerEvent,
+        formatForAgent: formatWorkOSTrigger,
         debug: (event: WorkOSTrigger): string => `WorkOS ${event.eventType}`
     },
     [IntegrationType.WEBHOOK]: {
-        formatForAgent: formatWebhookTriggerEvent,
+        formatForAgent: formatWebhookTrigger,
         debug: (event: WebhookTrigger): string => `Webhook Trigger (${event.method})`
     },
     [IntegrationType.CRON_JOB]: {
-        formatForAgent: formatCronTriggerEvent,
+        formatForAgent: formatCronTrigger,
         debug: (event: CronTrigger): string => (event.isManualTrigger ? "Manual Trigger" : "Scheduled Event")
     }
-} satisfies TriggerEventPresenterRegistry
+} satisfies TriggerPresenterRegistry
 
-export function formatTriggerEventForAgent(event: Trigger): string {
+export function formatTriggerForAgent(event: Trigger): string {
     if (event.eventType === "manual_sample") {
-        return triggerEventPresenters.manual_sample.formatForAgent(event)
+        return TriggerPresenters.manual_sample.formatForAgent(event)
     }
 
-    const presenter = triggerEventPresenters[event.integrationType as SupportedIntegrationType]
+    const presenter = TriggerPresenters[event.integrationType as SupportedIntegrationType]
     return presenter.formatForAgent(event as never)
 }
 
-export function debugTriggerEvent(event: Trigger): string {
+export function debugTrigger(event: Trigger): string {
     if (event.eventType === "manual_sample") {
-        return triggerEventPresenters.manual_sample.debug(event)
+        return TriggerPresenters.manual_sample.debug(event)
     }
 
-    const presenter = triggerEventPresenters[event.integrationType as SupportedIntegrationType]
+    const presenter = TriggerPresenters[event.integrationType as SupportedIntegrationType]
     return presenter.debug(event as never)
 }
 
-function formatGithubTriggerEvent(event: GithubTrigger): string {
+function formatGithubTrigger(event: GithubTrigger): string {
     const indentMultiline = (text: string): string =>
         text
             .split("\n")
@@ -151,7 +151,7 @@ function formatGithubTriggerEvent(event: GithubTrigger): string {
     ].join("\n\n")
 }
 
-function formatSlackTriggerEvent(event: SlackTrigger): string {
+function formatSlackTrigger(event: SlackTrigger): string {
     const blockContent = JSON.stringify(event.blocks)
     const attachmentContent = JSON.stringify(event.attachments)
     const messageText = event.text || "(no plain text)"
@@ -192,7 +192,7 @@ function formatSlackTriggerEvent(event: SlackTrigger): string {
         `
 }
 
-function formatGmailTriggerEvent(event: GmailTrigger): string {
+function formatGmailTrigger(event: GmailTrigger): string {
     const attachmentInfo = event.attachments?.map(attachment => `- ${attachment.filename} ${attachment.isInline ? "Inline" : "Attachment"} (${attachment.mimeType})`).join("\n") || "No attachments"
 
     return `
@@ -212,7 +212,7 @@ function formatGmailTriggerEvent(event: GmailTrigger): string {
         `
 }
 
-function formatLinearTriggerEvent(event: LinearTrigger): string {
+function formatLinearTrigger(event: LinearTrigger): string {
     const indentMultiline = (text: string): string =>
         text
             .split("\n")
@@ -252,7 +252,7 @@ function formatLinearTriggerEvent(event: LinearTrigger): string {
     return sections.join("\n\n")
 }
 
-function formatWorkOSTriggerEvent(event: WorkOSTrigger): string {
+function formatWorkOSTrigger(event: WorkOSTrigger): string {
     const parts = [`WorkOS Event: ${event.eventType}`]
 
     if ("user" in event && event.user) {
@@ -267,11 +267,11 @@ function formatWorkOSTriggerEvent(event: WorkOSTrigger): string {
     return parts.join("\n")
 }
 
-function formatWebhookTriggerEvent(event: WebhookTrigger): string {
+function formatWebhookTrigger(event: WebhookTrigger): string {
     return `Webhook request received.\n\nMethod: ${event.method}\n\nPayload:\n${JSON.stringify(event.body, null, 2)}`
 }
 
-function formatCronTriggerEvent(event: CronTrigger): string {
+function formatCronTrigger(event: CronTrigger): string {
     if (event.isManualTrigger) {
         let message = `This is a manually triggered event for the channel input ${event.inputId}.`
         if (event.manualContext) {

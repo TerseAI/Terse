@@ -14,7 +14,7 @@ from ._generated import (
     SdkDeployRequestBody,
     SdkDeployResponseBody,
     SdkDeployResult,
-    TriggerEvent,
+    Trigger,
 )
 
 
@@ -25,7 +25,7 @@ class SdkAgentRunOptionsPayload(TerseModel):
 
 class SdkAgentRunRequestBody(TerseModel):
     prompt: str | None = None
-    event: TriggerEvent | None = None
+    event: Trigger | None = None
     skills: list[ConfigData] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: list[str] | None = None
@@ -38,7 +38,7 @@ class SdkAgentRunNormalizedRequestOptions(TerseModel):
 
 class SdkAgentRunNormalizedRequest(TerseModel):
     prompt: str
-    event: TriggerEvent
+    event: Trigger
     skills: list[ConfigData]
     tool_approvals: list[str]
     options: SdkAgentRunNormalizedRequestOptions
@@ -81,5 +81,5 @@ __all__ = [
     "SdkDeployJob",
     "SdkDeployRequestBody",
     "SdkDeployResponseBody",
-    "TriggerEvent",
+    "Trigger",
 ]

@@ -10,11 +10,11 @@ Triggers define the event that starts your workflow. Each trigger is tied to an 
 
 ### GitHub
 
-| Trigger                   | Event type           | Description                |
-| ------------------------- | -------------------- | -------------------------- |
-| `GitHub.onPROpened()`     | `GithubPRTrigger`    | A pull request is opened   |
-| `GitHub.onPush()`         | `GithubPushTrigger`  | Code is pushed to a branch |
-| `GitHub.onIssueCreated()` | `GithubTriggerEvent` | An issue is created        |
+| Trigger                   | Event type          | Description                |
+| ------------------------- | ------------------- | -------------------------- |
+| `GitHub.onPROpened()`     | `GithubPRTrigger`   | A pull request is opened   |
+| `GitHub.onPush()`         | `GithubPushTrigger` | Code is pushed to a branch |
+| `GitHub.onIssueCreated()` | `GithubTrigger`     | An issue is created        |
 
 **Config:** Scoped to specific repositories via `repo` parameter.
 
@@ -57,10 +57,10 @@ triggers=[
 
 ### Slack
 
-| Trigger             | Event type          | Description                      |
-| ------------------- | ------------------- | -------------------------------- |
-| `Slack.onMessage()` | `SlackTriggerEvent` | A message is posted in a channel |
-| `Slack.onDm()`      | `SlackTriggerEvent` | A direct message is received     |
+| Trigger             | Event type     | Description                      |
+| ------------------- | -------------- | -------------------------------- |
+| `Slack.onMessage()` | `SlackTrigger` | A message is posted in a channel |
+| `Slack.onDm()`      | `SlackTrigger` | A direct message is received     |
 
 **Config:** Scoped to specific channels or users.
 
@@ -123,9 +123,9 @@ triggers=[
 
 ### Attio
 
-| Trigger                   | Event type     | Description                   |
-| ------------------------- | -------------- | ----------------------------- |
-| `Attio.onRecordCreated()` | `TriggerEvent` | A record is created in a list |
+| Trigger                   | Event type | Description                   |
+| ------------------------- | ---------- | ----------------------------- |
+| `Attio.onRecordCreated()` | `Trigger`  | A record is created in a list |
 
 **Config:** Scoped to a specific Attio list.
 
@@ -167,9 +167,9 @@ triggers=[
 
 ### WorkOS
 
-| Trigger            | Event type           | Description           |
-| ------------------ | -------------------- | --------------------- |
-| `WorkOS.onEvent()` | `WorkOSTriggerEvent` | A WorkOS event occurs |
+| Trigger            | Event type      | Description           |
+| ------------------ | --------------- | --------------------- |
+| `WorkOS.onEvent()` | `WorkOSTrigger` | A WorkOS event occurs |
 
 **Config:** Filtered by event types (`user.created`, `organization.created`, `organization_membership.created`, `invitation.created`, etc.).
 
@@ -201,9 +201,9 @@ triggers=[
 
 ### Schedule
 
-| Trigger           | Event type         | Description              |
-| ----------------- | ------------------ | ------------------------ |
-| `Schedule.cron()` | `CronTriggerEvent` | Fires on a cron schedule |
+| Trigger           | Event type    | Description              |
+| ----------------- | ------------- | ------------------------ |
+| `Schedule.cron()` | `CronTrigger` | Fires on a cron schedule |
 
 <CodeGroup>```ts TypeScript triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am ``` ```python Python triggers=[Schedule.cron("0 9 * * 1")] # Every Monday at 9am ```</CodeGroup>
 
@@ -227,17 +227,17 @@ Webhook URLs are auto-generated on deploy and remain stable across redeploys.
 
 ## Common event interface
 
-All triggers resolve to the shared canonical `TriggerEvent` payload shape. Your handler receives the concrete subtype for the trigger you selected.
+All triggers resolve to the shared canonical `Trigger` payload shape. Your handler receives the concrete subtype for the trigger you selected.
 
 <CodeGroup>
 ```ts TypeScript
-interface TriggerEvent {
+interface Trigger {
   readonly integrationType: string
   readonly eventType: string
 }
 ```
 ```python Python
-class TriggerEvent:
+class Trigger:
     integration_type: str
     event_type: str
 ```

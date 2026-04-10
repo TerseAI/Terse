@@ -7,7 +7,7 @@ from typing import TypeAlias
 from ._base import TerseModel
 from ._generated import (
     Commit,
-    CronTriggerEvent,
+    CronTrigger,
     FileDiff,
     GithubPRClosedTrigger,
     GithubPRMergedTrigger,
@@ -16,41 +16,41 @@ from ._generated import (
     GithubPRTrigger,
     GithubPushTrigger,
     GitHubRepository,
-    GithubTriggerEvent,
-    GmailTriggerEvent,
-    LinearCommentCreatedTriggerEvent,
-    LinearIssueCreatedTriggerEvent,
-    LinearIssueUpdatedTriggerEvent,
-    LinearTriggerEvent,
-    ManualSampleTriggerEvent,
+    GithubTrigger,
+    GmailTrigger,
+    LinearCommentCreatedTrigger,
+    LinearIssueCreatedTrigger,
+    LinearIssueUpdatedTrigger,
+    LinearTrigger,
+    ManualSampleTrigger,
     PullRequest,
     PullRequestRef,
     Sender,
-    SlackAppMentionTriggerEvent,
-    SlackMessageTriggerEvent,
-    SlackReactionAddedTriggerEvent,
-    SlackTriggerEvent,
-    TriggerEvent,
-    WebhookTriggerEvent,
-    WorkOSInvitationAcceptedTriggerEvent,
-    WorkOSInvitationCreatedTriggerEvent,
-    WorkOSInvitationResentTriggerEvent,
-    WorkOSInvitationRevokedTriggerEvent,
-    WorkOSInvitationTriggerEvent,
-    WorkOSMembershipTriggerEvent,
-    WorkOSOrganizationMembershipCreatedTriggerEvent,
-    WorkOSOrganizationMembershipDeletedTriggerEvent,
-    WorkOSOrganizationMembershipUpdatedTriggerEvent,
-    WorkOSOrganizationTriggerEvent,
-    WorkOSTriggerEvent,
+    SlackAppMentionTrigger,
+    SlackMessageTrigger,
+    SlackReactionAddedTrigger,
+    SlackTrigger,
+    Trigger,
+    WebhookTrigger,
+    WorkOSInvitationAcceptedTrigger,
+    WorkOSInvitationCreatedTrigger,
+    WorkOSInvitationResentTrigger,
+    WorkOSInvitationRevokedTrigger,
+    WorkOSInvitationTrigger,
+    WorkOSMembershipTrigger,
+    WorkOSOrganizationMembershipCreatedTrigger,
+    WorkOSOrganizationMembershipDeletedTrigger,
+    WorkOSOrganizationMembershipUpdatedTrigger,
+    WorkOSOrganizationTrigger,
+    WorkOSTrigger,
     WorkOSTriggerInvitation,
     WorkOSTriggerMembership,
     WorkOSTriggerOrganization,
     WorkOSTriggerUser,
-    WorkOSUserCreatedTriggerEvent,
-    WorkOSUserDeletedTriggerEvent,
-    WorkOSUserTriggerEvent,
-    WorkOSUserUpdatedTriggerEvent,
+    WorkOSUserCreatedTrigger,
+    WorkOSUserDeletedTrigger,
+    WorkOSUserTrigger,
+    WorkOSUserUpdatedTrigger,
 )
 
 
@@ -105,55 +105,55 @@ GitHubUser = Sender
 GitHubPullRequestRef = PullRequestRef
 GitHubPullRequestData = PullRequest
 
-KnownTriggerEvent: TypeAlias = (
-    SlackMessageTriggerEvent
-    | SlackAppMentionTriggerEvent
-    | SlackReactionAddedTriggerEvent
-    | GithubTriggerEvent
-    | GmailTriggerEvent
-    | LinearTriggerEvent
-    | WebhookTriggerEvent
-    | WorkOSTriggerEvent
-    | CronTriggerEvent
-    | ManualSampleTriggerEvent
+KnownTrigger: TypeAlias = (
+    SlackMessageTrigger
+    | SlackAppMentionTrigger
+    | SlackReactionAddedTrigger
+    | GithubTrigger
+    | GmailTrigger
+    | LinearTrigger
+    | WebhookTrigger
+    | WorkOSTrigger
+    | CronTrigger
+    | ManualSampleTrigger
 )
-AnyTriggerEvent: TypeAlias = KnownTriggerEvent
+AnyTrigger: TypeAlias = KnownTrigger
 
 
-class _ManualTriggerEvent(TerseModel):
+class _ManualTrigger(TerseModel):
     integration_type: str
     event_type: str = "manual_sample"
 
 
-class AttioTriggerEvent(_ManualTriggerEvent):
+class AttioTrigger(_ManualTrigger):
     integration_type: str = "attio"
 
 
-class DatadogTriggerEvent(_ManualTriggerEvent):
+class DatadogTrigger(_ManualTrigger):
     integration_type: str = "datadog"
 
 
-class LaunchDarklyTriggerEvent(_ManualTriggerEvent):
+class LaunchDarklyTrigger(_ManualTrigger):
     integration_type: str = "launchdarkly"
 
 
-class NotionTriggerEvent(_ManualTriggerEvent):
+class NotionTrigger(_ManualTrigger):
     integration_type: str = "notion"
 
 
-class PosthogTriggerEvent(_ManualTriggerEvent):
+class PosthogTrigger(_ManualTrigger):
     integration_type: str = "posthog"
 
 
-class SnowflakeTriggerEvent(_ManualTriggerEvent):
+class SnowflakeTrigger(_ManualTrigger):
     integration_type: str = "snowflake"
 
 
 __all__ = [
-    "AnyTriggerEvent",
-    "AttioTriggerEvent",
-    "CronTriggerEvent",
-    "DatadogTriggerEvent",
+    "AnyTrigger",
+    "AttioTrigger",
+    "CronTrigger",
+    "DatadogTrigger",
     "GitHubCommit",
     "GitHubFileDiff",
     "GitHubPullRequestData",
@@ -165,45 +165,45 @@ __all__ = [
     "GithubPRTrigger",
     "GithubPushTrigger",
     "GitHubRepository",
-    "GithubTriggerEvent",
+    "GithubTrigger",
     "GitHubUser",
-    "GmailTriggerEvent",
-    "KnownTriggerEvent",
-    "LaunchDarklyTriggerEvent",
-    "LinearCommentCreatedTriggerEvent",
-    "LinearIssueCreatedTriggerEvent",
-    "LinearIssueUpdatedTriggerEvent",
-    "LinearTriggerEvent",
-    "NotionTriggerEvent",
-    "PosthogTriggerEvent",
+    "GmailTrigger",
+    "KnownTrigger",
+    "LaunchDarklyTrigger",
+    "LinearCommentCreatedTrigger",
+    "LinearIssueCreatedTrigger",
+    "LinearIssueUpdatedTrigger",
+    "LinearTrigger",
+    "NotionTrigger",
+    "PosthogTrigger",
     "SlackAttachment",
     "SlackAttachmentField",
     "SlackFile",
-    "SlackAppMentionTriggerEvent",
-    "SlackMessageTriggerEvent",
-    "SlackReactionAddedTriggerEvent",
-    "SlackTriggerEvent",
-    "SnowflakeTriggerEvent",
-    "TriggerEvent",
-    "ManualSampleTriggerEvent",
-    "WebhookTriggerEvent",
-    "WorkOSInvitationAcceptedTriggerEvent",
-    "WorkOSInvitationCreatedTriggerEvent",
-    "WorkOSInvitationResentTriggerEvent",
-    "WorkOSInvitationRevokedTriggerEvent",
-    "WorkOSInvitationTriggerEvent",
-    "WorkOSMembershipTriggerEvent",
-    "WorkOSOrganizationMembershipCreatedTriggerEvent",
-    "WorkOSOrganizationMembershipDeletedTriggerEvent",
-    "WorkOSOrganizationMembershipUpdatedTriggerEvent",
-    "WorkOSOrganizationTriggerEvent",
-    "WorkOSTriggerEvent",
+    "SlackAppMentionTrigger",
+    "SlackMessageTrigger",
+    "SlackReactionAddedTrigger",
+    "SlackTrigger",
+    "SnowflakeTrigger",
+    "Trigger",
+    "ManualSampleTrigger",
+    "WebhookTrigger",
+    "WorkOSInvitationAcceptedTrigger",
+    "WorkOSInvitationCreatedTrigger",
+    "WorkOSInvitationResentTrigger",
+    "WorkOSInvitationRevokedTrigger",
+    "WorkOSInvitationTrigger",
+    "WorkOSMembershipTrigger",
+    "WorkOSOrganizationMembershipCreatedTrigger",
+    "WorkOSOrganizationMembershipDeletedTrigger",
+    "WorkOSOrganizationMembershipUpdatedTrigger",
+    "WorkOSOrganizationTrigger",
+    "WorkOSTrigger",
     "WorkOSTriggerInvitation",
     "WorkOSTriggerMembership",
     "WorkOSTriggerOrganization",
     "WorkOSTriggerUser",
-    "WorkOSUserCreatedTriggerEvent",
-    "WorkOSUserDeletedTriggerEvent",
-    "WorkOSUserTriggerEvent",
-    "WorkOSUserUpdatedTriggerEvent",
+    "WorkOSUserCreatedTrigger",
+    "WorkOSUserDeletedTrigger",
+    "WorkOSUserTrigger",
+    "WorkOSUserUpdatedTrigger",
 ]

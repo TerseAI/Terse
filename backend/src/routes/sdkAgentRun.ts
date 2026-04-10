@@ -3,7 +3,7 @@ import { Request, Response } from "express"
 import { CONFIG_DETAILS, ConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
-import { debugTriggerEvent, formatTriggerEventForAgent } from "terse-types/Triggers"
+import { debugTrigger, formatTriggerForAgent } from "terse-types/Triggers"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
 
@@ -68,9 +68,9 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             "",
             `Integration Type: ${data.event?.integrationType}`,
             `Event Content:`,
-            data.event ? formatTriggerEventForAgent(data.event) : "",
+            data.event ? formatTriggerForAgent(data.event) : "",
             ``,
-            `Debug Log: ${data.event ? debugTriggerEvent(data.event) : ""}`
+            `Debug Log: ${data.event ? debugTrigger(data.event) : ""}`
         ].join("\n")
 
         let result = await sdkRunner.run(eventText)

@@ -25,41 +25,38 @@ terse generate
 ## Core workflow
 
 ```ts
-import { TriggerEvent, Terse, TerseAgent } from "terse-sdk"
+import { Terse, TerseAgent, Trigger } from "terse-sdk"
+
 import { Apollo, Attio, AttioList, Slack, SlackChannel } from "./terse.generated"
 
 const client = new Terse()
 
 await client.createJob({
-  name: "new-deal-enrichment",
-  triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-  skills: [
-    Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-    Apollo.skill(),
-    Slack.skill({ channel: SlackChannel.DealDesk }),
-  ],
-  onTrigger: async (event: TriggerEvent, agent: TerseAgent) => {
-    const company = await agent.tools.apollo.enrichCompany({
-      domain: event.record.values.company_domain,
-    })
+    name: "new-deal-enrichment",
+    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
+    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+        const company = await agent.tools.apollo.enrichCompany({
+            domain: event.record.values.company_domain
+        })
 
-    const prompt = [
-      "Summarize ICP fit, timing, and a next step.",
-      `Company: ${event.record.values.company_name}`,
-      `Industry: ${company.industry}`,
-      `Employee count: ${company.employeeCount}`,
-      `Revenue: ${company.estimatedRevenue}`,
-      `Technologies: ${company.technologies.join(", ")}`,
-    ].join("\n")
+        const prompt = [
+            "Summarize ICP fit, timing, and a next step.",
+            `Company: ${event.record.values.company_name}`,
+            `Industry: ${company.industry}`,
+            `Employee count: ${company.employeeCount}`,
+            `Revenue: ${company.estimatedRevenue}`,
+            `Technologies: ${company.technologies.join(", ")}`
+        ].join("\n")
 
-    const summary = await agent.runAndWait(prompt, event)
+        const summary = await agent.runAndWait(prompt, event)
 
-    await agent.tools.attio.updateRecord({
-      list: AttioList.Pipeline.NewDeals,
-      recordId: event.record.id,
-      fields: { research_summary: summary, fit_score: company.score },
-    })
-  },
+        await agent.tools.attio.updateRecord({
+            list: AttioList.Pipeline.NewDeals,
+            recordId: event.record.id,
+            fields: { research_summary: summary, fit_score: company.score }
+        })
+    }
 })
 ```
 

@@ -14,7 +14,7 @@ import terse_sdk.runtime as runtime_module
 import terse_sdk.types as terse_types
 from terse_sdk import (
     ConfigType,
-    CronTriggerEvent,
+    CronTrigger,
     Done,
     EventType,
     FinalOutput,
@@ -26,10 +26,10 @@ from terse_sdk import (
     SlackChannelType,
     SlackListChannelsToolOutput,
     SlackListUsersToolOutput,
-    SlackMessageTriggerEvent,
+    SlackMessageTrigger,
     SlackReadConversationToolOutput,
     SlackSendMessageToolOutput,
-    SlackTriggerEvent,
+    SlackTrigger,
     Terse,
     TerseAgent,
     TerseApiError,
@@ -39,7 +39,7 @@ from terse_sdk import (
     ToolApprovalRequested,
     ToolCallCompleted,
     TriggerConfig,
-    TriggerEvent,
+    Trigger,
     clear_job_registry,
     deserialize_trigger_event,
     execute_registered_job,
@@ -91,7 +91,9 @@ class _FakeClient:
     def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
         return False
 
-    def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> httpx.Response:
+    def post(
+        self, url: str, *, headers: dict[str, str], json: dict[str, object]
+    ) -> httpx.Response:
         self.calls.append({"url": url, "headers": headers, "json": json})
         if self.response is None:
             raise AssertionError("No response configured")
@@ -102,7 +104,7 @@ def test_job_registration_and_registry_clear() -> None:
     app = Terse()
 
     @app.job(name="demo-job")
-    def demo(event: CronTriggerEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
 
     registry = get_job_registry()
@@ -117,7 +119,7 @@ def test_job_registration_preserves_tool_approvals() -> None:
     app = Terse()
 
     @app.job(name="demo-job", tool_approvals=["attio_upsert_record"])
-    def demo(event: CronTriggerEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
 
     assert get_job_registry()["demo-job"].tool_approvals == ["attio_upsert_record"]
@@ -128,16 +130,16 @@ def test_execute_registered_job_supports_sync_callables() -> None:
     filter_calls: list[str] = []
     app = Terse()
 
-    def allow_sync(event: CronTriggerEvent) -> bool:
+    def allow_sync(event: CronTrigger) -> bool:
         filter_calls.append(event.event_type)
         return bool(event.is_manual_trigger)
 
     @app.job(name="sync-job", filter=allow_sync)
-    def sync_handler(event: CronTriggerEvent, agent: TerseAgent) -> None:
+    def sync_handler(event: CronTrigger, agent: TerseAgent) -> None:
         _ = agent
         handler_calls.append(event.manual_context or "")
 
-    event = CronTriggerEvent(
+    event = CronTrigger(
         event_type="cron",
         input_id="input_123",
         is_manual_trigger=True,
@@ -155,18 +157,23 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
     calls: list[str] = []
     app = Terse()
 
-    def never(event: CronTriggerEvent) -> bool:
+    def never(event: CronTrigger) -> bool:
         _ = event
         return False
 
     @app.job(name="demo-job", filter=never)
-    def demo(event: CronTriggerEvent, agent: TerseAgent) -> None:
+    def demo(event: CronTrigger, agent: TerseAgent) -> None:
         _ = (event, agent)
         calls.append("ran")
 
     skipped = execute_registered_job(
         get_job_registry()["demo-job"],
-        CronTriggerEvent(event_type="cron", input_id="input_123", is_manual_trigger=True, manual_context="demo"),
+        CronTrigger(
+            event_type="cron",
+            input_id="input_123",
+            is_manual_trigger=True,
+            manual_context="demo",
+        ),
         agent=TerseAgent(),
     )
 
@@ -185,7 +192,7 @@ def test_deserialize_trigger_event_supports_camel_case_payloads() -> None:
         }
     )
 
-    assert isinstance(event, CronTriggerEvent)
+    assert isinstance(event, CronTrigger)
     assert event.integration_type == "cron_job"
     assert event.input_id == "input_123"
     assert event.manual_context == "Scheduled job"
@@ -229,7 +236,7 @@ def test_deserialize_trigger_event_enriches_slack_metadata() -> None:
         }
     )
 
-    assert isinstance(event, SlackMessageTriggerEvent)
+    assert isinstance(event, SlackMessageTrigger)
     assert event.channel_id == "C123"
     assert event.channel_name == "alerts"
     assert event.user_id == "U123"
@@ -241,14 +248,18 @@ def test_deserialize_trigger_event_enriches_slack_metadata() -> None:
     assert event.team_id == "T123"
     assert event.permalink == "https://slack.example/message"
     assert event.channel_type == SlackChannelType.im
-    assert event.blocks == [{"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}]
+    assert event.blocks == [
+        {"type": "section", "text": {"type": "mrkdwn", "text": "Deploy finished"}}
+    ]
     assert event.attachments is not None
     assert event.attachments[0]["author_name"] == "Terse"
     assert event.files is not None
     assert event.files[0]["url_private"] == "https://files.example/deploy.log"
 
 
-def test_deserialize_trigger_event_unwraps_generated_trigger_event_root_models() -> None:
+def test_deserialize_trigger_event_unwraps_generated_trigger_event_root_models() -> (
+    None
+):
     payload = {
         "integrationType": "slack",
         "eventType": "message",
@@ -268,11 +279,11 @@ def test_deserialize_trigger_event_unwraps_generated_trigger_event_root_models()
         "files": None,
     }
 
-    generated_event = TriggerEvent.model_validate(payload)
+    generated_event = Trigger.model_validate(payload)
 
     event = deserialize_trigger_event(generated_event)
 
-    assert isinstance(event, SlackMessageTriggerEvent)
+    assert isinstance(event, SlackMessageTrigger)
     assert event.channel_id == "C123"
     assert event.event_type == "message"
 
@@ -297,11 +308,11 @@ def test_deserialize_trigger_event_unwraps_generated_integration_root_models() -
         "files": None,
     }
 
-    generated_event = SlackTriggerEvent.model_validate(payload)
+    generated_event = SlackTrigger.model_validate(payload)
 
     event = deserialize_trigger_event(generated_event)
 
-    assert isinstance(event, SlackMessageTriggerEvent)
+    assert isinstance(event, SlackMessageTrigger)
     assert event.channel_id == "C123"
     assert event.event_type == "message"
 
@@ -400,7 +411,9 @@ def test_agent_execute_tool_includes_session_and_run_headers() -> None:
         ),
         patch("terse_sdk.runtime.httpx.Client", return_value=fake_client),
     ):
-        result = TerseAgent(session_id="session_123").execute_tool("demo_tool", {"value": 1})
+        result = TerseAgent(session_id="session_123").execute_tool(
+            "demo_tool", {"value": 1}
+        )
 
     assert result == {"ok": True}
     assert fake_client.calls[0]["headers"]["X-Terse-Session-Id"] == "session_123"
@@ -409,7 +422,9 @@ def test_agent_execute_tool_includes_session_and_run_headers() -> None:
 
 
 def test_agent_execute_tool_requires_api_key() -> None:
-    with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), pytest.raises(MissingApiKeyError):
+    with patch.dict(os.environ, {"TERSE_API_KEY": ""}, clear=False), pytest.raises(
+        MissingApiKeyError
+    ):
         TerseAgent().execute_tool("demo_tool")
 
 
@@ -461,7 +476,7 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
     with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
         execute_registered_job(
             job,
-            CronTriggerEvent(
+            CronTrigger(
                 event_type="cron",
                 input_id="input_123",
                 is_manual_trigger=True,
@@ -470,7 +485,9 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
         )
 
     assert seen_tools == ["slack-tools"]
-    assert [config.integration_type for config in seen_manual_tool_configs] == [IntegrationType.slack]
+    assert [config.integration_type for config in seen_manual_tool_configs] == [
+        IntegrationType.slack
+    ]
 
 
 def test_agent_tools_raise_clear_error_when_generated_module_is_missing() -> None:
@@ -490,7 +507,9 @@ def test_stream_event_exports_include_sdk_run_events() -> None:
 
 
 def test_run_started_event_supports_backend_payload() -> None:
-    event = SdkAgentStreamEvent.model_validate({"type": "run_started", "runId": "run_123"}).root
+    event = SdkAgentStreamEvent.model_validate(
+        {"type": "run_started", "runId": "run_123"}
+    ).root
 
     assert isinstance(event, RunStarted)
     assert event.run_id == "run_123"
@@ -533,7 +552,9 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
             json.dumps(
                 {
                     "type": "tool_call_completed",
-                    "toolCallCompleted": json.dumps({"tool": "demo_tool", "status": "completed"}),
+                    "toolCallCompleted": json.dumps(
+                        {"tool": "demo_tool", "status": "completed"}
+                    ),
                 }
             ),
             json.dumps({"type": "final_output", "finalOutput": "done"}),
@@ -549,7 +570,9 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         headers: dict[str, str],
         json: dict[str, object],
     ) -> _FakeEventSource:
-        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        captured.update(
+            {"method": method, "url": url, "headers": headers, "json": json}
+        )
         return stream
 
     with (
@@ -559,7 +582,7 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         events = list(
             TerseAgent().run(
                 "hello",
-                CronTriggerEvent(
+                CronTrigger(
                     event_type="cron",
                     input_id="input_123",
                     is_manual_trigger=True,
@@ -596,7 +619,9 @@ def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
         headers: dict[str, str],
         json: dict[str, object],
     ) -> _FakeEventSource:
-        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        captured.update(
+            {"method": method, "url": url, "headers": headers, "json": json}
+        )
         return stream
 
     with (
@@ -633,7 +658,9 @@ def test_agent_run_serializes_skills_as_flat_config_data() -> None:
         headers: dict[str, str],
         json: dict[str, object],
     ) -> _FakeEventSource:
-        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        captured.update(
+            {"method": method, "url": url, "headers": headers, "json": json}
+        )
         return stream
 
     with (
@@ -668,7 +695,9 @@ def test_agent_run_raises_on_failed_tool_call() -> None:
         [
             ToolCallCompleted(
                 type="tool_call_completed",
-                tool_call_completed=json.dumps({"tool": "demo_tool", "status": "failed"}),
+                tool_call_completed=json.dumps(
+                    {"tool": "demo_tool", "status": "failed"}
+                ),
             ).model_dump_json(),
             Done(type="done").model_dump_json(),
         ]
@@ -706,7 +735,9 @@ def test_agent_run_and_wait_returns_none_when_no_final_output_arrives() -> None:
 
 
 def test_agent_run_and_wait_propagates_errors() -> None:
-    with patch.object(TerseAgent, "run", side_effect=TerseApiError("boom")), pytest.raises(TerseApiError):
+    with patch.object(
+        TerseAgent, "run", side_effect=TerseApiError("boom")
+    ), pytest.raises(TerseApiError):
         TerseAgent().run_and_wait("hello")
 
 

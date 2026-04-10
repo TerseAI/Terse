@@ -1395,28 +1395,28 @@ class AttioUpsertRecordToolOutput(TerseModel):
     errors: list[AttioUpsertError] | None = None
 
 
-class ManualSampleTriggerEventType(RootModel[Literal["manual_sample"]]):
+class ManualSampleTriggerType(RootModel[Literal["manual_sample"]]):
     root: Literal["manual_sample"] = "manual_sample"
 
 
-class CronTriggerEventType(RootModel[Literal["cron"]]):
+class CronTriggerType(RootModel[Literal["cron"]]):
     root: Literal["cron"] = "cron"
 
 
-class WebhookTriggerEventType(RootModel[Literal["webhook"]]):
+class WebhookTriggerType(RootModel[Literal["webhook"]]):
     root: Literal["webhook"] = "webhook"
 
 
-class TriggerEventType(
+class TriggerType(
     RootModel[
         SlackEventType
         | GitHubEventType
         | LinearEventType
         | GmailEventType
         | WorkOSEventType
-        | WebhookTriggerEventType
-        | CronTriggerEventType
-        | ManualSampleTriggerEventType
+        | WebhookTriggerType
+        | CronTriggerType
+        | ManualSampleTriggerType
     ]
 ):
     root: (
@@ -1425,18 +1425,18 @@ class TriggerEventType(
         | LinearEventType
         | GmailEventType
         | WorkOSEventType
-        | WebhookTriggerEventType
-        | CronTriggerEventType
-        | ManualSampleTriggerEventType
+        | WebhookTriggerType
+        | CronTriggerType
+        | ManualSampleTriggerType
     )
 
 
-class BaseTriggerEvent(TerseModel):
+class BaseTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
-    event_type: Annotated[TriggerEventType, Field(alias="eventType")]
+    event_type: Annotated[TriggerType, Field(alias="eventType")]
 
 
 class Button(TerseModel):
@@ -1639,14 +1639,14 @@ class CreateNotificationDestinationRequest(TerseModel):
     is_active: Annotated[bool | None, Field(alias="isActive")] = None
 
 
-class CronTriggerEvent(TerseModel):
+class CronTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[Literal["cron_job"], Field(alias="integrationType")] = (
         "cron_job"
     )
-    event_type: Annotated[CronTriggerEventType, Field(alias="eventType")]
+    event_type: Annotated[CronTriggerType, Field(alias="eventType")]
     input_id: Annotated[str, Field(alias="inputId")]
     is_manual_trigger: Annotated[bool | None, Field(alias="isManualTrigger")] = None
     manual_context: Annotated[str | None, Field(alias="manualContext")] = None
@@ -2497,7 +2497,7 @@ class GithubPushTrigger(TerseModel):
     pull_request: Annotated[Any | None, Field(alias="pullRequest")] = None
 
 
-class GithubTriggerEvent(
+class GithubTrigger(
     RootModel[
         GithubPushTrigger
         | GithubPROpenedTrigger
@@ -2711,7 +2711,7 @@ class GmailSendSummary(TerseModel):
     is_reply: bool
 
 
-class GmailTriggerEvent(TerseModel):
+class GmailTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -2966,7 +2966,7 @@ class LinearAddCommentToolOutput(TerseModel):
     comment: LinearCommentHandle
 
 
-class LinearCommentCreatedTriggerEvent(TerseModel):
+class LinearCommentCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -3242,7 +3242,7 @@ class LinearIssueAssignee(TerseModel):
     email: str | None = None
 
 
-class LinearIssueCreatedTriggerEvent(TerseModel):
+class LinearIssueCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -3307,7 +3307,7 @@ class LinearIssueTeam(RootModel[LinearTeam]):
     root: LinearTeam
 
 
-class LinearIssueUpdatedTriggerEvent(TerseModel):
+class LinearIssueUpdatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -3479,17 +3479,17 @@ class LinearSearchTicketToolOutput(TerseModel):
     pagination: LinearSearchPagination
 
 
-class LinearTriggerEvent(
+class LinearTrigger(
     RootModel[
-        LinearIssueCreatedTriggerEvent
-        | LinearIssueUpdatedTriggerEvent
-        | LinearCommentCreatedTriggerEvent
+        LinearIssueCreatedTrigger
+        | LinearIssueUpdatedTrigger
+        | LinearCommentCreatedTrigger
     ]
 ):
     root: (
-        LinearIssueCreatedTriggerEvent
-        | LinearIssueUpdatedTriggerEvent
-        | LinearCommentCreatedTriggerEvent
+        LinearIssueCreatedTrigger
+        | LinearIssueUpdatedTrigger
+        | LinearCommentCreatedTrigger
     )
 
 
@@ -4032,12 +4032,12 @@ class LogoUploadUrlQuery(TerseModel):
     content_type: Annotated[str, Field(alias="contentType")]
 
 
-class ManualSampleTriggerEvent(TerseModel):
+class ManualSampleTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
-    event_type: Annotated[ManualSampleTriggerEventType, Field(alias="eventType")]
+    event_type: Annotated[ManualSampleTriggerType, Field(alias="eventType")]
 
 
 class ManualTriggerParams(TerseModel):
@@ -5239,14 +5239,14 @@ class SdkAgentRunNormalizedRequestOptions(TerseModel):
     require_approval: Annotated[bool, Field(alias="requireApproval")]
 
 
-class WebhookTriggerEvent(TerseModel):
+class WebhookTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = (
         "webhook"
     )
-    event_type: Annotated[WebhookTriggerEventType, Field(alias="eventType")]
+    event_type: Annotated[WebhookTriggerType, Field(alias="eventType")]
     body: dict[str, Any]
     headers: dict[str, str]
     method: str
@@ -5256,7 +5256,7 @@ class WorkOSTriggerOrganization(LinearWebhookAssignee):
     pass
 
 
-class WorkOSOrganizationTriggerEvent(TerseModel):
+class WorkOSOrganizationTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5295,7 +5295,7 @@ class WorkOSTriggerInvitation(TerseModel):
     accepted_at: Annotated[str | None, Field(alias="acceptedAt")] = None
 
 
-class WorkOSInvitationRevokedTriggerEvent(TerseModel):
+class WorkOSInvitationRevokedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5311,7 +5311,7 @@ class WorkOSInvitationRevokedTriggerEvent(TerseModel):
     user: WorkOSTriggerUser | None = None
 
 
-class WorkOSInvitationResentTriggerEvent(TerseModel):
+class WorkOSInvitationResentTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5327,7 +5327,7 @@ class WorkOSInvitationResentTriggerEvent(TerseModel):
     user: WorkOSTriggerUser | None = None
 
 
-class WorkOSInvitationAcceptedTriggerEvent(TerseModel):
+class WorkOSInvitationAcceptedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5343,7 +5343,7 @@ class WorkOSInvitationAcceptedTriggerEvent(TerseModel):
     user: WorkOSTriggerUser | None = None
 
 
-class WorkOSInvitationCreatedTriggerEvent(TerseModel):
+class WorkOSInvitationCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5377,7 +5377,7 @@ class WorkOSTriggerMembership(TerseModel):
     status: str
 
 
-class WorkOSOrganizationMembershipDeletedTriggerEvent(TerseModel):
+class WorkOSOrganizationMembershipDeletedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5392,7 +5392,7 @@ class WorkOSOrganizationMembershipDeletedTriggerEvent(TerseModel):
     membership: WorkOSTriggerMembership
 
 
-class WorkOSOrganizationMembershipUpdatedTriggerEvent(TerseModel):
+class WorkOSOrganizationMembershipUpdatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5407,7 +5407,7 @@ class WorkOSOrganizationMembershipUpdatedTriggerEvent(TerseModel):
     membership: WorkOSTriggerMembership
 
 
-class WorkOSOrganizationMembershipCreatedTriggerEvent(TerseModel):
+class WorkOSOrganizationMembershipCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5422,7 +5422,7 @@ class WorkOSOrganizationMembershipCreatedTriggerEvent(TerseModel):
     membership: WorkOSTriggerMembership
 
 
-class WorkOSUserDeletedTriggerEvent(TerseModel):
+class WorkOSUserDeletedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5437,7 +5437,7 @@ class WorkOSUserDeletedTriggerEvent(TerseModel):
     user: WorkOSTriggerUser
 
 
-class WorkOSUserUpdatedTriggerEvent(TerseModel):
+class WorkOSUserUpdatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5452,7 +5452,7 @@ class WorkOSUserUpdatedTriggerEvent(TerseModel):
     user: WorkOSTriggerUser
 
 
-class WorkOSUserCreatedTriggerEvent(TerseModel):
+class WorkOSUserCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5467,44 +5467,44 @@ class WorkOSUserCreatedTriggerEvent(TerseModel):
     user: WorkOSTriggerUser
 
 
-class WorkOSTriggerEvent(
+class WorkOSTrigger(
     RootModel[
-        WorkOSUserCreatedTriggerEvent
-        | WorkOSUserUpdatedTriggerEvent
-        | WorkOSUserDeletedTriggerEvent
-        | WorkOSOrganizationMembershipCreatedTriggerEvent
-        | WorkOSOrganizationMembershipUpdatedTriggerEvent
-        | WorkOSOrganizationMembershipDeletedTriggerEvent
-        | WorkOSInvitationCreatedTriggerEvent
-        | WorkOSInvitationAcceptedTriggerEvent
-        | WorkOSInvitationResentTriggerEvent
-        | WorkOSInvitationRevokedTriggerEvent
-        | WorkOSOrganizationTriggerEvent
+        WorkOSUserCreatedTrigger
+        | WorkOSUserUpdatedTrigger
+        | WorkOSUserDeletedTrigger
+        | WorkOSOrganizationMembershipCreatedTrigger
+        | WorkOSOrganizationMembershipUpdatedTrigger
+        | WorkOSOrganizationMembershipDeletedTrigger
+        | WorkOSInvitationCreatedTrigger
+        | WorkOSInvitationAcceptedTrigger
+        | WorkOSInvitationResentTrigger
+        | WorkOSInvitationRevokedTrigger
+        | WorkOSOrganizationTrigger
     ]
 ):
     root: (
-        WorkOSUserCreatedTriggerEvent
-        | WorkOSUserUpdatedTriggerEvent
-        | WorkOSUserDeletedTriggerEvent
-        | WorkOSOrganizationMembershipCreatedTriggerEvent
-        | WorkOSOrganizationMembershipUpdatedTriggerEvent
-        | WorkOSOrganizationMembershipDeletedTriggerEvent
-        | WorkOSInvitationCreatedTriggerEvent
-        | WorkOSInvitationAcceptedTriggerEvent
-        | WorkOSInvitationResentTriggerEvent
-        | WorkOSInvitationRevokedTriggerEvent
-        | WorkOSOrganizationTriggerEvent
+        WorkOSUserCreatedTrigger
+        | WorkOSUserUpdatedTrigger
+        | WorkOSUserDeletedTrigger
+        | WorkOSOrganizationMembershipCreatedTrigger
+        | WorkOSOrganizationMembershipUpdatedTrigger
+        | WorkOSOrganizationMembershipDeletedTrigger
+        | WorkOSInvitationCreatedTrigger
+        | WorkOSInvitationAcceptedTrigger
+        | WorkOSInvitationResentTrigger
+        | WorkOSInvitationRevokedTrigger
+        | WorkOSOrganizationTrigger
     )
 
 
-class SlackReactionAddedTriggerEventChannelType(StrEnum):
+class SlackReactionAddedTriggerChannelType(StrEnum):
     channel = "channel"
     group = "group"
     mpim = "mpim"
     im = "im"
 
 
-class SlackReactionAddedTriggerEvent(TerseModel):
+class SlackReactionAddedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5525,7 +5525,7 @@ class SlackReactionAddedTriggerEvent(TerseModel):
     team_id: Annotated[str, Field(alias="teamId")]
     permalink: str | None
     channel_type: Annotated[
-        SlackReactionAddedTriggerEventChannelType | None, Field(alias="channelType")
+        SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")
     ]
     blocks: list[Any] | None
     attachments: list[Any] | None
@@ -5537,7 +5537,7 @@ class SlackReactionAddedTriggerEvent(TerseModel):
     item_timestamp: Annotated[str | None, Field(alias="itemTimestamp")]
 
 
-class SlackAppMentionTriggerEvent(TerseModel):
+class SlackAppMentionTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5558,14 +5558,14 @@ class SlackAppMentionTriggerEvent(TerseModel):
     team_id: Annotated[str, Field(alias="teamId")]
     permalink: str | None
     channel_type: Annotated[
-        SlackReactionAddedTriggerEventChannelType | None, Field(alias="channelType")
+        SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")
     ]
     blocks: list[Any] | None
     attachments: list[Any] | None
     files: list[Any] | None
 
 
-class SlackMessageTriggerEvent(TerseModel):
+class SlackMessageTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -5584,48 +5584,40 @@ class SlackMessageTriggerEvent(TerseModel):
     team_id: Annotated[str, Field(alias="teamId")]
     permalink: str | None
     channel_type: Annotated[
-        SlackReactionAddedTriggerEventChannelType | None, Field(alias="channelType")
+        SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")
     ]
     blocks: list[Any] | None
     attachments: list[Any] | None
     files: list[Any] | None
 
 
-class SlackTriggerEvent(
+class SlackTrigger(
+    RootModel[SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger]
+):
+    root: SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger
+
+
+class Trigger(
     RootModel[
-        SlackMessageTriggerEvent
-        | SlackAppMentionTriggerEvent
-        | SlackReactionAddedTriggerEvent
+        SlackTrigger
+        | GithubTrigger
+        | GmailTrigger
+        | LinearTrigger
+        | WorkOSTrigger
+        | WebhookTrigger
+        | CronTrigger
+        | ManualSampleTrigger
     ]
 ):
     root: (
-        SlackMessageTriggerEvent
-        | SlackAppMentionTriggerEvent
-        | SlackReactionAddedTriggerEvent
-    )
-
-
-class TriggerEvent(
-    RootModel[
-        SlackTriggerEvent
-        | GithubTriggerEvent
-        | GmailTriggerEvent
-        | LinearTriggerEvent
-        | WorkOSTriggerEvent
-        | WebhookTriggerEvent
-        | CronTriggerEvent
-        | ManualSampleTriggerEvent
-    ]
-):
-    root: (
-        SlackTriggerEvent
-        | GithubTriggerEvent
-        | GmailTriggerEvent
-        | LinearTriggerEvent
-        | WorkOSTriggerEvent
-        | WebhookTriggerEvent
-        | CronTriggerEvent
-        | ManualSampleTriggerEvent
+        SlackTrigger
+        | GithubTrigger
+        | GmailTrigger
+        | LinearTrigger
+        | WorkOSTrigger
+        | WebhookTrigger
+        | CronTrigger
+        | ManualSampleTrigger
     )
 
 
@@ -5634,7 +5626,7 @@ class SdkAgentRunNormalizedRequest(TerseModel):
         extra="forbid",
     )
     prompt: str
-    event: TriggerEvent
+    event: Trigger
     skills: list[ConfigData]
     tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
     options: SdkAgentRunNormalizedRequestOptions
@@ -5653,7 +5645,7 @@ class SdkAgentRunRequestBody(TerseModel):
         extra="forbid",
     )
     prompt: str | None = None
-    event: TriggerEvent | None = None
+    event: Trigger | None = None
     skills: list[ConfigData] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")] = None
@@ -6831,8 +6823,8 @@ class TransientAgentTrigger(TransientAgentOutput):
     pass
 
 
-class TriggerEventArray(RootModel[list[TriggerEvent]]):
-    root: list[TriggerEvent]
+class TriggerArray(RootModel[list[Trigger]]):
+    root: list[Trigger]
 
 
 class TriggerWithEventParams(TerseModel):
@@ -6846,7 +6838,7 @@ class TriggerWithEventRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    event: TriggerEvent
+    event: Trigger
 
 
 class UpdateNotificationDestinationRequest(TerseModel):
@@ -7071,48 +7063,42 @@ class WebhookWorkOSTriggerParams(TerseModel):
     integration_id: Annotated[str, Field(alias="integrationId")]
 
 
-class WorkOSInvitationTriggerEvent(
+class WorkOSInvitationTrigger(
     RootModel[
-        WorkOSInvitationCreatedTriggerEvent
-        | WorkOSInvitationAcceptedTriggerEvent
-        | WorkOSInvitationResentTriggerEvent
-        | WorkOSInvitationRevokedTriggerEvent
+        WorkOSInvitationCreatedTrigger
+        | WorkOSInvitationAcceptedTrigger
+        | WorkOSInvitationResentTrigger
+        | WorkOSInvitationRevokedTrigger
     ]
 ):
     root: (
-        WorkOSInvitationCreatedTriggerEvent
-        | WorkOSInvitationAcceptedTriggerEvent
-        | WorkOSInvitationResentTriggerEvent
-        | WorkOSInvitationRevokedTriggerEvent
+        WorkOSInvitationCreatedTrigger
+        | WorkOSInvitationAcceptedTrigger
+        | WorkOSInvitationResentTrigger
+        | WorkOSInvitationRevokedTrigger
     )
 
 
-class WorkOSMembershipTriggerEvent(
+class WorkOSMembershipTrigger(
     RootModel[
-        WorkOSOrganizationMembershipCreatedTriggerEvent
-        | WorkOSOrganizationMembershipUpdatedTriggerEvent
-        | WorkOSOrganizationMembershipDeletedTriggerEvent
+        WorkOSOrganizationMembershipCreatedTrigger
+        | WorkOSOrganizationMembershipUpdatedTrigger
+        | WorkOSOrganizationMembershipDeletedTrigger
     ]
 ):
     root: (
-        WorkOSOrganizationMembershipCreatedTriggerEvent
-        | WorkOSOrganizationMembershipUpdatedTriggerEvent
-        | WorkOSOrganizationMembershipDeletedTriggerEvent
+        WorkOSOrganizationMembershipCreatedTrigger
+        | WorkOSOrganizationMembershipUpdatedTrigger
+        | WorkOSOrganizationMembershipDeletedTrigger
     )
 
 
-class WorkOSUserTriggerEvent(
+class WorkOSUserTrigger(
     RootModel[
-        WorkOSUserCreatedTriggerEvent
-        | WorkOSUserUpdatedTriggerEvent
-        | WorkOSUserDeletedTriggerEvent
+        WorkOSUserCreatedTrigger | WorkOSUserUpdatedTrigger | WorkOSUserDeletedTrigger
     ]
 ):
-    root: (
-        WorkOSUserCreatedTriggerEvent
-        | WorkOSUserUpdatedTriggerEvent
-        | WorkOSUserDeletedTriggerEvent
-    )
+    root: WorkOSUserCreatedTrigger | WorkOSUserUpdatedTrigger | WorkOSUserDeletedTrigger
 
 
 class WorkOSWebhookPayload(TerseModel):

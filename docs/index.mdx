@@ -54,7 +54,7 @@ await client.createJob({
 ```
 
 ```python Python
-from terse_sdk import CronTriggerEvent, SkillConfig, Terse, TriggerConfig
+from terse_sdk import CronTrigger, SkillConfig, Terse, TriggerConfig
 from terse_generated import Slack, SlackChannel, TerseAgent
 
 app = Terse()
@@ -64,7 +64,7 @@ app = Terse()
     triggers=[Schedule.cron("0 9 * * 1")],
     skills=[],
 )
-def run_job(event: CronTriggerEvent, agent: TerseAgent) -> None:
+def run_job(event: CronTrigger, agent: TerseAgent) -> None:
     prompt = (
         "Tell a joke"
         f"Context: {event.formatted_content}"

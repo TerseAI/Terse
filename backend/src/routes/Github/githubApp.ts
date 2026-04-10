@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { Repository } from "terse-types"
-import { GithubTriggerEventSchema } from "terse-types"
+import { GithubTriggerSchema } from "terse-types"
 
 import { githubApp } from "../../config/settings"
 import logger from "../../logger"
@@ -105,7 +105,7 @@ export async function processRepository(repositoryData: Repository, user: User, 
 }
 
 export async function githubAppUnifiedEvent(req: Request, res: Response) {
-    const body = GithubTriggerEventSchema.parse(req.body)
+    const body = GithubTriggerSchema.parse(req.body)
     logger.info("githubAppUnifiedEvent", {
         eventType: body.eventType,
         repositoryName: body.repositoryName,

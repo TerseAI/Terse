@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { GithubTriggerEventSchema } from "terse-types"
+import { GithubTriggerSchema } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { GetGithubRepositoriesForIntegrationResponse, GithubAppInstallationCallbackRequest, Repository, User as RuntimeUser } from "terse-types/types"
 
@@ -135,7 +135,7 @@ export async function githubAppInstallationDeleted(req: Request, res: Response) 
  * Handle unified GitHub event webhook
  */
 export async function githubAppUnifiedEvent(req: Request, res: Response) {
-    const body = GithubTriggerEventSchema.parse(req.body)
+    const body = GithubTriggerSchema.parse(req.body)
 
     const { username, repositoryName } = body
     logger.info("githubAppUnifiedEvent", {
