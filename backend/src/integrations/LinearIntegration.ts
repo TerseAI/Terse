@@ -648,7 +648,7 @@ export class LinearTriggerRuntime extends TriggerRuntime<LinearTrigger> implemen
         if (!linearConfig || !linearConfig.event_types || linearConfig.event_types.length === 0) {
             return false
         }
-        return linearConfig.event_types.includes(this.eventType)
+        return !linearConfig.event_types || linearConfig.event_types.length === 0 || linearConfig.event_types.includes(this.data.eventType)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {

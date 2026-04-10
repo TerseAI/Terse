@@ -356,9 +356,7 @@ export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, Confi
     }
 
     isComplete(): boolean {
-        const hasTarget = !!(this.channelId || this.listenToUserDms)
-        const hasEventTypes = (this.eventTypes?.length ?? 0) > 0
-        return hasTarget && hasEventTypes
+        return !!(this.channelId || this.listenToUserDms)
     }
 
     formatForAgent(): string {
@@ -925,12 +923,11 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.GMAIL_DRAFT_OUTPUT:
             return true
         case ConfigType.LINEAR_INPUT:
-            return (config.eventTypes?.length ?? 0) > 0
         case ConfigType.TERSE:
         case ConfigType.WEBHOOK_INPUT:
             return true
         case ConfigType.SLACK:
-            return !!(config.channelId || config.listenToUserDms) && (config.eventTypes?.length ?? 0) > 0
+            return !!(config.channelId || config.listenToUserDms)
         case ConfigType.SLACK_OUTPUT:
             return !!(config.channelId || (config.userIds?.length ?? 0) > 0 || config.listenToUserDms)
         case ConfigType.NOTION:
@@ -941,7 +938,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.SNOWFLAKE_OUTPUT:
             return !!config.integrationId
         case ConfigType.GITHUB:
-            return (config.repositoryIds?.length ?? 0) > 0 && (config.eventTypes?.length ?? 0) > 0
+            return (config.repositoryIds?.length ?? 0) > 0
         case ConfigType.POSTHOG:
             return !!config.projectId
         case ConfigType.TIME_TRIGGER:

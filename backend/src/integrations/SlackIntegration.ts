@@ -914,7 +914,7 @@ export class SlackTriggerRuntime extends TriggerRuntime<SlackTrigger> implements
         if (!slackConfig) {
             return false
         }
-        if (!slackConfig.event_types || slackConfig.event_types.length === 0 || !slackConfig.event_types.includes(this.data.eventType)) {
+        if (slackConfig.event_types && slackConfig.event_types.length > 0 && !slackConfig.event_types.includes(this.data.eventType)) {
             return false
         }
 

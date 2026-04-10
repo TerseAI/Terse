@@ -56,24 +56,39 @@ const TriggerPresenters = {
         formatForAgent: formatCronTrigger,
         debug: (event: CronTrigger): string => (event.isManualTrigger ? "Manual Trigger" : "Scheduled Event")
     }
-} satisfies TriggerPresenterRegistry
+} as TriggerPresenterRegistry
+
+function dispatchPresenter(event: IntegrationTrigger, method: keyof TriggerPresenter<Trigger>): string {
+    switch (event.integrationType) {
+        case IntegrationType.GITHUB:
+            return TriggerPresenters[IntegrationType.GITHUB][method](event)
+        case IntegrationType.SLACK:
+            return TriggerPresenters[IntegrationType.SLACK][method](event)
+        case IntegrationType.GMAIL:
+            return TriggerPresenters[IntegrationType.GMAIL][method](event)
+        case IntegrationType.LINEAR:
+            return TriggerPresenters[IntegrationType.LINEAR][method](event)
+        case IntegrationType.WORKOS:
+            return TriggerPresenters[IntegrationType.WORKOS][method](event)
+        case IntegrationType.WEBHOOK:
+            return TriggerPresenters[IntegrationType.WEBHOOK][method](event)
+        case IntegrationType.CRON_JOB:
+            return TriggerPresenters[IntegrationType.CRON_JOB][method](event)
+    }
+}
 
 export function formatTriggerForAgent(event: Trigger): string {
     if (event.eventType === "manual_sample") {
         return TriggerPresenters.manual_sample.formatForAgent(event)
     }
-
-    const presenter = TriggerPresenters[event.integrationType as SupportedIntegrationType]
-    return presenter.formatForAgent(event as never)
+    return dispatchPresenter(event, "formatForAgent")
 }
 
 export function debugTrigger(event: Trigger): string {
     if (event.eventType === "manual_sample") {
         return TriggerPresenters.manual_sample.debug(event)
     }
-
-    const presenter = TriggerPresenters[event.integrationType as SupportedIntegrationType]
-    return presenter.debug(event as never)
+    return dispatchPresenter(event, "debug")
 }
 
 function formatGithubTrigger(event: GithubTrigger): string {

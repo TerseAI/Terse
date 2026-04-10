@@ -463,7 +463,7 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
         }
 
         // Check if the eventType is included in the eventTypes configured for the channel
-        return githubConfig.event_types.includes(this.data.eventType)
+        return !githubConfig.event_types || githubConfig.event_types.length === 0 || githubConfig.event_types.includes(this.data.eventType)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {

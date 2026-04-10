@@ -551,16 +551,12 @@ export const TriggerSchema = z.union([
 ])
 export type Trigger = z.infer<typeof TriggerSchema>
 
-export function parseTrigger(value: unknown): Trigger {
-    return TriggerSchema.parse(value)
-}
-
 export function createManualTrigger(
     params: {
         integrationType?: IntegrationType
     } = {}
 ): Trigger {
-    return parseTrigger({
+    return TriggerSchema.parse({
         integrationType: params.integrationType ?? IntegrationType.TERSE,
         eventType: "manual_sample"
     })
