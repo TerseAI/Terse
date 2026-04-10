@@ -10,6 +10,7 @@ from ._generated import (
 )
 from ._generated import (
     AttioOutputConfigInstance,
+    ConfigInstance,
     DatadogConfigInstance,
     GitHubConfigInstance,
     GmailConfigInstance,
@@ -27,9 +28,6 @@ from ._generated import (
     TimeTriggerConfigInstance,
     WorkOSInputConfigInstance,
     WorkOSOutputConfigInstance,
-)
-from ._generated import (
-    BaseConfigInstance as ConfigInstance,
 )
 from .enums import (
     ConfigType,
