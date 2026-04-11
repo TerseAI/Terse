@@ -772,7 +772,7 @@ wheels = [
 
 [[package]]
 name = "terse-sdk"
-version = "0.1.10"
+version = "0.1.11"
 source = { editable = "packages/terse-python-sdk" }
 dependencies = [
     { name = "email-validator" },

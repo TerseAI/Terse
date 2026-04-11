@@ -66,6 +66,7 @@ export interface LinearSectionContext {
     id: string
     skillToolType: string
     teamClass: ResourceClassContext
+    projectClass: ResourceClassContext
 }
 
 export interface NotionSectionContext {
@@ -454,6 +455,15 @@ function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefini
                 ],
                 "name",
                 inst.teams
+            ),
+            projectClass: buildResourceClassContext(
+                "LinearProject",
+                [
+                    { classField: "projectId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" }
+                ],
+                "name",
+                inst.projects
             )
         }
     )
