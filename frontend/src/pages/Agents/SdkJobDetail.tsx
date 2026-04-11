@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
+import { Clock, Code, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { CONFIG_DETAILS, ConfigType } from "terse-types"
 import { FrontendRoutes } from "terse-types"
@@ -20,6 +20,7 @@ import { BackendProvider } from "../../services/backend"
 
 import { IconForConfigType } from "./components/Integration"
 import { WebhookTriggerCard } from "./components/WebhookTriggerCard"
+import { AgentFileExplorer } from "./tabs/AgentFileExplorer"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 
@@ -198,15 +199,31 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                             <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">{pendingCount}</span>
                         )}
                     </Tab>
+                    <Tab
+                        className={({ selected }) =>
+                            `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
+                        }
+                    >
+                        <Code className="h-4 w-4" />
+                        <span>Code</span>
+                    </Tab>
                 </TabList>
 
-                <div className="flex-1 min-h-0 overflow-y-auto">
+                <div
+                    className={
+                        selectedTab === 3
+                            ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+                            : "min-h-0 flex-1 overflow-y-auto"
+                    }
+                >
                     {selectedTab === 0 ? (
                         <OverviewTab triggers={triggers} updatedAt={agent.updatedAt} isActive={agent.isActive} />
                     ) : selectedTab === 1 ? (
                         <AgentRunHistoryTab agentId={agentId} />
-                    ) : (
+                    ) : selectedTab === 2 ? (
                         <AgentImprovementsTab agentId={agentId} source="SDK" />
+                    ) : (
+                        <AgentFileExplorer agentId={agentId} />
                     )}
                 </div>
             </TabGroup>
@@ -333,7 +350,7 @@ function OverviewTab({ triggers, updatedAt, isActive }: { triggers: AgentTrigger
                             return (
                                 <div key={trigger.id} className="flex items-center gap-2 rounded-md border border-input p-2.5">
                                     <div className="w-6 h-6 shrink-0">
-                                        <IconForConfigType type={configType as any} />
+                                        <IconForConfigType type={configType} />
                                     </div>
                                     <span className="text-sm">{details?.name ?? configType}</span>
                                 </div>

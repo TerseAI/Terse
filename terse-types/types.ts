@@ -804,3 +804,28 @@ export const triggerWithEventRequestSchema = z.object({
     event: TriggerSchema
 })
 export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSchema>
+
+const fileSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    content: z.string().optional(),
+    get children() {
+        return z.array(fileSchema).optional()
+    }
+})
+export type File = z.infer<typeof fileSchema>
+
+export const agentFilesResponseSchema = z.object({
+    id: z.string(),
+    files: z.array(fileSchema)
+})
+export type AgentFilesResponse = z.infer<typeof agentFilesResponseSchema>
+
+/** Proxied SDK zip member: raw bytes as base64 plus path metadata (no separate GCS objects). */
+export const agentFileContentResponseSchema = z.object({
+    path: z.string(),
+    fileName: z.string(),
+    contentBase64: z.string(),
+    mimeType: z.string().optional()
+})
+export type AgentFileContentResponse = z.infer<typeof agentFileContentResponseSchema>

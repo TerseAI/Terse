@@ -15,7 +15,7 @@ import "./integrations/IntegrationTaskHandler"
 // Import to trigger listener registration
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
-import { createAgent, deleteAgent, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
+import { createAgent, deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { apiTokenAuthMiddleware } from "./routes/apiTokenAuth"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
@@ -542,6 +542,14 @@ app.patch(ApiRoutes.AGENTS.BY_ID, authMiddleware, async (req, res) => {
 
 app.delete(ApiRoutes.AGENTS.BY_ID, authMiddleware, async (req, res) => {
     deleteAgent(req, res)
+})
+
+app.get(ApiRoutes.AGENTS.FILES, authMiddleware, async (req, res) => {
+    getAgentFiles(req, res)
+})
+
+app.get(ApiRoutes.AGENTS.FILE_CONTENT, authMiddleware, async (req, res) => {
+    getAgentFileContent(req, res)
 })
 
 // MARK: IMPROVEMENTS

@@ -92,7 +92,9 @@
         "LIST": "/agents",
         "RECENT": "/agents/recent",
         "BY_ID": "/agents/:id",
-        "WEBHOOK_URL": "/agents/:agentId/webhook-url"
+        "WEBHOOK_URL": "/agents/:agentId/webhook-url",
+        "FILES": "/agents/:agentId/files",
+        "FILE_CONTENT": "/agents/:agentId/files/:fileId"
     },
     "IMPROVEMENTS": {
         "BY_AGENT_ID": "/agents/:agentId/improvements",
