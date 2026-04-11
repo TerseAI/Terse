@@ -16,7 +16,6 @@ import { renderPythonGeneratedCode } from "./pythonTemplateEngine.js"
 
 const JOB_REGISTRY_MARKER = "__TERSE_JOB_REGISTRY__="
 const JOB_SKIPPED_MARKER = "__TERSE_SKIPPED__"
-const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.11"
 
 type PythonSerializedConfig = {
     integrationId: string
@@ -67,10 +66,10 @@ export class PythonProvider implements LanguageProvider {
         ]
     }
 
-    buildInitTemplateContext(projectName: string): Record<string, unknown> {
+    buildInitTemplateContext(projectName: string, sdkVersion: string): Record<string, unknown> {
         return {
             projectName,
-            sdkDependency: PYTHON_SDK_DEPENDENCY
+            sdkDependency: `terse-sdk==${sdkVersion}`
         }
     }
 

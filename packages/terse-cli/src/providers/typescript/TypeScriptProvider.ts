@@ -48,8 +48,8 @@ export class TypeScriptProvider implements LanguageProvider {
         ]
     }
 
-    buildInitTemplateContext(projectName: string): Record<string, unknown> {
-        return { projectName }
+    buildInitTemplateContext(projectName: string, sdkVersion: string): Record<string, unknown> {
+        return { projectName, sdkVersion }
     }
 
     getPostInitSteps(packageManager: string): string[] {

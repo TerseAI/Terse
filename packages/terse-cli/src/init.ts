@@ -6,6 +6,7 @@ import ora from "ora"
 import { loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
+import { fetchSdkVersion } from "./providers/fetchSdkVersion.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 import { renderTemplate } from "./providers/templateUtils.js"
@@ -35,7 +36,11 @@ export async function init(projectName?: string, provider: LanguageProvider = re
     // Create the source directory up front. Nested template paths create their own parents.
     fs.mkdirSync(path.join(targetDir, "src"), { recursive: true })
 
-    const templateContext = provider.buildInitTemplateContext(resolvedName)
+    const versionSpinner = ora("Fetching latest SDK version").start()
+    const sdkVersion = await fetchSdkVersion(provider.language)
+    versionSpinner.succeed(`Using terse-sdk ${sdkVersion}`)
+
+    const templateContext = provider.buildInitTemplateContext(resolvedName, sdkVersion)
 
     // Write files from templates
     for (const file of provider.scaffoldFiles()) {
