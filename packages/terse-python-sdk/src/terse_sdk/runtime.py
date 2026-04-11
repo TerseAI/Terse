@@ -137,9 +137,7 @@ class Terse:
         job = _JOB_REGISTRY.get(job_name)
         if job is None:
             available = ", ".join(_JOB_REGISTRY.keys())
-            raise TerseRuntimeError(
-                f'Job "{job_name}" not found in registry. Available jobs: {available}'
-            )
+            raise TerseRuntimeError(f'Job "{job_name}" not found in registry. Available jobs: {available}')
 
         settings = TerseSettings()
         api_base_url = settings.backend_url.rstrip("/")
