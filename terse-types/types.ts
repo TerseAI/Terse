@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { configDataSchema, skillConfigDataSchema, triggerConfigDataSchema, configTypeEnum } from "./Configs"
+import { configDataSchema, configTypeEnum, skillConfigDataSchema, triggerConfigDataSchema } from "./Configs"
 import { integrationTypeEnum } from "./Integrations"
 import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction } from "./RunHistoryTypes"

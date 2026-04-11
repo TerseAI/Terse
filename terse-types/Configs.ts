@@ -628,7 +628,7 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
 export const GitHubSkillConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.GITHUB),
     configType: z.literal(ConfigType.GITHUB),
-    repositoryIds: z.array(z.number().int()),
+    repositoryIds: z.array(z.number().int())
 })
 export type GitHubSkillConfigData = z.infer<typeof GitHubSkillConfigSchema>
 
@@ -947,7 +947,7 @@ export const skillConfigDataSchema = z.union([
     TerseConfigSchema,
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
-    SnowflakeOutputConfigSchema,
+    SnowflakeOutputConfigSchema
 ])
 export type SkillConfigData = z.infer<typeof skillConfigDataSchema>
 
