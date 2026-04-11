@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, ConfigDict, EmailStr, Field, RootModel
+from pydantic import AwareDatetime, ConfigDict, Discriminator, EmailStr, Field, RootModel
 
 from terse_sdk.types._base import TerseModel
 
@@ -296,20 +296,24 @@ class GithubPushTrigger(TerseModel):
 
 class GithubTrigger(
     RootModel[
-        GithubPushTrigger
-        | GithubPROpenedTrigger
-        | GithubPRSynchronizedTrigger
-        | GithubPRClosedTrigger
-        | GithubPRMergedTrigger
+        Annotated[
+            GithubPushTrigger
+            | GithubPROpenedTrigger
+            | GithubPRSynchronizedTrigger
+            | GithubPRClosedTrigger
+            | GithubPRMergedTrigger,
+            Discriminator("event_type"),
+        ]
     ]
 ):
-    root: (
+    root: Annotated[
         GithubPushTrigger
         | GithubPROpenedTrigger
         | GithubPRSynchronizedTrigger
         | GithubPRClosedTrigger
-        | GithubPRMergedTrigger
-    )
+        | GithubPRMergedTrigger,
+        Discriminator("event_type"),
+    ]
 
 
 class GmailEventType(StrEnum):
@@ -891,20 +895,23 @@ class WorkOSUserCreatedTrigger(TerseModel):
 
 class WorkOSTrigger(
     RootModel[
-        WorkOSUserCreatedTrigger
-        | WorkOSUserUpdatedTrigger
-        | WorkOSUserDeletedTrigger
-        | WorkOSOrganizationMembershipCreatedTrigger
-        | WorkOSOrganizationMembershipUpdatedTrigger
-        | WorkOSOrganizationMembershipDeletedTrigger
-        | WorkOSInvitationCreatedTrigger
-        | WorkOSInvitationAcceptedTrigger
-        | WorkOSInvitationResentTrigger
-        | WorkOSInvitationRevokedTrigger
-        | WorkOSOrganizationTrigger
+        Annotated[
+            WorkOSUserCreatedTrigger
+            | WorkOSUserUpdatedTrigger
+            | WorkOSUserDeletedTrigger
+            | WorkOSOrganizationMembershipCreatedTrigger
+            | WorkOSOrganizationMembershipUpdatedTrigger
+            | WorkOSOrganizationMembershipDeletedTrigger
+            | WorkOSInvitationCreatedTrigger
+            | WorkOSInvitationAcceptedTrigger
+            | WorkOSInvitationResentTrigger
+            | WorkOSInvitationRevokedTrigger
+            | WorkOSOrganizationTrigger,
+            Discriminator("event_type"),
+        ]
     ]
 ):
-    root: (
+    root: Annotated[
         WorkOSUserCreatedTrigger
         | WorkOSUserUpdatedTrigger
         | WorkOSUserDeletedTrigger
@@ -915,8 +922,9 @@ class WorkOSTrigger(
         | WorkOSInvitationAcceptedTrigger
         | WorkOSInvitationResentTrigger
         | WorkOSInvitationRevokedTrigger
-        | WorkOSOrganizationTrigger
-    )
+        | WorkOSOrganizationTrigger,
+        Discriminator("event_type"),
+    ]
 
 
 class LinearCommentCreatedTrigger(TerseModel):
@@ -970,8 +978,18 @@ class LinearIssueCreatedTrigger(TerseModel):
     data: LinearWebhookData
 
 
-class LinearTrigger(RootModel[LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger]):
-    root: LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger
+class LinearTrigger(
+    RootModel[
+        Annotated[
+            LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger,
+            Discriminator("event_type"),
+        ]
+    ]
+):
+    root: Annotated[
+        LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger,
+        Discriminator("event_type"),
+    ]
 
 
 class GmailTrigger(TerseModel):
@@ -1072,8 +1090,18 @@ class SlackMessageTrigger(TerseModel):
     files: list[Any] | None
 
 
-class SlackTrigger(RootModel[SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger]):
-    root: SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger
+class SlackTrigger(
+    RootModel[
+        Annotated[
+            SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger,
+            Discriminator("event_type"),
+        ]
+    ]
+):
+    root: Annotated[
+        SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger,
+        Discriminator("event_type"),
+    ]
 
 
 class Trigger(
@@ -5318,22 +5346,25 @@ class SdkAgentRunNormalizedRequestOptions(TerseModel):
 
 class SkillConfigData(
     RootModel[
-        SlackOutputConfigInstance
-        | GmailOutputConfigInstance
-        | GmailDraftOutputConfigInstance
-        | NotionConfigInstance
-        | LinearOutputConfigInstance
-        | GitHubSkillConfigInstance
-        | PosthogConfigInstance
-        | DatadogConfigInstance
-        | LaunchDarklyConfigInstance
-        | TerseConfigInstance
-        | WorkOSOutputConfigInstance
-        | AttioOutputConfigInstance
-        | SnowflakeOutputConfigInstance
+        Annotated[
+            SlackOutputConfigInstance
+            | GmailOutputConfigInstance
+            | GmailDraftOutputConfigInstance
+            | NotionConfigInstance
+            | LinearOutputConfigInstance
+            | GitHubSkillConfigInstance
+            | PosthogConfigInstance
+            | DatadogConfigInstance
+            | LaunchDarklyConfigInstance
+            | TerseConfigInstance
+            | WorkOSOutputConfigInstance
+            | AttioOutputConfigInstance
+            | SnowflakeOutputConfigInstance,
+            Discriminator("config_type"),
+        ]
     ]
 ):
-    root: (
+    root: Annotated[
         SlackOutputConfigInstance
         | GmailOutputConfigInstance
         | GmailDraftOutputConfigInstance
@@ -5346,8 +5377,9 @@ class SkillConfigData(
         | TerseConfigInstance
         | WorkOSOutputConfigInstance
         | AttioOutputConfigInstance
-        | SnowflakeOutputConfigInstance
-    )
+        | SnowflakeOutputConfigInstance,
+        Discriminator("config_type"),
+    ]
 
 
 class SdkAgentRunNormalizedRequest(TerseModel):
@@ -5450,19 +5482,22 @@ class Text(TerseModel):
 
 class SdkAgentStreamEvent(
     RootModel[
-        RunStarted
-        | Text
-        | FinalOutput
-        | ToolCallParams
-        | ToolCallStarted
-        | ToolCallCompleted
-        | ToolApprovalRequested
-        | Action
-        | Error
-        | Done
+        Annotated[
+            RunStarted
+            | Text
+            | FinalOutput
+            | ToolCallParams
+            | ToolCallStarted
+            | ToolCallCompleted
+            | ToolApprovalRequested
+            | Action
+            | Error
+            | Done,
+            Discriminator("type"),
+        ]
     ]
 ):
-    root: (
+    root: Annotated[
         RunStarted
         | Text
         | FinalOutput
@@ -5472,8 +5507,9 @@ class SdkAgentStreamEvent(
         | ToolApprovalRequested
         | Action
         | Error
-        | Done
-    )
+        | Done,
+        Discriminator("type"),
+    ]
 
 
 class SdkApprovalDecisionRequestBody(TerseModel):
@@ -5487,24 +5523,28 @@ class SdkApprovalDecisionRequestBody(TerseModel):
 
 class TriggerConfigData(
     RootModel[
-        GmailConfigInstance
-        | SlackConfigInstance
-        | LinearInputConfigInstance
-        | GitHubConfigInstance
-        | TimeTriggerConfigInstance
-        | WorkOSInputConfigInstance
-        | WebhookInputConfigInstance
+        Annotated[
+            GmailConfigInstance
+            | SlackConfigInstance
+            | LinearInputConfigInstance
+            | GitHubConfigInstance
+            | TimeTriggerConfigInstance
+            | WorkOSInputConfigInstance
+            | WebhookInputConfigInstance,
+            Discriminator("config_type"),
+        ]
     ]
 ):
-    root: (
+    root: Annotated[
         GmailConfigInstance
         | SlackConfigInstance
         | LinearInputConfigInstance
         | GitHubConfigInstance
         | TimeTriggerConfigInstance
         | WorkOSInputConfigInstance
-        | WebhookInputConfigInstance
-    )
+        | WebhookInputConfigInstance,
+        Discriminator("config_type"),
+    ]
 
 
 class SdkDeployJob(TerseModel):
