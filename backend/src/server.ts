@@ -29,7 +29,7 @@ import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmai
 import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
-import { getLinearIntegrations, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
+import { getLinearIntegrations, getLinearProjects, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { createNotificationDestination, deleteNotificationDestination, getNotificationDestinations, updateNotificationDestination } from "./routes/notificationDestinations"
 import { getNotificationSettings, updateNotificationSettings } from "./routes/notificationSettings"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
@@ -415,6 +415,10 @@ app.get(ApiRoutes.LINEAR.INTEGRATIONS, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.LINEAR.TEAMS, authMiddleware, async (req, res) => {
     getLinearTeams(req, res)
+})
+
+app.get(ApiRoutes.LINEAR.PROJECTS, authMiddleware, async (req, res) => {
+    getLinearProjects(req, res)
 })
 
 // Manual trigger endpoint (authenticated)

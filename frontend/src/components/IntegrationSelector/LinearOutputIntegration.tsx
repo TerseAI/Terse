@@ -23,7 +23,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
         const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value)
         if (integration) {
             // Preserve existing team and project when switching integrations
-            const linearConfig = new LinearOutputConfig(integration.id, currentConfig?.teamId, currentConfig?.teamName, currentConfig?.projectId, currentConfig?.projectName)
+            const linearConfig = new LinearOutputConfig(integration.id, currentConfig?.teamId, currentConfig?.teamName, currentConfig?.projectId)
             setConfig(linearConfig)
         }
     }
@@ -65,7 +65,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
     let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
     if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
         const defaultIntegration = connectionSelections[0]
-        setConfig(new LinearOutputConfig(defaultIntegration.value, currentConfig?.teamId, currentConfig?.teamName, currentConfig?.projectId, currentConfig?.projectName))
+        setConfig(new LinearOutputConfig(defaultIntegration.value, currentConfig?.teamId, currentConfig?.teamName, currentConfig?.projectId))
         selectedOption = defaultIntegration
     } else if (!selectedOption) {
         selectedOption = connectionSelections[0]
@@ -91,7 +91,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
                 </div>
             )
         }
-        return <div className="text-sm">{currentConfig?.teamName || currentConfig?.projectName || selectedOption?.label || "No connection selected"}</div>
+        return <div className="text-sm">{currentConfig?.teamName || selectedOption?.label || "No connection selected"}</div>
     }
 
     // Dialog variant: full view
@@ -122,7 +122,7 @@ export function LinearOutputIntegration({ input, variant, setConfig }: InputConf
                         integrationId={selectedIntegrationId}
                         selectedTeamId={currentConfig?.teamId ?? null}
                         onSelect={(teamId: string, teamName: string) => {
-                            const updatedConfig = new LinearOutputConfig(selectedIntegrationId, teamId, teamName, currentConfig?.projectId, currentConfig?.projectName)
+                            const updatedConfig = new LinearOutputConfig(selectedIntegrationId, teamId, teamName, currentConfig?.projectId)
                             setConfig(updatedConfig)
                         }}
                     />

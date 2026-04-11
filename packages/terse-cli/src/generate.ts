@@ -167,7 +167,16 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                         const teams = await fetchWithAuth<Array<{ id: string; name: string; key: string }>>(`${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(
                             () => [] as Array<{ id: string; name: string; key: string }>
                         )
-                        return { id: inst.id, displayName: inst.workspaceName || inst.id, teams: Array.isArray(teams) ? teams : [] }
+                        const projects = await fetchWithAuth<Array<{ id: string; name: string; description?: string; teamId: string }>>(
+                            `${ApiRoutes.LINEAR.PROJECTS}?integrationId=${encodeURIComponent(inst.id)}`,
+                            apiKey
+                        ).catch(() => [] as Array<{ id: string; name: string; description?: string; teamId: string }>)
+                        return {
+                            id: inst.id,
+                            displayName: inst.workspaceName || inst.id,
+                            teams: Array.isArray(teams) ? teams : [],
+                            projects: Array.isArray(projects) ? projects : []
+                        }
                     })
                 )
             })
