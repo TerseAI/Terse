@@ -250,7 +250,6 @@ export function FileExplorer({ files, selectedFile, onSelectFile, editorValue, e
     const monacoPath = editorPath ?? selectedFile?.name ?? "untitled"
     const showEditorChrome = editorStatus === "ready" || editorStatus === "loading"
     const showOverlay = editorStatus === "loading"
-    const editorReadOnly = editorStatus !== "ready"
 
     return (
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -312,7 +311,7 @@ export function FileExplorer({ files, selectedFile, onSelectFile, editorValue, e
                                 theme={monacoTheme}
                                 beforeMount={handleMonacoBeforeMount}
                                 options={{
-                                    readOnly: editorReadOnly,
+                                    readOnly: true,
                                     minimap: { enabled: false },
                                     scrollBeyondLastLine: false,
                                     fontSize: 13,
