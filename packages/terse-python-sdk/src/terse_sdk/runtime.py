@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -259,7 +260,9 @@ class TerseAgent:
         event_payload = request_payload.get("event")
         if request_body.event is not None and isinstance(event_payload, dict):
             request_payload["event"] = _strip_optional_nones(cast(dict[str, object], event_payload), request_body.event)
-        headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id, run_id=self.run_id)
+        headers = _build_auth_headers(
+            api_key, accept="text/event-stream", session_id=self.session_id, run_id=self.run_id
+        )
         _debug_log_request(
             LOGGER,
             "POST",
@@ -694,14 +697,10 @@ class _SessionStreamHandle:
         self._client = client
 
     def close(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self._response.close()
-        except Exception:  # noqa: BLE001
-            pass
-        try:
+        with contextlib.suppress(Exception):
             self._client.close()
-        except Exception:  # noqa: BLE001
-            pass
 
 
 def _open_session_stream(backend_url: str, api_key: str) -> _SessionStreamHandle:

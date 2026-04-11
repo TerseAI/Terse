@@ -131,4 +131,3 @@ function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string;
         zipSizeBytes: zipData.length
     }
 }
-

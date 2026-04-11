@@ -107,4 +107,3 @@ function changeDirectory(targetDir: string): Promise<void> {
         }
     })
 }
-
