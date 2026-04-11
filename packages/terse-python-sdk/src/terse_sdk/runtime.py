@@ -25,8 +25,8 @@ from ._http_utils import (
 )
 from ._logging_utils import LOGGER, _configure_debug_logging
 from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
-from .types._generated import ConfigData, SerializedEvent
 from .types._generated import ManualSampleTrigger as _RawManualSampleTrigger
+from .types._generated import SerializedEvent, SkillConfigData
 from .types.config import TerseSettings
 from .types.events import AnyTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
@@ -474,18 +474,12 @@ def execute_registered_job(
     return False
 
 
-def _serialize_skill_config(skill: SkillConfig[Any]) -> ConfigData:
+def _serialize_skill_config(skill: SkillConfig[Any]) -> SkillConfigData:
     config = {k: v for k, v in skill.config.items() if v is not None}
-    # GitHub uses the same config shape for trigger and skill configs.
-    # Trigger configs include `eventTypes`; skills intentionally omit it.
-    # The generated Pydantic union currently requires the nullable field to be
-    # present for validation, so normalize the skill payload before validating.
-    if skill.integration_type == "github" and skill.config_type == "github" and "eventTypes" not in config:
-        config["eventTypes"] = None
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type
-    return ConfigData.model_validate(config)
+    return SkillConfigData.model_validate(config)
 
 
 def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
@@ -672,16 +666,14 @@ def _build_agent_run_request_body(
     tool_approvals: list[str] | None,
 ) -> SdkAgentRunRequestBody:
     serialized_event = _serialize_run_event(event)
-    skill_payloads = []
-    for skill in skills:
-        exclude_none = not (skill.integration_type == "github" and skill.config_type == "github")
-        skill_payloads.append(
-            _serialize_skill_config(skill).model_dump(
-                exclude_none=exclude_none,
-                by_alias=True,
-                mode="json",
-            )
+    skill_payloads = [
+        _serialize_skill_config(skill).model_dump(
+            exclude_none=True,
+            by_alias=True,
+            mode="json",
         )
+        for skill in skills
+    ]
     if LOGGER.isEnabledFor(logging.DEBUG):
         LOGGER.debug(
             "Building /sdk/agent-run request for %s/%s with event keys=%s and %d skill(s)",

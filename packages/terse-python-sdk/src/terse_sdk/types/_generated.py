@@ -119,6 +119,16 @@ class GitHubConfigInstance(TerseModel):
     event_types: Annotated[list[GitHubEventType] | None, Field(alias="eventTypes")]
 
 
+class GitHubSkillConfigInstance(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_id: Annotated[str, Field(alias="integrationId")]
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    config_type: Annotated[Literal["github"], Field(alias="configType")] = "github"
+    repository_ids: Annotated[list[int], Field(alias="repositoryIds")]
+
+
 class GithubIntegrationInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1283,6 +1293,7 @@ class ConfigData(
         | LinearInputConfigInstance
         | LinearOutputConfigInstance
         | GitHubConfigInstance
+        | GitHubSkillConfigInstance
         | PosthogConfigInstance
         | DatadogConfigInstance
         | TimeTriggerConfigInstance
@@ -1305,6 +1316,7 @@ class ConfigData(
         | LinearInputConfigInstance
         | LinearOutputConfigInstance
         | GitHubConfigInstance
+        | GitHubSkillConfigInstance
         | PosthogConfigInstance
         | DatadogConfigInstance
         | TimeTriggerConfigInstance
@@ -5304,13 +5316,47 @@ class SdkAgentRunNormalizedRequestOptions(TerseModel):
     require_approval: Annotated[bool, Field(alias="requireApproval")]
 
 
+class SkillConfigData(
+    RootModel[
+        SlackOutputConfigInstance
+        | GmailOutputConfigInstance
+        | GmailDraftOutputConfigInstance
+        | NotionConfigInstance
+        | LinearOutputConfigInstance
+        | GitHubSkillConfigInstance
+        | PosthogConfigInstance
+        | DatadogConfigInstance
+        | LaunchDarklyConfigInstance
+        | TerseConfigInstance
+        | WorkOSOutputConfigInstance
+        | AttioOutputConfigInstance
+        | SnowflakeOutputConfigInstance
+    ]
+):
+    root: (
+        SlackOutputConfigInstance
+        | GmailOutputConfigInstance
+        | GmailDraftOutputConfigInstance
+        | NotionConfigInstance
+        | LinearOutputConfigInstance
+        | GitHubSkillConfigInstance
+        | PosthogConfigInstance
+        | DatadogConfigInstance
+        | LaunchDarklyConfigInstance
+        | TerseConfigInstance
+        | WorkOSOutputConfigInstance
+        | AttioOutputConfigInstance
+        | SnowflakeOutputConfigInstance
+    )
+
+
 class SdkAgentRunNormalizedRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     prompt: str
     event: Trigger
-    skills: list[ConfigData]
+    skills: list[SkillConfigData]
     tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
     options: SdkAgentRunNormalizedRequestOptions
 
@@ -5329,7 +5375,7 @@ class SdkAgentRunRequestBody(TerseModel):
     )
     prompt: str | None = None
     event: Trigger | None = None
-    skills: list[ConfigData] | None = None
+    skills: list[SkillConfigData] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")] = None
 
@@ -5439,13 +5485,35 @@ class SdkApprovalDecisionRequestBody(TerseModel):
     approved: bool
 
 
+class TriggerConfigData(
+    RootModel[
+        GmailConfigInstance
+        | SlackConfigInstance
+        | LinearInputConfigInstance
+        | GitHubConfigInstance
+        | TimeTriggerConfigInstance
+        | WorkOSInputConfigInstance
+        | WebhookInputConfigInstance
+    ]
+):
+    root: (
+        GmailConfigInstance
+        | SlackConfigInstance
+        | LinearInputConfigInstance
+        | GitHubConfigInstance
+        | TimeTriggerConfigInstance
+        | WorkOSInputConfigInstance
+        | WebhookInputConfigInstance
+    )
+
+
 class SdkDeployJob(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     job_name: Annotated[str, Field(alias="jobName")]
-    triggers: list[ConfigData]
-    outputs: list[ConfigData]
+    triggers: list[TriggerConfigData]
+    outputs: list[SkillConfigData]
     tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
 
 

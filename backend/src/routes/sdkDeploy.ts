@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { ConfigData } from "terse-types/Configs"
+import { SkillConfigData, TriggerConfigData } from "terse-types/Configs"
 import { AgentOutput, AgentTrigger, SdkDeployResponseBody, User, sdkDeployRequestBodySchema } from "terse-types/types"
 
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
@@ -108,8 +108,8 @@ async function updateExistingAutomation(
     prisma: ReturnType<typeof db>,
     existing: AgentWithTriggerRelations,
     jobName: string,
-    triggers: ConfigData[],
-    outputs: ConfigData[],
+    triggers: TriggerConfigData[],
+    outputs: SkillConfigData[],
     toolApprovals: string[],
     organizationId: string,
     userId: string,
@@ -181,8 +181,8 @@ async function updateExistingAutomation(
 async function createNewAutomation(
     prisma: ReturnType<typeof db>,
     jobName: string,
-    triggers: ConfigData[],
-    outputs: ConfigData[],
+    triggers: TriggerConfigData[],
+    outputs: SkillConfigData[],
     toolApprovals: string[],
     organizationId: string,
     userId: string,
@@ -222,7 +222,7 @@ async function createNewAutomation(
     })
 }
 
-async function createTriggersForAutomation(tx: PrismaTransaction, automationId: string, triggers: ConfigData[], organizationId: string, userId: string) {
+async function createTriggersForAutomation(tx: PrismaTransaction, automationId: string, triggers: TriggerConfigData[], organizationId: string, userId: string) {
     for (const trigger of triggers) {
         const integrationId = trigger.integrationId || "system"
 
@@ -245,7 +245,7 @@ async function createTriggersForAutomation(tx: PrismaTransaction, automationId: 
     }
 }
 
-async function createOutputsForAutomation(tx: PrismaTransaction, automationId: string, outputs: ConfigData[], organizationId: string, userId: string) {
+async function createOutputsForAutomation(tx: PrismaTransaction, automationId: string, outputs: SkillConfigData[], organizationId: string, userId: string) {
     for (const output of outputs) {
         const integrationId = output.integrationId
         if (!integrationId) {

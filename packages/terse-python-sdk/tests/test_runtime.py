@@ -589,7 +589,6 @@ def test_agent_run_serializes_github_skills_without_event_types() -> None:
             "integrationType": "github",
             "configType": "github",
             "repositoryIds": [1076128380],
-            "eventTypes": None,
         }
     ]
 
