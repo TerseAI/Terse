@@ -7,7 +7,6 @@ export type AgentSdkEditorContentResult = {
     status: AgentSdkEditorStatus
     errorMessage?: string
     fileName?: string
-    rawBytes?: Uint8Array
 }
 
 function base64ToUint8Array(base64: string): Uint8Array {
@@ -32,20 +31,7 @@ function hasNulByte(bytes: Uint8Array, maxScan = 65536): boolean {
 
 function bytesToEditorText(bytes: Uint8Array, mimeType?: string): string {
     if (hasNulByte(bytes)) {
-        return "[Binary file — use download or an external editor]"
-    }
-
-    const textish =
-        !mimeType ||
-        mimeType.startsWith("text/") ||
-        mimeType.includes("json") ||
-        mimeType.includes("javascript") ||
-        mimeType.includes("typescript") ||
-        mimeType.includes("xml") ||
-        mimeType.includes("svg")
-
-    if (!textish && mimeType === "application/octet-stream") {
-        return "[Binary file — use download or an external editor]"
+        return "[Binary file — not shown in preview]"
     }
 
     try {
@@ -66,8 +52,7 @@ export function useAgentSdkFileEditorContent(agentId: string, selectedFileId: st
             displayContent: "",
             status: "idle" satisfies AgentSdkEditorStatus,
             errorMessage: undefined as string | undefined,
-            fileName: undefined as string | undefined,
-            rawBytes: undefined as Uint8Array | undefined
+            fileName: undefined as string | undefined
         }
     }
 
@@ -76,8 +61,7 @@ export function useAgentSdkFileEditorContent(agentId: string, selectedFileId: st
             displayContent: "",
             status: "loading" satisfies AgentSdkEditorStatus,
             errorMessage: undefined as string | undefined,
-            fileName: undefined as string | undefined,
-            rawBytes: undefined as Uint8Array | undefined
+            fileName: undefined as string | undefined
         }
     }
 
@@ -86,8 +70,7 @@ export function useAgentSdkFileEditorContent(agentId: string, selectedFileId: st
             displayContent: "",
             status: "error" satisfies AgentSdkEditorStatus,
             errorMessage: "Could not load file from the server.",
-            fileName: undefined as string | undefined,
-            rawBytes: undefined as Uint8Array | undefined
+            fileName: undefined as string | undefined
         }
     }
 
@@ -97,8 +80,7 @@ export function useAgentSdkFileEditorContent(agentId: string, selectedFileId: st
             displayContent: "",
             status: "error" satisfies AgentSdkEditorStatus,
             errorMessage: "Missing file payload.",
-            fileName: meta.fileName,
-            rawBytes: undefined as Uint8Array | undefined
+            fileName: meta.fileName
         }
     }
 
@@ -109,16 +91,14 @@ export function useAgentSdkFileEditorContent(agentId: string, selectedFileId: st
             displayContent,
             status: "ready" satisfies AgentSdkEditorStatus,
             errorMessage: undefined as string | undefined,
-            fileName: meta.fileName,
-            rawBytes
+            fileName: meta.fileName
         }
     } catch {
         return {
             displayContent: "",
             status: "error" satisfies AgentSdkEditorStatus,
             errorMessage: "Could not decode file contents.",
-            fileName: meta.fileName,
-            rawBytes: undefined as Uint8Array | undefined
+            fileName: meta.fileName
         }
     }
 }
