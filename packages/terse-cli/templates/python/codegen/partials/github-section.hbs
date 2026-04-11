@@ -135,4 +135,15 @@ class GitHub:
                 eventTypes=list(event_types) if event_types is not None else None,
             ),
         )
+
+    @staticmethod
+    def skill(*, repos: Sequence[GitHubRepo]) -> SkillConfig[str]:
+        return SkillConfig(
+            integration_id={{{github.instanceIdRepr}}},
+            integration_type='github',
+            config_type='github',
+            config=_compact_dict(
+                repositoryIds=[repo.repository_id for repo in repos],
+            ),
+        )
 {{~/if}}

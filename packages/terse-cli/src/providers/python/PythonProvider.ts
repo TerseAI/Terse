@@ -8,6 +8,7 @@ import type { SerializedEvent } from "terse-types"
 
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
+import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 import { type SessionStreamEvent, openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
 import { ensureUvAvailable, execUv, loadDotenv, withTempScript } from "../shared/shellUtils.js"
 
@@ -45,7 +46,7 @@ export class PythonProvider implements LanguageProvider {
         description: "Python project"
     }
     readonly projectMarkers = {
-        requiredFiles: ["pyproject.toml", "src/main.py"],
+        requiredFiles: ["pyproject.toml"],
         description: "Python Terse project"
     }
     readonly entryFile = "src/main.py"
@@ -82,11 +83,7 @@ export class PythonProvider implements LanguageProvider {
     }
 
     async installDependencies(targetDir: string): Promise<void> {
-        const env = {
-            ...loadDotenv(targetDir),
-            UV_CACHE_DIR: path.join(os.tmpdir(), "terse-uv-cache")
-        }
-        await execUv(["sync"], { cwd: targetDir, env })
+        await this.execUvCommand(["sync"], { cwd: targetDir, env: this.buildPythonEnv(targetDir) })
     }
 
     resolveGeneratedCodePath(cwd: string): string {
@@ -101,20 +98,24 @@ export class PythonProvider implements LanguageProvider {
 
     async loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>> {
         const cwd = process.cwd()
-        const env = loadDotenv(cwd)
+        const env = this.buildPythonEnv(cwd)
         const resolvedEntryFile = entryFile ?? this.entryFile
         const entryPath = path.join(cwd, resolvedEntryFile)
 
         if (!fs.existsSync(entryPath)) {
-            console.error(chalk.red(`Error: Could not find Terse job entry file at ${resolvedEntryFile}.`))
-            console.error(chalk.dim("Add a file that registers jobs with @app.job(...), then try again."))
-            process.exit(1)
+            printMissingEntryFileGuidance({
+                languageDisplayName: this.displayName,
+                defaultEntryFile: this.entryFile,
+                requestedEntryFile: entryFile,
+                overrideExample: "src/server.py",
+                createHint: `Create ${this.entryFile} and register at least one job with @app.job(...).`
+            })
         }
 
         try {
-            const script = buildLoadRegistryScript(resolvedEntryFile)
-            return await withTempScript(script, ".py", async scriptPath => {
-                const { stdout } = await execUv(["run", "python", scriptPath], { cwd, env })
+            const script = this.buildLoadRegistryScript(resolvedEntryFile)
+            return await this.withTempPythonScript(script, async scriptPath => {
+                const { stdout } = await this.execUvCommand(["run", "python", scriptPath], { cwd, env })
                 const payload = extractRegistryPayload(stdout)
                 const parsed = JSON.parse(payload) as Record<string, PythonJobData>
                 const registry = new Map<string, CreateJobParameters>()
@@ -140,7 +141,7 @@ export class PythonProvider implements LanguageProvider {
     async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
         const cwd = process.cwd()
         const env: NodeJS.ProcessEnv = {
-            ...loadDotenv(cwd),
+            ...this.buildPythonEnv(cwd),
             TERSE_JOB_NAME: job.name,
             TERSE_EVENT_JSON: JSON.stringify(event)
         }
@@ -162,9 +163,9 @@ export class PythonProvider implements LanguageProvider {
                 env.TERSE_SESSION_ID = session.sessionId
             }
 
-            const script = buildExecuteJobScript(resolvedEntryFile)
-            await ensureUvAvailable(cwd)
-            await withTempScript(script, ".py", async scriptPath => {
+            const script = this.buildExecuteJobScript(resolvedEntryFile)
+            await this.ensureUvAvailable(cwd)
+            await this.withTempPythonScript(script, async scriptPath => {
                 await runStreamingPython(cwd, env, scriptPath, job.name)
             })
         } catch (error) {
@@ -174,6 +175,39 @@ export class PythonProvider implements LanguageProvider {
         } finally {
             closeSession?.()
         }
+    }
+
+    protected buildPythonEnv(cwd: string): NodeJS.ProcessEnv {
+        return {
+            ...loadDotenv(cwd),
+            UV_CACHE_DIR: path.join(os.tmpdir(), "terse-uv-cache")
+        }
+    }
+
+    protected async execUvCommand(
+        args: string[],
+        opts: {
+            cwd: string
+            env?: NodeJS.ProcessEnv
+        }
+    ): Promise<{ stdout: string; stderr: string }> {
+        return execUv(args, opts)
+    }
+
+    protected async withTempPythonScript<T>(source: string, fn: (scriptPath: string) => Promise<T>): Promise<T> {
+        return withTempScript(source, ".py", fn)
+    }
+
+    protected async ensureUvAvailable(cwd: string): Promise<void> {
+        await ensureUvAvailable(cwd)
+    }
+
+    protected buildLoadRegistryScript(entryFile: string): string {
+        return buildLoadRegistryScript(entryFile)
+    }
+
+    protected buildExecuteJobScript(entryFile: string): string {
+        return buildExecuteJobScript(entryFile)
     }
 }
 

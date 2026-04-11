@@ -476,6 +476,12 @@ def execute_registered_job(
 
 def _serialize_skill_config(skill: SkillConfig[Any]) -> ConfigData:
     config = {k: v for k, v in skill.config.items() if v is not None}
+    # GitHub uses the same config shape for trigger and skill configs.
+    # Trigger configs include `eventTypes`; skills intentionally omit it.
+    # The generated Pydantic union currently requires the nullable field to be
+    # present for validation, so normalize the skill payload before validating.
+    if skill.integration_type == "github" and skill.config_type == "github" and "eventTypes" not in config:
+        config["eventTypes"] = None
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type
@@ -666,14 +672,16 @@ def _build_agent_run_request_body(
     tool_approvals: list[str] | None,
 ) -> SdkAgentRunRequestBody:
     serialized_event = _serialize_run_event(event)
-    skill_payloads = [
-        _serialize_skill_config(skill).model_dump(
-            exclude_none=True,
-            by_alias=True,
-            mode="json",
+    skill_payloads = []
+    for skill in skills:
+        exclude_none = not (skill.integration_type == "github" and skill.config_type == "github")
+        skill_payloads.append(
+            _serialize_skill_config(skill).model_dump(
+                exclude_none=exclude_none,
+                by_alias=True,
+                mode="json",
+            )
         )
-        for skill in skills
-    ]
     if LOGGER.isEnabledFor(logging.DEBUG):
         LOGGER.debug(
             "Building /sdk/agent-run request for %s/%s with event keys=%s and %d skill(s)",

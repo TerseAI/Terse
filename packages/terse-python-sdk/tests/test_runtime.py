@@ -551,6 +551,49 @@ def test_agent_run_serializes_skills_as_flat_config_data() -> None:
     ]
 
 
+def test_agent_run_serializes_github_skills_without_event_types() -> None:
+    captured: dict[str, object] = {}
+    stream = _FakeEventSource([json.dumps({"type": "done"})])
+
+    def fake_connect_sse(
+        client: object,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: dict[str, object],
+    ) -> _FakeEventSource:
+        captured.update({"method": method, "url": url, "headers": headers, "json": json})
+        return stream
+
+    with (
+        patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
+        patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
+    ):
+        list(
+            TerseAgent(
+                skills=[
+                    SkillConfig(
+                        integration_id="github_integration",
+                        integration_type=IntegrationType.github,
+                        config_type=ConfigType.github,
+                        config={"repositoryIds": [1076128380]},
+                    )
+                ]
+            ).run("hello")
+        )
+
+    assert captured["json"]["skills"] == [
+        {
+            "integrationId": "github_integration",
+            "integrationType": "github",
+            "configType": "github",
+            "repositoryIds": [1076128380],
+            "eventTypes": None,
+        }
+    ]
+
+
 def test_agent_run_raises_on_failed_tool_call() -> None:
     stream = _FakeEventSource(
         [
