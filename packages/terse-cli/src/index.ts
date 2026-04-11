@@ -3,6 +3,7 @@
 import chalk from "chalk"
 import { Command } from "commander"
 
+import { attach } from "./attach.js"
 import { loginAndWriteEnv } from "./auth.js"
 import { deploy } from "./deploy.js"
 import { generate } from "./generate.js"
@@ -25,6 +26,13 @@ program
     .action(async (projectName?: string, options?: { language?: string }) => {
         const provider = resolveProvider({ command: "init", language: options?.language })
         await init(projectName, provider)
+    })
+
+program
+    .command("attach")
+    .description("Add Terse to an existing project (self-hosted)")
+    .action(async () => {
+        await attach()
     })
 
 program

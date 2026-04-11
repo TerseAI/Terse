@@ -1,4 +1,3 @@
-import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
 import { zipSync } from "fflate"
 import fs from "node:fs"
@@ -32,7 +31,6 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
 
     if (!isUrlMode) {
         const zipPayload = buildZipPayload(provider)
-        await confirmHostedDeploy(zipPayload.fileCount, zipPayload.zipSizeBytes)
         sourceZipBase64 = zipPayload.sourceZipBase64
         fileCount = zipPayload.fileCount
         zipSizeBytes = zipPayload.zipSizeBytes
@@ -134,18 +132,3 @@ function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string;
     }
 }
 
-async function confirmHostedDeploy(fileCount: number, zipSizeBytes: number): Promise<void> {
-    console.log(chalk.yellow("\n  Hosted deploy selected"))
-    console.log(chalk.dim("  Terse will zip the current project directory and store it in GCS so it can run on Terse-managed infrastructure."))
-    console.log(chalk.dim(`  Upload summary: ${fileCount} files, ${(zipSizeBytes / 1024).toFixed(1)} KB\n`))
-
-    const shouldContinue = await confirm({
-        message: "Continue with hosted deploy and upload this project?",
-        default: false
-    })
-
-    if (!shouldContinue) {
-        console.log(chalk.yellow("\n  Deploy cancelled. Set TERSE_JOB_URL in .env to self-host without uploading source.\n"))
-        process.exit(1)
-    }
-}
