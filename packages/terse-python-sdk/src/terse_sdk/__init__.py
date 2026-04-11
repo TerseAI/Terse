@@ -3,9 +3,9 @@
 """Terse Python SDK."""
 
 from .runtime import (
+    TERSE_JOB_WEBHOOK_TRIGGER_PATH,
     MissingApiKeyError,
     RegisteredJob,
-    TERSE_JOB_WEBHOOK_TRIGGER_PATH,
     Terse,
     TerseAgent,
     TerseApiError,
