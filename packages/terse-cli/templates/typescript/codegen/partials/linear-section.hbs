@@ -2,26 +2,32 @@
 
 {{> resource-class teamClass}}
 
+{{> resource-class projectClass}}
+
 export const Linear = {
-    /** Trigger when a new issue is created */
-    onIssueCreated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearIssueCreatedTrigger> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_CREATED]) 
+    /** Trigger when a new issue is created. Optionally scope with `LinearTeam.*` / `LinearProject.*` (same idea as `Slack.onMessage` + `SlackChannel`). */
+    onIssueCreated(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearIssueCreatedTrigger> {
+        return new LinearInputConfig("{{escape id}}", opts?.project?.projectId ?? null, [LinearEventType.ISSUE_CREATED], opts?.team?.teamId ?? null)
     },
     /** Trigger when an issue is updated */
-    onIssueUpdated(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearIssueUpdatedTrigger> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.ISSUE_UPDATED]) 
+    onIssueUpdated(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearIssueUpdatedTrigger> {
+        return new LinearInputConfig("{{escape id}}", opts?.project?.projectId ?? null, [LinearEventType.ISSUE_UPDATED], opts?.team?.teamId ?? null)
     },
     /** Trigger when a comment is added to an issue */
-    onComment(opts?: { projectId?: string; projectName?: string }): TypedTrigger<LinearCommentCreatedTrigger> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, [LinearEventType.COMMENT_CREATED]) 
+    onComment(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearCommentCreatedTrigger> {
+        return new LinearInputConfig("{{escape id}}", opts?.project?.projectId ?? null, [LinearEventType.COMMENT_CREATED], opts?.team?.teamId ?? null)
     },
     /** Trigger on all Linear events */
-    trigger(opts?: { projectId?: string; projectName?: string; eventTypes?: LinearEventType[] }): TypedTrigger<LinearTrigger> {
-        return new LinearInputConfig("{{escape id}}", opts?.projectId, opts?.projectName, opts?.eventTypes)
+    trigger(opts?: { team?: LinearTeam; project?: LinearProject; eventTypes?: LinearEventType[] }): TypedTrigger<LinearTrigger> {
+        return new LinearInputConfig("{{escape id}}", opts?.project?.projectId ?? null, opts?.eventTypes, opts?.team?.teamId ?? null)
     },
-    /** Use in `skills[]` */
-    skill(opts?: { team?: LinearTeam; projectId?: string; projectName?: string }): TypedSkill<{{{skillToolType}}}> {
-        return new LinearOutputConfig("{{escape id}}", opts?.team?.teamId, opts?.team?.name, opts?.projectId, opts?.projectName) as TypedSkill<{{{skillToolType}}}>
+    /** Use in `skills[]`. Pass `LinearTeam` / `LinearProject` like `Slack.skill` uses `SlackChannel`. */
+    skill(opts?: { team?: LinearTeam; project?: LinearProject }): TypedSkill<{{{skillToolType}}}> {
+        return new LinearOutputConfig(
+            "{{escape id}}",
+            opts?.team?.teamId ?? null,
+            opts?.team?.name ?? null,
+            opts?.project?.projectId ?? null
+        ) as TypedSkill<{{{skillToolType}}}>
     },
 }
-
