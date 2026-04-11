@@ -53,7 +53,8 @@
         "OAUTH_CALLBACK": "/linear/oauth/callback",
         "WEBHOOK": "/linear/webhook",
         "INTEGRATIONS": "/linear/integrations",
-        "TEAMS": "/linear/teams"
+        "TEAMS": "/linear/teams",
+        "PROJECTS": "/linear/projects"
     },
     "SLACK": {
         "INTEGRATIONS": "/slack/integrations",

@@ -28,6 +28,13 @@ export interface LinearTeamData {
     key: string
 }
 
+export interface LinearProjectData {
+    id: string
+    name: string
+    description?: string
+    teamId: string
+}
+
 export interface NotionResourceData {
     id: string
     title: string
@@ -74,6 +81,7 @@ export interface SlackInstanceData extends IntegrationInstanceData {
 
 export interface LinearInstanceData extends IntegrationInstanceData {
     teams: LinearTeamData[]
+    projects: LinearProjectData[]
 }
 
 export interface NotionInstanceData extends IntegrationInstanceData {

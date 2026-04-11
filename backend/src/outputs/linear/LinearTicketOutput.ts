@@ -54,8 +54,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
                 automation_output_id: channelOutputId,
                 team_id: output.teamId || null,
                 team_name: output.teamName || null,
-                project_id: output.projectId || null,
-                project_name: output.projectName || null
+                project_id: output.projectId || null
             }
         })
     }
@@ -74,10 +73,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             const teamId = config.teamId
             const teamName = config.teamName
             const projectId = config.projectId
-            const projectName = config.projectName
-            configList.push(
-                `  • Integration ID: ${config.integrationId} - Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project Name: ${projectName || "N/A"}, Project ID: ${projectId || "N/A"}`
-            )
+            configList.push(`  • Integration ID: ${config.integrationId} - Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project ID: ${projectId || "N/A"}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))

@@ -30,7 +30,7 @@ export function LinearInputIntegration({ input, variant, setConfig }: InputConfi
         const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value)
         if (integration) {
             // Preserve existing team and project when switching integrations
-            const linearConfig = new LinearInputConfig(integration.id, currentConfig?.projectId, currentConfig?.projectName, currentConfig?.eventTypes)
+            const linearConfig = new LinearInputConfig(integration.id, currentConfig?.projectId, currentConfig?.eventTypes, currentConfig?.teamId)
             setConfig(linearConfig)
         }
     }
@@ -72,7 +72,7 @@ export function LinearInputIntegration({ input, variant, setConfig }: InputConfi
     let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
     if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
         const defaultIntegration = connectionSelections[0]
-        setConfig(new LinearInputConfig(defaultIntegration.value, currentConfig?.projectId, currentConfig?.projectName))
+        setConfig(new LinearInputConfig(defaultIntegration.value, currentConfig?.projectId, currentConfig?.eventTypes, currentConfig?.teamId))
         selectedOption = defaultIntegration
     } else if (!selectedOption) {
         selectedOption = connectionSelections[0]
@@ -138,7 +138,7 @@ export function LinearInputIntegration({ input, variant, setConfig }: InputConfi
                                         const nextEventTypes = checked
                                             ? [...(currentConfig?.eventTypes || []), eventType.value]
                                             : (currentConfig?.eventTypes || []).filter(type => type !== eventType.value)
-                                        setConfig(new LinearInputConfig(selectedOption!.value, currentConfig?.projectId, currentConfig?.projectName, nextEventTypes))
+                                        setConfig(new LinearInputConfig(selectedOption!.value, currentConfig?.projectId, nextEventTypes))
                                     }}
                                     className="mt-0.5"
                                 />

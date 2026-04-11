@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import { Request, Response } from "express"
 import { linearWebhookPayloadSchema } from "terse-types"
-import { LinearTeam } from "terse-types/types"
+import { LinearProjectSummary, LinearTeam } from "terse-types/types"
 
 import { settings } from "../config/settings"
 import { LinearIntegrationManager } from "../integrations/LinearIntegration"
@@ -137,5 +137,55 @@ export async function fetchLinearTeams(organizationId: string, integrationId: st
         id: team.id,
         name: team.name,
         key: team.key
+    }))
+}
+
+export async function getLinearProjects(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    const integrationId = req.query.integrationId as string
+    if (!integrationId) {
+        return res.status(400).json({ error: "integrationId is required" })
+    }
+
+    try {
+        const response = await fetchLinearProjects(user.organizationId, integrationId)
+        res.status(200).json(response)
+    } catch (error: unknown) {
+        logger.error("Error fetching Linear projects:", { error })
+        const errorMessage = error instanceof Error ? error.message : "Failed to fetch Linear projects"
+        res.status(500).json({ error: errorMessage })
+    }
+}
+
+export async function fetchLinearProjects(organizationId: string, integrationId: string): Promise<LinearProjectSummary[]> {
+    const integration = await db().linear_integrations.findFirst({
+        where: {
+            id: integrationId,
+            organization_id: organizationId
+        }
+    })
+
+    if (!integration) {
+        throw new Error("Linear integration not found")
+    }
+
+    const manager = new LinearIntegrationManager()
+    const accessToken = await manager.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error("Could not get valid access token")
+    }
+
+    const adapter = new LinearAdapter(accessToken)
+    const projects = await adapter.getProjects()
+
+    return projects.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        teamId: p.teamId
     }))
 }
