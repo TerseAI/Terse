@@ -221,12 +221,8 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
     }
 
     if (channelInput.linear_config) {
-        return new LinearInputConfig(
-            integrationId,
-            channelInput.linear_config.project_id || undefined,
-            channelInput.linear_config.project_name || undefined,
-            (channelInput.linear_config.event_types || []) as LinearEventType[]
-        )
+        const lc = channelInput.linear_config
+        return new LinearInputConfig(integrationId, lc.project_id || undefined, (lc.event_types || []) as LinearEventType[], lc.team_id || undefined)
     }
 
     if (channelInput.github_config) {
@@ -279,13 +275,8 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
     }
 
     if (channelOutput.linear_config) {
-        return new LinearOutputConfig(
-            integrationId,
-            channelOutput.linear_config.team_id || undefined,
-            channelOutput.linear_config.team_name || undefined,
-            channelOutput.linear_config.project_id || undefined,
-            channelOutput.linear_config.project_name || undefined
-        )
+        const lc = channelOutput.linear_config
+        return new LinearOutputConfig(integrationId, lc.team_id || undefined, lc.team_name || undefined, lc.project_id || undefined)
     }
 
     if (channelOutput.slack_config) {

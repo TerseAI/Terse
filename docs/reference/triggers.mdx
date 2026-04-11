@@ -97,20 +97,15 @@ triggers=[
 | `Linear.onIssueCreated()` | `LinearEvent` | An issue is created |
 | `Linear.onIssueUpdated()` | `LinearEvent` | An issue is updated |
 
-**Config:** Optionally scoped to a specific project.
+**Config:** Optionally scoped to a team and/or project using generated `LinearTeam` / `LinearProject` constants (same pattern as `SlackChannel` for Slack).
 
 <CodeGroup>
 ```ts TypeScript
-triggers: [Linear.onIssueCreated({ project: LinearProject.Backend })]
+triggers: [Linear.onIssueCreated({ team: LinearTeam.Engineering, project: LinearProject.Backend })]
 ```
 ```python Python
 triggers=[
-    TriggerConfig(
-        integration_id=linear_integration_id,
-        integration_type="linear",
-        config_type="linear_input",
-        config={"projectId": project_id},
-    )
+    Linear.on_issue_created(team=LinearTeam.Engineering, project=LinearProject.Backend),
 ]
 ```
 </CodeGroup>

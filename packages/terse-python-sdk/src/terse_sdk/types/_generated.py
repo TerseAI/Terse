@@ -415,8 +415,8 @@ class LinearInputConfigInstance(TerseModel):
     integration_id: Annotated[str, Field(alias="integrationId")]
     integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
     config_type: Annotated[Literal["linear_input"], Field(alias="configType")] = "linear_input"
+    team_id: Annotated[str | None, Field(alias="teamId")]
     project_id: Annotated[str | None, Field(alias="projectId")]
-    project_name: Annotated[str | None, Field(alias="projectName")]
     event_types: Annotated[list[LinearEventType] | None, Field(alias="eventTypes")]
 
 
@@ -438,7 +438,6 @@ class LinearOutputConfigInstance(TerseModel):
     team_id: Annotated[str | None, Field(alias="teamId")]
     team_name: Annotated[str | None, Field(alias="teamName")]
     project_id: Annotated[str | None, Field(alias="projectId")]
-    project_name: Annotated[str | None, Field(alias="projectName")]
 
 
 class LinearWebhookAction(StrEnum):
@@ -522,6 +521,7 @@ class LinearWebhookData(TerseModel):
     description: str | None = None
     description_data: Annotated[str | None, Field(alias="descriptionData")] = None
     assignee: LinearWebhookAssignee | None = None
+    project_id: Annotated[str | None, Field(alias="projectId")] = None
 
 
 class LinearWebhookType(RootModel[Literal["Issue"] | Literal["Comment"] | Literal["Project"] | str]):
