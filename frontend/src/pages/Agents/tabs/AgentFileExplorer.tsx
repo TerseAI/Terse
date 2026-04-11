@@ -2,7 +2,7 @@ import { useState } from "react"
 
 import { Loader2 } from "lucide-react"
 
-import { FileExplorer, FileNode as File } from "../../../components/Code/FileExplorer"
+import { FileNode as File, FileExplorer } from "../../../components/Code/FileExplorer"
 import { useAgentFiles } from "../../../hooks/api/useAgentFiles"
 import { useAgentSdkFileEditorContent } from "../../../hooks/api/useAgentSdkFileEditorContent"
 

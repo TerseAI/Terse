@@ -808,7 +808,6 @@ export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSche
 const fileSchema = z.object({
     id: z.string(),
     name: z.string(),
-    content: z.string().optional(),
     get children() {
         return z.array(fileSchema).optional()
     }

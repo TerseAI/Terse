@@ -880,8 +880,6 @@ export async function getAgentFiles(req: Request, res: Response) {
             return
         }
 
-        console.log("agentTest", agent)
-
         const files = await getAgentFilesFromGCS(agent)
 
         res.status(200).json({ id: agent.id, files })
@@ -901,27 +899,24 @@ export async function getAgentFileContent(req: Request, res: Response) {
     const agentId = req.params.agentId
     const fileId = req.params.fileId
 
+    if (!fileId || typeof fileId !== "string") {
+        res.status(400).json({ error: "Invalid file ID" })
+        return
+    }
+
     try {
-        const agent: AgentWithRelations | null = await db().automations.findFirst({
+        const agent: AgentWithPromptRelations | null = await db().automations.findFirst({
             where: {
                 id: agentId,
                 organization_id: organizationId
             },
             include: {
-                prompt: true,
-                inputs: {
-                    include: getInputConfigInclude()
-                },
-                outputs: {
-                    include: getOutputConfigInclude()
-                },
-                notification_settings: true,
-                tool_approvals: true
+                prompt: true
             }
         })
 
         if (!agent) {
-            res.status(404).json({ error: "Agent files not found" })
+            res.status(404).json({ error: "Agent not found" })
             return
         }
 
@@ -933,12 +928,14 @@ export async function getAgentFileContent(req: Request, res: Response) {
 
         res.status(200).json(payload)
     } catch (error) {
-        logger.error("Error fetching agent files", { error, organizationId, agentId })
-        res.status(500).json({ error: "Failed to fetch agent files" })
+        logger.error("Error fetching agent file", { error, organizationId, agentId, fileId })
+        res.status(500).json({ error: "Failed to fetch agent file" })
     }
 }
 
 type SdkZipTreeNode = { id: string; name: string; children?: SdkZipTreeNode[] }
+
+const MAX_SDK_ZIP_SIZE_BYTES = 50 * 1024 * 1024 // 50 MB
 
 async function loadSdkSourceZip(agent: AgentWithPromptRelations): Promise<AdmZip | null> {
     const gcsKey = agent.prompt?.source_code_gcs_key
@@ -947,6 +944,10 @@ async function loadSdkSourceZip(agent: AgentWithPromptRelations): Promise<AdmZip
     }
     const buffer = await downloadSdkDeployZip(gcsKey)
     if (!buffer) {
+        return null
+    }
+    if (buffer.length > MAX_SDK_ZIP_SIZE_BYTES) {
+        logger.error("SDK source ZIP exceeds size limit, refusing to load", { gcsKey, sizeBytes: buffer.length })
         return null
     }
     return new AdmZip(buffer)
@@ -968,7 +969,7 @@ function isSafeArchiveMemberPath(path: string): boolean {
         return false
     }
     const segments = path.split("/")
-    return !segments.some(s => s === "..")
+    return !segments.some(s => s === ".." || s === ".")
 }
 
 function insertPathIntoSdkTree(root: SdkZipTreeNode[], relativePath: string): void {
@@ -1052,7 +1053,6 @@ function mimeTypeForSdkPath(path: string): string {
 }
 
 async function getAgentFilesFromGCS(agent: AgentWithPromptRelations): Promise<File[]> {
-    console.log("agent", agent.prompt?.source_code_gcs_key)
     const zip = await loadSdkSourceZip(agent)
     if (!zip) {
         return []

@@ -29,7 +29,7 @@ function hasNulByte(bytes: Uint8Array, maxScan = 65536): boolean {
     return false
 }
 
-function bytesToEditorText(bytes: Uint8Array, mimeType?: string): string {
+function bytesToEditorText(bytes: Uint8Array): string {
     if (hasNulByte(bytes)) {
         return "[Binary file — not shown in preview]"
     }
@@ -86,7 +86,7 @@ export function useAgentSdkFileEditorContent(agentId: string, selectedFileId: st
 
     try {
         const rawBytes = base64ToUint8Array(b64)
-        const displayContent = bytesToEditorText(rawBytes, meta.mimeType)
+        const displayContent = bytesToEditorText(rawBytes)
         return {
             displayContent,
             status: "ready" satisfies AgentSdkEditorStatus,

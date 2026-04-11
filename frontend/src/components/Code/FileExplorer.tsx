@@ -137,9 +137,6 @@ export type FileNode = {
     children?: FileNode[]
 }
 
-/** @deprecated Use FileNode */
-export type File = FileNode
-
 function FileTreeNode({ style, node, dragHandle }: NodeRendererProps<FileNode>) {
     const isFolder = !node.isLeaf
     const isOpen = node.isOpen
@@ -153,9 +150,8 @@ function FileTreeNode({ style, node, dragHandle }: NodeRendererProps<FileNode>) 
             aria-selected={selected}
             aria-expanded={isFolder ? isOpen : undefined}
             className={cn(
-                "box-border flex h-full min-h-0 w-full min-w-0 max-w-full cursor-pointer items-center gap-1.5 pr-1.5 text-sm transition-colors duration-100",
-                "border-l-[3px] border-transparent",
-                selected ? "border-primary bg-primary/12 font-medium text-foreground" : "text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                "box-border flex h-full min-h-0 w-full min-w-0 max-w-full cursor-pointer items-center gap-1.5 px-2.5 text-sm transition-colors duration-100",
+                selected ? "bg-primary/12 font-medium text-foreground" : "text-muted-foreground hover:bg-muted/55 hover:text-foreground"
             )}
         >
             {node.isLeaf ? (
@@ -262,13 +258,8 @@ export function FileExplorer({ files, selectedFile, onSelectFile, editorValue, e
             <div ref={liveRegionRef} role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
 
             <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
-                <aside
-                    className={cn(
-                        "border-border flex min-h-0 shrink-0 flex-col border-r transition-all duration-200",
-                        sidebarOpen ? "w-56" : "w-0 overflow-hidden border-r-0"
-                    )}
-                >
-                    <div ref={treeBoxRef} className="min-h-0 min-w-0 flex-1 overflow-hidden pl-3 pt-3">
+                <aside className={cn("border-border flex min-h-0 shrink-0 flex-col border-r transition-all duration-200", sidebarOpen ? "w-56" : "w-0 overflow-hidden border-r-0")}>
+                    <div ref={treeBoxRef} className="min-h-0 min-w-0 flex-1 overflow-hidden px-3.5 pt-3 pb-2">
                         <Tree
                             data={files}
                             rowHeight={36}
@@ -308,9 +299,7 @@ export function FileExplorer({ files, selectedFile, onSelectFile, editorValue, e
                     </div>
 
                     {editorStatus === "idle" && (
-                        <div className="text-muted-foreground flex h-full min-h-0 items-center justify-center px-4 text-center text-sm">
-                            Select a file in the tree to view its contents.
-                        </div>
+                        <div className="text-muted-foreground flex h-full min-h-0 items-center justify-center px-4 text-center text-sm">Select a file in the tree to view its contents.</div>
                     )}
                     {showEditorChrome && (
                         <div className="min-h-0 flex-1">

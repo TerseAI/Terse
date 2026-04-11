@@ -209,13 +209,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                     </Tab>
                 </TabList>
 
-                <div
-                    className={
-                        selectedTab === 3
-                            ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-                            : "min-h-0 flex-1 overflow-y-auto"
-                    }
-                >
+                <div className={selectedTab === 3 ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "min-h-0 flex-1 overflow-y-auto"}>
                     {selectedTab === 0 ? (
                         <OverviewTab triggers={triggers} updatedAt={agent.updatedAt} isActive={agent.isActive} />
                     ) : selectedTab === 1 ? (
