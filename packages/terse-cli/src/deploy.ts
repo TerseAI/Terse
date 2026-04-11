@@ -11,13 +11,13 @@ import { loadJobRegistry } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
-export async function deploy(provider: LanguageProvider = resolveProvider()) {
+export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string) {
     const apiKey = readApiKeyOrBail({
         title: "Error: No TERSE_API_KEY found in .env",
         detail: "Run `terse init` to set up your project, or add TERSE_API_KEY to your .env file."
     })
 
-    const registry = await loadJobRegistry(provider)
+    const registry = await loadJobRegistry(provider, entryFile)
     const jobs = [...registry.values()]
 
     // If TERSE_JOB_URL is set in .env, deploy in URL mode (user infrastructure).

@@ -78,9 +78,9 @@ export class TypeScriptProvider implements LanguageProvider {
         return renderGeneratedCode(prepareTemplateContext(input))
     }
 
-    async loadJobRegistry(): Promise<Map<string, CreateJobParameters>> {
+    async loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>> {
         const cwd = process.cwd()
-        const resolvedEntryFile = resolveTypeScriptEntryFile(cwd)
+        const resolvedEntryFile = entryFile ?? resolveTypeScriptEntryFile(cwd)
         const parentURL = pathToFileURL(path.join(cwd, "package.json")).href
 
         if (!resolvedEntryFile) {
@@ -125,7 +125,7 @@ export class TypeScriptProvider implements LanguageProvider {
         return registry
     }
 
-    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
+    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
         const isVerbose = opts?.verbose ?? false
 
         const serializedEventRuntime = createSDKTrigger(event)

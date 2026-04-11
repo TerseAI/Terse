@@ -9,16 +9,9 @@ import { listAndPromptIntegrations } from "./integrate.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
-export async function attach(provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" })): Promise<void> {
+export async function attach(provider: LanguageProvider = resolveProvider()): Promise<void> {
     const cwd = process.cwd()
     const projectName = path.basename(cwd)
-
-    if (!fs.existsSync(path.join(cwd, "package.json"))) {
-        console.error(chalk.red("\n  Error: No package.json found in the current directory."))
-        console.error(chalk.dim("  terse attach is for adding Terse to an existing project.\n"))
-        console.error(`  To scaffold a new Terse project, run ${chalk.cyan("terse init <project-name>")} instead.\n`)
-        process.exit(1)
-    }
 
     const existingUserName = await getExistingAuthenticatedUserName(cwd)
 

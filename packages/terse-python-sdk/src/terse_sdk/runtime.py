@@ -42,6 +42,16 @@ from .types.stream_events import (
     ToolCallCompleted,
 )
 
+TERSE_JOB_WEBHOOK_TRIGGER_PATH: str = "/webhook/terse/trigger"
+"""Path relative to ``TERSE_JOB_URL`` where the Terse backend POSTs webhook job triggers.
+
+Mount your handler at this path::
+
+    @app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH)
+    def terse_route():
+        return terse.handle_trigger(request.get_json())
+"""
+
 # Type alias for readability.
 JobEvent = AnyTrigger
 JobFilter = Callable[[JobEvent], bool]

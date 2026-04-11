@@ -30,7 +30,6 @@ type PythonJobData = {
     triggers: PythonSerializedConfig[]
     skills: PythonSerializedConfig[]
     toolApprovals: string[]
-    webhookURL?: string
     hasFilter: boolean
 }
 
@@ -101,19 +100,20 @@ export class PythonProvider implements LanguageProvider {
         return code
     }
 
-    async loadJobRegistry(): Promise<Map<string, CreateJobParameters>> {
+    async loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>> {
         const cwd = process.cwd()
         const env = loadDotenv(cwd)
-        const entryPath = path.join(cwd, this.entryFile)
+        const resolvedEntryFile = entryFile ?? this.entryFile
+        const entryPath = path.join(cwd, resolvedEntryFile)
 
         if (!fs.existsSync(entryPath)) {
-            console.error(chalk.red(`Error: Could not find Terse job entry file at ${this.entryFile}.`))
+            console.error(chalk.red(`Error: Could not find Terse job entry file at ${resolvedEntryFile}.`))
             console.error(chalk.dim("Add a file that registers jobs with @app.job(...), then try again."))
             process.exit(1)
         }
 
         try {
-            const script = buildLoadRegistryScript()
+            const script = buildLoadRegistryScript(resolvedEntryFile)
             return await withTempScript(script, ".py", async scriptPath => {
                 const { stdout } = await execUv(["run", "python", scriptPath], { cwd, env })
                 const payload = extractRegistryPayload(stdout)
@@ -125,20 +125,20 @@ export class PythonProvider implements LanguageProvider {
                 }
 
                 if (registry.size === 0) {
-                    console.error(chalk.red(`No jobs found. Make sure your ${this.entryFile} registers at least one job with @app.job(...).`))
+                    console.error(chalk.red(`No jobs found. Make sure your ${resolvedEntryFile} registers at least one job with @app.job(...).`))
                     process.exit(1)
                 }
 
                 return registry
             })
         } catch (error) {
-            console.error(chalk.red(`Error importing ${this.entryFile}:\n`))
+            console.error(chalk.red(`Error importing ${resolvedEntryFile}:\n`))
             printPythonCommandError(error)
             process.exit(1)
         }
     }
 
-    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
+    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
         const cwd = process.cwd()
         const env: NodeJS.ProcessEnv = {
             ...loadDotenv(cwd),
@@ -146,6 +146,7 @@ export class PythonProvider implements LanguageProvider {
             TERSE_EVENT_JSON: JSON.stringify(event)
         }
         const isVerbose = opts?.verbose ?? false
+        const resolvedEntryFile = opts?.entryFile ?? this.entryFile
         const isSandbox = !!process.env.TERSE_RUN_ID
         const apiKey = env.TERSE_API_KEY ?? null
         const approvalState: ApprovalState = { paused: false }
@@ -162,7 +163,7 @@ export class PythonProvider implements LanguageProvider {
                 env.TERSE_SESSION_ID = session.sessionId
             }
 
-            const script = buildExecuteJobScript()
+            const script = buildExecuteJobScript(resolvedEntryFile)
             await ensureUvAvailable(cwd)
             await withTempScript(script, ".py", async scriptPath => {
                 await runStreamingPython(cwd, env, scriptPath, job.name)
@@ -185,7 +186,6 @@ function createJobParametersFromPython(data: PythonJobData): CreateJobParameters
         triggers: data.triggers.map(reconstructPythonConfig),
         skills: data.skills.map(reconstructPythonConfig),
         toolApprovals: data.toolApprovals ?? [],
-        webhookURL: data.webhookURL ?? undefined,
         onTrigger: async () => {
             throw new Error("Python job execution must go through provider.executeJob()")
         },
@@ -205,7 +205,7 @@ function reconstructPythonConfig(config: PythonSerializedConfig) {
     }
 }
 
-function buildLoadRegistryScript(): string {
+function buildLoadRegistryScript(entryFile: string): string {
     return `
 import importlib.util
 import json
@@ -217,13 +217,14 @@ from terse_sdk import clear_job_registry, get_job_registry
 
 PROJECT_ROOT = os.getcwd()
 SRC_DIR = os.path.join(PROJECT_ROOT, "src")
+ENTRY_FILE = ${JSON.stringify(entryFile)}
 sys.path[:0] = [PROJECT_ROOT, SRC_DIR]
 
 clear_job_registry()
 module_name = f"__terse_main_{uuid.uuid4().hex}"
-spec = importlib.util.spec_from_file_location(module_name, os.path.join(SRC_DIR, "main.py"))
+spec = importlib.util.spec_from_file_location(module_name, os.path.join(PROJECT_ROOT, ENTRY_FILE))
 if spec is None or spec.loader is None:
-    raise RuntimeError("Could not create an import spec for src/main.py.")
+    raise RuntimeError(f"Could not create an import spec for {ENTRY_FILE}.")
 
 module = importlib.util.module_from_spec(spec)
 sys.modules[module_name] = module
@@ -244,7 +245,6 @@ for name, job in registry.items():
         "triggers": [serialize_config(trigger) for trigger in job.triggers],
         "skills": [serialize_config(skill) for skill in job.skills],
         "toolApprovals": list(job.tool_approvals or []),
-        "webhookURL": job.webhook_url,
         "hasFilter": job.filter is not None,
     }
 
@@ -252,7 +252,7 @@ print(${JSON.stringify(JOB_REGISTRY_MARKER)} + json.dumps(result))
 `.trim()
 }
 
-function buildExecuteJobScript(): string {
+function buildExecuteJobScript(entryFile: string): string {
     return `
 import importlib.util
 import json
@@ -264,13 +264,14 @@ from terse_sdk import TerseAgent, clear_job_registry, deserialize_input_event, e
 
 PROJECT_ROOT = os.getcwd()
 SRC_DIR = os.path.join(PROJECT_ROOT, "src")
+ENTRY_FILE = ${JSON.stringify(entryFile)}
 sys.path[:0] = [PROJECT_ROOT, SRC_DIR]
 
 clear_job_registry()
 module_name = f"__terse_main_{uuid.uuid4().hex}"
-spec = importlib.util.spec_from_file_location(module_name, os.path.join(SRC_DIR, "main.py"))
+spec = importlib.util.spec_from_file_location(module_name, os.path.join(PROJECT_ROOT, ENTRY_FILE))
 if spec is None or spec.loader is None:
-    raise RuntimeError("Could not create an import spec for src/main.py.")
+    raise RuntimeError(f"Could not create an import spec for {ENTRY_FILE}.")
 
 module = importlib.util.module_from_spec(spec)
 sys.modules[module_name] = module

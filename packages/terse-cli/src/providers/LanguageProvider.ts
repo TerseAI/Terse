@@ -28,6 +28,6 @@ export interface LanguageProvider {
     installDependencies(targetDir: string): Promise<void>
     resolveGeneratedCodePath(cwd: string): string
     renderGeneratedCode(input: CodegenInput): string
-    loadJobRegistry(): Promise<Map<string, CreateJobParameters>>
-    executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void>
+    loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>>
+    executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void>
 }

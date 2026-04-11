@@ -1347,6 +1347,7 @@ class AgentPrompt(TerseModel):
         extra="forbid",
     )
     text: str
+    job_url: Annotated[str | None, Field(alias="jobUrl")] = None
 
 
 class AgentCreate(TerseModel):
@@ -5446,7 +5447,6 @@ class SdkDeployJob(TerseModel):
     triggers: list[ConfigData]
     outputs: list[ConfigData]
     tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
-    webhook_url: Annotated[str | None, Field(alias="webhookURL")] = None
 
 
 class SdkDeployRemoved(LinearWebhookAssignee):
@@ -5458,7 +5458,8 @@ class SdkDeployRequestBody(TerseModel):
         extra="forbid",
     )
     jobs: list[SdkDeployJob]
-    source_zip_base64: Annotated[str, Field(alias="sourceZipBase64")]
+    job_url: Annotated[str | None, Field(alias="jobUrl")] = None
+    source_zip_base64: Annotated[str | None, Field(alias="sourceZipBase64")] = None
 
 
 class SdkDeployResultTrigger(TerseModel):
@@ -5488,6 +5489,25 @@ class SdkDeployResponseBody(TerseModel):
     removed: list[SdkDeployRemoved]
     error: str | None = None
     details: str | None = None
+
+
+class SdkJobServerCheckStep(StrEnum):
+    http = "http"
+    json = "json"
+    response_schema = "response_schema"
+    token = "token"
+    org = "org"
+
+
+class SdkJobServerCheckResponse(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    success: bool
+    message: str
+    trigger_url: Annotated[str | None, Field(alias="triggerUrl")] = None
+    step: SdkJobServerCheckStep | None = None
+    http_status: Annotated[float | None, Field(alias="httpStatus")] = None
 
 
 class SdkSampleEventsRequestTrigger(TerseModel):
@@ -6659,6 +6679,31 @@ class WebSearchToolInput(TerseModel):
         WebSearchToolInputTimeRange | None,
         Field(description="Filter results by recency"),
     ]
+
+
+class WebhookJobChallengeRequest(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    challenge: Literal[True] = True
+
+
+class WebhookJobTriggerRequest(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    job_name: Annotated[str, Field(alias="jobName")]
+    run_id: Annotated[str, Field(alias="runId")]
+    event: SerializedEvent
+
+
+class WebhookJobTriggerResponse(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    status: str | None = None
+    api_key: Annotated[str, Field(alias="apiKey", min_length=1)]
+    filtered: bool | None = None
 
 
 class WebhookWorkOSTriggerParams(TerseModel):

@@ -8,7 +8,7 @@ import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
-export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider()): Promise<void> {
+export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     if (eventFile && !eventJson) {
         try {
             eventJson = fs.readFileSync(eventFile, "utf-8")
@@ -28,7 +28,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     }
 
     readApiKey()
-    const { job } = await loadJob(provider, jobName)
+    const { job } = await loadJob(provider, jobName, entryFile)
     console.log(chalk.cyan(`\n  Running job: ${job.name}\n`))
 
     let parsed: SerializedEvent
@@ -40,5 +40,5 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         process.exit(1)
     }
 
-    await provider.executeJob(job, parsed)
+    await provider.executeJob(job, parsed, { entryFile })
 }
