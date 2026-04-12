@@ -230,7 +230,7 @@ export type AgentOutput = z.infer<typeof agentOutputSchema>
 
 export const agentPromptSchema = z.object({
     text: z.string(),
-    jobUrl: z.string().optional()
+    remoteServerUrl: z.string().optional()
 })
 export type AgentPrompt = z.infer<typeof agentPromptSchema>
 
@@ -671,15 +671,15 @@ export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 export const sdkDeployRequestBodySchema = z
     .object({
         jobs: z.array(sdkDeployJobSchema),
-        jobUrl: z.string().optional(),
+        remoteServerUrl: z.string().optional(),
         sourceZipBase64: z.string().optional()
     })
-    .refine(data => !(data.jobUrl && data.sourceZipBase64), {
-        message: "jobUrl and sourceZipBase64 cannot be provided together",
-        path: ["jobUrl"]
+    .refine(data => !(data.remoteServerUrl && data.sourceZipBase64), {
+        message: "remoteServerUrl and sourceZipBase64 cannot be provided together",
+        path: ["remoteServerUrl"]
     })
-    .refine(data => data.jobUrl != null || data.sourceZipBase64 != null, {
-        message: "Either jobUrl or sourceZipBase64 is required",
+    .refine(data => data.remoteServerUrl != null || data.sourceZipBase64 != null, {
+        message: "Either remoteServerUrl or sourceZipBase64 is required",
         path: ["sourceZipBase64"]
     })
 export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>

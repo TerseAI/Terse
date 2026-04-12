@@ -60,7 +60,7 @@ function resolveTerseBackendUrl(): string {
 }
 
 /**
- * Path relative to `TERSE_JOB_URL` where the Terse backend POSTs webhook job triggers.
+ * Path relative to `TERSE_REMOTE_SERVER_URL` where the Terse backend POSTs webhook job triggers.
  * Mount your handler at this path (e.g. `app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, ...)`).
  */
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
@@ -156,7 +156,7 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     toolApprovals?: InferToolApprovals<TSkills>[]
     filter?: (event: InferEvents<TTriggers>) => boolean | Promise<boolean>
     onTrigger: (event: InferEvents<TTriggers>, Agent: TerseAgent) => Promise<void>
-    jobUrl?: string
+    remoteServerUrl?: string
 }
 
 /** Internal job registry — lives on globalThis so it survives across module instances (e.g. tsx loaders). */

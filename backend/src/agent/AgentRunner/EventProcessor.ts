@@ -239,8 +239,8 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
         }
 
-        // SDK agents with a job_url trigger the user's own infrastructure via webhook
-        if (agent.source === "SDK" && agent.prompt?.job_url) {
+        // SDK agents with a remote_server_url trigger the user's own infrastructure via webhook
+        if (agent.source === "SDK" && agent.prompt?.remote_server_url) {
             return this.processWebhookAgent(agent, existingRunId)
         }
 
@@ -453,18 +453,18 @@ export class EventProcessor {
 
         const event = this.inputEvent.getSerializedEvent()
 
-        const jobUrl = agent.prompt?.job_url
-        if (!jobUrl) {
-            throw new Error(`Webhook agent "${agent.name}" is missing job_url`)
+        const remoteServerUrl = agent.prompt?.remote_server_url
+        if (!remoteServerUrl) {
+            throw new Error(`Webhook agent "${agent.name}" is missing remote_server_url`)
         }
 
-        logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, jobUrl })
+        logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, remoteServerUrl })
 
         // Fire-and-forget: webhook execution runs asynchronously
         const service = new WebhookJobExecutionService()
         void service
             .execute({
-                jobUrl,
+                remoteServerUrl,
                 runId,
                 agentId: agent.id,
                 orgId: this.user.organizationId,

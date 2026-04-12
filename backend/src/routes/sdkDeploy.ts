@@ -8,6 +8,7 @@ import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
+import { UrlValidationError, validateRemoteServerUrl } from "../utility/urlValidation"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
@@ -24,12 +25,23 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const organizationId = user.organizationId
 
     try {
-        const { jobs, sourceZipBase64, jobUrl } = sdkDeployRequestBodySchema.parse(req.body)
+        const { remoteServerUrl, jobs, sourceZipBase64 } = sdkDeployRequestBodySchema.parse(req.body)
 
-        if (!sourceZipBase64 && !jobUrl) {
-            return res.status(400).json({ success: false, error: "sourceZipBase64 or jobUrl is required" })
-        } else if (sourceZipBase64 && jobUrl) {
-            return res.status(400).json({ success: false, error: "sourceZipBase64 and jobUrl cannot be provided together" })
+        if (!sourceZipBase64 && !remoteServerUrl) {
+            return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
+        } else if (sourceZipBase64 && remoteServerUrl) {
+            return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
+        }
+
+        if (remoteServerUrl) {
+            try {
+                await validateRemoteServerUrl(remoteServerUrl)
+            } catch (error) {
+                if (error instanceof UrlValidationError) {
+                    return res.status(400).json({ success: false, error: error.message })
+                }
+                throw error
+            }
         }
 
         const results: SdkDeployResponseBody["results"] = []
@@ -55,8 +67,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             const isUpdate = !!existing
             const agent = isUpdate
-                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, gcsKey, jobUrl)
-                : await createNewAutomation(prisma, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, gcsKey, jobUrl)
+                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, gcsKey, remoteServerUrl)
+                : await createNewAutomation(prisma, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, gcsKey, remoteServerUrl)
 
             await setupAgentTriggers(agent)
 
@@ -114,7 +126,7 @@ async function updateExistingAutomation(
     organizationId: string,
     userId: string,
     gcsKey?: string,
-    jobUrl?: string
+    remoteServerUrl?: string
 ): Promise<AgentWithTriggerRelations> {
     const automationId = existing.id
 
@@ -142,12 +154,12 @@ async function updateExistingAutomation(
 
         await tx.automation_prompts.upsert({
             where: { automation_id: automationId },
-            update: { content: "[SDK]", source_code_gcs_key: gcsKey ?? null, job_url: jobUrl ?? null },
+            update: { content: "[SDK]", source_code_gcs_key: gcsKey ?? null, remote_server_url: remoteServerUrl ?? null },
             create: {
                 automation_id: automationId,
                 content: "[SDK]",
                 source_code_gcs_key: gcsKey ?? null,
-                job_url: jobUrl ?? null
+                remote_server_url: remoteServerUrl ?? null
             }
         })
 
@@ -187,7 +199,7 @@ async function createNewAutomation(
     organizationId: string,
     userId: string,
     gcsKey?: string,
-    jobUrl?: string
+    remoteServerUrl?: string
 ): Promise<AgentWithTriggerRelations> {
     return prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
@@ -206,7 +218,7 @@ async function createNewAutomation(
                 automation_id: newAgent.id,
                 content: "[SDK]",
                 source_code_gcs_key: gcsKey,
-                job_url: jobUrl
+                remote_server_url: remoteServerUrl
             }
         })
 

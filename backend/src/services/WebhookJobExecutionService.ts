@@ -10,7 +10,7 @@ import { extractErrorMessage } from "../utility/strings"
 import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from "./webhookJobHandshakeChallenge"
 
 export interface WebhookJobExecutionParams {
-    jobUrl: string
+    remoteServerUrl: string
     runId: string
     agentId: string
     orgId: string
@@ -21,10 +21,10 @@ export interface WebhookJobExecutionParams {
 
 export class WebhookJobExecutionService {
     async execute(params: WebhookJobExecutionParams): Promise<void> {
-        const { jobUrl, runId, agentId, orgId, event, jobName } = params
+        const { remoteServerUrl, runId, agentId, orgId, event, jobName } = params
 
         try {
-            const challenge = await runWebhookJobHandshakeChallenge({ jobUrl, organizationId: orgId })
+            const challenge = await runWebhookJobHandshakeChallenge({ remoteServerUrl, organizationId: orgId })
             logger.info("Webhook job: handshake then deliver", { runId, agentId, triggerUrl: challenge.triggerUrl })
 
             if (!challenge.ok) {

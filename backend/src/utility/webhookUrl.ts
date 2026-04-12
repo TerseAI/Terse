@@ -3,7 +3,7 @@ import { ApiRoutes, buildRoute } from "terse-types"
 import { settings } from "../config/settings"
 
 /**
- * Append a root-absolute path (e.g. `/webhook/...`) to `TERSE_JOB_URL` without duplicating slashes,
+ * Append a root-absolute path (e.g. `/webhook/...`) to the remote server URL without duplicating slashes,
  * and resolve correctly when the job URL includes a path prefix.
  */
 export function joinJobServerPath(jobBaseUrl: string, pathFromRoot: string): string {
