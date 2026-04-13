@@ -4,13 +4,7 @@ import { URL } from "node:url"
 
 import { settings } from "../config/settings"
 
-const BLOCKED_IPV4_RANGES = [
-    { prefix: "127." },
-    { prefix: "10." },
-    { prefix: "0." },
-    { prefix: "169.254." },
-    { prefix: "224." }
-]
+const BLOCKED_IPV4_RANGES = [{ prefix: "127." }, { prefix: "10." }, { prefix: "0." }, { prefix: "169.254." }, { prefix: "224." }]
 
 function isBlockedIPv4(ip: string): boolean {
     if (BLOCKED_IPV4_RANGES.some(r => ip.startsWith(r.prefix))) return true
