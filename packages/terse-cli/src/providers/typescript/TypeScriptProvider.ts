@@ -12,6 +12,7 @@ import { tsImport } from "tsx/esm/api"
 import { BACKEND_URL } from "../../config.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
+import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 import { openSessionStream, promptForToolApproval } from "../shared/sessionStream.js"
 
 import { prepareTemplateContext } from "./prepareCodegenData.js"
@@ -48,8 +49,8 @@ export class TypeScriptProvider implements LanguageProvider {
         ]
     }
 
-    buildInitTemplateContext(projectName: string): Record<string, unknown> {
-        return { projectName }
+    buildInitTemplateContext(projectName: string, sdkVersion: string): Record<string, unknown> {
+        return { projectName, sdkVersion }
     }
 
     getPostInitSteps(packageManager: string): string[] {
@@ -78,16 +79,19 @@ export class TypeScriptProvider implements LanguageProvider {
         return renderGeneratedCode(prepareTemplateContext(input))
     }
 
-    async loadJobRegistry(): Promise<Map<string, CreateJobParameters>> {
+    async loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>> {
         const cwd = process.cwd()
-        const resolvedEntryFile = resolveTypeScriptEntryFile(cwd)
+        const resolvedEntryFile = entryFile ?? resolveTypeScriptEntryFile(cwd)
         const parentURL = pathToFileURL(path.join(cwd, "package.json")).href
 
-        if (!resolvedEntryFile) {
-            console.error(chalk.red("Error: Could not find a Terse jobs entry file."))
-            console.error(chalk.dim(`Create ${this.entryFile} and have your app startup file import it.`))
-            console.error(chalk.dim("Legacy projects can continue using src/index.ts for now."))
-            process.exit(1)
+        if (!resolvedEntryFile || !fs.existsSync(path.join(cwd, resolvedEntryFile))) {
+            printMissingEntryFileGuidance({
+                languageDisplayName: this.displayName,
+                defaultEntryFile: this.entryFile,
+                requestedEntryFile: entryFile,
+                overrideExample: "src/server.ts",
+                createHint: `Create ${this.entryFile} and have your app startup file import it.`
+            })
         }
 
         const entryPath = path.join(cwd, resolvedEntryFile)
@@ -125,7 +129,7 @@ export class TypeScriptProvider implements LanguageProvider {
         return registry
     }
 
-    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
+    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
         const isVerbose = opts?.verbose ?? false
 
         const serializedEventRuntime = createSDKTrigger(event)

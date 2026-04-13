@@ -8,7 +8,10 @@ app = Terse()
 @app.job(
     name="{{projectName}}",
     triggers=[GitHub.on_pr(repo=GitHubRepo.Terse)],
-    skills=[Slack.skill(channel=SlackChannel.AllTerseInc)],
+    skills=[
+        GitHub.skill(repos=[GitHubRepo.Terse]),
+        Slack.skill(channel=SlackChannel.AllTerseInc),
+    ],
 )
 def run_job(event: GithubPRTrigger, agent: TerseAgent, /) -> None:
     prompt = f"Summarise the PR and send a message to slack: {event.formatted_content}"

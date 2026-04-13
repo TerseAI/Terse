@@ -1,6 +1,6 @@
 import { Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import { Request, Response } from "express"
-import { CONFIG_DETAILS, ConfigData } from "terse-types/Configs"
+import { CONFIG_DETAILS, SkillConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 import { debugTrigger, formatTriggerForAgent } from "terse-types/Triggers"
@@ -174,7 +174,7 @@ function createSdkRunner(params: {
     runId: string
     user: User
     prompt: string
-    skills: ConfigData[]
+    skills: SkillConfigData[]
     toolApprovals: string[]
     send: (event: SdkAgentStreamEvent) => void
     sandboxRunId: string | undefined
