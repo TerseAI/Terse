@@ -28,6 +28,10 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     try {
         const { remoteServerUrl, jobs, sourceZipBase64 } = sdkDeployRequestBodySchema.parse(req.body)
 
+        console.log("remoteServerUrl", remoteServerUrl)
+        console.log("sourceZipBase64", sourceZipBase64)
+        console.log("jobs", jobs)
+
         if (!sourceZipBase64 && !remoteServerUrl) {
             return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
         } else if (sourceZipBase64 && remoteServerUrl) {
