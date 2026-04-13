@@ -16,6 +16,7 @@ import httpx
 from httpx_sse import connect_sse
 from pydantic import BaseModel, RootModel, ValidationError
 
+from ._hmac import compute_challenge_signature, verify_incoming_request
 from ._http_utils import (
     _buffer_response_content,
     _debug_log_request,
@@ -23,11 +24,12 @@ from ._http_utils import (
     _debug_log_response_payload,
     _read_response_detail,
 )
-from ._hmac import compute_challenge_signature, verify_incoming_request
 from ._logging_utils import LOGGER, _configure_debug_logging
 from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
 from .types._generated import (
     ManualSampleTrigger as _RawManualSampleTrigger,
+)
+from .types._generated import (
     SerializedEvent,
     SkillConfigData,
 )
@@ -140,6 +142,7 @@ class Terse:
 
         if headers:
             import json as _json
+
             verify_incoming_request(signing_secret, headers, _json.dumps(body))
 
         # Phase 1: Challenge handshake
