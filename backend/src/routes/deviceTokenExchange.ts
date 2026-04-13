@@ -4,10 +4,12 @@ import { DeviceTokenExchangeResponse } from "terse-types/types"
 import { deviceTokenExchangeRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
-import { db } from "../prismaClient"
+import { decodeAccessTokenClaims } from "../utility/accessTokenClaims"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { workos } from "../utility/workos"
+
+import { getOrCreateDbUserFromWorkOS } from "./auth"
 
 const featureFlagService = FeatureFlagService.getInstance()
 
@@ -35,19 +37,7 @@ export async function deviceTokenExchange(req: Request, res: Response) {
             return res.status(401).json({ error: "Invalid access token: missing subject" })
         }
 
-        // Find the user in our database by WorkOS ID
-        const prisma = db()
-        const dbUser = await prisma.users.findUnique({
-            where: { workos_id: workosUserId }
-        })
-
-        if (!dbUser) {
-            return res.status(404).json({
-                error: "User not found. Please sign up at the Terse web app first."
-            })
-        }
-
-        // Fetch user details for the feature flag check and response
+        // Fetch user details from WorkOS
         const workosUser = await workos.userManagement.getUser(workosUserId)
 
         // Check SDK feature flag
@@ -58,19 +48,34 @@ export async function deviceTokenExchange(req: Request, res: Response) {
 
         // Get the user's organization from the JWT or fall back to membership lookup
         let organizationId = payload.org_id as string | undefined
+        const memberships = await workos.userManagement.listOrganizationMemberships({
+            userId: workosUserId,
+            statuses: ["active"]
+        })
         if (!organizationId) {
-            const memberships = await workos.userManagement.listOrganizationMemberships({
-                userId: workosUserId,
-                statuses: ["active"]
-            })
             organizationId = memberships.data[0]?.organizationId
         }
 
+        // If the user has no org, auto-create one for first-time SDK users
+        let roles: string[] = []
         if (!organizationId) {
-            return res.status(403).json({
-                error: "User has no organization. Please create or join an organization first."
+            const orgName = workosUser.firstName ? `${workosUser.firstName}'s Organization` : `${workosUser.email}'s Organization`
+            const organization = await workos.organizations.createOrganization({ name: orgName })
+            await workos.userManagement.createOrganizationMembership({
+                organizationId: organization.id,
+                userId: workosUserId,
+                roleSlug: "admin"
             })
+            organizationId = organization.id
+            roles = ["admin"]
+        } else {
+            const membership = memberships.data.find((m) => m.organizationId === organizationId)
+            roles = membership?.roles?.map((role) => role.slug) ?? []
         }
+
+        // Find or create the user in our database
+        const claims = decodeAccessTokenClaims(accessToken)
+        const { user: dbUser } = await getOrCreateDbUserFromWorkOS({ user: workosUser, organizationId, roles }, claims)
 
         // Create an API token for CLI use
         const { rawToken } = await createApiToken(dbUser.id, organizationId, "CLI Login")
