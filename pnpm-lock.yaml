@@ -519,6 +519,9 @@ importers:
         specifier: workspace:*
         version: link:../../terse-types
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.15
       typescript:
         specifier: ^5.0.0
         version: 5.8.3
