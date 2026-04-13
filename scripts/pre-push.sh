@@ -17,7 +17,7 @@ echo "Installing workspace dependencies..."
 pnpm install
 
 echo "Running Python validation..."
-pnpm run python:check
+pnpm run python:fix
 
 
 if [[ -d docs ]]; then
