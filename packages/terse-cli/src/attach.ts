@@ -27,7 +27,7 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
     }
 
     console.log(`\n  Attaching Terse to existing project ${chalk.bold(projectName)}\n`)
-    console.log(chalk.dim("  Your jobs will run on your own infrastructure via TERSE_JOB_URL. No source code is uploaded to Terse.\n"))
+    console.log(chalk.dim("  Your jobs will run on your own infrastructure via TERSE_REMOTE_SERVER_URL. No source code is uploaded to Terse.\n"))
 
     await loginAndWriteEnv(cwd)
     await listAndPromptIntegrations()
@@ -50,7 +50,7 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
     console.log(`  1. Install ${chalk.cyan("terse-sdk")} in this repo if you haven't already`)
     console.log(`  2. Add your Terse job definitions to ${chalk.cyan(provider.entryFile)} and import that file from your app startup path`)
     console.log(chalk.dim(`     If your self-hosted app keeps jobs in another file, use ${chalk.cyan("--entry-file")} with terse test, terse run, and terse deploy.`))
-    console.log(`  3. Set ${chalk.cyan("TERSE_JOB_URL")} in ${chalk.cyan(".env")} before running ${chalk.cyan("terse deploy")}`)
+    console.log(`  3. Set ${chalk.cyan("TERSE_REMOTE_SERVER_URL")} in ${chalk.cyan(".env")} before running ${chalk.cyan("terse deploy")}`)
     console.log(`  4. Run ${chalk.cyan("terse integrate")} to connect integrations`)
     console.log("")
 }

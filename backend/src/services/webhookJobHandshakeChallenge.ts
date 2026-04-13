@@ -4,13 +4,14 @@ import { webhookJobTriggerResponseSchema } from "terse-types/types"
 import { db } from "../prismaClient"
 import { hashToken } from "../utility/apiTokens"
 import { extractErrorMessage } from "../utility/strings"
+import { validateRemoteServerUrl } from "../utility/urlValidation"
 import { joinJobServerPath } from "../utility/webhookUrl"
 
 /** Default timeout for handshake and delivery POSTs to a deployed SDK job URL. */
 export const WEBHOOK_JOB_FETCH_TIMEOUT_MS = 30_000
 
 export interface WebhookJobHandshakeChallengeParams {
-    jobUrl: string
+    remoteServerUrl: string
     organizationId: string
     /**
      * When set, aborts the handshake fetch if this signal aborts (e.g. HTTP request cancelled).
@@ -40,7 +41,19 @@ export type WebhookJobHandshakeChallengeResult =
  */
 export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshakeChallengeParams): Promise<WebhookJobHandshakeChallengeResult> {
     const timeoutMs = WEBHOOK_JOB_FETCH_TIMEOUT_MS
-    const triggerUrl = joinJobServerPath(params.jobUrl, ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER)
+
+    try {
+        await validateRemoteServerUrl(params.remoteServerUrl)
+    } catch (error) {
+        return {
+            ok: false,
+            triggerUrl: params.remoteServerUrl,
+            step: "http",
+            message: error instanceof Error ? error.message : "Invalid remote server URL"
+        }
+    }
+
+    const triggerUrl = joinJobServerPath(params.remoteServerUrl, ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), timeoutMs)

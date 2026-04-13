@@ -23,7 +23,7 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
                 source: true,
                 prompt: {
                     select: {
-                        job_url: true
+                        remote_server_url: true
                     }
                 }
             }
@@ -33,7 +33,7 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
             return res.status(404).json({ error: "Agent not found" })
         }
 
-        if (agent.source !== "SDK" || !agent.prompt?.job_url) {
+        if (agent.source !== "SDK" || !agent.prompt?.remote_server_url) {
             const response: SdkJobServerCheckResponse = {
                 success: false,
                 message: "This SDK job does not have a self-hosted server URL configured."
@@ -42,7 +42,7 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
         }
 
         const result = await runWebhookJobHandshakeChallenge({
-            jobUrl: agent.prompt.job_url,
+            remoteServerUrl: agent.prompt.remote_server_url,
             organizationId: session.user.organizationId
         })
 

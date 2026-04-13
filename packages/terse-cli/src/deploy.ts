@@ -20,10 +20,10 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     const registry = await loadJobRegistry(provider, entryFile)
     const jobs = [...registry.values()]
 
-    // If TERSE_JOB_URL is set in .env, deploy in URL mode (user infrastructure).
-    // All jobs get this URL and no source code is zipped or uploaded.
-    const jobUrl = readEnvVar("TERSE_JOB_URL")
-    const isUrlMode = !!jobUrl
+    // If TERSE_REMOTE_SERVER_URL (or legacy TERSE_JOB_URL) is set in .env, deploy
+    // in URL mode (user infrastructure). No source code is zipped or uploaded.
+    const remoteServerUrl = readEnvVar("TERSE_REMOTE_SERVER_URL") ?? readEnvVar("TERSE_JOB_URL")
+    const isUrlMode = !!remoteServerUrl
 
     let sourceZipBase64: string | undefined
     let fileCount = 0
@@ -46,7 +46,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
                 outputs: job.skills ?? [],
                 toolApprovals: job.toolApprovals ?? []
             })),
-            jobUrl: isUrlMode ? jobUrl : undefined,
+            remoteServerUrl: isUrlMode ? remoteServerUrl : undefined,
             sourceZipBase64
         })
 
@@ -76,7 +76,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
         if (isUrlMode) {
             console.log(chalk.dim(`  Mode: user infrastructure`))
-            console.log(chalk.dim(`  Job URL: ${jobUrl}`))
+            console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
         } else {
             console.log(chalk.dim(`  Files: ${fileCount}`))
             console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
