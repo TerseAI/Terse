@@ -7,10 +7,18 @@ import { loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import { fetchSdkVersion } from "./providers/fetchSdkVersion.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 import { renderTemplate } from "./providers/templateUtils.js"
 
 export async function init(projectName?: string, provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" })): Promise<void> {
+    if (!projectName && fs.existsSync(path.join(process.cwd(), "package.json"))) {
+        console.error(chalk.red("\n  Error: Detected an existing npm project in this directory."))
+        console.error(chalk.dim("  terse init is for scaffolding new projects only.\n"))
+        console.error(`  To add Terse to this project for self-hosted mode, run ${chalk.cyan("terse attach")} instead.\n`)
+        process.exit(1)
+    }
+
     const targetDir = projectName ? path.resolve(process.cwd(), projectName) : process.cwd()
     const resolvedName = projectName ?? path.basename(process.cwd())
 
@@ -28,7 +36,11 @@ export async function init(projectName?: string, provider: LanguageProvider = re
     // Create the source directory up front. Nested template paths create their own parents.
     fs.mkdirSync(path.join(targetDir, "src"), { recursive: true })
 
-    const templateContext = provider.buildInitTemplateContext(resolvedName)
+    const versionSpinner = ora("Fetching latest SDK version").start()
+    const sdkVersion = await fetchSdkVersion(provider.language)
+    versionSpinner.succeed(`Using terse-sdk ${sdkVersion}`)
+
+    const templateContext = provider.buildInitTemplateContext(resolvedName, sdkVersion)
 
     // Write files from templates
     for (const file of provider.scaffoldFiles()) {

@@ -764,7 +764,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         name: agent.name,
         isActive: agent.is_active,
         requireApproval: agent.require_approval ?? false,
-        prompt: agent.prompt ? { text: agent.prompt.content } : { text: "" },
+        prompt: agent.prompt ? { text: agent.prompt.content, remoteServerUrl: agent.prompt.remote_server_url ?? undefined } : { text: "" },
         triggers: agent.inputs.map(trigger => ({
             id: trigger.id,
             config: convertPrismaConfigToConfigData(trigger),

@@ -1,5 +1,6 @@
 import axios from "axios"
-import { ApiRoutes, SerializedEvent, buildRoute } from "terse-types"
+import { ApiRoutes, buildRoute } from "terse-types"
+import type { SerializedEvent } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -45,6 +46,7 @@ import {
     OAuthInstallationDetails,
     PosthogProjectsResponse,
     RecentAgent,
+    SdkJobServerCheckResponse,
     SlackChannelsResponse,
     SlackUsersResponse,
     StatsInterval,
@@ -285,6 +287,11 @@ interface BackendService {
      * Gets a single agent by ID
      */
     getAgentById(id: string): Promise<Agent>
+
+    /**
+     * Verifies that a self-hosted SDK job server is reachable and correctly configured
+     */
+    verifySdkJobServer(agentId: string): Promise<SdkJobServerCheckResponse>
 
     /**
      * Gets the latest review and improvements for an agent
@@ -1035,6 +1042,17 @@ export const BackendProvider: BackendService = {
             })
     },
 
+    verifySdkJobServer: (agentId: string) => {
+        const url = buildRoute(ApiRoutes.SDK.VERIFY_JOB_SERVER, { agentId })
+        return axios
+            .post<SdkJobServerCheckResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error verifying SDK job server:", error)
+                throw error
+            })
+    },
+
     getAgentImprovements: (agentId: string) => {
         const url = buildRoute(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, { agentId })
         return axios
@@ -1336,7 +1354,7 @@ export const BackendProvider: BackendService = {
     triggerWithEvent: (automationId: string, event: SerializedEvent) => {
         const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { automationId })
         return axios
-            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event }, { withCredentials: true })
+            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event: event.data }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error triggering with event:", error)

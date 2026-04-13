@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, ConfigDict, EmailStr, Field, RootModel
+from pydantic import AwareDatetime, ConfigDict, Discriminator, EmailStr, Field, RootModel
 
 from terse_sdk.types._base import TerseModel
 
@@ -117,6 +117,16 @@ class GitHubConfigInstance(TerseModel):
     config_type: Annotated[Literal["github"], Field(alias="configType")] = "github"
     repository_ids: Annotated[list[int], Field(alias="repositoryIds")]
     event_types: Annotated[list[GitHubEventType] | None, Field(alias="eventTypes")]
+
+
+class GitHubSkillConfigInstance(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_id: Annotated[str, Field(alias="integrationId")]
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
+    config_type: Annotated[Literal["github"], Field(alias="configType")] = "github"
+    repository_ids: Annotated[list[int], Field(alias="repositoryIds")]
 
 
 class GithubIntegrationInstance(TerseModel):
@@ -286,20 +296,24 @@ class GithubPushTrigger(TerseModel):
 
 class GithubTrigger(
     RootModel[
-        GithubPushTrigger
-        | GithubPROpenedTrigger
-        | GithubPRSynchronizedTrigger
-        | GithubPRClosedTrigger
-        | GithubPRMergedTrigger
+        Annotated[
+            GithubPushTrigger
+            | GithubPROpenedTrigger
+            | GithubPRSynchronizedTrigger
+            | GithubPRClosedTrigger
+            | GithubPRMergedTrigger,
+            Discriminator("event_type"),
+        ]
     ]
 ):
-    root: (
+    root: Annotated[
         GithubPushTrigger
         | GithubPROpenedTrigger
         | GithubPRSynchronizedTrigger
         | GithubPRClosedTrigger
-        | GithubPRMergedTrigger
-    )
+        | GithubPRMergedTrigger,
+        Discriminator("event_type"),
+    ]
 
 
 class GmailEventType(StrEnum):
@@ -881,20 +895,23 @@ class WorkOSUserCreatedTrigger(TerseModel):
 
 class WorkOSTrigger(
     RootModel[
-        WorkOSUserCreatedTrigger
-        | WorkOSUserUpdatedTrigger
-        | WorkOSUserDeletedTrigger
-        | WorkOSOrganizationMembershipCreatedTrigger
-        | WorkOSOrganizationMembershipUpdatedTrigger
-        | WorkOSOrganizationMembershipDeletedTrigger
-        | WorkOSInvitationCreatedTrigger
-        | WorkOSInvitationAcceptedTrigger
-        | WorkOSInvitationResentTrigger
-        | WorkOSInvitationRevokedTrigger
-        | WorkOSOrganizationTrigger
+        Annotated[
+            WorkOSUserCreatedTrigger
+            | WorkOSUserUpdatedTrigger
+            | WorkOSUserDeletedTrigger
+            | WorkOSOrganizationMembershipCreatedTrigger
+            | WorkOSOrganizationMembershipUpdatedTrigger
+            | WorkOSOrganizationMembershipDeletedTrigger
+            | WorkOSInvitationCreatedTrigger
+            | WorkOSInvitationAcceptedTrigger
+            | WorkOSInvitationResentTrigger
+            | WorkOSInvitationRevokedTrigger
+            | WorkOSOrganizationTrigger,
+            Discriminator("event_type"),
+        ]
     ]
 ):
-    root: (
+    root: Annotated[
         WorkOSUserCreatedTrigger
         | WorkOSUserUpdatedTrigger
         | WorkOSUserDeletedTrigger
@@ -905,8 +922,9 @@ class WorkOSTrigger(
         | WorkOSInvitationAcceptedTrigger
         | WorkOSInvitationResentTrigger
         | WorkOSInvitationRevokedTrigger
-        | WorkOSOrganizationTrigger
-    )
+        | WorkOSOrganizationTrigger,
+        Discriminator("event_type"),
+    ]
 
 
 class LinearCommentCreatedTrigger(TerseModel):
@@ -960,8 +978,18 @@ class LinearIssueCreatedTrigger(TerseModel):
     data: LinearWebhookData
 
 
-class LinearTrigger(RootModel[LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger]):
-    root: LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger
+class LinearTrigger(
+    RootModel[
+        Annotated[
+            LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger,
+            Discriminator("event_type"),
+        ]
+    ]
+):
+    root: Annotated[
+        LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger,
+        Discriminator("event_type"),
+    ]
 
 
 class GmailTrigger(TerseModel):
@@ -1062,8 +1090,18 @@ class SlackMessageTrigger(TerseModel):
     files: list[Any] | None
 
 
-class SlackTrigger(RootModel[SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger]):
-    root: SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger
+class SlackTrigger(
+    RootModel[
+        Annotated[
+            SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger,
+            Discriminator("event_type"),
+        ]
+    ]
+):
+    root: Annotated[
+        SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger,
+        Discriminator("event_type"),
+    ]
 
 
 class Trigger(
@@ -1283,6 +1321,7 @@ class ConfigData(
         | LinearInputConfigInstance
         | LinearOutputConfigInstance
         | GitHubConfigInstance
+        | GitHubSkillConfigInstance
         | PosthogConfigInstance
         | DatadogConfigInstance
         | TimeTriggerConfigInstance
@@ -1305,6 +1344,7 @@ class ConfigData(
         | LinearInputConfigInstance
         | LinearOutputConfigInstance
         | GitHubConfigInstance
+        | GitHubSkillConfigInstance
         | PosthogConfigInstance
         | DatadogConfigInstance
         | TimeTriggerConfigInstance
@@ -1347,6 +1387,7 @@ class AgentPrompt(TerseModel):
         extra="forbid",
     )
     text: str
+    job_url: Annotated[str | None, Field(alias="jobUrl")] = None
 
 
 class AgentCreate(TerseModel):
@@ -5303,13 +5344,51 @@ class SdkAgentRunNormalizedRequestOptions(TerseModel):
     require_approval: Annotated[bool, Field(alias="requireApproval")]
 
 
+class SkillConfigData(
+    RootModel[
+        Annotated[
+            SlackOutputConfigInstance
+            | GmailOutputConfigInstance
+            | GmailDraftOutputConfigInstance
+            | NotionConfigInstance
+            | LinearOutputConfigInstance
+            | GitHubSkillConfigInstance
+            | PosthogConfigInstance
+            | DatadogConfigInstance
+            | LaunchDarklyConfigInstance
+            | TerseConfigInstance
+            | WorkOSOutputConfigInstance
+            | AttioOutputConfigInstance
+            | SnowflakeOutputConfigInstance,
+            Discriminator("config_type"),
+        ]
+    ]
+):
+    root: Annotated[
+        SlackOutputConfigInstance
+        | GmailOutputConfigInstance
+        | GmailDraftOutputConfigInstance
+        | NotionConfigInstance
+        | LinearOutputConfigInstance
+        | GitHubSkillConfigInstance
+        | PosthogConfigInstance
+        | DatadogConfigInstance
+        | LaunchDarklyConfigInstance
+        | TerseConfigInstance
+        | WorkOSOutputConfigInstance
+        | AttioOutputConfigInstance
+        | SnowflakeOutputConfigInstance,
+        Discriminator("config_type"),
+    ]
+
+
 class SdkAgentRunNormalizedRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     prompt: str
     event: Trigger
-    skills: list[ConfigData]
+    skills: list[SkillConfigData]
     tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
     options: SdkAgentRunNormalizedRequestOptions
 
@@ -5328,7 +5407,7 @@ class SdkAgentRunRequestBody(TerseModel):
     )
     prompt: str | None = None
     event: Trigger | None = None
-    skills: list[ConfigData] | None = None
+    skills: list[SkillConfigData] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")] = None
 
@@ -5403,19 +5482,22 @@ class Text(TerseModel):
 
 class SdkAgentStreamEvent(
     RootModel[
-        RunStarted
-        | Text
-        | FinalOutput
-        | ToolCallParams
-        | ToolCallStarted
-        | ToolCallCompleted
-        | ToolApprovalRequested
-        | Action
-        | Error
-        | Done
+        Annotated[
+            RunStarted
+            | Text
+            | FinalOutput
+            | ToolCallParams
+            | ToolCallStarted
+            | ToolCallCompleted
+            | ToolApprovalRequested
+            | Action
+            | Error
+            | Done,
+            Discriminator("type"),
+        ]
     ]
 ):
-    root: (
+    root: Annotated[
         RunStarted
         | Text
         | FinalOutput
@@ -5425,8 +5507,9 @@ class SdkAgentStreamEvent(
         | ToolApprovalRequested
         | Action
         | Error
-        | Done
-    )
+        | Done,
+        Discriminator("type"),
+    ]
 
 
 class SdkApprovalDecisionRequestBody(TerseModel):
@@ -5438,15 +5521,40 @@ class SdkApprovalDecisionRequestBody(TerseModel):
     approved: bool
 
 
+class TriggerConfigData(
+    RootModel[
+        Annotated[
+            GmailConfigInstance
+            | SlackConfigInstance
+            | LinearInputConfigInstance
+            | GitHubConfigInstance
+            | TimeTriggerConfigInstance
+            | WorkOSInputConfigInstance
+            | WebhookInputConfigInstance,
+            Discriminator("config_type"),
+        ]
+    ]
+):
+    root: Annotated[
+        GmailConfigInstance
+        | SlackConfigInstance
+        | LinearInputConfigInstance
+        | GitHubConfigInstance
+        | TimeTriggerConfigInstance
+        | WorkOSInputConfigInstance
+        | WebhookInputConfigInstance,
+        Discriminator("config_type"),
+    ]
+
+
 class SdkDeployJob(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     job_name: Annotated[str, Field(alias="jobName")]
-    triggers: list[ConfigData]
-    outputs: list[ConfigData]
+    triggers: list[TriggerConfigData]
+    outputs: list[SkillConfigData]
     tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
-    webhook_url: Annotated[str | None, Field(alias="webhookURL")] = None
 
 
 class SdkDeployRemoved(LinearWebhookAssignee):
@@ -5458,7 +5566,8 @@ class SdkDeployRequestBody(TerseModel):
         extra="forbid",
     )
     jobs: list[SdkDeployJob]
-    source_zip_base64: Annotated[str, Field(alias="sourceZipBase64")]
+    job_url: Annotated[str | None, Field(alias="jobUrl")] = None
+    source_zip_base64: Annotated[str | None, Field(alias="sourceZipBase64")] = None
 
 
 class SdkDeployResultTrigger(TerseModel):
@@ -5488,6 +5597,25 @@ class SdkDeployResponseBody(TerseModel):
     removed: list[SdkDeployRemoved]
     error: str | None = None
     details: str | None = None
+
+
+class SdkJobServerCheckStep(StrEnum):
+    http = "http"
+    json = "json"
+    response_schema = "response_schema"
+    token = "token"
+    org = "org"
+
+
+class SdkJobServerCheckResponse(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    success: bool
+    message: str
+    trigger_url: Annotated[str | None, Field(alias="triggerUrl")] = None
+    step: SdkJobServerCheckStep | None = None
+    http_status: Annotated[float | None, Field(alias="httpStatus")] = None
 
 
 class SdkSampleEventsRequestTrigger(TerseModel):
@@ -6659,6 +6787,31 @@ class WebSearchToolInput(TerseModel):
         WebSearchToolInputTimeRange | None,
         Field(description="Filter results by recency"),
     ]
+
+
+class WebhookJobChallengeRequest(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    challenge: Literal[True] = True
+
+
+class WebhookJobTriggerRequest(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    job_name: Annotated[str, Field(alias="jobName")]
+    run_id: Annotated[str, Field(alias="runId")]
+    event: SerializedEvent
+
+
+class WebhookJobTriggerResponse(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    status: str | None = None
+    api_key: Annotated[str, Field(alias="apiKey", min_length=1)]
+    filtered: bool | None = None
 
 
 class WebhookWorkOSTriggerParams(TerseModel):
