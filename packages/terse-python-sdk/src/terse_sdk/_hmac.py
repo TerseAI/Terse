@@ -34,7 +34,8 @@ def verify_incoming_request(
     timestamp_str = headers.get(TERSE_TIMESTAMP_HEADER)
     if not signature or not timestamp_str:
         missing = [
-            h for h, v in [
+            h
+            for h, v in [
                 (TERSE_SIGNATURE_HEADER, signature),
                 (TERSE_TIMESTAMP_HEADER, timestamp_str),
             ]
@@ -49,9 +50,7 @@ def verify_incoming_request(
     try:
         timestamp = int(timestamp_str)
     except ValueError as err:
-        raise ValueError(
-            f'"{TERSE_TIMESTAMP_HEADER}" header is not a valid number (got "{timestamp_str}").'
-        ) from err
+        raise ValueError(f'"{TERSE_TIMESTAMP_HEADER}" header is not a valid number (got "{timestamp_str}").') from err
 
     age = abs(math.floor(time.time()) - timestamp)
     if age > _MAX_TIMESTAMP_AGE_SECONDS:
