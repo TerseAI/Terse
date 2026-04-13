@@ -90,6 +90,38 @@ export class SecretManagerClient {
     }
 
     /**
+     * Best-effort cleanup of old secret versions after a new version is added.
+     * Destroys all ENABLED versions except the one just created.
+     */
+    private async destroyPreviousVersions(secretPath: string, currentVersionName: string): Promise<void> {
+        try {
+            const [versions] = await this.client.listSecretVersions({
+                parent: secretPath,
+                filter: "state:ENABLED"
+            })
+
+            const oldVersions = versions.filter(v => v.name && v.name !== currentVersionName)
+            if (oldVersions.length === 0) {
+                return
+            }
+
+            await Promise.allSettled(
+                oldVersions.map(async v => {
+                    try {
+                        await this.client.destroySecretVersion({ name: v.name! })
+                    } catch (error) {
+                        logger.warn("Failed to destroy old secret version", { version: v.name, error })
+                    }
+                })
+            )
+
+            logger.debug("Destroyed old secret versions", { secretPath, count: oldVersions.length })
+        } catch (error) {
+            logger.warn("Failed to list/destroy old secret versions", { secretPath, error })
+        }
+    }
+
+    /**
      * Creates a new secret or adds a new version
      */
     async createOrUpdateSecret(secretId: string, value: string): Promise<void> {
@@ -99,11 +131,12 @@ export class SecretManagerClient {
         }
 
         try {
-            await this.client.addSecretVersion({
+            const [version] = await this.client.addSecretVersion({
                 parent,
                 payload
             })
             logger.debug("Stored secret version in Secret Manager", { secretId })
+            await this.destroyPreviousVersions(parent, version.name!)
             return
         } catch (error) {
             if (!isGrpcError(error) || error.code !== GRPC_NOT_FOUND) {
@@ -114,12 +147,13 @@ export class SecretManagerClient {
 
         await this.createSecretIfMissing(secretId)
 
-        await this.client.addSecretVersion({
+        const [version] = await this.client.addSecretVersion({
             parent,
             payload
         })
 
         logger.debug("Created secret then stored initial version in Secret Manager", { secretId })
+        await this.destroyPreviousVersions(parent, version.name!)
     }
 
     async getSecret(secretId: string): Promise<string> {
