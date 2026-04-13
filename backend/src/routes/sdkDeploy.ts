@@ -8,7 +8,7 @@ import { sdkDeployRequestBodySchema } from "terse-types/types"
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { emitCacheInvalidationWithKey } from "../realtimeSocket"
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
@@ -75,6 +75,9 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 }))
 
             results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: triggers.length > 0 ? triggers : [] })
+
+            emitCacheInvalidationWithWildcard(organizationId, "agentFiles", agent.id)
+            emitCacheInvalidationWithWildcard(organizationId, "agentFileContent", agent.id)
 
             logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
                 automationId: agent.id,
