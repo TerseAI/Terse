@@ -192,3 +192,7 @@ export const userByIdKey = (userId: string | null | undefined): readonly [string
     if (!userId) return null
     return ["userById", userId] as const
 }
+
+export const agentFilesKey = (agentId: string): readonly [string, string] => ["agentFiles", agentId]
+
+export const agentFileContentKey = (agentId: string, fileId: string): readonly [string, string, string] => ["agentFileContent", agentId, fileId]
