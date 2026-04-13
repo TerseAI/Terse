@@ -1,3 +1,5 @@
+import crypto from "node:crypto"
+
 import { Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import { CONFIG_DETAILS, SkillConfigData } from "terse-types/Configs"
@@ -50,7 +52,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     const { send, sandboxRunId } = initSseStream(req, res)
 
     try {
-        const runId = sandboxRunId ?? `sdk-run-${Date.now()}`
+        const runId = sandboxRunId ?? crypto.randomUUID()
         const sdkRunner = createSdkRunner({
             runId,
             user,
