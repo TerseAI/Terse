@@ -9,13 +9,13 @@ import type { LanguageProvider } from "./providers/LanguageProvider.js"
  * Imports the user's entry file and returns the full job registry.
  * Each createJob() call populates this map.
  */
-export async function loadJobRegistry(provider: LanguageProvider): Promise<Map<string, CreateJobParameters>> {
+export async function loadJobRegistry(provider: LanguageProvider, entryFile?: string): Promise<Map<string, CreateJobParameters>> {
     assertProjectRoot(provider, provider.detectionMarkers)
-    return provider.loadJobRegistry()
+    return provider.loadJobRegistry(entryFile)
 }
 
-export async function loadJob(provider: LanguageProvider, jobName?: string): Promise<{ job: CreateJobParameters }> {
-    const registry = await loadJobRegistry(provider)
+export async function loadJob(provider: LanguageProvider, jobName?: string, entryFile?: string): Promise<{ job: CreateJobParameters }> {
+    const registry = await loadJobRegistry(provider, entryFile)
 
     if (registry.size === 0) {
         console.error(chalk.red("No jobs found."))

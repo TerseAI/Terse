@@ -2,7 +2,7 @@
 
 Python SDK for building jobs on the [Terse](https://useterse.ai) platform.
 
-Most users should start with `terse-cli`, which scaffolds a project and generates `terse_generated.py` helpers for the currently supported trigger and skill surface.
+Most users should start with `terse-cli`, which scaffolds a project and generates `terse_generated.py` helpers for the current trigger and skill surface.
 
 ## Installation
 
@@ -49,12 +49,16 @@ Trigger and skill configs come from the generated helpers in `terse_generated.py
 
 The SDK package does not generate project helpers by itself.
 
-If you scaffold a project with `terse init` and then run `terse generate`, your project gets `src/terse_generated.py` with the currently supported helpers:
+If you scaffold a project with `terse init` and then run `terse generate`, your project gets `src/terse_generated.py` with helpers such as:
 
 - `Schedule.cron(...)`
+- GitHub triggers plus `GitHub.skill(...)` and generated `GitHubRepo.*` constants
 - `Attio.skill(...)`
+- Slack triggers/skills plus generated `SlackChannel.*` constants
 - `Snowflake.skill(...)`
-- deterministic wrappers on `agent.tools.attio` and `agent.tools.snowflake`
+- deterministic wrappers on `agent.tools.attio`, `agent.tools.slack`, and `agent.tools.snowflake`
+
+GitHub parity in Python currently means generated trigger builders and `GitHub.skill(...)` for model-visible repo access. It does not include deterministic `agent.tools.github.*` wrappers.
 
 Example inside a generated project:
 

@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { configDataSchema, configTypeEnum } from "./Configs"
+import { configDataSchema, configTypeEnum, skillConfigDataSchema, triggerConfigDataSchema } from "./Configs"
 import { integrationTypeEnum } from "./Integrations"
 import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction } from "./RunHistoryTypes"
@@ -574,7 +574,7 @@ export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayload
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
     event: TriggerSchema.optional(),
-    skills: z.array(configDataSchema).optional(),
+    skills: z.array(skillConfigDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
 })
@@ -593,7 +593,7 @@ export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
 export const sdkAgentRunNormalizedRequestSchema = z.object({
     prompt: z.string(),
     event: TriggerSchema,
-    skills: z.array(configDataSchema),
+    skills: z.array(skillConfigDataSchema),
     toolApprovals: z.array(z.string()),
     options: sdkAgentRunNormalizedRequestOptionsSchema
 })
@@ -662,8 +662,8 @@ export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionR
 
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
-    triggers: z.array(configDataSchema),
-    outputs: z.array(configDataSchema),
+    triggers: z.array(triggerConfigDataSchema),
+    outputs: z.array(skillConfigDataSchema),
     toolApprovals: z.array(z.string())
 })
 export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>

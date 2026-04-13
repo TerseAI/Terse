@@ -25,8 +25,8 @@ from ._http_utils import (
 )
 from ._logging_utils import LOGGER, _configure_debug_logging
 from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
-from .types._generated import ConfigData, SerializedEvent
 from .types._generated import ManualSampleTrigger as _RawManualSampleTrigger
+from .types._generated import SerializedEvent, SkillConfigData
 from .types.config import TerseSettings
 from .types.events import AnyTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
@@ -41,6 +41,16 @@ from .types.stream_events import (
     SdkAgentStreamEvent,
     ToolCallCompleted,
 )
+
+TERSE_JOB_WEBHOOK_TRIGGER_PATH: str = "/webhook/terse/trigger"
+"""Path relative to ``TERSE_JOB_URL`` where the Terse backend POSTs webhook job triggers.
+
+Mount your handler at this path::
+
+    @app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH)
+    def terse_route():
+        return terse.handle_trigger(request.get_json())
+"""
 
 # Type alias for readability.
 JobEvent = AnyTrigger
@@ -464,12 +474,12 @@ def execute_registered_job(
     return False
 
 
-def _serialize_skill_config(skill: SkillConfig[Any]) -> ConfigData:
+def _serialize_skill_config(skill: SkillConfig[Any]) -> SkillConfigData:
     config = {k: v for k, v in skill.config.items() if v is not None}
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type
-    return ConfigData.model_validate(config)
+    return SkillConfigData.model_validate(config)
 
 
 def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
