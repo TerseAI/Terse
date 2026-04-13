@@ -69,8 +69,8 @@ export async function deviceTokenExchange(req: Request, res: Response) {
             organizationId = organization.id
             roles = ["admin"]
         } else {
-            const membership = memberships.data.find((m) => m.organizationId === organizationId)
-            roles = membership?.roles?.map((role) => role.slug) ?? []
+            const membership = memberships.data.find(m => m.organizationId === organizationId)
+            roles = membership?.roles?.map(role => role.slug) ?? []
         }
 
         // Find or create the user in our database
