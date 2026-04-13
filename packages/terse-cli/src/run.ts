@@ -21,7 +21,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 
     if (!eventJson) {
         console.error(chalk.red("Error: --event <json> or --event-file <path> is required.\n"))
-        console.error(chalk.dim('  Usage: terse run --event \'{"integrationType":"...","formattedContent":"...","debugLog":"..."}\''))
+        console.error(chalk.dim('  Usage: terse run --event \'{"integrationType":"...","eventType":"...","formattedContent":"...","debugLog":"...","data":{...}}\''))
         console.error(chalk.dim("         terse run --event-file ./event.json"))
         console.error(chalk.dim("  Tip:   Use `terse test` to interactively pick a sample event.\n"))
         process.exit(1)
@@ -31,9 +31,18 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     const { job } = await loadJob(provider, jobName, entryFile)
     console.log(chalk.cyan(`\n  Running job: ${job.name}\n`))
 
+    let rawEvent: unknown
+    try {
+        rawEvent = JSON.parse(eventJson)
+    } catch (error) {
+        console.error(chalk.red("Error: --event must be valid JSON."))
+        console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
+        process.exit(1)
+    }
+
     let parsed: SerializedEvent
     try {
-        parsed = serializedEventSchema.parse(eventJson)
+        parsed = serializedEventSchema.parse(rawEvent)
     } catch (error) {
         console.error(chalk.red("Error: --event does not match the canonical Trigger schema."))
         console.error(chalk.dim(error instanceof Error ? error.message : String(error)))

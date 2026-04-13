@@ -39,10 +39,9 @@ Open the integrations page in the Terse Web UI to connect services like GitHub, 
 
 ### `terse run [job-name]`
 
-Execute a job's `onTrigger` handler locally with a mock or provided event.
+Execute a job's `onTrigger` handler locally with a serialized event payload.
 
 ```bash
-terse run my-job --event '{"key": "value"}'
 terse run my-job --event-file ./event.json
 terse run my-job --entry-file src/server.py --event-file ./event.json
 ```
