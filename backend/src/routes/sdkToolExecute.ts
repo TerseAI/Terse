@@ -1,5 +1,6 @@
 import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
+import crypto from "node:crypto"
 import { User } from "terse-types/types"
 import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { z } from "zod"
@@ -134,7 +135,7 @@ export async function handleToolExecute(req: Request, res: Response) {
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
     const persistedRunContext = await resolvePersistedRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
-    const effectiveRunId = persistedRunContext?.runId ?? `sdk-tool-execute-${Date.now()}`
+    const effectiveRunId = persistedRunContext?.runId ?? crypto.randomUUID()
     const effectiveAgentId = persistedRunContext?.agentId ?? "sdk-tool-execute"
     const toolParams = params ?? {}
     const callId = `sdk-tool-${randomString(15)}`
