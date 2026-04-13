@@ -25,6 +25,8 @@ import { GetSentNotificationsResponse } from "terse-types/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 import {
     Agent,
+    AgentFileContentResponse,
+    AgentFilesResponse,
     AgentTemplate,
     type AgentTrigger,
     AgentUpdate,
@@ -515,6 +517,16 @@ interface BackendService {
         warehouse: string,
         stateToken?: string
     ): Promise<{ success: boolean; accountIdentifier: string; warehouse: string }>
+
+    /**
+     * Lists out the files uploaded to an agent
+     */
+    getAgentFiles(agentId: string): Promise<AgentFilesResponse>
+
+    /**
+     * Gets the content of a file uploaded to an agent as a presigend URL
+     */
+    getAgentFileContent(agentId: string, fileId: string): Promise<AgentFileContentResponse>
 }
 
 export const BackendProvider: BackendService = {
@@ -1546,6 +1558,25 @@ export const BackendProvider: BackendService = {
             .then(() => undefined)
             .catch(error => {
                 console.error("Error updating notification settings:", error)
+                throw error
+            })
+    },
+    getAgentFiles: (agentId: string) => {
+        return axios
+            .get<AgentFilesResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILES, { agentId })}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting agent files:", error)
+                throw error
+            })
+    },
+
+    getAgentFileContent: (agentId: string, fileId: string) => {
+        return axios
+            .get<AgentFileContentResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILE_CONTENT, { agentId, fileId })}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting agent file content:", error)
                 throw error
             })
     }

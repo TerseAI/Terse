@@ -1,9 +1,10 @@
+import AdmZip from "adm-zip"
 import { Request, Response } from "express"
+import mime from "mime"
 import { isValidToolName } from "terse-types"
 import { ConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
-import { Agent, AgentDraft, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse } from "terse-types/types"
-import { agentCreateSchema, agentUpdateSchema } from "terse-types/types"
+import { Agent, AgentDraft, AgentFileContentResponse, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, File, agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
@@ -11,8 +12,9 @@ import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
+import { downloadSdkDeployZip } from "../services/FileStorageService"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
-import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
+import { AgentWithNotificationSettingsRelations, AgentWithPromptRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { trackAgentCreated } from "../utility/analytics"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
@@ -850,5 +852,245 @@ export async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): P
                 triggerId: trigger.id
             })
         }
+    }
+}
+
+export async function getAgentFiles(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+
+    const organizationId = req.session.user.organizationId
+    const agentId = req.params.agentId
+
+    try {
+        const agent: AgentWithPromptRelations | null = await db().automations.findFirst({
+            where: {
+                id: agentId,
+                organization_id: organizationId
+            },
+            include: {
+                prompt: true
+            }
+        })
+
+        if (!agent) {
+            res.status(404).json({ error: "Agent files not found" })
+            return
+        }
+
+        const files = await getAgentFilesFromGCS(agent)
+
+        res.status(200).json({ id: agent.id, files })
+    } catch (error) {
+        logger.error("Error fetching agent files", { error, organizationId, agentId })
+        res.status(500).json({ error: "Failed to fetch agent files" })
+    }
+}
+
+export async function getAgentFileContent(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+
+    const organizationId = req.session.user.organizationId
+    const agentId = req.params.agentId
+    const fileId = req.params.fileId
+
+    if (!fileId || typeof fileId !== "string") {
+        res.status(400).json({ error: "Invalid file ID" })
+        return
+    }
+
+    try {
+        const agent: AgentWithPromptRelations | null = await db().automations.findFirst({
+            where: {
+                id: agentId,
+                organization_id: organizationId
+            },
+            include: {
+                prompt: true
+            }
+        })
+
+        if (!agent) {
+            res.status(404).json({ error: "Agent not found" })
+            return
+        }
+
+        const payload = await getAgentFileFromGCS(agent, fileId)
+        if (!payload) {
+            res.status(404).json({ error: "File not found" })
+            return
+        }
+
+        res.status(200).json(payload)
+    } catch (error) {
+        logger.error("Error fetching agent file", { error, organizationId, agentId, fileId })
+        res.status(500).json({ error: "Failed to fetch agent file" })
+    }
+}
+
+type SdkZipTreeNode = { id: string; name: string; children?: SdkZipTreeNode[] }
+
+const MAX_SDK_ZIP_SIZE_BYTES = 50 * 1024 * 1024 // 50 MB
+
+async function loadSdkSourceZip(agent: AgentWithPromptRelations): Promise<AdmZip | null> {
+    const gcsKey = agent.prompt?.source_code_gcs_key
+    if (!gcsKey) {
+        return null
+    }
+    const buffer = await downloadSdkDeployZip(gcsKey)
+    if (!buffer) {
+        return null
+    }
+    if (buffer.length > MAX_SDK_ZIP_SIZE_BYTES) {
+        logger.error("SDK source ZIP exceeds size limit, refusing to load", { gcsKey, sizeBytes: buffer.length })
+        return null
+    }
+    return new AdmZip(buffer)
+}
+
+function normalizeZipEntryName(entryName: string): string {
+    return entryName.replace(/\\/g, "/").replace(/^\/+/, "")
+}
+
+function shouldSkipZipListingPath(path: string): boolean {
+    if (!path) return true
+    if (path === ".DS_Store" || path.endsWith("/.DS_Store")) return true
+    if (path.startsWith("__MACOSX/") || path === "__MACOSX") return true
+    return false
+}
+
+function isSafeArchiveMemberPath(path: string): boolean {
+    if (!path || path.startsWith("/") || path.includes("\0")) {
+        return false
+    }
+    const segments = path.split("/")
+    return !segments.some(s => s === ".." || s === ".")
+}
+
+function insertPathIntoSdkTree(root: SdkZipTreeNode[], relativePath: string): void {
+    const parts = relativePath.split("/").filter(Boolean)
+    if (parts.length === 0) return
+
+    let level = root
+    for (let depth = 0; depth < parts.length; depth++) {
+        const name = parts[depth]
+        const id = parts.slice(0, depth + 1).join("/")
+        const isFile = depth === parts.length - 1
+
+        let node = level.find(n => n.name === name)
+        if (!node) {
+            node = isFile ? { id, name } : { id, name, children: [] }
+            level.push(node)
+        } else if (!isFile && node.children === undefined) {
+            node.children = []
+        }
+
+        if (!isFile) {
+            if (!node.children) {
+                node.children = []
+            }
+            level = node.children
+        }
+    }
+}
+
+function sortSdkFileTreeNodes(nodes: SdkZipTreeNode[]): File[] {
+    const sorted = [...nodes].sort((a, b) => {
+        const aDir = a.children !== undefined
+        const bDir = b.children !== undefined
+        if (aDir !== bDir) {
+            return aDir ? -1 : 1
+        }
+        return a.name.localeCompare(b.name)
+    })
+    return sorted.map(n => ({
+        id: n.id,
+        name: n.name,
+        ...(n.children?.length ? { children: sortSdkFileTreeNodes(n.children) } : {})
+    }))
+}
+
+function listSdkZipPathsRecursive(zip: AdmZip): File[] {
+    const root: SdkZipTreeNode[] = []
+    for (const entry of zip.getEntries()) {
+        if (entry.isDirectory) {
+            continue
+        }
+        const path = normalizeZipEntryName(entry.entryName)
+        if (shouldSkipZipListingPath(path)) {
+            continue
+        }
+        insertPathIntoSdkTree(root, path)
+    }
+    return sortSdkFileTreeNodes(root)
+}
+
+/**
+ * MIME from path using the `mime` package. TypeScript sources (`.ts`, `.mts`, `.cts`, `.tsx`) are handled
+ * explicitly because `mime` maps `.ts`/`.mts` to `video/mp2t` (MPEG-TS) and has no entry for `.tsx`.
+ */
+function mimeTypeForSdkPath(path: string): string {
+    const lower = path.toLowerCase()
+    if (lower.endsWith(".tsx") || lower.endsWith(".ts") || lower.endsWith(".mts") || lower.endsWith(".cts")) {
+        return "text/typescript"
+    }
+
+    const fromMime = mime.getType(path)
+    if (fromMime) {
+        return fromMime
+    }
+
+    const base = (path.split("/").pop() ?? path).toLowerCase()
+    if (base === "dockerfile" || base === "makefile" || base === "containerfile") {
+        return "text/plain"
+    }
+    return "application/octet-stream"
+}
+
+async function getAgentFilesFromGCS(agent: AgentWithPromptRelations): Promise<File[]> {
+    const zip = await loadSdkSourceZip(agent)
+    if (!zip) {
+        return []
+    }
+    return listSdkZipPathsRecursive(zip)
+}
+
+async function getAgentFileFromGCS(agent: AgentWithPromptRelations, fileId: string): Promise<AgentFileContentResponse | null> {
+    let decodedPath = fileId
+    try {
+        decodedPath = decodeURIComponent(fileId)
+    } catch {
+        return null
+    }
+
+    if (!isSafeArchiveMemberPath(decodedPath)) {
+        return null
+    }
+
+    const zip = await loadSdkSourceZip(agent)
+    if (!zip) {
+        return null
+    }
+
+    const entry = zip.getEntries().find(e => !e.isDirectory && normalizeZipEntryName(e.entryName) === decodedPath)
+
+    if (!entry) {
+        return null
+    }
+
+    const raw = entry.getData()
+    const fileName = decodedPath.split("/").pop() ?? decodedPath
+    const mimeType = mimeTypeForSdkPath(decodedPath)
+
+    return {
+        path: decodedPath,
+        fileName,
+        contentBase64: raw.toString("base64"),
+        mimeType
     }
 }
