@@ -1,5 +1,6 @@
 import { Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import { Request, Response } from "express"
+import crypto from "node:crypto"
 import { CONFIG_DETAILS, SkillConfigData } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
@@ -50,7 +51,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     const { send, sandboxRunId } = initSseStream(req, res)
 
     try {
-        const runId = sandboxRunId ?? `sdk-run-${Date.now()}`
+        const runId = sandboxRunId ?? crypto.randomUUID()
         const sdkRunner = createSdkRunner({
             runId,
             user,
