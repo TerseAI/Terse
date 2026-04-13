@@ -33,7 +33,7 @@ export function resolveProvider(opts?: { command?: string; language?: string; cw
 
     console.error("Error: Could not detect Terse project language in the current directory.")
     for (const provider of PROVIDERS) {
-        console.error(`  ${provider.displayName}: ${provider.projectMarkers.requiredFiles.join(", ")}`)
+        console.error(`  ${provider.displayName}: ${provider.detectionMarkers.requiredFiles.join(", ")}`)
     }
     process.exit(1)
 }
@@ -55,5 +55,5 @@ export function resolveProviderByLanguage(language: string): LanguageProvider {
 }
 
 function matchesProjectMarkers(provider: LanguageProvider, cwd: string): boolean {
-    return provider.projectMarkers.requiredFiles.every(relativePath => fs.existsSync(path.join(cwd, relativePath)))
+    return provider.detectionMarkers.requiredFiles.every(relativePath => fs.existsSync(path.join(cwd, relativePath)))
 }

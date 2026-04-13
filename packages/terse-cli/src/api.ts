@@ -4,23 +4,36 @@ import path from "node:path"
 
 import { BACKEND_URL } from "./config.js"
 
-export function readApiKey(): string | null {
-    const envPath = path.resolve(process.cwd(), ".env")
+export function readEnvVar(name: string): string | null {
+    return readEnvVarFromDir(process.cwd(), name)
+}
+
+export function readEnvVarFromDir(dir: string, name: string): string | null {
+    const envPath = path.resolve(dir, ".env")
     if (!fs.existsSync(envPath)) return null
     const content = fs.readFileSync(envPath, "utf-8")
     for (const line of content.split("\n")) {
         const trimmed = line.trim()
         if (trimmed.startsWith("#") || !trimmed.includes("=")) continue
         const [key, ...rest] = trimmed.split("=")
-        if (key.trim() === "TERSE_API_KEY") {
+        if (key.trim() === name) {
             const val = rest.join("=").trim()
-            if (val) {
-                process.env.TERSE_API_KEY = val
-            }
             return val || null
         }
     }
     return null
+}
+
+export function readApiKey(): string | null {
+    return readApiKeyFromDir(process.cwd())
+}
+
+export function readApiKeyFromDir(dir: string): string | null {
+    const val = readEnvVarFromDir(dir, "TERSE_API_KEY")
+    if (val) {
+        process.env.TERSE_API_KEY = val
+    }
+    return val
 }
 
 export function readApiKeyOrBail(options?: { title?: string; detail?: string }): string {

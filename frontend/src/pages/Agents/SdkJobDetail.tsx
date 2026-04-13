@@ -2,11 +2,11 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, Code, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react"
+import { Clock, Code, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Server, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { CONFIG_DETAILS, ConfigType } from "terse-types"
 import { FrontendRoutes } from "terse-types"
-import type { AgentTrigger, SerializedEvent } from "terse-types"
+import type { AgentTrigger, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { Badge } from "../../components/ui/badge"
@@ -19,6 +19,7 @@ import { useSampleEvents } from "../../hooks/api/useSampleEvents"
 import { BackendProvider } from "../../services/backend"
 
 import { IconForConfigType } from "./components/Integration"
+import { SdkJobServerCheckDialog } from "./components/SdkJobServerCheckDialog"
 import { WebhookTriggerCard } from "./components/WebhookTriggerCard"
 import { AgentFileExplorer } from "./tabs/AgentFileExplorer"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
@@ -34,6 +35,9 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isManualTriggering, setIsManualTriggering] = useState(false)
+    const [isVerifyingServer, setIsVerifyingServer] = useState(false)
+    const [serverCheckResult, setServerCheckResult] = useState<SdkJobServerCheckResponse | null>(null)
+    const [showServerCheckDialog, setShowServerCheckDialog] = useState(false)
 
     const {
         isFetching: isFetchingSamples,
@@ -105,6 +109,21 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
         setSelectedTab(1)
     }
 
+    const handleVerifyServer = async () => {
+        if (!agent?.prompt?.remoteServerUrl) return
+
+        setIsVerifyingServer(true)
+        try {
+            const result = await BackendProvider.verifySdkJobServer(agentId)
+            setServerCheckResult(result)
+            setShowServerCheckDialog(true)
+        } catch {
+            toast.error("Failed to verify server")
+        } finally {
+            setIsVerifyingServer(false)
+        }
+    }
+
     const isBusy = isFetchingSamples || isManualTriggering
 
     if (isLoading || !agent) {
@@ -118,6 +137,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     }
 
     const triggers = agent.triggers ?? []
+    const hasSelfHostedJobUrl = agent.source === "SDK" && !!agent.prompt?.remoteServerUrl
 
     return (
         <div className="flex h-full min-w-0 flex-col">
@@ -135,6 +155,12 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                     {agent.isActive ? "Active" : "Paused"}
                 </Badge>
                 <div className="ml-auto flex items-center gap-2">
+                    {hasSelfHostedJobUrl && (
+                        <Button variant="outline" size="sm" onClick={handleVerifyServer} disabled={isVerifyingServer}>
+                            {isVerifyingServer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Server className="h-4 w-4" />}
+                            Verify Server
+                        </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={handleTriggerNow} disabled={isBusy || !agent.isActive || !agent.triggers?.length}>
                         {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                         {isFetchingSamples ? "Fetching events…" : "Trigger Now"}
@@ -241,6 +267,8 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <SdkJobServerCheckDialog open={showServerCheckDialog} result={serverCheckResult} onClose={() => setShowServerCheckDialog(false)} />
 
             {/* Sample events picker dialog */}
             <SampleEventsDialog

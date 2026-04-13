@@ -3,6 +3,7 @@
 """Terse Python SDK."""
 
 from .runtime import (
+    TERSE_JOB_WEBHOOK_TRIGGER_PATH,
     MissingApiKeyError,
     RegisteredJob,
     Terse,
@@ -246,6 +247,7 @@ __all__ = [
     "get_job_registry",
     "SDKTrigger",
     "BaseTrigger",
+    "TERSE_JOB_WEBHOOK_TRIGGER_PATH",
     "Trigger",
     "SlackAppMentionTrigger",
     "SlackMessageTrigger",

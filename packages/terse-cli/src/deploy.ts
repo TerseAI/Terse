@@ -6,23 +6,35 @@ import ora from "ora"
 import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
-import { assertProjectRoot } from "./assertProjectRoot.js"
+import { fetchWithAuth, readApiKeyOrBail, readEnvVar } from "./api.js"
 import { loadJobRegistry } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
-export async function deploy(provider: LanguageProvider = resolveProvider()) {
-    assertProjectRoot(provider)
-
+export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string) {
     const apiKey = readApiKeyOrBail({
         title: "Error: No TERSE_API_KEY found in .env",
         detail: "Run `terse init` to set up your project, or add TERSE_API_KEY to your .env file."
     })
 
-    const registry = await loadJobRegistry(provider)
+    const registry = await loadJobRegistry(provider, entryFile)
     const jobs = [...registry.values()]
-    const { sourceZipBase64, fileCount, zipSizeBytes } = buildZipPayload(provider)
+
+    // If TERSE_REMOTE_SERVER_URL (or legacy TERSE_JOB_URL) is set in .env, deploy
+    // in URL mode (user infrastructure). No source code is zipped or uploaded.
+    const remoteServerUrl = readEnvVar("TERSE_REMOTE_SERVER_URL") ?? readEnvVar("TERSE_JOB_URL")
+    const isUrlMode = !!remoteServerUrl
+
+    let sourceZipBase64: string | undefined
+    let fileCount = 0
+    let zipSizeBytes = 0
+
+    if (!isUrlMode) {
+        const zipPayload = buildZipPayload(provider)
+        sourceZipBase64 = zipPayload.sourceZipBase64
+        fileCount = zipPayload.fileCount
+        zipSizeBytes = zipPayload.zipSizeBytes
+    }
 
     const spinner = ora(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}...`).start()
 
@@ -32,9 +44,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
                 jobName: job.name,
                 triggers: job.triggers,
                 outputs: job.skills ?? [],
-                toolApprovals: job.toolApprovals ?? [],
-                webhookURL: job.webhookURL
+                toolApprovals: job.toolApprovals ?? []
             })),
+            remoteServerUrl: isUrlMode ? remoteServerUrl : undefined,
             sourceZipBase64
         })
 
@@ -62,8 +74,23 @@ export async function deploy(provider: LanguageProvider = resolveProvider()) {
             }
         }
 
-        console.log(chalk.dim(`  Files: ${fileCount}`))
-        console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
+        if (isUrlMode) {
+            console.log(chalk.dim(`  Mode: user infrastructure`))
+            console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
+
+            const signingSecret = result.results.find(r => r.signingSecret)?.signingSecret
+            if (signingSecret) {
+                const existingSecret = readEnvVar("TERSE_SIGNING_SECRET")
+                if (!existingSecret) {
+                    console.log(`\n  Add this to your ${chalk.bold(".env")} file:\n`)
+                    console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
+                    console.log("")
+                }
+            }
+        } else {
+            console.log(chalk.dim(`  Files: ${fileCount}`))
+            console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
+        }
 
         if (result.removed.length > 0) {
             console.log(chalk.yellow(`\nRemoved ${result.removed.length} stale job${result.removed.length === 1 ? "" : "s"} no longer in project:`))

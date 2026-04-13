@@ -8,12 +8,12 @@ from ._base import TerseModel
 from ._generated import (
     ApiToken,
     ApiTokenCreateResponse,
-    ConfigData,
     SdkDeployJob,
     SdkDeployRemoved,
     SdkDeployRequestBody,
     SdkDeployResponseBody,
     SdkDeployResult,
+    SkillConfigData,
     Trigger,
 )
 
@@ -26,7 +26,7 @@ class SdkAgentRunOptionsPayload(TerseModel):
 class SdkAgentRunRequestBody(TerseModel):
     prompt: str | None = None
     event: Trigger | None = None
-    skills: list[ConfigData] | None = None
+    skills: list[SkillConfigData] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: list[str] | None = None
 
@@ -39,7 +39,7 @@ class SdkAgentRunNormalizedRequestOptions(TerseModel):
 class SdkAgentRunNormalizedRequest(TerseModel):
     prompt: str
     event: Trigger
-    skills: list[ConfigData]
+    skills: list[SkillConfigData]
     tool_approvals: list[str]
     options: SdkAgentRunNormalizedRequestOptions
 

@@ -11,10 +11,10 @@ import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
-export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider()): Promise<void> {
+export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     assertProjectRoot(provider)
 
-    const { job } = await loadJob(provider, jobName)
+    const { job } = await loadJob(provider, jobName, entryFile)
     console.log(chalk.cyan(`\n  Testing job: ${job.name}\n`))
 
     const apiKey = readApiKeyOrBail({
@@ -89,7 +89,7 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
             value: index
         }))
     })
-    await provider.executeJob(job, events[choice], { verbose: !!verbose })
+    await provider.executeJob(job, events[choice], { verbose: !!verbose, entryFile })
 }
 
 function serializeEvent(event: Trigger): SerializedEvent {

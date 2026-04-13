@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { configDataSchema, configTypeEnum } from "./Configs"
+import { configDataSchema, configTypeEnum, skillConfigDataSchema, triggerConfigDataSchema } from "./Configs"
 import { integrationTypeEnum } from "./Integrations"
 import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction } from "./RunHistoryTypes"
@@ -16,7 +16,7 @@ import {
     linearTeamSchema,
     slackUserResponseSchema
 } from "./Tools"
-import { TriggerSchema } from "./Triggers"
+import { TriggerSchema, serializedEventSchema } from "./Triggers"
 
 export const roleSchema = z.enum(["admin", "user"])
 export type Role = z.infer<typeof roleSchema>
@@ -229,7 +229,8 @@ export const agentOutputSchema = z.object({
 export type AgentOutput = z.infer<typeof agentOutputSchema>
 
 export const agentPromptSchema = z.object({
-    text: z.string()
+    text: z.string(),
+    remoteServerUrl: z.string().optional()
 })
 export type AgentPrompt = z.infer<typeof agentPromptSchema>
 
@@ -573,7 +574,7 @@ export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayload
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
     event: TriggerSchema.optional(),
-    skills: z.array(configDataSchema).optional(),
+    skills: z.array(skillConfigDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
 })
@@ -592,7 +593,7 @@ export const sdkAgentRunNormalizedRequestOptionsSchema = z.object({
 export const sdkAgentRunNormalizedRequestSchema = z.object({
     prompt: z.string(),
     event: TriggerSchema,
-    skills: z.array(configDataSchema),
+    skills: z.array(skillConfigDataSchema),
     toolApprovals: z.array(z.string()),
     options: sdkAgentRunNormalizedRequestOptionsSchema
 })
@@ -661,23 +662,33 @@ export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionR
 
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
-    triggers: z.array(configDataSchema),
-    outputs: z.array(configDataSchema),
-    toolApprovals: z.array(z.string()),
-    webhookURL: z.string().optional()
+    triggers: z.array(triggerConfigDataSchema),
+    outputs: z.array(skillConfigDataSchema),
+    toolApprovals: z.array(z.string())
 })
 export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
-export const sdkDeployRequestBodySchema = z.object({
-    jobs: z.array(sdkDeployJobSchema),
-    sourceZipBase64: z.string()
-})
+export const sdkDeployRequestBodySchema = z
+    .object({
+        jobs: z.array(sdkDeployJobSchema),
+        remoteServerUrl: z.string().optional(),
+        sourceZipBase64: z.string().optional()
+    })
+    .refine(data => !(data.remoteServerUrl && data.sourceZipBase64), {
+        message: "remoteServerUrl and sourceZipBase64 cannot be provided together",
+        path: ["remoteServerUrl"]
+    })
+    .refine(data => data.remoteServerUrl != null || data.sourceZipBase64 != null, {
+        message: "Either remoteServerUrl or sourceZipBase64 is required",
+        path: ["sourceZipBase64"]
+    })
 export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>
 
 export const sdkDeployResultSchema = z.object({
     jobName: z.string(),
     automationId: z.string(),
     isUpdate: z.boolean(),
+    signingSecret: z.string().optional(),
     triggers: z
         .array(
             z.object({
@@ -701,6 +712,18 @@ export const sdkDeployResponseBodySchema = z.object({
     details: z.string().optional()
 })
 export type SdkDeployResponseBody = z.infer<typeof sdkDeployResponseBodySchema>
+
+export const sdkJobServerCheckStepSchema = z.enum(["http", "json", "response_schema", "challenge_echo", "challenge_signature"])
+export type SdkJobServerCheckStep = z.infer<typeof sdkJobServerCheckStepSchema>
+
+export const sdkJobServerCheckResponseSchema = z.object({
+    success: z.boolean(),
+    message: z.string(),
+    triggerUrl: z.string().optional(),
+    step: sdkJobServerCheckStepSchema.optional(),
+    httpStatus: z.number().optional()
+})
+export type SdkJobServerCheckResponse = z.infer<typeof sdkJobServerCheckResponseSchema>
 
 export type AttioUpsertError = z.infer<typeof attioUpsertErrorSchema>
 
@@ -807,6 +830,37 @@ export const triggerWithEventRequestSchema = z.object({
 })
 export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSchema>
 
+export const TERSE_SIGNATURE_HEADER = "x-terse-signature"
+export const TERSE_TIMESTAMP_HEADER = "x-terse-timestamp"
+export const TERSE_SIGNATURE_VERSION = "v0"
+
+/** Challenge request sent by the Terse backend to the customer's SDK server. */
+export const webhookJobChallengeRequestSchema = z.object({
+    type: z.literal("challenge"),
+    challenge: z.string().min(1)
+})
+export type WebhookJobChallengeRequest = z.infer<typeof webhookJobChallengeRequestSchema>
+
+/** Challenge response from the customer's SDK server -- echoes the token and signs it with the shared signing secret. */
+export const webhookJobChallengeResponseSchema = z.object({
+    challenge: z.string().min(1),
+    signature: z.string().min(1)
+})
+export type WebhookJobChallengeResponse = z.infer<typeof webhookJobChallengeResponseSchema>
+
+/** Second-phase POST: full trigger payload after the backend has verified the challenge handshake. */
+export const webhookJobTriggerRequestSchema = z.object({
+    jobName: z.string(),
+    runId: z.string(),
+    event: serializedEventSchema
+})
+export type WebhookJobTriggerRequest = z.infer<typeof webhookJobTriggerRequestSchema>
+
+export const webhookJobTriggerResponseSchema = z.object({
+    status: z.string().optional(),
+    filtered: z.boolean().optional()
+})
+export type WebhookJobTriggerResponse = z.infer<typeof webhookJobTriggerResponseSchema>
 const fileSchema = z.object({
     id: z.string(),
     name: z.string(),

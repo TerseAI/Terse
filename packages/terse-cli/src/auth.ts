@@ -7,7 +7,7 @@ import process from "node:process"
 import ora from "ora"
 import type { DeviceTokenExchangeResponse } from "terse-types"
 
-import { fetchWithAuth, readApiKey } from "./api.js"
+import { fetchWithAuth, readApiKeyFromDir } from "./api.js"
 import { BACKEND_URL, WORKOS_CLIENT_ID } from "./config.js"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
@@ -168,22 +168,26 @@ export async function login(): Promise<{ apiKey: string; displayName: string | n
  * If a valid key already exists, prompts the user to confirm before re-authenticating.
  */
 export async function loginAndWriteEnv(targetDir: string): Promise<boolean> {
-    const existingKey = readApiKey()
-    if (existingKey) {
+    const existingUserName = await getExistingAuthenticatedUserName(targetDir)
+    if (existingUserName) {
         const spinner = ora("Checking existing API key").start()
-        try {
-            const me = await fetchWithAuth<{ displayName?: string | null; firstName?: string | null; email?: string | null }>("/sdk/me", existingKey)
-            const name = me.displayName || me.firstName || me.email || "Unknown user"
-            spinner.succeed(`Already logged in as ${chalk.bold(name)}`)
-            const shouldContinue = await confirm({ message: "Log in again with a different account?", default: false })
-            if (!shouldContinue) return true
-        } catch {
-            spinner.warn("Existing API key is invalid or expired")
-        }
+        spinner.succeed(`Already logged in as ${chalk.bold(existingUserName)}`)
+        const shouldContinue = await confirm({ message: "Log in again with a different account?", default: false })
+        if (!shouldContinue) return true
+    }
+
+    if (readApiKeyFromDir(targetDir)) {
+        const spinner = ora("Checking existing API key").start()
+        spinner.warn("Existing API key is invalid or expired")
     }
 
     const result = await login()
-    const apiKey = result?.apiKey ?? ""
+    if (!result?.apiKey) {
+        console.log(chalk.dim("  You can run `terse login` later to authenticate."))
+        return false
+    }
+
+    const apiKey = result.apiKey
 
     const envPath = path.resolve(targetDir, ".env")
     const envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf-8") : ""
@@ -195,9 +199,19 @@ export async function loginAndWriteEnv(targetDir: string): Promise<boolean> {
         fs.writeFileSync(envPath, envContent ? `${envContent.trimEnd()}\nTERSE_API_KEY=${apiKey}\n` : `TERSE_API_KEY=${apiKey}\n`)
     }
 
-    if (!result) {
-        console.log(chalk.dim("  You can run `terse login` later to authenticate."))
+    return true
+}
+
+export async function getExistingAuthenticatedUserName(targetDir: string = process.cwd()): Promise<string | null> {
+    const existingKey = readApiKeyFromDir(targetDir)
+    if (!existingKey) {
+        return null
     }
 
-    return true
+    try {
+        const me = await fetchWithAuth<{ displayName?: string | null; firstName?: string | null; email?: string | null }>("/sdk/me", existingKey)
+        return me.displayName || me.firstName || me.email || "Unknown user"
+    } catch {
+        return null
+    }
 }

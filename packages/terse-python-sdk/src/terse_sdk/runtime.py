@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
 import sys
+import threading
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, TypeVar, cast
@@ -14,6 +16,7 @@ import httpx
 from httpx_sse import connect_sse
 from pydantic import BaseModel, RootModel, ValidationError
 
+from ._hmac import compute_challenge_signature, verify_incoming_request
 from ._http_utils import (
     _buffer_response_content,
     _debug_log_request,
@@ -23,8 +26,13 @@ from ._http_utils import (
 )
 from ._logging_utils import LOGGER, _configure_debug_logging
 from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
-from .types._generated import ConfigData, SerializedEvent
-from .types._generated import ManualSampleTrigger as _RawManualSampleTrigger
+from .types._generated import (
+    ManualSampleTrigger as _RawManualSampleTrigger,
+)
+from .types._generated import (
+    SerializedEvent,
+    SkillConfigData,
+)
 from .types.config import TerseSettings
 from .types.events import AnyTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
@@ -39,6 +47,16 @@ from .types.stream_events import (
     SdkAgentStreamEvent,
     ToolCallCompleted,
 )
+
+TERSE_JOB_WEBHOOK_TRIGGER_PATH: str = "/webhook/terse/trigger"
+"""Path relative to ``TERSE_JOB_URL`` where the Terse backend POSTs webhook job triggers.
+
+Mount your handler at this path::
+
+    @app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH)
+    def terse_route():
+        return terse.handle_trigger(request.get_json())
+"""
 
 # Type alias for readability.
 JobEvent = AnyTrigger
@@ -61,7 +79,6 @@ class RegisteredJob:
     triggers: list[TriggerConfig[AnyTrigger]] = field(default_factory=list)
     skills: list[SkillConfig[Any]] = field(default_factory=list)
     filter: JobFilter | None = field(default=None, repr=False, compare=False)
-    webhook_url: str | None = None
     tool_approvals: list[str] | None = None
 
 
@@ -91,12 +108,105 @@ class Terse:
                 triggers=list(triggers or []),
                 skills=list(skills or []),
                 filter=cast(JobFilter | None, filter),
-                webhook_url=webhook_url,
                 tool_approvals=list(tool_approvals or []),
             )
             return handler
 
         return decorator
+
+    def handle_trigger(self, body: dict[str, object], headers: dict[str, str] | None = None) -> dict[str, object]:
+        """Handle an incoming trigger request from the Terse backend.
+
+        Wire this into your own HTTP route (FastAPI, Flask, Django, etc.).
+
+        Two-phase protocol: (1) POST with ``{ type: "challenge", challenge: "<token>" }``
+        verifies the HMAC signature and echoes the challenge with a signed response.
+        (2) POST with ``{ jobName, runId, event }`` opens an SDK session stream, **awaits**
+        ``onTrigger`` (so this method does not return until your job handler finishes),
+        then closes the session stream.
+
+        Both phases require ``TERSE_SIGNING_SECRET`` to verify request signatures.
+
+        Example (FastAPI)::
+
+            @app.post("/terse")
+            async def terse_route(request: Request):
+                raw = await request.body()
+                hdrs = dict(request.headers)
+                return terse.handle_trigger(json.loads(raw), hdrs)
+        """
+
+        signing_secret = os.environ.get("TERSE_SIGNING_SECRET")
+        if not signing_secret:
+            raise TerseRuntimeError(
+                "TERSE_SIGNING_SECRET is not set. "
+                "Add it to your .env file or export it before starting your server. "
+                "You can find your signing secret in the Terse dashboard under your job's settings."
+            )
+
+        if headers:
+            import json as _json
+
+            verify_incoming_request(signing_secret, headers, _json.dumps(body))
+
+        # Phase 1: Challenge handshake
+        if body.get("type") == "challenge" and isinstance(body.get("challenge"), str):
+            challenge_token = cast(str, body["challenge"])
+            signature = compute_challenge_signature(signing_secret, challenge_token)
+            return {"challenge": challenge_token, "signature": signature}
+
+        # Phase 2: Full trigger
+        api_key = _require_api_key()
+
+        job_name = body.get("jobName")
+        if not isinstance(job_name, str) or not job_name:
+            raise TerseRuntimeError("Invalid trigger payload: missing or invalid 'jobName'.")
+
+        run_id = body.get("runId")
+        if not isinstance(run_id, str) or not run_id:
+            raise TerseRuntimeError("Invalid trigger payload: missing or invalid 'runId'.")
+
+        raw_event = body.get("event")
+        if not isinstance(raw_event, dict):
+            raise TerseRuntimeError("Invalid trigger payload: missing or invalid 'event'.")
+
+        job = _JOB_REGISTRY.get(job_name)
+        if job is None:
+            available = list(_JOB_REGISTRY.keys())
+            if available:
+                raise TerseRuntimeError(
+                    f'Job "{job_name}" is not registered. '
+                    f"Registered jobs: {', '.join(available)}. "
+                    "Make sure the job name in your Terse dashboard matches your code."
+                )
+            raise TerseRuntimeError(
+                f'Job "{job_name}" is not registered. '
+                "No jobs are registered. Make sure your job file is imported before the server starts."
+            )
+
+        settings = TerseSettings()
+        api_base_url = settings.backend_url.rstrip("/")
+        session = _open_session_stream(api_base_url, api_key)
+
+        try:
+            input_event = deserialize_input_event(cast(dict[str, object], raw_event))
+            agent = TerseAgent.from_job(
+                job,
+                api_base_url=api_base_url,
+                session_id=session.session_id,
+                run_id=run_id,
+            )
+
+            if job.filter is not None:
+                should_run = job.filter(input_event)
+                if not should_run:
+                    return {"status": "ok", "filtered": True}
+
+            job.handler(input_event, agent)
+
+            return {"status": "ok"}
+        finally:
+            session.close()
 
 
 class TerseAgent:
@@ -109,6 +219,7 @@ class TerseAgent:
         session_id: str | None = None,
         manual_tool_configs: Sequence[TriggerConfig | SkillConfig[Any]] | None = None,
         tool_approvals: list[str] | None = None,
+        run_id: str | None = None,
     ) -> None:
         settings = TerseSettings()
         self.skills = list(skills or [])
@@ -117,6 +228,7 @@ class TerseAgent:
         self.session_id = session_id
         self._tools: object | None = None
         self.tool_approvals = tool_approvals
+        self.run_id = run_id
 
     @property
     def tools(self) -> object:
@@ -149,6 +261,27 @@ class TerseAgent:
         self._tools = factory(self)
         return self._tools
 
+    @classmethod
+    def from_job(
+        cls,
+        job: RegisteredJob,
+        api_base_url: str | None = None,
+        session_id: str | None = None,
+        run_id: str | None = None,
+    ) -> TerseAgent:
+        """Create a :class:`TerseAgent` pre-configured from a registered job."""
+
+        agent = cls(
+            skills=job.skills,
+            backend_url=api_base_url,
+            session_id=session_id,
+            tool_approvals=list(job.tool_approvals or []),
+            run_id=run_id,
+        )
+        agent.manual_tool_configs = [*job.skills, *job.triggers]
+        agent.ensure_generated_tools()
+        return agent
+
     def run(self, prompt: str, event: AnyTrigger | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
@@ -170,7 +303,9 @@ class TerseAgent:
         event_payload = request_payload.get("event")
         if request_body.event is not None and isinstance(event_payload, dict):
             request_payload["event"] = _strip_optional_nones(cast(dict[str, object], event_payload), request_body.event)
-        headers = _build_auth_headers(api_key, accept="text/event-stream", session_id=self.session_id)
+        headers = _build_auth_headers(
+            api_key, accept="text/event-stream", session_id=self.session_id, run_id=self.run_id
+        )
         _debug_log_request(
             LOGGER,
             "POST",
@@ -230,7 +365,7 @@ class TerseAgent:
         """Execute a deterministic tool via the backend."""
 
         api_key = _require_api_key()
-        headers = _build_auth_headers(api_key, session_id=self.session_id)
+        headers = _build_auth_headers(api_key, session_id=self.session_id, run_id=self.run_id)
         request_payload = {"toolName": tool_name, "params": dict(params or {})}
         _debug_log_request(
             LOGGER,
@@ -374,12 +509,12 @@ def execute_registered_job(
     return False
 
 
-def _serialize_skill_config(skill: SkillConfig[Any]) -> ConfigData:
+def _serialize_skill_config(skill: SkillConfig[Any]) -> SkillConfigData:
     config = {k: v for k, v in skill.config.items() if v is not None}
     config["integrationId"] = skill.integration_id
     config["integrationType"] = skill.integration_type
     config["configType"] = skill.config_type
-    return ConfigData.model_validate(config)
+    return SkillConfigData.model_validate(config)
 
 
 def _resolve_generated_tools_factory() -> Callable[[TerseAgent], object] | None:
@@ -481,6 +616,7 @@ def _build_auth_headers(
     api_key: str,
     accept: str = "application/json",
     session_id: str | None = None,
+    run_id: str | None = None,
 ) -> dict[str, str]:
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -490,8 +626,9 @@ def _build_auth_headers(
 
     if session_id:
         headers["X-Terse-Session-Id"] = session_id
-    if run_id := os.environ.get("TERSE_RUN_ID"):
-        headers["X-Terse-Run-Id"] = run_id
+    resolved_run_id = run_id or os.environ.get("TERSE_RUN_ID")
+    if resolved_run_id:
+        headers["X-Terse-Run-Id"] = resolved_run_id
 
     return headers
 
@@ -592,3 +729,64 @@ def _build_agent_run_request_body(
 
 def _drop_top_level_none_values(payload: dict[str, object]) -> dict[str, object]:
     return {key: value for key, value in payload.items() if value is not None}
+
+
+class _SessionStreamHandle:
+    """Handle for an open SSE session stream."""
+
+    def __init__(self, session_id: str, response: httpx.Response, client: httpx.Client) -> None:
+        self.session_id = session_id
+        self._response = response
+        self._client = client
+
+    def close(self) -> None:
+        with contextlib.suppress(Exception):
+            self._response.close()
+        with contextlib.suppress(Exception):
+            self._client.close()
+
+
+def _open_session_stream(backend_url: str, api_key: str) -> _SessionStreamHandle:
+    """Open an SSE session stream and return a handle with the ``session_id``.
+
+    Mirrors the TypeScript ``openSessionStream`` in ``packages/terse-sdk/src/sessionStream.ts``.
+    Reads the initial ``session_started`` event, then drains remaining events in a background
+    thread so the HTTP connection stays alive until ``handle.close()`` is called.
+    """
+
+    url = f"{backend_url}/sdk/session-events"
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "text/event-stream"}
+
+    client = httpx.Client(timeout=None)
+    response = client.send(client.build_request("GET", url, headers=headers), stream=True)
+
+    if response.is_error:
+        response.close()
+        client.close()
+        raise TerseApiError(f"Failed to open session event stream (HTTP {response.status_code})")
+
+    line_iter = response.iter_lines()
+
+    for line in line_iter:
+        if not line.startswith("data: "):
+            continue
+        try:
+            data = json.loads(line[6:])
+        except json.JSONDecodeError:
+            continue
+        if data.get("type") == "session_started" and isinstance(data.get("sessionId"), str):
+
+            def _drain() -> None:
+                try:
+                    for _ in line_iter:
+                        pass
+                except Exception:  # noqa: BLE001
+                    pass
+
+            threading.Thread(target=_drain, daemon=True).start()
+
+            return _SessionStreamHandle(session_id=data["sessionId"], response=response, client=client)
+
+    response.close()
+    client.close()
+    raise TerseApiError("Session stream ended before sending sessionId")

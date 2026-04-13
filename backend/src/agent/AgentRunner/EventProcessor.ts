@@ -1,5 +1,5 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
-import { ConfigData } from "terse-types"
+import { ConfigData, SerializedEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
@@ -11,6 +11,7 @@ import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRunFailedAndInvalidate } from "../../realtimeSocket"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
+import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
@@ -238,9 +239,17 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
         }
 
+        // SDK agents with a remote_server_url trigger the user's own infrastructure via webhook
+        if (agent.source === "SDK" && agent.prompt?.remote_server_url) {
+            return this.processWebhookAgent(agent, existingRunId)
+        }
+
         // SDK agents run in a Modal sandbox instead of the normal agent pipeline
-        if (agent.source === "SDK" && agent.prompt?.source_code_gcs_key) {
+        else if (agent.source === "SDK" && agent.prompt?.source_code_gcs_key) {
             return this.processSdkAgent(agent, existingRunId)
+        } else if (agent.source === "SDK") {
+            logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name, source: agent.source })
+            throw new Error(`Unknown agent source: ${agent.source}`)
         }
 
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
@@ -437,6 +446,47 @@ export class EventProcessor {
             })
 
         return new ProcessorResult(true, "SDK job execution started", agent, undefined, runId)
+    }
+
+    private async processWebhookAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
+        const runId = existingRunId ?? (await this.createRunForAgent(agent))
+
+        const event = this.inputEvent.getSerializedEvent()
+
+        const remoteServerUrl = agent.prompt?.remote_server_url
+        if (!remoteServerUrl) {
+            throw new Error(`Webhook agent "${agent.name}" is missing remote_server_url`)
+        }
+
+        const signingSecret = agent.prompt?.signing_secret
+        if (!signingSecret) {
+            throw new Error(`Webhook agent "${agent.name}" is missing signing_secret`)
+        }
+
+        logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, remoteServerUrl })
+
+        // Fire-and-forget: webhook execution runs asynchronously
+        const service = new WebhookJobExecutionService()
+        void service
+            .execute({
+                remoteServerUrl,
+                runId,
+                agentId: agent.id,
+                orgId: this.user.organizationId,
+                user: this.user,
+                event,
+                jobName: agent.name,
+                signingSecret
+            })
+            .catch(error => {
+                logger.error(`Webhook job execution failed for agent "${agent.name}"`, {
+                    error,
+                    runId,
+                    agentId: agent.id
+                })
+            })
+
+        return new ProcessorResult(true, "Webhook job execution started", agent, undefined, runId)
     }
 }
 
