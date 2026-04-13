@@ -8,10 +8,11 @@ import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
-import { UrlValidationError, validateRemoteServerUrl } from "../utility/urlValidation"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
+import { UrlValidationError, validateRemoteServerUrl } from "../utility/urlValidation"
+import { generateWebhookSecret } from "../utility/webhookSecrets"
 
 import { createOutputConfig, createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
 
@@ -72,7 +73,14 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             await setupAgentTriggers(agent)
 
-            results.push({ jobName: job.jobName, automationId: agent.id, isUpdate })
+            const prompt = await prisma.automation_prompts.findUnique({ where: { automation_id: agent.id }, select: { signing_secret: true } })
+
+            results.push({
+                jobName: job.jobName,
+                automationId: agent.id,
+                isUpdate,
+                signingSecret: prompt?.signing_secret ?? undefined
+            })
 
             logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
                 automationId: agent.id,
@@ -159,7 +167,8 @@ async function updateExistingAutomation(
                 automation_id: automationId,
                 content: "[SDK]",
                 source_code_gcs_key: gcsKey ?? null,
-                remote_server_url: remoteServerUrl ?? null
+                remote_server_url: remoteServerUrl ?? null,
+                signing_secret: generateWebhookSecret()
             }
         })
 
@@ -218,7 +227,8 @@ async function createNewAutomation(
                 automation_id: newAgent.id,
                 content: "[SDK]",
                 source_code_gcs_key: gcsKey,
-                remote_server_url: remoteServerUrl
+                remote_server_url: remoteServerUrl,
+                signing_secret: generateWebhookSecret()
             }
         })
 

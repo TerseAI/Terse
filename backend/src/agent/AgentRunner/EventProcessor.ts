@@ -458,6 +458,11 @@ export class EventProcessor {
             throw new Error(`Webhook agent "${agent.name}" is missing remote_server_url`)
         }
 
+        const signingSecret = agent.prompt?.signing_secret
+        if (!signingSecret) {
+            throw new Error(`Webhook agent "${agent.name}" is missing signing_secret`)
+        }
+
         logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, remoteServerUrl })
 
         // Fire-and-forget: webhook execution runs asynchronously
@@ -470,7 +475,8 @@ export class EventProcessor {
                 orgId: this.user.organizationId,
                 user: this.user,
                 event,
-                jobName: agent.name
+                jobName: agent.name,
+                signingSecret
             })
             .catch(error => {
                 logger.error(`Webhook job execution failed for agent "${agent.name}"`, {

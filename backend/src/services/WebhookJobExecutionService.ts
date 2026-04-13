@@ -6,6 +6,7 @@ import { finalizeRunStatus, markRunFailed, markRunSkipped } from "../agent/Agent
 import logger from "../logger"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { extractErrorMessage } from "../utility/strings"
+import { buildSignatureHeaders } from "../utility/webhookHmac"
 
 import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from "./webhookJobHandshakeChallenge"
 
@@ -17,14 +18,15 @@ export interface WebhookJobExecutionParams {
     user: User
     event: SerializedEvent
     jobName: string
+    signingSecret: string
 }
 
 export class WebhookJobExecutionService {
     async execute(params: WebhookJobExecutionParams): Promise<void> {
-        const { remoteServerUrl, runId, agentId, orgId, event, jobName } = params
+        const { remoteServerUrl, runId, agentId, orgId, event, jobName, signingSecret } = params
 
         try {
-            const challenge = await runWebhookJobHandshakeChallenge({ remoteServerUrl, organizationId: orgId })
+            const challenge = await runWebhookJobHandshakeChallenge({ remoteServerUrl, signingSecret })
             logger.info("Webhook job: handshake then deliver", { runId, agentId, triggerUrl: challenge.triggerUrl })
 
             if (!challenge.ok) {
@@ -44,12 +46,16 @@ export class WebhookJobExecutionService {
 
             const deliverController = new AbortController()
             const deliverTimeout = setTimeout(() => deliverController.abort(), WEBHOOK_JOB_FETCH_TIMEOUT_MS)
+            const deliverBody = JSON.stringify({ jobName, runId, event })
             let deliverResponse: Response
             try {
                 deliverResponse = await fetch(challenge.triggerUrl, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ jobName, runId, event }),
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...buildSignatureHeaders(signingSecret, deliverBody)
+                    },
+                    body: deliverBody,
                     signal: deliverController.signal
                 })
             } finally {

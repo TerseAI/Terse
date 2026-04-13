@@ -23,7 +23,8 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
                 source: true,
                 prompt: {
                     select: {
-                        remote_server_url: true
+                        remote_server_url: true,
+                        signing_secret: true
                     }
                 }
             }
@@ -41,15 +42,23 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
             return res.status(400).json(response)
         }
 
+        if (!agent.prompt.signing_secret) {
+            const response: SdkJobServerCheckResponse = {
+                success: false,
+                message: "This SDK job does not have a signing secret configured. Try redeploying."
+            }
+            return res.status(400).json(response)
+        }
+
         const result = await runWebhookJobHandshakeChallenge({
             remoteServerUrl: agent.prompt.remote_server_url,
-            organizationId: session.user.organizationId
+            signingSecret: agent.prompt.signing_secret
         })
 
         if (result.ok) {
             const response: SdkJobServerCheckResponse = {
                 success: true,
-                message: "Server verified. Terse successfully reached your trigger endpoint and validated the returned API key.",
+                message: "Server verified. Terse successfully completed the challenge handshake with your trigger endpoint.",
                 triggerUrl: result.triggerUrl
             }
             return res.status(200).json(response)

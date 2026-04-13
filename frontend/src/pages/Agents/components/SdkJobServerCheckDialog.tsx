@@ -12,10 +12,10 @@ function formatServerCheckStep(step: NonNullable<SdkJobServerCheckResponse["step
             return "Reading the server response"
         case "response_schema":
             return "Validating the handshake payload"
-        case "token":
-            return "Checking the returned API key"
-        case "org":
-            return "Confirming the API key belongs to this organization"
+        case "challenge_echo":
+            return "Verifying the challenge response"
+        case "challenge_signature":
+            return "Verifying the signing secret"
         default:
             return step
     }

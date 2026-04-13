@@ -6,9 +6,12 @@ import type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
+    WebhookJobChallengeResponse,
     WebhookJobTriggerResponse
 } from "terse-types"
 import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
+
+import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
@@ -181,30 +184,39 @@ export class Terse {
      * Handle an incoming trigger request from the Terse backend.
      * Wire this into your own HTTP route (Express, Hono, Next.js, etc.).
      *
-     * Two-phase protocol: (1) POST with `{ challenge: true }` — returns `{ apiKey }` for the
-     * backend to verify before any event leaves Terse. (2) POST with `{ jobName, runId, event }` —
-     * opens an SDK session stream, **awaits** `onTrigger` (so this method does not return until your
-     * job handler finishes — ensure you `await Agent.runAndWait` / the full agent run), then closes
-     * the session stream.
+     * Two-phase protocol: (1) POST with `{ type: "challenge", challenge: "<token>" }` verifies the
+     * HMAC signature and echoes the challenge with a signed response. (2) POST with
+     * `{ jobName, runId, event }` opens an SDK session stream, **awaits** `onTrigger` (so this
+     * method does not return until your job handler finishes), then closes the session stream.
+     *
+     * Both phases require `TERSE_SIGNING_SECRET` to verify request signatures.
      *
      * @example
      * ```ts
      * // Express — use TERSE_JOB_WEBHOOK_TRIGGER_PATH so the path matches the backend.
      * app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, async (req, res) => {
-     *     const result = await terse.handleTrigger(req.body)
+     *     const result = await terse.handleTrigger(req.body, req.headers)
      *     res.json(result)
      * })
      * ```
      */
-    async handleTrigger(body: unknown): Promise<WebhookJobTriggerResponse> {
+    async handleTrigger(body: unknown, headers: Record<string, string | string[] | undefined> = {}): Promise<WebhookJobChallengeResponse | WebhookJobTriggerResponse> {
+        const signingSecret = process.env.TERSE_SIGNING_SECRET
+        if (!signingSecret) {
+            throw new Error("TERSE_SIGNING_SECRET environment variable is not set.")
+        }
+
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set.")
         }
 
+        verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
+
         const challenge = webhookJobChallengeRequestSchema.safeParse(body)
         if (challenge.success) {
-            return { status: "ok", apiKey }
+            const signature = computeChallengeSignature(signingSecret, challenge.data.challenge)
+            return { challenge: challenge.data.challenge, signature }
         }
 
         const full = webhookJobTriggerRequestSchema.safeParse(body)
@@ -223,19 +235,18 @@ export class Terse {
         const session = await openSessionStream(apiBaseUrl, apiKey)
 
         try {
-            // Set up the job
             const inputEvent = createSDKTrigger(event)
             const agent = TerseAgent.fromJob(job, { apiBaseUrl, sessionId: session.sessionId, runId })
 
             if (job.filter) {
                 const shouldRun = await job.filter(inputEvent)
                 if (!shouldRun) {
-                    return { status: "ok", apiKey, filtered: true }
+                    return { status: "ok", filtered: true }
                 }
             }
             await job.onTrigger(inputEvent, agent)
 
-            return { status: "ok", apiKey }
+            return { status: "ok" }
         } catch (error) {
             session.close()
             throw error

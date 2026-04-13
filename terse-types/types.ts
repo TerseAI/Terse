@@ -688,6 +688,7 @@ export const sdkDeployResultSchema = z.object({
     jobName: z.string(),
     automationId: z.string(),
     isUpdate: z.boolean(),
+    signingSecret: z.string().optional(),
     triggers: z
         .array(
             z.object({
@@ -712,7 +713,7 @@ export const sdkDeployResponseBodySchema = z.object({
 })
 export type SdkDeployResponseBody = z.infer<typeof sdkDeployResponseBodySchema>
 
-export const sdkJobServerCheckStepSchema = z.enum(["http", "json", "response_schema", "token", "org"])
+export const sdkJobServerCheckStepSchema = z.enum(["http", "json", "response_schema", "challenge_echo", "challenge_signature"])
 export type SdkJobServerCheckStep = z.infer<typeof sdkJobServerCheckStepSchema>
 
 export const sdkJobServerCheckResponseSchema = z.object({
@@ -829,12 +830,25 @@ export const triggerWithEventRequestSchema = z.object({
 })
 export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSchema>
 
+export const TERSE_SIGNATURE_HEADER = "x-terse-signature"
+export const TERSE_TIMESTAMP_HEADER = "x-terse-timestamp"
+export const TERSE_SIGNATURE_VERSION = "v0"
+
+/** Challenge request sent by the Terse backend to the customer's SDK server. */
 export const webhookJobChallengeRequestSchema = z.object({
-    challenge: z.literal(true)
+    type: z.literal("challenge"),
+    challenge: z.string().min(1)
 })
 export type WebhookJobChallengeRequest = z.infer<typeof webhookJobChallengeRequestSchema>
 
-/** Second-phase POST: full trigger payload after the backend has verified the handshake `apiKey`. */
+/** Challenge response from the customer's SDK server -- echoes the token and signs it with the shared signing secret. */
+export const webhookJobChallengeResponseSchema = z.object({
+    challenge: z.string().min(1),
+    signature: z.string().min(1)
+})
+export type WebhookJobChallengeResponse = z.infer<typeof webhookJobChallengeResponseSchema>
+
+/** Second-phase POST: full trigger payload after the backend has verified the challenge handshake. */
 export const webhookJobTriggerRequestSchema = z.object({
     jobName: z.string(),
     runId: z.string(),
@@ -844,7 +858,6 @@ export type WebhookJobTriggerRequest = z.infer<typeof webhookJobTriggerRequestSc
 
 export const webhookJobTriggerResponseSchema = z.object({
     status: z.string().optional(),
-    apiKey: z.string().min(1),
     filtered: z.boolean().optional()
 })
 export type WebhookJobTriggerResponse = z.infer<typeof webhookJobTriggerResponseSchema>

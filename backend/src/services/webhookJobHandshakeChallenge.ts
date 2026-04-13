@@ -1,18 +1,16 @@
 import { ApiRoutes } from "terse-types"
-import { webhookJobTriggerResponseSchema } from "terse-types/types"
+import { webhookJobChallengeResponseSchema } from "terse-types/types"
 
-import { db } from "../prismaClient"
-import { hashToken } from "../utility/apiTokens"
 import { extractErrorMessage } from "../utility/strings"
 import { validateRemoteServerUrl } from "../utility/urlValidation"
+import { buildSignatureHeaders, generateChallengeToken, verifyChallengeSignature } from "../utility/webhookHmac"
 import { joinJobServerPath } from "../utility/webhookUrl"
 
-/** Default timeout for handshake and delivery POSTs to a deployed SDK job URL. */
 export const WEBHOOK_JOB_FETCH_TIMEOUT_MS = 30_000
 
 export interface WebhookJobHandshakeChallengeParams {
     remoteServerUrl: string
-    organizationId: string
+    signingSecret: string
     /**
      * When set, aborts the handshake fetch if this signal aborts (e.g. HTTP request cancelled).
      * The timeout still applies.
@@ -21,23 +19,23 @@ export interface WebhookJobHandshakeChallengeParams {
 }
 
 /**
- * Outcome of the challenge POST (`{ challenge: true }` only) plus server-side verification that the
- * returned `apiKey` is a valid API token for `organizationId`. Use from webhook execution and
- * from a “test endpoint” action in the Web UI.
+ * Outcome of the challenge POST plus server-side verification that the returned signature
+ * proves the remote server holds the correct signing secret.
  */
 export type WebhookJobHandshakeChallengeResult =
     | { ok: true; triggerUrl: string }
     | {
           ok: false
           triggerUrl: string
-          step: "http" | "json" | "response_schema" | "token" | "org"
+          step: "http" | "json" | "response_schema" | "challenge_echo" | "challenge_signature"
           message: string
           httpStatus?: number
       }
 
 /**
- * POSTs `{ challenge: true }` to the job’s Terse trigger path, parses `{ apiKey }`, and verifies
- * the key exists and belongs to `organizationId`.
+ * POSTs `{ type: "challenge", challenge: "<random>" }` (signed) to the job's Terse trigger path,
+ * then verifies the server echoed the challenge and provided a valid HMAC signature proving it
+ * holds the signing secret.
  */
 export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshakeChallengeParams): Promise<WebhookJobHandshakeChallengeResult> {
     const timeoutMs = WEBHOOK_JOB_FETCH_TIMEOUT_MS
@@ -54,6 +52,8 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     const triggerUrl = joinJobServerPath(params.remoteServerUrl, ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER)
+    const challengeToken = generateChallengeToken()
+    const body = JSON.stringify({ type: "challenge", challenge: challengeToken })
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -69,8 +69,11 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     try {
         response = await fetch(triggerUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ challenge: true }),
+            headers: {
+                "Content-Type": "application/json",
+                ...buildSignatureHeaders(params.signingSecret, body)
+            },
+            body,
             signal: controller.signal
         })
     } catch (error) {
@@ -86,8 +89,8 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     if (!response.ok) {
-        const body = await response.text().catch(() => "")
-        const detail = body.slice(0, 500)
+        const responseBody = await response.text().catch(() => "")
+        const detail = responseBody.slice(0, 500)
         return {
             ok: false,
             triggerUrl,
@@ -109,9 +112,9 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
         }
     }
 
-    const parsedHandshake = webhookJobTriggerResponseSchema.safeParse(handshakeJson)
-    if (!parsedHandshake.success) {
-        const details = parsedHandshake.error.issues.map(i => i.message).join("; ")
+    const parsed = webhookJobChallengeResponseSchema.safeParse(handshakeJson)
+    if (!parsed.success) {
+        const details = parsed.error.issues.map(i => i.message).join("; ")
         return {
             ok: false,
             triggerUrl,
@@ -120,26 +123,21 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
         }
     }
 
-    const tokenHash = hashToken(parsedHandshake.data.apiKey)
-    const token = await db().api_tokens.findUnique({
-        where: { token_hash: tokenHash }
-    })
-
-    if (!token) {
+    if (parsed.data.challenge !== challengeToken) {
         return {
             ok: false,
             triggerUrl,
-            step: "token",
-            message: "Webhook handshake failed: invalid API key"
+            step: "challenge_echo",
+            message: "Webhook handshake failed: server did not echo the challenge token correctly"
         }
     }
 
-    if (token.organization_id !== params.organizationId) {
+    if (!verifyChallengeSignature(params.signingSecret, challengeToken, parsed.data.signature)) {
         return {
             ok: false,
             triggerUrl,
-            step: "org",
-            message: "Webhook handshake failed: API key does not belong to this organization"
+            step: "challenge_signature",
+            message: "Webhook handshake failed: invalid challenge signature (signing secret mismatch)"
         }
     }
 

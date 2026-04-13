@@ -345,6 +345,7 @@ model automation_prompts {
   content             String   @db.Text
   source_code_gcs_key String?
   remote_server_url   String?
+  signing_secret      String?
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
