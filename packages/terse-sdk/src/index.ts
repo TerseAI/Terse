@@ -10,8 +10,6 @@ import type {
     WebhookJobTriggerResponse
 } from "terse-types"
 import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
-
-import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
@@ -52,6 +50,7 @@ import type {
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
 
+import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
 import { type InferEvents, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
 

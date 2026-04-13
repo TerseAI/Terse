@@ -1,5 +1,6 @@
 import crypto from "node:crypto"
 import { TERSE_SIGNATURE_HEADER, TERSE_SIGNATURE_VERSION, TERSE_TIMESTAMP_HEADER } from "terse-types"
+
 const MAX_TIMESTAMP_AGE_SECONDS = 300
 
 function computeRequestSignature(signingSecret: string, timestamp: number, body: string): string {

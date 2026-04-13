@@ -23,6 +23,7 @@ from ._http_utils import (
     _debug_log_response_payload,
     _read_response_detail,
 )
+from ._hmac import compute_challenge_signature, verify_incoming_request
 from ._logging_utils import LOGGER, _configure_debug_logging
 from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
 from .types._generated import ManualSampleTrigger as _RawManualSampleTrigger
@@ -108,30 +109,45 @@ class Terse:
 
         return decorator
 
-    def handle_trigger(self, body: dict[str, object]) -> dict[str, object]:
+    def handle_trigger(self, body: dict[str, object], headers: dict[str, str] | None = None) -> dict[str, object]:
         """Handle an incoming trigger request from the Terse backend.
 
         Wire this into your own HTTP route (FastAPI, Flask, Django, etc.).
 
-        Two-phase protocol: (1) POST with ``{ challenge: true }`` returns ``{ apiKey }`` for the
-        backend to verify before any event leaves Terse. (2) POST with ``{ jobName, runId, event }``
-        opens an SDK session stream, **awaits** ``onTrigger`` (so this method does not return until
-        your job handler finishes), then closes the session stream.
+        Two-phase protocol: (1) POST with ``{ type: "challenge", challenge: "<token>" }``
+        verifies the HMAC signature and echoes the challenge with a signed response.
+        (2) POST with ``{ jobName, runId, event }`` opens an SDK session stream, **awaits**
+        ``onTrigger`` (so this method does not return until your job handler finishes),
+        then closes the session stream.
+
+        Both phases require ``TERSE_SIGNING_SECRET`` to verify request signatures.
 
         Example (FastAPI)::
 
             @app.post("/terse")
             async def terse_route(request: Request):
-                return terse.handle_trigger(await request.json())
+                raw = await request.body()
+                hdrs = dict(request.headers)
+                return terse.handle_trigger(json.loads(raw), hdrs)
         """
 
-        api_key = _require_api_key()
+        signing_secret = os.environ.get("TERSE_SIGNING_SECRET")
+        if not signing_secret:
+            raise TerseRuntimeError("TERSE_SIGNING_SECRET environment variable is not set.")
+
+        if headers:
+            import json as _json
+            verify_incoming_request(signing_secret, headers, _json.dumps(body))
 
         # Phase 1: Challenge handshake
-        if body.get("challenge") is True:
-            return {"status": "ok", "apiKey": api_key}
+        if body.get("type") == "challenge" and isinstance(body.get("challenge"), str):
+            challenge_token = cast(str, body["challenge"])
+            signature = compute_challenge_signature(signing_secret, challenge_token)
+            return {"challenge": challenge_token, "signature": signature}
 
         # Phase 2: Full trigger
+        api_key = _require_api_key()
+
         job_name = body.get("jobName")
         if not isinstance(job_name, str) or not job_name:
             raise TerseRuntimeError("Invalid webhook trigger body: missing or invalid 'jobName'")
@@ -165,11 +181,11 @@ class Terse:
             if job.filter is not None:
                 should_run = job.filter(input_event)
                 if not should_run:
-                    return {"status": "ok", "apiKey": api_key, "filtered": True}
+                    return {"status": "ok", "filtered": True}
 
             job.handler(input_event, agent)
 
-            return {"status": "ok", "apiKey": api_key}
+            return {"status": "ok"}
         finally:
             session.close()
 
