@@ -204,17 +204,14 @@ export class Terse {
         if (!signingSecret) {
             throw new Error(
                 "TERSE_SIGNING_SECRET is not set. " +
-                "Add it to your .env file or export it before starting your server. " +
-                "You can find your signing secret in the Terse dashboard under your job's settings."
+                    "Add it to your .env file or export it before starting your server. " +
+                    "You can find your signing secret in the Terse dashboard under your job's settings."
             )
         }
 
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
-            throw new Error(
-                "TERSE_API_KEY is not set. " +
-                "Add it to your .env file or export it before starting your server."
-            )
+            throw new Error("TERSE_API_KEY is not set. " + "Add it to your .env file or export it before starting your server.")
         }
 
         verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
@@ -237,9 +234,9 @@ export class Terse {
             const available = [..._jobRegistry.keys()]
             throw new Error(
                 `Job "${jobName}" is not registered. ` +
-                (available.length
-                    ? `Registered jobs: ${available.join(", ")}. Make sure the job name in your Terse dashboard matches your code.`
-                    : `No jobs are registered. Make sure your job file is imported before the server starts.`)
+                    (available.length
+                        ? `Registered jobs: ${available.join(", ")}. Make sure the job name in your Terse dashboard matches your code.`
+                        : `No jobs are registered. Make sure your job file is imported before the server starts.`)
             )
         }
 

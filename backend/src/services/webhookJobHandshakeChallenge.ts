@@ -95,9 +95,7 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
             ok: false,
             triggerUrl,
             step: "http",
-            message: detail
-                ? `Server responded ${response.status}: ${detail}`
-                : `Server responded with HTTP ${response.status} (${response.statusText || "error"}).`,
+            message: detail ? `Server responded ${response.status}: ${detail}` : `Server responded with HTTP ${response.status} (${response.statusText || "error"}).`,
             httpStatus: response.status
         }
     }
@@ -171,14 +169,22 @@ function extractResponseErrorDetail(body: string): string {
         // Express wraps errors in <pre>Error: message\n    at ...</pre>
         const preMatch = trimmed.match(/<pre>([\s\S]*?)<\/pre>/)
         if (preMatch) {
-            const preText = preMatch[1].replace(/<br\s*\/?>/gi, "\n").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+            const preText = preMatch[1]
+                .replace(/<br\s*\/?>/gi, "\n")
+                .replace(/&nbsp;/g, " ")
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
             // Take only the first line (the error message), skip the stack trace
             const firstLine = preText.split("\n")[0].trim()
             // Strip "Error: " prefix since we already show context
             return firstLine.replace(/^Error:\s*/, "").slice(0, 300)
         }
         // Generic HTML: strip all tags
-        const stripped = trimmed.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+        const stripped = trimmed
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
         return stripped.slice(0, 300)
     }
 

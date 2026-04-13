@@ -28,33 +28,22 @@ export function verifyIncomingRequest(signingSecret: string, headers: Record<str
     const signature = headers[TERSE_SIGNATURE_HEADER]
     const timestampStr = headers[TERSE_TIMESTAMP_HEADER]
     if (typeof signature !== "string" || typeof timestampStr !== "string") {
-        const missing = [
-            typeof signature !== "string" ? TERSE_SIGNATURE_HEADER : null,
-            typeof timestampStr !== "string" ? TERSE_TIMESTAMP_HEADER : null
-        ].filter(Boolean)
+        const missing = [typeof signature !== "string" ? TERSE_SIGNATURE_HEADER : null, typeof timestampStr !== "string" ? TERSE_TIMESTAMP_HEADER : null].filter(Boolean)
         throw new Error(
             `Missing required headers: ${missing.join(", ")}.\n` +
-            `Make sure requests to this endpoint are coming from Terse (not a browser or other client) ` +
-            `and that your reverse proxy is forwarding all headers.`
+                `Make sure requests to this endpoint are coming from Terse (not a browser or other client) ` +
+                `and that your reverse proxy is forwarding all headers.`
         )
     }
     const timestamp = Number(timestampStr)
     if (Number.isNaN(timestamp)) {
-        throw new Error(
-            `"${TERSE_TIMESTAMP_HEADER}" header is not a valid number (got "${timestampStr}").`
-        )
+        throw new Error(`"${TERSE_TIMESTAMP_HEADER}" header is not a valid number (got "${timestampStr}").`)
     }
     const age = Math.abs(Math.floor(Date.now() / 1000) - timestamp)
     if (age > MAX_TIMESTAMP_AGE_SECONDS) {
-        throw new Error(
-            `Request timestamp is ${age}s old (max allowed: ${MAX_TIMESTAMP_AGE_SECONDS}s). ` +
-            `Check that your server's clock is in sync.`
-        )
+        throw new Error(`Request timestamp is ${age}s old (max allowed: ${MAX_TIMESTAMP_AGE_SECONDS}s). ` + `Check that your server's clock is in sync.`)
     }
     if (!verifyRequestSignature(signingSecret, signature, timestamp, rawBody)) {
-        throw new Error(
-            `Request signature does not match. ` +
-            `Verify that TERSE_SIGNING_SECRET matches the value shown in the Terse dashboard.`
-        )
+        throw new Error(`Request signature does not match. ` + `Verify that TERSE_SIGNING_SECRET matches the value shown in the Terse dashboard.`)
     }
 }
