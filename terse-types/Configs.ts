@@ -621,6 +621,17 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
     }
 }
 
+/**
+ * Skill-specific variant of GitHubConfigSchema.
+ * Skills do not listen for events, so eventTypes is omitted entirely.
+ */
+export const GitHubSkillConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.GITHUB),
+    configType: z.literal(ConfigType.GITHUB),
+    repositoryIds: z.array(z.number().int())
+})
+export type GitHubSkillConfigData = z.infer<typeof GitHubSkillConfigSchema>
+
 export const PosthogConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.POSTHOG),
     configType: z.literal(ConfigType.POSTHOG),
@@ -896,6 +907,7 @@ export const configDataSchema = z.union([
     LinearInputConfigSchema,
     LinearOutputConfigSchema,
     GitHubConfigSchema,
+    GitHubSkillConfigSchema,
     PosthogConfigSchema,
     DatadogConfigSchema,
     TimeTriggerConfigSchema,
@@ -908,6 +920,36 @@ export const configDataSchema = z.union([
     WebhookInputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
+
+/** Configs that can serve as triggers (event sources). */
+export const triggerConfigDataSchema = z.union([
+    GmailConfigSchema,
+    SlackConfigSchema,
+    LinearInputConfigSchema,
+    GitHubConfigSchema,
+    TimeTriggerConfigSchema,
+    WorkOSInputConfigSchema,
+    WebhookInputConfigSchema
+])
+export type TriggerConfigData = z.infer<typeof triggerConfigDataSchema>
+
+/** Configs that can serve as skills (tools / outputs). */
+export const skillConfigDataSchema = z.union([
+    SlackOutputConfigSchema,
+    GmailOutputConfigSchema,
+    GmailDraftOutputConfigSchema,
+    NotionConfigSchema,
+    LinearOutputConfigSchema,
+    GitHubSkillConfigSchema,
+    PosthogConfigSchema,
+    DatadogConfigSchema,
+    LaunchDarklyConfigSchema,
+    TerseConfigSchema,
+    WorkOSOutputConfigSchema,
+    AttioOutputConfigSchema,
+    SnowflakeOutputConfigSchema
+])
+export type SkillConfigData = z.infer<typeof skillConfigDataSchema>
 
 export function isConfigComplete(config: ConfigData | undefined): boolean {
     if (!config) {
@@ -1019,7 +1061,7 @@ export function formatConfigForAgent(config: ConfigData): string {
         case ConfigType.GITHUB: {
             const parts = [`Type: GitHub`, `Integration ID: ${config.integrationId}`]
             if (config.repositoryIds.length > 0) parts.push(`Repositories: ${config.repositoryIds.join(", ")}`)
-            if (config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
+            if ("eventTypes" in config && config.eventTypes?.length) parts.push(`Event Types: ${config.eventTypes.join(", ")}`)
             return parts.join("\n")
         }
         case ConfigType.POSTHOG: {

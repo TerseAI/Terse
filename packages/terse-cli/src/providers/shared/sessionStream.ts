@@ -1,21 +1,14 @@
 import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
+import { type SessionStreamEvent, type SessionStreamHandle, openSessionStream as connectTerseSessionStream } from "terse-sdk"
 import { ApiRoutes } from "terse-types"
-import type { SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
+import type { SdkApprovalDecisionRequestBody } from "terse-types"
 
 import { BACKEND_URL } from "../../config.js"
 
-type SessionStartedEvent = {
-    type: "session_started"
-    sessionId: string
-}
+export type SessionHandle = SessionStreamHandle
 
-export type SessionStreamEvent = SdkAgentStreamEvent | SessionStartedEvent
-
-export type SessionHandle = {
-    sessionId: string
-    close: () => void
-}
+export type { SessionStreamEvent }
 
 type SessionStreamOptions = {
     verbose?: boolean
@@ -24,27 +17,18 @@ type SessionStreamOptions = {
 }
 
 export async function openSessionStream(apiKey: string, options: SessionStreamOptions = {}): Promise<SessionHandle> {
-    const response = await fetch(`${BACKEND_URL}${ApiRoutes.SDK.SESSION_EVENTS}`, {
-        headers: { Authorization: `Bearer ${apiKey}`, Accept: "text/event-stream" }
+    return connectTerseSessionStream(BACKEND_URL, apiKey, {
+        onEvent: async (event: SessionStreamEvent) => {
+            if (options.onEvent) {
+                try {
+                    await options.onEvent(event)
+                } catch (error) {
+                    console.error(chalk.red(`  Session event handler failed: ${(error as Error).message}`))
+                }
+            }
+            logSessionEvent(event, options)
+        }
     })
-
-    if (!response.ok || !response.body) {
-        throw new Error(`Failed to open session event stream (HTTP ${response.status})`)
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ""
-
-    const sessionId = await readSessionId(reader, decoder, buffer)
-    buffer = sessionId.remainingBuffer
-
-    startEventConsumer(reader, decoder, buffer, options)
-
-    return {
-        sessionId: sessionId.value,
-        close: () => reader.cancel().catch(() => {})
-    }
 }
 
 export async function submitApprovalDecision(apiKey: string, params: SdkApprovalDecisionRequestBody): Promise<void> {
@@ -125,63 +109,9 @@ export async function promptForToolApproval(toolName: string, rawArguments: stri
     return approved
 }
 
-async function readSessionId(reader: ReadableStreamDefaultReader<Uint8Array>, decoder: TextDecoder, buffer: string): Promise<{ value: string; remainingBuffer: string }> {
-    while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-            throw new Error("Session stream ended before sending sessionId")
-        }
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-
-        for (const line of lines) {
-            if (!line.startsWith("data: ")) continue
-            const event = safeParseJson(line.slice(6))
-            if (event?.type === "session_started" && typeof event.sessionId === "string") {
-                return { value: event.sessionId, remainingBuffer: buffer }
-            }
-        }
-    }
-}
-
-function startEventConsumer(reader: ReadableStreamDefaultReader<Uint8Array>, decoder: TextDecoder, initialBuffer: string, options: SessionStreamOptions): void {
-    let buffer = initialBuffer
-
-    void (async () => {
-        try {
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-
-                buffer += decoder.decode(value, { stream: true })
-                const lines = buffer.split("\n")
-                buffer = lines.pop() ?? ""
-
-                for (const line of lines) {
-                    if (!line.startsWith("data: ")) continue
-                    const event = safeParseJson(line.slice(6)) as SessionStreamEvent | null
-                    if (!event) continue
-                    if (options.onEvent) {
-                        try {
-                            await options.onEvent(event)
-                        } catch (error) {
-                            console.error(chalk.red(`  Session event handler failed: ${(error as Error).message}`))
-                        }
-                    }
-                    logSessionEvent(event, options)
-                }
-            }
-        } catch {
-            // Stream cancelled by close() — expected
-        }
-    })()
-}
-
-function safeParseJson(value: string): Record<string, unknown> | null {
+function safeParseJson(value: string): { tool?: string; status?: string } | null {
     try {
-        return JSON.parse(value) as Record<string, unknown>
+        return JSON.parse(value) as { tool?: string; status?: string }
     } catch {
         return null
     }

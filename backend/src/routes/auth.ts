@@ -216,7 +216,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
                     req.session = {
                         user,
                         isUserInitiated: true
-                    } as Session
+                    }
                 } else {
                     req.session.user = user
                     req.session.isUserInitiated = true
@@ -457,25 +457,35 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
     return res.json({ token: widgetToken })
 }
 
-export async function getOrCreateDbUserFromWorkOS(
-    authResult: AuthenticateWithSessionCookieSuccessResponse | RefreshSessionSuccessResponse,
-    claims?: AccessTokenClaims | null
-): Promise<{ user: User }> {
-    const workosUser = authResult.user
+export interface WorkOSAuthContext {
+    user: {
+        id: string
+        email: string
+        firstName: string | null
+        lastName: string | null
+        profilePictureUrl: string | null
+        metadata?: Record<string, string>
+    }
+    organizationId?: string | null
+    roles?: string[]
+}
+
+export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: User }> {
+    const workosUser = authContext.user
 
     // Fast path: JWT Template claims have our DB ID and org name — skip DB/WorkOS API calls
     if (claims) {
         const user: User = {
             id: claims.dbId,
             workosId: workosUser.id,
-            organizationId: authResult.organizationId ?? "",
+            organizationId: authContext.organizationId ?? "",
             organizationName: claims.orgName,
             email: workosUser.email,
             displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
             firstName: workosUser.firstName || null,
             lastName: workosUser.lastName || null,
             displayPhotoUrl: workosUser.profilePictureUrl || "",
-            roles: (authResult.roles || []) as Role[]
+            roles: (authContext.roles || []) as Role[]
         }
         return { user }
     }
@@ -522,22 +532,22 @@ export async function getOrCreateDbUserFromWorkOS(
     }
 
     let organizationName = undefined
-    if (authResult.organizationId) {
-        const organization = await workos.organizations.getOrganization(authResult.organizationId)
+    if (authContext.organizationId) {
+        const organization = await workos.organizations.getOrganization(authContext.organizationId)
         organizationName = organization.name
     }
 
     const user: User = {
         id: dbUser.id,
         workosId: workosUser.id,
-        organizationId: authResult.organizationId ?? "",
+        organizationId: authContext.organizationId ?? "",
         organizationName: organizationName ?? "",
         email: workosUser.email,
         displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
         firstName: workosUser.firstName || null,
         lastName: workosUser.lastName || null,
         displayPhotoUrl: workosUser.profilePictureUrl || "",
-        roles: (authResult.roles || []) as Role[]
+        roles: (authContext.roles || []) as Role[]
     }
 
     return { user }

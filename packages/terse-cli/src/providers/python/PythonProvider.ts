@@ -1,13 +1,15 @@
 import chalk from "chalk"
 import { execFileSync, spawn } from "node:child_process"
+import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { CreateJobParameters } from "terse-sdk"
-import type { SdkAgentStreamEvent, SerializedEvent } from "terse-types"
+import type { SerializedEvent } from "terse-types"
 
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
-import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
+import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
+import { type SessionStreamEvent, openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
 import { ensureUvAvailable, execUv, loadDotenv, withTempScript } from "../shared/shellUtils.js"
 
 import { preparePythonTemplateContext } from "./preparePythonCodegenData.js"
@@ -15,7 +17,6 @@ import { renderPythonGeneratedCode } from "./pythonTemplateEngine.js"
 
 const JOB_REGISTRY_MARKER = "__TERSE_JOB_REGISTRY__="
 const JOB_SKIPPED_MARKER = "__TERSE_SKIPPED__"
-const PYTHON_SDK_DEPENDENCY = "terse-sdk~=0.1.11"
 
 type PythonSerializedConfig = {
     integrationId: string
@@ -29,7 +30,6 @@ type PythonJobData = {
     triggers: PythonSerializedConfig[]
     skills: PythonSerializedConfig[]
     toolApprovals: string[]
-    webhookURL?: string
     hasFilter: boolean
 }
 
@@ -41,8 +41,12 @@ type ApprovalState = {
 export class PythonProvider implements LanguageProvider {
     readonly language = "python" as const
     readonly displayName = "Python"
+    readonly detectionMarkers = {
+        requiredFiles: ["pyproject.toml"],
+        description: "Python project"
+    }
     readonly projectMarkers = {
-        requiredFiles: ["pyproject.toml", "src/main.py"],
+        requiredFiles: ["pyproject.toml"],
         description: "Python Terse project"
     }
     readonly entryFile = "src/main.py"
@@ -63,10 +67,10 @@ export class PythonProvider implements LanguageProvider {
         ]
     }
 
-    buildInitTemplateContext(projectName: string): Record<string, unknown> {
+    buildInitTemplateContext(projectName: string, sdkVersion: string): Record<string, unknown> {
         return {
             projectName,
-            sdkDependency: PYTHON_SDK_DEPENDENCY
+            sdkDependency: `terse-sdk==${sdkVersion}`
         }
     }
 
@@ -79,11 +83,11 @@ export class PythonProvider implements LanguageProvider {
     }
 
     async installDependencies(targetDir: string): Promise<void> {
-        const env = {
-            ...loadDotenv(targetDir),
-            UV_CACHE_DIR: path.join(os.tmpdir(), "terse-uv-cache")
-        }
-        await execUv(["sync"], { cwd: targetDir, env })
+        await this.execUvCommand(["sync"], { cwd: targetDir, env: this.buildPythonEnv(targetDir) })
+    }
+
+    resolveGeneratedCodePath(cwd: string): string {
+        return path.join(cwd, fs.existsSync(path.join(cwd, "src")) ? "src/terse_generated.py" : "terse_generated.py")
     }
 
     renderGeneratedCode(input: CodegenInput): string {
@@ -92,14 +96,26 @@ export class PythonProvider implements LanguageProvider {
         return code
     }
 
-    async loadJobRegistry(): Promise<Map<string, CreateJobParameters>> {
+    async loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>> {
         const cwd = process.cwd()
-        const env = loadDotenv(cwd)
+        const env = this.buildPythonEnv(cwd)
+        const resolvedEntryFile = entryFile ?? this.entryFile
+        const entryPath = path.join(cwd, resolvedEntryFile)
+
+        if (!fs.existsSync(entryPath)) {
+            printMissingEntryFileGuidance({
+                languageDisplayName: this.displayName,
+                defaultEntryFile: this.entryFile,
+                requestedEntryFile: entryFile,
+                overrideExample: "src/server.py",
+                createHint: `Create ${this.entryFile} and register at least one job with @app.job(...).`
+            })
+        }
 
         try {
-            const script = buildLoadRegistryScript()
-            return await withTempScript(script, ".py", async scriptPath => {
-                const { stdout } = await execUv(["run", "python", scriptPath], { cwd, env })
+            const script = this.buildLoadRegistryScript(resolvedEntryFile)
+            return await this.withTempPythonScript(script, async scriptPath => {
+                const { stdout } = await this.execUvCommand(["run", "python", scriptPath], { cwd, env })
                 const payload = extractRegistryPayload(stdout)
                 const parsed = JSON.parse(payload) as Record<string, PythonJobData>
                 const registry = new Map<string, CreateJobParameters>()
@@ -109,27 +125,28 @@ export class PythonProvider implements LanguageProvider {
                 }
 
                 if (registry.size === 0) {
-                    console.error(chalk.red(`No jobs found. Make sure your ${this.entryFile} registers at least one job with @app.job(...).`))
+                    console.error(chalk.red(`No jobs found. Make sure your ${resolvedEntryFile} registers at least one job with @app.job(...).`))
                     process.exit(1)
                 }
 
                 return registry
             })
         } catch (error) {
-            console.error(chalk.red(`Error importing ${this.entryFile}:\n`))
+            console.error(chalk.red(`Error importing ${resolvedEntryFile}:\n`))
             printPythonCommandError(error)
             process.exit(1)
         }
     }
 
-    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean }): Promise<void> {
+    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
         const cwd = process.cwd()
         const env: NodeJS.ProcessEnv = {
-            ...loadDotenv(cwd),
+            ...this.buildPythonEnv(cwd),
             TERSE_JOB_NAME: job.name,
             TERSE_EVENT_JSON: JSON.stringify(event)
         }
         const isVerbose = opts?.verbose ?? false
+        const resolvedEntryFile = opts?.entryFile ?? this.entryFile
         const isSandbox = !!process.env.TERSE_RUN_ID
         const apiKey = env.TERSE_API_KEY ?? null
         const approvalState: ApprovalState = { paused: false }
@@ -146,9 +163,9 @@ export class PythonProvider implements LanguageProvider {
                 env.TERSE_SESSION_ID = session.sessionId
             }
 
-            const script = buildExecuteJobScript()
-            await ensureUvAvailable(cwd)
-            await withTempScript(script, ".py", async scriptPath => {
+            const script = this.buildExecuteJobScript(resolvedEntryFile)
+            await this.ensureUvAvailable(cwd)
+            await this.withTempPythonScript(script, async scriptPath => {
                 await runStreamingPython(cwd, env, scriptPath, job.name)
             })
         } catch (error) {
@@ -158,6 +175,39 @@ export class PythonProvider implements LanguageProvider {
         } finally {
             closeSession?.()
         }
+    }
+
+    protected buildPythonEnv(cwd: string): NodeJS.ProcessEnv {
+        return {
+            ...loadDotenv(cwd),
+            UV_CACHE_DIR: path.join(os.tmpdir(), "terse-uv-cache")
+        }
+    }
+
+    protected async execUvCommand(
+        args: string[],
+        opts: {
+            cwd: string
+            env?: NodeJS.ProcessEnv
+        }
+    ): Promise<{ stdout: string; stderr: string }> {
+        return execUv(args, opts)
+    }
+
+    protected async withTempPythonScript<T>(source: string, fn: (scriptPath: string) => Promise<T>): Promise<T> {
+        return withTempScript(source, ".py", fn)
+    }
+
+    protected async ensureUvAvailable(cwd: string): Promise<void> {
+        await ensureUvAvailable(cwd)
+    }
+
+    protected buildLoadRegistryScript(entryFile: string): string {
+        return buildLoadRegistryScript(entryFile)
+    }
+
+    protected buildExecuteJobScript(entryFile: string): string {
+        return buildExecuteJobScript(entryFile)
     }
 }
 
@@ -169,7 +219,6 @@ function createJobParametersFromPython(data: PythonJobData): CreateJobParameters
         triggers: data.triggers.map(reconstructPythonConfig),
         skills: data.skills.map(reconstructPythonConfig),
         toolApprovals: data.toolApprovals ?? [],
-        webhookURL: data.webhookURL ?? undefined,
         onTrigger: async () => {
             throw new Error("Python job execution must go through provider.executeJob()")
         },
@@ -189,7 +238,7 @@ function reconstructPythonConfig(config: PythonSerializedConfig) {
     }
 }
 
-function buildLoadRegistryScript(): string {
+function buildLoadRegistryScript(entryFile: string): string {
     return `
 import importlib.util
 import json
@@ -201,13 +250,14 @@ from terse_sdk import clear_job_registry, get_job_registry
 
 PROJECT_ROOT = os.getcwd()
 SRC_DIR = os.path.join(PROJECT_ROOT, "src")
+ENTRY_FILE = ${JSON.stringify(entryFile)}
 sys.path[:0] = [PROJECT_ROOT, SRC_DIR]
 
 clear_job_registry()
 module_name = f"__terse_main_{uuid.uuid4().hex}"
-spec = importlib.util.spec_from_file_location(module_name, os.path.join(SRC_DIR, "main.py"))
+spec = importlib.util.spec_from_file_location(module_name, os.path.join(PROJECT_ROOT, ENTRY_FILE))
 if spec is None or spec.loader is None:
-    raise RuntimeError("Could not create an import spec for src/main.py.")
+    raise RuntimeError(f"Could not create an import spec for {ENTRY_FILE}.")
 
 module = importlib.util.module_from_spec(spec)
 sys.modules[module_name] = module
@@ -228,7 +278,6 @@ for name, job in registry.items():
         "triggers": [serialize_config(trigger) for trigger in job.triggers],
         "skills": [serialize_config(skill) for skill in job.skills],
         "toolApprovals": list(job.tool_approvals or []),
-        "webhookURL": job.webhook_url,
         "hasFilter": job.filter is not None,
     }
 
@@ -236,7 +285,7 @@ print(${JSON.stringify(JOB_REGISTRY_MARKER)} + json.dumps(result))
 `.trim()
 }
 
-function buildExecuteJobScript(): string {
+function buildExecuteJobScript(entryFile: string): string {
     return `
 import importlib.util
 import json
@@ -248,13 +297,14 @@ from terse_sdk import TerseAgent, clear_job_registry, deserialize_input_event, e
 
 PROJECT_ROOT = os.getcwd()
 SRC_DIR = os.path.join(PROJECT_ROOT, "src")
+ENTRY_FILE = ${JSON.stringify(entryFile)}
 sys.path[:0] = [PROJECT_ROOT, SRC_DIR]
 
 clear_job_registry()
 module_name = f"__terse_main_{uuid.uuid4().hex}"
-spec = importlib.util.spec_from_file_location(module_name, os.path.join(SRC_DIR, "main.py"))
+spec = importlib.util.spec_from_file_location(module_name, os.path.join(PROJECT_ROOT, ENTRY_FILE))
 if spec is None or spec.loader is None:
-    raise RuntimeError("Could not create an import spec for src/main.py.")
+    raise RuntimeError(f"Could not create an import spec for {ENTRY_FILE}.")
 
 module = importlib.util.module_from_spec(spec)
 sys.modules[module_name] = module
@@ -288,7 +338,7 @@ function extractRegistryPayload(stdout: string): string {
 }
 
 function createApprovalHandler(apiKey: string, state: ApprovalState) {
-    return async (event: SdkAgentStreamEvent | { type: "session_started"; sessionId: string }) => {
+    return async (event: SessionStreamEvent) => {
         if (event.type === "run_started") {
             state.runId = event.runId
             return

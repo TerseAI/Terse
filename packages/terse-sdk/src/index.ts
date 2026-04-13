@@ -1,5 +1,15 @@
-import type { ConfigData, Trigger as RawTrigger, RunHistoryAction, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, SdkApprovalDecisionRequestBody } from "terse-types"
-import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema } from "terse-types"
+import type {
+    ConfigData,
+    Trigger as RawTrigger,
+    RunHistoryAction,
+    SdkAgentRunRequestBody,
+    SdkAgentRunResponseBody,
+    SdkAgentStreamEvent,
+    SdkApprovalDecisionRequestBody,
+    WebhookJobChallengeResponse,
+    WebhookJobTriggerResponse
+} from "terse-types"
+import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
@@ -40,9 +50,25 @@ import type {
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
 
-import type { InferEvents, InferToolApprovals, SDKTrigger, TypedSkill, TypedTrigger } from "./types.js"
+import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
+import { openSessionStream } from "./sessionStream.js"
+import { type InferEvents, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
+
+/** Aligns with `terse` CLI (`packages/terse-cli/src/config.ts`) when `TERSE_BACKEND_URL` is unset. */
+function resolveTerseBackendUrl(): string {
+    return process.env.TERSE_BACKEND_URL || "https://useterse.ai/api"
+}
+
+/**
+ * Path relative to `TERSE_REMOTE_SERVER_URL` where the Terse backend POSTs webhook job triggers.
+ * Mount your handler at this path (e.g. `app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, ...)`).
+ */
+export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
+
+export { openSessionStream } from "./sessionStream.js"
+export type { OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
 
 // Re-export SDK-specific types
 export { createSDKTrigger } from "./types.js"
@@ -132,7 +158,7 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     toolApprovals?: InferToolApprovals<TSkills>[]
     filter?: (event: InferEvents<TTriggers>) => boolean | Promise<boolean>
     onTrigger: (event: InferEvents<TTriggers>, Agent: TerseAgent) => Promise<void>
-    webhookURL?: string
+    remoteServerUrl?: string
 }
 
 /** Internal job registry — lives on globalThis so it survives across module instances (e.g. tsx loaders). */
@@ -152,6 +178,91 @@ export class Terse {
         }
         _jobRegistry.set(params.name, params as unknown as CreateJobParameters)
     }
+
+    /**
+     * Handle an incoming trigger request from the Terse backend.
+     * Wire this into your own HTTP route (Express, Hono, Next.js, etc.).
+     *
+     * Two-phase protocol: (1) POST with `{ type: "challenge", challenge: "<token>" }` verifies the
+     * HMAC signature and echoes the challenge with a signed response. (2) POST with
+     * `{ jobName, runId, event }` opens an SDK session stream, **awaits** `onTrigger` (so this
+     * method does not return until your job handler finishes), then closes the session stream.
+     *
+     * Both phases require `TERSE_SIGNING_SECRET` to verify request signatures.
+     *
+     * @example
+     * ```ts
+     * // Express — use TERSE_JOB_WEBHOOK_TRIGGER_PATH so the path matches the backend.
+     * app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, async (req, res) => {
+     *     const result = await terse.handleTrigger(req.body, req.headers)
+     *     res.json(result)
+     * })
+     * ```
+     */
+    async handleTrigger(body: unknown, headers: Record<string, string | string[] | undefined>): Promise<WebhookJobChallengeResponse | WebhookJobTriggerResponse> {
+        const signingSecret = process.env.TERSE_SIGNING_SECRET
+        if (!signingSecret) {
+            throw new Error(
+                "TERSE_SIGNING_SECRET is not set. " +
+                    "Add it to your .env file or export it before starting your server. " +
+                    "You can find your signing secret in the Terse dashboard under your job's settings."
+            )
+        }
+
+        const apiKey = process.env.TERSE_API_KEY
+        if (!apiKey) {
+            throw new Error("TERSE_API_KEY is not set. " + "Add it to your .env file or export it before starting your server.")
+        }
+
+        verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
+
+        const challenge = webhookJobChallengeRequestSchema.safeParse(body)
+        if (challenge.success) {
+            const signature = computeChallengeSignature(signingSecret, challenge.data.challenge)
+            return { challenge: challenge.data.challenge, signature }
+        }
+
+        const full = webhookJobTriggerRequestSchema.safeParse(body)
+        if (!full.success) {
+            const detail = full.error.issues.map((issue: { message: string }) => issue.message).join("; ")
+            throw new Error(`Invalid trigger payload: ${detail}`)
+        }
+
+        const { jobName, runId, event } = full.data
+        const job = _jobRegistry.get(jobName)
+        if (!job) {
+            const available = [..._jobRegistry.keys()]
+            throw new Error(
+                `Job "${jobName}" is not registered. ` +
+                    (available.length
+                        ? `Registered jobs: ${available.join(", ")}. Make sure the job name in your Terse dashboard matches your code.`
+                        : `No jobs are registered. Make sure your job file is imported before the server starts.`)
+            )
+        }
+
+        const apiBaseUrl = resolveTerseBackendUrl()
+        const session = await openSessionStream(apiBaseUrl, apiKey)
+
+        try {
+            const inputEvent = createSDKTrigger(event)
+            const agent = TerseAgent.fromJob(job, { apiBaseUrl, sessionId: session.sessionId, runId })
+
+            if (job.filter) {
+                const shouldRun = await job.filter(inputEvent)
+                if (!shouldRun) {
+                    return { status: "ok", filtered: true }
+                }
+            }
+            await job.onTrigger(inputEvent, agent)
+
+            return { status: "ok" }
+        } catch (error) {
+            session.close()
+            throw error
+        } finally {
+            session.close()
+        }
+    }
 }
 
 export type ApprovalRequestInfo = {
@@ -160,12 +271,29 @@ export type ApprovalRequestInfo = {
     arguments: string
 }
 
+export type CreateAgentForJobOptions = {
+    apiBaseUrl?: string
+    sessionId?: string
+    runId?: string
+}
+
+type JobAgentConfig = Pick<CreateJobParameters, "skills" | "triggers" | "toolApprovals">
+
+function attachGeneratedTools(agent: TerseAgent): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
+    if (createTools) {
+        Object.defineProperty(agent, "tools", { value: createTools(agent) })
+    }
+}
+
 export class TerseAgent {
     readonly skills: ConfigData[]
     manualToolConfigs?: readonly ConfigData[]
     readonly toolApprovals: string[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
+    private readonly runId?: string
 
     /**
      * Optional callback invoked when the agent requires tool approval.
@@ -175,11 +303,19 @@ export class TerseAgent {
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    constructor(skills: ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = []) {
+    constructor(skills: ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = [], runId?: string) {
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
         this.sessionId = sessionId
         this.toolApprovals = toolApprovals
+        this.runId = runId
+    }
+
+    static fromJob(job: JobAgentConfig, options: CreateAgentForJobOptions = {}): TerseAgent {
+        const agent = new TerseAgent(job.skills, options.apiBaseUrl, options.sessionId, job.toolApprovals ? [...job.toolApprovals] : [], options.runId)
+        agent.manualToolConfigs = [...job.skills, ...job.triggers]
+        attachGeneratedTools(agent)
+        return agent
     }
 
     async *run(prompt: string, event?: RawTrigger): AsyncGenerator<TerseAgentResult> {
@@ -264,8 +400,8 @@ export class TerseAgent {
             Accept: "text/event-stream"
         }
         if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
-        const runId = process.env.TERSE_RUN_ID
-        if (runId) headers["X-Terse-Run-Id"] = runId
+        const runIdHeader = this.runId ?? process.env.TERSE_RUN_ID
+        if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
         return headers
     }
 
