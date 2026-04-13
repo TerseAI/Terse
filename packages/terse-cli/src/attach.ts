@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
 
-import { getExistingAuthenticatedUserName, loginAndWriteEnv } from "./auth.js"
+import { getExistingAuthenticatedUserName, login } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
@@ -29,7 +29,15 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
     console.log(`\n  Attaching Terse to existing project ${chalk.bold(projectName)}\n`)
     console.log(chalk.dim("  Your jobs will run on your own infrastructure via TERSE_REMOTE_SERVER_URL. No source code is uploaded to Terse.\n"))
 
-    await loginAndWriteEnv(cwd)
+    const result = await login()
+    if (result?.apiKey) {
+        console.log(`\n  Add this to your ${chalk.bold(".env")} file:\n`)
+        console.log(`TERSE_API_KEY=${result.apiKey}`)
+        console.log("")
+    } else {
+        console.log(chalk.dim("  You can run `terse login` later to authenticate."))
+    }
+
     await listAndPromptIntegrations()
 
     if (canGenerateFromCurrentDirectory(provider, cwd)) {

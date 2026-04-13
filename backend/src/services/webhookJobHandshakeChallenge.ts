@@ -90,12 +90,14 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
 
     if (!response.ok) {
         const responseBody = await response.text().catch(() => "")
-        const detail = responseBody.slice(0, 500)
+        const detail = extractResponseErrorDetail(responseBody)
         return {
             ok: false,
             triggerUrl,
             step: "http",
-            message: `Webhook handshake returned ${response.status}: ${detail}`,
+            message: detail
+                ? `Server responded ${response.status}: ${detail}`
+                : `Server responded with HTTP ${response.status} (${response.statusText || "error"}).`,
             httpStatus: response.status
         }
     }
@@ -142,4 +144,44 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     return { ok: true, triggerUrl }
+}
+
+/**
+ * Extract a human-readable error detail from a response body.
+ * Handles JSON `{ error: "..." }` / `{ message: "..." }`, HTML error pages (extracts text from
+ * `<pre>` tags or strips all tags), and plain text.
+ */
+function extractResponseErrorDetail(body: string): string {
+    const trimmed = body.trim()
+    if (!trimmed) return ""
+
+    // Try JSON first: { error: "...", message: "..." }
+    if (trimmed.startsWith("{")) {
+        try {
+            const json = JSON.parse(trimmed)
+            const msg = json.error || json.message
+            if (typeof msg === "string") return msg.slice(0, 300)
+        } catch {
+            // not JSON, fall through
+        }
+    }
+
+    // HTML response: extract the meaningful error text
+    if (trimmed.includes("<") && trimmed.includes(">")) {
+        // Express wraps errors in <pre>Error: message\n    at ...</pre>
+        const preMatch = trimmed.match(/<pre>([\s\S]*?)<\/pre>/)
+        if (preMatch) {
+            const preText = preMatch[1].replace(/<br\s*\/?>/gi, "\n").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+            // Take only the first line (the error message), skip the stack trace
+            const firstLine = preText.split("\n")[0].trim()
+            // Strip "Error: " prefix since we already show context
+            return firstLine.replace(/^Error:\s*/, "").slice(0, 300)
+        }
+        // Generic HTML: strip all tags
+        const stripped = trimmed.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+        return stripped.slice(0, 300)
+    }
+
+    // Plain text
+    return trimmed.slice(0, 300)
 }

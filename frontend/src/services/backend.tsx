@@ -1342,7 +1342,7 @@ export const BackendProvider: BackendService = {
     triggerWithEvent: (automationId: string, event: SerializedEvent) => {
         const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { automationId })
         return axios
-            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event }, { withCredentials: true })
+            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event: event.data }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error triggering with event:", error)

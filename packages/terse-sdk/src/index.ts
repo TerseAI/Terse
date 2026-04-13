@@ -199,15 +199,22 @@ export class Terse {
      * })
      * ```
      */
-    async handleTrigger(body: unknown, headers: Record<string, string | string[] | undefined> = {}): Promise<WebhookJobChallengeResponse | WebhookJobTriggerResponse> {
+    async handleTrigger(body: unknown, headers: Record<string, string | string[] | undefined>): Promise<WebhookJobChallengeResponse | WebhookJobTriggerResponse> {
         const signingSecret = process.env.TERSE_SIGNING_SECRET
         if (!signingSecret) {
-            throw new Error("TERSE_SIGNING_SECRET environment variable is not set.")
+            throw new Error(
+                "TERSE_SIGNING_SECRET is not set. " +
+                "Add it to your .env file or export it before starting your server. " +
+                "You can find your signing secret in the Terse dashboard under your job's settings."
+            )
         }
 
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
-            throw new Error("TERSE_API_KEY environment variable is not set.")
+            throw new Error(
+                "TERSE_API_KEY is not set. " +
+                "Add it to your .env file or export it before starting your server."
+            )
         }
 
         verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
@@ -221,13 +228,19 @@ export class Terse {
         const full = webhookJobTriggerRequestSchema.safeParse(body)
         if (!full.success) {
             const detail = full.error.issues.map((issue: { message: string }) => issue.message).join("; ")
-            throw new Error(`Invalid webhook trigger body: ${detail}`)
+            throw new Error(`Invalid trigger payload: ${detail}`)
         }
 
         const { jobName, runId, event } = full.data
         const job = _jobRegistry.get(jobName)
         if (!job) {
-            throw new Error(`Job "${jobName}" not found in registry. Available jobs: ${[..._jobRegistry.keys()].join(", ")}`)
+            const available = [..._jobRegistry.keys()]
+            throw new Error(
+                `Job "${jobName}" is not registered. ` +
+                (available.length
+                    ? `Registered jobs: ${available.join(", ")}. Make sure the job name in your Terse dashboard matches your code.`
+                    : `No jobs are registered. Make sure your job file is imported before the server starts.`)
+            )
         }
 
         const apiBaseUrl = resolveTerseBackendUrl()

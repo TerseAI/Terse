@@ -33,17 +33,36 @@ def verify_incoming_request(
     signature = headers.get(TERSE_SIGNATURE_HEADER)
     timestamp_str = headers.get(TERSE_TIMESTAMP_HEADER)
     if not signature or not timestamp_str:
-        raise ValueError("Missing Terse signature headers")
+        missing = [
+            h for h, v in [
+                (TERSE_SIGNATURE_HEADER, signature),
+                (TERSE_TIMESTAMP_HEADER, timestamp_str),
+            ]
+            if not v
+        ]
+        raise ValueError(
+            f"Missing required headers: {', '.join(missing)}. "
+            "Make sure requests to this endpoint are coming from Terse (not a browser or other client) "
+            "and that your reverse proxy is forwarding all headers."
+        )
 
     try:
         timestamp = int(timestamp_str)
     except ValueError as err:
-        raise ValueError("Invalid Terse timestamp header") from err
+        raise ValueError(
+            f'"{TERSE_TIMESTAMP_HEADER}" header is not a valid number (got "{timestamp_str}").'
+        ) from err
 
     age = abs(math.floor(time.time()) - timestamp)
     if age > _MAX_TIMESTAMP_AGE_SECONDS:
-        raise ValueError("Terse request timestamp is too old")
+        raise ValueError(
+            f"Request timestamp is {age}s old (max allowed: {_MAX_TIMESTAMP_AGE_SECONDS}s). "
+            "Check that your server's clock is in sync."
+        )
 
     expected = _compute_request_signature(signing_secret, timestamp, raw_body)
     if not hmac.compare_digest(signature, expected):
-        raise ValueError("Invalid Terse request signature")
+        raise ValueError(
+            "Request signature does not match. "
+            "Verify that TERSE_SIGNING_SECRET matches the value shown in the Terse dashboard."
+        )

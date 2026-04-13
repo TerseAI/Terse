@@ -77,6 +77,16 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         if (isUrlMode) {
             console.log(chalk.dim(`  Mode: user infrastructure`))
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
+
+            const signingSecret = result.results.find(r => r.signingSecret)?.signingSecret
+            if (signingSecret) {
+                const existingSecret = readEnvVar("TERSE_SIGNING_SECRET")
+                if (!existingSecret) {
+                    console.log(`\n  Add this to your ${chalk.bold(".env")} file:\n`)
+                    console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
+                    console.log("")
+                }
+            }
         } else {
             console.log(chalk.dim(`  Files: ${fileCount}`))
             console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))

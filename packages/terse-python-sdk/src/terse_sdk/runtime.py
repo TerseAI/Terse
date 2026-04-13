@@ -138,7 +138,11 @@ class Terse:
 
         signing_secret = os.environ.get("TERSE_SIGNING_SECRET")
         if not signing_secret:
-            raise TerseRuntimeError("TERSE_SIGNING_SECRET environment variable is not set.")
+            raise TerseRuntimeError(
+                "TERSE_SIGNING_SECRET is not set. "
+                "Add it to your .env file or export it before starting your server. "
+                "You can find your signing secret in the Terse dashboard under your job's settings."
+            )
 
         if headers:
             import json as _json
@@ -156,20 +160,29 @@ class Terse:
 
         job_name = body.get("jobName")
         if not isinstance(job_name, str) or not job_name:
-            raise TerseRuntimeError("Invalid webhook trigger body: missing or invalid 'jobName'")
+            raise TerseRuntimeError("Invalid trigger payload: missing or invalid 'jobName'.")
 
         run_id = body.get("runId")
         if not isinstance(run_id, str) or not run_id:
-            raise TerseRuntimeError("Invalid webhook trigger body: missing or invalid 'runId'")
+            raise TerseRuntimeError("Invalid trigger payload: missing or invalid 'runId'.")
 
         raw_event = body.get("event")
         if not isinstance(raw_event, dict):
-            raise TerseRuntimeError("Invalid webhook trigger body: missing or invalid 'event'")
+            raise TerseRuntimeError("Invalid trigger payload: missing or invalid 'event'.")
 
         job = _JOB_REGISTRY.get(job_name)
         if job is None:
-            available = ", ".join(_JOB_REGISTRY.keys())
-            raise TerseRuntimeError(f'Job "{job_name}" not found in registry. Available jobs: {available}')
+            available = list(_JOB_REGISTRY.keys())
+            if available:
+                raise TerseRuntimeError(
+                    f'Job "{job_name}" is not registered. '
+                    f"Registered jobs: {', '.join(available)}. "
+                    "Make sure the job name in your Terse dashboard matches your code."
+                )
+            raise TerseRuntimeError(
+                f'Job "{job_name}" is not registered. '
+                "No jobs are registered. Make sure your job file is imported before the server starts."
+            )
 
         settings = TerseSettings()
         api_base_url = settings.backend_url.rstrip("/")
