@@ -10,7 +10,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { OAuthInstallationDetails } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, gmail as gmailConfig, urls } from "../config/settings"
+import { gmail as gmailConfig, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
@@ -638,8 +638,9 @@ async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): 
         throw new Error(`Gmail access token not found for integration ${integration.id}`)
     }
 
-    // Check if token is expired or will expire within the refresh threshold
-    if (integration.token_expiry && integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)) {
+    // Google access tokens last ~1 hour; only refresh when within 5 minutes of expiry
+    const GMAIL_TOKEN_REFRESH_THRESHOLD_MS = 5 * 60 * 1000
+    if (integration.token_expiry && integration.token_expiry <= new Date(now.getTime() + GMAIL_TOKEN_REFRESH_THRESHOLD_MS)) {
         logger.info("Access token expired or expiring soon, refreshing...", {
             integrationId: integration.id,
             tokenExpiry: integration.token_expiry
