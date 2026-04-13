@@ -37,8 +37,8 @@ def verify_incoming_request(
 
     try:
         timestamp = int(timestamp_str)
-    except ValueError:
-        raise ValueError("Invalid Terse timestamp header")
+    except ValueError as err:
+        raise ValueError("Invalid Terse timestamp header") from err
 
     age = abs(math.floor(time.time()) - timestamp)
     if age > _MAX_TIMESTAMP_AGE_SECONDS:

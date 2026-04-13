@@ -26,8 +26,11 @@ from ._http_utils import (
 from ._hmac import compute_challenge_signature, verify_incoming_request
 from ._logging_utils import LOGGER, _configure_debug_logging
 from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
-from .types._generated import ManualSampleTrigger as _RawManualSampleTrigger
-from .types._generated import SerializedEvent, SkillConfigData
+from .types._generated import (
+    ManualSampleTrigger as _RawManualSampleTrigger,
+    SerializedEvent,
+    SkillConfigData,
+)
 from .types.config import TerseSettings
 from .types.events import AnyTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
