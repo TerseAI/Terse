@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
-import { GithubTriggerSchema } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { GetGithubRepositoriesForIntegrationResponse, GithubAppInstallationCallbackRequest, Repository, User as RuntimeUser } from "terse-types/types"
+import { ZodError } from "zod"
 
 import { githubApp } from "../config/settings"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../integrations/GithubIntegration"
@@ -12,6 +12,8 @@ import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationServi
 import { SecretField, getSecret } from "../services/SecretService"
 import { GithubRepository } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
+
+import { parseGithubUnifiedEventPayload } from "./githubUnifiedEventParser"
 
 // MARK: - Route Handlers
 
@@ -135,7 +137,19 @@ export async function githubAppInstallationDeleted(req: Request, res: Response) 
  * Handle unified GitHub event webhook
  */
 export async function githubAppUnifiedEvent(req: Request, res: Response) {
-    const body = GithubTriggerSchema.parse(req.body)
+    let body: ReturnType<typeof parseGithubUnifiedEventPayload>
+    try {
+        body = parseGithubUnifiedEventPayload(req.body)
+    } catch (error) {
+        if (error instanceof ZodError) {
+            logger.warn("Invalid GitHub unified event payload", {
+                issues: error.issues
+            })
+            res.status(400).json({ error: "Invalid GitHub unified event payload", issues: error.issues })
+            return
+        }
+        throw error
+    }
 
     const { username, repositoryName } = body
     logger.info("githubAppUnifiedEvent", {
