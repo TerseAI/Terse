@@ -11,6 +11,21 @@ jobs:
         name: End-to-End Tests
         runs-on: ubuntu-latest
 
+        services:
+            postgres:
+                image: postgres:16
+                env:
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: terse_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
         steps:
             # ── Setup ─────────────────────────────────────────────────────────────
 
@@ -41,6 +56,24 @@ jobs:
             - name: Verify CLI is available
               run: terse --version
 
+            # ── Backend ───────────────────────────────────────────────────────────
+
+            - name: Run Prisma migrations
+              working-directory: backend
+              env:
+                  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/terse_test
+              run: pnpm prisma migrate deploy
+
+            - name: Start backend
+              working-directory: backend
+              env:
+                  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/terse_test
+                  # 👇 add any other env vars your backend needs
+              run: pnpm start & # & runs it in the background
+
+            - name: Wait for backend to be ready
+              run: npx wait-on http://localhost:3000/health # 👈 update port + health endpoint
+
             # ── E2E ───────────────────────────────────────────────────────────────
             # Sample project references the SDK via workspace:* so pnpm install
             # above already wired it up to the PR's SDK source.
@@ -48,7 +81,6 @@ jobs:
             - name: "[init] Scaffold in temp dir"
               run: |
                   mkdir /tmp/terse-init-test && cd /tmp/terse-init-test
-                  terse init --yes   # 👈 adjust for your non-interactive flag
 
             - name: "[generate] Run codegen on CI test fixture"
               working-directory: packages/ci-test-fixture
@@ -56,7 +88,7 @@ jobs:
 
             - name: "[run] Execute CI test fixture"
               working-directory: packages/ci-test-fixture
-              run: terse run
+              run: terse run "Tell me a joke" --event-file ./src/sample-webhook-event.json
 
             # ── Cleanup ───────────────────────────────────────────────────────────
 

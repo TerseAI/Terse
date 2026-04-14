@@ -1,0 +1,21 @@
+{
+  "integrationType": "webhook",
+  "eventType": "webhook",
+  "formattedContent": "Webhook request received.\n\nMethod: POST\n\nPayload:\n{\n  \"action\": \"test\",\n  \"payload\": {\n    \"message\": \"hello from CI\"\n  }\n}",
+  "debugLog": "Webhook Trigger (POST)",
+  "data": {
+    "integrationType": "webhook",
+    "eventType": "webhook",
+    "body": {
+      "action": "test",
+      "payload": {
+        "message": "hello from CI"
+      }
+    },
+    "headers": {
+      "content-type": "application/json",
+      "x-request-id": "ci-test-req-001"
+    },
+    "method": "POST"
+  }
+}
