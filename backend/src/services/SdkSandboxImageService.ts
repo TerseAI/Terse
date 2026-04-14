@@ -1,7 +1,6 @@
-import crypto from "crypto"
-
 import { Prisma, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import AdmZip from "adm-zip"
+import crypto from "crypto"
 import { ModalClient, NotFoundError, Sandbox } from "modal"
 
 import { settings } from "../config/settings"
@@ -117,11 +116,7 @@ export class SdkSandboxImageService {
         }
     }
 
-    async cleanupUnusedImages(params?: {
-        sourceImageGraceHours?: number
-        dependencyImageGraceHours?: number
-        batchSize?: number
-    }): Promise<CleanupSdkSandboxImagesResult> {
+    async cleanupUnusedImages(params?: { sourceImageGraceHours?: number; dependencyImageGraceHours?: number; batchSize?: number }): Promise<CleanupSdkSandboxImagesResult> {
         const sourceImageGraceHours = params?.sourceImageGraceHours ?? DEFAULT_SOURCE_IMAGE_GRACE_HOURS
         const dependencyImageGraceHours = params?.dependencyImageGraceHours ?? DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS
         const batchSize = params?.batchSize ?? DEFAULT_CLEANUP_BATCH_SIZE
@@ -195,11 +190,7 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async ensureDependencyImage(params: {
-        archive: SdkProjectArchive
-        dependencyHash: string
-        executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>
-    }) {
+    private async ensureDependencyImage(params: { archive: SdkProjectArchive; dependencyHash: string; executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve> }) {
         const { archive, dependencyHash, executor } = params
         const prisma = db()
 
@@ -348,11 +339,7 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async buildSourceModalImage(params: {
-        dependencyModalImageId: string
-        executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>
-        zipBuffer: Buffer
-    }): Promise<string> {
+    private async buildSourceModalImage(params: { dependencyModalImageId: string; executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>; zipBuffer: Buffer }): Promise<string> {
         const { dependencyModalImageId, executor, zipBuffer } = params
         const buildStart = performance.now()
         const modal = this.createModalClient()

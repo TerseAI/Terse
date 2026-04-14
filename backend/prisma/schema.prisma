@@ -339,29 +339,29 @@ model automations {
 
 // Separate table for prompts (future-proof for versioning, templates, etc.)
 model automation_prompts {
-  id                          String            @id @default(cuid())
-  automation_id               String            @unique
-  content                     String            @db.Text
+  id                          String   @id @default(cuid())
+  automation_id               String   @unique
+  content                     String   @db.Text
   source_code_gcs_key         String?
   current_sdk_source_image_id String?
   remote_server_url           String?
   signing_secret              String?
-  created_at                  DateTime          @default(now())
-  updated_at                  DateTime          @updatedAt
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
 
   automation               automations        @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   current_sdk_source_image sdk_source_images? @relation("CurrentSdkSourceImage", fields: [current_sdk_source_image_id], references: [id], onDelete: SetNull)
 }
 
 model sdk_dependency_images {
-  id             String   @id @default(cuid())
-  dependency_hash String  @unique
-  runtime        String
-  base_image_tag String
-  modal_image_id String   @unique
-  last_used_at   DateTime @default(now())
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  dependency_hash String   @unique
+  runtime         String
+  base_image_tag  String
+  modal_image_id  String   @unique
+  last_used_at    DateTime @default(now())
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   source_images sdk_source_images[]
 
@@ -381,9 +381,9 @@ model sdk_source_images {
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
-  dependency_image  sdk_dependency_images @relation(fields: [dependency_image_id], references: [id], onDelete: Cascade)
-  current_for_prompts automation_prompts[] @relation("CurrentSdkSourceImage")
-  runs               run_history_records[] @relation("RunSdkSourceImage")
+  dependency_image    sdk_dependency_images @relation(fields: [dependency_image_id], references: [id], onDelete: Cascade)
+  current_for_prompts automation_prompts[]  @relation("CurrentSdkSourceImage")
+  runs                run_history_records[] @relation("RunSdkSourceImage")
 
   @@unique([organization_id, dependency_image_id, source_hash])
   @@index([organization_id])
