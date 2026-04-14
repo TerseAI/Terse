@@ -35,7 +35,7 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: 22
 
             - name: Install pnpm
               uses: pnpm/action-setup@v3
@@ -48,7 +48,7 @@ jobs:
               run: pnpm install
 
             - name: Build all packages
-              run: pnpm --filter "./packages/*" build
+              run: pnpm install-global
 
             - name: Install CLI globally from PR source
               run: npm install -g ./packages/terse-cli
@@ -62,7 +62,7 @@ jobs:
               working-directory: backend
               env:
                   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/terse_test
-              run: pnpm prisma migrate deploy
+              run: npx prisma migrate deploy
 
             - name: Start backend
               working-directory: backend
@@ -72,7 +72,7 @@ jobs:
               run: pnpm start & # & runs it in the background
 
             - name: Wait for backend to be ready
-              run: npx wait-on http://localhost:3000/health # 👈 update port + health endpoint
+              run: npx wait-on http://localhost:3001/health # 👈 update port + health endpoint
 
             # ── E2E ───────────────────────────────────────────────────────────────
             # Sample project references the SDK via workspace:* so pnpm install
@@ -85,6 +85,10 @@ jobs:
             - name: "[generate] Run codegen on CI test fixture"
               working-directory: packages/ci-test-fixture
               run: terse generate
+
+            - name: "[assert] Verify project builds"
+              working-directory: packages/ci-test-fixture
+              run: pnpm build
 
             - name: "[run] Execute CI test fixture"
               working-directory: packages/ci-test-fixture
