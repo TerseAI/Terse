@@ -65,14 +65,9 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
         send({ type: "run_started", runId })
 
-        const eventText = [
-            "",
-            `Integration Type: ${data.event?.integrationType}`,
-            `Event Content:`,
-            data.event ? formatTriggerForAgent(data.event) : "",
-            ``,
-            `Debug Log: ${data.event ? debugTrigger(data.event) : ""}`
-        ].join("\n")
+        const eventText = data.event
+            ? ["", `Integration Type: ${data.event.integrationType}`, `Event Content:`, formatTriggerForAgent(data.event), ``, `Debug Log: ${debugTrigger(data.event)}`].join("\n")
+            : ""
 
         let result = await sdkRunner.run(eventText)
 

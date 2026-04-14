@@ -174,7 +174,6 @@ export class TypeScriptProvider implements LanguageProvider {
                 console.log(chalk.cyan(`  Job "${job.name}" started`))
             }
             await job.onTrigger(serializedEventRuntime, agent)
-            console.log(chalk.green(`\n  Job "${job.name}" completed successfully.\n`))
         } catch (error) {
             console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))
             console.error(error)

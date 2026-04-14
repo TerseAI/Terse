@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+    font-family: "Satoshi Variable";
+    src: url("/fonts/Satoshi-Variable.woff2") format("woff2");
+    font-weight: 300 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -50,6 +58,7 @@
     --color-chart-8: var(--chart-8);
     --color-chart-9: var(--chart-9);
     --color-chart-10: var(--chart-10);
+    --font-satoshi: "Satoshi Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {

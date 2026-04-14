@@ -346,7 +346,15 @@ interface BackendService {
     /**
      * Fetch chat history for a specific run
      */
-    getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: RunHistoryStatus }>
+    getChatHistory(runId: string): Promise<{
+        events: Array<RunHistoryModelEvent>
+        startTimestamp?: string
+        endTimestamp?: string
+        status?: RunHistoryStatus
+        triggerEvent?: string | null
+        triggerEventType?: string | null
+        isTriggerEventTruncated?: boolean
+    }>
 
     /**
      * Fetch builder chat history for a session
@@ -1181,7 +1189,17 @@ export const BackendProvider: BackendService = {
         const apiUrl = buildRoute(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, { runId })
         const url = `${backendBaseUrl}${apiUrl}`
         return axios
-            .get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: RunHistoryStatus }>(url, { withCredentials: true })
+            .get<{
+                events: Array<RunHistoryModelEvent>
+                startTimestamp?: string
+                endTimestamp?: string
+                status?: RunHistoryStatus
+                triggerEvent?: string | null
+                triggerEventType?: string | null
+                isTriggerEventTruncated?: boolean
+            }>(url, {
+                withCredentials: true
+            })
             .then(r => r.data)
             .catch(error => {
                 console.error("Error fetching chat history:", error)

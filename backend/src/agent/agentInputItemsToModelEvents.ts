@@ -5,6 +5,7 @@ import { ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseCancelledSystemEventItem } from "./systemEvents/cancelledSystemEvent"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
+import { parseProcessOutputSystemEventItem } from "./systemEvents/processOutputSystemEvent"
 import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
 import { parseSnippetSystemEventItem } from "./systemEvents/snippetSystemEvent"
 import { parseToolApprovalSystemEventItem } from "./systemEvents/toolApprovalSystemEvent"
@@ -141,6 +142,20 @@ async function convertSingleItem(
                 type: "Snippet",
                 timestamp: eventTimestamp,
                 snippet: snippetSystemEvent.snippet
+            }
+        ]
+    }
+
+    const processOutputSystemEvent = parseProcessOutputSystemEventItem(item)
+    if (processOutputSystemEvent) {
+        return [
+            {
+                type: "ProcessOutput",
+                id: processOutputSystemEvent.id,
+                timestamp: eventTimestamp,
+                stream: processOutputSystemEvent.stream,
+                content: processOutputSystemEvent.content,
+                label: processOutputSystemEvent.label
             }
         ]
     }
