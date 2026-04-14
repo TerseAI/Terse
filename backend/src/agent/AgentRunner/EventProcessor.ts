@@ -196,6 +196,7 @@ export class EventProcessor {
         const runId = await createRunRecord({
             agentId: agent.id,
             trigger,
+            serializedTriggerEvent: this.inputEvent.getSerializedEvent(),
             isManuallyTriggered: this.isManuallyTriggered
         })
         emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
