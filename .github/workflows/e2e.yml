@@ -48,7 +48,10 @@ jobs:
               run: pnpm install
 
             - name: Build all packages
-              run: pnpm install-global
+              run: pnpm run build
+
+            - name: Install CLI globally from PR source
+              run: pnpm run install-global
 
             - name: Install CLI globally from PR source
               run: npm install -g ./packages/terse-cli
