@@ -47,6 +47,10 @@ jobs:
             - name: Install dependencies
               run: pnpm install
 
+            - name: Generate Prisma client
+              working-directory: backend
+              run: pnpm exec prisma generate
+
             - name: Build all packages
               env:
                   NODE_OPTIONS: --max-old-space-size=4096
