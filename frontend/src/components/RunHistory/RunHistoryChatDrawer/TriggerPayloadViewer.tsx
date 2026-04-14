@@ -2,9 +2,9 @@ import { useState } from "react"
 
 import { AlertTriangle, Check, Copy } from "lucide-react"
 
+import ToolCallParameters from "@/components/ToolCallParameters"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import ToolCallParameters from "@/components/ToolCallParameters"
 
 type Props = {
     event: string | null
@@ -54,11 +54,7 @@ export default function TriggerPayloadViewer({ event, eventType, isTruncated = f
                     </Button>
                 </div>
                 <div className="max-h-80 overflow-auto rounded-md border border-border/60 bg-muted/10 px-3 py-2">
-                    {isTruncated ? (
-                        <pre className="m-0 whitespace-pre-wrap break-words font-mono text-xs text-muted-foreground">{event}</pre>
-                    ) : (
-                        <ToolCallParameters parameters={event} />
-                    )}
+                    {isTruncated ? <pre className="m-0 whitespace-pre-wrap break-words font-mono text-xs text-muted-foreground">{event}</pre> : <ToolCallParameters parameters={event} />}
                 </div>
             </div>
         </div>

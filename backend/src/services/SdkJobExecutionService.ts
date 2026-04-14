@@ -266,14 +266,7 @@ export class SdkJobExecutionService {
         return { exitCode, stdout, stderr }
     }
 
-    private async runSandboxCommandStreaming(
-        sb: Sandbox,
-        label: string,
-        command: string,
-        sandboxEnv: Record<string, string>,
-        runId: string,
-        agentId: string
-    ): Promise<SandboxCommandResult> {
+    private async runSandboxCommandStreaming(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<SandboxCommandResult> {
         const t = performance.now()
         logger.info("SDK sandbox: starting streaming command", { runId, agentId, label, command })
 

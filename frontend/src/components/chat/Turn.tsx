@@ -286,7 +286,7 @@ function TurnTimeline({
             call,
             ts: call.timestamp ?? i
         })),
-        ...processOutputs.map((processOutput) => ({
+        ...processOutputs.map(processOutput => ({
             kind: "process_output" as const,
             processOutput,
             ts: processOutput.timestamp

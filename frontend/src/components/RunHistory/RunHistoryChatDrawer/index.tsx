@@ -61,7 +61,20 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                 )}
             >
                 <RunHistoryChatAdapter key={runId} runId={runId} status={status}>
-                    {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, handleCancellation, currentStatus, isRunPending, triggerEvent, triggerEventType, isTriggerEventTruncated }) => {
+                    {({
+                        initialTurns,
+                        isLoading,
+                        subscribeToEvents,
+                        sendMessage,
+                        handleApprove,
+                        handleReject,
+                        handleCancellation,
+                        currentStatus,
+                        isRunPending,
+                        triggerEvent,
+                        triggerEventType,
+                        isTriggerEventTruncated
+                    }) => {
                         const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
                         const formattedTriggerEventType = formatEventTypeLabel(triggerEventType)
                         const emptyPlaceholder =
@@ -93,12 +106,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                         isTriggerPayloadOpen={isTriggerPayloadOpen}
                                         onToggleTriggerPayload={() => setIsTriggerPayloadOpen(open => !open)}
                                     />
-                                    <TriggerPayloadViewer
-                                        event={triggerEvent}
-                                        eventType={formattedTriggerEventType}
-                                        isTruncated={isTriggerEventTruncated}
-                                        isOpen={isTriggerPayloadOpen}
-                                    />
+                                    <TriggerPayloadViewer event={triggerEvent} eventType={formattedTriggerEventType} isTruncated={isTriggerEventTruncated} isOpen={isTriggerPayloadOpen} />
                                 </div>
                                 <div className={cn("flex-1 overflow-hidden min-h-0 bg-background select-text", isFullscreen && "mx-auto w-full")}>
                                     <div className="flex flex-col h-full relative">

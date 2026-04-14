@@ -5,8 +5,8 @@ import {
     type ChatSnippet,
     FilterResult,
     type ModelEvent,
-    type ProcessOutput,
     type ModelRequest,
+    type ProcessOutput,
     type RunError,
     type TextDelta,
     Thinking,
@@ -91,7 +91,21 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onProcessOutputRef.current = onProcessOutput
         onRunErrorRef.current = onRunError
         onCancelledRef.current = onCancelled
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onProcessOutput, onRunError, onCancelled])
+    }, [
+        onDelta,
+        onToolCallGenerating,
+        onToolCall,
+        onToolCallComplete,
+        onNaturalStop,
+        onFilterResult,
+        onThinking,
+        onToolApprovalRequest,
+        onToolApprovalResponse,
+        onSnippet,
+        onProcessOutput,
+        onRunError,
+        onCancelled
+    ])
 
     // Subscribe to events
     useEffect(() => {

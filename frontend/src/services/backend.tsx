@@ -346,9 +346,7 @@ interface BackendService {
     /**
      * Fetch chat history for a specific run
      */
-    getChatHistory(
-        runId: string
-    ): Promise<{
+    getChatHistory(runId: string): Promise<{
         events: Array<RunHistoryModelEvent>
         startTimestamp?: string
         endTimestamp?: string
@@ -1199,12 +1197,9 @@ export const BackendProvider: BackendService = {
                 triggerEvent?: string | null
                 triggerEventType?: string | null
                 isTriggerEventTruncated?: boolean
-            }>(
-                url,
-                {
-                    withCredentials: true
-                }
-            )
+            }>(url, {
+                withCredentials: true
+            })
             .then(r => r.data)
             .catch(error => {
                 console.error("Error fetching chat history:", error)

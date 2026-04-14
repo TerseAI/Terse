@@ -83,10 +83,7 @@ function mergeProcessOutputIntoTurn(turn: Turn, event: ProcessOutput): void {
     const last = existing[existing.length - 1]
 
     if (last && last.label === event.label && last.stream === event.stream) {
-        turn.process_outputs = [
-            ...existing.slice(0, -1),
-            { ...last, content: `${last.content}${event.content}`, timestamp: event.timestamp }
-        ]
+        turn.process_outputs = [...existing.slice(0, -1), { ...last, content: `${last.content}${event.content}`, timestamp: event.timestamp }]
         return
     }
 
