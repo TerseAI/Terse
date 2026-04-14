@@ -19,16 +19,23 @@ export interface SdkProjectArchive {
     readText(path: string): string | null
 }
 
-export interface SdkPrebuiltImageDefinition {
-    imageHash: string
+export interface SdkDependencyImageDefinition {
+    dependencyHash: string
 }
 
-export interface SdkImageBuildContext {
+export interface SdkDependencyImageBuildContext {
     sb: Sandbox
     archive: SdkProjectArchive
     templateDir: string
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     writeFile: (path: string, content: string) => Promise<void>
+    escapeShellArg: (value: string) => string
+}
+
+export interface SdkSourceImageBuildContext {
+    sb: Sandbox
+    projectDir: string
+    ensureSandboxCommand: (label: string, command: string) => Promise<void>
     escapeShellArg: (value: string) => string
 }
 
@@ -52,8 +59,9 @@ export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
     sandboxImage: string
     matchesArchive(entries: Set<string>): boolean
-    definePrebuiltImage(archive: SdkProjectArchive): SdkPrebuiltImageDefinition
-    buildPrebuiltImage(context: SdkImageBuildContext): Promise<void>
+    defineDependencyImage(archive: SdkProjectArchive): SdkDependencyImageDefinition
+    buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void>
+    prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void>
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
 }
 
@@ -95,3 +103,5 @@ export async function runSandboxExecStage(context: SdkRuntimeExecutorContext, fn
 export const SDK_SANDBOX_CODE_ZIP_PATH = "/tmp/code.zip"
 export const SDK_SANDBOX_PROJECT_DIR = "/tmp/project"
 export const SDK_SANDBOX_EVENT_FILE_PATH = "/tmp/event.json"
+export const SDK_SOURCE_IMAGE_PROJECT_DIR = "/opt/terse-sdk-run/project"
+export const SDK_SOURCE_IMAGE_CODE_ZIP_PATH = "/tmp/source-image-code.zip"

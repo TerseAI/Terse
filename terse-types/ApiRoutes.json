@@ -160,6 +160,7 @@
     },
     "REFRESH_TOKENS": "/refresh-tokens",
     "REVIEW_AGENTS": "/review-agents",
+    "CLEANUP_SDK_IMAGES": "/cleanup-sdk-images",
     "USERS": {
         "CREATE": "/users",
         "BY_ID": "/users/:id"

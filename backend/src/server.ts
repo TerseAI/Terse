@@ -26,6 +26,7 @@ import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrat
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
+import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
@@ -211,6 +212,10 @@ app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
 
 app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
     reviewAllAgents(req, res)
+})
+
+app.post(ApiRoutes.CLEANUP_SDK_IMAGES, async (req, res) => {
+    cleanupSdkImages(req, res)
 })
 
 // MARK: WEBHOOKS (before apiTokenAuthMiddleware — these use their own auth via signatures/tokens)

@@ -26,6 +26,11 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const userId = user.id
     const organizationId = user.organizationId
 
+    console.log({
+        userId,
+        organizationId
+    })
+
     try {
         const { remoteServerUrl, jobs, sourceZipBase64 } = sdkDeployRequestBodySchema.parse(req.body)
 
@@ -51,17 +56,17 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
         let sourceZipBuffer: Buffer | undefined
         let gcsKey: string | undefined
-        let sandboxImageId: string | undefined
-        let sandboxImageHash: string | undefined
-        let sandboxRuntime: string | undefined
+        let currentSdkSourceImageId: string | undefined
         if (sourceZipBase64) {
             sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64, res)
             gcsKey = await uploadSourceZipToGcs(sourceZipBuffer)
 
-            const preparedImage = await new SdkSandboxImageService().prepareFromSourceZip(sourceZipBuffer)
-            sandboxImageId = preparedImage.imageId
-            sandboxImageHash = preparedImage.imageHash
-            sandboxRuntime = preparedImage.runtime
+            const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
+                zipBuffer: sourceZipBuffer,
+                gcsKey,
+                organizationId
+            })
+            currentSdkSourceImageId = preparedImages.sourceImageId
         }
 
         for (const job of jobs) {
@@ -80,18 +85,14 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             const isUpdate = !!existing
             const agent = isUpdate
                 ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, {
+                      currentSdkSourceImageId,
                       gcsKey,
-                      remoteServerUrl,
-                      sandboxImageHash,
-                      sandboxImageId,
-                      sandboxRuntime
+                      remoteServerUrl
                   })
                 : await createNewAutomation(prisma, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, {
+                      currentSdkSourceImageId,
                       gcsKey,
-                      remoteServerUrl,
-                      sandboxImageHash,
-                      sandboxImageId,
-                      sandboxRuntime
+                      remoteServerUrl
                   })
 
             await setupAgentTriggers(agent)
@@ -154,11 +155,9 @@ async function uploadSourceZipToGcs(zipBuffer: Buffer): Promise<string> {
 }
 
 type SdkDeploymentArtifacts = {
+    currentSdkSourceImageId?: string
     gcsKey?: string
     remoteServerUrl?: string
-    sandboxImageId?: string
-    sandboxImageHash?: string
-    sandboxRuntime?: string
 }
 
 async function updateExistingAutomation(
@@ -173,7 +172,7 @@ async function updateExistingAutomation(
     artifacts: SdkDeploymentArtifacts = {}
 ): Promise<AgentWithTriggerRelations> {
     const automationId = existing.id
-    const { gcsKey, remoteServerUrl, sandboxImageHash, sandboxImageId, sandboxRuntime } = artifacts
+    const { currentSdkSourceImageId, gcsKey, remoteServerUrl } = artifacts
 
     // Preserve webhook tokens so URLs stay stable across redeploys
     const preservedWebhookTokens = existing.inputs.filter(input => input.webhook_config).map(input => input.webhook_config!.webhook_token)
@@ -201,25 +200,27 @@ async function updateExistingAutomation(
             where: { automation_id: automationId },
             update: {
                 content: "[SDK]",
+                current_sdk_source_image_id: currentSdkSourceImageId ?? null,
                 source_code_gcs_key: gcsKey ?? null,
-                sandbox_image_hash: sandboxImageHash ?? null,
-                sandbox_image_id: sandboxImageId ?? null,
-                sandbox_runtime: sandboxRuntime ?? null,
                 remote_server_url: remoteServerUrl ?? null
             },
             create: {
                 automation_id: automationId,
                 content: "[SDK]",
+                current_sdk_source_image_id: currentSdkSourceImageId ?? null,
                 source_code_gcs_key: gcsKey ?? null,
-                sandbox_image_hash: sandboxImageHash ?? null,
-                sandbox_image_id: sandboxImageId ?? null,
-                sandbox_runtime: sandboxRuntime ?? null,
                 remote_server_url: remoteServerUrl ?? null,
                 signing_secret: generateWebhookSecret()
             }
         })
 
         await persistToolApprovals(tx, automationId, toolApprovals, { replaceExisting: true })
+
+        console.log({
+            triggers,
+            organizationId,
+            userId
+        })
 
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
         await createOutputsForAutomation(tx, automationId, outputs, organizationId, userId)
@@ -256,7 +257,7 @@ async function createNewAutomation(
     userId: string,
     artifacts: SdkDeploymentArtifacts = {}
 ): Promise<AgentWithTriggerRelations> {
-    const { gcsKey, remoteServerUrl, sandboxImageHash, sandboxImageId, sandboxRuntime } = artifacts
+    const { currentSdkSourceImageId, gcsKey, remoteServerUrl } = artifacts
 
     return prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
@@ -274,10 +275,8 @@ async function createNewAutomation(
             data: {
                 automation_id: newAgent.id,
                 content: "[SDK]",
+                current_sdk_source_image_id: currentSdkSourceImageId,
                 source_code_gcs_key: gcsKey,
-                sandbox_image_hash: sandboxImageHash,
-                sandbox_image_id: sandboxImageId,
-                sandbox_runtime: sandboxRuntime,
                 remote_server_url: remoteServerUrl,
                 signing_secret: generateWebhookSecret()
             }

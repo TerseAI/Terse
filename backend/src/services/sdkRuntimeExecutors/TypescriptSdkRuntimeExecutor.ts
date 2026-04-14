@@ -1,6 +1,14 @@
 import crypto from "crypto"
 
-import type { SandboxCommandResult, SdkImageBuildContext, SdkPrebuiltImageDefinition, SdkProjectArchive, SdkRuntimeExecutor, SdkRuntimeExecutorContext } from "./types"
+import type {
+    SandboxCommandResult,
+    SdkDependencyImageBuildContext,
+    SdkDependencyImageDefinition,
+    SdkProjectArchive,
+    SdkRuntimeExecutor,
+    SdkRuntimeExecutorContext,
+    SdkSourceImageBuildContext
+} from "./types"
 import { SandboxStage, runSandboxExecStage, runSandboxStage } from "./types"
 
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
@@ -11,7 +19,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return entries.has("package.json")
     }
 
-    definePrebuiltImage(archive: SdkProjectArchive): SdkPrebuiltImageDefinition {
+    defineDependencyImage(archive: SdkProjectArchive): SdkDependencyImageDefinition {
         const packageManager = this.detectPackageManager(archive)
         const relevantFiles = ["package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc"]
         const hashPayload = {
@@ -24,11 +32,11 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         }
 
         return {
-            imageHash: crypto.createHash("sha256").update(JSON.stringify(hashPayload)).digest("hex")
+            dependencyHash: crypto.createHash("sha256").update(JSON.stringify(hashPayload)).digest("hex")
         }
     }
 
-    async buildPrebuiltImage(context: SdkImageBuildContext): Promise<void> {
+    async buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void> {
         const templateDir = context.escapeShellArg(context.templateDir)
         const packageJson = context.archive.readText("package.json")
         if (!packageJson) {
@@ -53,17 +61,15 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         await context.ensureSandboxCommand("install cached TypeScript dependencies", this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg))
     }
 
+    async prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void> {
+        await context.ensureSandboxCommand(
+            "attach cached node_modules",
+            `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && ln -s ${context.escapeShellArg(`${this.getTemplateDir()}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
+        )
+    }
+
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
         if (context.usesPrebuiltImage) {
-            await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, () =>
-                context.ensureSandboxCommand(
-                    "attach cached node_modules",
-                    `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && ln -s ${context.escapeShellArg(`${this.getTemplateDir()}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
-                )
-            )
-
-            await runSandboxStage(context, SandboxStage.INSTALLING_CLI, () => context.ensureSandboxCommand("verify terse cli", "command -v terse >/dev/null"))
-
             return runSandboxExecStage(context, () =>
                 context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`)
             )

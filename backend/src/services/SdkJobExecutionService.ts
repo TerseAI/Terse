@@ -1,12 +1,11 @@
 import crypto from "crypto"
-import { unzipSync } from "fflate"
 import { ModalClient, Sandbox } from "modal"
 import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
 
 import { StreamEventEmitter } from "../agent/AgentRunner/StreamProcessor"
-import { finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
+import { attachSdkSourceImageToRun, finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
 import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../agent/systemEvents/processOutputSystemEvent"
 import { settings } from "../config/settings"
 import logger from "../logger"
@@ -16,11 +15,11 @@ import { extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
+import { SdkSandboxImageService } from "./SdkSandboxImageService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import {
-    SDK_SANDBOX_CODE_ZIP_PATH,
     SDK_SANDBOX_EVENT_FILE_PATH,
-    SDK_SANDBOX_PROJECT_DIR,
+    SDK_SOURCE_IMAGE_PROJECT_DIR,
     type SandboxCommandResult,
     type SdkProjectRuntime,
     type SdkRuntimeExecutor,
@@ -29,8 +28,6 @@ import {
 
 export interface SdkJobExecutionParams {
     gcsKey: string
-    sandboxImageId?: string
-    sandboxRuntime?: SdkProjectRuntime
     runId: string
     agentId: string
     orgId: string
@@ -38,6 +35,14 @@ export interface SdkJobExecutionParams {
     user: User
     eventJson: string
     jobName: string
+}
+
+type ResolvedSdkSourceImage = {
+    recordId: string
+    modalImageId: string
+    runtime: SdkProjectRuntime
+    dependencyImageId: string
+    zipBuffer?: Buffer
 }
 
 export class SdkJobExecutionService {
@@ -81,7 +86,7 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { gcsKey, sandboxImageId, sandboxRuntime, runId, agentId, orgId, userId, user, eventJson, jobName } = params
+        const { gcsKey, runId, agentId, orgId, userId, user, eventJson, jobName } = params
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId, user })
@@ -90,88 +95,48 @@ export class SdkJobExecutionService {
         let sandboxTokenId: string | undefined
 
         try {
-            // 1. Download zip from GCS
-            this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "started")
-            let t = performance.now()
-            const zipBuffer = await downloadSdkDeployZip(gcsKey)
-            if (!zipBuffer) {
-                this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "failed", { duration_ms: this.elapsedMs(t), detail: "Failed to download SDK deploy zip from GCS" })
-                await markRunFailed(runId, "Failed to download SDK deploy zip from GCS", "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                return
-            }
-            this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "completed", { duration_ms: this.elapsedMs(t) })
-            logger.info("SDK sandbox: downloaded zip from GCS", { runId, agentId, duration: this.elapsed(t), sizeBytes: zipBuffer.length })
+            let sourceImage = await this.resolveOrPrepareSourceImage({ agentId, gcsKey, orgId, runId })
+            let executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
 
-            const archiveEntries = new Set(Object.keys(unzipSync(new Uint8Array(zipBuffer))))
-            const executor = sdkRuntimeExecutorRegistry.resolve(archiveEntries)
-            logger.info("SDK sandbox: detected project runtime", { runId, agentId, runtime: executor.runtime })
-
-            // 2. Generate a temporary API key for the sandbox
-            t = performance.now()
             const { rawToken, tokenId } = await this.createSandboxApiToken(userId, orgId)
             sandboxApiKey = rawToken
             sandboxTokenId = tokenId
-            logger.info("SDK sandbox: created temp API token", { runId, agentId, duration: this.elapsed(t) })
+            logger.info("SDK sandbox: created temp API token", { runId, agentId })
 
-            // 3. Clean up stale sandbox tokens (older than 1 hour) as safety net
             void this.cleanupStaleSandboxTokens(orgId).catch(err => {
                 logger.warn("Failed to cleanup stale sandbox tokens", { error: err })
             })
 
-            // 4. Create Modal sandbox
-            this.emitSandboxStatus(SandboxStage.BOOTING, "started")
-            const backendUrl = settings.urls.backend ?? "http://localhost:3001"
-
-            const modal = new ModalClient({
-                tokenId: settings.modal.tokenId,
-                tokenSecret: settings.modal.tokenSecret
-            })
-
-            t = performance.now()
-            const { imageLabel, sb, usesPrebuiltImage } = await this.createSandbox(modal, executor, sandboxImageId, sandboxRuntime)
-            this.emitSandboxStatus(SandboxStage.BOOTING, "completed", { duration_ms: this.elapsedMs(t) })
-            logger.info("SDK sandbox: created Modal sandbox", {
-                runId,
-                agentId,
-                sandboxId: sb.sandboxId,
-                runtime: executor.runtime,
-                image: imageLabel,
-                usesPrebuiltImage,
-                duration: this.elapsed(t)
-            })
-
             const sandboxEnv = {
                 TERSE_API_KEY: sandboxApiKey,
-                TERSE_BACKEND_URL: backendUrl,
+                TERSE_BACKEND_URL: settings.urls.backend ?? "http://localhost:3001",
                 TERSE_RUN_ID: runId,
-                NO_UPDATE_NOTIFIER: "1" // suppress npm/bun update notifier output in sandbox stdout
+                NO_UPDATE_NOTIFIER: "1"
             }
 
-            try {
-                const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, usesPrebuiltImage)
-                await this.uploadZipToSandbox(sb, zipBuffer, runId, agentId)
-                await this.unzipProjectInSandbox(executorContext)
-                await this.writeEventFile(sb, eventJson)
-                const result = await executor.execute(executorContext)
+            const modal = this.createModalClient()
+            const result = await this.executeWithSourceImage({
+                executor,
+                eventJson,
+                jobName,
+                modal,
+                runId,
+                agentId,
+                sandboxEnv,
+                sourceImageModalId: sourceImage.modalImageId
+            })
 
-                if (result.exitCode === 0) {
-                    await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
-                    logger.info("SDK sandbox: terse run completed", { runId, agentId, runtime: executor.runtime })
-                } else {
-                    const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
-                    await markRunFailed(runId, errorMsg, "agent")
-                    logger.error("SDK sandbox: terse run failed", { runId, agentId, exitCode: result.exitCode })
-                }
-
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                await sb.terminate()
-
-                logger.info("SDK sandbox: total execution finished", { runId, agentId, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
-            } catch (sandboxError) {
-                await sb.terminate().catch(() => {})
-                throw sandboxError
+            if (result.exitCode === 0) {
+                await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
+                logger.info("SDK sandbox: terse run completed", { runId, agentId, runtime: executor.runtime })
+            } else {
+                const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
+                await markRunFailed(runId, errorMsg, "agent")
+                logger.error("SDK sandbox: terse run failed", { runId, agentId, exitCode: result.exitCode, runtime: executor.runtime })
             }
+
+            emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+            logger.info("SDK sandbox: total execution finished", { runId, agentId, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
         } catch (error) {
             const errorMessage = extractErrorMessage(error)
             logger.error("SDK job execution failed", { error, runId, agentId, totalDuration: this.elapsed(executionStart) })
@@ -179,11 +144,10 @@ export class SdkJobExecutionService {
             try {
                 await markRunFailed(runId, errorMessage, "agent")
                 emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-            } catch (e) {
-                logger.error("Failed to mark run as failed after SDK execution error", { error: e, runId })
+            } catch (persistError) {
+                logger.error("Failed to mark run as failed after SDK execution error", { error: persistError, runId })
             }
         } finally {
-            // Cleanup: delete the temporary API token
             if (sandboxTokenId) {
                 await this.deleteSandboxApiToken(sandboxTokenId).catch(err => {
                     logger.warn("Failed to delete sandbox API token", { error: err, tokenId: sandboxTokenId })
@@ -192,19 +156,189 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async uploadZipToSandbox(sb: Sandbox, zipBuffer: Buffer, runId: string, agentId: string): Promise<void> {
-        const t = performance.now()
-        const writeHandle = await sb.open(SDK_SANDBOX_CODE_ZIP_PATH, "w")
-        await writeHandle.write(new Uint8Array(zipBuffer))
-        await writeHandle.close()
-        logger.info("SDK sandbox: uploaded zip to sandbox", { runId, agentId, duration: this.elapsed(t) })
+    private async resolveOrPrepareSourceImage(params: { agentId: string; gcsKey: string; orgId: string; runId: string }): Promise<ResolvedSdkSourceImage> {
+        const { agentId, gcsKey, orgId, runId } = params
+        const prompt = await db().automation_prompts.findUnique({
+            where: { automation_id: agentId },
+            select: { current_sdk_source_image_id: true }
+        })
+
+        if (prompt?.current_sdk_source_image_id) {
+            const sourceImage = await this.getSourceImageRecord(prompt.current_sdk_source_image_id)
+            if (sourceImage) {
+                await this.touchSourceImageUsage(sourceImage)
+                await attachSdkSourceImageToRun(runId, sourceImage.recordId)
+                return sourceImage
+            }
+
+            logger.warn("SDK sandbox: prompt referenced missing sdk_source_images row, rebuilding from GCS", {
+                agentId,
+                runId,
+                sourceImageId: prompt.current_sdk_source_image_id
+            })
+        }
+
+        const zipBuffer = await this.downloadSourceZipFromGcs(gcsKey, runId, agentId)
+        return this.prepareAndLinkSourceImage({ agentId, gcsKey, orgId, runId, zipBuffer })
     }
 
-    private async unzipProjectInSandbox(context: SdkRuntimeExecutorContext): Promise<void> {
-        await context.ensureSandboxCommand(
-            "install unzip and extract project",
-            `mkdir -p ${SDK_SANDBOX_PROJECT_DIR} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -y -qq unzip >/dev/null)) && unzip -o ${SDK_SANDBOX_CODE_ZIP_PATH} -d ${SDK_SANDBOX_PROJECT_DIR}`
-        )
+    private async rebuildSourceImage(params: { agentId: string; brokenSourceImageId: string; gcsKey: string; orgId: string; runId: string; zipBuffer: Buffer }): Promise<ResolvedSdkSourceImage> {
+        const { agentId, brokenSourceImageId, gcsKey, orgId, runId, zipBuffer } = params
+
+        await db().sdk_source_images.deleteMany({
+            where: { id: brokenSourceImageId }
+        })
+
+        logger.info("SDK sandbox: removed broken sdk_source_images row before rebuild", {
+            agentId,
+            runId,
+            sourceImageId: brokenSourceImageId
+        })
+
+        return this.prepareAndLinkSourceImage({ agentId, gcsKey, orgId, runId, zipBuffer })
+    }
+
+    private async prepareAndLinkSourceImage(params: { agentId: string; gcsKey: string; orgId: string; runId: string; zipBuffer: Buffer }): Promise<ResolvedSdkSourceImage> {
+        const { agentId, gcsKey, orgId, runId, zipBuffer } = params
+        const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
+            zipBuffer,
+            gcsKey,
+            organizationId: orgId
+        })
+
+        await db().automation_prompts.upsert({
+            where: { automation_id: agentId },
+            update: {
+                current_sdk_source_image_id: preparedImages.sourceImageId,
+                source_code_gcs_key: gcsKey
+            },
+            create: {
+                automation_id: agentId,
+                content: "[SDK]",
+                current_sdk_source_image_id: preparedImages.sourceImageId,
+                source_code_gcs_key: gcsKey
+            }
+        })
+
+        await attachSdkSourceImageToRun(runId, preparedImages.sourceImageId)
+
+        const sourceImage = await this.getSourceImageRecord(preparedImages.sourceImageId)
+        if (!sourceImage) {
+            throw new Error(`Prepared SDK source image ${preparedImages.sourceImageId} was not found`)
+        }
+
+        return {
+            ...sourceImage,
+            zipBuffer
+        }
+    }
+
+    private async getSourceImageRecord(sourceImageId: string): Promise<ResolvedSdkSourceImage | null> {
+        const record = await db().sdk_source_images.findUnique({
+            where: { id: sourceImageId },
+            select: {
+                id: true,
+                modal_image_id: true,
+                runtime: true,
+                dependency_image_id: true
+            }
+        })
+
+        if (!record) {
+            return null
+        }
+
+        return {
+            recordId: record.id,
+            modalImageId: record.modal_image_id,
+            runtime: this.parseRuntime(record.runtime),
+            dependencyImageId: record.dependency_image_id
+        }
+    }
+
+    private async touchSourceImageUsage(sourceImage: Pick<ResolvedSdkSourceImage, "recordId" | "dependencyImageId">): Promise<void> {
+        const now = new Date()
+        await db().$transaction([
+            db().sdk_source_images.updateMany({
+                where: { id: sourceImage.recordId },
+                data: { last_used_at: now }
+            }),
+            db().sdk_dependency_images.updateMany({
+                where: { id: sourceImage.dependencyImageId },
+                data: { last_used_at: now }
+            })
+        ])
+    }
+
+    private async executeWithSourceImage(params: {
+        executor: SdkRuntimeExecutor
+        eventJson: string
+        jobName: string
+        modal: ModalClient
+        runId: string
+        agentId: string
+        sandboxEnv: Record<string, string>
+        sourceImageModalId: string
+    }): Promise<SandboxCommandResult> {
+        const { executor, eventJson, jobName, modal, runId, agentId, sandboxEnv, sourceImageModalId } = params
+
+        this.emitSandboxStatus(SandboxStage.BOOTING, "started")
+        const bootStart = performance.now()
+
+        let sb: Sandbox
+        try {
+            sb = await this.createSourceImageSandbox(modal, sourceImageModalId)
+            this.emitSandboxStatus(SandboxStage.BOOTING, "completed", { duration_ms: this.elapsedMs(bootStart) })
+        } catch (error) {
+            this.emitSandboxStatus(SandboxStage.BOOTING, "failed", {
+                duration_ms: this.elapsedMs(bootStart),
+                detail: extractErrorMessage(error)
+            })
+            throw error
+        }
+
+        logger.info("SDK sandbox: created Modal sandbox from source image", {
+            runId,
+            agentId,
+            sandboxId: sb.sandboxId,
+            runtime: executor.runtime,
+            image: sourceImageModalId,
+            duration: this.elapsed(bootStart)
+        })
+
+        try {
+            const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, SDK_SOURCE_IMAGE_PROJECT_DIR, true)
+            await this.writeEventFile(sb, eventJson)
+            const result = await executor.execute(executorContext)
+            return result
+        } finally {
+            await sb.terminate().catch(() => {})
+        }
+    }
+
+    private async downloadSourceZipFromGcs(gcsKey: string, runId: string, agentId: string): Promise<Buffer> {
+        this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "started")
+        const start = performance.now()
+
+        const zipBuffer = await downloadSdkDeployZip(gcsKey)
+        if (!zipBuffer) {
+            this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "failed", {
+                duration_ms: this.elapsedMs(start),
+                detail: "Failed to download SDK deploy zip from GCS"
+            })
+            throw new Error("Failed to download SDK deploy zip from GCS")
+        }
+
+        this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "completed", { duration_ms: this.elapsedMs(start) })
+        logger.info("SDK sandbox: downloaded zip from GCS", {
+            runId,
+            agentId,
+            gcsKey,
+            duration: this.elapsed(start),
+            sizeBytes: zipBuffer.length
+        })
+
+        return zipBuffer
     }
 
     private async writeEventFile(sb: Sandbox, eventJson: string): Promise<void> {
@@ -213,14 +347,22 @@ export class SdkJobExecutionService {
         await eventHandle.close()
     }
 
-    private createRuntimeExecutorContext(sb: Sandbox, sandboxEnv: Record<string, string>, runId: string, agentId: string, jobName: string, usesPrebuiltImage: boolean): SdkRuntimeExecutorContext {
+    private createRuntimeExecutorContext(
+        sb: Sandbox,
+        sandboxEnv: Record<string, string>,
+        runId: string,
+        agentId: string,
+        jobName: string,
+        projectDir: string,
+        usesPrebuiltImage: boolean
+    ): SdkRuntimeExecutorContext {
         return {
             sb,
             sandboxEnv,
             runId,
             agentId,
             jobName,
-            projectDir: SDK_SANDBOX_PROJECT_DIR,
+            projectDir,
             eventFilePath: SDK_SANDBOX_EVENT_FILE_PATH,
             usesPrebuiltImage,
             ensureSandboxCommand: async (label, command) => {
@@ -237,45 +379,10 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSandbox(
-        modal: ModalClient,
-        executor: SdkRuntimeExecutor,
-        sandboxImageId?: string,
-        sandboxRuntime?: SdkProjectRuntime
-    ): Promise<{ sb: Sandbox; usesPrebuiltImage: boolean; imageLabel: string }> {
+    private async createSourceImageSandbox(modal: ModalClient, sourceImageModalId: string): Promise<Sandbox> {
         const app = await modal.apps.fromName("terse-sdk-sandbox", { createIfMissing: true })
-
-        if (sandboxImageId && (!sandboxRuntime || sandboxRuntime === executor.runtime)) {
-            try {
-                const image = await modal.images.fromId(sandboxImageId)
-                const sb = await modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
-                return {
-                    sb,
-                    usesPrebuiltImage: true,
-                    imageLabel: sandboxImageId
-                }
-            } catch (error) {
-                logger.warn("SDK sandbox: failed to use prebuilt image, falling back to base image", {
-                    error,
-                    sandboxImageId,
-                    runtime: executor.runtime
-                })
-            }
-        } else if (sandboxImageId && sandboxRuntime && sandboxRuntime !== executor.runtime) {
-            logger.warn("SDK sandbox: ignoring prebuilt image with mismatched runtime", {
-                sandboxImageId,
-                sandboxRuntime,
-                executorRuntime: executor.runtime
-            })
-        }
-
-        const image = modal.images.fromRegistry(executor.sandboxImage)
-        const sb = await modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
-        return {
-            sb,
-            usesPrebuiltImage: false,
-            imageLabel: executor.sandboxImage
-        }
+        const image = await modal.images.fromId(sourceImageModalId)
+        return modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {
@@ -293,7 +400,7 @@ export class SdkJobExecutionService {
     }
 
     private async runSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<SandboxCommandResult> {
-        const t = performance.now()
+        const start = performance.now()
         logger.info("SDK sandbox: starting command", { runId, agentId, label, command })
 
         const proc = await sb.exec(["sh", "-c", command], {
@@ -308,7 +415,7 @@ export class SdkJobExecutionService {
             runId,
             agentId,
             label,
-            duration: this.elapsed(t),
+            duration: this.elapsed(start),
             exitCode,
             stdout: this.clipOutput(stdout),
             stderr: this.clipOutput(stderr)
@@ -318,7 +425,7 @@ export class SdkJobExecutionService {
     }
 
     private async runSandboxCommandStreaming(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<SandboxCommandResult> {
-        const t = performance.now()
+        const start = performance.now()
         logger.info("SDK sandbox: starting streaming command", { runId, agentId, label, command })
 
         const proc = await sb.exec(["sh", "-c", command], {
@@ -344,6 +451,7 @@ export class SdkJobExecutionService {
             if (!content) {
                 return
             }
+
             persistQueue = persistQueue.then(() =>
                 this.emitAndPersistProcessOutput(runId, {
                     label,
@@ -357,6 +465,7 @@ export class SdkJobExecutionService {
             if (flushTimers[stream]) {
                 return
             }
+
             flushTimers[stream] = setTimeout(() => {
                 flushTimers[stream] = undefined
                 flushStream(stream)
@@ -372,10 +481,12 @@ export class SdkJobExecutionService {
                     if (done) {
                         break
                     }
+
                     const chunk = typeof value === "string" ? value : new TextDecoder().decode(value)
                     if (!chunk) {
                         continue
                     }
+
                     full[stream] += chunk
                     pending[stream] += chunk
                     scheduleFlush(stream)
@@ -398,7 +509,7 @@ export class SdkJobExecutionService {
             runId,
             agentId,
             label,
-            duration: this.elapsed(t),
+            duration: this.elapsed(start),
             exitCode,
             stdout: this.clipOutput(full.stdout),
             stderr: this.clipOutput(full.stderr)
@@ -433,6 +544,7 @@ export class SdkJobExecutionService {
         if (!detail) {
             return `${label} failed (exit ${result.exitCode})`
         }
+
         return `${label} failed (exit ${result.exitCode}): ${detail.slice(0, 500)}`
     }
 
@@ -441,11 +553,27 @@ export class SdkJobExecutionService {
         if (!trimmed) {
             return undefined
         }
+
         return trimmed.slice(0, limit)
     }
 
     private escapeShellArg(value: string): string {
         return `'${value.replace(/'/g, "'\\''")}'`
+    }
+
+    private parseRuntime(runtime: string): SdkProjectRuntime {
+        if (runtime === "typescript" || runtime === "python") {
+            return runtime
+        }
+
+        throw new Error(`Unsupported SDK runtime: ${runtime}`)
+    }
+
+    private createModalClient(): ModalClient {
+        return new ModalClient({
+            tokenId: settings.modal.tokenId,
+            tokenSecret: settings.modal.tokenSecret
+        })
     }
 
     private async createSandboxApiToken(userId: string, organizationId: string): Promise<{ rawToken: string; tokenId: string }> {
@@ -481,6 +609,7 @@ export class SdkJobExecutionService {
                 created_at: { lt: oneHourAgo }
             }
         })
+
         if (deleted.count > 0) {
             logger.info("Cleaned up stale sandbox API tokens", { count: deleted.count, organizationId })
         }

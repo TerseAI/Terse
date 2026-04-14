@@ -422,7 +422,6 @@ export class EventProcessor {
         if (!gcsKey) {
             throw new Error(`SDK agent "${agent.name}" is missing source_code_gcs_key`)
         }
-        const sandboxRuntime = agent.prompt?.sandbox_runtime === "typescript" || agent.prompt?.sandbox_runtime === "python" ? agent.prompt.sandbox_runtime : undefined
 
         logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
 
@@ -431,8 +430,6 @@ export class EventProcessor {
         void service
             .execute({
                 gcsKey,
-                sandboxImageId: agent.prompt?.sandbox_image_id ?? undefined,
-                sandboxRuntime,
                 runId,
                 agentId: agent.id,
                 orgId: this.user.organizationId,

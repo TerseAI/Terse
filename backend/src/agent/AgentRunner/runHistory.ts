@@ -89,6 +89,14 @@ export async function finalizeRunStatus(runId: string, status: CompletedRunStatu
     })
 }
 
+export async function attachSdkSourceImageToRun(runId: string, sdkSourceImageId: string): Promise<void> {
+    const prisma = db()
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: { sdk_source_image_id: sdkSourceImageId }
+    })
+}
+
 export type CompletedRunEvaluation = { status: typeof RunHistoryStatus.SUCCESS; isSuccessful: true } | { status: typeof RunHistoryStatus.FAILED; isSuccessful: false; failureReason: string }
 
 export function evaluateCompletedRun(finalOutput: unknown, endedWithToolFailure: boolean): CompletedRunEvaluation {

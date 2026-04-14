@@ -1,6 +1,14 @@
 import crypto from "crypto"
 
-import type { SandboxCommandResult, SdkImageBuildContext, SdkPrebuiltImageDefinition, SdkProjectArchive, SdkRuntimeExecutor, SdkRuntimeExecutorContext } from "./types"
+import type {
+    SandboxCommandResult,
+    SdkDependencyImageBuildContext,
+    SdkDependencyImageDefinition,
+    SdkProjectArchive,
+    SdkRuntimeExecutor,
+    SdkRuntimeExecutorContext,
+    SdkSourceImageBuildContext
+} from "./types"
 import { SandboxStage, runSandboxExecStage, runSandboxStage } from "./types"
 
 export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
@@ -11,7 +19,7 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return entries.has("pyproject.toml")
     }
 
-    definePrebuiltImage(archive: SdkProjectArchive): SdkPrebuiltImageDefinition {
+    defineDependencyImage(archive: SdkProjectArchive): SdkDependencyImageDefinition {
         const relevantFiles = ["pyproject.toml", "uv.lock", ".python-version"]
         const hashPayload = {
             version: 1,
@@ -22,11 +30,11 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         }
 
         return {
-            imageHash: crypto.createHash("sha256").update(JSON.stringify(hashPayload)).digest("hex")
+            dependencyHash: crypto.createHash("sha256").update(JSON.stringify(hashPayload)).digest("hex")
         }
     }
 
-    async buildPrebuiltImage(context: SdkImageBuildContext): Promise<void> {
+    async buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void> {
         const templateDir = context.escapeShellArg(context.templateDir)
         const pyproject = context.archive.readText("pyproject.toml")
         if (!pyproject) {
@@ -53,17 +61,15 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         await context.ensureSandboxCommand("install cached Python dependencies", this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg))
     }
 
+    async prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void> {
+        await context.ensureSandboxCommand(
+            "attach cached virtualenv",
+            `rm -rf ${context.escapeShellArg(`${context.projectDir}/.venv`)} && ln -s ${context.escapeShellArg(`${this.getTemplateDir()}/.venv`)} ${context.escapeShellArg(`${context.projectDir}/.venv`)}`
+        )
+    }
+
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
         if (context.usesPrebuiltImage) {
-            await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, () =>
-                context.ensureSandboxCommand(
-                    "attach cached virtualenv",
-                    `rm -rf ${context.escapeShellArg(`${context.projectDir}/.venv`)} && ln -s ${context.escapeShellArg(`${this.getTemplateDir()}/.venv`)} ${context.escapeShellArg(`${context.projectDir}/.venv`)}`
-                )
-            )
-
-            await runSandboxStage(context, SandboxStage.INSTALLING_CLI, () => context.ensureSandboxCommand("verify terse cli", "command -v terse >/dev/null"))
-
             context.sandboxEnv.UV_NO_SYNC = "1"
             context.sandboxEnv.UV_PROJECT_ENVIRONMENT = `${context.projectDir}/.venv`
 
