@@ -65,7 +65,6 @@ Registers a workflow in the Python runtime.
 | `skills`           | `list[SkillConfig]`              | Capabilities available to the model during `run` and `run_and_wait`. |
 | `tool_approvals`   | `list[str]`                      | Tool names that require human approval before execution.             |
 | `filter`           | `Callable[[event], bool]`        | Optional function to skip the run for specific events.               |
-| `webhook_url`      | `str`                            | Optional URL to notify after each run completes.                     |
 | decorated function | `Callable[[event, agent], None]` | The workflow handler.                                                |
 
 ```python

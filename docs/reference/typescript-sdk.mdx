@@ -40,15 +40,15 @@ const client = new Terse()
 
 Defines the workflow contract.
 
-| Field           | Type                              | Description                                                                                       |
-| --------------- | --------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `name`          | `string`                          | Unique workflow identifier. Used to match workflows across deploys.                               |
-| `triggers`      | `Trigger[]`                       | One or more triggers that start the workflow.                                                     |
-| `skills`        | `Skill[]`                         | Capabilities available to the model during `run` and `runAndWait`.                                |
-| `toolApprovals` | `string[]`                        | Tool names that require human approval before execution. See [tool approvals](#tool-approvals).   |
-| `filter`        | `(event) => boolean`              | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
-| `onTrigger`     | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event.                                              |
-| `webhookURL`    | `string`                          | Optional URL to notify after each run completes.                                                  |
+| Field              | Type                              | Description                                                                                       |
+| ------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `name`             | `string`                          | Unique workflow identifier. Used to match workflows across deploys.                               |
+| `triggers`         | `Trigger[]`                       | One or more triggers that start the workflow.                                                     |
+| `skills`           | `Skill[]`                         | Capabilities available to the model during `run` and `runAndWait`.                                |
+| `toolApprovals`    | `string[]`                        | Tool names that require human approval before execution. See [tool approvals](#tool-approvals).   |
+| `filter`           | `(event) => boolean`              | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
+| `onTrigger`        | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event.                                              |
+| `remoteServerUrl`  | `string`                          | Optional base URL of the server where you mount `Terse.handleTrigger` (Terse POSTs job triggers here). |
 
 ```ts
 await client.createJob({
