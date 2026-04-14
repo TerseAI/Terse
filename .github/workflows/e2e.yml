@@ -84,7 +84,7 @@ jobs:
               run: pnpm start & # & runs it in the background
 
             - name: Wait for backend to be ready
-              run: npx wait-on --timeout 30000 http://localhost:3001/health
+              run: npx wait-on --timeout 30000 tcp:localhost:3001
 
             # ── E2E ───────────────────────────────────────────────────────────────
             # Sample project references the SDK via workspace:* so pnpm install
