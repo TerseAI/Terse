@@ -48,6 +48,8 @@ jobs:
               run: pnpm install
 
             - name: Build all packages
+              env:
+                  NODE_OPTIONS: --max-old-space-size=4096
               run: pnpm run build
 
             - name: Install CLI globally from PR source
