@@ -461,7 +461,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleProcessOutput = ({ id, stream, content, label, timestamp }: ProcessOutput & { id?: string }) => {
+    const handleProcessOutput = ({ id, stream, content, label, timestamp }: ProcessOutput) => {
         setTurns(prev => {
             const next = prev.slice()
             const lastTurn = next[next.length - 1]
@@ -469,8 +469,8 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
 
             if (canAppendProcessOutputToTurn(lastTurn)) {
                 const processOutputs = [...(lastTurn.process_outputs ?? [])]
-
-                if (lastProcessOutput && lastProcessOutput.label === label && lastProcessOutput.stream === stream) {
+                const isSameStream = lastProcessOutput && lastProcessOutput.stream === stream && lastProcessOutput.label === label
+                if (isSameStream) {
                     processOutputs[processOutputs.length - 1] = {
                         ...lastProcessOutput,
                         content: `${lastProcessOutput.content}${content}`,
@@ -490,7 +490,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     ...lastTurn,
                     timestamp,
                     process_outputs: processOutputs,
-                    isGenerating: true
+                    isGenerating: false
                 }
                 return next
             }
@@ -513,7 +513,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                             timestamp
                         }
                     ],
-                    isGenerating: true
+                    isGenerating: false
                 }
             ]
         })

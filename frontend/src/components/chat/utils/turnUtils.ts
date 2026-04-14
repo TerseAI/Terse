@@ -2,12 +2,7 @@ import { Turn } from "../Turn"
 
 export function canAppendProcessOutputToTurn(turn?: Turn): boolean {
     if (!turn || turn.role !== "assistant") return false
-
-    const hasText = turn.text.trim().length > 0
-    const hasFunctionCalls = turn.function_calls.length > 0
-    const hasSnippets = (turn.snippets?.length ?? 0) > 0
-
-    return !hasText && !hasFunctionCalls && !hasSnippets && !turn.filter_result && !turn.isFailure
+    return (turn.process_outputs?.length ?? 0) > 0
 }
 
 /**

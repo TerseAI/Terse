@@ -66,7 +66,7 @@ export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
                     ref={contentRef}
                     className={cn(
                         "m-0 min-w-0 overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-foreground/10 px-3 py-2 font-satoshi text-sm leading-6 tracking-[0.015em] select-text transition-[max-height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                        isCollapsed && "max-h-[4lh]"
+                        !isExpanded && "max-h-[4lh]"
                     )}
                 >
                     {events.map(event => (

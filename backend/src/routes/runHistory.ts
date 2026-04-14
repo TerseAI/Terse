@@ -2,8 +2,8 @@ import { AgentInputItem } from "@openai/agents-core"
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
 import { serializedEventSchema } from "terse-types"
-import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryModelEvent, type RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { type TriggerPayload } from "terse-types"
+import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryModelEvent, type RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { getRunHistoryModelEventsWithActions } from "../agent/runHistoryModelEvents"
 import logger from "../logger"
@@ -31,7 +31,8 @@ function formatTriggerPayloadForDisplay(payload: Prisma.JsonValue | null): Trigg
             isTriggerEventTruncated: false
         }
     }
-    const serializedEvent = serializedEventSchema.parse(payload)
+    const parsedPayload = JSON.parse(payload as string)
+    const serializedEvent = serializedEventSchema.parse(parsedPayload)
     const triggerEventType = serializedEvent.eventType
     const eventJson = JSON.stringify(serializedEvent, null, 2)
 
