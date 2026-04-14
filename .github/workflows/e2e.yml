@@ -1,0 +1,71 @@
+name: E2E Tests
+
+on:
+    pull_request:
+        branches: [main]
+    push:
+        branches: [main]
+
+jobs:
+    e2e:
+        name: End-to-End Tests
+        runs-on: ubuntu-latest
+
+        steps:
+            # ── Setup ─────────────────────────────────────────────────────────────
+
+            - name: Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v3
+              with:
+                  version: 9
+
+            # ── Build CLI + SDK from PR source ────────────────────────────────────
+
+            - name: Install dependencies
+              run: pnpm install
+
+            - name: Build all packages
+              run: pnpm --filter "./packages/*" build
+
+            - name: Install CLI globally from PR source
+              run: npm install -g ./packages/terse-cli
+
+            - name: Verify CLI is available
+              run: terse --version
+
+            # ── E2E ───────────────────────────────────────────────────────────────
+            # Sample project references the SDK via workspace:* so pnpm install
+            # above already wired it up to the PR's SDK source.
+            #
+            - name: "[init] Scaffold in temp dir"
+              run: |
+                  mkdir /tmp/terse-init-test && cd /tmp/terse-init-test
+                  terse init --yes   # 👈 adjust for your non-interactive flag
+
+            - name: "[generate] Run codegen on CI test fixture"
+              working-directory: packages/ci-test-fixture
+              run: terse generate
+
+            - name: "[run] Execute CI test fixture"
+              working-directory: packages/ci-test-fixture
+              run: terse run
+
+            # ── Cleanup ───────────────────────────────────────────────────────────
+
+            - name: Upload logs on failure
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: e2e-failure-logs
+                  path: |
+                      /tmp/terse-init-test
+                      packages/ci-test-fixture/**/*.log
+                  retention-days: 7
