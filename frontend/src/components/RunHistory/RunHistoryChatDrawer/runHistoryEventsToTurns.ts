@@ -1,8 +1,8 @@
-import type { Cancelled, ChatSnippet, Thinking } from "terse-types/ModelEvents"
+import type { Cancelled, ChatSnippet, ProcessOutput, Thinking } from "terse-types/ModelEvents"
 import { FilterResult, ModelEvent, RunError, TextDelta, ToolApprovalRequest, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from "terse-types/ModelEvents"
 
 import { Turn } from "@/components/chat/Turn"
-import { filterOutThinkingOnlyTurns } from "@/components/chat/utils/turnUtils"
+import { canAppendProcessOutputToTurn, filterOutThinkingOnlyTurns } from "@/components/chat/utils/turnUtils"
 
 type FunctionCallEvent = Turn["function_calls"][number]
 
@@ -76,6 +76,27 @@ function normalizeSnippet(payload: ChatSnippet, fallbackStepId: string, fallback
         id: payload.id ?? fallbackId,
         step_id: payload.step_id ?? fallbackStepId
     }
+}
+
+function mergeProcessOutputIntoTurn(turn: Turn, event: ProcessOutput): void {
+    const existing = turn.process_outputs ?? []
+    const last = existing[existing.length - 1]
+
+    if (last && last.label === event.label && last.stream === event.stream) {
+        turn.process_outputs = [...existing.slice(0, -1), { ...last, content: `${last.content}${event.content}`, timestamp: event.timestamp }]
+        return
+    }
+
+    turn.process_outputs = [
+        ...existing,
+        {
+            id: event.id ?? `process-output-${event.timestamp}-${existing.length}`,
+            stream: event.stream,
+            content: event.content,
+            label: event.label,
+            timestamp: event.timestamp
+        }
+    ]
 }
 
 export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
@@ -154,8 +175,10 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
             }
             case "ToolCall": {
                 const e = event as ToolCall
-                const lastTurn = turns[turns.length - 1]
-                const turn = lastTurn && lastTurn.role === "assistant" ? lastTurn : getOrCreateTurn("assistant", e.step_id, e.timestamp)
+                // Always use getOrCreateTurn so the ToolCall goes to its own step_id-keyed turn.
+                // This matches the streaming path where handleToolCallGenerating always creates a
+                // new turn per call_id, keeping ProcessOutput and ToolCall turns separate.
+                const turn = getOrCreateTurn("assistant", e.step_id, e.timestamp)
                 turn.disableAnimation = true
                 const existing = turn.function_calls.find(c => c.id === e.step_id)
                 if (!existing) {
@@ -308,6 +331,23 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
 
                 const turn = getOrCreateTurn("assistant", snippet.step_id ?? `snippet-${eventOrder}`, event.timestamp)
                 turn.snippets = [snippet]
+                break
+            }
+            case "ProcessOutput": {
+                const e = event as ProcessOutput
+                const lastTurn = turns[turns.length - 1]
+                if (canAppendProcessOutputToTurn(lastTurn)) {
+                    mergeProcessOutputIntoTurn(lastTurn, e)
+                    lastTurn.isGenerating = true
+                    lastTurn.disableAnimation = true
+                    break
+                }
+
+                const turnStepId = e.id ?? `process-output-${event.timestamp}`
+                const turn = getOrCreateTurn("assistant", turnStepId, event.timestamp)
+                turn.process_outputs = []
+                mergeProcessOutputIntoTurn(turn, e)
+                turn.disableAnimation = true
                 break
             }
         }

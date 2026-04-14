@@ -291,6 +291,12 @@ export const runHistoryTriggerSchema = z.object({
 })
 export type RunHistoryTrigger = z.infer<typeof runHistoryTriggerSchema>
 
+export type TriggerPayload = {
+    triggerEvent: string | null
+    triggerEventType: string | null
+    isTriggerEventTruncated: boolean
+}
+
 export const runHistoryDecisionSchema = z.object({
     action: runHistoryDecisionActionSchema,
     reasoning: z.string()

@@ -22,6 +22,9 @@ type RunHistoryChatAdapterProps = {
         runId: string
         startTimestamp?: string
         endTimestamp?: string
+        triggerEvent: string | null
+        triggerEventType: string | null
+        isTriggerEventTruncated: boolean
         subscribeToEvents?: ChatEventSubscription | null
         sendMessage: (message: ModelRequest) => void
         handleApprove: (stepId: string) => void
@@ -34,7 +37,7 @@ type RunHistoryChatAdapterProps = {
 
 export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus } = useChatHistory(runId)
+    const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus, triggerEvent, triggerEventType, isTriggerEventTruncated } = useChatHistory(runId)
 
     // Parse server ISO timestamps to epoch ms for chronological ordering
     const historicalEvents = useMemo(
@@ -90,6 +93,9 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
                     runId,
                     startTimestamp,
                     endTimestamp,
+                    triggerEvent,
+                    triggerEventType,
+                    isTriggerEventTruncated,
                     subscribeToEvents,
                     sendMessage,
                     currentStatus,
