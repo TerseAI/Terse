@@ -182,22 +182,6 @@ export class SdkJobExecutionService {
         return this.prepareAndLinkSourceImage({ agentId, gcsKey, orgId, runId, zipBuffer })
     }
 
-    private async rebuildSourceImage(params: { agentId: string; brokenSourceImageId: string; gcsKey: string; orgId: string; runId: string; zipBuffer: Buffer }): Promise<ResolvedSdkSourceImage> {
-        const { agentId, brokenSourceImageId, gcsKey, orgId, runId, zipBuffer } = params
-
-        await db().sdk_source_images.deleteMany({
-            where: { id: brokenSourceImageId }
-        })
-
-        logger.info("SDK sandbox: removed broken sdk_source_images row before rebuild", {
-            agentId,
-            runId,
-            sourceImageId: brokenSourceImageId
-        })
-
-        return this.prepareAndLinkSourceImage({ agentId, gcsKey, orgId, runId, zipBuffer })
-    }
-
     private async prepareAndLinkSourceImage(params: { agentId: string; gcsKey: string; orgId: string; runId: string; zipBuffer: Buffer }): Promise<ResolvedSdkSourceImage> {
         const { agentId, gcsKey, orgId, runId, zipBuffer } = params
         const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
