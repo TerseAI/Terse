@@ -67,6 +67,9 @@ jobs:
 
             # ── Backend ───────────────────────────────────────────────────────────
 
+            - name: Load staging env
+              run: echo "${{ secrets.ENV_FILE }}" > backend/.env
+
             - name: Run Prisma migrations
               working-directory: backend
               env:
