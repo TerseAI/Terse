@@ -19,11 +19,11 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         })
 
         await runSandboxStage(context, SandboxStage.INSTALLING_CLI, () =>
-            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install terse-sdk@latest terse-cli@latest`)
+            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install terse-sdk@latest terse-cli@latest --no-fund`)
         )
 
         return runSandboxExecStage(context, () =>
-            context.runSandboxCommand("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`)
+            context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`)
         )
     }
 }

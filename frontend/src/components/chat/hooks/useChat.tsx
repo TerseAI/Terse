@@ -43,6 +43,7 @@ export function useChat({
         handleToolApprovalResponse,
         addUserTurn,
         handleSnippet,
+        handleProcessOutput,
         handleMultipleChoiceAnswered
     } = useChatTurns({ initialTurns })
 
@@ -66,6 +67,7 @@ export function useChat({
         onToolApprovalRequest: handleToolApprovalRequest,
         onToolApprovalResponse: handleToolApprovalResponse,
         onSnippet: handleSnippet,
+        onProcessOutput: handleProcessOutput,
         onCancelled: handleCancel
     })
 

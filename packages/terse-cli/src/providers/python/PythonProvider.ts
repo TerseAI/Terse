@@ -408,8 +408,6 @@ async function runStreamingPython(cwd: string, env: NodeJS.ProcessEnv, scriptPat
 
             if (skipped) {
                 console.log(chalk.dim(`\n  Job "${jobName}" skipped (filter returned false).\n`))
-            } else {
-                console.log(chalk.green(`\n  Job "${jobName}" completed successfully.\n`))
             }
             resolve()
         })

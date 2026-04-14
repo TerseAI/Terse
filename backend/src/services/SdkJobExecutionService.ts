@@ -7,6 +7,7 @@ import { User } from "terse-types/types"
 
 import { StreamEventEmitter } from "../agent/AgentRunner/StreamProcessor"
 import { finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
+import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../agent/systemEvents/processOutputSystemEvent"
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -134,7 +135,8 @@ export class SdkJobExecutionService {
             const sandboxEnv = {
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: backendUrl,
-                TERSE_RUN_ID: runId
+                TERSE_RUN_ID: runId,
+                NO_UPDATE_NOTIFIER: "1" // suppress npm/bun update notifier output in sandbox stdout
             }
 
             try {
@@ -217,6 +219,9 @@ export class SdkJobExecutionService {
             runSandboxCommand: async (label, command) => {
                 return this.runSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
             },
+            runSandboxCommandStreaming: async (label, command) => {
+                return this.runSandboxCommandStreaming(sb, label, command, sandboxEnv, runId, agentId)
+            },
             escapeShellArg: value => this.escapeShellArg(value),
             emitSandboxStatus: (stage, status, opts) => this.emitSandboxStatus(stage, status, opts)
         }
@@ -225,6 +230,13 @@ export class SdkJobExecutionService {
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {
         const result = await this.runSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
         if (result.exitCode !== 0) {
+            if (result.stderr.trim().length > 0) {
+                await this.emitAndPersistProcessOutput(runId, {
+                    label,
+                    stream: "stderr",
+                    content: result.stderr
+                })
+            }
             throw new Error(this.buildFailureMessage(label, result))
         }
     }
@@ -252,6 +264,124 @@ export class SdkJobExecutionService {
         })
 
         return { exitCode, stdout, stderr }
+    }
+
+    private async runSandboxCommandStreaming(
+        sb: Sandbox,
+        label: string,
+        command: string,
+        sandboxEnv: Record<string, string>,
+        runId: string,
+        agentId: string
+    ): Promise<SandboxCommandResult> {
+        const t = performance.now()
+        logger.info("SDK sandbox: starting streaming command", { runId, agentId, label, command })
+
+        const proc = await sb.exec(["sh", "-c", command], {
+            stdout: "pipe",
+            stderr: "pipe",
+            env: sandboxEnv
+        })
+
+        const pending = {
+            stdout: "",
+            stderr: ""
+        }
+        const full = {
+            stdout: "",
+            stderr: ""
+        }
+        const flushTimers: Partial<Record<"stdout" | "stderr", ReturnType<typeof setTimeout>>> = {}
+        let persistQueue = Promise.resolve()
+
+        const flushStream = (stream: "stdout" | "stderr") => {
+            const content = pending[stream]
+            pending[stream] = ""
+            if (!content) {
+                return
+            }
+            persistQueue = persistQueue.then(() =>
+                this.emitAndPersistProcessOutput(runId, {
+                    label,
+                    stream,
+                    content
+                })
+            )
+        }
+
+        const scheduleFlush = (stream: "stdout" | "stderr") => {
+            if (flushTimers[stream]) {
+                return
+            }
+            flushTimers[stream] = setTimeout(() => {
+                flushTimers[stream] = undefined
+                flushStream(stream)
+            }, 200)
+        }
+
+        const consumeStream = async (stream: "stdout" | "stderr", readerSource: { getReader: () => ReadableStreamDefaultReader<string | Uint8Array> }) => {
+            const reader = readerSource.getReader()
+
+            try {
+                while (true) {
+                    const { value, done } = await reader.read()
+                    if (done) {
+                        break
+                    }
+                    const chunk = typeof value === "string" ? value : new TextDecoder().decode(value)
+                    if (!chunk) {
+                        continue
+                    }
+                    full[stream] += chunk
+                    pending[stream] += chunk
+                    scheduleFlush(stream)
+                }
+            } finally {
+                if (flushTimers[stream]) {
+                    clearTimeout(flushTimers[stream])
+                    flushTimers[stream] = undefined
+                }
+                flushStream(stream)
+                reader.releaseLock()
+            }
+        }
+
+        await Promise.all([consumeStream("stdout", proc.stdout), consumeStream("stderr", proc.stderr)])
+        const exitCode = await proc.wait()
+        await persistQueue
+
+        logger.info("SDK sandbox: streaming command finished", {
+            runId,
+            agentId,
+            label,
+            duration: this.elapsed(t),
+            exitCode,
+            stdout: this.clipOutput(full.stdout),
+            stderr: this.clipOutput(full.stderr)
+        })
+
+        return {
+            exitCode,
+            stdout: full.stdout,
+            stderr: full.stderr
+        }
+    }
+
+    private async emitAndPersistProcessOutput(runId: string, input: { label: string; stream: "stdout" | "stderr"; content: string }): Promise<void> {
+        const timestamp = Date.now()
+        const id = buildProcessOutputSystemEventId()
+        this.emitter?.emit(
+            {
+                type: "ProcessOutput",
+                id,
+                label: input.label,
+                stream: input.stream,
+                content: input.content,
+                timestamp
+            },
+            timestamp
+        )
+        await appendProcessOutputSystemEvent(runId, { ...input, id })
     }
 
     private buildFailureMessage(label: string, result: SandboxCommandResult): string {

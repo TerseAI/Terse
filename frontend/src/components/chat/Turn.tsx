@@ -7,6 +7,7 @@ import { ChangedItem, type ChatSnippet, SharedErrorContext } from "terse-types"
 import type { ToolApprovalResponseOptions } from "../../socket"
 
 import FunctionCallItem from "./FunctionCallItem"
+import ProcessOutputItem from "./ProcessOutputItem"
 import { RunErrorView } from "./RunErrorView"
 import { SnippetView } from "./SnippetView"
 import TokenStream from "./TokenStream"
@@ -30,6 +31,7 @@ interface Turn {
         confidence: number
     }
     snippets?: ChatSnippet[]
+    process_outputs?: ProcessOutputEvent[]
     disableAnimation?: boolean
     isLatestAssistantTurn?: boolean
     onAssistantTextDisplayComplete?: () => void
@@ -57,6 +59,14 @@ interface FunctionCallEvent {
     errorContext?: SharedErrorContext
 }
 
+interface ProcessOutputEvent {
+    id: string
+    stream: "stdout" | "stderr"
+    content: string
+    label: string
+    timestamp: number
+}
+
 function TurnView({
     role,
     text,
@@ -68,6 +78,7 @@ function TurnView({
     errorCode,
     filter_result,
     snippets = [],
+    process_outputs = [],
     disableAnimation = false,
     isLatestAssistantTurn = false,
     onAssistantTextDisplayComplete,
@@ -85,7 +96,7 @@ function TurnView({
     // Expanded state - show all steps with status
     return (
         <div className={`flex rounded-lg ${isUser ? "justify-end animate-in fade-in-0" : "justify-start"}`}>
-            <div className="space-y-2 max-w-[90%]">
+            <div className="max-w-[90%] space-y-2.5">
                 {filter_result && <FilterResultView filterResult={filter_result} />}
 
                 {isThinking && (
@@ -133,6 +144,7 @@ function TurnView({
                 <TurnTimeline
                     functionCalls={function_calls}
                     snippets={snippets}
+                    processOutputs={process_outputs}
                     isTurnFailure={isFailure}
                     onApprove={onApprove}
                     onReject={onReject}
@@ -151,7 +163,7 @@ function TurnView({
     )
 }
 
-export type { Turn, FunctionCallEvent }
+export type { Turn, FunctionCallEvent, ProcessOutputEvent }
 export { TurnView }
 
 // Helpers
@@ -182,7 +194,7 @@ enum FeedbackState {
     Bad
 }
 
-function FeedbackButtons({}: {}) {
+function FeedbackButtons() {
     const [feedback, setFeedback] = useState<FeedbackState>(FeedbackState.None)
 
     const handleFeedback = (feedback: FeedbackState) => {
@@ -232,11 +244,20 @@ function FeedbackButtons({}: {}) {
 // keeping in-progress calls (generating / running) at the bottom.
 // ---------------------------------------------------------------------------
 
-type TimelineItem = { kind: "function_call"; call: FunctionCallEvent; ts: number } | { kind: "snippet"; snippet: ChatSnippet; ts: number }
+type TimelineItem =
+    | { kind: "function_call"; call: FunctionCallEvent; ts: number }
+    | { kind: "snippet"; snippet: ChatSnippet; ts: number }
+    | { kind: "process_output"; processOutput: ProcessOutputEvent; ts: number }
+
+type GroupedTimelineItem =
+    | { kind: "function_call"; call: FunctionCallEvent; ts: number }
+    | { kind: "snippet"; snippet: ChatSnippet; ts: number }
+    | { kind: "process_output"; processOutputs: ProcessOutputEvent[]; ts: number }
 
 function TurnTimeline({
     functionCalls,
     snippets,
+    processOutputs,
     isTurnFailure,
     onApprove,
     onReject,
@@ -245,6 +266,7 @@ function TurnTimeline({
 }: {
     functionCalls: FunctionCallEvent[]
     snippets: ChatSnippet[]
+    processOutputs: ProcessOutputEvent[]
     isTurnFailure: boolean
     onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
@@ -264,10 +286,15 @@ function TurnTimeline({
             call,
             ts: call.timestamp ?? i
         })),
+        ...processOutputs.map((processOutput) => ({
+            kind: "process_output" as const,
+            processOutput,
+            ts: processOutput.timestamp
+        })),
         ...snippets.map((snippet, i) => ({
             kind: "snippet" as const,
             snippet,
-            ts: completedCalls.length + i
+            ts: completedCalls.length + processOutputs.length + i
         }))
     ].sort((a, b) => {
         const timeDiff = a.ts - b.ts
@@ -279,11 +306,35 @@ function TurnTimeline({
             return 0
         }
 
-        // For equal timestamps, always render tool completion before snippet.
-        return a.kind === "function_call" ? -1 : 1
+        const kindPriority: Record<TimelineItem["kind"], number> = {
+            function_call: 0,
+            process_output: 1,
+            snippet: 2
+        }
+        return kindPriority[a.kind] - kindPriority[b.kind]
     })
 
-    const hasTimeline = timeline.length > 0
+    const groupedTimeline: GroupedTimelineItem[] = []
+    for (const item of timeline) {
+        if (item.kind !== "process_output") {
+            groupedTimeline.push(item)
+            continue
+        }
+
+        const lastItem = groupedTimeline[groupedTimeline.length - 1]
+        if (lastItem?.kind === "process_output") {
+            lastItem.processOutputs.push(item.processOutput)
+            continue
+        }
+
+        groupedTimeline.push({
+            kind: "process_output",
+            processOutputs: [item.processOutput],
+            ts: item.ts
+        })
+    }
+
+    const hasTimeline = groupedTimeline.length > 0
     const hasInProgress = inProgressCalls.length > 0
 
     if (!hasTimeline && !hasInProgress) return null
@@ -292,8 +343,8 @@ function TurnTimeline({
         <>
             {/* Chronological timeline of completed calls & snippets */}
             {hasTimeline && (
-                <div className="space-y-0.5">
-                    {timeline.map((item, index) => {
+                <div className="space-y-1.5">
+                    {groupedTimeline.map((item, index) => {
                         if (item.kind === "function_call") {
                             return (
                                 <FunctionCallItem
@@ -307,8 +358,11 @@ function TurnTimeline({
                                 />
                             )
                         }
+                        if (item.kind === "process_output") {
+                            return <ProcessOutputItem key={`po-${item.processOutputs.map(processOutput => processOutput.id).join("-")}`} events={item.processOutputs} />
+                        }
                         return (
-                            <div key={`sn-${item.snippet.id ?? index}`} className="py-1">
+                            <div key={`sn-${item.snippet.id ?? index}`} className="ml-1 py-0.5">
                                 <SnippetView snippet={item.snippet} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
                             </div>
                         )

@@ -5,6 +5,7 @@ import {
     type ChatSnippet,
     FilterResult,
     type ModelEvent,
+    type ProcessOutput,
     type ModelRequest,
     type RunError,
     type TextDelta,
@@ -35,6 +36,7 @@ export type UseCompletionSocketOptions = {
     onToolApprovalRequest?: (request: ToolApprovalRequest) => void
     onToolApprovalResponse?: (response: ToolApprovalResponse) => void
     onSnippet?: (snippet: ChatSnippet, timestamp: number) => void
+    onProcessOutput?: (event: ProcessOutput) => void
     onRunError?: (event: RunError) => void
     onCancelled?: (event: Cancelled) => void
 }
@@ -53,6 +55,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalRequest,
         onToolApprovalResponse,
         onSnippet,
+        onProcessOutput,
         onRunError,
         onCancelled
     } = options
@@ -67,6 +70,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     const onToolApprovalRequestRef = useRef(onToolApprovalRequest)
     const onToolApprovalResponseRef = useRef(onToolApprovalResponse)
     const onSnippetRef = useRef(onSnippet)
+    const onProcessOutputRef = useRef(onProcessOutput)
     const onRunErrorRef = useRef(onRunError)
     const onCancelledRef = useRef(onCancelled)
     // For now we assume connected, or we could expose socket connection state globally
@@ -84,9 +88,10 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolApprovalRequestRef.current = onToolApprovalRequest
         onToolApprovalResponseRef.current = onToolApprovalResponse
         onSnippetRef.current = onSnippet
+        onProcessOutputRef.current = onProcessOutput
         onRunErrorRef.current = onRunError
         onCancelledRef.current = onCancelled
-    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onRunError, onCancelled])
+    }, [onDelta, onToolCallGenerating, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onProcessOutput, onRunError, onCancelled])
 
     // Subscribe to events
     useEffect(() => {
@@ -125,6 +130,9 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     break
                 case "Snippet":
                     onSnippetRef.current?.(message.snippet, message.timestamp)
+                    break
+                case "ProcessOutput":
+                    onProcessOutputRef.current?.(message)
                     break
                 case "UserMessage":
                     // No-op: user turns are created locally via addUserTurn.

@@ -5,6 +5,7 @@ import {
     type ChatSnippet,
     type FilterResult,
     type ModelEvent,
+    type ProcessOutput,
     type RunError,
     type TextDelta,
     type Thinking,
@@ -17,7 +18,7 @@ import {
 import { v4 as uuidv4 } from "uuid"
 
 import { type Turn } from "../Turn"
-import { filterOutThinkingOnlyTurns } from "../utils/turnUtils"
+import { canAppendProcessOutputToTurn, filterOutThinkingOnlyTurns } from "../utils/turnUtils"
 
 interface UseChatTurnsOptions {
     initialTurns?: Turn[] | undefined
@@ -67,7 +68,8 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         const hasText = turn.text.trim().length > 0
                         const hasFunctionCalls = turn.function_calls.length > 0
                         const hasSnippets = (turn.snippets?.length ?? 0) > 0
-                        return hasText || hasFunctionCalls || hasSnippets
+                        const hasProcessOutputs = (turn.process_outputs?.length ?? 0) > 0
+                        return hasText || hasFunctionCalls || hasSnippets || hasProcessOutputs
                     })
 
                 return [...initialTurns, ...localOnlyTurns]
@@ -459,6 +461,64 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
+    const handleProcessOutput = ({ id, stream, content, label, timestamp }: ProcessOutput & { id?: string }) => {
+        setTurns(prev => {
+            const next = prev.slice()
+            const lastTurn = next[next.length - 1]
+            const lastProcessOutput = lastTurn?.process_outputs?.[lastTurn.process_outputs.length - 1]
+
+            if (canAppendProcessOutputToTurn(lastTurn)) {
+                const processOutputs = [...(lastTurn.process_outputs ?? [])]
+
+                if (lastProcessOutput && lastProcessOutput.label === label && lastProcessOutput.stream === stream) {
+                    processOutputs[processOutputs.length - 1] = {
+                        ...lastProcessOutput,
+                        content: `${lastProcessOutput.content}${content}`,
+                        timestamp
+                    }
+                } else {
+                    processOutputs.push({
+                        id: id ?? `process-output-${timestamp}-${processOutputs.length}`,
+                        stream,
+                        content,
+                        label,
+                        timestamp
+                    })
+                }
+
+                next[next.length - 1] = {
+                    ...lastTurn,
+                    timestamp,
+                    process_outputs: processOutputs,
+                    isGenerating: true
+                }
+                return next
+            }
+
+            const stepId = id ?? `process-output-${timestamp}`
+            return [
+                ...next,
+                {
+                    role: "assistant",
+                    text: "",
+                    timestamp,
+                    function_calls: [],
+                    step_id: stepId,
+                    process_outputs: [
+                        {
+                            id: stepId,
+                            stream,
+                            content,
+                            label,
+                            timestamp
+                        }
+                    ],
+                    isGenerating: true
+                }
+            ]
+        })
+    }
+
     const handleMultipleChoiceAnswered = (questionId: string, value: string) => {
         setTurns(prev => {
             return prev.map(turn => {
@@ -498,6 +558,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         handleThinking,
         addUserTurn,
         handleSnippet,
+        handleProcessOutput,
         handleMultipleChoiceAnswered,
         clearTurns
     }

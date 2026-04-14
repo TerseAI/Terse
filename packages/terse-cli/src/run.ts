@@ -29,7 +29,6 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 
     readApiKey()
     const { job } = await loadJob(provider, jobName, entryFile)
-    console.log(chalk.cyan(`\n  Running job: ${job.name}\n`))
 
     let rawEvent: unknown
     try {

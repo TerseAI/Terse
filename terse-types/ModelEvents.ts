@@ -27,14 +27,26 @@ export type ChangedItem = z.infer<typeof changedItemSchema>
 
 export const runErrorSchema = z.object({
     type: z.literal("RunError"),
+    id: z.string().optional(),
     error: z.string(),
     code: z.string().optional(),
     timestamp: z.number()
 })
 export type RunError = z.infer<typeof runErrorSchema>
 
+export const processOutputSchema = z.object({
+    type: z.literal("ProcessOutput"),
+    id: z.string().optional(),
+    stream: z.enum(["stdout", "stderr"]),
+    content: z.string(),
+    label: z.string(),
+    timestamp: z.number()
+})
+export type ProcessOutput = z.infer<typeof processOutputSchema>
+
 export const cancelledSchema = z.object({
     type: z.literal("Cancelled"),
+    id: z.string().optional(),
     reason: z.string().optional(),
     timestamp: z.number()
 })
@@ -50,12 +62,14 @@ export type FunctionCall = z.infer<typeof functionCallSchema>
 export const naturalStopSchema = z.object({
     step_id: z.string(),
     type: z.literal("NaturalStop"),
+    id: z.string().optional(),
     timestamp: z.number()
 })
 export type NaturalStop = z.infer<typeof naturalStopSchema>
 
 export const sendModelRequestSchema = z.object({
     type: z.literal("SendModelRequest"),
+    id: z.string().optional(),
     user_message: z.string(),
     timezone: z.string(),
     ui_state: z.string().optional(),
@@ -67,6 +81,7 @@ export type SendModelRequest = z.infer<typeof sendModelRequestSchema>
 export const toolApprovalResponseSchema = z.object({
     step_id: z.string(),
     type: z.literal("ToolApprovalResponse"),
+    id: z.string().optional(),
     approved: z.boolean(),
     rejection_reason: z.string().optional(),
     timestamp: z.number()
@@ -76,6 +91,7 @@ export type ToolApprovalResponse = z.infer<typeof toolApprovalResponseSchema>
 export const toolApprovalRequestSchema = z.object({
     step_id: z.string(),
     type: z.literal("ToolApprovalRequest"),
+    id: z.string().optional(),
     name: z.string(),
     arguments: z.string(),
     timestamp: z.number()
@@ -86,6 +102,7 @@ export const textDeltaSchema = z.object({
     delta: z.string(),
     step_id: z.string(),
     type: z.literal("TextDelta"),
+    id: z.string().optional(),
     timestamp: z.number()
 })
 export type TextDelta = z.infer<typeof textDeltaSchema>
@@ -94,6 +111,7 @@ export const toolCallGeneratingSchema = z.object({
     tool_name: z.string(),
     step_id: z.string(),
     type: z.literal("ToolCallGenerating"),
+    id: z.string().optional(),
     timestamp: z.number()
 })
 export type ToolCallGenerating = z.infer<typeof toolCallGeneratingSchema>
@@ -102,6 +120,7 @@ export const toolCallSchema = z.object({
     summary: z.string(),
     step_id: z.string(),
     type: z.literal("ToolCall"),
+    id: z.string().optional(),
     parameters: z.string(),
     integration: z.string(),
     timestamp: z.number()
@@ -111,6 +130,7 @@ export type ToolCall = z.infer<typeof toolCallSchema>
 export const thinkingSchema = z.object({
     step_id: z.string(),
     type: z.literal("Thinking"),
+    id: z.string().optional(),
     timestamp: z.number()
 })
 export type Thinking = z.infer<typeof thinkingSchema>
@@ -130,6 +150,7 @@ export const toolCallCompleteSchema = z.object({
     status: toolCallExecutionStatusSchema,
     step_id: z.string(),
     type: z.literal("ToolCallComplete"),
+    id: z.string().optional(),
     changed_items: z.array(changedItemSchema),
     integration: z.string(),
     url: z.string().optional(),
@@ -144,6 +165,7 @@ export const filterResultSchema = z.object({
     confidence: z.number(),
     step_id: z.string(),
     type: z.literal("FilterResult"),
+    id: z.string().optional(),
     timestamp: z.number()
 })
 export type FilterResult = z.infer<typeof filterResultSchema>
@@ -168,6 +190,7 @@ export const SANDBOX_STAGE_LABELS: Record<SandboxStage, string> = {
 
 export const userMessageSchema = z.object({
     type: z.literal("UserMessage"),
+    id: z.string().optional(),
     message: z.string(),
     step_id: z.string(),
     client_turn_id: z.string(),
@@ -231,6 +254,7 @@ export type ChatSnippet = z.infer<typeof chatSnippetSchema>
 
 export const modelEventChatSnippetSchema = z.object({
     type: z.literal("Snippet"),
+    id: z.string().optional(),
     timestamp: z.number(),
     snippet: chatSnippetSchema
 })
@@ -248,7 +272,8 @@ export const modelEventSchema = z.discriminatedUnion("type", [
     filterResultSchema,
     userMessageSchema,
     thinkingSchema,
-    modelEventChatSnippetSchema
+    modelEventChatSnippetSchema,
+    processOutputSchema
 ])
 export type ModelEvent = z.infer<typeof modelEventSchema>
 
