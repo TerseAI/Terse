@@ -11,20 +11,9 @@ jobs:
         name: End-to-End Tests
         runs-on: ubuntu-latest
 
-        services:
-            postgres:
-                image: postgres:16
-                env:
-                    POSTGRES_USER: postgres
-                    POSTGRES_PASSWORD: postgres
-                    POSTGRES_DB: terse_test
-                ports:
-                    - 5432:5432
-                options: >-
-                    --health-cmd pg_isready
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
+        env:
+            TERSE_BACKEND_URL: https://terse.onrender.com
+            TERSE_FRONTEND_URL: https://terse-frontend.onrender.com
 
         steps:
             # ── Setup ─────────────────────────────────────────────────────────────
@@ -57,42 +46,17 @@ jobs:
               run: pnpm run build
 
             - name: Install CLI globally from PR source
-              run: pnpm run install-global
-
-            - name: Install CLI globally from PR source
               run: npm install -g ./packages/terse-cli
 
             - name: Verify CLI is available
               run: terse --version
 
-            # ── Backend ───────────────────────────────────────────────────────────
-
-            - name: Load staging env
-              run: echo "${{ secrets.ENV_FILE }}" > backend/.env
-
-            - name: Run Prisma migrations
-              working-directory: backend
-              env:
-                  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/terse_test
-              run: npx prisma migrate deploy
-
-            - name: Start backend
-              working-directory: backend
-              env:
-                  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/terse_test
-                  # 👇 add any other env vars your backend needs
-              run: pnpm start & # & runs it in the background
-
-            - name: Wait for backend to be ready
-              run: npx wait-on --timeout 30000 tcp:localhost:3001
-
             # ── E2E ───────────────────────────────────────────────────────────────
-            # Sample project references the SDK via workspace:* so pnpm install
-            # above already wired it up to the PR's SDK source.
-            #
-            - name: "[init] Scaffold in temp dir"
-              run: |
-                  mkdir /tmp/terse-init-test && cd /tmp/terse-init-test
+            # CLI talks to the staging backend at terse.onrender.com.
+            # TERSE_API_KEY must be set as a GitHub Actions secret.
+
+            - name: Write API key for CLI
+              run: echo "TERSE_API_KEY=${{ secrets.TERSE_API_KEY }}" > packages/ci-test-fixture/.env
 
             - name: "[generate] Run codegen on CI test fixture"
               working-directory: packages/ci-test-fixture
@@ -114,6 +78,5 @@ jobs:
               with:
                   name: e2e-failure-logs
                   path: |
-                      /tmp/terse-init-test
                       packages/ci-test-fixture/**/*.log
                   retention-days: 7
