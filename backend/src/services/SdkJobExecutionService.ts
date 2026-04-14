@@ -17,10 +17,20 @@ import { extractErrorMessage } from "../utility/strings"
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import { SDK_SANDBOX_CODE_ZIP_PATH, SDK_SANDBOX_EVENT_FILE_PATH, SDK_SANDBOX_PROJECT_DIR, type SandboxCommandResult, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
+import {
+    SDK_SANDBOX_CODE_ZIP_PATH,
+    SDK_SANDBOX_EVENT_FILE_PATH,
+    SDK_SANDBOX_PROJECT_DIR,
+    type SandboxCommandResult,
+    type SdkProjectRuntime,
+    type SdkRuntimeExecutor,
+    type SdkRuntimeExecutorContext
+} from "./sdkRuntimeExecutors/types"
 
 export interface SdkJobExecutionParams {
     gcsKey: string
+    sandboxImageId?: string
+    sandboxRuntime?: SdkProjectRuntime
     runId: string
     agentId: string
     orgId: string
@@ -71,7 +81,7 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { gcsKey, runId, agentId, orgId, userId, user, eventJson, jobName } = params
+        const { gcsKey, sandboxImageId, sandboxRuntime, runId, agentId, orgId, userId, user, eventJson, jobName } = params
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId, user })
@@ -119,16 +129,15 @@ export class SdkJobExecutionService {
             })
 
             t = performance.now()
-            const app = await modal.apps.fromName("terse-sdk-sandbox", { createIfMissing: true })
-            const image = modal.images.fromRegistry(executor.sandboxImage)
-            const sb = await modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
+            const { imageLabel, sb, usesPrebuiltImage } = await this.createSandbox(modal, executor, sandboxImageId, sandboxRuntime)
             this.emitSandboxStatus(SandboxStage.BOOTING, "completed", { duration_ms: this.elapsedMs(t) })
             logger.info("SDK sandbox: created Modal sandbox", {
                 runId,
                 agentId,
                 sandboxId: sb.sandboxId,
                 runtime: executor.runtime,
-                image: executor.sandboxImage,
+                image: imageLabel,
+                usesPrebuiltImage,
                 duration: this.elapsed(t)
             })
 
@@ -140,7 +149,7 @@ export class SdkJobExecutionService {
             }
 
             try {
-                const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName)
+                const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, usesPrebuiltImage)
                 await this.uploadZipToSandbox(sb, zipBuffer, runId, agentId)
                 await this.unzipProjectInSandbox(executorContext)
                 await this.writeEventFile(sb, eventJson)
@@ -194,7 +203,7 @@ export class SdkJobExecutionService {
     private async unzipProjectInSandbox(context: SdkRuntimeExecutorContext): Promise<void> {
         await context.ensureSandboxCommand(
             "install unzip and extract project",
-            `export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -y -qq unzip && unzip -o ${SDK_SANDBOX_CODE_ZIP_PATH} -d ${SDK_SANDBOX_PROJECT_DIR}`
+            `mkdir -p ${SDK_SANDBOX_PROJECT_DIR} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -y -qq unzip >/dev/null)) && unzip -o ${SDK_SANDBOX_CODE_ZIP_PATH} -d ${SDK_SANDBOX_PROJECT_DIR}`
         )
     }
 
@@ -204,7 +213,7 @@ export class SdkJobExecutionService {
         await eventHandle.close()
     }
 
-    private createRuntimeExecutorContext(sb: Sandbox, sandboxEnv: Record<string, string>, runId: string, agentId: string, jobName: string): SdkRuntimeExecutorContext {
+    private createRuntimeExecutorContext(sb: Sandbox, sandboxEnv: Record<string, string>, runId: string, agentId: string, jobName: string, usesPrebuiltImage: boolean): SdkRuntimeExecutorContext {
         return {
             sb,
             sandboxEnv,
@@ -213,6 +222,7 @@ export class SdkJobExecutionService {
             jobName,
             projectDir: SDK_SANDBOX_PROJECT_DIR,
             eventFilePath: SDK_SANDBOX_EVENT_FILE_PATH,
+            usesPrebuiltImage,
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
             },
@@ -224,6 +234,47 @@ export class SdkJobExecutionService {
             },
             escapeShellArg: value => this.escapeShellArg(value),
             emitSandboxStatus: (stage, status, opts) => this.emitSandboxStatus(stage, status, opts)
+        }
+    }
+
+    private async createSandbox(
+        modal: ModalClient,
+        executor: SdkRuntimeExecutor,
+        sandboxImageId?: string,
+        sandboxRuntime?: SdkProjectRuntime
+    ): Promise<{ sb: Sandbox; usesPrebuiltImage: boolean; imageLabel: string }> {
+        const app = await modal.apps.fromName("terse-sdk-sandbox", { createIfMissing: true })
+
+        if (sandboxImageId && (!sandboxRuntime || sandboxRuntime === executor.runtime)) {
+            try {
+                const image = await modal.images.fromId(sandboxImageId)
+                const sb = await modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
+                return {
+                    sb,
+                    usesPrebuiltImage: true,
+                    imageLabel: sandboxImageId
+                }
+            } catch (error) {
+                logger.warn("SDK sandbox: failed to use prebuilt image, falling back to base image", {
+                    error,
+                    sandboxImageId,
+                    runtime: executor.runtime
+                })
+            }
+        } else if (sandboxImageId && sandboxRuntime && sandboxRuntime !== executor.runtime) {
+            logger.warn("SDK sandbox: ignoring prebuilt image with mismatched runtime", {
+                sandboxImageId,
+                sandboxRuntime,
+                executorRuntime: executor.runtime
+            })
+        }
+
+        const image = modal.images.fromRegistry(executor.sandboxImage)
+        const sb = await modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
+        return {
+            sb,
+            usesPrebuiltImage: false,
+            imageLabel: executor.sandboxImage
         }
     }
 

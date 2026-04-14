@@ -343,6 +343,9 @@ model automation_prompts {
   automation_id       String   @unique
   content             String   @db.Text
   source_code_gcs_key String?
+  sandbox_image_id    String?
+  sandbox_image_hash  String?
+  sandbox_runtime     String?
   remote_server_url   String?
   signing_secret      String?
   created_at          DateTime @default(now())

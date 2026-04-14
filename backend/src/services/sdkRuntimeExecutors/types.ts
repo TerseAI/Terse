@@ -13,6 +13,25 @@ export interface SandboxCommandResult {
     stderr: string
 }
 
+export interface SdkProjectArchive {
+    entries: Set<string>
+    has(path: string): boolean
+    readText(path: string): string | null
+}
+
+export interface SdkPrebuiltImageDefinition {
+    imageHash: string
+}
+
+export interface SdkImageBuildContext {
+    sb: Sandbox
+    archive: SdkProjectArchive
+    templateDir: string
+    ensureSandboxCommand: (label: string, command: string) => Promise<void>
+    writeFile: (path: string, content: string) => Promise<void>
+    escapeShellArg: (value: string) => string
+}
+
 export interface SdkRuntimeExecutorContext {
     sb: Sandbox
     sandboxEnv: Record<string, string>
@@ -21,6 +40,7 @@ export interface SdkRuntimeExecutorContext {
     jobName: string
     projectDir: string
     eventFilePath: string
+    usesPrebuiltImage: boolean
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     runSandboxCommand: (label: string, command: string) => Promise<SandboxCommandResult>
     runSandboxCommandStreaming: (label: string, command: string) => Promise<SandboxCommandResult>
@@ -32,6 +52,8 @@ export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
     sandboxImage: string
     matchesArchive(entries: Set<string>): boolean
+    definePrebuiltImage(archive: SdkProjectArchive): SdkPrebuiltImageDefinition
+    buildPrebuiltImage(context: SdkImageBuildContext): Promise<void>
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
 }
 
