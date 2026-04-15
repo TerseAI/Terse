@@ -1,5 +1,5 @@
+import { gmail as createGmailClient } from "@googleapis/gmail"
 import { RunHistoryActionType } from "@prisma/client"
-import { google } from "googleapis"
 import { IntegrationType } from "terse-types"
 
 import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/GmailIntegration"
@@ -54,7 +54,7 @@ export const gmailCreateDraftTool = defineSessionTool({
                 ...(refreshToken ? { refresh_token: refreshToken } : {})
             })
 
-            const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+            const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
             // Build email headers
             const headers: string[] = [`To: ${to}`, `Subject: ${encodeSubjectHeader(subject)}`]

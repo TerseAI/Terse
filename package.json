@@ -27,6 +27,14 @@
     "pnpm": {
         "overrides": {
             "@types/express-serve-static-core": "5.0.7"
-        }
+        },
+        "ignoredBuiltDependencies": [
+            "@prisma/client",
+            "@prisma/engines",
+            "cbor-extract",
+            "esbuild",
+            "prisma",
+            "protobufjs"
+        ]
     }
 }
