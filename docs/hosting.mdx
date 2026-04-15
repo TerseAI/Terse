@@ -6,11 +6,13 @@ icon: "cloud-upload"
 
 When you run `terse deploy`, your workflow goes from local code to a hosted, trigger-ready automation in seconds. There's no build step, no Dockerfile, and no infrastructure to configure.
 
+If you set `TERSE_REMOTE_SERVER_URL` in `.env`, deploy skips the zip and registers your own server URL instead; see the [CLI reference](/reference/cli#terse-deploy).
+
 ## What happens when you deploy
 
 <Steps>
-    <Step title="Your code is zipped and uploaded">
-        The CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. Archives are content-addressed by SHA-256 hash, so identical code across deploys is automatically deduplicated.
+    <Step title="Your code is zipped and uploaded (hosted mode)">
+        By default, the CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. Archives are content-addressed by SHA-256 hash, so identical code across deploys is automatically deduplicated. If you use `TERSE_REMOTE_SERVER_URL`, this step is skipped and Terse calls your server instead.
     </Step>
     <Step title="Triggers and skills are registered">
         Each job's triggers (e.g. a GitHub webhook, a cron schedule) and skills (e.g. Slack, Apollo) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never need to reconfigure external services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.

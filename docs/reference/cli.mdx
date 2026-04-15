@@ -169,13 +169,15 @@ One of `--event` or `--event-file` is required.
 
 ## `terse deploy`
 
-Packages your project and deploys all jobs to the Terse platform. [Learn more about how deployment works.](/hosting)
+Deploys all jobs to the Terse platform. [Learn more about how deployment works.](/hosting)
 
 ```bash
 terse deploy
 ```
 
-**Self-hosted job server:** If `TERSE_REMOTE_SERVER_URL` or `TERSE_JOB_URL` is set in `.env`, deploy runs in URL mode: no project zip is uploaded, and Terse sends trigger webhooks to your server instead. The CLI may print a `TERSE_SIGNING_SECRET` for you to add when that secret is issued. Use the same base URL in your workflow code (`remoteServerUrl` in `createJob`) so trigger delivery matches your HTTP handler.
+**Self-hosted job server:** If `TERSE_REMOTE_SERVER_URL` is set in `.env` (or legacy `TERSE_JOB_URL` when it is unset), deploy runs in URL mode: no project zip is uploaded, and Terse sends trigger webhooks to your server instead. The CLI may print a `TERSE_SIGNING_SECRET` for you to add when that secret is issued. Use the same base URL in your workflow code (`remoteServerUrl` in `createJob`) so trigger delivery matches your HTTP handler. Mount `Terse.handleTrigger` at `TERSE_JOB_WEBHOOK_TRIGGER_PATH` from `terse-sdk`.
+
+**Hosted mode (default):** With no remote server URL in `.env`, the CLI zips your project, uploads it, and Terse runs it serverlessly.
 
 **What happens:**
 

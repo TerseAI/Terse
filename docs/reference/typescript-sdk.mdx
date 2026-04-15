@@ -63,7 +63,7 @@ Defines the workflow contract.
 | `toolApprovals`   | `string[]`                        | Tool names that require human approval before execution. See [tool approvals](#tool-approvals).   |
 | `filter`          | `(event) => boolean`              | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger`       | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl` | `string`                          | Optional public base URL of the server where you mount `Terse.handleTrigger` (including path prefix). Must match `terse deploy` when using `TERSE_REMOTE_SERVER_URL` or `TERSE_JOB_URL`. |
+| `remoteServerUrl` | `string`                          | Optional public base URL of the server where you mount `Terse.handleTrigger` (including path prefix). Must match `terse deploy` when using `TERSE_REMOTE_SERVER_URL` (preferred) or legacy `TERSE_JOB_URL`. Omit for the default hosted deploy. |
 
 ```ts
 client.createJob({
