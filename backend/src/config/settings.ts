@@ -22,8 +22,6 @@ function optionalEnv(name: string, defaultValue?: string): string | undefined {
     return defaultValue
 }
 
-const vendorLocalPackagesEnv = optionalEnv("TERSE_VENDOR_LOCAL_PACKAGES")
-
 // Core configuration
 export const settings = {
     // Core secrets and keys
@@ -179,11 +177,7 @@ export const settings = {
     // Optional configuration
     optional: {
         redisUrl: optionalEnv("REDIS_URL"),
-        cookieDomain: optionalEnv("COOKIE_DOMAIN"),
-        /** Absolute path to Terse monorepo root; used when TERSE_MODAL_VENDOR_LOCAL_PACKAGES is enabled */
-        terseMonorepoRoot: optionalEnv("TERSE_MONOREPO_ROOT"),
-        /** Dev-only: pack terse-types, terse-sdk, terse-cli and overlay into each Modal SDK run sandbox (see SdkJobExecutionService) */
-        vendorLocalPackages: vendorLocalPackagesEnv === "true" || vendorLocalPackagesEnv === "1"
+        cookieDomain: optionalEnv("COOKIE_DOMAIN")
     }
 } as const
 

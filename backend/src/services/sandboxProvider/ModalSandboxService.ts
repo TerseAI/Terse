@@ -1,48 +1,81 @@
-import { ModalClient } from "modal"
+import { App as ModalApp, ModalClient, Image as ModalImage, NotFoundError, SandboxCreateParams } from "modal"
 
 import { settings } from "../../config/settings"
+import logger from "../../logger"
 
 import { Sandbox, SandboxApp, SandboxImage, SandboxService } from "./SandboxService"
 
+export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
+    idleTimeoutMs: 5 * 60 * 1000, // If idle for 5 minutes, terminate the sandbox
+    timeoutMs: 24 * 60 * 60 * 1000 // Keep sandbox running for 24 hours otherwise
+}
+
 export class ModalSandboxService implements SandboxService {
-    getOrCreateApp(name: string): Promise<SandboxApp> {
-        const modal = this.createModalClient()
-        return modal.apps.fromName(name, { createIfMissing: true })
-    }
-    getOrCreateImageFromRegistry(registry: string): SandboxImage {
-        const modal = this.createModalClient()
-        const image = modal.images.fromRegistry(registry)
-        return {
-            imageId: image.imageId
-        }
-    }
-    async getOrCreateImageFromId(imageId: string): Promise<SandboxImage> {
-        const modal = this.createModalClient()
-        const image = await modal.images.fromId(imageId)
-        return {
-            imageId: image.imageId
-        }
-    }
-    async deleteImage(imageId: string): Promise<void> {
-        const modal = this.createModalClient()
-        await modal.images.delete(imageId)
-    }
+    private readonly modal: ModalClient
 
-    async getOrCreateSandbox(app: SandboxApp, image: SandboxImage, params?: { timeoutMs?: number; idleTimeoutMs?: number }): Promise<Sandbox> {
-        const modal = this.createModalClient()
-        if (!app.name) {
-            throw new Error("App name is required")
-        }
-        const appRef = await modal.apps.fromName(app.name)
-        const imageRef = await modal.images.fromId(image.imageId)
-        return modal.sandboxes.create(appRef, imageRef, { timeoutMs: params?.timeoutMs, idleTimeoutMs: params?.idleTimeoutMs })
-    }
-
-    private createModalClient(): ModalClient {
-        return new ModalClient({
+    constructor() {
+        this.modal = new ModalClient({
             tokenId: settings.modal.tokenId,
             tokenSecret: settings.modal.tokenSecret
         })
+    }
+
+    getOrCreateApp(name: string): Promise<SandboxApp> {
+        return this.modal.apps.fromName(name, { createIfMissing: true })
+    }
+    getImageFromRegistry(registry: string): SandboxImage {
+        return this.modal.images.fromRegistry(registry)
+    }
+    async getImageFromId(imageId: string): Promise<SandboxImage> {
+        return this.modal.images.fromId(imageId)
+    }
+    async deleteImage(imageId: string): Promise<void> {
+        await this.modal.images.delete(imageId)
+    }
+
+    async getOrCreateSandbox(app: SandboxApp, image: SandboxImage, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox> {
+        if (!app.name) {
+            throw new Error("App name is required")
+        }
+
+        const canonicalSandboxName = `${app.name}__${uniqueName}`
+
+        try {
+            const sandbox = await this.modal.sandboxes.fromName(app.name, canonicalSandboxName)
+            const status = await sandbox.poll()
+            if (status === null) {
+                logger.info("Modal sandbox: reused existing", {
+                    app: app.name,
+                    name: canonicalSandboxName,
+                    sandboxId: sandbox.sandboxId
+                })
+                return sandbox
+            }
+        } catch (error) {
+            if (!(error instanceof NotFoundError)) {
+                throw error
+            }
+        }
+
+        const appRef = app as ModalApp
+        const imageRef = image as ModalImage
+
+        logger.info("Modal sandbox: creating new", {
+            app,
+            image
+        })
+
+        const created = await this.modal.sandboxes.create(appRef, imageRef, {
+            timeoutMs: params?.timeoutMs,
+            idleTimeoutMs: params?.idleTimeoutMs,
+            name: canonicalSandboxName
+        })
+        logger.info("Modal sandbox: created new", {
+            app: app.name,
+            name: canonicalSandboxName,
+            sandboxId: created.sandboxId
+        })
+        return created
     }
 }
 

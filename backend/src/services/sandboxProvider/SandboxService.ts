@@ -6,14 +6,14 @@ export interface SandboxService {
     /**
      * Mark: Image related API
      */
-    getOrCreateImageFromRegistry(registry: string): SandboxImage
-    getOrCreateImageFromId(imageId: string): Promise<SandboxImage>
+    getImageFromRegistry(registry: string): SandboxImage
+    getImageFromId(imageId: string): Promise<SandboxImage>
     deleteImage(imageId: string): Promise<void>
 
     /**
      * Mark: Sandbox related API
      */
-    getOrCreateSandbox(app: SandboxApp, image: string | SandboxImage, params?: { timeoutMs?: number; idleTimeoutMs?: number }): Promise<Sandbox>
+    getOrCreateSandbox(app: SandboxApp, image: SandboxImage, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox>
 }
 
 export interface SandboxApp {

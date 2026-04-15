@@ -1,5 +1,4 @@
 import crypto from "crypto"
-import { readFile } from "node:fs/promises"
 import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
@@ -16,10 +15,10 @@ import { extractErrorMessage } from "../utility/strings"
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 import { SdkSandboxImageService } from "./SdkSandboxImageService"
-import { ModalSandboxService, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
+import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
-import { packLocalSdkCliForVendor, removeModalVendorPackDir, resolveTerseMonorepoRoot } from "./sdkVendorLocalPackages"
+import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 export interface SdkJobExecutionParams {
     gcsKey: string
@@ -36,6 +35,7 @@ type ResolvedSdkSourceImage = {
     imageId: string
     runtime: SdkProjectRuntime
     dependencyImageId: string
+    sourceLayerKey: string
     zipBuffer?: Buffer
 }
 
@@ -115,7 +115,7 @@ export class SdkJobExecutionService {
                 runId,
                 agentId,
                 sandboxEnv,
-                sourceImageId: sourceImage.recordId
+                sourceImageRecordId: sourceImage.recordId
             })
 
             if (result.exitCode === 0) {
@@ -216,7 +216,10 @@ export class SdkJobExecutionService {
                 id: true,
                 image_id: true,
                 runtime: true,
-                dependency_image_id: true
+                dependency_image_id: true,
+                organization_id: true,
+                source_hash: true,
+                dependency_image: { select: { dependency_hash: true } }
             }
         })
 
@@ -224,11 +227,18 @@ export class SdkJobExecutionService {
             return null
         }
 
+        const sourceLayerKey = computeSourceLayerKey({
+            organizationId: record.organization_id,
+            dependencyHash: record.dependency_image.dependency_hash,
+            sourceHash: record.source_hash
+        })
+
         return {
             recordId: record.id,
             imageId: record.image_id,
             runtime: this.parseRuntime(record.runtime),
-            dependencyImageId: record.dependency_image_id
+            dependencyImageId: record.dependency_image_id,
+            sourceLayerKey
         }
     }
 
@@ -253,16 +263,16 @@ export class SdkJobExecutionService {
         runId: string
         agentId: string
         sandboxEnv: Record<string, string>
-        sourceImageId: string
+        sourceImageRecordId: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageId } = params
+        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId } = params
 
         this.emitSandboxStatus(SandboxStage.BOOTING, "started")
         const bootStart = performance.now()
 
         let sb: Sandbox
         try {
-            sb = await this.createSourceImageSandbox(sandboxService, sourceImageId)
+            sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
             this.emitSandboxStatus(SandboxStage.BOOTING, "completed", { duration_ms: this.elapsedMs(bootStart) })
         } catch (error) {
             this.emitSandboxStatus(SandboxStage.BOOTING, "failed", {
@@ -271,88 +281,9 @@ export class SdkJobExecutionService {
             })
             throw error
         }
-
-        logger.info("SDK sandbox: created Modal sandbox from source image", {
-            runId,
-            agentId,
-            sandboxId: sb.sandboxId,
-            runtime: executor.runtime,
-            image: sourceImageId,
-            duration: this.elapsed(bootStart)
-        })
-
-        if (settings.nodeEnv === "development" && settings.optional.vendorLocalPackages) {
-            // Each run pays for three pnpm packs + upload; opt-in via TERSE_VENDOR_LOCAL_PACKAGES only.
-            const vendorTotalStart = performance.now()
-            const monorepoRoot = resolveTerseMonorepoRoot(settings.optional.terseMonorepoRoot)
-            const packStart = performance.now()
-            let packed: Awaited<ReturnType<typeof packLocalSdkCliForVendor>>
-            try {
-                packed = await packLocalSdkCliForVendor(monorepoRoot)
-            } catch (packErr) {
-                const errno = packErr as NodeJS.ErrnoException
-                logger.error("SDK sandbox: Modal local vendor failed during pnpm pack", {
-                    runId,
-                    agentId,
-                    sandboxId: sb.sandboxId,
-                    monorepoRoot,
-                    error: extractErrorMessage(packErr),
-                    ...(errno?.code === "ENOENT" ? { hint: "pnpm may be missing on PATH for the backend process." } : {})
-                })
-                throw packErr
-            }
-            const vendorLocalPackMs = Math.round(performance.now() - packStart)
-
-            const overlayStart = performance.now()
-            try {
-                const [typesBuf, sdkBuf, cliBuf] = await Promise.all([readFile(packed.typesTgzPath), readFile(packed.sdkTgzPath), readFile(packed.cliTgzPath)])
-                await this.writeBinaryToSandbox(sb, "/tmp/terse-types-vendor.tgz", typesBuf)
-                await this.writeBinaryToSandbox(sb, "/tmp/terse-sdk-vendor.tgz", sdkBuf)
-                await this.writeBinaryToSandbox(sb, "/tmp/terse-cli-vendor.tgz", cliBuf)
-                await this.ensureSandboxCommand(
-                    sb,
-                    "install vendored terse-types, terse-sdk, and terse-cli",
-                    "npm install -g /tmp/terse-types-vendor.tgz /tmp/terse-sdk-vendor.tgz /tmp/terse-cli-vendor.tgz --no-fund",
-                    sandboxEnv,
-                    runId,
-                    agentId
-                )
-            } catch (overlayErr) {
-                logger.error("SDK sandbox: Modal local vendor failed during sandbox upload/install", {
-                    runId,
-                    agentId,
-                    sandboxId: sb.sandboxId,
-                    error: extractErrorMessage(overlayErr)
-                })
-                throw overlayErr
-            } finally {
-                await removeModalVendorPackDir(packed.packDir).catch(() => {})
-            }
-            const vendorOverlayMs = Math.round(performance.now() - overlayStart)
-            const vendorTotalMs = Math.round(performance.now() - vendorTotalStart)
-            logger.info("SDK sandbox: Modal local vendor overlay complete", {
-                runId,
-                agentId,
-                sandboxId: sb.sandboxId,
-                vendor_local_pack_ms: vendorLocalPackMs,
-                vendor_overlay_ms: vendorOverlayMs,
-                vendor_total_ms: vendorTotalMs
-            })
-        }
-
-        try {
-            const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, SDK_SOURCE_IMAGE_PROJECT_DIR, true)
-            const result = await executor.execute(executorContext)
-            return result
-        } finally {
-            await sb.terminate().catch(() => {})
-        }
-    }
-
-    private async writeBinaryToSandbox(sb: Sandbox, filePath: string, content: Buffer): Promise<void> {
-        const fileHandle = await sb.open(filePath, "w")
-        await fileHandle.write(new Uint8Array(content))
-        await fileHandle.close()
+        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, SDK_SOURCE_IMAGE_PROJECT_DIR, true)
+        const result = await executor.execute(executorContext)
+        return result
     }
 
     private async downloadSourceZipFromGcs(gcsKey: string, runId: string, agentId: string): Promise<Buffer> {
@@ -411,10 +342,16 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageId: string): Promise<Sandbox> {
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string): Promise<Sandbox> {
+        const source = await this.getSourceImageRecord(sourceImageRecordId)
+        if (!source) {
+            throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
+        }
+
         const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
-        const image = await sandboxService.getOrCreateImageFromId(sourceImageId)
-        return sandboxService.getOrCreateSandbox(app, image, { timeoutMs: 30 * 60 * 1000 })
+        const image = await sandboxService.getImageFromId(source.imageId)
+        const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey)
+        return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

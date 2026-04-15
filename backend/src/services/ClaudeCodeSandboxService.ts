@@ -1,3 +1,5 @@
+import crypto from "node:crypto"
+
 import { settings } from "../config/settings"
 import logger from "../logger"
 
@@ -51,8 +53,9 @@ export class ClaudeCodeSandboxService {
 
         let t = performance.now()
         const app = await sandboxService.getOrCreateApp("terse-claude-code-sandbox")
-        const image = sandboxService.getOrCreateImageFromRegistry("node:22-slim")
-        const sb = await sandboxService.getOrCreateSandbox(app, image, { timeoutMs })
+        const image = sandboxService.getImageFromRegistry("node:22-slim")
+        const uniqueName = `cc-${crypto.randomBytes(14).toString("hex")}`
+        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, { timeoutMs })
         logger.info(`[ClaudeCodeSandbox:${label}] Created sandbox`, { sandboxId: sb.sandboxId, duration: this.elapsed(t) })
 
         try {
