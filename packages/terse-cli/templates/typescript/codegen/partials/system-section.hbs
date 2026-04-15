@@ -11,7 +11,7 @@ export const Schedule = {
 
 export const Webhook = {
     /** Use in `triggers[]` — trigger via an external HTTP request to a generated URL */
-    onRequest(): TypedTrigger<WebhookTrigger> {
+    onRequest<TBody = Record<string, unknown>>(): TypedTrigger<WebhookTrigger<TBody>> {
         return new WebhookInputConfig()
     },
 }
