@@ -26,11 +26,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const userId = user.id
     const organizationId = user.organizationId
 
-    console.log({
-        userId,
-        organizationId
-    })
-
     try {
         const { remoteServerUrl, jobs, sourceZipBase64 } = sdkDeployRequestBodySchema.parse(req.body)
 
@@ -215,13 +210,6 @@ async function updateExistingAutomation(
         })
 
         await persistToolApprovals(tx, automationId, toolApprovals, { replaceExisting: true })
-
-        console.log({
-            triggers,
-            organizationId,
-            userId
-        })
-
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
         await createOutputsForAutomation(tx, automationId, outputs, organizationId, userId)
 

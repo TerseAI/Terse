@@ -1,6 +1,6 @@
 import crypto from "crypto"
-import { readFile } from "node:fs/promises"
 import { ModalClient, Sandbox } from "modal"
+import { readFile } from "node:fs/promises"
 import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
@@ -16,16 +16,10 @@ import { extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
-import { packLocalSdkCliForModalVendor, removeModalVendorPackDir, resolveTerseMonorepoRoot } from "./sdkModalLocalVendor"
 import { SdkSandboxImageService } from "./SdkSandboxImageService"
+import { packLocalSdkCliForModalVendor, removeModalVendorPackDir, resolveTerseMonorepoRoot } from "./sdkModalLocalVendor"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import {
-    SDK_SOURCE_IMAGE_PROJECT_DIR,
-    type SandboxCommandResult,
-    type SdkProjectRuntime,
-    type SdkRuntimeExecutor,
-    type SdkRuntimeExecutorContext
-} from "./sdkRuntimeExecutors/types"
+import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 
 export interface SdkJobExecutionParams {
     gcsKey: string
@@ -312,11 +306,7 @@ export class SdkJobExecutionService {
 
             const overlayStart = performance.now()
             try {
-                const [typesBuf, sdkBuf, cliBuf] = await Promise.all([
-                    readFile(packed.typesTgzPath),
-                    readFile(packed.sdkTgzPath),
-                    readFile(packed.cliTgzPath)
-                ])
+                const [typesBuf, sdkBuf, cliBuf] = await Promise.all([readFile(packed.typesTgzPath), readFile(packed.sdkTgzPath), readFile(packed.cliTgzPath)])
                 await this.writeBinaryToSandbox(sb, "/tmp/terse-types-vendor.tgz", typesBuf)
                 await this.writeBinaryToSandbox(sb, "/tmp/terse-sdk-vendor.tgz", sdkBuf)
                 await this.writeBinaryToSandbox(sb, "/tmp/terse-cli-vendor.tgz", cliBuf)
