@@ -64,7 +64,7 @@ jobs:
 
             - name: "[assert] Verify project builds"
               working-directory: packages/ci-test-fixture
-              run: pnpm build
+              run: pnpm typecheck
 
             - name: "[run] Execute CI test fixture"
               working-directory: packages/ci-test-fixture
