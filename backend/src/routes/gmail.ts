@@ -1,6 +1,6 @@
 import { InputConfigType, OutputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
-import { google } from "googleapis"
+import { gmail as createGmailClient } from "@googleapis/gmail"
 import { IntegrationType } from "terse-types/Integrations"
 
 import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../integrations/GmailIntegration"
@@ -73,7 +73,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
 
         try {
             // Stop the Gmail watch
-            const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+            const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
             await gmail.users.stop({ userId: "me" })
             logger.info(`Gmail watch stopped for ${integration.email}`)
         } catch (stopError) {

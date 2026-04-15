@@ -1,8 +1,8 @@
 import { InputConfigType } from "@prisma/client"
 import crypto from "crypto"
 import { Request, Response } from "express"
+import { gmail as createGmailClient, gmail_v1 } from "@googleapis/gmail"
 import { OAuth2Client } from "google-auth-library"
-import { gmail_v1, google } from "googleapis"
 import { ConfigData, ConfigType, GmailEventType, GmailMessagePayload, GmailParsedAttachment, GmailTrigger } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
@@ -123,7 +123,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                         access_token: accessToken,
                         ...(refreshToken ? { refresh_token: refreshToken } : {})
                     })
-                    const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+                    const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
                     const lastProcessedDate: Date | null = integration.last_processed_message_date
                     let mostRecentEmailDate: Date | null = lastProcessedDate
@@ -314,7 +314,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             }
 
             // Get user's email address
-            const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+            const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
             const profile = await gmail.users.getProfile({ userId: "me" })
             const emailAddress = profile.data.emailAddress
 
@@ -455,7 +455,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 })
 
                 // Get Gmail client
-                const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+                const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
                 // Refresh the watch
                 const watchResponse = await gmail.users.watch({
@@ -536,7 +536,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             access_token: accessToken,
             ...(refreshToken ? { refresh_token: refreshToken } : {})
         })
-        const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+        const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
         const listResponse = await gmail.users.messages.list({
             userId: "me",
@@ -624,7 +624,7 @@ export class GmailTriggerRuntime extends TriggerRuntime<GmailTrigger> implements
 
 // Create OAuth2 client
 export function getOAuth2Client(): OAuth2Client {
-    return new google.auth.OAuth2(gmailConfig.clientId, gmailConfig.clientSecret, gmailConfig.redirectUri)
+    return new OAuth2Client(gmailConfig.clientId, gmailConfig.clientSecret, gmailConfig.redirectUri)
 }
 
 /**
@@ -807,7 +807,7 @@ async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistor
         ...(refreshToken ? { refresh_token: refreshToken } : {})
     })
 
-    const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+    const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
     logger.debug(`Fetching Gmail history from ${oldHistoryId}`, {
         oldHistoryId,

@@ -1,4 +1,4 @@
-import { google } from "googleapis"
+import { gmail as createGmailClient } from "@googleapis/gmail"
 import { IntegrationType } from "terse-types"
 
 import { GmailTriggerRuntime, fetchAndParseEmail, getOAuth2Client } from "../../integrations/GmailIntegration"
@@ -77,7 +77,7 @@ export class GmailEventHydrator extends Hydrator<GmailTriggerRuntime> {
                 access_token: accessToken,
                 ...(refreshToken ? { refresh_token: refreshToken } : {})
             })
-            const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+            const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
             const parsed = await fetchAndParseEmail(gmail, messageId)
             if (!parsed) {
                 return null
