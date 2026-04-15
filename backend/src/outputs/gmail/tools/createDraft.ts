@@ -1,5 +1,5 @@
-import { RunHistoryActionType } from "@prisma/client"
 import { gmail as createGmailClient } from "@googleapis/gmail"
+import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
 
 import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/GmailIntegration"

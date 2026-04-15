@@ -1,6 +1,6 @@
+import { gmail as createGmailClient } from "@googleapis/gmail"
 import { InputConfigType, OutputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
-import { gmail as createGmailClient } from "@googleapis/gmail"
 import { IntegrationType } from "terse-types/Integrations"
 
 import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../integrations/GmailIntegration"

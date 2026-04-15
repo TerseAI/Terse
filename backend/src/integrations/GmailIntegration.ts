@@ -1,7 +1,7 @@
+import { gmail as createGmailClient, gmail_v1 } from "@googleapis/gmail"
 import { InputConfigType } from "@prisma/client"
 import crypto from "crypto"
 import { Request, Response } from "express"
-import { gmail as createGmailClient, gmail_v1 } from "@googleapis/gmail"
 import { OAuth2Client } from "google-auth-library"
 import { ConfigData, ConfigType, GmailEventType, GmailMessagePayload, GmailParsedAttachment, GmailTrigger } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
