@@ -230,7 +230,7 @@ export type AgentOutput = z.infer<typeof agentOutputSchema>
 
 export const agentPromptSchema = z.object({
     text: z.string(),
-    remoteServerUrl: z.string().optional()
+    remoteServerUrl: z.string().optional().nullable()
 })
 export type AgentPrompt = z.infer<typeof agentPromptSchema>
 
