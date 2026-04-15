@@ -19,7 +19,14 @@ Python projects require [`uv`](https://docs.astral.sh/uv/getting-started/install
 
 Scaffolds a new project and runs the full setup flow: installs dependencies, authenticates, connects integrations, and generates your SDK.
 
-<CodeGroup>```bash TypeScript terse init my-project ``` ```bash Python terse init my-project --language python ```</CodeGroup>
+<CodeGroup>
+```bash TypeScript
+terse init my-project
+```
+```bash Python
+terse init my-project --language python
+```
+</CodeGroup>
 
 **Options:**
 
@@ -85,16 +92,23 @@ terse generate
 
 **Outputs:**
 
-<CodeGroup>```text TypeScript src/terse.generated.ts ``` ```text Python src/terse_generated.py ```</CodeGroup>
+<CodeGroup>
+```text TypeScript
+src/terse.generated.ts
+```
+```text Python
+src/terse_generated.py
+```
+</CodeGroup>
 
 **What's in the generated file:**
 
-| Category                    | Examples                                                              |
-| --------------------------- | --------------------------------------------------------------------- |
-| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Deals`   |
+| Category                    | Examples                                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Deals`                                         |
 | Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`, `Webhook.onRequest<BodyType>()` (TypeScript) |
-| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                    |
-| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()` |
+| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                                                          |
+| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()`                                       |
 
 Each integration generates typed helpers based on the actual resources in your workspace (repos, channels, lists, projects, etc.), so your code references real names instead of raw IDs.
 
@@ -145,26 +159,26 @@ Example `event.json` for a manual cron-style run (`formattedContent` and `debugL
 
 ```json
 {
-  "integrationType": "cron_job",
-  "eventType": "cron",
-  "formattedContent": "This is a manually triggered event for the channel input trigger_123.\n\nUser provided context for this manual trigger:\nManual trigger",
-  "debugLog": "Manual Trigger",
-  "data": {
     "integrationType": "cron_job",
     "eventType": "cron",
-    "inputId": "trigger_123",
-    "isManualTrigger": true,
-    "manualContext": "Manual trigger"
-  }
+    "formattedContent": "This is a manually triggered event for the channel input trigger_123.\n\nUser provided context for this manual trigger:\nManual trigger",
+    "debugLog": "Manual Trigger",
+    "data": {
+        "integrationType": "cron_job",
+        "eventType": "cron",
+        "inputId": "trigger_123",
+        "isManualTrigger": true,
+        "manualContext": "Manual trigger"
+    }
 }
 ```
 
 **Options:**
 
-| Flag                  | Description                                              |
-| --------------------- | -------------------------------------------------------- |
-| `--event <json>`      | Inline serialized event JSON                             |
-| `--event-file <path>` | Path to a JSON file containing the serialized event      |
+| Flag                  | Description                                         |
+| --------------------- | --------------------------------------------------- |
+| `--event <json>`      | Inline serialized event JSON                        |
+| `--event-file <path>` | Path to a JSON file containing the serialized event |
 
 One of `--event` or `--event-file` is required.
 

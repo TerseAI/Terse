@@ -23,14 +23,17 @@
                 "pages": ["index", "quickstart", "context-as-code", "hosting"]
             },
             {
-                "group": "Templates",
-                "root": "templates/index",
-                "pages": ["templates/new-deal-enrichment", "templates/weekly-pipeline-digest", "templates/crm-slack-alerts", "templates/contact-scoring"]
+                "group": "Core Concepts",
+                "pages": ["core-concepts/deterministic-tool-calls", "core-concepts/self-improvement"]
             },
             {
                 "group": "Reference",
-                "root": "reference/index",
                 "pages": ["reference/cli", "reference/triggers", "reference/skills", "reference/typescript-sdk", "reference/python-sdk"]
+            },
+            {
+                "group": "Templates",
+                "root": "templates/index",
+                "pages": ["templates/new-deal-enrichment", "templates/weekly-pipeline-digest", "templates/crm-slack-alerts", "templates/contact-scoring"]
             },
             {
                 "group": "Compare",

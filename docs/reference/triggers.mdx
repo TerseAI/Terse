@@ -147,8 +147,19 @@ triggers=[
 | `Gmail.onNewEmail()` | `GmailEvent` | A new email is received |
 
 <CodeGroup>
-    ```ts TypeScript triggers: [Gmail.onNewEmail()] ``` ```python Python triggers=[ TriggerConfig( integration_id=gmail_integration_id, integration_type="gmail", config_type="gmail", config={}, ) ]
-    ```
+```ts TypeScript
+triggers: [Gmail.onNewEmail()]
+```
+```python Python
+triggers=[
+    TriggerConfig(
+        integration_id=gmail_integration_id,
+        integration_type="gmail",
+        config_type="gmail",
+        config={},
+    )
+]
+```
 </CodeGroup>
 
 <Expandable title="Event payload">
@@ -200,27 +211,51 @@ triggers=[
 | ----------------- | ------------- | ------------------------ |
 | `Schedule.cron()` | `CronTrigger` | Fires on a cron schedule |
 
-<CodeGroup>```ts TypeScript triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am ``` ```python Python triggers=[Schedule.cron("0 9 * * 1")] # Every Monday at 9am ```</CodeGroup>
+<CodeGroup>
+```ts TypeScript
+triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am
+```
+```python Python
+triggers=[Schedule.cron("0 9 * * 1")]  # Every Monday at 9am
+```
+</CodeGroup>
 
 <Expandable title="Event payload">
-    - `data.isManualTrigger` - whether the run was triggered manually from the dashboard - `data.manualContext` - optional context string provided on manual triggers
+  - `data.isManualTrigger` - whether the run was triggered manually from the dashboard
+  - `data.manualContext` - optional context string provided on manual triggers
 </Expandable>
 
 ### Webhook
 
-| Trigger               | Event type        | Description                                               |
-| --------------------- | ----------------- | --------------------------------------------------------- |
-| `Webhook.onRequest()` | `WebhookTrigger`  | Fires when an HTTP request hits the generated webhook URL |
+| Trigger               | Event type       | Description                                               |
+| --------------------- | ---------------- | --------------------------------------------------------- |
+| `Webhook.onRequest()` | `WebhookTrigger` | Fires when an HTTP request hits the generated webhook URL |
 
 Webhook URLs are auto-generated on deploy and remain stable across redeploys.
 
 Pass a type argument to `Webhook.onRequest<YourPayload>()` so `onTrigger` and `filter` see your JSON body shape on `event.body` (defaults to `unknown` when omitted).
 
 <CodeGroup>
-    ```ts TypeScript triggers: [Webhook.onRequest()] ``` ```python Python triggers=[ TriggerConfig( integration_id="system", integration_type="webhook", config_type="webhook_input", config={}, ) ] ```
+```ts TypeScript
+triggers: [Webhook.onRequest()]
+```
+```python Python
+triggers=[
+    TriggerConfig(
+        integration_id="system",
+        integration_type="webhook",
+        config_type="webhook_input",
+        config={},
+    )
+]
+```
 </CodeGroup>
 
-<Expandable title="Event payload">- `body` - parsed JSON request body (typed when you use `Webhook.onRequest<...>()`) - `headers` - HTTP headers - `method` - HTTP method (GET, POST, etc.)</Expandable>
+<Expandable title="Event payload">
+  - `body` - parsed JSON request body (typed when you use `Webhook.onRequest<...>()`)
+  - `headers` - HTTP headers
+  - `method` - HTTP method (GET, POST, etc.)
+</Expandable>
 
 ## Common event interface
 
