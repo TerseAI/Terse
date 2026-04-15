@@ -73,9 +73,7 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
             context.sandboxEnv.UV_NO_SYNC = "1"
             context.sandboxEnv.UV_PROJECT_ENVIRONMENT = `${context.projectDir}/.venv`
 
-            return runSandboxExecStage(context, () =>
-                context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`)
-            )
+            return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && terse run ${context.escapeShellArg(context.jobName)}`))
         }
 
         await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, async () => {
@@ -90,9 +88,7 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
             context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install terse-sdk@latest terse-cli@latest --no-fund`)
         )
 
-        return runSandboxExecStage(context, () =>
-            context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --event-file ${context.eventFilePath}`)
-        )
+        return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)}`))
     }
 
     private getTemplateDir(): string {

@@ -1,4 +1,5 @@
 import crypto from "crypto"
+import { readFile } from "node:fs/promises"
 import { ModalClient, Sandbox } from "modal"
 import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
@@ -15,10 +16,10 @@ import { extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
+import { packLocalSdkCliForModalVendor, removeModalVendorPackDir, resolveTerseMonorepoRoot } from "./sdkModalLocalVendor"
 import { SdkSandboxImageService } from "./SdkSandboxImageService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import {
-    SDK_SANDBOX_EVENT_FILE_PATH,
     SDK_SOURCE_IMAGE_PROJECT_DIR,
     type SandboxCommandResult,
     type SdkProjectRuntime,
@@ -33,7 +34,6 @@ export interface SdkJobExecutionParams {
     orgId: string
     userId: string
     user: User
-    eventJson: string
     jobName: string
 }
 
@@ -86,7 +86,7 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { gcsKey, runId, agentId, orgId, userId, user, eventJson, jobName } = params
+        const { gcsKey, runId, agentId, orgId, userId, user, jobName } = params
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId, user })
@@ -117,7 +117,6 @@ export class SdkJobExecutionService {
             const modal = this.createModalClient()
             const result = await this.executeWithSourceImage({
                 executor,
-                eventJson,
                 jobName,
                 modal,
                 runId,
@@ -256,7 +255,6 @@ export class SdkJobExecutionService {
 
     private async executeWithSourceImage(params: {
         executor: SdkRuntimeExecutor
-        eventJson: string
         jobName: string
         modal: ModalClient
         runId: string
@@ -264,7 +262,7 @@ export class SdkJobExecutionService {
         sandboxEnv: Record<string, string>
         sourceImageModalId: string
     }): Promise<SandboxCommandResult> {
-        const { executor, eventJson, jobName, modal, runId, agentId, sandboxEnv, sourceImageModalId } = params
+        const { executor, jobName, modal, runId, agentId, sandboxEnv, sourceImageModalId } = params
 
         this.emitSandboxStatus(SandboxStage.BOOTING, "started")
         const bootStart = performance.now()
@@ -290,14 +288,82 @@ export class SdkJobExecutionService {
             duration: this.elapsed(bootStart)
         })
 
+        if (settings.nodeEnv === "development" && settings.optional.modalVendorLocalPackages) {
+            // Each run pays for three pnpm packs + upload; opt-in via TERSE_MODAL_VENDOR_LOCAL_PACKAGES only.
+            const vendorTotalStart = performance.now()
+            const monorepoRoot = resolveTerseMonorepoRoot(settings.optional.terseMonorepoRoot)
+            const packStart = performance.now()
+            let packed: Awaited<ReturnType<typeof packLocalSdkCliForModalVendor>>
+            try {
+                packed = await packLocalSdkCliForModalVendor(monorepoRoot)
+            } catch (packErr) {
+                const errno = packErr as NodeJS.ErrnoException
+                logger.error("SDK sandbox: Modal local vendor failed during pnpm pack", {
+                    runId,
+                    agentId,
+                    sandboxId: sb.sandboxId,
+                    monorepoRoot,
+                    error: extractErrorMessage(packErr),
+                    ...(errno?.code === "ENOENT" ? { hint: "pnpm may be missing on PATH for the backend process." } : {})
+                })
+                throw packErr
+            }
+            const vendorLocalPackMs = Math.round(performance.now() - packStart)
+
+            const overlayStart = performance.now()
+            try {
+                const [typesBuf, sdkBuf, cliBuf] = await Promise.all([
+                    readFile(packed.typesTgzPath),
+                    readFile(packed.sdkTgzPath),
+                    readFile(packed.cliTgzPath)
+                ])
+                await this.writeBinaryToSandbox(sb, "/tmp/terse-types-vendor.tgz", typesBuf)
+                await this.writeBinaryToSandbox(sb, "/tmp/terse-sdk-vendor.tgz", sdkBuf)
+                await this.writeBinaryToSandbox(sb, "/tmp/terse-cli-vendor.tgz", cliBuf)
+                await this.ensureSandboxCommand(
+                    sb,
+                    "install vendored terse-types, terse-sdk, and terse-cli",
+                    "npm install -g /tmp/terse-types-vendor.tgz /tmp/terse-sdk-vendor.tgz /tmp/terse-cli-vendor.tgz --no-fund",
+                    sandboxEnv,
+                    runId,
+                    agentId
+                )
+            } catch (overlayErr) {
+                logger.error("SDK sandbox: Modal local vendor failed during sandbox upload/install", {
+                    runId,
+                    agentId,
+                    sandboxId: sb.sandboxId,
+                    error: extractErrorMessage(overlayErr)
+                })
+                throw overlayErr
+            } finally {
+                await removeModalVendorPackDir(packed.packDir).catch(() => {})
+            }
+            const vendorModalOverlayMs = Math.round(performance.now() - overlayStart)
+            const vendorTotalMs = Math.round(performance.now() - vendorTotalStart)
+            logger.info("SDK sandbox: Modal local vendor overlay complete", {
+                runId,
+                agentId,
+                sandboxId: sb.sandboxId,
+                vendor_local_pack_ms: vendorLocalPackMs,
+                vendor_modal_overlay_ms: vendorModalOverlayMs,
+                vendor_total_ms: vendorTotalMs
+            })
+        }
+
         try {
             const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, SDK_SOURCE_IMAGE_PROJECT_DIR, true)
-            await this.writeEventFile(sb, eventJson)
             const result = await executor.execute(executorContext)
             return result
         } finally {
             await sb.terminate().catch(() => {})
         }
+    }
+
+    private async writeBinaryToSandbox(sb: Sandbox, filePath: string, content: Buffer): Promise<void> {
+        const fileHandle = await sb.open(filePath, "w")
+        await fileHandle.write(new Uint8Array(content))
+        await fileHandle.close()
     }
 
     private async downloadSourceZipFromGcs(gcsKey: string, runId: string, agentId: string): Promise<Buffer> {
@@ -325,12 +391,6 @@ export class SdkJobExecutionService {
         return zipBuffer
     }
 
-    private async writeEventFile(sb: Sandbox, eventJson: string): Promise<void> {
-        const eventHandle = await sb.open(SDK_SANDBOX_EVENT_FILE_PATH, "w")
-        await eventHandle.write(new TextEncoder().encode(eventJson))
-        await eventHandle.close()
-    }
-
     private createRuntimeExecutorContext(
         sb: Sandbox,
         sandboxEnv: Record<string, string>,
@@ -347,7 +407,6 @@ export class SdkJobExecutionService {
             agentId,
             jobName,
             projectDir,
-            eventFilePath: SDK_SANDBOX_EVENT_FILE_PATH,
             usesPrebuiltImage,
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)

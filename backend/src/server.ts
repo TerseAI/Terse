@@ -46,6 +46,7 @@ import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentR
 import { handleSdkDeploy } from "./routes/sdkDeploy"
 import { handleSdkIntegrationFields, handleSdkIntegrationFormSubmit } from "./routes/sdkIntegrations"
 import { handleVerifySdkJobServer } from "./routes/sdkJobServer"
+import { handleSdkRunTriggerEvent } from "./routes/sdkRunTriggerEvent"
 import { handleSessionEvents } from "./routes/sdkSession"
 import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
 import { handleToolExecute } from "./routes/sdkToolExecute"
@@ -690,6 +691,10 @@ app.post(ApiRoutes.SDK.TOOL_EXECUTE, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.SDK.TOOL_DEFINITIONS, authMiddleware, async (req, res) => {
     handleToolDefinitions(req, res)
+})
+
+app.get(ApiRoutes.SDK.RUN_TRIGGER_EVENT, authMiddleware, async (req, res) => {
+    handleSdkRunTriggerEvent(req, res)
 })
 
 app.post(ApiRoutes.SDK.AGENT_RUN, authMiddleware, async (req, res) => {

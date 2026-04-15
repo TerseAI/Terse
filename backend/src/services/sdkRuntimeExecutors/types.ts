@@ -46,7 +46,6 @@ export interface SdkRuntimeExecutorContext {
     agentId: string
     jobName: string
     projectDir: string
-    eventFilePath: string
     usesPrebuiltImage: boolean
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     runSandboxCommand: (label: string, command: string) => Promise<SandboxCommandResult>
@@ -102,6 +101,5 @@ export async function runSandboxExecStage(context: SdkRuntimeExecutorContext, fn
 
 export const SDK_SANDBOX_CODE_ZIP_PATH = "/tmp/code.zip"
 export const SDK_SANDBOX_PROJECT_DIR = "/tmp/project"
-export const SDK_SANDBOX_EVENT_FILE_PATH = "/tmp/event.json"
 export const SDK_SOURCE_IMAGE_PROJECT_DIR = "/opt/terse-sdk-run/project"
 export const SDK_SOURCE_IMAGE_CODE_ZIP_PATH = "/tmp/source-image-code.zip"
