@@ -174,12 +174,14 @@ Packages your project and deploys all jobs to the Terse platform. [Learn more ab
 terse deploy
 ```
 
+**Self-hosted job server:** If `TERSE_REMOTE_SERVER_URL` or `TERSE_JOB_URL` is set in `.env`, deploy runs in URL mode: no project zip is uploaded, and Terse sends trigger webhooks to your server instead. The CLI may print a `TERSE_SIGNING_SECRET` for you to add when that secret is issued. Use the same base URL in your workflow code (`remoteServerUrl` in `createJob`) so trigger delivery matches your HTTP handler.
+
 **What happens:**
 
 - New jobs are created on the platform
 - Existing jobs are updated (webhook URLs remain stable)
 - Jobs removed from your code are removed from the platform
-- Your entire project is zipped, uploaded, and hosted serverlessly
+- Without a self-hosted URL in `.env`, your entire project is zipped, uploaded, and hosted serverlessly
 
 ## Required environment variable
 
