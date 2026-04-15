@@ -208,17 +208,19 @@ triggers=[
 
 ### Webhook
 
-| Trigger               | Event type     | Description                                               |
-| --------------------- | -------------- | --------------------------------------------------------- |
-| `Webhook.onRequest()` | `WebhookEvent` | Fires when an HTTP request hits the generated webhook URL |
+| Trigger               | Event type        | Description                                               |
+| --------------------- | ----------------- | --------------------------------------------------------- |
+| `Webhook.onRequest()` | `WebhookTrigger`  | Fires when an HTTP request hits the generated webhook URL |
 
 Webhook URLs are auto-generated on deploy and remain stable across redeploys.
+
+Pass a type argument to `Webhook.onRequest<YourPayload>()` so `onTrigger` and `filter` see your JSON body shape on `event.body` (defaults to `unknown` when omitted).
 
 <CodeGroup>
     ```ts TypeScript triggers: [Webhook.onRequest()] ``` ```python Python triggers=[ TriggerConfig( integration_id="system", integration_type="webhook", config_type="webhook_input", config={}, ) ] ```
 </CodeGroup>
 
-<Expandable title="Event payload">- `body` - the raw JSON payload - `headers` - HTTP headers - `method` - HTTP method (GET, POST, etc.)</Expandable>
+<Expandable title="Event payload">- `body` - parsed JSON request body (typed when you use `Webhook.onRequest<...>()`) - `headers` - HTTP headers - `method` - HTTP method (GET, POST, etc.)</Expandable>
 
 ## Common event interface
 
