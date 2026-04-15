@@ -64,8 +64,7 @@ export const getLaunchDarklyFlagDetailsTool = defineSessionTool({
             logger.debug("[LaunchDarkly] getFeatureFlagDetails - Flag details API response", {
                 status: response.status,
                 statusText: response.statusText,
-                ok: response.ok,
-                headers: Object.fromEntries(response.headers.entries())
+                ok: response.ok
             })
 
             if (!response.ok) {
@@ -192,8 +191,7 @@ export const getLaunchDarklyFlagDetailsTool = defineSessionTool({
                     logger.debug("[LaunchDarkly] getFeatureFlagDetails - Audit log API response", {
                         status: historyResponse.status,
                         statusText: historyResponse.statusText,
-                        ok: historyResponse.ok,
-                        headers: Object.fromEntries(historyResponse.headers.entries())
+                        ok: historyResponse.ok
                     })
 
                     if (historyResponse.ok) {

@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": ["ES2022"],
     "module": "ESNext",
     "rootDir": "src",
     "moduleResolution": "bundler",
@@ -12,10 +13,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist", "scripts", "sdk"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

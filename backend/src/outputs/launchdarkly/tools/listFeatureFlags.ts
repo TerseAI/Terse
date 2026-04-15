@@ -65,8 +65,7 @@ export const listLaunchDarklyFlagsTool = defineSessionTool({
             logger.debug("[LaunchDarkly] listFeatureFlags - Flags API response", {
                 status: response.status,
                 statusText: response.statusText,
-                ok: response.ok,
-                headers: Object.fromEntries(response.headers.entries())
+                ok: response.ok
             })
 
             if (!response.ok) {
