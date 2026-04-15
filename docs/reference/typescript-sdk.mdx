@@ -263,6 +263,7 @@ Event typing depends on the trigger.
 | Scheduled cron triggers     | `CronTrigger`               |
 | Scheduled interval triggers | `CronTrigger`               |
 | Manual trigger              | `ManualSampleTrigger`       |
+| Webhook HTTP requests       | `WebhookTrigger` — use `Webhook.onRequest<T>()` so `event.body` is `T` (default `unknown`) |
 
 `Trigger` is the common base interface. Use the most specific trigger event type your trigger exposes.
 
