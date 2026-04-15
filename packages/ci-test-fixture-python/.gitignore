@@ -1,0 +1,5 @@
+src/terse_generated.py
+src/main.py
+.venv
+__pycache__
+.env
