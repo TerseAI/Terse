@@ -1,27 +1,24 @@
 name: Backend Build Check
 on:
-  pull_request:
-    paths:
-      - 'backend/**'
-      - 'terse-types/**'
-      - '.github/workflows/backend-build.yml'
+    pull_request:
+        paths:
+            - "backend/**"
+            - "terse-types/**"
+            - ".github/workflows/backend-build.yml"
 jobs:
-  build:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    env:
-      NODE_OPTIONS: --max-old-space-size=4096
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.19.0'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter terse-types run build
-      - run: cd backend && pnpm exec prisma generate
-      - run: cd backend && pnpm run build
-
+    build:
+        runs-on: blacksmith-4vcpu-ubuntu-2404
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: 10
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "22.19.0"
+                  cache: "pnpm"
+                  cache-dependency-path: pnpm-lock.yaml
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm --filter terse-types run build
+            - run: cd backend && pnpm exec prisma generate
+            - run: cd backend && pnpm run build
