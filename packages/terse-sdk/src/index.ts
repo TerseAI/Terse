@@ -125,7 +125,7 @@ export type SlackAppMentionTrigger = SDKTrigger<_RawSlackAppMentionTrigger>
 export type SlackMessageTrigger = SDKTrigger<_RawSlackMessageTrigger>
 export type SlackReactionAddedTrigger = SDKTrigger<_RawSlackReactionAddedTrigger>
 export type SlackTrigger = SDKTrigger<_RawSlackTrigger>
-export type WebhookTrigger = SDKTrigger<_RawWebhookTrigger>
+export type WebhookTrigger<TBody = unknown> = SDKTrigger<_RawWebhookTrigger<TBody>>
 export type WorkOSInvitationAcceptedTrigger = SDKTrigger<_RawWorkOSInvitationAcceptedTrigger>
 export type WorkOSInvitationCreatedTrigger = SDKTrigger<_RawWorkOSInvitationCreatedTrigger>
 export type WorkOSInvitationTrigger = SDKTrigger<_RawWorkOSInvitationTrigger>
