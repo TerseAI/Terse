@@ -16,8 +16,9 @@ Import these from `terse-sdk`:
 - `Terse`: the SDK client
 - `TerseAgent`: the runtime object inside `onTrigger`
 - `Trigger`: the base event interface
-- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, and other per-integration exports (see `terse-sdk` package entry)
+- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `GmailTrigger`, `WebhookTrigger`, and other per-integration exports (see `terse-sdk` package entry)
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
+- `TERSE_JOB_WEBHOOK_TRIGGER_PATH` and `Terse.handleTrigger(...)`: for self-hosted workflows, mount an HTTP route at that path and forward signed trigger payloads to the SDK
 
 ## Trigger payloads
 
@@ -40,18 +41,18 @@ const client = new Terse()
 
 Defines the workflow contract.
 
-| Field              | Type                              | Description                                                                                       |
-| ------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `name`             | `string`                          | Unique workflow identifier. Used to match workflows across deploys.                               |
-| `triggers`         | `Trigger[]`                       | One or more triggers that start the workflow.                                                     |
-| `skills`           | `Skill[]`                         | Capabilities available to the model during `run` and `runAndWait`.                                |
-| `toolApprovals`    | `string[]`                        | Tool names that require human approval before execution. See [tool approvals](#tool-approvals).   |
-| `filter`           | `(event) => boolean`              | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
-| `onTrigger`        | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl`  | `string`                          | Optional base URL of the server where you mount `Terse.handleTrigger` (Terse POSTs job triggers here). |
+| Field | Type                              | Description                                                                                       |
+| ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `name`            | `string`                          | Unique workflow identifier. Used to match workflows across deploys.                               |
+| `triggers`        | `Trigger[]`                       | One or more triggers that start the workflow.                                                     |
+| `skills`          | `Skill[]`                         | Capabilities available to the model during `run` and `runAndWait`.                                |
+| `toolApprovals`   | `string[]`                        | Tool names that require human approval before execution. See [tool approvals](#tool-approvals).   |
+| `filter`          | `(event) => boolean`              | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
+| `onTrigger`       | `(event, agent) => Promise<void>` | The workflow handler. Called once per trigger event.                                              |
+| `remoteServerUrl` | `string`                          | Optional public base URL of the server where you mount `Terse.handleTrigger` (including path prefix). Must match `terse deploy` when using `TERSE_REMOTE_SERVER_URL` or `TERSE_JOB_URL`. |
 
 ```ts
-await client.createJob({
+client.createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
     skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
@@ -174,7 +175,7 @@ if (parsed.score < 0 || parsed.score > 100) {
 Use `filter` to skip runs for events that don't match your criteria. Return `true` to run, `false` to skip.
 
 ```ts
-await client.createJob({
+client.createJob({
     name: "contract-alerts",
     triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
     skills: [Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }), Slack.skill({ channel: SlackChannel.DealDesk })],
@@ -193,7 +194,7 @@ await client.createJob({
 List tool names in `toolApprovals` to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
 
 ```ts
-await client.createJob({
+client.createJob({
     name: "deal-enrichment-with-approval",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
     skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
@@ -263,7 +264,7 @@ import { Attio, AttioList, Http } from "./terse.generated"
 
 const client = new Terse()
 
-await client.createJob({
+client.createJob({
     name: "custom-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
     skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Http.skill()],
