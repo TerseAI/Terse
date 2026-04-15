@@ -19,6 +19,9 @@ Import these from `terse-sdk`:
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `GmailTrigger`, `WebhookTrigger`, and other per-integration exports (see `terse-sdk` package entry)
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 - `TERSE_JOB_WEBHOOK_TRIGGER_PATH` and `Terse.handleTrigger(...)`: for self-hosted workflows, mount an HTTP route at that path and forward signed trigger payloads to the SDK
+- `openSessionStream` and related session stream types: for advanced use cases that integrate with the same session protocol the platform uses during webhook delivery
+
+The SDK method is still named `createJob` in code; in product docs we call that object a **workflow**.
 
 ## Trigger payloads
 
@@ -31,20 +34,31 @@ Your `onTrigger` and `filter` callbacks receive these enriched objects, so you c
 
 ## `Terse`
 
-The SDK client. Used to register workflows in `src/terse.jobs.ts`.
+The SDK client. Used to register workflows in `src/index.ts` (or the entry file your project uses).
 
 ```ts
 const client = new Terse()
 ```
 
+### `handleTrigger(body, headers)`
+
+For workflows that run on **your** HTTP server (self-hosted / remote server URL in the CLI), wire this method into a route handler. It verifies signed requests from Terse, completes the optional challenge handshake, then runs your job's `filter` and `onTrigger` against the incoming event.
+
+Requirements:
+
+- `TERSE_SIGNING_SECRET` — signing secret from the job settings in the Terse app (same secret the CLI can write to `.env` on deploy for remote jobs)
+- `TERSE_API_KEY` — same API token as other SDK calls
+
+Mount your route at **`TERSE_JOB_WEBHOOK_TRIGGER_PATH`** so the path matches what the backend is configured to call.
+
 ## `createJob(...)`
 
 Defines the workflow contract.
 
-| Field | Type                              | Description                                                                                       |
+| Field             | Type                              | Description                                                                                       |
 | ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `name`            | `string`                          | Unique workflow identifier. Used to match workflows across deploys.                               |
-| `triggers`        | `Trigger[]`                       | One or more triggers that start the workflow.                                                     |
+| `triggers`        | `Trigger[]`                       | One or more triggers that start the workflow. At most one webhook trigger per job.                |
 | `skills`          | `Skill[]`                         | Capabilities available to the model during `run` and `runAndWait`.                                |
 | `toolApprovals`   | `string[]`                        | Tool names that require human approval before execution. See [tool approvals](#tool-approvals).   |
 | `filter`          | `(event) => boolean`              | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
@@ -62,17 +76,29 @@ client.createJob({
 })
 ```
 
+### Environment variables
+
+| Variable               | Required for                         | Notes                                                                 |
+| ---------------------- | ------------------------------------ | ----------------------------------------------------------------------- |
+| `TERSE_API_KEY`        | `TerseAgent` methods, `handleTrigger` | Written by `terse login`.                                              |
+| `TERSE_SIGNING_SECRET` | `handleTrigger` only                 | Verifies incoming webhook requests from Terse.                        |
+| `TERSE_BACKEND_URL`    | Optional                             | API base URL for session streams and agent calls. Defaults to `https://useterse.ai/api` when unset. |
+
 ## `TerseAgent`
 
 The runtime object you receive inside `onTrigger`.
 
 ### `run(prompt, event?)`
 
-Streams the model run. Returns an async iterable of output chunks.
+Streams the model run. Returns an async iterable of **`TerseAgentResult`** objects (discriminated by `type`, e.g. `EventType.TEXT`, `EventType.FINAL_OUTPUT`, tool call events, and tool approval events). Import `EventType` and the result classes (`TextResult`, `FinalOutputResult`, etc.) from `terse-sdk` when you branch on `chunk.type`.
 
 ```ts
+import { EventType, type TerseAgentResult } from "terse-sdk"
+
 for await (const chunk of agent.run("Summarize pipeline risk.", event)) {
-    process.stdout.write(chunk)
+    if (chunk.type === EventType.TEXT) {
+        process.stdout.write(chunk.text)
+    }
 }
 ```
 

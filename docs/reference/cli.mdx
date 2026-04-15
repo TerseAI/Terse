@@ -115,15 +115,16 @@ terse test my-job
 
 **Options:**
 
-| Flag            | Description                             | Default |
-| --------------- | --------------------------------------- | ------- |
-| `-v, --verbose` | Show agent stream output during the run | Enabled |
+| Flag                 | Description                             | Default |
+| -------------------- | --------------------------------------- | ------- |
+| `-v, --verbose`      | Show agent stream output during the run | Enabled |
+| `--entry-file <path>` | Path to the job entry file             | —       |
 
 **How it works:**
 
-1. Loads your job registry from the entry file
+1. Loads your job registry from the entry file (override the default entry with `--entry-file` if your jobs live in a non-standard path)
 2. Fetches sample events from the backend for integration-based triggers (e.g. real GitHub PR events, real Slack messages)
-3. Generates synthetic events for cron and webhook triggers
+3. Adds synthetic events for schedule (cron) triggers and for **webhook** triggers (a minimal POST-style payload so you can exercise webhook jobs without a live HTTP delivery)
 4. Prompts you to select an event
 5. Executes your job's `onTrigger` handler locally
 
