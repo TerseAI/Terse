@@ -949,26 +949,6 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ===================
     // Sandbox Lifecycle
     // ===================
-    "Downloading source code": {
-        preparing: "Downloading source code",
-        executing: () => "Downloading source code",
-        complete: (_params, result) => `Downloaded source code${result ? ` (${result})` : ""}`
-    },
-    "Booting sandbox": {
-        preparing: "Booting sandbox",
-        executing: () => "Booting sandbox",
-        complete: (_params, result) => `Sandbox booted${result ? ` (${result})` : ""}`
-    },
-    "Installing dependencies": {
-        preparing: "Installing dependencies",
-        executing: () => "Installing dependencies",
-        complete: (_params, result) => `Dependencies installed${result ? ` (${result})` : ""}`
-    },
-    "Installing CLI": {
-        preparing: "Installing CLI",
-        executing: () => "Installing CLI",
-        complete: (_params, result) => `CLI installed${result ? ` (${result})` : ""}`
-    },
     "Running agent": {
         preparing: "Running agent",
         executing: () => "Running agent",

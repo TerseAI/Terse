@@ -26,6 +26,15 @@ export class SdkRuntimeExecutorRegistry {
 
         return match
     }
+
+    resolveRuntime(runtime: SdkRuntimeExecutor["runtime"]): SdkRuntimeExecutor {
+        const match = this.executors.find(executor => executor.runtime === runtime)
+        if (!match) {
+            throw new Error(`Unsupported SDK runtime: ${runtime}`)
+        }
+
+        return match
+    }
 }
 
 export const sdkRuntimeExecutorRegistry = new SdkRuntimeExecutorRegistry([new TypescriptSdkRuntimeExecutor(), new PythonSdkRuntimeExecutor()])

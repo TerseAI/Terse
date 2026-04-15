@@ -130,6 +130,7 @@
         "VERIFY_JOB_SERVER": "/sdk/agents/:agentId/verify-job-server",
         "TOOL_EXECUTE": "/sdk/tool-execute",
         "TOOL_DEFINITIONS": "/sdk/tool-definitions",
+        "RUN_TRIGGER_EVENT": "/sdk/runs/:runId/trigger-event",
         "AGENT_RUN": "/sdk/agent-run",
         "APPROVAL_DECISION": "/sdk/approval-decision",
         "SESSION_EVENTS": "/sdk/session-events",
@@ -160,6 +161,7 @@
     },
     "REFRESH_TOKENS": "/refresh-tokens",
     "REVIEW_AGENTS": "/review-agents",
+    "CLEANUP_SDK_IMAGES": "/cleanup-sdk-images",
     "USERS": {
         "CREATE": "/users",
         "BY_ID": "/users/:id"

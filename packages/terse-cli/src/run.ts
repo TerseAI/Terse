@@ -1,9 +1,9 @@
 import chalk from "chalk"
 import fs from "fs"
-import { serializedEventSchema } from "terse-types"
-import type { SerializedEvent } from "terse-types"
+import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema, serializedEventSchema } from "terse-types"
+import type { SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
 
-import { readApiKey } from "./api.js"
+import { fetchWithAuth, readApiKey } from "./api.js"
 import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
@@ -19,7 +19,22 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         }
     }
 
-    if (!eventJson) {
+    readApiKey()
+
+    let rawEvent: unknown
+    if (eventJson) {
+        try {
+            rawEvent = JSON.parse(eventJson)
+        } catch (error) {
+            console.error(chalk.red("Error: --event must be valid JSON."))
+            console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
+            process.exit(1)
+        }
+    } else {
+        rawEvent = await resolveEventFromRunId()
+    }
+
+    if (!rawEvent) {
         console.error(chalk.red("Error: --event <json> or --event-file <path> is required.\n"))
         console.error(chalk.dim('  Usage: terse run --event \'{"integrationType":"...","eventType":"...","formattedContent":"...","debugLog":"...","data":{...}}\''))
         console.error(chalk.dim("         terse run --event-file ./event.json"))
@@ -27,17 +42,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         process.exit(1)
     }
 
-    readApiKey()
     const { job } = await loadJob(provider, jobName, entryFile)
-
-    let rawEvent: unknown
-    try {
-        rawEvent = JSON.parse(eventJson)
-    } catch (error) {
-        console.error(chalk.red("Error: --event must be valid JSON."))
-        console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
-        process.exit(1)
-    }
 
     let parsed: SerializedEvent
     try {
@@ -49,4 +54,26 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     }
 
     await provider.executeJob(job, parsed, { entryFile })
+}
+
+async function resolveEventFromRunId(): Promise<unknown | undefined> {
+    const runId = process.env.TERSE_RUN_ID?.trim()
+    if (!runId) {
+        return undefined
+    }
+
+    const apiKey = process.env.TERSE_API_KEY ?? null
+    if (!apiKey) {
+        console.error(chalk.red(`Error: TERSE_RUN_ID is set but TERSE_API_KEY is missing, so the trigger event for run ${runId} cannot be fetched.`))
+        process.exit(1)
+    }
+
+    try {
+        const response = await fetchWithAuth<SdkRunTriggerEventResponse>(buildRoute(ApiRoutes.SDK.RUN_TRIGGER_EVENT, { runId }), apiKey)
+        return sdkRunTriggerEventResponseSchema.parse(response).event
+    } catch (error) {
+        console.error(chalk.red(`Error: Could not fetch the trigger event for run ${runId}.`))
+        console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
+        process.exit(1)
+    }
 }

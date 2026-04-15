@@ -1,7 +1,7 @@
-import type { Sandbox } from "modal"
 import { SandboxStage } from "terse-types"
 
 import { extractErrorMessage } from "../../utility/strings"
+import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export { SandboxStage }
 
@@ -13,6 +13,32 @@ export interface SandboxCommandResult {
     stderr: string
 }
 
+export interface SdkProjectArchive {
+    entries: Set<string>
+    has(path: string): boolean
+    readText(path: string): string | null
+}
+
+export interface SdkDependencyImageDefinition {
+    dependencyHash: string
+}
+
+export interface SdkDependencyImageBuildContext {
+    sb: Sandbox
+    archive: SdkProjectArchive
+    templateDir: string
+    ensureSandboxCommand: (label: string, command: string) => Promise<void>
+    writeFile: (path: string, content: string) => Promise<void>
+    escapeShellArg: (value: string) => string
+}
+
+export interface SdkSourceImageBuildContext {
+    sb: Sandbox
+    projectDir: string
+    ensureSandboxCommand: (label: string, command: string) => Promise<void>
+    escapeShellArg: (value: string) => string
+}
+
 export interface SdkRuntimeExecutorContext {
     sb: Sandbox
     sandboxEnv: Record<string, string>
@@ -20,7 +46,7 @@ export interface SdkRuntimeExecutorContext {
     agentId: string
     jobName: string
     projectDir: string
-    eventFilePath: string
+    usesPrebuiltImage: boolean
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     runSandboxCommand: (label: string, command: string) => Promise<SandboxCommandResult>
     runSandboxCommandStreaming: (label: string, command: string) => Promise<SandboxCommandResult>
@@ -32,6 +58,9 @@ export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
     sandboxImage: string
     matchesArchive(entries: Set<string>): boolean
+    defineDependencyImage(archive: SdkProjectArchive): SdkDependencyImageDefinition
+    buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void>
+    prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void>
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
 }
 
@@ -72,4 +101,5 @@ export async function runSandboxExecStage(context: SdkRuntimeExecutorContext, fn
 
 export const SDK_SANDBOX_CODE_ZIP_PATH = "/tmp/code.zip"
 export const SDK_SANDBOX_PROJECT_DIR = "/tmp/project"
-export const SDK_SANDBOX_EVENT_FILE_PATH = "/tmp/event.json"
+export const SDK_SOURCE_IMAGE_PROJECT_DIR = "/opt/terse-sdk-run/project"
+export const SDK_SOURCE_IMAGE_CODE_ZIP_PATH = "/tmp/source-image-code.zip"

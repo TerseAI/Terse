@@ -416,8 +416,6 @@ export class EventProcessor {
     private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
-        const eventJson = JSON.stringify(this.inputEvent.getSerializedEvent())
-
         const gcsKey = agent.prompt?.source_code_gcs_key
         if (!gcsKey) {
             throw new Error(`SDK agent "${agent.name}" is missing source_code_gcs_key`)
@@ -435,7 +433,6 @@ export class EventProcessor {
                 orgId: this.user.organizationId,
                 userId: agent.user_id,
                 user: this.user,
-                eventJson,
                 jobName: agent.name
             })
             .catch(error => {

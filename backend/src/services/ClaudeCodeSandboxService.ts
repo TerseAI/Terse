@@ -1,7 +1,9 @@
-import { ModalClient } from "modal"
+import crypto from "node:crypto"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
+
+import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
 
 export interface ClaudeCodeSandboxParams {
     /** Identifier for logging */
@@ -47,15 +49,13 @@ export class ClaudeCodeSandboxService {
 
         const executionStart = performance.now()
 
-        const modal = new ModalClient({
-            tokenId: settings.modal.tokenId,
-            tokenSecret: settings.modal.tokenSecret
-        })
+        const sandboxService = new ModalSandboxService()
 
         let t = performance.now()
-        const app = await modal.apps.fromName("terse-claude-code-sandbox", { createIfMissing: true })
-        const image = modal.images.fromRegistry("node:22-slim")
-        const sb = await modal.sandboxes.create(app, image, { timeoutMs })
+        const app = await sandboxService.getOrCreateApp("terse-claude-code-sandbox")
+        const image = sandboxService.getImageFromRegistry("node:22-slim")
+        const uniqueName = `cc-${crypto.randomBytes(14).toString("hex")}`
+        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, { timeoutMs })
         logger.info(`[ClaudeCodeSandbox:${label}] Created sandbox`, { sandboxId: sb.sandboxId, duration: this.elapsed(t) })
 
         try {
