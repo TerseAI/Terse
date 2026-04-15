@@ -23,6 +23,7 @@ export interface SdkRuntimeExecutorContext {
     eventFilePath: string
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     runSandboxCommand: (label: string, command: string) => Promise<SandboxCommandResult>
+    runSandboxCommandStreaming: (label: string, command: string) => Promise<SandboxCommandResult>
     escapeShellArg: (value: string) => string
     emitSandboxStatus: (stage: SandboxStage, status: "started" | "completed" | "failed", opts?: { duration_ms?: number; detail?: string }) => void
 }

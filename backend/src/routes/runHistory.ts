@@ -1,7 +1,9 @@
 import { AgentInputItem } from "@openai/agents-core"
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
-import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
+import { serializedEventSchema } from "terse-types"
+import { type TriggerPayload } from "terse-types"
+import { type GetRunHistoryParams, type GetRunHistoryParamsRequest, type GetRunHistoryResponse, type RunHistoryModelEvent, type RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { getRunHistoryModelEventsWithActions } from "../agent/runHistoryModelEvents"
 import logger from "../logger"
@@ -11,6 +13,7 @@ import { extractErrorMessage } from "../utility/strings"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../utility/typeConverters"
 
 // Valid status values for validation
+const MAX_TRIGGER_PAYLOAD_RESPONSE_CHARS = 256 * 1024
 const VALID_STATUSES: RunHistoryStatus[] = [
     RunHistoryStatus.SUCCESS,
     RunHistoryStatus.FAILED,
@@ -19,6 +22,42 @@ const VALID_STATUSES: RunHistoryStatus[] = [
     RunHistoryStatus.IN_PROGRESS,
     RunHistoryStatus.AWAITING_APPROVAL
 ]
+
+function formatTriggerPayloadForDisplay(payload: Prisma.JsonValue | null): TriggerPayload {
+    if (payload === null) {
+        return {
+            triggerEvent: null,
+            triggerEventType: null,
+            isTriggerEventTruncated: false
+        }
+    }
+    const parsedPayload = JSON.parse(payload as string)
+    const serializedEvent = serializedEventSchema.parse(parsedPayload)
+    const triggerEventType = serializedEvent.eventType
+    const eventJson = JSON.stringify(serializedEvent, null, 2)
+
+    if (!eventJson) {
+        return {
+            triggerEvent: null,
+            triggerEventType,
+            isTriggerEventTruncated: false
+        }
+    }
+
+    if (eventJson.length <= MAX_TRIGGER_PAYLOAD_RESPONSE_CHARS) {
+        return {
+            triggerEvent: eventJson,
+            triggerEventType,
+            isTriggerEventTruncated: false
+        }
+    }
+
+    return {
+        triggerEvent: eventJson.slice(0, MAX_TRIGGER_PAYLOAD_RESPONSE_CHARS) + "\n... (truncated)",
+        triggerEventType,
+        isTriggerEventTruncated: true
+    }
+}
 
 /**
  * Get run history across ALL agents in the organization
@@ -338,7 +377,8 @@ export async function getChatHistory(req: Request, res: Response) {
             select: {
                 timestamp: true,
                 updated_at: true,
-                status: true
+                status: true,
+                trigger_payload: true
             }
         })
 
@@ -350,26 +390,24 @@ export async function getChatHistory(req: Request, res: Response) {
             includeScaffoldedUserMessages: false
         })
 
-        type ChatHistoryEvent = {
-            type: string
-            id: string
-            timestamp: number
-            [key: string]: unknown
-        }
-
-        const events: ChatHistoryEvent[] = modelEvents.map((event, index) => {
+        const events: RunHistoryModelEvent[] = modelEvents.map((event, index) => {
             return {
                 ...event,
-                id: `run-history-raw-${index}`,
+                id: event.id ?? `run-history-raw-${index}`,
                 timestamp: event.timestamp
             }
         })
+
+        const { triggerEvent, triggerEventType, isTriggerEventTruncated } = formatTriggerPayloadForDisplay(runRecord.trigger_payload)
 
         res.json({
             events,
             startTimestamp: runRecord.timestamp.toISOString(),
             endTimestamp: runRecord.updated_at.toISOString(),
-            status: runRecord.status
+            status: runRecord.status,
+            triggerEvent,
+            triggerEventType,
+            isTriggerEventTruncated
         })
     } catch (err) {
         logger.error("Failed to fetch chat history", { error: extractErrorMessage(err), stack: err instanceof Error ? err.stack : undefined, runId: req.params.runId })

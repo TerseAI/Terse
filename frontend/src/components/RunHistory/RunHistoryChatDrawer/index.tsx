@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 
 import RunHistoryChatAdapter from "./RunHistoryChatAdapter"
 import RunHistoryChatDrawerHeader from "./RunHistoryChatDrawerHeader"
+import TriggerPayloadViewer from "./TriggerPayloadViewer"
 
 type Props = {
     runs: RunHistoryRecord[]
@@ -19,8 +20,15 @@ type Props = {
     onFullscreenChange?: (fullscreen: boolean) => void
 }
 
+function formatEventTypeLabel(value: string | null): string | null {
+    if (!value) return null
+
+    return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
 export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, currentRunIndex, onNavigate, onFullscreenChange }: Props) {
     const [internalFullscreen, setInternalFullscreen] = useState(false)
+    const [isTriggerPayloadOpen, setIsTriggerPayloadOpen] = useState(false)
     const chatRef = useRef<ChatHandle>(null)
 
     const isFullscreen = internalFullscreen
@@ -40,6 +48,10 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
     const trigger = runs[currentRunIndex].trigger
     const filtered = runs[currentRunIndex].filtered
 
+    useEffect(() => {
+        setIsTriggerPayloadOpen(false)
+    }, [runId])
+
     return (
         <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" handleOnly>
             <DrawerContent
@@ -49,8 +61,22 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                 )}
             >
                 <RunHistoryChatAdapter key={runId} runId={runId} status={status}>
-                    {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, handleCancellation, currentStatus, isRunPending }) => {
+                    {({
+                        initialTurns,
+                        isLoading,
+                        subscribeToEvents,
+                        sendMessage,
+                        handleApprove,
+                        handleReject,
+                        handleCancellation,
+                        currentStatus,
+                        isRunPending,
+                        triggerEvent,
+                        triggerEventType,
+                        isTriggerEventTruncated
+                    }) => {
                         const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
+                        const formattedTriggerEventType = formatEventTypeLabel(triggerEventType)
                         const emptyPlaceholder =
                             initialTurns.length === 0 && isRunPending ? (
                                 <div className="p-4">
@@ -64,18 +90,24 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
 
                         return (
                             <>
-                                <RunHistoryChatDrawerHeader
-                                    trigger={trigger}
-                                    runNumber={runNumber}
-                                    totalEvents={totalEvents}
-                                    status={currentStatus}
-                                    filtered={isFiltered || filtered}
-                                    runs={runs}
-                                    currentRunIndex={currentRunIndex}
-                                    onNavigate={onNavigate}
-                                    isFullscreen={isFullscreen}
-                                    onFullscreenChange={handleFullscreenChange}
-                                />
+                                <div className="shrink-0 border-b border-border/70">
+                                    <RunHistoryChatDrawerHeader
+                                        trigger={trigger}
+                                        runNumber={runNumber}
+                                        totalEvents={totalEvents}
+                                        status={currentStatus}
+                                        filtered={isFiltered || filtered}
+                                        runs={runs}
+                                        currentRunIndex={currentRunIndex}
+                                        onNavigate={onNavigate}
+                                        isFullscreen={isFullscreen}
+                                        onFullscreenChange={handleFullscreenChange}
+                                        hasTriggerPayload={!!triggerEvent}
+                                        isTriggerPayloadOpen={isTriggerPayloadOpen}
+                                        onToggleTriggerPayload={() => setIsTriggerPayloadOpen(open => !open)}
+                                    />
+                                    <TriggerPayloadViewer event={triggerEvent} eventType={formattedTriggerEventType} isTruncated={isTriggerEventTruncated} isOpen={isTriggerPayloadOpen} />
+                                </div>
                                 <div className={cn("flex-1 overflow-hidden min-h-0 bg-background select-text", isFullscreen && "mx-auto w-full")}>
                                     <div className="flex flex-col h-full relative">
                                         <div className="flex-1 min-h-0">

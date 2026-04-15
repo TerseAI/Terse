@@ -1,7 +1,7 @@
 import { RunToolApprovalItem } from "@openai/agents"
 import { Prisma } from "@prisma/client"
-import { pendingApprovalsKey } from "terse-types"
-import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger } from "terse-types"
+import { pendingApprovalsKey, serializedEventSchema } from "terse-types"
+import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger, type SerializedEvent } from "terse-types"
 
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
@@ -13,8 +13,8 @@ export type RunTrigger = RunHistoryTrigger
 export type CompletedRunStatus = typeof RunHistoryStatus.SUCCESS | typeof RunHistoryStatus.FAILED
 const PENDING_APPROVALS_INVALIDATION_KEY = pendingApprovalsKey()[0]
 
-export async function createRunRecord(params: { agentId: string; trigger: RunTrigger; isManuallyTriggered?: boolean }): Promise<string> {
-    const { agentId, trigger, isManuallyTriggered } = params
+export async function createRunRecord(params: { agentId: string; trigger: RunTrigger; serializedTriggerEvent?: SerializedEvent; isManuallyTriggered?: boolean }): Promise<string> {
+    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered } = params
     const prisma = db()
     const record = await prisma.run_history_records.create({
         data: {
@@ -25,6 +25,7 @@ export async function createRunRecord(params: { agentId: string; trigger: RunTri
             trigger_title: trigger.title ?? null,
             trigger_subheader: trigger.subheader ?? null,
             trigger_url: trigger.url ?? null,
+            trigger_payload: serializedTriggerEvent ? JSON.stringify(serializedTriggerEvent as Prisma.InputJsonValue) : Prisma.DbNull,
             is_manually_triggered: isManuallyTriggered ?? false,
             filtered: false,
             decision_action: "processed", // placeholder until we decide after filtering

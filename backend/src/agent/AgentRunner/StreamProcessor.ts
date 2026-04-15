@@ -23,12 +23,11 @@ export class StreamEventEmitter {
         this.agentId = params.agentId!
     }
 
-    emit(event: ModelEvent, timestamp: number): string {
-        const eventId = randomString(15)
-        if (!this.io) return eventId
+    emit(event: ModelEvent, timestamp: number): void {
+        if (!this.io) return
         const runHistoryModelEvent: RunHistoryModelEvent = {
             ...event,
-            id: eventId,
+            id: event.id ?? randomString(15),
             timestamp: event.timestamp ?? timestamp
         }
 
@@ -39,7 +38,6 @@ export class StreamEventEmitter {
         }
 
         this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
-        return eventId
     }
 }
 
