@@ -16,7 +16,7 @@ Import these from `terse-sdk`:
 - `Terse`: the SDK client
 - `TerseAgent`: the runtime object inside `onTrigger`
 - `Trigger`: the base event interface
-- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, and other per-integration exports (see `terse-sdk` package entry)
+- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), and other per-integration exports (see `terse-sdk` package entry)
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 
 ## Trigger payloads
@@ -236,8 +236,9 @@ Event typing depends on the trigger.
 | Scheduled cron triggers     | `CronTrigger`               |
 | Scheduled interval triggers | `CronTrigger`               |
 | Manual trigger              | `ManualSampleTrigger`       |
+| Webhook HTTP requests       | `WebhookTrigger`            |
 
-`Trigger` is the common base interface. Use the most specific trigger event type your trigger exposes.
+`Trigger` is the common base interface. Use the most specific trigger event type your trigger exposes. For webhooks, use `Webhook.onRequest<YourBodyType>()` from `terse.generated` so `event.body` matches the JSON you POST to the webhook URL.
 
 ## Generated helpers
 
