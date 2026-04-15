@@ -9,8 +9,7 @@ on:
 jobs:
     e2e:
         name: End-to-End Tests
-        runs-on: ubuntu-latest
-
+        runs-on: blacksmith-4vcpu-ubuntu-2404
         env:
             TERSE_BACKEND_URL: https://terse.onrender.com
             TERSE_FRONTEND_URL: https://terse-frontend.onrender.com
