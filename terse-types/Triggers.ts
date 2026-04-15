@@ -521,11 +521,11 @@ export type WorkOSTrigger = z.infer<typeof workOSTriggerSchema>
 export const webhookTriggerSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.WEBHOOK),
     eventType: webhookTriggerTypeSchema,
-    body: z.record(z.string(), z.unknown()),
+    body: z.unknown(),
     headers: z.record(z.string(), z.string()),
     method: z.string()
 })
-export type WebhookTrigger = z.infer<typeof webhookTriggerSchema>
+export type WebhookTrigger<TBody = unknown> = Omit<z.infer<typeof webhookTriggerSchema>, "body"> & { body: TBody }
 
 export const cronTriggerSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.CRON_JOB),
