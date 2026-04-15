@@ -525,7 +525,7 @@ export const webhookTriggerSchema = baseTriggerSchema.extend({
     headers: z.record(z.string(), z.string()),
     method: z.string()
 })
-export type WebhookTrigger<TBody = Record<string, unknown>> = Omit<z.infer<typeof webhookTriggerSchema>, "body"> & { body: TBody }
+export type WebhookTrigger<TBody = unknown> = Omit<z.infer<typeof webhookTriggerSchema>, "body"> & { body: TBody }
 
 export const cronTriggerSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.CRON_JOB),
