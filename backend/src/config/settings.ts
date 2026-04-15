@@ -22,7 +22,7 @@ function optionalEnv(name: string, defaultValue?: string): string | undefined {
     return defaultValue
 }
 
-const modalVendorLocalPackagesEnv = optionalEnv("TERSE_MODAL_VENDOR_LOCAL_PACKAGES")
+const vendorLocalPackagesEnv = optionalEnv("TERSE_VENDOR_LOCAL_PACKAGES")
 
 // Core configuration
 export const settings = {
@@ -183,7 +183,7 @@ export const settings = {
         /** Absolute path to Terse monorepo root; used when TERSE_MODAL_VENDOR_LOCAL_PACKAGES is enabled */
         terseMonorepoRoot: optionalEnv("TERSE_MONOREPO_ROOT"),
         /** Dev-only: pack terse-types, terse-sdk, terse-cli and overlay into each Modal SDK run sandbox (see SdkJobExecutionService) */
-        modalVendorLocalPackages: modalVendorLocalPackagesEnv === "true" || modalVendorLocalPackagesEnv === "1"
+        vendorLocalPackages: vendorLocalPackagesEnv === "true" || vendorLocalPackagesEnv === "1"
     }
 } as const
 

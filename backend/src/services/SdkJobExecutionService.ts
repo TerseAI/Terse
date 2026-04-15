@@ -1,5 +1,4 @@
 import crypto from "crypto"
-import { ModalClient, Sandbox } from "modal"
 import { readFile } from "node:fs/promises"
 import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
@@ -17,9 +16,10 @@ import { extractErrorMessage } from "../utility/strings"
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 import { SdkSandboxImageService } from "./SdkSandboxImageService"
-import { packLocalSdkCliForModalVendor, removeModalVendorPackDir, resolveTerseMonorepoRoot } from "./sdkModalLocalVendor"
+import { ModalSandboxService, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
+import { packLocalSdkCliForVendor, removeModalVendorPackDir, resolveTerseMonorepoRoot } from "./sdkVendorLocalPackages"
 
 export interface SdkJobExecutionParams {
     gcsKey: string
@@ -33,7 +33,7 @@ export interface SdkJobExecutionParams {
 
 type ResolvedSdkSourceImage = {
     recordId: string
-    modalImageId: string
+    imageId: string
     runtime: SdkProjectRuntime
     dependencyImageId: string
     zipBuffer?: Buffer
@@ -108,15 +108,14 @@ export class SdkJobExecutionService {
                 NO_UPDATE_NOTIFIER: "1"
             }
 
-            const modal = this.createModalClient()
             const result = await this.executeWithSourceImage({
                 executor,
                 jobName,
-                modal,
+                sandboxService: new ModalSandboxService(),
                 runId,
                 agentId,
                 sandboxEnv,
-                sourceImageModalId: sourceImage.modalImageId
+                sourceImageId: sourceImage.recordId
             })
 
             if (result.exitCode === 0) {
@@ -215,7 +214,7 @@ export class SdkJobExecutionService {
             where: { id: sourceImageId },
             select: {
                 id: true,
-                modal_image_id: true,
+                image_id: true,
                 runtime: true,
                 dependency_image_id: true
             }
@@ -227,7 +226,7 @@ export class SdkJobExecutionService {
 
         return {
             recordId: record.id,
-            modalImageId: record.modal_image_id,
+            imageId: record.image_id,
             runtime: this.parseRuntime(record.runtime),
             dependencyImageId: record.dependency_image_id
         }
@@ -250,20 +249,20 @@ export class SdkJobExecutionService {
     private async executeWithSourceImage(params: {
         executor: SdkRuntimeExecutor
         jobName: string
-        modal: ModalClient
+        sandboxService: SandboxService
         runId: string
         agentId: string
         sandboxEnv: Record<string, string>
-        sourceImageModalId: string
+        sourceImageId: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, modal, runId, agentId, sandboxEnv, sourceImageModalId } = params
+        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageId } = params
 
         this.emitSandboxStatus(SandboxStage.BOOTING, "started")
         const bootStart = performance.now()
 
         let sb: Sandbox
         try {
-            sb = await this.createSourceImageSandbox(modal, sourceImageModalId)
+            sb = await this.createSourceImageSandbox(sandboxService, sourceImageId)
             this.emitSandboxStatus(SandboxStage.BOOTING, "completed", { duration_ms: this.elapsedMs(bootStart) })
         } catch (error) {
             this.emitSandboxStatus(SandboxStage.BOOTING, "failed", {
@@ -278,18 +277,18 @@ export class SdkJobExecutionService {
             agentId,
             sandboxId: sb.sandboxId,
             runtime: executor.runtime,
-            image: sourceImageModalId,
+            image: sourceImageId,
             duration: this.elapsed(bootStart)
         })
 
-        if (settings.nodeEnv === "development" && settings.optional.modalVendorLocalPackages) {
-            // Each run pays for three pnpm packs + upload; opt-in via TERSE_MODAL_VENDOR_LOCAL_PACKAGES only.
+        if (settings.nodeEnv === "development" && settings.optional.vendorLocalPackages) {
+            // Each run pays for three pnpm packs + upload; opt-in via TERSE_VENDOR_LOCAL_PACKAGES only.
             const vendorTotalStart = performance.now()
             const monorepoRoot = resolveTerseMonorepoRoot(settings.optional.terseMonorepoRoot)
             const packStart = performance.now()
-            let packed: Awaited<ReturnType<typeof packLocalSdkCliForModalVendor>>
+            let packed: Awaited<ReturnType<typeof packLocalSdkCliForVendor>>
             try {
-                packed = await packLocalSdkCliForModalVendor(monorepoRoot)
+                packed = await packLocalSdkCliForVendor(monorepoRoot)
             } catch (packErr) {
                 const errno = packErr as NodeJS.ErrnoException
                 logger.error("SDK sandbox: Modal local vendor failed during pnpm pack", {
@@ -329,14 +328,14 @@ export class SdkJobExecutionService {
             } finally {
                 await removeModalVendorPackDir(packed.packDir).catch(() => {})
             }
-            const vendorModalOverlayMs = Math.round(performance.now() - overlayStart)
+            const vendorOverlayMs = Math.round(performance.now() - overlayStart)
             const vendorTotalMs = Math.round(performance.now() - vendorTotalStart)
             logger.info("SDK sandbox: Modal local vendor overlay complete", {
                 runId,
                 agentId,
                 sandboxId: sb.sandboxId,
                 vendor_local_pack_ms: vendorLocalPackMs,
-                vendor_modal_overlay_ms: vendorModalOverlayMs,
+                vendor_overlay_ms: vendorOverlayMs,
                 vendor_total_ms: vendorTotalMs
             })
         }
@@ -412,10 +411,10 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(modal: ModalClient, sourceImageModalId: string): Promise<Sandbox> {
-        const app = await modal.apps.fromName("terse-sdk-sandbox", { createIfMissing: true })
-        const image = await modal.images.fromId(sourceImageModalId)
-        return modal.sandboxes.create(app, image, { timeoutMs: 30 * 60 * 1000 })
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageId: string): Promise<Sandbox> {
+        const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
+        const image = await sandboxService.getOrCreateImageFromId(sourceImageId)
+        return sandboxService.getOrCreateSandbox(app, image, { timeoutMs: 30 * 60 * 1000 })
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {
@@ -600,13 +599,6 @@ export class SdkJobExecutionService {
         }
 
         throw new Error(`Unsupported SDK runtime: ${runtime}`)
-    }
-
-    private createModalClient(): ModalClient {
-        return new ModalClient({
-            tokenId: settings.modal.tokenId,
-            tokenSecret: settings.modal.tokenSecret
-        })
     }
 
     private async createSandboxApiToken(userId: string, organizationId: string): Promise<{ rawToken: string; tokenId: string }> {

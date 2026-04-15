@@ -26,8 +26,8 @@ export function resolveTerseMonorepoRoot(explicitRoot: string | undefined): stri
  * Runs `pnpm pack` for terse-types, terse-sdk, and terse-cli into a new temp directory (dependency order).
  * Caller must remove `packDir` when finished (e.g. after uploading to Modal).
  */
-export async function packLocalSdkCliForModalVendor(monorepoRoot: string): Promise<PackedLocalModalVendorTarballs> {
-    const packDir = await fs.mkdtemp(path.join(tmpdir(), "terse-modal-vendor-"))
+export async function packLocalSdkCliForVendor(monorepoRoot: string): Promise<PackedLocalModalVendorTarballs> {
+    const packDir = await fs.mkdtemp(path.join(tmpdir(), "terse-vendor-"))
     try {
         for (const filter of ["terse-types", "terse-sdk", "terse-cli"] as const) {
             await execFile("pnpm", ["pack", "--filter", filter, "--pack-destination", packDir], {

@@ -1,12 +1,13 @@
 import { Prisma, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import AdmZip from "adm-zip"
 import crypto from "crypto"
-import { ModalClient, NotFoundError, Sandbox } from "modal"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 
+import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
+import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import {
     SDK_SOURCE_IMAGE_CODE_ZIP_PATH,
@@ -33,7 +34,7 @@ export interface PreparedSdkSandboxImages {
 export interface CleanupSdkSandboxImagesResult {
     deletedSourceImages: number
     deletedDependencyImages: number
-    failures: Array<{ kind: "source" | "dependency"; recordId: string; modalImageId: string; error: string }>
+    failures: Array<{ kind: "source" | "dependency"; recordId: string; sandboxImageId: string; error: string }>
 }
 
 class ZipSdkProjectArchive implements SdkProjectArchive {
@@ -99,7 +100,7 @@ export class SdkSandboxImageService {
 
         const sourceImage = await this.ensureSourceImage({
             dependencyImageId: dependencyImage.id,
-            dependencyModalImageId: dependencyImage.modal_image_id,
+            dependencySandboxImageId: dependencyImage.image_id,
             executor,
             gcsKey,
             organizationId,
@@ -125,7 +126,6 @@ export class SdkSandboxImageService {
         const dependencyCutoff = new Date(Date.now() - dependencyImageGraceHours * 60 * 60 * 1000)
 
         const prisma = db()
-        const modal = this.createModalClient()
         const failures: CleanupSdkSandboxImagesResult["failures"] = []
 
         const staleSourceImages = await prisma.sdk_source_images.findMany({
@@ -145,14 +145,14 @@ export class SdkSandboxImageService {
         let deletedSourceImages = 0
         for (const sourceImage of staleSourceImages) {
             try {
-                await this.deleteModalImage(modal, sourceImage.modal_image_id)
+                await this.deleteImage(sourceImage.image_id)
                 await prisma.sdk_source_images.delete({ where: { id: sourceImage.id } })
                 deletedSourceImages++
             } catch (error) {
                 failures.push({
                     kind: "source",
                     recordId: sourceImage.id,
-                    modalImageId: sourceImage.modal_image_id,
+                    sandboxImageId: sourceImage.image_id,
                     error: extractError(error)
                 })
             }
@@ -170,14 +170,14 @@ export class SdkSandboxImageService {
         let deletedDependencyImages = 0
         for (const dependencyImage of staleDependencyImages) {
             try {
-                await this.deleteModalImage(modal, dependencyImage.modal_image_id)
+                await this.deleteImage(dependencyImage.image_id)
                 await prisma.sdk_dependency_images.delete({ where: { id: dependencyImage.id } })
                 deletedDependencyImages++
             } catch (error) {
                 failures.push({
                     kind: "dependency",
                     recordId: dependencyImage.id,
-                    modalImageId: dependencyImage.modal_image_id,
+                    sandboxImageId: dependencyImage.image_id,
                     error: extractError(error)
                 })
             }
@@ -205,7 +205,7 @@ export class SdkSandboxImageService {
             })
         }
 
-        const modalImageId = await this.buildDependencyModalImage(archive, executor)
+        const sandboxImageId = await this.buildDependencyImage(archive, executor)
 
         try {
             return await prisma.sdk_dependency_images.create({
@@ -213,12 +213,12 @@ export class SdkSandboxImageService {
                     dependency_hash: dependencyHash,
                     runtime: executor.runtime,
                     base_image_tag: executor.sandboxImage,
-                    modal_image_id: modalImageId
+                    image_id: sandboxImageId
                 }
             })
         } catch (error) {
             if (isUniqueConstraintError(error)) {
-                await this.deleteModalImage(this.createModalClient(), modalImageId).catch(() => {})
+                await this.deleteImage(sandboxImageId).catch(() => {})
                 return prisma.sdk_dependency_images.update({
                     where: { dependency_hash: dependencyHash },
                     data: { last_used_at: new Date() }
@@ -231,14 +231,14 @@ export class SdkSandboxImageService {
 
     private async ensureSourceImage(params: {
         dependencyImageId: string
-        dependencyModalImageId: string
+        dependencySandboxImageId: string
         executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>
         gcsKey: string
         organizationId: string
         sourceHash: string
         zipBuffer: Buffer
     }) {
-        const { dependencyImageId, dependencyModalImageId, executor, gcsKey, organizationId, sourceHash, zipBuffer } = params
+        const { dependencyImageId, dependencySandboxImageId, executor, gcsKey, organizationId, sourceHash, zipBuffer } = params
         const prisma = db()
 
         const existing = await prisma.sdk_source_images.findFirst({
@@ -259,8 +259,8 @@ export class SdkSandboxImageService {
             })
         }
 
-        const modalImageId = await this.buildSourceModalImage({
-            dependencyModalImageId,
+        const sandboxImageId = await this.buildSourceImage({
+            dependencySandboxImageId,
             executor,
             zipBuffer
         })
@@ -272,13 +272,13 @@ export class SdkSandboxImageService {
                     runtime: executor.runtime,
                     source_hash: sourceHash,
                     gcs_key: gcsKey,
-                    modal_image_id: modalImageId,
+                    image_id: sandboxImageId,
                     dependency_image_id: dependencyImageId
                 }
             })
         } catch (error) {
             if (isUniqueConstraintError(error)) {
-                await this.deleteModalImage(this.createModalClient(), modalImageId).catch(() => {})
+                await this.deleteImage(sandboxImageId).catch(() => {})
                 return prisma.sdk_source_images.update({
                     where: {
                         organization_id_dependency_image_id_source_hash: {
@@ -298,12 +298,12 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async buildDependencyModalImage(archive: SdkProjectArchive, executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>): Promise<string> {
+    private async buildDependencyImage(archive: SdkProjectArchive, executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>): Promise<string> {
         const buildStart = performance.now()
-        const modal = this.createModalClient()
-        const app = await modal.apps.fromName("terse-sdk-image-builder", { createIfMissing: true })
-        const baseImage = modal.images.fromRegistry(executor.sandboxImage)
-        const sb = await modal.sandboxes.create(app, baseImage, { timeoutMs: 30 * 60 * 1000 })
+        const sandboxService = new ModalSandboxService()
+        const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
+        const baseImage = sandboxService.getOrCreateImageFromRegistry(executor.sandboxImage)
+        const sb = await sandboxService.getOrCreateSandbox(app, baseImage, { timeoutMs: 30 * 60 * 1000 })
 
         logger.info("SDK dependency image: started build", {
             runtime: executor.runtime,
@@ -339,17 +339,17 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async buildSourceModalImage(params: { dependencyModalImageId: string; executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>; zipBuffer: Buffer }): Promise<string> {
-        const { dependencyModalImageId, executor, zipBuffer } = params
+    private async buildSourceImage(params: { dependencySandboxImageId: string; executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>; zipBuffer: Buffer }): Promise<string> {
+        const { dependencySandboxImageId, executor, zipBuffer } = params
         const buildStart = performance.now()
-        const modal = this.createModalClient()
-        const app = await modal.apps.fromName("terse-sdk-image-builder", { createIfMissing: true })
-        const dependencyImage = await modal.images.fromId(dependencyModalImageId)
-        const sb = await modal.sandboxes.create(app, dependencyImage, { timeoutMs: 30 * 60 * 1000 })
+        const sandboxService = new ModalSandboxService()
+        const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
+        const dependencyImage = await sandboxService.getOrCreateImageFromId(dependencySandboxImageId)
+        const sb = await sandboxService.getOrCreateSandbox(app, dependencyImage, { timeoutMs: 30 * 60 * 1000 })
 
         logger.info("SDK source image: started build", {
             runtime: executor.runtime,
-            dependencyModalImageId,
+            dependencySandboxImageId,
             sandboxId: sb.sandboxId
         })
 
@@ -377,7 +377,7 @@ export class SdkSandboxImageService {
             logger.info("SDK source image: finished build", {
                 runtime: executor.runtime,
                 imageId: image.imageId,
-                dependencyModalImageId,
+                dependencySandboxImageId,
                 duration: this.elapsed(buildStart)
             })
 
@@ -387,27 +387,13 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async deleteModalImage(modal: ModalClient, imageId: string): Promise<void> {
-        try {
-            await modal.images.delete(imageId)
-        } catch (error) {
-            if (error instanceof NotFoundError) {
-                return
-            }
-
-            throw error
-        }
+    private async deleteImage(imageId: string): Promise<void> {
+        const sandboxService = new ModalSandboxService()
+        await sandboxService.deleteImage(imageId)
     }
 
     private getDependencyTemplateDir(runtime: SdkProjectRuntime): string {
         return `/opt/terse-sdk-cache/${runtime}/project`
-    }
-
-    private createModalClient(): ModalClient {
-        return new ModalClient({
-            tokenId: settings.modal.tokenId,
-            tokenSecret: settings.modal.tokenSecret
-        })
     }
 
     private async writeFileToSandbox(sb: Sandbox, path: string, content: string): Promise<void> {

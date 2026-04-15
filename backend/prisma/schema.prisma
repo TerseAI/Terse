@@ -358,7 +358,7 @@ model sdk_dependency_images {
   dependency_hash String   @unique
   runtime         String
   base_image_tag  String
-  modal_image_id  String   @unique
+  image_id        String   @unique
   last_used_at    DateTime @default(now())
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -375,7 +375,7 @@ model sdk_source_images {
   runtime             String
   source_hash         String
   gcs_key             String
-  modal_image_id      String   @unique
+  image_id            String   @unique
   dependency_image_id String
   last_used_at        DateTime @default(now())
   created_at          DateTime @default(now())

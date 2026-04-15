@@ -1,7 +1,7 @@
-import type { Sandbox } from "modal"
 import { SandboxStage } from "terse-types"
 
 import { extractErrorMessage } from "../../utility/strings"
+import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export { SandboxStage }
 
