@@ -1,0 +1,19 @@
+[project]
+name = "ci-test-fixture-python"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "terse-sdk",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+terse-sdk = { path = "../terse-python-sdk" }
+
+[dependency-groups]
+dev = ["ty"]
+
+[tool.ty.environment]
+python = ".venv"

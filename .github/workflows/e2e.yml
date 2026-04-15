@@ -69,6 +69,36 @@ jobs:
               working-directory: packages/ci-test-fixture
               run: terse run "Tell me a joke" --event-file ./src/sample-webhook-event.json
 
+            # ── E2E (Python) ────────────────────────────────────────────────────
+            # Same test flow but exercising the Python SDK + CLI codegen.
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v6
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Install Python fixture dependencies
+              working-directory: packages/ci-test-fixture-python
+              run: uv sync
+
+            - name: Write API key for Python fixture
+              run: echo "TERSE_API_KEY=${{ secrets.TERSE_API_KEY }}" > packages/ci-test-fixture-python/.env
+
+            - name: "[generate] Run codegen on Python CI test fixture"
+              working-directory: packages/ci-test-fixture-python
+              run: terse generate
+
+            - name: "[assert] Verify Python project type-checks"
+              working-directory: packages/ci-test-fixture-python
+              run: uv run ty check src/
+
+            - name: "[run] Execute Python CI test fixture"
+              working-directory: packages/ci-test-fixture-python
+              run: terse run "Tell me a joke" --event-file ./src/sample-webhook-event.json
+
             # ── Cleanup ───────────────────────────────────────────────────────────
 
             - name: Upload logs on failure
@@ -78,4 +108,5 @@ jobs:
                   name: e2e-failure-logs
                   path: |
                       packages/ci-test-fixture/**/*.log
+                      packages/ci-test-fixture-python/**/*.log
                   retention-days: 7
