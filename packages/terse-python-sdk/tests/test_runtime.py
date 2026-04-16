@@ -950,7 +950,7 @@ def test_terse_agent_inherits_session_and_run_id_from_job_context() -> None:
     )
 
     with job_context_scope(ctx):
-        agent = TerseAgent()
+        agent = TerseAgent(prompt="")
 
     assert agent.session_id == "sess_ctx"
     assert agent.run_id == "run_ctx"
@@ -966,6 +966,7 @@ def test_terse_agent_explicit_arguments_override_job_context() -> None:
 
     with job_context_scope(ctx):
         agent = TerseAgent(
+            prompt="",
             session_id="sess_override",
             run_id="run_override",
             backend_url="https://override.example.com/api",
@@ -985,7 +986,7 @@ def test_handle_trigger_runs_handler_inside_job_context(monkeypatch: pytest.Monk
         _ = event
         ctx = get_job_context()
         observed["ctx"] = ctx
-        agent = TerseAgent()
+        agent = TerseAgent(prompt="")
         observed["agent_session_id"] = agent.session_id
         observed["agent_run_id"] = agent.run_id
         observed["agent_backend_url"] = agent.backend_url

@@ -209,7 +209,7 @@ class TerseAgent:
 
     def __init__(
         self,
-        prompt: str,
+        prompt: str = "",
         skills: Sequence[SkillConfig[Any]] | None = None,
         backend_url: str | None = None,
         session_id: str | None = None,
