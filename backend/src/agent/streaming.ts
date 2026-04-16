@@ -222,9 +222,7 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
     return event
 }
 
-export function tryExtractHostedToolCallComplete(
-    event: RunStreamEvent
-): {
+export function tryExtractHostedToolCallComplete(event: RunStreamEvent): {
     toolCall: Extract<ModelEvent, { type: "ToolCall" }>
     complete: Extract<ModelEvent, { type: "ToolCallComplete" }>
     actions?: RunHistoryAction[]

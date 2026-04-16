@@ -274,10 +274,12 @@ export type CreateAgentForJobOptions = {
     runId?: string
 }
 
-export class TerseAgent {
-    readonly skills: ConfigData[]
-    manualToolConfigs?: readonly ConfigData[]
-    readonly toolApprovals: string[]
+export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> {
+    readonly prompt: string
+    readonly skills: TSkills
+    readonly toolApprovals: InferToolApprovals<TSkills>[]
+
+    // infer from env
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
     private readonly runId?: string
@@ -290,7 +292,8 @@ export class TerseAgent {
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    constructor(skills: ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = [], runId?: string) {
+    private constructor(prompt: string, skills: TSkills, apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: InferToolApprovals<TSkills>[] = [], runId?: string) {
+        this.prompt = prompt
         this.skills = skills
         this.apiBaseUrl = apiBaseUrl
         this.sessionId = sessionId
@@ -298,13 +301,20 @@ export class TerseAgent {
         this.runId = runId
     }
 
-    async *run(prompt: string, event?: RawTrigger): AsyncGenerator<TerseAgentResult> {
-        const resolvedEvent = event
+    static create<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]>(params: {
+        prompt: string
+        skills: TSkills
+        ToolApprovals: InferToolApprovals<TSkills>[]
+    }): TerseAgent {
+        const apiBaseUrl = resolveTerseBackendUrl()
+        return new TerseAgent(params.prompt, params.skills, apiBaseUrl, undefined, params.ToolApprovals)
+    }
 
+    async *run(userMessage: string): AsyncGenerator<TerseAgentResult> {
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
-            prompt,
+            prompt: this.prompt,
             toolApprovals: this.toolApprovals,
-            event: resolvedEvent,
+            event: userMessage,
             skills: this.skills
         })
 
@@ -346,8 +356,8 @@ export class TerseAgent {
      * Runs the agent to completion and discards streamed output.
      * Useful when you only care that the run finished (or threw).
      */
-    async runAndWait(prompt: string, event?: RawTrigger): Promise<string> {
-        for await (const chunk of this.run(prompt, event)) {
+    async runAndWait(userMessage: string): Promise<string> {
+        for await (const chunk of this.run(userMessage)) {
             if (chunk.type === EventType.FINAL_OUTPUT) {
                 return (chunk as FinalOutputResult).finalOutput
             }

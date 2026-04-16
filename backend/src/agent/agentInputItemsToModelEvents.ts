@@ -29,10 +29,7 @@ const DEFAULT_CONVERT_OPTIONS: Required<ConvertAgentInputItemsToModelEventsOptio
     appendNaturalStop: true
 }
 
-export async function convertAgentInputItemsToModelEvents(
-    items: TimestampedAgentInputItem[],
-    options?: ConvertAgentInputItemsToModelEventsOptions
-): Promise<ModelEvent[]> {
+export async function convertAgentInputItemsToModelEvents(items: TimestampedAgentInputItem[], options?: ConvertAgentInputItemsToModelEventsOptions): Promise<ModelEvent[]> {
     const resolvedOptions: Required<ConvertAgentInputItemsToModelEventsOptions> = {
         ...DEFAULT_CONVERT_OPTIONS,
         ...options

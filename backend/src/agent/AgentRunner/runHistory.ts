@@ -1,8 +1,8 @@
 import { RunToolApprovalItem } from "@openai/agents"
 import { Prisma } from "@prisma/client"
 import { pendingApprovalsKey, serializedEventSchema } from "terse-types"
-import { type SkillConfigData, skillConfigDataSchema } from "terse-types/Configs"
 import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger, type SerializedEvent } from "terse-types"
+import { type SkillConfigData, skillConfigDataSchema } from "terse-types/Configs"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"

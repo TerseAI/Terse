@@ -144,17 +144,14 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     }
 
     async userMessageRun(userMessage: string, options?: { signal?: AbortSignal; clientTurnId?: string }): Promise<SdkAgentRunnerResult> {
-        const loopResult = await super.runAgent(
-            [buildUserMessage(userMessage, options?.clientTurnId)],
-            {
-                runner: this.createRunner(),
-                context: this.getToolContext(),
-                memorySession: this.memorySession,
-                sessionInputCallback: recentHistoryCallback,
-                maxTurns: this.maxTurns,
-                signal: options?.signal
-            }
-        )
+        const loopResult = await super.runAgent([buildUserMessage(userMessage, options?.clientTurnId)], {
+            runner: this.createRunner(),
+            context: this.getToolContext(),
+            memorySession: this.memorySession,
+            sessionInputCallback: recentHistoryCallback,
+            maxTurns: this.maxTurns,
+            signal: options?.signal
+        })
         return { loopResult }
     }
 
