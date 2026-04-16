@@ -32,6 +32,7 @@ from terse_sdk import (
     Terse,
     TerseAgent,
     TerseApiError,
+    TerseJobContext,
     TerseRuntimeError,
     Text,
     ToolApprovalRequest,
@@ -41,7 +42,9 @@ from terse_sdk import (
     clear_job_registry,
     create_sdk_trigger,
     execute_registered_job,
+    get_job_context,
     get_job_registry,
+    job_context_scope,
 )
 from terse_sdk.types._generated import (
     CronTrigger as _RawCronTrigger,
@@ -914,6 +917,111 @@ def test_execute_registered_job_passes_sdk_trigger_through() -> None:
     assert received_events[0] is sdk_event
     assert received_events[0].formatted_content == "pre-formatted"
     assert received_events[0].debug_log == "pre-debug"
+
+
+def test_get_job_context_returns_none_outside_scope() -> None:
+    assert get_job_context() is None
+
+
+def test_job_context_scope_sets_and_restores_context() -> None:
+    ctx = TerseJobContext(session_id="sess_1", run_id="run_1", api_base_url="https://api")
+
+    with job_context_scope(ctx) as entered:
+        assert entered is ctx
+        assert get_job_context() == ctx
+
+    assert get_job_context() is None
+
+
+def test_job_context_scope_is_restored_after_exception() -> None:
+    ctx = TerseJobContext(session_id="sess_boom", run_id="run_boom", api_base_url="https://api")
+
+    with pytest.raises(RuntimeError), job_context_scope(ctx):
+        raise RuntimeError("boom")
+
+    assert get_job_context() is None
+
+
+def test_terse_agent_inherits_session_and_run_id_from_job_context() -> None:
+    ctx = TerseJobContext(
+        session_id="sess_ctx",
+        run_id="run_ctx",
+        api_base_url="https://ctx.example.com/api",
+    )
+
+    with job_context_scope(ctx):
+        agent = TerseAgent()
+
+    assert agent.session_id == "sess_ctx"
+    assert agent.run_id == "run_ctx"
+    assert agent.backend_url == "https://ctx.example.com/api"
+
+
+def test_terse_agent_explicit_arguments_override_job_context() -> None:
+    ctx = TerseJobContext(
+        session_id="sess_ctx",
+        run_id="run_ctx",
+        api_base_url="https://ctx.example.com/api",
+    )
+
+    with job_context_scope(ctx):
+        agent = TerseAgent(
+            session_id="sess_override",
+            run_id="run_override",
+            backend_url="https://override.example.com/api",
+        )
+
+    assert agent.session_id == "sess_override"
+    assert agent.run_id == "run_override"
+    assert agent.backend_url == "https://override.example.com/api"
+
+
+def test_handle_trigger_runs_handler_inside_job_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    observed: dict[str, object] = {}
+    app = Terse()
+
+    @app.job(name="ctx-job")
+    def handler(event: CronTrigger) -> None:
+        _ = event
+        ctx = get_job_context()
+        observed["ctx"] = ctx
+        agent = TerseAgent()
+        observed["agent_session_id"] = agent.session_id
+        observed["agent_run_id"] = agent.run_id
+        observed["agent_backend_url"] = agent.backend_url
+
+    session_handle = SimpleNamespace(session_id="sess_from_stream", close=lambda: observed.setdefault("closed", True))
+    monkeypatch.setattr(runtime_module, "_open_session_stream", lambda *_args, **_kwargs: session_handle)
+    monkeypatch.setenv("TERSE_SIGNING_SECRET", "secret")
+    monkeypatch.setenv("TERSE_API_KEY", "terse_test_key")
+    monkeypatch.setenv("TERSE_BACKEND_URL", "https://backend.example.com/api")
+
+    body: dict[str, object] = {
+        "jobName": "ctx-job",
+        "runId": "run_from_trigger",
+        "event": {
+            "integrationType": "cron_job",
+            "eventType": "cron",
+            "formattedContent": "",
+            "debugLog": "",
+            "data": {
+                "integrationType": "cron_job",
+                "eventType": "cron",
+                "inputId": "input_123",
+                "isManualTrigger": True,
+            },
+        },
+    }
+
+    result = app.handle_trigger(body)
+
+    assert result == {"status": "ok"}
+    assert observed["closed"] is True
+    assert isinstance(observed["ctx"], TerseJobContext)
+    assert observed["agent_session_id"] == "sess_from_stream"
+    assert observed["agent_run_id"] == "run_from_trigger"
+    assert observed["agent_backend_url"] == "https://backend.example.com/api"
+    assert get_job_context() is None
 
 
 def _json_response(

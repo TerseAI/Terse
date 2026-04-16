@@ -25,6 +25,7 @@ from ._http_utils import (
     _read_response_detail,
 )
 from ._logging_utils import LOGGER, _configure_debug_logging
+from .context import TerseJobContext, get_job_context, job_context_scope
 from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
 from .types._generated import (
     Done,
@@ -183,16 +184,22 @@ class Terse:
         session = _open_session_stream(api_base_url, api_key)
 
         try:
-            input_event = deserialize_input_event(cast(dict[str, object], raw_event))
+            ctx = TerseJobContext(
+                session_id=session.session_id,
+                run_id=run_id,
+                api_base_url=api_base_url,
+            )
+            with job_context_scope(ctx):
+                input_event = deserialize_input_event(cast(dict[str, object], raw_event))
 
-            if job.filter is not None:
-                should_run = job.filter(input_event)
-                if not should_run:
-                    return {"status": "ok", "filtered": True}
+                if job.filter is not None:
+                    should_run = job.filter(input_event)
+                    if not should_run:
+                        return {"status": "ok", "filtered": True}
 
-            job.handler(input_event)
+                job.handler(input_event)
 
-            return {"status": "ok"}
+                return {"status": "ok"}
         finally:
             session.close()
 
@@ -202,7 +209,7 @@ class TerseAgent:
 
     def __init__(
         self,
-        prompt: str | None = None,
+        prompt: str,
         skills: Sequence[SkillConfig[Any]] | None = None,
         backend_url: str | None = None,
         session_id: str | None = None,
@@ -211,14 +218,22 @@ class TerseAgent:
         run_id: str | None = None,
     ) -> None:
         settings = TerseSettings()
+        # When instantiated inside a job handler, the ambient
+        # ``TerseJobContext`` (populated by :meth:`Terse.handle_trigger`)
+        # provides the session_id / run_id / backend URL so users don't
+        # have to wire them through manually. Explicit arguments always
+        # win.
+        ctx = get_job_context()
         self.prompt = prompt
         self.skills = list(skills or [])
         self.manual_tool_configs = list(manual_tool_configs) if manual_tool_configs is not None else None
-        self.backend_url = (backend_url or settings.backend_url).rstrip("/")
-        self.session_id = session_id
+        self.backend_url = (
+            backend_url or (ctx.api_base_url if ctx is not None else None) or settings.backend_url
+        ).rstrip("/")
+        self.session_id = session_id or (ctx.session_id if ctx is not None else None)
         self._tools: object | None = None
         self.tool_approvals = tool_approvals
-        self.run_id = run_id
+        self.run_id = run_id or (ctx.run_id if ctx is not None else None)
 
     @property
     def tools(self) -> object:
