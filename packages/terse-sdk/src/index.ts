@@ -293,6 +293,8 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
+    readonly tools: Record<string, Record<string, (...args: any[]) => Promise<unknown>>>
+
     private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[]; apiBaseUrl: string; sessionId?: string; runId?: string }) {
         this.prompt = params.prompt
         this.skills = params.skills
@@ -300,6 +302,9 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         this.apiBaseUrl = params.apiBaseUrl
         this.sessionId = params.sessionId
         this.runId = params.runId
+
+        const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => Record<string, Record<string, (...args: any[]) => Promise<unknown>>>) | undefined
+        this.tools = createTools ? createTools(this) : ({} as any)
     }
 
     /**
