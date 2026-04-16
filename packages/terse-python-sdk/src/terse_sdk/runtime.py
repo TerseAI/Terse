@@ -27,26 +27,26 @@ from ._http_utils import (
 from ._logging_utils import LOGGER, _configure_debug_logging
 from .errors import MissingApiKeyError, TerseApiError, TerseRuntimeError
 from .types._generated import (
+    Done,
+    Error,
+    FinalOutput,
+    SdkAgentRunRequestBody,
+    SerializedEvent,
+    SkillConfigData,
+    ToolCallCompleted,
+)
+from .types._generated import (
     ManualSampleTrigger as _RawManualSampleTrigger,
 )
 from .types._generated import (
-    SerializedEvent,
-    SkillConfigData,
+    SdkAgentRunResponseBody as _SdkAgentRunResponseBody,
+)
+from .types._generated import (
+    SdkAgentStreamEvent as _SdkAgentStreamEvent,
 )
 from .types.config import TerseSettings
 from .types.events import AnyTrigger, SDKTrigger
 from .types.jobs import SkillConfig, TriggerConfig
-from .types.sdk_types import (
-    SdkAgentRunRequestBody,
-    SdkAgentRunResponseBody,
-)
-from .types.stream_events import (
-    Done,
-    Error,
-    FinalOutput,
-    SdkAgentStreamEvent,
-    ToolCallCompleted,
-)
 
 TERSE_JOB_WEBHOOK_TRIGGER_PATH: str = "/webhook/terse/trigger"
 """Path relative to ``TERSE_JOB_URL`` where the Terse backend POSTs webhook job triggers.
@@ -75,11 +75,9 @@ class RegisteredJob:
     """A runtime job registration captured from ``@app.job``."""
 
     name: str
-    handler: Callable[..., object] = field(repr=False, compare=False)
+    handler: Callable[..., None] = field(repr=False, compare=False)
     triggers: list[TriggerConfig[AnyTrigger]] = field(default_factory=list)
-    skills: list[SkillConfig[Any]] = field(default_factory=list)
     filter: JobFilter | None = field(default=None, repr=False, compare=False)
-    tool_approvals: list[str] | None = None
 
 
 class Terse:
@@ -89,26 +87,22 @@ class Terse:
         self,
         name: str,
         triggers: Sequence[TriggerConfig[JobEventT]] | None = None,
-        skills: Sequence[SkillConfig[ToolApprovalT]] | None = None,
         filter: Callable[[JobEventT], bool] | None = None,
         webhook_url: str | None = None,
-        tool_approvals: Sequence[ToolApprovalT] | None = None,
     ) -> Callable[
-        [Callable[[JobEventT, TerseAgent], None]],
-        Callable[[JobEventT, TerseAgent], None],
+        [Callable[[JobEventT], None]],
+        Callable[[JobEventT], None],
     ]:
         """Register a job and return the original handler."""
 
         def decorator(
-            handler: Callable[[JobEventT, TerseAgent], None],
-        ) -> Callable[[JobEventT, TerseAgent], None]:
+            handler: Callable[[JobEventT], None],
+        ) -> Callable[[JobEventT], None]:
             _JOB_REGISTRY[name] = RegisteredJob(
                 name=name,
                 handler=handler,
                 triggers=list(triggers or []),
-                skills=list(skills or []),
                 filter=cast(JobFilter | None, filter),
-                tool_approvals=list(tool_approvals or []),
             )
             return handler
 
@@ -190,19 +184,13 @@ class Terse:
 
         try:
             input_event = deserialize_input_event(cast(dict[str, object], raw_event))
-            agent = TerseAgent.from_job(
-                job,
-                api_base_url=api_base_url,
-                session_id=session.session_id,
-                run_id=run_id,
-            )
 
             if job.filter is not None:
                 should_run = job.filter(input_event)
                 if not should_run:
                     return {"status": "ok", "filtered": True}
 
-            job.handler(input_event, agent)
+            job.handler(input_event)
 
             return {"status": "ok"}
         finally:
@@ -214,6 +202,7 @@ class TerseAgent:
 
     def __init__(
         self,
+        prompt: str | None = None,
         skills: Sequence[SkillConfig[Any]] | None = None,
         backend_url: str | None = None,
         session_id: str | None = None,
@@ -222,6 +211,7 @@ class TerseAgent:
         run_id: str | None = None,
     ) -> None:
         settings = TerseSettings()
+        self.prompt = prompt
         self.skills = list(skills or [])
         self.manual_tool_configs = list(manual_tool_configs) if manual_tool_configs is not None else None
         self.backend_url = (backend_url or settings.backend_url).rstrip("/")
@@ -261,35 +251,14 @@ class TerseAgent:
         self._tools = factory(self)
         return self._tools
 
-    @classmethod
-    def from_job(
-        cls,
-        job: RegisteredJob,
-        api_base_url: str | None = None,
-        session_id: str | None = None,
-        run_id: str | None = None,
-    ) -> TerseAgent:
-        """Create a :class:`TerseAgent` pre-configured from a registered job."""
-
-        agent = cls(
-            skills=job.skills,
-            backend_url=api_base_url,
-            session_id=session_id,
-            tool_approvals=list(job.tool_approvals or []),
-            run_id=run_id,
-        )
-        agent.manual_tool_configs = [*job.skills, *job.triggers]
-        agent.ensure_generated_tools()
-        return agent
-
-    def run(self, prompt: str, event: AnyTrigger | None = None) -> Generator[SdkAgentStreamEvent, None, None]:
+    def run(self, message: str) -> Generator[_SdkAgentStreamEvent, None, None]:
         """Stream parsed agent-run events from the backend."""
 
         _configure_debug_logging()
         api_key = _require_api_key()
         request_body = _build_agent_run_request_body(
-            prompt=prompt,
-            event=event or _manual_event(),
+            prompt=self.prompt,
+            message=message,
             skills=self.skills,
             tool_approvals=self.tool_approvals,
         )
@@ -300,9 +269,6 @@ class TerseAgent:
                 mode="json",
             )
         )
-        event_payload = request_payload.get("event")
-        if request_body.event is not None and isinstance(event_payload, dict):
-            request_payload["event"] = _strip_optional_nones(cast(dict[str, object], event_payload), request_body.event)
         headers = _build_auth_headers(
             api_key, accept="text/event-stream", session_id=self.session_id, run_id=self.run_id
         )
@@ -332,7 +298,7 @@ class TerseAgent:
                     if not sse.data:
                         continue
 
-                    stream_event = SdkAgentStreamEvent.model_validate_json(sse.data).root
+                    stream_event = _SdkAgentStreamEvent.model_validate_json(sse.data).root
                     if isinstance(stream_event, Done):
                         if failed_tool_calls:
                             raise TerseApiError(f"Run completed with failed tool calls: {'; '.join(failed_tool_calls)}")
@@ -343,20 +309,20 @@ class TerseAgent:
                         parsed = _parse_tool_call_completed(stream_event.tool_call_completed)
                         if parsed.get("status") and parsed["status"] != "completed":
                             failed_tool_calls.append(f"{parsed.get('tool', 'unknown_tool')}: {parsed['status']}")
-                    yield cast(SdkAgentStreamEvent, stream_event)
+                    yield cast(_SdkAgentStreamEvent, stream_event)
         except httpx.RequestError as exc:
             raise TerseApiError(f"Could not connect to {self.backend_url} — is the backend running?\n  {exc}") from exc
         except ValidationError as exc:
             raise TerseApiError(f"Received invalid agent stream payload.\n  {exc}") from exc
 
-    def run_and_wait(self, prompt: str, event: AnyTrigger | None = None) -> str | None:
+    def run_and_wait(self, message: str) -> str | None:
         """Run the agent to completion and return the final output.
 
         Returns ``None`` if no final_output event was received.
         """
 
         final_output: str | None = None
-        for chunk in self.run(prompt, event):
+        for chunk in self.run(message):
             if isinstance(chunk, FinalOutput):
                 final_output = chunk.final_output
         return final_output
@@ -485,27 +451,16 @@ def _unwrap_root_models(value: object) -> object:
 def execute_registered_job(
     job: RegisteredJob,
     event: AnyTrigger | SDKTrigger[Any],
-    agent: TerseAgent | None = None,
 ) -> bool:
     """Execute a registered job and return ``True`` when it was skipped by the filter."""
     sdk_event: AnyTrigger = event if isinstance(event, SDKTrigger) else SDKTrigger(event, "", "")
-
-    manual_tool_configs = [*job.skills, *job.triggers]
-    runtime_agent = agent or TerseAgent(
-        job.skills,
-        manual_tool_configs=manual_tool_configs,
-        tool_approvals=job.tool_approvals,
-    )
-    if runtime_agent.manual_tool_configs is None:
-        runtime_agent.manual_tool_configs = manual_tool_configs
-    runtime_agent.ensure_generated_tools()
 
     if job.filter is not None:
         should_run = job.filter(sdk_event)
         if not should_run:
             return True
 
-    job.handler(sdk_event, runtime_agent)
+    job.handler(sdk_event)
     return False
 
 
@@ -650,7 +605,7 @@ def _assert_sse_response(response: httpx.Response, path: str) -> None:
     payload = _read_json_response(response, path)
     _debug_log_response_payload(LOGGER, path, payload)
     if isinstance(payload, dict):
-        response_body = SdkAgentRunResponseBody.model_validate(payload)
+        response_body = _SdkAgentRunResponseBody.model_validate(payload)
         if response_body.error:
             details = f" ({'; '.join(response_body.details)})" if response_body.details else ""
             raise TerseApiError(f"{response_body.error}{details}")
@@ -695,12 +650,11 @@ def _require_api_key() -> str:
 
 def _build_agent_run_request_body(
     *,
-    prompt: str,
-    event: AnyTrigger | _RawManualSampleTrigger,
+    prompt: str | None,
+    message: str,
     skills: Sequence[SkillConfig[Any]],
     tool_approvals: list[str] | None,
 ) -> SdkAgentRunRequestBody:
-    serialized_event = _serialize_run_event(event)
     skill_payloads = [
         _serialize_skill_config(skill).model_dump(
             exclude_none=True,
@@ -711,16 +665,13 @@ def _build_agent_run_request_body(
     ]
     if LOGGER.isEnabledFor(logging.DEBUG):
         LOGGER.debug(
-            "Building /sdk/agent-run request for %s/%s with event keys=%s and %d skill(s)",
-            serialized_event.get("integrationType"),
-            serialized_event.get("eventType"),
-            sorted(serialized_event.keys()),
+            "Building /sdk/agent-run request for %s with %d skill(s)",
             len(skill_payloads),
         )
     return SdkAgentRunRequestBody.model_validate(
         {
             "prompt": prompt,
-            "event": serialized_event,
+            "message": message,
             "skills": skill_payloads,
             "toolApprovals": tool_approvals,
         }

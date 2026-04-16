@@ -711,7 +711,7 @@ class WebhookTrigger(TerseModel):
     )
     integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = "webhook"
     event_type: Annotated[WebhookTriggerType, Field(alias="eventType")]
-    body: dict[str, Any]
+    body: Any
     headers: dict[str, str]
     method: str
 
@@ -1387,7 +1387,7 @@ class AgentPrompt(TerseModel):
         extra="forbid",
     )
     text: str
-    job_url: Annotated[str | None, Field(alias="jobUrl")] = None
+    remote_server_url: Annotated[str | None, Field(alias="remoteServerUrl")] = None
 
 
 class AgentCreate(TerseModel):
@@ -1418,6 +1418,16 @@ class AgentDraft(TerseModel):
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")]
     id: str | None
     created_by_user_id: Annotated[str, Field(alias="createdByUserId")]
+
+
+class AgentFileContentResponse(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    path: str
+    file_name: Annotated[str, Field(alias="fileName")]
+    content_base64: Annotated[str, Field(alias="contentBase64")]
+    mime_type: Annotated[str | None, Field(alias="mimeType")] = None
 
 
 class AgentIdParams(TerseModel):
@@ -1990,6 +2000,7 @@ class Cancelled(TerseModel):
         extra="forbid",
     )
     type: Literal["Cancelled"] = "Cancelled"
+    id: str | None = None
     reason: str | None = None
     timestamp: float
 
@@ -2350,6 +2361,7 @@ class FilterResult(TerseModel):
     confidence: float
     step_id: str
     type: Literal["FilterResult"] = "FilterResult"
+    id: str | None = None
     timestamp: float
 
 
@@ -4212,8 +4224,26 @@ class ModelEventChatSnippet(TerseModel):
         extra="forbid",
     )
     type: Literal["Snippet"] = "Snippet"
+    id: str | None = None
     timestamp: float
     snippet: ChatSnippet
+
+
+class ProcessOutputStream(StrEnum):
+    stdout = "stdout"
+    stderr = "stderr"
+
+
+class ProcessOutput(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    type: Literal["ProcessOutput"] = "ProcessOutput"
+    id: str | None = None
+    stream: ProcessOutputStream
+    content: str
+    label: str
+    timestamp: float
 
 
 class Thinking(TerseModel):
@@ -4222,6 +4252,7 @@ class Thinking(TerseModel):
     )
     step_id: str
     type: Literal["Thinking"] = "Thinking"
+    id: str | None = None
     timestamp: float
 
 
@@ -4230,6 +4261,7 @@ class UserMessage(TerseModel):
         extra="forbid",
     )
     type: Literal["UserMessage"] = "UserMessage"
+    id: str | None = None
     message: str
     step_id: str
     client_turn_id: str
@@ -4242,6 +4274,7 @@ class NaturalStop(TerseModel):
     )
     step_id: str
     type: Literal["NaturalStop"] = "NaturalStop"
+    id: str | None = None
     timestamp: float
 
 
@@ -4250,6 +4283,7 @@ class RunError(TerseModel):
         extra="forbid",
     )
     type: Literal["RunError"] = "RunError"
+    id: str | None = None
     error: str
     code: str | None = None
     timestamp: float
@@ -4262,6 +4296,7 @@ class TextDelta(TerseModel):
     delta: str
     step_id: str
     type: Literal["TextDelta"] = "TextDelta"
+    id: str | None = None
     timestamp: float
 
 
@@ -4288,6 +4323,7 @@ class ToolCallComplete(TerseModel):
     status: ToolCallExecutionStatus
     step_id: str
     type: Literal["ToolCallComplete"] = "ToolCallComplete"
+    id: str | None = None
     changed_items: list[ChangedItem]
     integration: str
     url: str | None = None
@@ -4302,6 +4338,7 @@ class ToolCall(TerseModel):
     summary: str
     step_id: str
     type: Literal["ToolCall"] = "ToolCall"
+    id: str | None = None
     parameters: str
     integration: str
     timestamp: float
@@ -4314,6 +4351,7 @@ class ToolCallGenerating(TerseModel):
     tool_name: str
     step_id: str
     type: Literal["ToolCallGenerating"] = "ToolCallGenerating"
+    id: str | None = None
     timestamp: float
 
 
@@ -4323,6 +4361,7 @@ class ToolApprovalRequest(TerseModel):
     )
     step_id: str
     type: Literal["ToolApprovalRequest"] = "ToolApprovalRequest"
+    id: str | None = None
     name: str
     arguments: str
     timestamp: float
@@ -4334,6 +4373,7 @@ class ToolApprovalResponse(TerseModel):
     )
     step_id: str
     type: Literal["ToolApprovalResponse"] = "ToolApprovalResponse"
+    id: str | None = None
     approved: bool
     rejection_reason: str | None = None
     timestamp: float
@@ -4354,6 +4394,7 @@ class ModelEvent(
         | UserMessage
         | Thinking
         | ModelEventChatSnippet
+        | ProcessOutput
     ]
 ):
     root: (
@@ -4370,6 +4411,7 @@ class ModelEvent(
         | UserMessage
         | Thinking
         | ModelEventChatSnippet
+        | ProcessOutput
     )
 
 
@@ -4378,6 +4420,7 @@ class SendModelRequest(TerseModel):
         extra="forbid",
     )
     type: Literal["SendModelRequest"] = "SendModelRequest"
+    id: str | None = None
     user_message: str
     timezone: str
     ui_state: str | None = None
@@ -5406,7 +5449,7 @@ class SdkAgentRunRequestBody(TerseModel):
         extra="forbid",
     )
     prompt: str | None = None
-    event: Trigger | None = None
+    message: str
     skills: list[SkillConfigData] | None = None
     options: SdkAgentRunOptionsPayload | None = None
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")] = None
@@ -5553,8 +5596,6 @@ class SdkDeployJob(TerseModel):
     )
     job_name: Annotated[str, Field(alias="jobName")]
     triggers: list[TriggerConfigData]
-    outputs: list[SkillConfigData]
-    tool_approvals: Annotated[list[str], Field(alias="toolApprovals")]
 
 
 class SdkDeployRemoved(LinearWebhookAssignee):
@@ -5566,7 +5607,7 @@ class SdkDeployRequestBody(TerseModel):
         extra="forbid",
     )
     jobs: list[SdkDeployJob]
-    job_url: Annotated[str | None, Field(alias="jobUrl")] = None
+    remote_server_url: Annotated[str | None, Field(alias="remoteServerUrl")] = None
     source_zip_base64: Annotated[str | None, Field(alias="sourceZipBase64")] = None
 
 
@@ -5585,6 +5626,7 @@ class SdkDeployResult(TerseModel):
     job_name: Annotated[str, Field(alias="jobName")]
     automation_id: Annotated[str, Field(alias="automationId")]
     is_update: Annotated[bool, Field(alias="isUpdate")]
+    signing_secret: Annotated[str | None, Field(alias="signingSecret")] = None
     triggers: list[SdkDeployResultTrigger] | None = None
 
 
@@ -5603,8 +5645,8 @@ class SdkJobServerCheckStep(StrEnum):
     http = "http"
     json = "json"
     response_schema = "response_schema"
-    token = "token"
-    org = "org"
+    challenge_echo = "challenge_echo"
+    challenge_signature = "challenge_signature"
 
 
 class SdkJobServerCheckResponse(TerseModel):
@@ -5616,6 +5658,24 @@ class SdkJobServerCheckResponse(TerseModel):
     trigger_url: Annotated[str | None, Field(alias="triggerUrl")] = None
     step: SdkJobServerCheckStep | None = None
     http_status: Annotated[float | None, Field(alias="httpStatus")] = None
+
+
+class SerializedEvent(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
+    event_type: Annotated[TriggerType, Field(alias="eventType")]
+    formatted_content: Annotated[str, Field(alias="formattedContent")]
+    debug_log: Annotated[str, Field(alias="debugLog")]
+    data: Trigger
+
+
+class SdkRunTriggerEventResponse(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event: SerializedEvent
 
 
 class SdkSampleEventsRequestTrigger(TerseModel):
@@ -6084,17 +6144,6 @@ class SearchRumEventsInput(RootModel[SearchRumEventsToolInput]):
 
 class SearchRumEventsToolOutput(ListRumEventsToolOutput):
     pass
-
-
-class SerializedEvent(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    integration_type: Annotated[IntegrationTypeEnum, Field(alias="integrationType")]
-    event_type: Annotated[TriggerType, Field(alias="eventType")]
-    formatted_content: Annotated[str, Field(alias="formattedContent")]
-    debug_log: Annotated[str, Field(alias="debugLog")]
-    data: Trigger
 
 
 class SlackChannelListItem(TerseModel):
@@ -6793,7 +6842,16 @@ class WebhookJobChallengeRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    challenge: Literal[True] = True
+    type: Literal["challenge"] = "challenge"
+    challenge: Annotated[str, Field(min_length=1)]
+
+
+class WebhookJobChallengeResponse(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    challenge: Annotated[str, Field(min_length=1)]
+    signature: Annotated[str, Field(min_length=1)]
 
 
 class WebhookJobTriggerRequest(TerseModel):
@@ -6810,7 +6868,6 @@ class WebhookJobTriggerResponse(TerseModel):
         extra="forbid",
     )
     status: str | None = None
-    api_key: Annotated[str, Field(alias="apiKey", min_length=1)]
     filtered: bool | None = None
 
 
@@ -6875,6 +6932,14 @@ class WorkosWebhookSecretUpdateRequest(TerseModel):
 
 class FieldSchema0(Model):
     pass
+
+
+class AgentFilesResponse(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: str
+    files: list[FieldSchema0]
 
 
 class NotionQueryPageToolOutput(TerseModel):

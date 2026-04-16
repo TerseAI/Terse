@@ -3,7 +3,7 @@ import { execFileSync, spawn } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import type { CreateJobParameters } from "terse-sdk"
+import type { CreateJobParameters, TypedTrigger } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 
 import type { LanguageProvider } from "../LanguageProvider.js"
@@ -214,11 +214,9 @@ export class PythonProvider implements LanguageProvider {
 export const pythonProvider = new PythonProvider()
 
 function createJobParametersFromPython(data: PythonJobData): CreateJobParameters {
-    return {
+    const jobParams: CreateJobParameters = {
         name: data.name,
-        triggers: data.triggers.map(reconstructPythonConfig),
-        skills: data.skills.map(reconstructPythonConfig),
-        toolApprovals: data.toolApprovals ?? [],
+        triggers: (data.triggers ?? []).map(reconstructPythonConfig) as TypedTrigger[],
         onTrigger: async () => {
             throw new Error("Python job execution must go through provider.executeJob()")
         },
@@ -227,7 +225,9 @@ function createJobParametersFromPython(data: PythonJobData): CreateJobParameters
                   throw new Error("Python filter execution must go through provider.executeJob()")
               }
             : undefined
-    } as CreateJobParameters
+    }
+
+    return jobParams
 }
 
 function reconstructPythonConfig(config: PythonSerializedConfig) {
@@ -276,8 +276,6 @@ for name, job in registry.items():
     result[name] = {
         "name": name,
         "triggers": [serialize_config(trigger) for trigger in job.triggers],
-        "skills": [serialize_config(skill) for skill in job.skills],
-        "toolApprovals": list(job.tool_approvals or []),
         "hasFilter": job.filter is not None,
     }
 
@@ -315,8 +313,7 @@ job_name = os.environ["TERSE_JOB_NAME"]
 event = deserialize_input_event(json.loads(os.environ["TERSE_EVENT_JSON"]))
 session_id = os.environ.get("TERSE_SESSION_ID")
 job = registry[job_name]
-agent = TerseAgent(job.skills, session_id=session_id, manual_tool_configs=[*job.skills, *job.triggers], tool_approvals=job.tool_approvals)
-skipped = execute_registered_job(job, event, agent=agent)
+skipped = execute_registered_job(job, event)
 if skipped:
     print(${JSON.stringify(JOB_SKIPPED_MARKER)})
 `.trim()
