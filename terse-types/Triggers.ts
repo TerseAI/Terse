@@ -21,9 +21,6 @@ const slackTriggerBaseSchema = TriggerHeaderSchema.extend({
     userName: z.string().nullable(),
     text: z.string(),
     timestamp: z.string(),
-    // Keep both names during migration; `threadTs` is the target shared field.
-    threadTs: z.string().nullable().optional(),
-    threadTimestamp: z.string().nullable(),
     teamId: z.string(),
     permalink: z.string().nullable(),
     channelType: z.enum(SlackChannelType).nullable(),
