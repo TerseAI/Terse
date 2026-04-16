@@ -31,12 +31,38 @@ After you connect GitHub, Attio, Slack, or Snowflake in Terse, rerun `terse gene
 
 Import helpers like `GitHub`, `GitHubRepo`, `Attio`, `AttioObject`, `Schedule`, `Slack`, `SlackChannel`, `Snowflake`, and `TerseAgent` from `terse_generated`.
 
-If a job includes the integration in `triggers=` or `skills=`, it can call deterministic wrappers like:
+## Writing a Job
+
+Register jobs on the `Terse` app, then build a `TerseAgent` inside the handler with the prompt and skills you want the model to see:
+
+```python
+from terse_sdk import Terse
+from terse_sdk.types.events import GithubPRTrigger
+from terse_generated import GitHub, GitHubRepo, Slack, SlackChannel, TerseAgent
+
+app = Terse()
+
+
+@app.job(
+    name="summarise-prs",
+    triggers=[GitHub.on_pr(repo=GitHubRepo.Terse)],
+)
+def summarise_prs(event: GithubPRTrigger) -> None:
+    agent = TerseAgent(
+        prompt="You summarise pull requests.",
+        skills=[
+            GitHub.skill(repos=[GitHubRepo.Terse]),
+            Slack.skill(channel=SlackChannel.AllTerseInc),
+        ],
+    )
+    agent.run_and_wait(f"Summarise: {event.formatted_content}")
+```
+
+Skills control what the model can do during `agent.run()` / `agent.run_and_wait()`. If the skill also has deterministic tool wrappers (Slack, Attio, Snowflake), they are auto-attached on `agent.tools.*`:
 
 ```python
 agent.tools.snowflake.execute_query(query="select 1")
+agent.tools.slack.send_message(channel_id=SlackChannel.AllTerseInc.channel_id, message="hi")
 ```
 
-Use `agent.tools.slack.*` for direct deterministic Slack calls. Use `skills=[Slack.skill(...)]` when you want Slack to be visible to the model during `run()` or `run_and_wait()`.
-
-Use `skills=[GitHub.skill(repos=[...])]` when you want repo-scoped GitHub tools to be visible to the model during `run()` or `run_and_wait()`. This does not add deterministic `agent.tools.github.*` wrappers.
+`skills=[GitHub.skill(repos=[...])]` exposes repo-scoped GitHub tools to the model, but does not add deterministic `agent.tools.github.*` wrappers.

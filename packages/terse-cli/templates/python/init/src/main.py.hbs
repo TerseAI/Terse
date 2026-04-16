@@ -1,18 +1,23 @@
-from terse_sdk import Terse, TerseAgent
+from terse_sdk import Terse
 from terse_sdk.types.events import GithubPRTrigger
 
-from terse_generated import GitHub, GitHubRepo, Slack, SlackChannel
+from terse_generated import GitHub, GitHubRepo, Slack, SlackChannel, TerseAgent
 
 app = Terse()
+
 
 @app.job(
     name="{{projectName}}",
     triggers=[GitHub.on_pr(repo=GitHubRepo.Terse)],
-    skills=[
-        GitHub.skill(repos=[GitHubRepo.Terse]),
-        Slack.skill(channel=SlackChannel.AllTerseInc),
-    ],
 )
-def run_job(event: GithubPRTrigger, agent: TerseAgent, /) -> None:
-    prompt = f"Summarise the PR and send a message to slack: {event.formatted_content}"
-    agent.run_and_wait(prompt, event)
+def run_job(event: GithubPRTrigger) -> None:
+    agent = TerseAgent(
+        prompt="You summarise GitHub pull requests and post concise updates to Slack.",
+        skills=[
+            GitHub.skill(repos=[GitHubRepo.Terse]),
+            Slack.skill(channel=SlackChannel.AllTerseInc),
+        ],
+    )
+    agent.run_and_wait(
+        f"Summarise this PR and post a short update to Slack: {event.formatted_content}"
+    )
