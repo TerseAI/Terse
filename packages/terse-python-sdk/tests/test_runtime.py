@@ -957,6 +957,32 @@ def test_terse_agent_inherits_session_and_run_id_from_job_context() -> None:
     assert agent.backend_url == "https://ctx.example.com/api"
 
 
+def test_terse_agent_falls_back_to_session_and_run_id_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TERSE_SESSION_ID", "sess_env")
+    monkeypatch.setenv("TERSE_RUN_ID", "run_env")
+
+    agent = TerseAgent()
+
+    assert agent.session_id == "sess_env"
+    assert agent.run_id == "run_env"
+
+
+def test_terse_agent_job_context_takes_precedence_over_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TERSE_SESSION_ID", "sess_env")
+    monkeypatch.setenv("TERSE_RUN_ID", "run_env")
+
+    ctx = TerseJobContext(
+        session_id="sess_ctx",
+        run_id="run_ctx",
+        api_base_url="https://ctx.example.com/api",
+    )
+    with job_context_scope(ctx):
+        agent = TerseAgent()
+
+    assert agent.session_id == "sess_ctx"
+    assert agent.run_id == "run_ctx"
+
+
 def test_terse_agent_explicit_arguments_override_job_context() -> None:
     ctx = TerseJobContext(
         session_id="sess_ctx",

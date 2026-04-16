@@ -291,7 +291,7 @@ import os
 import sys
 import uuid
 
-from terse_sdk import TerseAgent, clear_job_registry, deserialize_input_event, execute_registered_job, get_job_registry
+from terse_sdk import clear_job_registry, deserialize_input_event, execute_registered_job, get_job_registry
 
 PROJECT_ROOT = os.getcwd()
 SRC_DIR = os.path.join(PROJECT_ROOT, "src")
@@ -311,7 +311,9 @@ spec.loader.exec_module(module)
 registry = get_job_registry()
 job_name = os.environ["TERSE_JOB_NAME"]
 event = deserialize_input_event(json.loads(os.environ["TERSE_EVENT_JSON"]))
-session_id = os.environ.get("TERSE_SESSION_ID")
+# TERSE_SESSION_ID / TERSE_RUN_ID are read by TerseAgent.__init__ when the
+# user's handler constructs an agent, so the outgoing /sdk/agent-run request
+# carries the right headers for the CLI's session stream to receive events.
 job = registry[job_name]
 skipped = execute_registered_job(job, event)
 if skipped:

@@ -218,11 +218,15 @@ class TerseAgent:
         run_id: str | None = None,
     ) -> None:
         settings = TerseSettings()
-        # When instantiated inside a job handler, the ambient
-        # ``TerseJobContext`` (populated by :meth:`Terse.handle_trigger`)
-        # provides the session_id / run_id / backend URL so users don't
-        # have to wire them through manually. Explicit arguments always
-        # win.
+        # Resolution order for session_id / run_id / backend URL:
+        #   1. Explicit constructor argument.
+        #   2. Active ``TerseJobContext`` (populated by
+        #      :meth:`Terse.handle_trigger` via ``contextvars``).
+        #   3. Environment variables (``TERSE_SESSION_ID`` /
+        #      ``TERSE_RUN_ID``) — used by the ``terse`` CLI to wire a
+        #      verbose local session into a subprocess-run job, and by
+        #      the backend for sandbox runs that carry ``TERSE_RUN_ID``.
+        #   4. ``TerseSettings`` defaults (for the backend URL).
         ctx = get_job_context()
         self.prompt = prompt
         self.skills = list(skills or [])
@@ -230,10 +234,12 @@ class TerseAgent:
         self.backend_url = (
             backend_url or (ctx.api_base_url if ctx is not None else None) or settings.backend_url
         ).rstrip("/")
-        self.session_id = session_id or (ctx.session_id if ctx is not None else None)
+        self.session_id = (
+            session_id or (ctx.session_id if ctx is not None else None) or os.environ.get("TERSE_SESSION_ID") or None
+        )
         self._tools: object | None = None
         self.tool_approvals = tool_approvals
-        self.run_id = run_id or (ctx.run_id if ctx is not None else None)
+        self.run_id = run_id or (ctx.run_id if ctx is not None else None) or os.environ.get("TERSE_RUN_ID") or None
 
     @property
     def tools(self) -> object:
@@ -596,9 +602,8 @@ def _build_auth_headers(
 
     if session_id:
         headers["X-Terse-Session-Id"] = session_id
-    resolved_run_id = run_id or os.environ.get("TERSE_RUN_ID")
-    if resolved_run_id:
-        headers["X-Terse-Run-Id"] = resolved_run_id
+    if run_id:
+        headers["X-Terse-Run-Id"] = run_id
 
     return headers
 
