@@ -24,7 +24,7 @@
             },
             {
                 "group": "Core Concepts",
-                "pages": ["core-concepts/jobs", "core-concepts/deterministic-tool-calls", "core-concepts/self-improvement"]
+                "pages": ["core-concepts/jobs", "core-concepts/skills-and-integrations", "core-concepts/deterministic-tool-calls", "core-concepts/human-in-the-loop", "core-concepts/activity-and-observability", "core-concepts/self-improvement"]
             },
             {
                 "group": "Reference",

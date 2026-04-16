@@ -1,12 +1,12 @@
 ---
 title: "Jobs"
-description: "A job is the unit of automation in Terse — a trigger, a set of skills, and a handler that runs every time the trigger fires."
+description: "A job is the unit of automation in Terse: a trigger, a set of skills, and a handler that runs every time the trigger fires."
 icon: "boxes"
 ---
 
 A job is the core building block in Terse. It connects an event (the trigger) to the code that should run when that event happens (the handler), with a set of integrations available to use along the way (skills). When you deploy a Terse project, you're deploying one or more jobs.
 
-In the SDK, you define jobs with `createJob()` in TypeScript or `@app.job()` in Python. In the Terse app and across these docs, we call them **workflows** — same thing, different name.
+In the SDK, you define jobs with `createJob()` in TypeScript or `@app.job()` in Python. In the Terse app and across these docs, we call them **workflows**. Same thing, different name.
 
 ## Anatomy of a job
 
@@ -44,7 +44,7 @@ def run_job(event, agent: TerseAgent) -> None:
 
 ### Name
 
-A unique string identifier. Terse uses this to match the job across deploys — if you rename it, the platform treats it as a new job. Keep names stable and descriptive.
+A unique string identifier. Terse uses this to match the job across deploys, so if you rename it, the platform treats it as a new job. Keep names stable and descriptive.
 
 ### Triggers
 
@@ -52,7 +52,7 @@ The event that starts the job. A trigger is always tied to an integration (Attio
 
 ### Skills
 
-The integrations available to the model during agentic calls (`run` and `runAndWait`). Skills don't limit what your code can do with deterministic tool calls — they control what the LLM can reach for when it's reasoning.
+The integrations available to the model during agentic calls (`run` and `runAndWait`). Skills don't limit what your code can do with deterministic tool calls. They only control what the LLM can reach for when it's reasoning.
 
 ### Handler
 
@@ -65,9 +65,9 @@ Trigger fires → Filter (optional) → Handler executes → Run recorded in Act
 ```
 
 1. **Trigger fires.** An event arrives from the connected integration or on the configured schedule.
-2. **Filter evaluates.** If you defined a `filter` function, Terse calls it with the event. Return `false` to skip the run entirely — no tokens spent, no side effects.
+2. **Filter evaluates.** If you defined a `filter` function, Terse calls it with the event. Return `false` to skip the run entirely. No tokens spent, no side effects.
 3. **Handler executes.** Your `onTrigger` (TypeScript) or decorated function (Python) runs with the event payload and a `TerseAgent`. You control the logic: call tools deterministically, hand off to the model, or both.
-4. **Run is recorded.** Every execution — success or failure — is logged in Activity with the full action trace, so you can inspect what happened.
+4. **Run is recorded.** Every execution, whether it succeeds or fails, is logged in Activity with the full action trace so you can inspect what happened.
 
 ## Deterministic vs. agentic
 
@@ -177,17 +177,17 @@ For jobs that write to production systems, you can require human approval before
 
 Jobs follow a straightforward path from code to production:
 
-1. **Define** — write the job in `src/index.ts` or `src/main.py`.
-2. **Generate** — run `terse generate` to get typed helpers for your integrations.
-3. **Test** — run `terse test` to execute against real sample events locally.
-4. **Deploy** — run `terse deploy` to package and host serverlessly. New jobs are created, existing jobs are updated, and removed jobs are cleaned up.
-5. **Monitor** — view runs, actions, and failures in the **Activity** tab.
+1. **Define.** Write the job in `src/index.ts` or `src/main.py`.
+2. **Generate.** Run `terse generate` to get typed helpers for your integrations.
+3. **Test.** Run `terse test` to execute against real sample events locally.
+4. **Deploy.** Run `terse deploy` to package and host serverlessly. New jobs are created, existing jobs are updated, and removed jobs are cleaned up.
+5. **Monitor.** View runs, actions, and failures in the **Activity** tab.
 
 ## Where to go next
 
 <CardGroup cols={2}>
     <Card title="Deterministic tool calls" icon="locate-fixed" href="/core-concepts/deterministic-tool-calls">
-        Call integration tools directly from code — no LLM in the loop.
+        Call integration tools directly from code, no LLM in the loop.
     </Card>
     <Card title="Triggers reference" icon="bolt" href="/reference/triggers">
         Every available trigger and its event payload.
