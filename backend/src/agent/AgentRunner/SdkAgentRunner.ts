@@ -19,6 +19,7 @@ import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverter
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
+import { buildUserMessage } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
 import { StreamEventEmitter } from "./StreamProcessor"
@@ -142,14 +143,9 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return { loopResult }
     }
 
-    async userMessageRun(userMessage: string, options?: { signal?: AbortSignal }): Promise<SdkAgentRunnerResult> {
+    async userMessageRun(userMessage: string, options?: { signal?: AbortSignal; clientTurnId?: string }): Promise<SdkAgentRunnerResult> {
         const loopResult = await super.runAgent(
-            [
-                {
-                    role: "user",
-                    content: userMessage
-                }
-            ],
+            [buildUserMessage(userMessage, options?.clientTurnId)],
             {
                 runner: this.createRunner(),
                 context: this.getToolContext(),
@@ -181,6 +177,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     }
 
     protected async onModelEvent(event: ModelEvent, timestamp: number): Promise<void> {
+        console.log("onModelEvent", event)
         this.streamEventEmitter.emit(event, timestamp)
         if (event.type === "TextDelta" && event.delta) {
             this.send({ type: "text", text: event.delta })

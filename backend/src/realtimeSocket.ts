@@ -295,6 +295,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         user,
                         prompt: agent.prompt?.content ?? "",
                         skills,
+                        // TODO: This probably isn't right. Idk how to handle tool approvals anymore for this use case. Need to think more about it.
                         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
                         maxTurns: 50,
                         requireApproval: true,
@@ -303,7 +304,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     })
 
                     const sdkResult = await sdkRunner.userMessageRun(userMessage, {
-                        signal: cancellationController.signal
+                        signal: cancellationController.signal,
+                        clientTurnId: message.client_turn_id
                     })
 
                     if (sdkResult.loopResult.status === "completed") {
