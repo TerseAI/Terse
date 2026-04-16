@@ -50,6 +50,7 @@ import type {
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
 
+import { getJobContext, runWithJobContext } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
 import { type InferEvents, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
@@ -66,6 +67,9 @@ function resolveTerseBackendUrl(): string {
  * Mount your handler at this path (e.g. `app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, ...)`).
  */
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
+
+export { getJobContext, runWithJobContext } from "./context.js"
+export type { TerseJobContext } from "./context.js"
 
 export { openSessionStream } from "./sessionStream.js"
 export type { OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
@@ -242,17 +246,21 @@ export class Terse {
         const session = await openSessionStream(apiBaseUrl, apiKey)
 
         try {
-            const inputEvent = createSDKTrigger(event)
+            const result = await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl }, async () => {
+                const inputEvent = createSDKTrigger(event)
 
-            if (job.filter) {
-                const shouldRun = await job.filter(inputEvent)
-                if (!shouldRun) {
-                    return { status: "ok", filtered: true }
+                if (job.filter) {
+                    const shouldRun = await job.filter(inputEvent)
+                    if (!shouldRun) {
+                        return { status: "ok" as const, filtered: true }
+                    }
                 }
-            }
-            await job.onTrigger(inputEvent)
+                await job.onTrigger(inputEvent)
 
-            return { status: "ok" }
+                return { status: "ok" as const }
+            })
+
+            return result
         } catch (error) {
             session.close()
             throw error
@@ -268,18 +276,11 @@ export type ApprovalRequestInfo = {
     arguments: string
 }
 
-export type CreateAgentForJobOptions = {
-    apiBaseUrl?: string
-    sessionId?: string
-    runId?: string
-}
-
 export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> {
     readonly prompt: string
     readonly skills: TSkills
     readonly toolApprovals: InferToolApprovals<TSkills>[]
 
-    // infer from env
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
     private readonly runId?: string
@@ -292,29 +293,42 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    private constructor(prompt: string, skills: TSkills, apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: InferToolApprovals<TSkills>[] = [], runId?: string) {
-        this.prompt = prompt
-        this.skills = skills
-        this.apiBaseUrl = apiBaseUrl
-        this.sessionId = sessionId
-        this.toolApprovals = toolApprovals
-        this.runId = runId
+    private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[]; apiBaseUrl: string; sessionId?: string; runId?: string }) {
+        this.prompt = params.prompt
+        this.skills = params.skills
+        this.toolApprovals = params.toolApprovals
+        this.apiBaseUrl = params.apiBaseUrl
+        this.sessionId = params.sessionId
+        this.runId = params.runId
     }
 
+    /**
+     * Create a TerseAgent. When called inside a job's `onTrigger` callback,
+     * sessionId, runId, and apiBaseUrl are picked up automatically from the
+     * job context (AsyncLocalStorage) — no manual wiring needed.
+     */
     static create<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]>(params: {
         prompt: string
-        skills: TSkills
-        ToolApprovals: InferToolApprovals<TSkills>[]
+        skills?: TSkills
+        ToolApprovals?: InferToolApprovals<TSkills>[]
     }): TerseAgent {
-        const apiBaseUrl = resolveTerseBackendUrl()
-        return new TerseAgent(params.prompt, params.skills, apiBaseUrl, undefined, params.ToolApprovals)
+        const ctx = getJobContext()
+        console.log("creating terse agent with context", ctx)
+        return new TerseAgent({
+            prompt: params.prompt,
+            skills: params.skills ?? [],
+            toolApprovals: params.ToolApprovals ?? [],
+            apiBaseUrl: ctx?.apiBaseUrl ?? resolveTerseBackendUrl(),
+            sessionId: ctx?.sessionId,
+            runId: ctx?.runId
+        })
     }
 
     async *run(userMessage: string): AsyncGenerator<TerseAgentResult> {
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
             prompt: this.prompt,
             toolApprovals: this.toolApprovals,
-            event: userMessage,
+            message: userMessage,
             skills: this.skills
         })
 

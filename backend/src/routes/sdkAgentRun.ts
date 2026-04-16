@@ -66,11 +66,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             })
         }
 
-        const eventText = data.event
-            ? ["", `Integration Type: ${data.event.integrationType}`, `Event Content:`, formatTriggerForAgent(data.event), ``, `Debug Log: ${debugTrigger(data.event)}`].join("\n")
-            : ""
-
-        let result = await sdkRunner.run(eventText)
+        let result = await sdkRunner.run(data.message)
 
         // Approval loop: keep the stream open while awaiting decisions
         while (result.loopResult.status === "awaiting_approval") {

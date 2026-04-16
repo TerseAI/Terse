@@ -579,7 +579,7 @@ export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayload
 
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
-    event: TriggerSchema.optional(),
+    message: z.string(),
     skills: z.array(skillConfigDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
