@@ -668,9 +668,7 @@ export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionR
 
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
-    triggers: z.array(triggerConfigDataSchema),
-    outputs: z.array(skillConfigDataSchema),
-    toolApprovals: z.array(z.string())
+    triggers: z.array(triggerConfigDataSchema)
 })
 export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 

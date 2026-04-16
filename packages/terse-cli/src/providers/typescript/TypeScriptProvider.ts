@@ -147,20 +147,6 @@ export class TypeScriptProvider implements LanguageProvider {
             closeSession = session.close
         }
 
-        const agent = TerseAgent.fromJob(job, { apiBaseUrl: BACKEND_URL, sessionId })
-
-        const isSandbox = !!process.env.TERSE_RUN_ID
-        if (!isSandbox) {
-            agent.onApprovalRequired = async (info: ApprovalRequestInfo) => {
-                sessionPaused = true
-                try {
-                    return await promptForToolApproval(info.toolName, info.arguments)
-                } finally {
-                    sessionPaused = false
-                }
-            }
-        }
-
         try {
             if (job.filter) {
                 const shouldRun = await job.filter(serializedEventRuntime)
@@ -173,7 +159,7 @@ export class TypeScriptProvider implements LanguageProvider {
             if (isVerbose) {
                 console.log(chalk.cyan(`  Job "${job.name}" started`))
             }
-            await job.onTrigger(serializedEventRuntime, agent)
+            await job.onTrigger(serializedEventRuntime)
         } catch (error) {
             console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))
             console.error(error)

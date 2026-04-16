@@ -65,9 +65,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         }
 
         for (const job of jobs) {
-            const outputs = job.outputs ?? []
-            const toolApprovals = job.toolApprovals ?? []
-
             const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
                 where: {
                     name: job.jobName,
@@ -79,12 +76,12 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             const isUpdate = !!existing
             const agent = isUpdate
-                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, {
+                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId, {
                       currentSdkSourceImageId,
                       gcsKey,
                       remoteServerUrl
                   })
-                : await createNewAutomation(prisma, job.jobName, job.triggers, outputs, toolApprovals, organizationId, userId, {
+                : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, {
                       currentSdkSourceImageId,
                       gcsKey,
                       remoteServerUrl
@@ -160,8 +157,6 @@ async function updateExistingAutomation(
     existing: AgentWithTriggerRelations,
     jobName: string,
     triggers: TriggerConfigData[],
-    outputs: SkillConfigData[],
-    toolApprovals: string[],
     organizationId: string,
     userId: string,
     artifacts: SdkDeploymentArtifacts = {}
@@ -209,9 +204,7 @@ async function updateExistingAutomation(
             }
         })
 
-        await persistToolApprovals(tx, automationId, toolApprovals, { replaceExisting: true })
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
-        await createOutputsForAutomation(tx, automationId, outputs, organizationId, userId)
 
         // This is a hack to preserve webhook tokens so URLs don't change on redeploy.
         // The right way to do this is to have some stable ids for the triggers so we can upsert. But that's a bigger change.
@@ -239,8 +232,6 @@ async function createNewAutomation(
     prisma: ReturnType<typeof db>,
     jobName: string,
     triggers: TriggerConfigData[],
-    outputs: SkillConfigData[],
-    toolApprovals: string[],
     organizationId: string,
     userId: string,
     artifacts: SdkDeploymentArtifacts = {}
@@ -270,10 +261,7 @@ async function createNewAutomation(
             }
         })
 
-        await persistToolApprovals(tx, newAgent.id, toolApprovals)
-
         await createTriggersForAutomation(tx, newAgent.id, triggers, organizationId, userId)
-        await createOutputsForAutomation(tx, newAgent.id, outputs, organizationId, userId)
 
         return tx.automations.findFirstOrThrow({
             where: { id: newAgent.id },

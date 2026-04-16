@@ -151,13 +151,11 @@ export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecisi
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[], TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> = {
+export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[]> = {
     name: string
     triggers: [...TTriggers]
-    skills: [...TSkills]
-    toolApprovals?: InferToolApprovals<TSkills>[]
     filter?: (event: InferEvents<TTriggers>) => boolean | Promise<boolean>
-    onTrigger: (event: InferEvents<TTriggers>, Agent: TerseAgent) => Promise<void>
+    onTrigger: (event: InferEvents<TTriggers>) => Promise<void>
     remoteServerUrl?: string
 }
 
@@ -171,7 +169,7 @@ export class Terse {
         // fetch api_key from env
     }
 
-    createJob<TTriggers extends readonly TypedTrigger[], TSkills extends readonly TypedSkill<string>[]>(params: CreateJobParameters<TTriggers, TSkills>) {
+    createJob<TTriggers extends readonly TypedTrigger[]>(params: CreateJobParameters<TTriggers>) {
         const webhookCount = params.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK).length
         if (webhookCount > 1) {
             throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
@@ -245,7 +243,6 @@ export class Terse {
 
         try {
             const inputEvent = createSDKTrigger(event)
-            const agent = TerseAgent.fromJob(job, { apiBaseUrl, sessionId: session.sessionId, runId })
 
             if (job.filter) {
                 const shouldRun = await job.filter(inputEvent)
@@ -253,7 +250,7 @@ export class Terse {
                     return { status: "ok", filtered: true }
                 }
             }
-            await job.onTrigger(inputEvent, agent)
+            await job.onTrigger(inputEvent)
 
             return { status: "ok" }
         } catch (error) {
@@ -277,7 +274,7 @@ export type CreateAgentForJobOptions = {
     runId?: string
 }
 
-type JobAgentConfig = Pick<CreateJobParameters, "skills" | "triggers" | "toolApprovals">
+type JobAgentConfig = Pick<CreateJobParameters, "triggers">
 
 function attachGeneratedTools(agent: TerseAgent): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -309,13 +306,6 @@ export class TerseAgent {
         this.sessionId = sessionId
         this.toolApprovals = toolApprovals
         this.runId = runId
-    }
-
-    static fromJob(job: JobAgentConfig, options: CreateAgentForJobOptions = {}): TerseAgent {
-        const agent = new TerseAgent(job.skills, options.apiBaseUrl, options.sessionId, job.toolApprovals ? [...job.toolApprovals] : [], options.runId)
-        agent.manualToolConfigs = [...job.skills, ...job.triggers]
-        attachGeneratedTools(agent)
-        return agent
     }
 
     async *run(prompt: string, event?: RawTrigger): AsyncGenerator<TerseAgentResult> {

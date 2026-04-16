@@ -42,9 +42,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         const body = sdkDeployRequestBodySchema.parse({
             jobs: jobs.map(job => ({
                 jobName: job.name,
-                triggers: job.triggers,
-                outputs: job.skills ?? [],
-                toolApprovals: job.toolApprovals ?? []
+                triggers: job.triggers
             })),
             remoteServerUrl: isUrlMode ? remoteServerUrl : undefined,
             sourceZipBase64
