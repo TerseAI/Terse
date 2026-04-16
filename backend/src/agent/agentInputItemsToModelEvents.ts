@@ -2,6 +2,8 @@ import type { AgentInputItem, AssistantMessageItem, FunctionCallItem, FunctionCa
 import { IntegrationType } from "terse-types/Integrations"
 import { ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 
+import { OutputFactory } from "../outputs/abstract/OutputFactory"
+
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseCancelledSystemEventItem } from "./systemEvents/cancelledSystemEvent"
 import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
@@ -29,7 +31,6 @@ const DEFAULT_CONVERT_OPTIONS: Required<ConvertAgentInputItemsToModelEventsOptio
 
 export async function convertAgentInputItemsToModelEvents(
     items: TimestampedAgentInputItem[],
-    toolToIntegrationMap?: Map<string, string>,
     options?: ConvertAgentInputItemsToModelEventsOptions
 ): Promise<ModelEvent[]> {
     const resolvedOptions: Required<ConvertAgentInputItemsToModelEventsOptions> = {
@@ -42,7 +43,7 @@ export async function convertAgentInputItemsToModelEvents(
         const item: AgentInputItem = entry.item
         const ts = entry.createdAt
         const eventTimestamp = ts.getTime()
-        const converted = await convertSingleItem(item, eventTimestamp, itemIndex, toolToIntegrationMap, resolvedOptions)
+        const converted = await convertSingleItem(item, eventTimestamp, itemIndex, resolvedOptions)
         if (converted) {
             events.push(...converted)
         }
@@ -70,7 +71,6 @@ async function convertSingleItem(
     item: AgentInputItem,
     eventTimestamp: number,
     itemIndex: number,
-    toolToIntegrationMap?: Map<string, string>,
     options: Required<ConvertAgentInputItemsToModelEventsOptions> = DEFAULT_CONVERT_OPTIONS
 ): Promise<ModelEvent[] | null> {
     const cancelledSystemEvent = parseCancelledSystemEventItem(item)
@@ -204,7 +204,7 @@ async function convertSingleItem(
 
     // Function call - convert to ToolCall
     if (isFunctionCallItem(item)) {
-        const integration = toolToIntegrationMap?.get(item.name) || IntegrationType.TERSE
+        const integration = OutputFactory.getToolIntegrationType(item.name)
         return [
             {
                 type: "ToolCall",
@@ -221,7 +221,7 @@ async function convertSingleItem(
     // Note: changed_items are not populated here. Callers that need them (e.g. run history routes)
     // should load run_history_actions once and attach via attachRunHistoryChangedItems().
     if (isFunctionCallResultItem(item)) {
-        const integration = toolToIntegrationMap?.get(item.name || "") || IntegrationType.TERSE
+        const integration = OutputFactory.getToolIntegrationType(item.name || "")
         const status = item.status as ToolCallExecutionStatus
         const parsed = parseToolExecutionResult(item.output, status)
 

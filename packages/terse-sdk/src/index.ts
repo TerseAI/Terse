@@ -274,16 +274,6 @@ export type CreateAgentForJobOptions = {
     runId?: string
 }
 
-type JobAgentConfig = Pick<CreateJobParameters, "triggers">
-
-function attachGeneratedTools(agent: TerseAgent): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
-    if (createTools) {
-        Object.defineProperty(agent, "tools", { value: createTools(agent) })
-    }
-}
-
 export class TerseAgent {
     readonly skills: ConfigData[]
     manualToolConfigs?: readonly ConfigData[]

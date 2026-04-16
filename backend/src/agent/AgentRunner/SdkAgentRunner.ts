@@ -1,8 +1,7 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunToolApprovalItem, Tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
 import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
-import { IntegrationType } from "terse-types"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { SdkAgentStreamEvent, User } from "terse-types"
@@ -14,6 +13,7 @@ import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
+import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
@@ -32,9 +32,7 @@ type SdkAgentRunnerParams = {
     user: User
     prompt: string
     skills: ConfigData[]
-    tools: Tool<SdkRunnerSession>[]
     toolApprovals: string[]
-    toolToIntegrationMap: Map<string, string>
     maxTurns: number
     requireApproval: boolean
     send: (event: SdkAgentStreamEvent) => void
@@ -96,16 +94,13 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
     constructor(params: SdkAgentRunnerParams) {
-        super({
-            runId: params.runId,
-            toolToIntegrationMap: params.toolToIntegrationMap
-        })
+        super({ runId: params.runId })
         this.sdkRunId = params.runId
         this.user = params.user
         this.prompt = params.prompt
         const skillConfigs = params.skills
         this.outputs = this.buildOutputsFromConfigs(skillConfigs)
-        this.tools = params.tools
+        this.tools = this.buildToolsFromOutputs()
         this.maxTurns = params.maxTurns
         this.toolApprovals = params.toolApprovals
         this.send = params.send
@@ -142,6 +137,26 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
                 memorySession: this.memorySession,
                 sessionInputCallback: recentHistoryCallback,
                 maxTurns: this.maxTurns
+            }
+        )
+        return { loopResult }
+    }
+
+    async userMessageRun(userMessage: string, options?: { signal?: AbortSignal }): Promise<SdkAgentRunnerResult> {
+        const loopResult = await super.runAgent(
+            [
+                {
+                    role: "user",
+                    content: userMessage
+                }
+            ],
+            {
+                runner: this.createRunner(),
+                context: this.getToolContext(),
+                memorySession: this.memorySession,
+                sessionInputCallback: recentHistoryCallback,
+                maxTurns: this.maxTurns,
+                signal: options?.signal
             }
         )
         return { loopResult }
@@ -246,7 +261,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
 
         // Send notification
         try {
-            const integration = (this.toolToIntegrationMap?.get(name) as IntegrationType) ?? IntegrationType.TERSE
+            const integration = OutputFactory.getToolIntegrationType(name)
             const approvalAction: RunHistoryAction = {
                 action: `Approval requested for ${name}`,
                 integration,
@@ -362,6 +377,23 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         const remaining = this.failedToolCalls.length - summarized.length
         const suffix = remaining > 0 ? ` (+${remaining} more)` : ""
         return `Tool call failures: ${summarized.join("; ")}${suffix}`
+    }
+
+    private buildToolsFromOutputs(): Tool<SdkRunnerSession>[] {
+        const toolsMap = new Map<string, Tool<SdkRunnerSession>>()
+        for (const output of this.outputs) {
+            for (const entry of output.toolbox) {
+                const toolOptions = {
+                    ...entry.tool,
+                    needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
+                    errorFunction: formatError
+                }
+                const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
+                if (toolsMap.has(toolEntry.name)) continue
+                toolsMap.set(toolEntry.name, toolEntry)
+            }
+        }
+        return Array.from(toolsMap.values())
     }
 
     private buildOutputsFromConfigs(configs: ConfigData[]): Output<ConfigData>[] {

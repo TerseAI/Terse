@@ -1,11 +1,10 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool, tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 
 import logger from "../../logger"
-import { Output } from "../../outputs/abstract/Output"
 import { Session as AppSession } from "../../types/session"
 import type { StreamEventIngestionSession } from "../CustomMemorySession"
 import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
@@ -23,25 +22,13 @@ export type SessionWithTracking<T extends AppSession> = T & {
 
 export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> {
     private runId: string
-    protected toolToIntegrationMap?: Map<string, string>
     private endedWithToolFailure = false
     protected agent?: TAgent
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
 
-    constructor(params: { runId: string; toolToIntegrationMap?: Map<string, string> }) {
+    constructor(params: { runId: string }) {
         this.runId = params.runId
-        this.toolToIntegrationMap = params.toolToIntegrationMap
-    }
-
-    protected static buildToolToIntegrationMap<TConfig extends ConfigData>(outputs: Output<TConfig>[]): Map<string, string> {
-        const map = new Map<string, string>()
-        for (const output of outputs) {
-            for (const entry of output.toolbox) {
-                map.set(entry.tool.name ?? "", entry.integration)
-            }
-        }
-        return map
     }
 
     protected abstract onModelEvent(event: ModelEvent, timestamp: number): Promise<void>
@@ -143,7 +130,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     private async processStream(result: StreamedRunResult<TSession, TAgent>, memorySession: AgentMemorySession): Promise<void> {
         const streamIngestionSession = asStreamEventIngestionSession(memorySession)
         const eventStream = transformAgentStreamToModelEvents(result, {
-            toolToIntegrationMap: this.toolToIntegrationMap,
             onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
             onRawStreamEvent: async streamEvent => {
                 if (!streamIngestionSession) return
