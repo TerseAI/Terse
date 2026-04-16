@@ -159,7 +159,7 @@ export class SlackEventHydrator extends Hydrator<SlackTriggerRuntime> {
                     // User info fetch failed, continue without it
                 }
             }
-            const ts = message.ts || timestamp
+
             const eventData: SlackTrigger = {
                 integrationType: IntegrationType.SLACK,
                 eventType: SlackEventType.MESSAGE,
@@ -169,7 +169,8 @@ export class SlackEventHydrator extends Hydrator<SlackTriggerRuntime> {
                 userId: message.user || "",
                 userName: userName || null,
                 text: message.text || "",
-                timestamp: ts,
+                timestamp: message.ts || timestamp,
+                threadTimestamp: message.thread_ts || null,
                 teamId: userSlackIntegration.slack_integration.team_id,
                 permalink,
                 blocks: message.blocks || null,
