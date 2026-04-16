@@ -1,6 +1,4 @@
 import type {
-    ConfigData,
-    Trigger as RawTrigger,
     RunHistoryAction,
     SdkAgentRunRequestBody,
     SdkAgentRunResponseBody,
@@ -293,8 +291,6 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    readonly tools: Record<string, Record<string, (...args: any[]) => Promise<unknown>>>
-
     private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[]; apiBaseUrl: string; sessionId?: string; runId?: string }) {
         this.prompt = params.prompt
         this.skills = params.skills
@@ -303,8 +299,8 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         this.sessionId = params.sessionId
         this.runId = params.runId
 
-        const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => Record<string, Record<string, (...args: any[]) => Promise<unknown>>>) | undefined
-        this.tools = createTools ? createTools(this) : ({} as any)
+        const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
+        ;(this as any).tools = createTools ? createTools(this) : {}
     }
 
     /**
@@ -312,13 +308,10 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
      * sessionId, runId, and apiBaseUrl are picked up automatically from the
      * job context (AsyncLocalStorage) — no manual wiring needed.
      */
-    static create<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]>(params: {
-        prompt: string
-        skills?: TSkills
-        ToolApprovals?: InferToolApprovals<TSkills>[]
-    }): TerseAgent {
+    static create<TSkills extends readonly TypedSkill<string>[]>(params: { prompt: string; skills: [...TSkills]; ToolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills>
+    static create(params: { prompt: string }): TerseAgent<readonly []>
+    static create(params: { prompt: string; skills?: readonly TypedSkill<string>[]; ToolApprovals?: string[] }): TerseAgent {
         const ctx = getJobContext()
-        console.log("creating terse agent with context", ctx)
         return new TerseAgent({
             prompt: params.prompt,
             skills: params.skills ?? [],
