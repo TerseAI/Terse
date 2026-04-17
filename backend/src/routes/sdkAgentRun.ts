@@ -1,21 +1,15 @@
-import { Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { CONFIG_DETAILS, SkillConfigData } from "terse-types/Configs"
-import { IntegrationType } from "terse-types/Integrations"
+import { SkillConfigData } from "terse-types/Configs"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 import { debugTrigger, formatTriggerForAgent } from "terse-types/Triggers"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
 
-import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
-import { appendRunAction } from "../agent/AgentRunner/runHistory"
+import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
-import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { createNeedsApprovalFunction, formatError } from "../tools/toolUtils"
-import { Session } from "../types/session"
 import { extractErrorMessage } from "../utility/strings"
 
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
@@ -49,9 +43,10 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
     const { data } = parsed
     const { send, sandboxRunId } = initSseStream(req, res)
+    const isProductionRun = !!sandboxRunId
 
     try {
-        const runId = sandboxRunId ?? crypto.randomUUID()
+        const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
         const sdkRunner = createSdkRunner({
             runId,
             user,
@@ -59,17 +54,19 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             skills: data.skills ?? [],
             toolApprovals: data.toolApprovals ?? [],
             send,
-            sandboxRunId,
+            isProductionRun,
             options: data.options
         })
 
         send({ type: "run_started", runId })
 
-        const eventText = data.event
-            ? ["", `Integration Type: ${data.event.integrationType}`, `Event Content:`, formatTriggerForAgent(data.event), ``, `Debug Log: ${debugTrigger(data.event)}`].join("\n")
-            : ""
+        if (isProductionRun) {
+            void upsertSdkSkills(runId, data.skills ?? []).catch(err => {
+                logger.warn("Failed to persist SDK skills for run", { error: err, runId })
+            })
+        }
 
-        let result = await sdkRunner.run(eventText)
+        let result = await sdkRunner.run(data.message)
 
         // Approval loop: keep the stream open while awaiting decisions
         while (result.loopResult.status === "awaiting_approval") {
@@ -173,52 +170,18 @@ function createSdkRunner(params: {
     skills: SkillConfigData[]
     toolApprovals: string[]
     send: (event: SdkAgentStreamEvent) => void
-    sandboxRunId: string | undefined
+    isProductionRun: boolean
     options?: { maxTurns?: number; requireApproval?: boolean }
 }): SdkAgentRunner {
-    const { tools, toolToIntegrationMap } = buildToolsForSkills(params.skills.map(s => CONFIG_DETAILS[s.configType].integrationType))
-
     return new SdkAgentRunner({
         runId: params.runId,
         user: params.user,
         prompt: params.prompt,
         skills: params.skills,
         toolApprovals: params.toolApprovals,
-        tools,
-        toolToIntegrationMap,
         maxTurns: params.options?.maxTurns ?? 50,
         requireApproval: params.options?.requireApproval ?? true,
         send: params.send,
-        isProductionRun: !!params.sandboxRunId
+        isProductionRun: params.isProductionRun
     })
-}
-
-function buildToolsForSkills(skillIntegrationTypes: IntegrationType[]): {
-    tools: Tool<SessionWithTracking<Session>>[]
-    toolToIntegrationMap: Map<string, IntegrationType>
-} {
-    const allowed = new Set<IntegrationType>(skillIntegrationTypes)
-    const toolByName = new Map<string, Tool<SessionWithTracking<Session>>>()
-    const toolToIntegrationMap = new Map<string, IntegrationType>()
-
-    for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
-        const output = factory()
-        for (const entry of output.toolbox) {
-            const toolOptions = {
-                ...entry.tool,
-                needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
-                errorFunction: formatError
-            }
-            const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
-            if (!allowed.has(entry.integration)) continue
-            if (toolByName.has(toolEntry.name)) continue
-            toolByName.set(toolEntry.name, toolEntry)
-            toolToIntegrationMap.set(toolEntry.name, entry.integration)
-        }
-    }
-
-    return {
-        tools: Array.from(toolByName.values()),
-        toolToIntegrationMap
-    }
 }

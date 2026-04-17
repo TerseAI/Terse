@@ -51,8 +51,7 @@ declare module "terse-sdk" {
 }
 
 function createTools(agent: TerseAgent): GeneratedTools {
-    const manualToolConfigs = agent.manualToolConfigs ?? agent.skills
-    const allowed: Set<string> = new Set(manualToolConfigs.map(config => config.integrationType))
+    const allowed: Set<string> = new Set(agent.skills.map(config => config.integrationType))
     return {
 {{#each groups}}
         ...(allowed.has("{{escape integrationType}}") ? { {{key}}: {

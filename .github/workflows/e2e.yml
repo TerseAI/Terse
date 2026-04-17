@@ -7,11 +7,102 @@ on:
         branches: [main]
 
 jobs:
+    # ── Wait for Render PR preview ────────────────────────────────────────────
+    # On pull_request events, Render spins up a preview of the backend service
+    # at a URL like https://terse-pr-<N>.onrender.com. This job polls the
+    # Render API until the preview's latest deploy reports status=live, then
+    # exposes the preview URL to the e2e job. Skipped on push events (which
+    # target the production URL instead).
+
+    wait-for-render-preview:
+        name: Wait for Render Preview
+        if: github.event_name == 'pull_request'
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        outputs:
+            backend_url: ${{ steps.wait.outputs.backend_url }}
+        steps:
+            - name: Wait for backend preview deploy
+              id: wait
+              env:
+                  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  SERVICE_DISPLAY_NAME: Terse
+                  TIMEOUT_SECONDS: "900" # 15 min; job-level safety net is 20 min
+                  POLL_SECONDS: "15"
+              run: |
+                  set -euo pipefail
+
+                  if [[ -z "${RENDER_API_KEY:-}" ]]; then
+                      echo "::error::RENDER_API_KEY secret is not set"
+                      exit 1
+                  fi
+
+                  preview_name="${SERVICE_DISPLAY_NAME} PR #${PR_NUMBER}"
+                  start=$(date +%s)
+                  echo "Waiting for Render preview service '${preview_name}' to reach status=live..."
+
+                  while :; do
+                      elapsed=$(( $(date +%s) - start ))
+                      if (( elapsed > TIMEOUT_SECONDS )); then
+                          echo "::error::Timed out after ${elapsed}s waiting for '${preview_name}' to deploy"
+                          exit 1
+                      fi
+
+                      # Find the preview service by name.
+                      services=$(curl -sS -G \
+                          --data-urlencode "name=${preview_name}" \
+                          --data-urlencode "limit=1" \
+                          -H "Authorization: Bearer ${RENDER_API_KEY}" \
+                          -H "Accept: application/json" \
+                          "https://api.render.com/v1/services")
+
+                      service_id=$(echo "$services" | jq -r '.[0].service.id // empty')
+                      service_url=$(echo "$services" | jq -r '.[0].service.serviceDetails.url // empty')
+
+                      if [[ -z "$service_id" ]]; then
+                          echo "[${elapsed}s] Preview service not found yet, retrying in ${POLL_SECONDS}s..."
+                          sleep "$POLL_SECONDS"
+                          continue
+                      fi
+
+                      # Check the latest deploy's status.
+                      deploys=$(curl -sS -G \
+                          --data-urlencode "limit=1" \
+                          -H "Authorization: Bearer ${RENDER_API_KEY}" \
+                          -H "Accept: application/json" \
+                          "https://api.render.com/v1/services/${service_id}/deploys")
+
+                      status=$(echo "$deploys" | jq -r '.[0].deploy.status // empty')
+
+                      case "$status" in
+                          live)
+                              echo "Preview is live at ${service_url}"
+                              echo "backend_url=${service_url}" >> "$GITHUB_OUTPUT"
+                              exit 0
+                              ;;
+                          build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                              echo "::error::Preview deploy ended with status=${status}"
+                              exit 1
+                              ;;
+                          *)
+                              echo "[${elapsed}s] status=${status:-unknown}, sleeping ${POLL_SECONDS}s..."
+                              sleep "$POLL_SECONDS"
+                              ;;
+                      esac
+                  done
+
     e2e:
         name: End-to-End Tests
+        needs: [wait-for-render-preview]
+        # Run when the wait job succeeded OR was skipped (push to main).
+        if: >
+            always() &&
+            needs.wait-for-render-preview.result != 'failure' &&
+            needs.wait-for-render-preview.result != 'cancelled'
         runs-on: blacksmith-4vcpu-ubuntu-2404
         env:
-            TERSE_BACKEND_URL: https://terse.onrender.com
+            TERSE_BACKEND_URL: ${{ needs.wait-for-render-preview.outputs.backend_url || 'https://terse.onrender.com' }}
             TERSE_FRONTEND_URL: https://terse-frontend.onrender.com
 
         steps:

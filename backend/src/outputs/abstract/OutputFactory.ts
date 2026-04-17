@@ -15,6 +15,7 @@ import {
     TerseConfig,
     WorkOSOutputConfig
 } from "terse-types"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
 import { convertPrismaOutputConfigToConfigData } from "../../utility/typeConverters"
@@ -33,6 +34,8 @@ import { TerseSkillsOutput } from "../terse/TerseSkillsOutput"
 import { WorkOSOutput } from "../workos/WorkOSOutput"
 
 import { Output } from "./Output"
+
+let _toolIntegrationMap: Map<string, IntegrationType> | null = null
 
 /**
  * Factory for creating Output instances based on IntegrationType.
@@ -113,6 +116,19 @@ export class OutputFactory {
                 throw configType satisfies never
         }
         return output
+    }
+
+    static getToolIntegrationType(toolName: string): IntegrationType {
+        if (!_toolIntegrationMap) {
+            _toolIntegrationMap = new Map()
+            for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
+                const output = factory()
+                for (const entry of output.toolbox) {
+                    _toolIntegrationMap.set(entry.tool.name ?? "", entry.integration)
+                }
+            }
+        }
+        return _toolIntegrationMap.get(toolName) ?? IntegrationType.TERSE
     }
 
     static createOutputsFromAgent(agent: AgentWithRelations): Output<ConfigData>[] {

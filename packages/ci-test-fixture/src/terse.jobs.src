@@ -10,8 +10,8 @@ const client = new TerseClient()
 await client.createJob({
     name: "Tell me a joke",
     triggers: [Webhook.onRequest()],
-    skills: [],
-    onTrigger: async (event: WebhookTrigger, Agent: TerseAgent) => {
-        await Agent.runAndWait("Tell me a funny joke")
+    onTrigger: async (_event: WebhookTrigger) => {
+        const agent = TerseAgent.create({ prompt: "You tell short, clean jokes." })
+        await agent.runAndWait("Tell me a funny joke")
     }
 })
