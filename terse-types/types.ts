@@ -801,7 +801,8 @@ export const sdkToolExecuteRequestSchema = z.object({
 export type SdkToolExecuteRequest = z.infer<typeof sdkToolExecuteRequestSchema>
 
 export const sdkRunTriggerEventResponseSchema = z.object({
-    event: serializedEventSchema
+    event: serializedEventSchema,
+    agentName: z.string()
 })
 export type SdkRunTriggerEventResponse = z.infer<typeof sdkRunTriggerEventResponseSchema>
 
@@ -834,9 +835,16 @@ export const sdkSampleEventsRequestSchema = z.object({
 })
 export type SdkSampleEventsRequest = z.infer<typeof sdkSampleEventsRequestSchema>
 
-export const triggerWithEventRequestSchema = z.object({
-    event: TriggerSchema
-})
+export const triggerWithEventRequestSchema = z.union([
+    z.object({
+        event: TriggerSchema,
+        runId: z.undefined().optional()
+    }),
+    z.object({
+        event: z.undefined().optional(),
+        runId: z.string()
+    })
+])
 export type TriggerWithEventRequest = z.infer<typeof triggerWithEventRequestSchema>
 
 export const TERSE_SIGNATURE_HEADER = "x-terse-signature"

@@ -2,6 +2,8 @@ import chalk from "chalk"
 import dotenv from "dotenv"
 import fs from "node:fs"
 import path from "node:path"
+import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema } from "terse-types"
+import type { SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
 
 import { BACKEND_URL } from "./config.js"
 
@@ -79,4 +81,19 @@ export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: 
     }
 
     return res.json() as Promise<T>
+}
+
+export async function resolveEventFromRunId(runId: string | null, apiKey: string): Promise<SdkRunTriggerEventResponse | undefined> {
+    if (!runId) {
+        return undefined
+    }
+
+    try {
+        const response = await fetchWithAuth<SdkRunTriggerEventResponse>(buildRoute(ApiRoutes.SDK.RUN_TRIGGER_EVENT, { runId }), apiKey)
+        return sdkRunTriggerEventResponseSchema.parse(response)
+    } catch (error) {
+        console.error(chalk.red(`Error: Could not fetch the trigger event for run ${runId}.`))
+        console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
+        process.exit(1)
+    }
 }

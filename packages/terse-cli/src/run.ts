@@ -1,9 +1,9 @@
 import chalk from "chalk"
 import fs from "fs"
-import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema, serializedEventSchema } from "terse-types"
-import type { SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
+import { serializedEventSchema } from "terse-types"
+import type { SerializedEvent } from "terse-types"
 
-import { fetchWithAuth, readApiKey, readApiKeyOrBail, readRunId } from "./api.js"
+import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "./api.js"
 import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
@@ -58,19 +58,4 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     }
 
     await provider.executeJob(job, runId, parsed, { entryFile })
-}
-
-async function resolveEventFromRunId(runId: string | null, apiKey: string): Promise<unknown | undefined> {
-    if (!runId) {
-        return undefined
-    }
-
-    try {
-        const response = await fetchWithAuth<SdkRunTriggerEventResponse>(buildRoute(ApiRoutes.SDK.RUN_TRIGGER_EVENT, { runId }), apiKey)
-        return sdkRunTriggerEventResponseSchema.parse(response).event
-    } catch (error) {
-        console.error(chalk.red(`Error: Could not fetch the trigger event for run ${runId}.`))
-        console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
-        process.exit(1)
-    }
 }
