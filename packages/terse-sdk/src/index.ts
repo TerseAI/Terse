@@ -161,22 +161,39 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     remoteServerUrl?: string
 }
 
-/** Internal job registry — lives on globalThis so it survives across module instances (e.g. tsx loaders). */
-const _global = globalThis as unknown as { __terse_jobRegistry?: Map<string, CreateJobParameters> }
-_global.__terse_jobRegistry ??= new Map<string, CreateJobParameters>()
-export const _jobRegistry: Map<string, CreateJobParameters> = _global.__terse_jobRegistry
+// Process-wide directory of Terse instances. Each `new Terse()` registers itself here on
+// construction so the CLI (via tsImport) can discover jobs across module-graph boundaries.
+// Keyed by a process-global Symbol so every copy of this module shares one array.
+type TerseLike = { jobs: Map<string, CreateJobParameters> }
+const TERSE_INSTANCES_KEY = Symbol.for("terse.instances")
+type GlobalWithInstances = typeof globalThis & { [TERSE_INSTANCES_KEY]?: TerseLike[] }
+
+function registerInstance(terse: TerseLike): void {
+    const g = globalThis as GlobalWithInstances
+    ;(g[TERSE_INSTANCES_KEY] ??= []).push(terse)
+}
+
+export function __getRegisteredTerseInstances(): TerseLike[] {
+    const g = globalThis as GlobalWithInstances
+    return g[TERSE_INSTANCES_KEY] ?? []
+}
 
 export class Terse {
+    readonly jobs = new Map<string, CreateJobParameters>()
+
     constructor() {
-        // fetch api_key from env
+        registerInstance(this)
     }
 
     createJob<TTriggers extends readonly TypedTrigger[]>(params: CreateJobParameters<TTriggers>) {
+        if (this.jobs.has(params.name)) {
+            throw new Error(`Job "${params.name}" is registered twice on this Terse instance.`)
+        }
         const webhookCount = params.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK).length
         if (webhookCount > 1) {
             throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
         }
-        _jobRegistry.set(params.name, params as unknown as CreateJobParameters)
+        this.jobs.set(params.name, params as unknown as CreateJobParameters)
     }
 
     /**
@@ -229,11 +246,11 @@ export class Terse {
         }
 
         const { jobName, runId, event } = full.data
-        const job = _jobRegistry.get(jobName)
+        const job = this.jobs.get(jobName)
         if (!job) {
-            const available = [..._jobRegistry.keys()]
+            const available = [...this.jobs.keys()]
             throw new Error(
-                `Job "${jobName}" is not registered. ` +
+                `Job "${jobName}" is not registered on this Terse instance. ` +
                     (available.length
                         ? `Registered jobs: ${available.join(", ")}. Make sure the job name in your Terse dashboard matches your code.`
                         : `No jobs are registered. Make sure your job file is imported before the server starts.`)

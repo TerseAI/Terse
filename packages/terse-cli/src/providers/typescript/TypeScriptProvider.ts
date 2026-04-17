@@ -5,7 +5,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { CreateJobParameters } from "terse-sdk"
-import { createSDKTrigger, getJobContext, runWithJobContext } from "terse-sdk"
+import { __getRegisteredTerseInstances, createSDKTrigger, getJobContext, runWithJobContext } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
@@ -118,12 +118,28 @@ export class TypeScriptProvider implements LanguageProvider {
             process.exit(1)
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const registry = (globalThis as any).__terse_jobRegistry as Map<string, CreateJobParameters> | undefined
+        const instances = __getRegisteredTerseInstances()
+        if (instances.length === 0) {
+            console.error(chalk.red(`No Terse instances were constructed after importing ${resolvedEntryFile}.`))
+            console.error(chalk.dim("Make sure this file, or something it imports, creates a Terse instance (e.g. `const terse = new Terse()`)."))
+            process.exit(1)
+        }
 
-        if (!registry || registry.size === 0) {
+        const registry = new Map<string, CreateJobParameters>()
+        for (const terse of instances) {
+            for (const [name, job] of terse.jobs) {
+                if (registry.has(name)) {
+                    console.error(chalk.red(`Job "${name}" is registered on more than one Terse instance.`))
+                    console.error(chalk.dim("Job names must be unique across all Terse instances in a project."))
+                    process.exit(1)
+                }
+                registry.set(name, job)
+            }
+        }
+
+        if (registry.size === 0) {
             console.error(chalk.red(`No jobs found after importing ${resolvedEntryFile}.`))
-            console.error(chalk.dim("Make sure this file, or something it imports, calls client.createJob()."))
+            console.error(chalk.dim("Make sure you call `createJob()` on a Terse instance."))
             process.exit(1)
         }
 
