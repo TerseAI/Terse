@@ -428,8 +428,13 @@ interface BackendService {
 
     /**
      * Triggers an automation with a specific event payload (e.g. a sample event)
+     *
+     * Exactly one of `event` or `runId` must be supplied. The overloads enforce this at
+     * compile time so the request body can never serialize to `{}` and fail backend
+     * Zod union validation with a 400 error.
      */
-    triggerWithEvent(automationId: string, event?: SerializedEvent, runId?: string): Promise<{ received: boolean; message: string }>
+    triggerWithEvent(automationId: string, event: SerializedEvent, runId?: undefined): Promise<{ received: boolean; message: string }>
+    triggerWithEvent(automationId: string, event: undefined, runId: string): Promise<{ received: boolean; message: string }>
 
     /**
      * Manually triggers a scheduled automation trigger

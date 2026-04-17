@@ -75,13 +75,7 @@ export default function RunHistoryChatDrawerHeader({
                             {trigger.title || trigger.source}
                         </span>
                         {trigger.url && (
-                            <a
-                                href={trigger.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                                title={trigger.url}
-                            >
+                            <a href={trigger.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-muted-foreground transition-colors hover:text-foreground" title={trigger.url}>
                                 <ExternalLink className="h-3.5 w-3.5" />
                             </a>
                         )}
@@ -93,36 +87,16 @@ export default function RunHistoryChatDrawerHeader({
                     <RunHistoryStatusBadge status={status} />
                     {hasRunNavigation && (
                         <div className="ml-1 flex items-center rounded-md border border-border/60">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handlePrevious}
-                                disabled={!canGoPrevious}
-                                className="h-7 w-7 rounded-r-none p-0 hover:bg-muted/50"
-                                title="Previous run"
-                            >
+                            <Button variant="ghost" size="sm" onClick={handlePrevious} disabled={!canGoPrevious} className="h-7 w-7 rounded-r-none p-0 hover:bg-muted/50" title="Previous run">
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <div className="h-4 w-px bg-border/60" />
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleNext}
-                                disabled={!canGoNext}
-                                className="h-7 w-7 rounded-l-none p-0 hover:bg-muted/50"
-                                title="Next run"
-                            >
+                            <Button variant="ghost" size="sm" onClick={handleNext} disabled={!canGoNext} className="h-7 w-7 rounded-l-none p-0 hover:bg-muted/50" title="Next run">
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
                     )}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onFullscreenChange(!isFullscreen)}
-                        className="h-7 w-7 p-0"
-                        title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => onFullscreenChange(!isFullscreen)} className="h-7 w-7 p-0" title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
                         {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                     </Button>
                 </div>

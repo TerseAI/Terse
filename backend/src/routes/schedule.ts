@@ -11,6 +11,7 @@ import { TriggerRuntime } from "../integrations/abstract/TriggerRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { extractErrorMessage } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
 
 import { fetchEventFromRunId } from "./sdkRunTriggerEvent"
@@ -120,7 +121,17 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
     const organizationId = session.user.organizationId
 
     const triggerWithEventRequest = triggerWithEventRequestSchema.parse(req.body)
-    const event = await resolveEvent(triggerWithEventRequest, organizationId)
+    let event: Trigger | null
+    try {
+        event = await resolveEvent(triggerWithEventRequest, organizationId)
+    } catch (error) {
+        logger.error("Failed to resolve trigger event", {
+            automationId,
+            organizationId,
+            error: extractErrorMessage(error)
+        })
+        return res.status(500).json({ error: "Failed to resolve trigger event" })
+    }
     if (!event) {
         return res.status(404).json({ error: "Event not found" })
     }
