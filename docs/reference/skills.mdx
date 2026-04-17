@@ -6,12 +6,17 @@ icon: "wrench"
 
 Skills define what integrations your workflow can interact with. Each skill exposes a set of tools that the agent can call (via agentic loops) or that you can call deterministically (via `agent.tools.*`).
 
+In TypeScript, pass the `skills` array to `TerseAgent.create({ prompt, skills })` inside your job's `onTrigger` handler (not on `createJob`). Terse uses the skills from the agents you run so the product UI stays in sync with your code.
+
 ## GitHub
 
 Read-only access to repositories.
 
 ```ts
-skills: [GitHub.skill({ repos: [Repos.MyOrg.MyRepo] })]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [GitHub.skill({ repos: [Repos.MyOrg.MyRepo] })]
+})
 ```
 
 | Tool                          | Description                     | Access |
@@ -29,7 +34,10 @@ skills: [GitHub.skill({ repos: [Repos.MyOrg.MyRepo] })]
 Send messages and read conversations.
 
 ```ts
-skills: [Slack.skill({ channel: SlackChannel.Engineering })]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [Slack.skill({ channel: SlackChannel.Engineering })]
+})
 ```
 
 | Tool                      | Description                      | Access |
@@ -44,7 +52,10 @@ skills: [Slack.skill({ channel: SlackChannel.Engineering })]
 Create, update, and search issues.
 
 ```ts
-skills: [Linear.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [Linear.skill()]
+})
 ```
 
 | Tool                    | Description               | Access |
@@ -65,7 +76,10 @@ skills: [Linear.skill()]
 Query and manage CRM records.
 
 ```ts
-skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })]
+})
 ```
 
 | Tool                  | Description               | Access |
@@ -79,7 +93,10 @@ skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })]
 Read and write databases and pages.
 
 ```ts
-skills: [Notion.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [Notion.skill()]
+})
 ```
 
 | Tool                                   | Description                       | Access |
@@ -98,7 +115,10 @@ skills: [Notion.skill()]
 Send emails and create drafts.
 
 ```ts
-skills: [Gmail.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [Gmail.skill()]
+})
 ```
 
 | Tool                 | Description                          | Access |
@@ -111,7 +131,10 @@ skills: [Gmail.skill()]
 Read-only SQL query execution.
 
 ```ts
-skills: [Snowflake.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [Snowflake.skill()]
+})
 ```
 
 | Tool                      | Description                                | Access |
@@ -124,7 +147,10 @@ skills: [Snowflake.skill()]
 Read-only access to logs and RUM events.
 
 ```ts
-skills: [Datadog.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [Datadog.skill()]
+})
 ```
 
 | Tool                   | Description              | Access |
@@ -139,7 +165,10 @@ skills: [Datadog.skill()]
 Read-only access to product analytics.
 
 ```ts
-skills: [PostHog.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [PostHog.skill()]
+})
 ```
 
 | Tool                         | Description              | Access |
@@ -154,7 +183,10 @@ skills: [PostHog.skill()]
 Read-only access to feature flags.
 
 ```ts
-skills: [LaunchDarkly.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [LaunchDarkly.skill()]
+})
 ```
 
 | Tool                            | Description        | Access |
@@ -167,7 +199,10 @@ skills: [LaunchDarkly.skill()]
 Read-only access to users and organizations.
 
 ```ts
-skills: [WorkOS.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [WorkOS.skill()]
+})
 ```
 
 | Tool                        | Description        | Access |
@@ -181,7 +216,10 @@ skills: [WorkOS.skill()]
 Web search and image tools available to all workflows.
 
 ```ts
-skills: [Terse.skill()]
+TerseAgent.create({
+    prompt: "Your workflow instructions",
+    skills: [Terse.skill()]
+})
 ```
 
 | Tool           | Description                             | Access |
