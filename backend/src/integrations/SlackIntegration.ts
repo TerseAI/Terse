@@ -877,12 +877,18 @@ export class SlackTriggerRuntime extends TriggerRuntime<SlackTrigger> implements
     entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
     entityId: string
     private storedFiles: StoredFile[]
+    private _integrationId: string | null
 
-    constructor(data: SlackTrigger, storedFiles: StoredFile[] = []) {
+    constructor(data: SlackTrigger, storedFiles: StoredFile[] = [], integrationId: string | null = null) {
         super()
         this.data = data
         this.entityId = `${data.teamId}:${data.permalink || ""}`
         this.storedFiles = storedFiles
+        this._integrationId = integrationId
+    }
+
+    withIntegrationId(integrationId: string): SlackTriggerRuntime {
+        return new SlackTriggerRuntime(this.data, this.storedFiles, integrationId)
     }
 
     /**
@@ -903,13 +909,14 @@ export class SlackTriggerRuntime extends TriggerRuntime<SlackTrigger> implements
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
-        // Check if integration type matches
         if (agentTrigger.config_type !== InputConfigType.SLACK) {
             return false
         }
 
-        // If agentTrigger has slack_config with channel_id, filter by channel
-        // Otherwise, all Slack events match (no channel filtering)
+        if (this._integrationId && agentTrigger.integration_id !== this._integrationId) {
+            return false
+        }
+
         const slackConfig = agentTrigger.slack_config
         if (!slackConfig) {
             return false
@@ -1344,7 +1351,8 @@ async function processSlackAutomationForUsers(args: { filteredWorkspaceUserInteg
             const fullUser = await getUserForOrg(userSlackIntegration.user.id, organizationId)
             if (!fullUser) continue
             await runWithUserContext(fullUser, async () => {
-                const eventProcessor = new EventProcessor(slackEvent, fullUser)
+                const scopedEvent = slackEvent.withIntegrationId(userSlackIntegration.id)
+                const eventProcessor = new EventProcessor(scopedEvent, fullUser)
                 const results = await eventProcessor.process()
 
                 if (results.length > 0 && results.some(r => r.success || r.agentConfig !== null)) {
