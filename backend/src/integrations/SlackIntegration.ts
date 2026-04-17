@@ -1337,7 +1337,13 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
     return channelMembershipChecks.filter(({ isMember }) => isMember).map(({ integration }) => integration)
 }
 
-async function processSlackAutomationForUsers(args: { filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]; slackEventData: SlackTrigger; storedFiles?: StoredFile[]; teamId: string; sourceChannelId?: string }) {
+async function processSlackAutomationForUsers(args: {
+    filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]
+    slackEventData: SlackTrigger
+    storedFiles?: StoredFile[]
+    teamId: string
+    sourceChannelId?: string
+}) {
     const { filteredWorkspaceUserIntegrations, slackEventData, storedFiles, teamId, sourceChannelId } = args
     let totalMatches = 0
     for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
