@@ -34,8 +34,12 @@ const client = new Terse()
 await client.createJob({
     name: "weekly-pipeline-digest",
     triggers: [Schedule.cron({ expression: "0 9 * * 1" })],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }), Slack.skill({ channel: SlackChannel.RevenueTeam })],
-    onTrigger: async (event: CronTrigger, agent: TerseAgent) => {
+    onTrigger: async (event: CronTrigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You summarize pipeline health for leadership.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }), Slack.skill({ channel: SlackChannel.RevenueTeam })]
+        })
+
         const prompt = [
             `Summarize open pipeline for ${event.window.label}.`,
             `Window start: ${event.window.startsAt}`,
@@ -43,7 +47,7 @@ await client.createJob({
             "Call out risk and recommend next actions."
         ].join("\n")
 
-        const digest = await agent.runAndWait(prompt, event)
+        const digest = await agent.runAndWait(prompt)
 
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.RevenueTeam.channelId,

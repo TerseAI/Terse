@@ -44,13 +44,17 @@ await client.createJob({
     name: "new-deal-enrichment",
     // This actually exists in the Attio Objects
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [
-        Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-        Apollo.skill(),
-        // This is a real slack channel in the workspace as well!
-        Slack.skill({ channel: SlackChannel.DealDesk })
-    ],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You are reviewing a new CRM deal.",
+            skills: [
+                Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
+                Apollo.skill(),
+                // This is a real slack channel in the workspace as well!
+                Slack.skill({ channel: SlackChannel.DealDesk })
+            ]
+        })
+
         const enrichment = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
         })
@@ -65,7 +69,7 @@ await client.createJob({
             "Return 3 bullets and one recommended next step."
         ].join("\n")
 
-        const summary = await agent.runAndWait(prompt, event)
+        const summary = await agent.runAndWait(prompt)
 
         await agent.tools.attio.updateRecord({
             list: AttioList.Pipeline.NewDeals,

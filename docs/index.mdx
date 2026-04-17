@@ -25,12 +25,15 @@ const client = new Terse()
 await client.createJob({
     name: "Summarize PR and send slack message",
     triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
-    skills: [
-        // Fine tune what agents have access to
-        GitHub.skill({ repos: [Repos.TerseAI.Terse] }),
-        Slack.skill({ channel: SlackChannel.AllTerseInc })
-    ],
-    onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => {
+    onTrigger: async (event: GithubPRTrigger) => {
+        const Agent = TerseAgent.create({
+            prompt: "You summarize GitHub pull requests and post updates to Slack.",
+            skills: [
+                GitHub.skill({ repos: [Repos.TerseAI.Terse] }),
+                Slack.skill({ channel: SlackChannel.AllTerseInc })
+            ]
+        })
+
         // deterministically call a tool
         const message = await Agent.tools.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,
@@ -47,7 +50,6 @@ await client.createJob({
           Format the summary in Block Kit; include screenshots or diagrams from the PR as image blocks.
         `.trim()
 
-        // Trigger the Agent with Github + Slack tools auto added
         await Agent.runAndWait(prompt)
     }
 })
@@ -87,7 +89,7 @@ Workflows are TypeScript or Python files in your repo. Review them in PRs, track
 
 ### Fewer tokens, better results
 
-Terse curates the tools available to the LLM based on the skills you define. Instead of dumping hundreds of MCP tools into context and hoping the model picks the right one, your agent only sees what it needs. Fewer tokens in, more reliable outputs out.
+Terse curates the tools available to the LLM based on the skills you pass when you create a `TerseAgent`. Instead of dumping hundreds of MCP tools into context and hoping the model picks the right one, your agent only sees what it needs. Fewer tokens in, more reliable outputs out.
 
 ### Secure by default
 

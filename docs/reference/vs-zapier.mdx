@@ -28,13 +28,17 @@ const client = new Terse()
 await client.createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You enrich new CRM deals.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()]
+        })
+
         const company = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
         })
 
-        const summary = await agent.runAndWait("Summarize fit and recommend a next step.", event)
+        const summary = await agent.runAndWait("Summarize fit and recommend a next step.")
 
         await agent.tools.attio.updateRecord({
             list: AttioList.Pipeline.NewDeals,

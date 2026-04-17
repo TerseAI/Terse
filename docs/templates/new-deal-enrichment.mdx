@@ -34,8 +34,12 @@ const client = new Terse()
 await client.createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You enrich new deals and alert the team on Slack.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })]
+        })
+
         const company = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
         })
@@ -49,7 +53,7 @@ await client.createJob({
             `Technologies: ${company.technologies.join(", ")}`
         ].join("\n")
 
-        const summary = await agent.runAndWait(prompt, event)
+        const summary = await agent.runAndWait(prompt)
 
         await agent.tools.attio.updateRecord({
             list: AttioList.Pipeline.NewDeals,
