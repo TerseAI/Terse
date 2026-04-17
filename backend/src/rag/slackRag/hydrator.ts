@@ -178,7 +178,7 @@ export class SlackEventHydrator extends Hydrator<SlackTriggerRuntime> {
                 files: message.files || null
             }
 
-            return new SlackTriggerRuntime(eventData)
+            return new SlackTriggerRuntime(eventData, userSlackIntegration.id)
         } catch (error: any) {
             // Handle specific Slack API errors
             const errorCode = error?.data?.error || error?.code
