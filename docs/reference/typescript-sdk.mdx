@@ -18,6 +18,17 @@ Import these from `terse-sdk`:
 - `Trigger`: the base event interface
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), and other per-integration exports (see `terse-sdk` package entry)
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
+- `getJobContext`, `runWithJobContext`, and the `TerseJobContext` type: read or set the active job context (`sessionId`, `runId`, `apiBaseUrl`). You rarely call these directly — `TerseAgent.create()` and `Terse.handleTrigger` populate context for you.
+
+## Session and run ID
+
+While a workflow is executing, the SDK keeps **session ID** and **run ID** in a job context so agent runs, tool calls, and approvals line up with the same Activity run on the platform.
+
+- Use **`TerseAgent.create()`** inside `onTrigger` (as in generated code). It picks up `sessionId`, `runId`, and `apiBaseUrl` from that context automatically. You do not pass them in by hand.
+- **`terse test` and `terse run`** execute your handler in the CLI process; the CLI sets job context before `onTrigger` runs so headers and backend calls stay consistent with the orchestrated run.
+- **Self-hosted HTTP** using `Terse.handleTrigger` sets the same context around your handler for each incoming trigger.
+
+For a custom server, you can wrap work in `runWithJobContext({ sessionId, runId, apiBaseUrl }, async () => { ... })` (or rely on `handleTrigger`, which does this internally). Use `getJobContext()` if you need to read the active context.
 
 ## Trigger payloads
 

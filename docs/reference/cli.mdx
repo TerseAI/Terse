@@ -127,13 +127,15 @@ terse test my-job
 2. Fetches sample events from the backend for integration-based triggers (e.g. real GitHub PR events, real Slack messages)
 3. Generates synthetic events for cron and webhook triggers
 4. Prompts you to select an event
-5. Executes your job's `onTrigger` handler locally
+5. Executes your job's `onTrigger` handler locally, with the TypeScript SDK's job context set so **session ID** and **run ID** match the platform run when the CLI provides them (your code uses `TerseAgent.create()` as usual)
 
 If you only have one job, it's selected automatically.
 
 ## `terse run [job-name]`
 
 Runs a job locally with an explicit event payload. Unlike `test`, this is non-interactive and does not fetch sample events.
+
+For TypeScript projects, the CLI sets the same job context as `terse test` before your `onTrigger` runs, so `TerseAgent.create()` receives the correct session and run IDs when the platform supplies them.
 
 Pass a **serialized event**: JSON with `integrationType`, `eventType`, `formattedContent`, `debugLog`, and `data`. The `data` field is the full canonical trigger object (the same discriminated shape live runs use). Use `terse test` and inspect a sample, or copy the structure from Activity when debugging.
 
