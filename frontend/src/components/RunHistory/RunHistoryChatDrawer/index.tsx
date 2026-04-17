@@ -93,6 +93,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                 <div className="shrink-0 border-b border-border/70">
                                     <RunHistoryChatDrawerHeader
                                         trigger={trigger}
+                                        runId={runId}
                                         runNumber={runNumber}
                                         totalEvents={totalEvents}
                                         status={currentStatus}

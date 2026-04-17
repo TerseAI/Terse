@@ -5,7 +5,7 @@ import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
-export async function replay(runId: string, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
+export async function replay(runId: string, provider: LanguageProvider = resolveProvider()): Promise<void> {
     const apiKey = readApiKeyOrBail()
 
     if (!runId) {
@@ -20,7 +20,7 @@ export async function replay(runId: string, provider: LanguageProvider = resolve
         process.exit(1)
     }
 
-    const { job } = await loadJob(provider, runHistoryRecord.agentName, entryFile)
+    const { job } = await loadJob(provider, runHistoryRecord.agentName)
 
-    await provider.executeJob(job, null, runHistoryRecord.event, { verbose: true, entryFile })
+    await provider.executeJob(job, null, runHistoryRecord.event, { verbose: true })
 }
