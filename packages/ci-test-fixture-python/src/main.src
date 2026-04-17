@@ -12,4 +12,4 @@ app = Terse()
 )
 def run_job(event: WebhookTrigger) -> None:
     _ = event
-    TerseAgent().run_and_wait("Tell me a funny joke")
+    TerseAgent(prompt="You are funny.",).run_and_wait("Tell me a funny joke")
