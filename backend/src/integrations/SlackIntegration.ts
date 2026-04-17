@@ -659,7 +659,7 @@ export class SlackIntegrationManager
                 attachments: enrichedMessage.attachments || null,
                 files: enrichedMessage.files || null
             })
-            events.push(new SlackTriggerRuntime(slackEventData))
+            events.push(new SlackTriggerRuntime(slackEventData, integrationId))
         }
         return events
     }
@@ -877,10 +877,12 @@ export class SlackTriggerRuntime extends TriggerRuntime<SlackTrigger> implements
     entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
     entityId: string
     private storedFiles: StoredFile[]
+    readonly integrationId: string
 
-    constructor(data: SlackTrigger, storedFiles: StoredFile[] = []) {
+    constructor(data: SlackTrigger, integrationId: string, storedFiles: StoredFile[] = []) {
         super()
         this.data = data
+        this.integrationId = integrationId
         this.entityId = `${data.teamId}:${data.permalink || ""}`
         this.storedFiles = storedFiles
     }
@@ -903,13 +905,14 @@ export class SlackTriggerRuntime extends TriggerRuntime<SlackTrigger> implements
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
-        // Check if integration type matches
         if (agentTrigger.config_type !== InputConfigType.SLACK) {
             return false
         }
 
-        // If agentTrigger has slack_config with channel_id, filter by channel
-        // Otherwise, all Slack events match (no channel filtering)
+        if (agentTrigger.integration_id !== this.integrationId) {
+            return false
+        }
+
         const slackConfig = agentTrigger.slack_config
         if (!slackConfig) {
             return false
@@ -1334,8 +1337,14 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
     return channelMembershipChecks.filter(({ isMember }) => isMember).map(({ integration }) => integration)
 }
 
-async function processSlackAutomationForUsers(args: { filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]; slackEvent: SlackTriggerRuntime; teamId: string; sourceChannelId?: string }) {
-    const { filteredWorkspaceUserIntegrations, slackEvent, teamId, sourceChannelId } = args
+async function processSlackAutomationForUsers(args: {
+    filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]
+    slackEventData: SlackTrigger
+    storedFiles?: StoredFile[]
+    teamId: string
+    sourceChannelId?: string
+}) {
+    const { filteredWorkspaceUserIntegrations, slackEventData, storedFiles, teamId, sourceChannelId } = args
     let totalMatches = 0
     for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
         try {
@@ -1344,6 +1353,7 @@ async function processSlackAutomationForUsers(args: { filteredWorkspaceUserInteg
             const fullUser = await getUserForOrg(userSlackIntegration.user.id, organizationId)
             if (!fullUser) continue
             await runWithUserContext(fullUser, async () => {
+                const slackEvent = new SlackTriggerRuntime(slackEventData, userSlackIntegration.id, storedFiles)
                 const eventProcessor = new EventProcessor(slackEvent, fullUser)
                 const results = await eventProcessor.process()
 
@@ -1459,10 +1469,10 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             files: enrichedMessage.files || null
         })
 
-        const slackEvent = new SlackTriggerRuntime(slackEventData, storedFiles)
         await processSlackAutomationForUsers({
             filteredWorkspaceUserIntegrations,
-            slackEvent,
+            slackEventData,
+            storedFiles,
             teamId,
             sourceChannelId: messageEvent.channel
         })
@@ -1526,10 +1536,9 @@ async function handleSlackReactionAdded(event: SimplifiedSlackEvent, teamId: str
             itemTimestamp: reactionEvent.item.ts
         })
 
-        const slackEvent = new SlackTriggerRuntime(slackEventData)
         await processSlackAutomationForUsers({
             filteredWorkspaceUserIntegrations,
-            slackEvent,
+            slackEventData,
             teamId,
             sourceChannelId: reactionEvent.item.channel
         })
