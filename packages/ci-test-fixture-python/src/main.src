@@ -9,7 +9,7 @@ app = Terse()
 @app.job(
     name="Tell me a joke",
     triggers=[Webhook.on_request()],
-    skills=[],
 )
-def run_job(event: WebhookTrigger, agent: TerseAgent, /) -> None:
-    agent.run_and_wait("Tell me a funny joke")
+def run_job(event: WebhookTrigger) -> None:
+    _ = event
+    TerseAgent(prompt="You are funny.",).run_and_wait("Tell me a funny joke")

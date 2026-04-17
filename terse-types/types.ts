@@ -579,7 +579,7 @@ export type SdkAgentRunOptionsPayload = z.infer<typeof sdkAgentRunOptionsPayload
 
 export const sdkAgentRunRequestBodySchema = z.object({
     prompt: z.string().optional(),
-    event: TriggerSchema.optional(),
+    message: z.string(),
     skills: z.array(skillConfigDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional()
@@ -668,9 +668,7 @@ export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionR
 
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
-    triggers: z.array(triggerConfigDataSchema),
-    outputs: z.array(skillConfigDataSchema),
-    toolApprovals: z.array(z.string())
+    triggers: z.array(triggerConfigDataSchema)
 })
 export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 

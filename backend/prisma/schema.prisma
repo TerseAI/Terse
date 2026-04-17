@@ -785,6 +785,8 @@ model run_history_records {
   status                RunHistoryStatus
   // Whether this run ever involved a tool approval request (persists after approval is processed)
   has_approval_request  Boolean                  @default(false)
+  // SDK skill configs (SkillConfigData[]) persisted at run time so correction agents can reconstruct tools
+  sdk_skills            Json?
   created_at            DateTime                 @default(now())
   updated_at            DateTime                 @updatedAt
 

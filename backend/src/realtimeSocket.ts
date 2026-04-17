@@ -9,8 +9,9 @@ import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryS
 import { SocketEvents, SocketRooms } from "terse-types"
 
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
+import { SdkAgentRunner } from "./agent/AgentRunner/SdkAgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
-import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed } from "./agent/AgentRunner/runHistory"
+import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed, readSdkSkillsFromJson } from "./agent/AgentRunner/runHistory"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
 import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
@@ -207,25 +208,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return
             }
 
-            // Create outputs from agent configuration
-            let outputs: Output<ConfigData>[]
-            try {
-                outputs = OutputFactory.createOutputsFromAgent(agent)
-            } catch (error) {
-                logger.error(`[agent:chat:message] Failed to create outputs for agent: ${agent.id}`, { error, agentId: agent.id, userId })
-                return
-            }
-
             const user = await getUserForOrg(userId, organizationIdForRun)
             if (!user) {
                 logger.error(`[agent:chat:message] User not found for userId: ${userId}`, { userId })
                 return
-            }
-
-            // Create base session for AgentRunner
-            const session: Session = {
-                user,
-                isUserInitiated: true
             }
 
             const userMessage = message.user_message
@@ -291,27 +277,73 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
             invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)
 
-            const runContext: RunContext = { runId }
-            const agentRunner = new AgentRunner(session, outputs, agent, runContext)
             const cancellationController = new AbortController()
             const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
             const notificationManager = new NotificationManager(user, agent)
 
-            let result
+            const isSdkAgent = agent.source === "SDK"
+
+            let endedWithToolFailure = false
+            let finalOutput: unknown = undefined
+
             try {
-                result = await agentRunner.userMessageRun(
-                    userMessage,
-                    undefined,
-                    {
+                if (isSdkAgent) {
+                    const skills = readSdkSkillsFromJson(runRecord.sdk_skills)
+
+                    const sdkRunner = new SdkAgentRunner({
                         runId,
-                        user: user,
-                        agentId: agent.id
-                    },
-                    {
+                        user,
+                        prompt: agent.prompt?.content ?? "",
+                        skills,
+                        // TODO: This probably isn't right. Idk how to handle tool approvals anymore for this use case. Need to think more about it.
+                        toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
+                        maxTurns: 50,
+                        requireApproval: true,
+                        send: () => {},
+                        isProductionRun: true
+                    })
+
+                    const sdkResult = await sdkRunner.userMessageRun(userMessage, {
                         signal: cancellationController.signal,
                         clientTurnId: message.client_turn_id
+                    })
+
+                    if (sdkResult.loopResult.status === "completed") {
+                        endedWithToolFailure = sdkResult.loopResult.endedWithToolFailure || sdkRunner.hasToolFailures()
+                        finalOutput = SdkAgentRunner.getFinalOutput(sdkResult.loopResult.result)
                     }
-                )
+                } else {
+                    let outputs: Output<ConfigData>[]
+                    try {
+                        outputs = OutputFactory.createOutputsFromAgent(agent)
+                    } catch (error) {
+                        logger.error(`[agent:chat:message] Failed to create outputs for agent: ${agent.id}`, { error, agentId: agent.id, userId })
+                        return
+                    }
+
+                    const session: Session = { user, isUserInitiated: true }
+                    const runContext: RunContext = { runId }
+                    const agentRunner = new AgentRunner(session, outputs, agent, runContext)
+
+                    const result = await agentRunner.userMessageRun(
+                        userMessage,
+                        undefined,
+                        {
+                            runId,
+                            user: user,
+                            agentId: agent.id
+                        },
+                        {
+                            signal: cancellationController.signal,
+                            clientTurnId: message.client_turn_id
+                        }
+                    )
+
+                    if (result.status === AgentRunResultStatus.COMPLETED) {
+                        endedWithToolFailure = result.endedWithToolFailure
+                        finalOutput = result.result?.finalOutput
+                    }
+                }
             } catch (error) {
                 const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
                 cancellationSubscription.unsubscribe()
@@ -336,18 +368,16 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return
             }
 
-            // Finalize run status based on result, just like in EventProcessor
-            if (result.status === AgentRunResultStatus.COMPLETED) {
-                const completion = evaluateCompletedRun(result.result?.finalOutput, result.endedWithToolFailure)
-                try {
-                    await finalizeRunStatus(runId, completion.status)
-                    invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)
-                    if (!completion.isSuccessful) {
-                        await notifyRunFailure(notificationManager, runId, completion.failureReason, agent.id, userId)
-                    }
-                } catch (e) {
-                    logger.error("Failed to finalize run status", { error: e, runId })
+            // Finalize run status based on result
+            const completion = evaluateCompletedRun(finalOutput, endedWithToolFailure)
+            try {
+                await finalizeRunStatus(runId, completion.status)
+                invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)
+                if (!completion.isSuccessful) {
+                    await notifyRunFailure(notificationManager, runId, completion.failureReason, agent.id, userId)
                 }
+            } catch (e) {
+                logger.error("Failed to finalize run status", { error: e, runId })
             }
         })
 

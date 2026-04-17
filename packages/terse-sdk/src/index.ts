@@ -1,6 +1,4 @@
 import type {
-    ConfigData,
-    Trigger as RawTrigger,
     RunHistoryAction,
     SdkAgentRunRequestBody,
     SdkAgentRunResponseBody,
@@ -50,6 +48,7 @@ import type {
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
 
+import { getJobContext, runWithJobContext } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
 import { type InferEvents, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
@@ -66,6 +65,9 @@ function resolveTerseBackendUrl(): string {
  * Mount your handler at this path (e.g. `app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, ...)`).
  */
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
+
+export { getJobContext, runWithJobContext } from "./context.js"
+export type { TerseJobContext } from "./context.js"
 
 export { openSessionStream } from "./sessionStream.js"
 export type { OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
@@ -151,13 +153,11 @@ export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecisi
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[], TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> = {
+export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[]> = {
     name: string
     triggers: [...TTriggers]
-    skills: [...TSkills]
-    toolApprovals?: InferToolApprovals<TSkills>[]
     filter?: (event: InferEvents<TTriggers>) => boolean | Promise<boolean>
-    onTrigger: (event: InferEvents<TTriggers>, Agent: TerseAgent) => Promise<void>
+    onTrigger: (event: InferEvents<TTriggers>) => Promise<void>
     remoteServerUrl?: string
 }
 
@@ -171,7 +171,7 @@ export class Terse {
         // fetch api_key from env
     }
 
-    createJob<TTriggers extends readonly TypedTrigger[], TSkills extends readonly TypedSkill<string>[]>(params: CreateJobParameters<TTriggers, TSkills>) {
+    createJob<TTriggers extends readonly TypedTrigger[]>(params: CreateJobParameters<TTriggers>) {
         const webhookCount = params.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK).length
         if (webhookCount > 1) {
             throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
@@ -244,18 +244,21 @@ export class Terse {
         const session = await openSessionStream(apiBaseUrl, apiKey)
 
         try {
-            const inputEvent = createSDKTrigger(event)
-            const agent = TerseAgent.fromJob(job, { apiBaseUrl, sessionId: session.sessionId, runId })
+            const result = await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl }, async () => {
+                const inputEvent = createSDKTrigger(event)
 
-            if (job.filter) {
-                const shouldRun = await job.filter(inputEvent)
-                if (!shouldRun) {
-                    return { status: "ok", filtered: true }
+                if (job.filter) {
+                    const shouldRun = await job.filter(inputEvent)
+                    if (!shouldRun) {
+                        return { status: "ok" as const, filtered: true }
+                    }
                 }
-            }
-            await job.onTrigger(inputEvent, agent)
+                await job.onTrigger(inputEvent)
 
-            return { status: "ok" }
+                return { status: "ok" as const }
+            })
+
+            return result
         } catch (error) {
             session.close()
             throw error
@@ -271,26 +274,11 @@ export type ApprovalRequestInfo = {
     arguments: string
 }
 
-export type CreateAgentForJobOptions = {
-    apiBaseUrl?: string
-    sessionId?: string
-    runId?: string
-}
+export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> {
+    readonly prompt: string
+    readonly skills: TSkills
+    readonly toolApprovals: InferToolApprovals<TSkills>[]
 
-type JobAgentConfig = Pick<CreateJobParameters, "skills" | "triggers" | "toolApprovals">
-
-function attachGeneratedTools(agent: TerseAgent): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
-    if (createTools) {
-        Object.defineProperty(agent, "tools", { value: createTools(agent) })
-    }
-}
-
-export class TerseAgent {
-    readonly skills: ConfigData[]
-    manualToolConfigs?: readonly ConfigData[]
-    readonly toolApprovals: string[]
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
     private readonly runId?: string
@@ -303,28 +291,42 @@ export class TerseAgent {
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    constructor(skills: ConfigData[] = [], apiBaseUrl: string = "http://localhost:3001", sessionId?: string, toolApprovals: string[] = [], runId?: string) {
-        this.skills = skills
-        this.apiBaseUrl = apiBaseUrl
-        this.sessionId = sessionId
-        this.toolApprovals = toolApprovals
-        this.runId = runId
+    private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[]; apiBaseUrl: string; sessionId?: string; runId?: string }) {
+        this.prompt = params.prompt
+        this.skills = params.skills
+        this.toolApprovals = params.toolApprovals
+        this.apiBaseUrl = params.apiBaseUrl
+        this.sessionId = params.sessionId
+        this.runId = params.runId
+
+        const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
+        ;(this as any).tools = createTools ? createTools(this) : {}
     }
 
-    static fromJob(job: JobAgentConfig, options: CreateAgentForJobOptions = {}): TerseAgent {
-        const agent = new TerseAgent(job.skills, options.apiBaseUrl, options.sessionId, job.toolApprovals ? [...job.toolApprovals] : [], options.runId)
-        agent.manualToolConfigs = [...job.skills, ...job.triggers]
-        attachGeneratedTools(agent)
-        return agent
+    /**
+     * Create a TerseAgent. When called inside a job's `onTrigger` callback,
+     * sessionId, runId, and apiBaseUrl are picked up automatically from the
+     * job context (AsyncLocalStorage) — no manual wiring needed.
+     */
+    static create<TSkills extends readonly TypedSkill<string>[]>(params: { prompt: string; skills: [...TSkills]; ToolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills>
+    static create(params: { prompt: string }): TerseAgent<readonly []>
+    static create(params: { prompt: string; skills?: readonly TypedSkill<string>[]; ToolApprovals?: string[] }): TerseAgent {
+        const ctx = getJobContext()
+        return new TerseAgent({
+            prompt: params.prompt,
+            skills: params.skills ?? [],
+            toolApprovals: params.ToolApprovals ?? [],
+            apiBaseUrl: ctx?.apiBaseUrl ?? resolveTerseBackendUrl(),
+            sessionId: ctx?.sessionId,
+            runId: ctx?.runId
+        })
     }
 
-    async *run(prompt: string, event?: RawTrigger): AsyncGenerator<TerseAgentResult> {
-        const resolvedEvent = event
-
+    async *run(userMessage: string): AsyncGenerator<TerseAgentResult> {
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
-            prompt,
+            prompt: this.prompt,
             toolApprovals: this.toolApprovals,
-            event: resolvedEvent,
+            message: userMessage,
             skills: this.skills
         })
 
@@ -366,8 +368,8 @@ export class TerseAgent {
      * Runs the agent to completion and discards streamed output.
      * Useful when you only care that the run finished (or threw).
      */
-    async runAndWait(prompt: string, event?: RawTrigger): Promise<string> {
-        for await (const chunk of this.run(prompt, event)) {
+    async runAndWait(userMessage: string): Promise<string> {
+        for await (const chunk of this.run(userMessage)) {
             if (chunk.type === EventType.FINAL_OUTPUT) {
                 return (chunk as FinalOutputResult).finalOutput
             }

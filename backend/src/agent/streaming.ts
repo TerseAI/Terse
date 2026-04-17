@@ -4,6 +4,7 @@ import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } fr
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import logger from "../logger"
+import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
@@ -13,13 +14,12 @@ import { parseToolExecutionResult } from "./toolExecution"
 export async function* transformAgentStreamToModelEvents<T extends Session>(
     result: StreamedRunResult<T, Agent<T, any>>,
     options: {
-        toolToIntegrationMap?: Map<string, string>
         onToolCall?: (stepId: string, toolName: string) => void
         onToolCallComplete?: ToolCallCompleteHandler
         onRawStreamEvent?: (event: RunStreamEvent) => Promise<void> | void
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
-    const { toolToIntegrationMap, onToolCall, onToolCallComplete, onRawStreamEvent } = options
+    const { onToolCall, onToolCallComplete, onRawStreamEvent } = options
     const textDeltaIndexByStepId = new Map<string, number>()
 
     for await (const event of result as AsyncIterable<RunStreamEvent>) {
@@ -49,7 +49,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         }
 
         // Try ToolCall
-        const toolCall = tryExtractToolCall(event, toolToIntegrationMap)
+        const toolCall = tryExtractToolCall(event)
         if (toolCall) {
             logger.info("[ApprovalFlow] Stream yielded ToolCall", { callId: (toolCall as any).step_id, name: (toolCall as any).summary })
             // Type guard: ensure it's a ToolCall event
@@ -65,7 +65,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         if (toolCompleteData) {
             const changedItems = onToolCallComplete ? await onToolCallComplete(toolCompleteData.callId, toolCompleteData.name, toolCompleteData.actions) : []
 
-            yield createToolCallCompleteEvent(toolCompleteData, changedItems, toolToIntegrationMap)
+            yield createToolCallCompleteEvent(toolCompleteData, changedItems)
             if (toolCompleteData.snippets?.length) {
                 for (const snippet of toolCompleteData.snippets) {
                     yield {
@@ -79,7 +79,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         }
 
         // Try hosted tool calls (web_search, etc.) — these arrive as tool_called with status already completed
-        const hostedToolComplete = tryExtractHostedToolCallComplete(event, toolToIntegrationMap)
+        const hostedToolComplete = tryExtractHostedToolCallComplete(event)
         if (hostedToolComplete) {
             const changedItems = onToolCallComplete ? await onToolCallComplete(hostedToolComplete.complete.step_id, hostedToolComplete.complete.tool_name, hostedToolComplete.actions) : []
             // Yield a ToolCall first so the UI sees the tool was invoked
@@ -152,13 +152,13 @@ export function tryExtractToolCallGenerating(event: RunStreamEvent): ModelEvent 
     return null
 }
 
-export function tryExtractToolCall(event: RunStreamEvent, toolToIntegrationMap?: Map<string, string>): ModelEvent | null {
+export function tryExtractToolCall(event: RunStreamEvent): ModelEvent | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_called") {
         const item = (event as ToolCalledEvent).item.rawItem
 
         // Handle regular function calls
         if (item.type === "function_call") {
-            const integration = toolToIntegrationMap?.get(item.name) || "unknown"
+            const integration = OutputFactory.getToolIntegrationType(item.name)
             return {
                 type: "ToolCall",
                 timestamp: Date.now(),
@@ -203,8 +203,8 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
     return null
 }
 
-export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedItems: ChangedItem[], toolToIntegrationMap?: Map<string, string>): ModelEvent {
-    const integration = toolToIntegrationMap?.get(data.name) || IntegrationType.TERSE
+export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedItems: ChangedItem[]): ModelEvent {
+    const integration = OutputFactory.getToolIntegrationType(data.name)
 
     const event: ModelEvent = {
         type: "ToolCallComplete",
@@ -222,10 +222,7 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
     return event
 }
 
-export function tryExtractHostedToolCallComplete(
-    event: RunStreamEvent,
-    toolToIntegrationMap?: Map<string, string>
-): {
+export function tryExtractHostedToolCallComplete(event: RunStreamEvent): {
     toolCall: Extract<ModelEvent, { type: "ToolCall" }>
     complete: Extract<ModelEvent, { type: "ToolCallComplete" }>
     actions?: RunHistoryAction[]
@@ -236,7 +233,7 @@ export function tryExtractHostedToolCallComplete(
         if (item.type === "hosted_tool_call" && item.status === "completed") {
             const callId = item.id || "unknown"
             const name = item.name || "unknown"
-            const integration = toolToIntegrationMap?.get(name) || IntegrationType.TERSE
+            const integration = OutputFactory.getToolIntegrationType(name)
             const webAction = item.providerData?.action
             const ts = Date.now()
 

@@ -2,6 +2,7 @@
 
 """Terse Python SDK."""
 
+from .context import TerseJobContext, get_job_context, job_context_scope
 from .runtime import (
     TERSE_JOB_WEBHOOK_TRIGGER_PATH,
     MissingApiKeyError,
@@ -165,11 +166,6 @@ from .types.run_history import __all__ as _run_history_all
 from .types.sdk_types import (
     ApiToken,
     ApiTokenCreateResponse,
-    Contract,
-    NormalizedRequest,
-    Options,
-    RemovedItem,
-    Result,
     SdkAgentRunNormalizedRequest,
     SdkAgentRunNormalizedRequestOptions,
     SdkAgentRunOptionsPayload,
@@ -241,10 +237,13 @@ __all__ = [
     "Terse",
     "TerseAgent",
     "TerseApiError",
+    "TerseJobContext",
     "TerseRuntimeError",
     "clear_job_registry",
     "execute_registered_job",
+    "get_job_context",
     "get_job_registry",
+    "job_context_scope",
     "SDKTrigger",
     "BaseTrigger",
     "TERSE_JOB_WEBHOOK_TRIGGER_PATH",

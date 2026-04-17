@@ -2,7 +2,9 @@ import { RunToolApprovalItem } from "@openai/agents"
 import { Prisma } from "@prisma/client"
 import { pendingApprovalsKey, serializedEventSchema } from "terse-types"
 import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger, type SerializedEvent } from "terse-types"
+import { type SkillConfigData, skillConfigDataSchema } from "terse-types/Configs"
 
+import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
@@ -263,5 +265,39 @@ export async function clearPendingApprovalState(runId: string): Promise<void> {
 
     if (runRecord?.automation.organization_id) {
         emitCacheInvalidationWithKey(runRecord.automation.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
+    }
+}
+
+/**
+ * Appends SDK skill configs to a run record. Multiple calls within the same
+ * job execution are unioned — every config is kept so the correction agent
+ * can access everything the original job had.
+ */
+export async function upsertSdkSkills(runId: string, incoming: SkillConfigData[]): Promise<void> {
+    if (incoming.length === 0) return
+    const prisma = db()
+    const record = await prisma.run_history_records.findUnique({
+        where: { id: runId },
+        select: { sdk_skills: true }
+    })
+    const existing = readSdkSkillsFromJson(record?.sdk_skills)
+    const merged = [...existing, ...incoming]
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: { sdk_skills: merged as unknown as Prisma.InputJsonValue }
+    })
+}
+
+/**
+ * Reads and parses the SDK skills stored on a run record.
+ * Returns an empty array if nothing is stored or parsing fails.
+ */
+export function readSdkSkillsFromJson(sdkSkillsJson: unknown): SkillConfigData[] {
+    if (!sdkSkillsJson) return []
+    try {
+        return skillConfigDataSchema.array().parse(sdkSkillsJson)
+    } catch (error) {
+        logger.warn("Failed to parse sdk_skills from run record", { error })
+        return []
     }
 }

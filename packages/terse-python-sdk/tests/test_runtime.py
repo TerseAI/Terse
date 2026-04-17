@@ -32,6 +32,7 @@ from terse_sdk import (
     Terse,
     TerseAgent,
     TerseApiError,
+    TerseJobContext,
     TerseRuntimeError,
     Text,
     ToolApprovalRequest,
@@ -41,7 +42,9 @@ from terse_sdk import (
     clear_job_registry,
     create_sdk_trigger,
     execute_registered_job,
+    get_job_context,
     get_job_registry,
+    job_context_scope,
 )
 from terse_sdk.types._generated import (
     CronTrigger as _RawCronTrigger,
@@ -106,8 +109,8 @@ def test_job_registration_and_registry_clear() -> None:
     app = Terse()
 
     @app.job(name="demo-job")
-    def demo(event: CronTrigger, agent: TerseAgent) -> None:
-        _ = (event, agent)
+    def demo(event: CronTrigger) -> None:
+        _ = event
 
     registry = get_job_registry()
     assert "demo-job" in registry
@@ -121,12 +124,12 @@ def test_job_registration_multiple_registrations() -> None:
     app = Terse()
 
     @app.job(name="demo-job")
-    def demo(event: CronTrigger, agent: TerseAgent) -> None:
-        _ = (event, agent)
+    def demo(event: CronTrigger) -> None:
+        _ = event
 
     @app.job(name="demo-job2")
-    def demo2(event: CronTrigger, agent: TerseAgent) -> None:
-        _ = (event, agent)
+    def demo2(event: CronTrigger) -> None:
+        _ = event
 
     registry = get_job_registry()
     assert "demo-job" in registry
@@ -138,19 +141,9 @@ def test_job_registration_multiple_registrations() -> None:
     assert get_job_registry() == {}
 
 
-def test_job_registration_preserves_tool_approvals() -> None:
-    app = Terse()
-
-    @app.job(name="demo-job", tool_approvals=["attio_upsert_record"])
-    def demo(event: CronTrigger, agent: TerseAgent) -> None:
-        _ = (event, agent)
-
-    assert get_job_registry()["demo-job"].tool_approvals == ["attio_upsert_record"]
-
-
 def test_execute_registered_job_supports_sync_callables() -> None:
     handler_calls: list[str] = []
-    filter_calls: list[str] = []
+    filter_calls: list[object] = []
     app = Terse()
 
     def allow_sync(event: CronTrigger) -> bool:
@@ -158,8 +151,7 @@ def test_execute_registered_job_supports_sync_callables() -> None:
         return bool(event.is_manual_trigger)
 
     @app.job(name="sync-job", filter=allow_sync)
-    def sync_handler(event: CronTrigger, agent: TerseAgent) -> None:
-        _ = agent
+    def sync_handler(event: CronTrigger) -> None:
         handler_calls.append(event.manual_context or "")
 
     event = _RawCronTrigger(
@@ -171,7 +163,7 @@ def test_execute_registered_job_supports_sync_callables() -> None:
 
     sync_job = get_job_registry()["sync-job"]
 
-    assert not execute_registered_job(sync_job, event, agent=TerseAgent())
+    assert not execute_registered_job(sync_job, event)
     assert [value.root for value in filter_calls] == ["cron"]
     assert handler_calls == ["hello"]
 
@@ -185,8 +177,8 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
         return False
 
     @app.job(name="demo-job", filter=never)
-    def demo(event: CronTrigger, agent: TerseAgent) -> None:
-        _ = (event, agent)
+    def demo(event: CronTrigger) -> None:
+        _ = event
         calls.append("ran")
 
     skipped = execute_registered_job(
@@ -197,7 +189,6 @@ def test_execute_registered_job_returns_true_when_filter_skips() -> None:
             is_manual_trigger=True,
             manual_context="demo",
         ),
-        agent=TerseAgent(),
     )
 
     assert skipped
@@ -320,8 +311,7 @@ def test_agent_tools_lazy_attach_from_generated_module() -> None:
     assert created_agents == [agent]
 
 
-def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
-    seen_tools: list[object] = []
+def test_agent_manual_tool_configs_are_passed_to_generated_tools_factory() -> None:
     seen_manual_tool_configs: list[object] = []
     generated_module = ModuleType("terse_generated")
 
@@ -331,10 +321,8 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
 
     generated_module.create_tools = create_tools  # type: ignore[attr-defined]
 
-    job = runtime_module.RegisteredJob(
-        name="trigger-only-manual-tools",
-        handler=lambda event, agent: seen_tools.append(agent.tools.slack),
-        triggers=[
+    agent = TerseAgent(
+        manual_tool_configs=[
             TriggerConfig(
                 integration_id="slack_integration",
                 integration_type=IntegrationType.slack,
@@ -343,21 +331,11 @@ def test_execute_registered_job_uses_trigger_configs_for_manual_tools() -> None:
                 config={"channelId": "C123"},
             )
         ],
-        skills=[],
     )
 
     with patch.dict(sys.modules, {"terse_generated": generated_module}, clear=False):
-        execute_registered_job(
-            job,
-            _RawCronTrigger(
-                event_type="cron",
-                input_id="input_123",
-                is_manual_trigger=True,
-            ),
-            agent=TerseAgent(),
-        )
+        assert agent.tools.slack == "slack-tools"  # type: ignore[attr-defined]
 
-    assert seen_tools == ["slack-tools"]
     assert [config.integration_type for config in seen_manual_tool_configs] == [IntegrationType.slack]
 
 
@@ -402,7 +380,7 @@ def test_tool_approval_requested_event_supports_backend_payload() -> None:
     assert event.tool_approval_requested.arguments == json.dumps({"value": 1})
 
 
-def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None:
+def test_agent_run_streams_backend_events_and_serializes_request_payload() -> None:
     captured: dict[str, object] = {}
     stream = _FakeEventSource(
         [
@@ -444,17 +422,7 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
         patch.dict(os.environ, {"TERSE_API_KEY": "terse_test_key"}, clear=False),
         patch("terse_sdk.runtime.connect_sse", side_effect=fake_connect_sse),
     ):
-        events = list(
-            TerseAgent().run(
-                "hello",
-                _RawCronTrigger(
-                    event_type="cron",
-                    input_id="input_123",
-                    is_manual_trigger=True,
-                    manual_context="Scheduled event",
-                ),
-            )
-        )
+        events = list(TerseAgent(prompt="You are a helpful assistant.").run("hello"))
 
     assert len(events) == 5
     assert isinstance(events[0], RunStarted)
@@ -467,9 +435,8 @@ def test_agent_run_streams_backend_events_and_serializes_event_payload() -> None
     assert events[-1].final_output == "done"
     assert captured["method"] == "POST"
     assert captured["headers"]["Authorization"] == "Bearer terse_test_key"
-    assert captured["json"]["event"]["integrationType"] == "cron_job"
-    assert captured["json"]["event"]["inputId"] == "input_123"
-    assert captured["json"]["event"]["manualContext"] == "Scheduled event"
+    assert captured["json"]["prompt"] == "You are a helpful assistant."
+    assert captured["json"]["message"] == "hello"
 
 
 def test_agent_run_does_not_promote_manual_tool_configs_to_skills() -> None:
@@ -871,39 +838,19 @@ def test_serialize_run_event_preserves_nullable_fields_and_json_enum_values() ->
     assert serialized["files"] is None
 
 
-def test_build_agent_run_request_body_preserves_nested_null_event_fields() -> None:
-    sdk = runtime_module.deserialize_input_event(
-        {
-            "integrationType": "slack",
-            "eventType": "message",
-            "formattedContent": "Slack message",
-            "debugLog": "slack debug",
-            "data": {
-                "integrationType": "slack",
-                "eventType": "message",
-                "channelId": "C123",
-                "channelName": "general",
-                "userId": "U123",
-                "userName": "bot",
-                "text": "hello",
-                "timestamp": "1710000000.100000",
-                "threadTs": None,
-                "threadTimestamp": None,
-                "teamId": "T1",
-                "permalink": "https://example.com",
-                "channelType": "channel",
-                "blocks": None,
-                "attachments": None,
-                "files": None,
-            },
-        }
-    )
-
+def test_build_agent_run_request_body_serializes_prompt_message_and_skills() -> None:
     request_body = runtime_module._build_agent_run_request_body(
-        prompt="hi",
-        event=sdk,
-        skills=[],
-        tool_approvals=[],
+        prompt="system prompt",
+        message="hello",
+        skills=[
+            SkillConfig(
+                integration_id="attio_integration",
+                integration_type=IntegrationType.attio,
+                config_type=ConfigType.attio_output,
+                config={"objectSlug": "people"},
+            )
+        ],
+        tool_approvals=["approved_tool"],
     )
     request_payload = runtime_module._drop_top_level_none_values(
         request_body.model_dump(
@@ -913,61 +860,18 @@ def test_build_agent_run_request_body_preserves_nested_null_event_fields() -> No
         )
     )
 
-    assert isinstance(request_payload["event"], dict)
-    assert request_payload["event"]["threadTs"] is None
-    assert request_payload["event"]["threadTimestamp"] is None
-    assert request_payload["event"]["channelType"] == "channel"
-    assert request_payload["event"]["blocks"] is None
-    assert request_payload["event"]["attachments"] is None
-    assert request_payload["event"]["files"] is None
-    assert "options" not in request_payload
-
-
-def test_build_agent_run_request_body_emits_debug_logs_when_terse_debug_enabled(
-    caplog: pytest.LogCaptureFixture,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("TERSE_DEBUG", "1")
-    original_level = runtime_module.LOGGER.level
-    sdk = runtime_module.deserialize_input_event(
+    assert request_payload["prompt"] == "system prompt"
+    assert request_payload["message"] == "hello"
+    assert request_payload["skills"] == [
         {
-            "integrationType": "slack",
-            "eventType": "message",
-            "formattedContent": "Slack message",
-            "debugLog": "slack debug",
-            "data": {
-                "integrationType": "slack",
-                "eventType": "message",
-                "channelId": "C123",
-                "channelName": "general",
-                "userId": "U123",
-                "userName": "bot",
-                "text": "hello",
-                "timestamp": "1710000000.100000",
-                "threadTs": None,
-                "threadTimestamp": None,
-                "teamId": "T1",
-                "permalink": "https://example.com",
-                "channelType": "channel",
-                "blocks": None,
-                "attachments": None,
-                "files": None,
-            },
+            "integrationId": "attio_integration",
+            "integrationType": "attio",
+            "configType": "attio_output",
+            "objectSlug": "people",
         }
-    )
-
-    try:
-        with caplog.at_level(logging.DEBUG, logger="terse.sdk.runtime"):
-            runtime_module._build_agent_run_request_body(
-                prompt="hi",
-                event=sdk,
-                skills=[],
-                tool_approvals=[],
-            )
-    finally:
-        runtime_module.LOGGER.setLevel(original_level)
-
-    assert "Building /sdk/agent-run request for slack/message" in caplog.text
+    ]
+    assert request_payload["toolApprovals"] == ["approved_tool"]
+    assert "options" not in request_payload
 
 
 def test_execute_registered_job_wraps_raw_trigger_in_sdk_trigger() -> None:
@@ -975,7 +879,7 @@ def test_execute_registered_job_wraps_raw_trigger_in_sdk_trigger() -> None:
     app = Terse()
 
     @app.job(name="wrap-test")
-    def handler(event: CronTrigger, agent: TerseAgent) -> None:
+    def handler(event: CronTrigger) -> None:
         received_events.append(event)
 
     raw = _RawCronTrigger(
@@ -984,7 +888,7 @@ def test_execute_registered_job_wraps_raw_trigger_in_sdk_trigger() -> None:
         is_manual_trigger=True,
     )
 
-    execute_registered_job(get_job_registry()["wrap-test"], raw, agent=TerseAgent())
+    execute_registered_job(get_job_registry()["wrap-test"], raw)
 
     assert len(received_events) == 1
     assert isinstance(received_events[0], SDKTrigger)
@@ -998,7 +902,7 @@ def test_execute_registered_job_passes_sdk_trigger_through() -> None:
     app = Terse()
 
     @app.job(name="passthrough-test")
-    def handler(event: CronTrigger, agent: TerseAgent) -> None:
+    def handler(event: CronTrigger) -> None:
         received_events.append(event)
 
     raw = _RawCronTrigger(
@@ -1007,12 +911,144 @@ def test_execute_registered_job_passes_sdk_trigger_through() -> None:
     )
     sdk_event = SDKTrigger(raw, "pre-formatted", "pre-debug")
 
-    execute_registered_job(get_job_registry()["passthrough-test"], sdk_event, agent=TerseAgent())
+    execute_registered_job(get_job_registry()["passthrough-test"], sdk_event)
 
     assert len(received_events) == 1
     assert received_events[0] is sdk_event
     assert received_events[0].formatted_content == "pre-formatted"
     assert received_events[0].debug_log == "pre-debug"
+
+
+def test_get_job_context_returns_none_outside_scope() -> None:
+    assert get_job_context() is None
+
+
+def test_job_context_scope_sets_and_restores_context() -> None:
+    ctx = TerseJobContext(session_id="sess_1", run_id="run_1", api_base_url="https://api")
+
+    with job_context_scope(ctx) as entered:
+        assert entered is ctx
+        assert get_job_context() == ctx
+
+    assert get_job_context() is None
+
+
+def test_job_context_scope_is_restored_after_exception() -> None:
+    ctx = TerseJobContext(session_id="sess_boom", run_id="run_boom", api_base_url="https://api")
+
+    with pytest.raises(RuntimeError), job_context_scope(ctx):
+        raise RuntimeError("boom")
+
+    assert get_job_context() is None
+
+
+def test_terse_agent_inherits_session_and_run_id_from_job_context() -> None:
+    ctx = TerseJobContext(
+        session_id="sess_ctx",
+        run_id="run_ctx",
+        api_base_url="https://ctx.example.com/api",
+    )
+
+    with job_context_scope(ctx):
+        agent = TerseAgent(prompt="")
+
+    assert agent.session_id == "sess_ctx"
+    assert agent.run_id == "run_ctx"
+    assert agent.backend_url == "https://ctx.example.com/api"
+
+
+def test_terse_agent_falls_back_to_session_and_run_id_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TERSE_SESSION_ID", "sess_env")
+    monkeypatch.setenv("TERSE_RUN_ID", "run_env")
+
+    agent = TerseAgent()
+
+    assert agent.session_id == "sess_env"
+    assert agent.run_id == "run_env"
+
+
+def test_terse_agent_job_context_takes_precedence_over_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TERSE_SESSION_ID", "sess_env")
+    monkeypatch.setenv("TERSE_RUN_ID", "run_env")
+
+    ctx = TerseJobContext(
+        session_id="sess_ctx",
+        run_id="run_ctx",
+        api_base_url="https://ctx.example.com/api",
+    )
+    with job_context_scope(ctx):
+        agent = TerseAgent()
+
+    assert agent.session_id == "sess_ctx"
+    assert agent.run_id == "run_ctx"
+
+
+def test_terse_agent_explicit_arguments_override_job_context() -> None:
+    ctx = TerseJobContext(
+        session_id="sess_ctx",
+        run_id="run_ctx",
+        api_base_url="https://ctx.example.com/api",
+    )
+
+    with job_context_scope(ctx):
+        agent = TerseAgent(
+            prompt="",
+            session_id="sess_override",
+            run_id="run_override",
+            backend_url="https://override.example.com/api",
+        )
+
+    assert agent.session_id == "sess_override"
+    assert agent.run_id == "run_override"
+    assert agent.backend_url == "https://override.example.com/api"
+
+
+def test_handle_trigger_runs_handler_inside_job_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    observed: dict[str, object] = {}
+    app = Terse()
+
+    @app.job(name="ctx-job")
+    def handler(event: CronTrigger) -> None:
+        _ = event
+        ctx = get_job_context()
+        observed["ctx"] = ctx
+        agent = TerseAgent(prompt="")
+        observed["agent_session_id"] = agent.session_id
+        observed["agent_run_id"] = agent.run_id
+        observed["agent_backend_url"] = agent.backend_url
+
+    session_handle = SimpleNamespace(session_id="sess_from_stream", close=lambda: observed.setdefault("closed", True))
+    monkeypatch.setattr(runtime_module, "_open_session_stream", lambda *_args, **_kwargs: session_handle)
+    monkeypatch.setenv("TERSE_SIGNING_SECRET", "secret")
+    monkeypatch.setenv("TERSE_API_KEY", "terse_test_key")
+    monkeypatch.setenv("TERSE_BACKEND_URL", "https://backend.example.com/api")
+
+    body: dict[str, object] = {
+        "jobName": "ctx-job",
+        "runId": "run_from_trigger",
+        "event": {
+            "integrationType": "cron_job",
+            "eventType": "cron",
+            "formattedContent": "",
+            "debugLog": "",
+            "data": {
+                "integrationType": "cron_job",
+                "eventType": "cron",
+                "inputId": "input_123",
+                "isManualTrigger": True,
+            },
+        },
+    }
+
+    result = app.handle_trigger(body)
+
+    assert result == {"status": "ok"}
+    assert observed["closed"] is True
+    assert isinstance(observed["ctx"], TerseJobContext)
+    assert observed["agent_session_id"] == "sess_from_stream"
+    assert observed["agent_run_id"] == "run_from_trigger"
+    assert observed["agent_backend_url"] == "https://backend.example.com/api"
+    assert get_job_context() is None
 
 
 def _json_response(

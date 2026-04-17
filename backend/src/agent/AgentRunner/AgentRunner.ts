@@ -51,10 +51,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
     private activeStreamEventEmitter?: StreamEventEmitter
 
     constructor(session: T, outputs: Output<TConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50) {
-        super({
-            runId: runContext.runId,
-            toolToIntegrationMap: BaseAgentRunner.buildToolToIntegrationMap(outputs)
-        })
+        super({ runId: runContext.runId })
         this.session = session
         this.outputs = outputs
         this.agentConfig = agent

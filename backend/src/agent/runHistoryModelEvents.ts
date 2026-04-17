@@ -26,7 +26,7 @@ export async function getRunHistoryModelEventsWithActions(runId: string, options
         createdAt: rawEvent.created_at
     }))
 
-    const modelEvents = await convertAgentInputItemsToModelEvents(timestampedItems, undefined, options)
+    const modelEvents = await convertAgentInputItemsToModelEvents(timestampedItems, options)
     return attachRunHistoryChangedItems(runId, modelEvents)
 }
 
