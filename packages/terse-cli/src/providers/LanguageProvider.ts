@@ -29,5 +29,5 @@ export interface LanguageProvider {
     resolveGeneratedCodePath(cwd: string): string
     renderGeneratedCode(input: CodegenInput): string
     loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>>
-    executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void>
+    executeJob(job: CreateJobParameters, runId: string | null, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void>
 }

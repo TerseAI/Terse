@@ -3,7 +3,7 @@ import fs from "fs"
 import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema, serializedEventSchema } from "terse-types"
 import type { SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
 
-import { fetchWithAuth, readApiKey } from "./api.js"
+import { fetchWithAuth, readApiKey, readApiKeyOrBail, readRunId } from "./api.js"
 import { loadJob } from "./loadJob.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
@@ -19,7 +19,11 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         }
     }
 
-    readApiKey()
+    const apiKey = readApiKeyOrBail({
+        title: "Error: No TERSE_API_KEY found in .env",
+        detail: "Run `terse init` to set up your project, or add TERSE_API_KEY to your .env file."
+    })
+    const runId = readRunId()
 
     let rawEvent: unknown
     if (eventJson) {
@@ -31,7 +35,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
             process.exit(1)
         }
     } else {
-        rawEvent = await resolveEventFromRunId()
+        rawEvent = await resolveEventFromRunId(runId, apiKey)
     }
 
     if (!rawEvent) {
@@ -53,19 +57,12 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         process.exit(1)
     }
 
-    await provider.executeJob(job, parsed, { entryFile })
+    await provider.executeJob(job, runId, parsed, { entryFile })
 }
 
-async function resolveEventFromRunId(): Promise<unknown | undefined> {
-    const runId = process.env.TERSE_RUN_ID?.trim()
+async function resolveEventFromRunId(runId: string | null, apiKey: string): Promise<unknown | undefined> {
     if (!runId) {
         return undefined
-    }
-
-    const apiKey = process.env.TERSE_API_KEY ?? null
-    if (!apiKey) {
-        console.error(chalk.red(`Error: TERSE_RUN_ID is set but TERSE_API_KEY is missing, so the trigger event for run ${runId} cannot be fetched.`))
-        process.exit(1)
     }
 
     try {

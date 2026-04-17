@@ -138,7 +138,7 @@ export class PythonProvider implements LanguageProvider {
         }
     }
 
-    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
+    async executeJob(job: CreateJobParameters, runId: string | null, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
         const cwd = process.cwd()
         const env: NodeJS.ProcessEnv = {
             ...this.buildPythonEnv(cwd),

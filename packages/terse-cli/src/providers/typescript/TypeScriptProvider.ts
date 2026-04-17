@@ -4,16 +4,17 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
-import type { ApprovalRequestInfo, CreateJobParameters } from "terse-sdk"
-import { TerseAgent, createSDKTrigger } from "terse-sdk"
+import type { CreateJobParameters } from "terse-sdk"
+import { createSDKTrigger, runWithJobContext } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
+import { readApiKey } from "../../api.js"
 import { BACKEND_URL } from "../../config.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
-import { openSessionStream, promptForToolApproval } from "../shared/sessionStream.js"
+import { openSessionStream } from "../shared/sessionStream.js"
 
 import { prepareTemplateContext } from "./prepareCodegenData.js"
 import { renderGeneratedCode } from "./templateEngine.js"
@@ -129,44 +130,45 @@ export class TypeScriptProvider implements LanguageProvider {
         return registry
     }
 
-    async executeJob(job: CreateJobParameters, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
+    async executeJob(job: CreateJobParameters, runId: string | null, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
         const isVerbose = opts?.verbose ?? false
 
         const serializedEventRuntime = createSDKTrigger(event)
 
-        const apiKey = process.env.TERSE_API_KEY ?? null
-        let sessionId: string | undefined
-        let closeSession: (() => void) | undefined
-
-        if (isVerbose && apiKey) {
-            const session = await openSessionStream(apiKey, {
-                verbose: true,
-                isPaused: () => sessionPaused
-            })
-            sessionId = session.sessionId
-            closeSession = session.close
-        }
-
-        try {
-            if (job.filter) {
-                const shouldRun = await job.filter(serializedEventRuntime)
-                if (!shouldRun) {
-                    console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
-                    return
-                }
-            }
-
-            if (isVerbose) {
-                console.log(chalk.cyan(`  Job "${job.name}" started`))
-            }
-            await job.onTrigger(serializedEventRuntime)
-        } catch (error) {
-            console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))
-            console.error(error)
+        const apiKey = readApiKey()
+        if (!apiKey) {
+            console.error(chalk.red("TERSE_API_KEY is not set. Please set it in your environment variables."))
             process.exit(1)
-        } finally {
-            closeSession?.()
         }
+
+        const session = await openSessionStream(apiKey, {
+            verbose: true,
+            isPaused: () => sessionPaused
+        })
+        const closeSession = session.close
+
+        await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL }, async () => {
+            try {
+                if (job.filter) {
+                    const shouldRun = await job.filter(serializedEventRuntime)
+                    if (!shouldRun) {
+                        console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
+                        return
+                    }
+                }
+
+                if (isVerbose) {
+                    console.log(chalk.cyan(`  Job "${job.name}" started`))
+                }
+                await job.onTrigger(serializedEventRuntime)
+            } catch (error) {
+                console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))
+                console.error(error)
+                process.exit(1)
+            } finally {
+                closeSession?.()
+            }
+        })
     }
 }
 

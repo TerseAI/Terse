@@ -2,7 +2,8 @@ import { AsyncLocalStorage } from "node:async_hooks"
 
 export type TerseJobContext = {
     sessionId: string
-    runId: string
+    /** Non-null when executing a backend-orchestrated run; null for local test/sample invocations. */
+    runId: string | null
     apiBaseUrl: string
 }
 

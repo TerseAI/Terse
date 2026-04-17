@@ -281,7 +281,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
 
     private readonly apiBaseUrl: string
     private readonly sessionId?: string
-    private readonly runId?: string
+    private readonly runId: string | null
 
     /**
      * Optional callback invoked when the agent requires tool approval.
@@ -291,7 +291,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[]; apiBaseUrl: string; sessionId?: string; runId?: string }) {
+    private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[]; apiBaseUrl: string; sessionId?: string; runId: string | null }) {
         this.prompt = params.prompt
         this.skills = params.skills
         this.toolApprovals = params.toolApprovals
@@ -318,7 +318,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             toolApprovals: params.ToolApprovals ?? [],
             apiBaseUrl: ctx?.apiBaseUrl ?? resolveTerseBackendUrl(),
             sessionId: ctx?.sessionId,
-            runId: ctx?.runId
+            runId: ctx?.runId ?? null
         })
     }
 

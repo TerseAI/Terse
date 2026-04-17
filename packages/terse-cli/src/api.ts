@@ -49,6 +49,10 @@ export function readApiKeyOrBail(options?: { title?: string; detail?: string }):
     process.exit(1)
 }
 
+export function readRunId(): string | null {
+    return readEnvVar("TERSE_RUN_ID")
+}
+
 export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: Record<string, unknown> = {}, type: "GET" | "POST" = "GET"): Promise<T> {
     let res: Response
     try {
