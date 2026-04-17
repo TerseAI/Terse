@@ -160,7 +160,7 @@ async function resolveEvent(triggerWithEventRequest: TriggerWithEventRequest, or
         if (!serializedEvent) {
             return null
         }
-        return serializedEvent.data
+        return serializedEvent.event.data
     }
 
     throw new Error("Invalid trigger with event request")

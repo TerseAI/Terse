@@ -6,7 +6,6 @@ import type { LanguageProvider } from "./providers/LanguageProvider.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
 export async function replay(runId: string, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
-    console.log(`Replaying run ${runId}`)
     const apiKey = readApiKeyOrBail()
 
     if (!runId) {
