@@ -84,7 +84,7 @@ triggers=[
   - `channelId`, `channelName` - where the message was posted
   - `userId`, `userName` - who sent it
   - `text` - message content
-  - `timestamp`, `threadTs` - message timing and thread parent
+  - `timestamp` - Slack message timestamp (also the thread parent timestamp when the message is in a thread)
   - `channelType` - `"channel"`, `"group"`, `"mpim"`, or `"im"`
   - `files` - array of attached files with `{ id, name, mimetype, url_private }`
   - `attachments` - rich message attachments
