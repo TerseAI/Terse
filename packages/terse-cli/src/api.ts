@@ -1,39 +1,39 @@
 import chalk from "chalk"
+import dotenv from "dotenv"
 import fs from "node:fs"
 import path from "node:path"
 
 import { BACKEND_URL } from "./config.js"
 
+let dotenvLoadedFor: string | null = null
+
+function ensureDotenvLoaded(cwd: string = process.cwd()): void {
+    if (dotenvLoadedFor === cwd) return
+    const envPath = path.resolve(cwd, ".env")
+    if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath, quiet: true })
+    }
+    dotenvLoadedFor = cwd
+}
+
 export function readEnvVar(name: string): string | null {
-    return readEnvVarFromDir(process.cwd(), name)
+    ensureDotenvLoaded()
+    return process.env[name] || null
 }
 
 export function readEnvVarFromDir(dir: string, name: string): string | null {
     const envPath = path.resolve(dir, ".env")
     if (!fs.existsSync(envPath)) return null
-    const content = fs.readFileSync(envPath, "utf-8")
-    for (const line of content.split("\n")) {
-        const trimmed = line.trim()
-        if (trimmed.startsWith("#") || !trimmed.includes("=")) continue
-        const [key, ...rest] = trimmed.split("=")
-        if (key.trim() === name) {
-            const val = rest.join("=").trim()
-            return val || null
-        }
-    }
-    return null
+    const parsed = dotenv.parse(fs.readFileSync(envPath))
+    return parsed[name] || null
 }
 
 export function readApiKey(): string | null {
-    return readApiKeyFromDir(process.cwd())
+    return readEnvVar("TERSE_API_KEY")
 }
 
 export function readApiKeyFromDir(dir: string): string | null {
-    const val = readEnvVarFromDir(dir, "TERSE_API_KEY")
-    if (val) {
-        process.env.TERSE_API_KEY = val
-    }
-    return val
+    return readEnvVarFromDir(dir, "TERSE_API_KEY")
 }
 
 export function readApiKeyOrBail(options?: { title?: string; detail?: string }): string {
