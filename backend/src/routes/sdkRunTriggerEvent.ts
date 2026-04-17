@@ -1,12 +1,12 @@
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
-import { serializedEventSchema } from "terse-types"
+import { SerializedEvent, serializedEventSchema } from "terse-types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { extractErrorMessage } from "../utility/strings"
 
-function parseSerializedTriggerPayload(payload: Prisma.JsonValue | null) {
+function parseSerializedTriggerPayload(payload: Prisma.JsonValue | null): SerializedEvent | null {
     if (payload === null) {
         return null
     }
@@ -31,6 +31,15 @@ export async function handleSdkRunTriggerEvent(req: Request, res: Response) {
         return res.status(400).json({ error: "runId is required" })
     }
 
+    const event = await fetchEventFromRunId(runId, organizationId)
+    if (!event) {
+        return res.status(404).json({ error: "Trigger event not available for this run" })
+    }
+
+    return res.json({ event })
+}
+
+export async function fetchEventFromRunId(runId: string, organizationId: string): Promise<SerializedEvent | null> {
     try {
         const runRecord = await db().run_history_records.findFirst({
             where: {
@@ -45,21 +54,21 @@ export async function handleSdkRunTriggerEvent(req: Request, res: Response) {
         })
 
         if (!runRecord) {
-            return res.status(404).json({ error: "Run not found" })
+            return null
         }
 
         const event = parseSerializedTriggerPayload(runRecord.trigger_payload)
         if (!event) {
-            return res.status(404).json({ error: "Trigger event not available for this run" })
+            return null
         }
 
-        return res.json({ event })
+        return event
     } catch (error) {
         logger.error("[sdk/run-trigger-event] Failed to fetch trigger event", {
             runId,
             organizationId,
             error: extractErrorMessage(error)
         })
-        return res.status(500).json({ error: "Failed to fetch trigger event" })
+        return null
     }
 }

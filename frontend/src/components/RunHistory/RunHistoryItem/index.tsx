@@ -1,10 +1,11 @@
-import { Check, MessageSquare } from "lucide-react"
+import { Check, MessageSquare, RefreshCcw } from "lucide-react"
 import { RunHistoryRecord } from "terse-types"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { formatTimestamp } from "@/utility/timeUtils"
 
+import { BackendProvider } from "../../../services/backend"
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
 
 import RunHistoryItemHeader from "./RunHistoryItemHeader"
@@ -37,6 +38,9 @@ export default function RunHistoryItem({ run, onViewChat, className, showStatusB
         }
     }
 
+    const handleReTrigger = () => {
+        BackendProvider.triggerWithEvent(run.agentId, undefined, run.id)
+    }
     return (
         <div className={cn("overflow-hidden bg-card border border-border rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink", className)}>
             <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
@@ -56,6 +60,9 @@ export default function RunHistoryItem({ run, onViewChat, className, showStatusB
                             {viewButtonLabel && <span>{viewButtonLabel}</span>}
                         </Button>
                     )}
+                    <Button variant="outline" size="icon-sm" onClick={handleReTrigger} title="Re-trigger run">
+                        <RefreshCcw className="w-4 h-4" />
+                    </Button>
                 </div>
             </div>
         </div>

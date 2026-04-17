@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import type { Trigger } from "terse-types"
+import type { SerializedEvent, Trigger, TriggerWithEventRequest } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEventParamsSchema, triggerWithEventRequestSchema } from "terse-types/types"
@@ -12,6 +12,8 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
+
+import { fetchEventFromRunId } from "./sdkRunTriggerEvent"
 
 export interface ManualTriggerRequest {
     context?: string
@@ -115,7 +117,13 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const { event } = triggerWithEventRequestSchema.parse(req.body)
+    const organizationId = session.user.organizationId
+
+    const triggerWithEventRequest = triggerWithEventRequestSchema.parse(req.body)
+    const event = await resolveEvent(triggerWithEventRequest, organizationId)
+    if (!event) {
+        return res.status(404).json({ error: "Event not found" })
+    }
 
     const prisma = db()
     const automation = await prisma.automations.findFirst({
@@ -140,4 +148,20 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
     }).catch(error => {
         logger.error("Error processing trigger with event", { error, automationId })
     })
+}
+
+async function resolveEvent(triggerWithEventRequest: TriggerWithEventRequest, organizationId: string): Promise<Trigger | null> {
+    if (triggerWithEventRequest.event) {
+        return triggerWithEventRequest.event
+    }
+
+    if (triggerWithEventRequest.runId) {
+        const serializedEvent = await fetchEventFromRunId(triggerWithEventRequest.runId, organizationId)
+        if (!serializedEvent) {
+            return null
+        }
+        return serializedEvent.data
+    }
+
+    throw new Error("Invalid trigger with event request")
 }

@@ -429,7 +429,7 @@ interface BackendService {
     /**
      * Triggers an automation with a specific event payload (e.g. a sample event)
      */
-    triggerWithEvent(automationId: string, event: SerializedEvent): Promise<{ received: boolean; message: string }>
+    triggerWithEvent(automationId: string, event?: SerializedEvent, runId?: string): Promise<{ received: boolean; message: string }>
 
     /**
      * Manually triggers a scheduled automation trigger
@@ -1369,10 +1369,10 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    triggerWithEvent: (automationId: string, event: SerializedEvent) => {
+    triggerWithEvent: (automationId: string, event?: SerializedEvent, runId?: string) => {
         const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { automationId })
         return axios
-            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event: event.data }, { withCredentials: true })
+            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event: event?.data, runId }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error triggering with event:", error)
