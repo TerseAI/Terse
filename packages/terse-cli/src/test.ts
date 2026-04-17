@@ -89,7 +89,7 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
             value: index
         }))
     })
-    await provider.executeJob(job, events[choice], { verbose: !!verbose, entryFile })
+    await provider.executeJob(job, null, events[choice], { verbose: !!verbose, entryFile })
 }
 
 function serializeEvent(event: Trigger): SerializedEvent {
