@@ -26,6 +26,7 @@
                 "group": "Core Concepts",
                 "pages": [
                     "core-concepts/jobs",
+                    "core-concepts/generated-sdk",
                     "core-concepts/skills-and-integrations",
                     "core-concepts/deterministic-tool-calls",
                     "core-concepts/human-in-the-loop",
