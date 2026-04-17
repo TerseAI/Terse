@@ -801,7 +801,8 @@ export const sdkToolExecuteRequestSchema = z.object({
 export type SdkToolExecuteRequest = z.infer<typeof sdkToolExecuteRequestSchema>
 
 export const sdkRunTriggerEventResponseSchema = z.object({
-    event: serializedEventSchema
+    event: serializedEventSchema,
+    agentName: z.string()
 })
 export type SdkRunTriggerEventResponse = z.infer<typeof sdkRunTriggerEventResponseSchema>
 

@@ -11,6 +11,7 @@ import { init } from "./init.js"
 import { integrate } from "./integrate.js"
 import { isPromptCancellationError } from "./promptErrors.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
+import { replay } from "./replay.js"
 import { run } from "./run.js"
 import { test } from "./test.js"
 
@@ -84,6 +85,14 @@ program
     .option("--entry-file <path>", "Path to the job entry file (overrides default)")
     .action(async (opts?: { entryFile?: string }) => {
         await deploy(resolveProvider(), opts?.entryFile)
+    })
+
+program
+    .command("replay")
+    .description("Replay a run locally on your machine")
+    .argument("[run-id]", "ID of the run to re-trigger")
+    .action(async (runId: string) => {
+        await replay(runId)
     })
 
 try {

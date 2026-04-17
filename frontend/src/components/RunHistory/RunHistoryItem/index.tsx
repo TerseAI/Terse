@@ -41,6 +41,7 @@ export default function RunHistoryItem({ run, onViewChat, className, showStatusB
     const handleReTrigger = () => {
         BackendProvider.triggerWithEvent(run.agentId, undefined, run.id)
     }
+
     return (
         <div className={cn("overflow-hidden bg-card border border-border rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink", className)}>
             <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">

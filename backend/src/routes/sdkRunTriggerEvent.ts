@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
-import { SerializedEvent, serializedEventSchema } from "terse-types"
+import { SdkRunTriggerEventResponse, SerializedEvent, serializedEventSchema } from "terse-types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -31,15 +31,15 @@ export async function handleSdkRunTriggerEvent(req: Request, res: Response) {
         return res.status(400).json({ error: "runId is required" })
     }
 
-    const event = await fetchEventFromRunId(runId, organizationId)
-    if (!event) {
+    const result = await fetchEventFromRunId(runId, organizationId)
+    if (!result) {
         return res.status(404).json({ error: "Trigger event not available for this run" })
     }
 
-    return res.json({ event })
+    return res.json(result)
 }
 
-export async function fetchEventFromRunId(runId: string, organizationId: string): Promise<SerializedEvent | null> {
+export async function fetchEventFromRunId(runId: string, organizationId: string): Promise<SdkRunTriggerEventResponse | null> {
     try {
         const runRecord = await db().run_history_records.findFirst({
             where: {
@@ -49,7 +49,12 @@ export async function fetchEventFromRunId(runId: string, organizationId: string)
                 }
             },
             select: {
-                trigger_payload: true
+                trigger_payload: true,
+                automation: {
+                    select: {
+                        name: true
+                    }
+                }
             }
         })
 
@@ -62,7 +67,10 @@ export async function fetchEventFromRunId(runId: string, organizationId: string)
             return null
         }
 
-        return event
+        return {
+            event,
+            agentName: runRecord.automation.name
+        }
     } catch (error) {
         logger.error("[sdk/run-trigger-event] Failed to fetch trigger event", {
             runId,
