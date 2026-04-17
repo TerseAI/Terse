@@ -23,8 +23,8 @@ Import these from `terse-sdk`:
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
 
-- `formatForAgentRunner()` — string to include in agent prompts (matches how the platform formats the event for the model)
-- `debugLog()` — one-line description for logs and CLI sample lists
+- `formatForAgentRunner()` returns a string to include in agent prompts (matches how the platform formats the event for the model)
+- `debugLog()` returns a one-line description for logs and CLI sample lists
 
 Your `onTrigger` and `filter` callbacks receive these enriched objects, so you can call `event.formatForAgentRunner()` directly. For plain `Trigger` values (for example in tests), use `formatTriggerForAgent(event)` and `debugTrigger(event)` from `terse-sdk`.
 
