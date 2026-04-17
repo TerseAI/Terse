@@ -1,0 +1,101 @@
+---
+title: "Activity & observability"
+description: "Every workflow run is recorded with a full trace of actions taken, model decisions, failures, and timing."
+icon: "activity"
+---
+
+Every time a workflow runs, Terse records what happened: which trigger fired, what the model decided, which tools were called, whether it succeeded or failed, and how long it took. This data powers the Activity tab, the Stats dashboard, notifications, and the weekly self-improvement reviews.
+
+You don't need to add logging to your code. Observability is built into the platform.
+
+## Run lifecycle
+
+Each run moves through a defined set of statuses:
+
+| Status | Meaning |
+| ------ | ------- |
+| **In progress** | The handler is currently executing |
+| **Success** | The run completed without errors |
+| **Failed** | The run threw an error or a tool call failed |
+| **Skipped** | The `filter` function returned `false`. No handler executed, no tokens spent |
+| **Awaiting approval** | A tool requiring [human approval](/core-concepts/human-in-the-loop) paused the run |
+| **Cancelled** | The run was manually stopped |
+
+## What gets recorded
+
+Every run produces a **run record** with three layers of detail:
+
+### Run summary
+
+The top-level record captures the basics: status, trigger source, trigger title, the model's decision (processed or skipped), decision reasoning, whether it was manually triggered, and timestamps. This is what you see in the Activity list.
+
+### Action trace
+
+Each side effect (a CRM record updated, a Slack message sent, a query executed) is logged as an **action** with:
+
+- The integration and tool name
+- Whether it was a read or write
+- A human-readable summary
+- An optional link to the result (e.g., a URL to the created record)
+
+Actions are categorized by type: `create`, `update`, `delete`, `read`, `approve`, or `error`.
+
+### Raw event stream
+
+The full model conversation is stored as a sequence of raw events: every prompt, tool call, tool result, and model response, in order. This is what powers the run replay in the Activity drawer. You can step through the entire execution and see exactly what the model was thinking and doing at each point.
+
+## Activity tab
+
+The Activity tab shows all runs across your workflows in one place, with the most recent runs first.
+
+**Search** across run IDs, trigger titles, event content, decision reasons, and workflow names.
+
+**Filter by status** to focus on failures, in-progress runs, or runs awaiting approval. Skipped runs are hidden by default to reduce noise. Toggle them on when you need them.
+
+**Filter by date range** to narrow down to a specific time window.
+
+**Inspect a run** by clicking any row. This opens a drawer with the full run replay: the trigger payload, the model conversation, tool calls with their arguments and results, and the final output. For runs awaiting approval, you can approve or reject directly from here.
+
+## Stats dashboard
+
+The Stats page aggregates run data into a dashboard with configurable time intervals (1 hour to 1 year):
+
+| Metric | What it shows |
+| ------ | ------------- |
+| **Events processed** | Total runs (excluding skipped), with change vs. prior period |
+| **Actions taken** | Total write actions across all runs |
+| **Active agents** | Count of workflows that executed at least once |
+| **Event volume over time** | Run count over time, bucketed by the selected interval |
+| **Most active agents** | Top 10 workflows by run count |
+| **Run status breakdown** | Distribution across success, failed, cancelled, etc. |
+| **Trigger sources** | Which integrations are firing the most triggers |
+| **Action integrations** | Which integrations are being written to most |
+
+## Notifications
+
+Terse can notify you about run outcomes through multiple channels:
+
+| Channel | What it supports |
+| ------- | ---------------- |
+| **Slack** | Action notifications, approval requests (interactive approve/reject buttons) |
+| **Email** | Action notifications, approval requests, weekly improvement reviews |
+| **In-app** | Pending approvals, sent notification history |
+
+Notifications are configured per-workflow. You choose which action types to notify on (creates, updates, deletes, errors, and approval requests) and Terse delivers to your preferred channel. Slack is used when you have an active Slack destination configured; otherwise, notifications fall back to email.
+
+Every notification sent is recorded in your notification history, so you have an audit trail of what was delivered and when.
+
+## How observability feeds self-improvement
+
+The same run data that powers Activity and Stats is also what the [self-improvement](/core-concepts/self-improvement) system uses. The weekly review pulls run summaries, failed run traces, and action logs to identify patterns and recommend changes. Better observability means better improvement suggestions.
+
+## Where to go next
+
+<CardGroup cols={2}>
+    <Card title="Human-in-the-loop" icon="shield-check" href="/core-concepts/human-in-the-loop">
+        Require approval before specific tools execute.
+    </Card>
+    <Card title="Self-improvement" icon="sparkles" href="/core-concepts/self-improvement">
+        How Terse reviews past runs and recommends changes.
+    </Card>
+</CardGroup>
