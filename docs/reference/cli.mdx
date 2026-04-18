@@ -138,7 +138,7 @@ terse test my-job
 **How it works:**
 
 1. Loads your job registry from the entry file
-2. Fetches sample events from the backend for integration-based triggers (e.g. real GitHub PR events, real Slack messages)
+2. Fetches sample events from the backend for integration-based triggers (e.g. real GitHub PR events, real Slack messages). GitHub samples include the same kind of descriptive metadata you see for GitHub runs in Activity, so the event you pick in the CLI matches what you would recognize in the run list.
 3. Generates synthetic events for cron and webhook triggers
 4. Prompts you to select an event
 5. Executes your job's `onTrigger` handler locally

@@ -17,7 +17,7 @@ Import these from `terse-sdk`:
 - `TerseAgent`: the runtime object inside `onTrigger`
 - `Trigger`: the base event interface
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), and other per-integration exports (see `terse-sdk` package entry)
-- Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
+- Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`. Each `RunHistoryRecord` includes a `trigger` object with `event`, `integration`, and `source`, plus optional `title`, `subheader`, and `url` used for readable Activity rows (for example GitHub events show repo, PR, and actor context in the list).
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 
 ## Trigger payloads

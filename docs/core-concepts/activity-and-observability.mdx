@@ -27,7 +27,7 @@ Every run produces a **run record** with three layers of detail:
 
 ### Run summary
 
-The top-level record captures the basics: status, trigger source, trigger title, the model's decision (processed or skipped), decision reasoning, whether it was manually triggered, and timestamps. This is what you see in the Activity list.
+The top-level record captures the basics: status, trigger source, a human-readable title and subheader for the event, an optional link back to the source (for example a GitHub pull request), the model's decision (processed or skipped), decision reasoning, whether it was manually triggered, and timestamps. This is what you see in the Activity list. Integration-specific runs (such as GitHub) include enough context in that summary that you can tell one event from another without opening the full replay.
 
 ### Action trace
 
