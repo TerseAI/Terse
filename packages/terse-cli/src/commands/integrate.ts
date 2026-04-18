@@ -6,6 +6,7 @@ import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
 
 import { readApiKey, readApiKeyOrBail } from "../api.js"
 import { ConfigurationFieldDefinition, FormFieldDefinition, fetchInstallationUrl, fetchIntegrationFields, fetchIntegrations, pollForConnection, submitIntegrationForm } from "../integrationApi.js"
+
 import { generate } from "./generate.js"
 
 type IntegrationChangeResult = {

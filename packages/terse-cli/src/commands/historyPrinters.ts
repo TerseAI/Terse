@@ -1,10 +1,10 @@
 import chalk from "chalk"
 import { RunHistoryStatus } from "terse-types"
-import type { RunHistoryRecord, RunHistoryStatus as RunHistoryStatusType } from "terse-types"
+import type { RunHistoryRecord, RunHistoryStatus as RunHistoryStatusType, SerializedEvent } from "terse-types"
 
 import type { RunChatHistory } from "../api.js"
 
-export type RunWithEvents = RunHistoryRecord & { chat?: RunChatHistory }
+export type RunWithEvents = RunHistoryRecord & { chat?: RunChatHistory; triggerEvent?: SerializedEvent }
 
 export function printRuns(jobName: string, agentId: string, items: RunWithEvents[], total: number): void {
     console.log(chalk.cyan(`\n  History for job: ${jobName}`))
@@ -35,8 +35,23 @@ export function printRuns(jobName: string, agentId: string, items: RunWithEvents
         if (run.chat) {
             console.log(chalk.dim(`    events:   ${run.chat.events.length} model event${run.chat.events.length === 1 ? "" : "s"}`))
         }
+        const triggerJson = formatTriggerEventForRun(run)
+        if (triggerJson) {
+            console.log(`    input:`)
+            console.log(indent(triggerJson, "      "))
+        }
         console.log("")
     }
+}
+
+function formatTriggerEventForRun(run: RunWithEvents): string | null {
+    if (run.triggerEvent) {
+        return JSON.stringify(run.triggerEvent, null, 2)
+    }
+    if (run.chat?.triggerEvent) {
+        return run.chat.triggerEvent
+    }
+    return null
 }
 
 export function printRunChat(runId: string, chat: RunChatHistory): void {

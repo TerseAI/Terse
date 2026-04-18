@@ -7,6 +7,7 @@ import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { fetchSdkVersion } from "../providers/fetchSdkVersion.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { renderTemplate } from "../providers/templateUtils.js"
+
 import { loginAndWriteEnv } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"

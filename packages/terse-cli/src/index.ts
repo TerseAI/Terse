@@ -107,7 +107,8 @@ program
     .option("--since <iso>", "Only include runs at or after this ISO timestamp")
     .option("--until <iso>", "Only include runs at or before this ISO timestamp")
     .option("--query <q>", "Free-text search across trigger, decision and event fields")
-    .option("--events", "Also fetch the model events (chat history) for each run")
+    .option("--triggers", "Also fetch the input trigger event JSON for each run (cheap, recommended for /improve)")
+    .option("--events", "Also fetch the full model event stream for each run (heavy, includes trigger event)")
     .option("--run-id <id>", "Show full chat events for a single run instead of a list")
     .action(
         async (
@@ -120,6 +121,7 @@ program
                 since?: string
                 until?: string
                 query?: string
+                triggers?: boolean
                 events?: boolean
                 runId?: string
             }

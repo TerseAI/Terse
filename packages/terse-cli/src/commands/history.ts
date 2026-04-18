@@ -3,7 +3,7 @@ import ora from "ora"
 import { RunHistoryStatus } from "terse-types"
 import type { GetRunHistoryParams, RunHistoryStatus as RunHistoryStatusType } from "terse-types"
 
-import { fetchRunChatHistory, fetchRunHistory, readApiKeyOrBail, resolveAgentIdByJobName } from "../api.js"
+import { fetchRunChatHistory, fetchRunHistory, readApiKeyOrBail, resolveAgentIdByJobName, resolveEventFromRunId } from "../api.js"
 import { loadJob } from "../loadJob.js"
 import { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
@@ -21,6 +21,7 @@ export type HistoryOptions = {
     since?: string
     until?: string
     query?: string
+    triggers?: boolean
     events?: boolean
     runId?: string
 }
@@ -61,6 +62,19 @@ export async function history(jobName?: string, options: HistoryOptions = {}, pr
     const response = await fetchRunHistory(agentId, apiKey, params)
     let items: RunWithEvents[] = response.items
 
+    // --triggers: cheap per-run fetch of just the input event JSON via /sdk/runs/:runId/trigger-event.
+    // Implied by --events (which fetches the full chat history including the trigger payload).
+    if (options.triggers && !options.events && items.length > 0) {
+        if (spinner) spinner.text = `Fetching trigger events for ${items.length} run${items.length === 1 ? "" : "s"}`
+        items = await Promise.all(
+            items.map(async run => {
+                const triggerEvent = await resolveEventFromRunId(run.id, apiKey)
+                return triggerEvent ? { ...run, triggerEvent: triggerEvent.event } : run
+            })
+        )
+    }
+
+    // --events: full chat history per run (model events + trigger event). Heavier than --triggers.
     if (options.events && items.length > 0) {
         if (spinner) spinner.text = `Fetching chat events for ${items.length} run${items.length === 1 ? "" : "s"}`
         items = await Promise.all(
