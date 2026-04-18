@@ -194,6 +194,33 @@ terse replay run_abc123
 
 This complements **Re-trigger** in the Terse app, which runs the workflow again on the platform with the same trigger payload.
 
+## `terse history [job-name]`
+
+Lists past runs for a **deployed** workflow (the CLI matches your local job name to the agent on Terse). Optionally enriches each row with the input trigger payload or the full stored model stream.
+
+Use **`--json`** when you need machine-readable output for scripts or agent tooling. Use **`--triggers`** to attach each run’s serialized trigger event (the same shape a live run passes to `onTrigger`). **`--events`** fetches the full conversation per run (heavier; includes the trigger payload).
+
+```bash
+terse history my-job
+terse history my-job --json --triggers
+terse history --run-id run_abc123
+```
+
+**Options:**
+
+| Flag | Description |
+| ---- | ----------- |
+| `--json` | Print JSON instead of a table |
+| `--limit <n>` | Max runs to return (default 20, max 100) |
+| `--page <n>` | Page number (1-indexed) |
+| `--status <list>` | Comma-separated: `success`, `failed`, `cancelled`, `skipped`, `in_progress`, `awaiting_approval` |
+| `--since <iso>` | Only runs at or after this ISO timestamp |
+| `--until <iso>` | Only runs at or before this ISO timestamp |
+| `--query <q>` | Free-text search across trigger, decision, and event fields |
+| `--triggers` | Include the input trigger event JSON for each listed run |
+| `--events` | Include the full model event stream for each listed run |
+| `--run-id <id>` | Show chat events for one run instead of listing runs for a job |
+
 ## `terse deploy`
 
 Packages your project and deploys all jobs to the Terse platform. [Learn more about how deployment works.](/hosting)
@@ -211,4 +238,6 @@ terse deploy
 
 ## Required environment variable
 
-All commands except `terse login` and `terse init` require `TERSE_API_KEY` in your project's `.env` file. This is set automatically by `terse login`.
+Commands that call the Terse API need **`TERSE_API_KEY`**. `terse login` writes it to `.env` in the project directory; when you run the CLI from that directory, it loads `.env` automatically. You can also **`export TERSE_API_KEY`** in your environment if the process cannot read `.env` (for example in a restricted sandbox).
+
+`terse init` runs the full setup flow, including login. `terse login` only authenticates and updates `.env`.
