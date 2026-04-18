@@ -438,47 +438,59 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
-        const { eventType, username, repositoryName, pullRequest, commits, branch } = this.data
-
-        const base = {
-            event: "github_event",
-            integration: IntegrationType.GITHUB,
-            source: repositoryName
-        } as const
-
-        if (pullRequest) {
-            const action = prActionLabel(eventType)
-            return {
-                ...base,
-                title: `#${pullRequest.number} ${pullRequest.title}`.trim(),
-                subheader: `${username} ${action} PR in ${repositoryName}`,
-                url: pullRequest.url || `https://github.com/${repositoryName}/pull/${pullRequest.number}`
-            }
-        }
-
-        if (eventType === GitHubEventType.PUSH) {
-            const firstCommit = commits?.[0]
-            const commitMessage = (firstCommit?.message ?? firstCommit?.name ?? "").split("\n")[0]
-            const commitCount = commits?.length ?? 0
-            const title = commitCount > 1 ? `${commitCount} commits to ${branch}` : commitMessage || `Push to ${branch}`
-            return {
-                ...base,
-                title,
-                subheader: `${username} pushed to ${branch} in ${repositoryName}`,
-                url: firstCommit ? `https://github.com/${repositoryName}/commit/${firstCommit.sha}` : `https://github.com/${repositoryName}/tree/${branch}`
-            }
-        }
-
-        return {
-            ...base,
-            title: eventType,
-            subheader: `${username} in ${repositoryName}`,
-            url: `https://github.com/${repositoryName}/`
-        }
+        return buildGithubTriggerMetadata(this.data)
     }
 
     getFiles(): StoredFile[] {
         return this.storedFiles
+    }
+}
+
+/**
+ * Pure builder for the RunHistory trigger metadata shown in the UI for a GitHub event.
+ *
+ * Exported so synthetic / sample-event flows (e.g. `SyntheticTriggerRuntime` in
+ * `routes/schedule.ts`) can produce the same rich title/subheader/url as real webhook
+ * deliveries, rather than falling back to a bare `debugLog()` string like
+ * "GitHub Event: pull_request.merged - owner/repo - user".
+ */
+export function buildGithubTriggerMetadata(data: GithubTrigger): RunHistoryTrigger {
+    const { eventType, username, repositoryName, pullRequest, commits, branch } = data
+
+    const base = {
+        event: "github_event",
+        integration: IntegrationType.GITHUB,
+        source: repositoryName
+    } as const
+
+    if (pullRequest) {
+        const action = prActionLabel(eventType)
+        return {
+            ...base,
+            title: `#${pullRequest.number} ${pullRequest.title}`.trim(),
+            subheader: `${username} ${action} PR in ${repositoryName}`,
+            url: pullRequest.url || `https://github.com/${repositoryName}/pull/${pullRequest.number}`
+        }
+    }
+
+    if (eventType === GitHubEventType.PUSH) {
+        const firstCommit = commits?.[0]
+        const commitMessage = (firstCommit?.message ?? firstCommit?.name ?? "").split("\n")[0]
+        const commitCount = commits?.length ?? 0
+        const title = commitCount > 1 ? `${commitCount} commits to ${branch}` : commitMessage || `Push to ${branch}`
+        return {
+            ...base,
+            title,
+            subheader: `${username} pushed to ${branch} in ${repositoryName}`,
+            url: firstCommit ? `https://github.com/${repositoryName}/commit/${firstCommit.sha}` : `https://github.com/${repositoryName}/tree/${branch}`
+        }
+    }
+
+    return {
+        ...base,
+        title: eventType,
+        subheader: `${username} in ${repositoryName}`,
+        url: `https://github.com/${repositoryName}/`
     }
 }
 
