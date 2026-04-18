@@ -18,7 +18,8 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     console.log(chalk.cyan(`\n  Testing job: ${job.name}\n`))
 
     const apiKey = readApiKeyOrBail({
-        title: "Error: No API key found. Unable to fetch sample events. Add a TERSE_API_KEY to your .env file."
+        title: "Error: Not authenticated. Unable to fetch sample events.",
+        detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
     })
 
     // Split triggers into time-based, webhook, and integration-based

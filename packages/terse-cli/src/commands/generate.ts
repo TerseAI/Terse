@@ -45,8 +45,8 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
 
     // 1. Read API key
     const apiKey = readApiKeyOrBail({
-        title: "\n  Missing TERSE_API_KEY in .env\n",
-        detail: "  Create a project with `terse init` or add TERSE_API_KEY to your .env file.\n"
+        title: "\n  Not authenticated.\n",
+        detail: "  Run `terse login` to authenticate, or set TERSE_API_KEY in your environment.\n"
     })
 
     // 2. Fetch active integrations
@@ -66,7 +66,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
             message.toLowerCase().includes("forbidden")
 
         if (isAuthError) {
-            console.error(chalk.red("\n  Authentication failed: your TERSE_API_KEY was rejected.\n") + chalk.dim("  Update TERSE_API_KEY in .env and try again.\n"))
+            console.error(chalk.red("\n  Authentication failed: your TERSE_API_KEY was rejected.\n") + chalk.dim("  Run `terse login` to refresh your credentials and try again.\n"))
         } else {
             console.error(chalk.red(`\n  ${message}\n`))
         }

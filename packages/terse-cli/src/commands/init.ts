@@ -8,7 +8,7 @@ import { fetchSdkVersion } from "../providers/fetchSdkVersion.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { renderTemplate } from "../providers/templateUtils.js"
 
-import { loginAndWriteEnv } from "./auth.js"
+import { loginAndPersist } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 
@@ -66,10 +66,9 @@ export async function init(projectName?: string, provider: LanguageProvider = re
         spinner.warn(`Failed to install dependencies. Run ${chalk.cyan(`${pm} install`)} manually.`)
     }
 
-    // Authenticate via browser and write API key to .env
-    await loginAndWriteEnv(targetDir)
-
-    const envExists = fs.existsSync(path.join(targetDir, ".env"))
+    // Authenticate via browser; saves to user config (~/.config/terse/auth.json or OS equivalent).
+    const loginResult = await loginAndPersist()
+    const isAuthenticated = !!loginResult
 
     // Connect integrations
     await listAndPromptIntegrations()
@@ -89,7 +88,7 @@ export async function init(projectName?: string, provider: LanguageProvider = re
         console.log(`  ${step}. cd ${projectName}`)
         step++
     }
-    if (!envExists) {
+    if (!isAuthenticated) {
         console.log(`  ${step}. Run ${chalk.cyan("terse login")} to authenticate`)
         step++
     }

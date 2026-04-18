@@ -6,6 +6,7 @@ import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema } from "terse-t
 import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
 
 import { BACKEND_URL } from "./config.js"
+import { getStoredApiKey } from "./userConfig.js"
 
 let dotenvLoadedFor: string | null = null
 
@@ -31,7 +32,13 @@ export function readEnvVarFromDir(dir: string, name: string): string | null {
 }
 
 export function readApiKey(): string | null {
-    return readEnvVar("TERSE_API_KEY")
+    const fromProcessEnv = process.env.TERSE_API_KEY
+    if (fromProcessEnv) return fromProcessEnv
+
+    const fromUserConfig = getStoredApiKey()
+    if (fromUserConfig) return fromUserConfig
+
+    return null
 }
 
 export function readApiKeyFromDir(dir: string): string | null {

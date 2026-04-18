@@ -1,14 +1,13 @@
 import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
 import { exec } from "node:child_process"
-import fs from "node:fs"
-import path from "node:path"
 import process from "node:process"
 import ora from "ora"
 import type { DeviceTokenExchangeResponse } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { BACKEND_URL, WORKOS_CLIENT_ID } from "../config.js"
+import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setStoredApiKey } from "../userConfig.js"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"
@@ -164,54 +163,71 @@ export async function login(): Promise<{ apiKey: string; displayName: string | n
 }
 
 /**
- * Run login and write the API key to .env in the given directory.
- * If a valid key already exists, prompts the user to confirm before re-authenticating.
+ * Run login and persist the API key to the user config file. If a valid key already
+ * exists, prompt before re-authenticating.
+ *
+ * Returns the API key + display name on success (freshly minted or pre-existing),
+ * or null if the user cancelled or the flow failed.
  */
-export async function loginAndWriteEnv(targetDir: string): Promise<boolean> {
-    const existingUserName = await getExistingAuthenticatedUserName(targetDir)
-    if (existingUserName) {
-        const spinner = ora("Checking existing API key").start()
-        spinner.succeed(`Already logged in as ${chalk.bold(existingUserName)}`)
-        const shouldContinue = await confirm({ message: "Log in again with a different account?", default: false })
-        if (!shouldContinue) return true
-    }
-
-    if (readApiKeyFromDir(targetDir)) {
-        const spinner = ora("Checking existing API key").start()
-        spinner.warn("Existing API key is invalid or expired")
+export async function loginAndPersist(): Promise<{ apiKey: string; displayName: string | null } | null> {
+    const stored = getStoredApiKey()
+    if (stored) {
+        const existingName = await fetchDisplayNameForKey(stored)
+        if (existingName) {
+            const spinner = ora("Checking existing API key").start()
+            spinner.succeed(`Already logged in as ${chalk.bold(existingName)}`)
+            const shouldContinue = await confirm({ message: "Log in again with a different account?", default: false })
+            if (!shouldContinue) return { apiKey: stored, displayName: existingName }
+        } else {
+            const spinner = ora("Checking existing API key").start()
+            spinner.warn("Existing API key is invalid or expired")
+        }
     }
 
     const result = await login()
     if (!result?.apiKey) {
         console.log(chalk.dim("  You can run `terse login` later to authenticate."))
-        return false
-    }
-
-    const apiKey = result.apiKey
-
-    const envPath = path.resolve(targetDir, ".env")
-    const envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf-8") : ""
-
-    if (envContent.includes("TERSE_API_KEY=")) {
-        const updated = envContent.replace(/^TERSE_API_KEY=.*$/m, `TERSE_API_KEY=${apiKey}`)
-        fs.writeFileSync(envPath, updated)
-    } else {
-        fs.writeFileSync(envPath, envContent ? `${envContent.trimEnd()}\nTERSE_API_KEY=${apiKey}\n` : `TERSE_API_KEY=${apiKey}\n`)
-    }
-
-    return true
-}
-
-export async function getExistingAuthenticatedUserName(targetDir: string = process.cwd()): Promise<string | null> {
-    const existingKey = readApiKeyFromDir(targetDir)
-    if (!existingKey) {
         return null
     }
 
+    setStoredApiKey(result.apiKey)
+    console.log(chalk.dim(`  Saved credentials to ${getAuthFilePath()}`))
+
+    return result
+}
+
+/**
+ * Returns the display name of the currently-authenticated user, or null if no key
+ * is stored or the saved key is invalid. Looks at the global CLI config only —
+ * project-level keys (self-hosted) are handled by `getProjectAttachedUserName`.
+ */
+export async function getExistingAuthenticatedUserName(): Promise<string | null> {
+    const stored = getStoredApiKey()
+    if (!stored) return null
+    return fetchDisplayNameForKey(stored)
+}
+
+/** Remove saved CLI credentials. Returns true if a key was present before clearing. */
+export function logout(): boolean {
+    return clearStoredApiKey()
+}
+
+async function fetchDisplayNameForKey(apiKey: string): Promise<string | null> {
     try {
-        const me = await fetchWithAuth<{ displayName?: string | null; firstName?: string | null; email?: string | null }>("/sdk/me", existingKey)
+        const me = await fetchWithAuth<{ displayName?: string | null; firstName?: string | null; email?: string | null }>("/sdk/me", apiKey)
         return me.displayName || me.firstName || me.email || "Unknown user"
     } catch {
         return null
     }
+}
+
+/**
+ * Self-hosted: validate the project's `.env` TERSE_API_KEY (not the global CLI config).
+ * Used by `terse attach` to detect "already attached" — self-hosted users keep the key in
+ * their app's environment so their server can authenticate at runtime.
+ */
+export async function getProjectAttachedUserName(targetDir: string): Promise<string | null> {
+    const projectKey = readApiKeyFromDir(targetDir)
+    if (!projectKey) return null
+    return fetchDisplayNameForKey(projectKey)
 }
