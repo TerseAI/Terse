@@ -1,16 +1,14 @@
 import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
-import { GetGithubRepositoriesForIntegrationResponse, GithubAppInstallationCallbackRequest, Repository, User as RuntimeUser } from "terse-types/types"
+import { GetGithubRepositoriesForIntegrationResponse, User as RuntimeUser } from "terse-types/types"
 import { ZodError } from "zod"
 
 import { githubApp } from "../config/settings"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../integrations/GithubIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { GithubAppInstallationDeletedRequest, GithubAppInstallationRepository, GithubAppUnifiedEventRequest } from "../routes/GithubTypes"
-import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
+import { GithubAppInstallationRepository } from "../routes/GithubTypes"
 import { SecretField, getSecret } from "../services/SecretService"
-import { GithubRepository } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
 import { parseGithubUnifiedEventPayload } from "./githubUnifiedEventParser"
@@ -51,85 +49,6 @@ export async function getInstallationUrl(req: Request, res: Response) {
     } catch (error) {
         logger.error("Error generating installation URL", { error })
         res.status(500).json({ message: "Failed to generate installation URL" })
-    }
-}
-
-export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {
-    const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest
-    logger.debug("githubAppInstallationCallback", {
-        installationId: body.installationId,
-        username: body.username
-    })
-
-    try {
-        const user: RuntimeUser | null = await resolveUserForGithubInstallation(body.installationId, body.username)
-        if (user?.organizationId) {
-            emitCacheInvalidationWithKey(user.organizationId, "integrations")
-        }
-        res.status(200).json({ message: "Installation webhook processed" })
-    } catch (error) {
-        logger.error("Error processing GitHub installation webhook", {
-            error,
-            installationId: body.installationId,
-            username: body.username
-        })
-        res.status(500).json({ error: "Failed to process installation webhook" })
-    }
-}
-
-export async function githubAppInstallationDeleted(req: Request, res: Response) {
-    const body: GithubAppInstallationDeletedRequest = req.body as GithubAppInstallationDeletedRequest
-    logger.debug("githubAppInstallationDeleted", {
-        installationId: body.installationId,
-        username: body.username
-    })
-
-    // Look up organizationId before deletion (installation record will be removed in transaction)
-    const installation = await db().user_github_installation.findUnique({
-        where: { installation_id: body.installationId },
-        select: { user_id: true }
-    })
-    let organizationId: string | null = null
-    if (installation?.user_id) {
-        const token = await db().github_app_tokens.findFirst({
-            where: { user_id: installation.user_id },
-            select: { organization_id: true }
-        })
-        organizationId = token?.organization_id ?? null
-    }
-
-    await db().$transaction(async tx => {
-        // find all repos for this installation
-        const repositories: GithubRepository[] = await tx.github_repositories.findMany({
-            where: { installation_id: body.installationId }
-        })
-
-        if (repositories.length === 0) {
-            res.status(404).json({ message: "No repositories found for this installation" })
-            return
-        }
-
-        // remove all associations for those repos
-        await tx.user_github_repositories.deleteMany({
-            where: {
-                github_repository_id: { in: repositories.map(repo => repo.id) }
-            }
-        })
-
-        // now remove the installation + repositories
-        await tx.github_repositories.deleteMany({
-            where: { installation_id: body.installationId }
-        })
-        await tx.user_github_installation.deleteMany({
-            where: { installation_id: body.installationId }
-        })
-        res.status(200).json({ message: "Repositories removed from user" })
-    })
-
-    // TODO: We need to invalidate Channels that were dependent on these repositories. This is a more general issue we don't account for yet.
-
-    if (organizationId) {
-        emitCacheInvalidationWithKey(organizationId, "integrations")
     }
 }
 
@@ -248,96 +167,6 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
     } catch (error) {
         const routeError = error as RouteError
         res.status(routeError.statusCode || 500).json({ message: routeError.message || "Failed to fetch repositories" })
-    }
-}
-
-export async function processRepository(repositoryData: Repository, user: RuntimeUser, installationId: number): Promise<{ name: string; status: string; error?: string }> {
-    logger.debug("Processing repository", {
-        repositoryName: repositoryData.name,
-        owner: repositoryData.owner,
-        installationId,
-        userId: user.id
-    })
-
-    // Check if repository already exists
-    let repository: GithubRepository | null = await db().github_repositories.findFirst({
-        where: {
-            name: repositoryData.name,
-            owner: repositoryData.owner,
-            repository_id: Number(repositoryData.id),
-            installation_id: installationId
-        }
-    })
-
-    // Check if this user <-> repository is already associated
-    if (repository) {
-        const userRepository = await db().user_github_repositories.findFirst({
-            where: {
-                user_id: user.id,
-                github_repository_id: repository.id
-            }
-        })
-
-        if (userRepository) {
-            logger.debug("User already associated with repository", {
-                repositoryName: repositoryData.name,
-                userId: user.id
-            })
-            return { name: repositoryData.name, status: "already_associated" }
-        }
-    }
-
-    try {
-        // Create the repository if it doesn't exist
-        if (!repository) {
-            repository = await db().github_repositories.create({
-                data: {
-                    name: repositoryData.name,
-                    owner: repositoryData.owner,
-                    installation_id: installationId,
-                    repository_id: Number(repositoryData.id)
-                }
-            })
-            logger.info("Repository created", {
-                repositoryId: repository.id,
-                repositoryName: repository.name,
-                installationId
-            })
-        }
-
-        // Associate the user with the repository
-        await db().user_github_repositories.create({
-            data: {
-                user_id: user.id,
-                github_repository_id: repository.id
-            }
-        })
-
-        // associate the user with the installation
-        await db().user_github_installation.upsert({
-            where: { installation_id: installationId },
-            update: { user_id: user.id },
-            create: { user_id: user.id, installation_id: installationId }
-        })
-
-        logger.info("User associated with repository", {
-            repositoryName: repositoryData.name,
-            userId: user.id,
-            repositoryId: repository.id
-        })
-        return { name: repositoryData.name, status: "associated" }
-    } catch (error) {
-        logger.error("Error processing repository", {
-            error,
-            repositoryName: repositoryData.name,
-            userId: user.id,
-            installationId
-        })
-        return {
-            name: repositoryData.name,
-            status: "error",
-            error: error instanceof Error ? error.message : "Unknown error"
-        }
     }
 }
 

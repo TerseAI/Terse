@@ -7,6 +7,7 @@ import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEvent
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { cloudScheduler } from "../config/settings"
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
+import { buildGithubTriggerMetadata } from "../integrations/GithubIntegration"
 import { TriggerRuntime } from "../integrations/abstract/TriggerRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
@@ -35,6 +36,15 @@ class SyntheticTriggerRuntime extends TriggerRuntime<Trigger> {
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
+        // TODO: Make this a method on the TriggerRuntime class and use it for all integrations
+        // Delegate to the same metadata builders that real webhook-delivered runtimes use,
+        // so sample-event runs show rich titles (e.g. "#482 Fix something") instead of the
+        // bare `debugLog()` string. Fall back to a generic manual-sample shape for
+        // integrations we haven't extracted yet.
+        if (this.data.eventType !== "manual_sample" && this.data.integrationType === IntegrationType.GITHUB) {
+            return buildGithubTriggerMetadata(this.data)
+        }
+
         return {
             event: "manual_sample",
             integration: this.integrationType,

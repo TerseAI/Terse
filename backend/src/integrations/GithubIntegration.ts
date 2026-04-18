@@ -100,21 +100,6 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         return `Github${detailText} [id: ${instance.id}]`
     }
 
-    async getAllActiveInstances(): Promise<GithubIntegration[]> {
-        const userGithubInstallations = await db().user_github_installation.findMany({
-            select: {
-                id: true,
-                installation_id: true,
-                account_name: true
-            }
-        })
-        return userGithubInstallations.map(ugi => ({
-            id: ugi.id,
-            installation_id: ugi.installation_id,
-            account_name: ugi.account_name || "Unknown Account Name"
-        }))
-    }
-
     async processWebhookEvent(event: GithubTrigger): Promise<void> {
         const users: PrismaUser[] = await resolveUsersForGithubInstallation(event.installationId)
 
@@ -236,13 +221,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             const authToken = await exchangeCodeForAccessToken(code)
             const githubAppUser = await getGithubAppUser(authToken.access_token)
 
-            const { githubInstallation, githubTokenId } = await db().$transaction(async prisma => {
-                const installation = await prisma.user_github_installation.upsert({
-                    where: { installation_id: installation_id_number },
-                    update: { user_id: user_id },
-                    create: { user_id: user_id, installation_id: installation_id_number }
-                })
-
+            const { githubTokenId } = await db().$transaction(async prisma => {
                 const githubToken = await prisma.github_app_tokens.upsert({
                     where: {
                         user_id_github_username: {
@@ -261,7 +240,6 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
                 })
 
                 return {
-                    githubInstallation: installation,
                     githubTokenId: githubToken.id
                 }
             })
@@ -278,15 +256,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
             // Note: GitHub uses base64-encoded JSON state, so we decode it and pass as statePayload
-            integrationTaskQueue.emit(
-                new IntegrationCompletedTask(
-                    IntegrationType.GITHUB,
-                    githubInstallation.installation_id.toString(), // Use GitHub installation_id (not DB CUID) to match getInstancesForOrganization()
-                    user_id,
-                    stateData,
-                    new Date()
-                )
-            )
+            integrationTaskQueue.emit(new IntegrationCompletedTask(IntegrationType.GITHUB, githubTokenId, user_id, stateData, new Date()))
 
             res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`)
         } catch (error) {
@@ -324,26 +294,12 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         // Tokens are generated on-demand using JWT and the installation ID
         // This method returns null because we don't store access tokens in the database
         // Token generation happens elsewhere when making API calls (typically using GitHub App's private key)
-        try {
-            const installation = await db().user_github_installation.findUnique({
-                where: { id: integrationId }
-            })
+        return null
+    }
 
-            if (!installation) {
-                logger.error(`GitHub installation ${integrationId} not found`, {
-                    integrationId
-                })
-                return null
-            }
-
-            // GitHub App installations don't store access tokens
-            // They generate tokens on-demand using the installation ID and App credentials
-            // Return null to indicate tokens must be generated via GitHub App flow
-            return null
-        } catch (error) {
-            logger.error(`Error getting GitHub access token for installation ${integrationId}`, { error, integrationId })
-            return null
-        }
+    async getAllActiveInstances(): Promise<GithubIntegration[]> {
+        // not needed for github integration
+        return []
     }
 
     async getSampleEvents(integrationId: string, organizationId: string, userId: string, triggerConfig: ConfigData, options?: { limit?: number }): Promise<TriggerRuntime[]> {
@@ -426,6 +382,21 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
 // MARK: - GithubTriggerRuntime
 
+function prActionLabel(eventType: GitHubEventType): string {
+    switch (eventType) {
+        case GitHubEventType.PR_OPENED:
+            return "opened"
+        case GitHubEventType.PR_MERGED:
+            return "merged"
+        case GitHubEventType.PR_CLOSED:
+            return "closed"
+        case GitHubEventType.PR_SYNCHRONIZE:
+            return "updated"
+        default:
+            return eventType
+    }
+}
+
 export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.GITHUB
     entityType = HydratorType.GITHUB_EVENT
@@ -467,18 +438,59 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
-        return {
-            event: "github_event",
-            integration: IntegrationType.GITHUB,
-            source: this.data.repositoryName,
-            title: this.data.eventType,
-            subheader: this.data.username,
-            url: `https://github.com/${this.data.repositoryName}/`
-        }
+        return buildGithubTriggerMetadata(this.data)
     }
 
     getFiles(): StoredFile[] {
         return this.storedFiles
+    }
+}
+
+/**
+ * Pure builder for the RunHistory trigger metadata shown in the UI for a GitHub event.
+ *
+ * Exported so synthetic / sample-event flows (e.g. `SyntheticTriggerRuntime` in
+ * `routes/schedule.ts`) can produce the same rich title/subheader/url as real webhook
+ * deliveries, rather than falling back to a bare `debugLog()` string like
+ * "GitHub Event: pull_request.merged - owner/repo - user".
+ */
+export function buildGithubTriggerMetadata(data: GithubTrigger): RunHistoryTrigger {
+    const { eventType, username, repositoryName, pullRequest, commits, branch } = data
+
+    const base = {
+        event: "github_event",
+        integration: IntegrationType.GITHUB,
+        source: repositoryName
+    } as const
+
+    if (pullRequest) {
+        const action = prActionLabel(eventType)
+        return {
+            ...base,
+            title: `#${pullRequest.number} ${pullRequest.title}`.trim(),
+            subheader: `${username} ${action} PR in ${repositoryName}`,
+            url: pullRequest.url || `https://github.com/${repositoryName}/pull/${pullRequest.number}`
+        }
+    }
+
+    if (eventType === GitHubEventType.PUSH) {
+        const firstCommit = commits?.[0]
+        const commitMessage = (firstCommit?.message ?? firstCommit?.name ?? "").split("\n")[0]
+        const commitCount = commits?.length ?? 0
+        const title = commitCount > 1 ? `${commitCount} commits to ${branch}` : commitMessage || `Push to ${branch}`
+        return {
+            ...base,
+            title,
+            subheader: `${username} pushed to ${branch} in ${repositoryName}`,
+            url: firstCommit ? `https://github.com/${repositoryName}/commit/${firstCommit.sha}` : `https://github.com/${repositoryName}/tree/${branch}`
+        }
+    }
+
+    return {
+        ...base,
+        title: eventType,
+        subheader: `${username} in ${repositoryName}`,
+        url: `https://github.com/${repositoryName}/`
     }
 }
 

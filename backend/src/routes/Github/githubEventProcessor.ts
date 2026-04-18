@@ -23,26 +23,3 @@ export async function processGithubEvent(event: GithubTrigger) {
 
     return results
 }
-
-export async function getGithubRepositoriesForIntegration(req: Request, res: Response) {
-    if (!req.session?.user) {
-        res.status(401).json({ message: "Unauthorized" })
-        return
-    }
-
-    const user = req.session.user
-    const repositories = await db().user_github_repositories.findMany({
-        where: { user_id: user.id },
-        include: { github_repository: true }
-    })
-
-    const result: GetGithubRepositoriesForIntegrationResponse = {
-        repositories: repositories.map(r => ({
-            id: r.github_repository.repository_id,
-            name: r.github_repository.name,
-            owner: r.github_repository.owner
-        }))
-    }
-
-    res.status(200).json(result)
-}
