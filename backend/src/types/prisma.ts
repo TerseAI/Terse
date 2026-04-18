@@ -10,7 +10,6 @@ import {
     automation_outputs,
     automation_prompts,
     automations,
-    github_repositories,
     gmail_integrations,
     identifiable_refs,
     linear_integrations,
@@ -18,7 +17,6 @@ import {
     output_change_attributions,
     run_history_raw_events,
     slack_integrations,
-    user_github_repositories,
     user_notification_destinations,
     user_notification_settings,
     user_slack_integrations,
@@ -27,8 +25,6 @@ import {
 
 // PascalCase aliases
 export type User = users
-
-export type GithubRepository = github_repositories
 
 export type LinearIntegration = linear_integrations
 
@@ -43,8 +39,6 @@ export type UserSlackIntegrationWithUser = Prisma.user_slack_integrationsGetPayl
         slack_integration: true
     }
 }>
-
-export type UserGithubRepository = user_github_repositories
 
 export type GmailIntegration = gmail_integrations
 
@@ -206,14 +200,12 @@ export {
     automation_outputs,
     automation_prompts,
     automations,
-    github_repositories,
     gmail_integrations,
     identifiable_refs,
     linear_integrations,
     notion_integrations,
     output_change_attributions,
     slack_integrations,
-    user_github_repositories,
     user_notification_destinations,
     user_slack_integrations,
     users
