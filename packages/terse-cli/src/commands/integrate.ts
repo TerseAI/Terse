@@ -4,9 +4,10 @@ import { spawn } from "node:child_process"
 import ora from "ora"
 import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
 
-import { readApiKey, readApiKeyOrBail } from "./api.js"
+import { readApiKey, readApiKeyOrBail } from "../api.js"
+import { ConfigurationFieldDefinition, FormFieldDefinition, fetchInstallationUrl, fetchIntegrationFields, fetchIntegrations, pollForConnection, submitIntegrationForm } from "../integrationApi.js"
+
 import { generate } from "./generate.js"
-import { ConfigurationFieldDefinition, FormFieldDefinition, fetchInstallationUrl, fetchIntegrationFields, fetchIntegrations, pollForConnection, submitIntegrationForm } from "./integrationApi.js"
 
 type IntegrationChangeResult = {
     status: "added" | "modified" | "unchanged"

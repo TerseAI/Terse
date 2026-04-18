@@ -7,8 +7,8 @@ import process from "node:process"
 import ora from "ora"
 import type { DeviceTokenExchangeResponse } from "terse-types"
 
-import { fetchWithAuth, readApiKeyFromDir } from "./api.js"
-import { BACKEND_URL, WORKOS_CLIENT_ID } from "./config.js"
+import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
+import { BACKEND_URL, WORKOS_CLIENT_ID } from "../config.js"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"

@@ -1,9 +1,9 @@
 import chalk from "chalk"
 
-import { readApiKeyOrBail, resolveEventFromRunId } from "./api.js"
-import { loadJob } from "./loadJob.js"
-import type { LanguageProvider } from "./providers/LanguageProvider.js"
-import { resolveProvider } from "./providers/resolveProvider.js"
+import { readApiKeyOrBail, resolveEventFromRunId } from "../api.js"
+import { loadJob } from "../loadJob.js"
+import type { LanguageProvider } from "../providers/LanguageProvider.js"
+import { resolveProvider } from "../providers/resolveProvider.js"
 
 export async function replay(runId: string, provider: LanguageProvider = resolveProvider()): Promise<void> {
     const apiKey = readApiKeyOrBail()

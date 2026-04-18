@@ -3,11 +3,12 @@ import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
 
+import type { LanguageProvider } from "../providers/LanguageProvider.js"
+import { resolveProvider } from "../providers/resolveProvider.js"
+
 import { getExistingAuthenticatedUserName, login } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
-import type { LanguageProvider } from "./providers/LanguageProvider.js"
-import { resolveProvider } from "./providers/resolveProvider.js"
 
 export async function attach(provider: LanguageProvider = resolveProvider()): Promise<void> {
     const cwd = process.cwd()

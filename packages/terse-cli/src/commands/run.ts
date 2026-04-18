@@ -3,10 +3,10 @@ import fs from "fs"
 import { serializedEventSchema } from "terse-types"
 import type { SerializedEvent } from "terse-types"
 
-import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "./api.js"
-import { loadJob } from "./loadJob.js"
-import type { LanguageProvider } from "./providers/LanguageProvider.js"
-import { resolveProvider } from "./providers/resolveProvider.js"
+import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "../api.js"
+import { loadJob } from "../loadJob.js"
+import type { LanguageProvider } from "../providers/LanguageProvider.js"
+import { resolveProvider } from "../providers/resolveProvider.js"
 
 export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     if (eventFile && !eventJson) {

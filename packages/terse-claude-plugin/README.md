@@ -37,14 +37,19 @@ Create a new Terse SDK job. Describe what the job should do and the skill will:
 
 ### `/terse:improve <job-name>`
 
-Improve an existing Terse SDK job. The skill analyzes the job across six dimensions:
+Improve an existing Terse SDK job. The skill:
 
-- **Prompt quality** — specificity, event context, edge cases, format
-- **Event filtering** — bot events, drafts, cost optimization
-- **Type safety** — typed events, type guards, proper imports
-- **Tool usage** — deterministic vs AI actions, multi-step workflows
-- **Error handling** — missing data, try/catch, prompt resilience
-- **Skill configuration** — completeness, scope, unnecessary skills
+1. Pulls past production runs with `terse history` (filterable by status, with the trigger payload attached) to see what's actually been failing.
+2. Analyzes the job across six dimensions:
+   - **Prompt quality** — specificity, event context, edge cases, format
+   - **Event filtering** — bot events, drafts, cost optimization
+   - **Type safety** — typed events, type guards, proper imports
+   - **Tool usage** — deterministic vs AI actions, multi-step workflows
+   - **Error handling** — missing data, try/catch, prompt resilience
+   - **Skill configuration** — completeness, scope, unnecessary skills
+3. Implements the changes in `src/index.ts` / `src/main.py`.
+4. Verifies locally with `terse replay <run-id>` against the failing run, or `terse test` against fresh sample events.
+5. Runs the project's typechecker (`tsc --noEmit` for TypeScript, `ty check` for Python) before reporting back.
 
 **Example:**
 

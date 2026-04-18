@@ -8,7 +8,14 @@ argument-hint: <job-description>
 
 Create a new Terse SDK job based on: **$ARGUMENTS**
 
-For complete SDK reference (triggers, skills, events, TerseAgent API), see [sdk-reference.md](reference/sdk-reference.md).
+## Reference docs
+
+The bundled [sdk-reference.md](reference/sdk-reference.md) is a quick offline cheat sheet, but Terse evolves fast. Always pull the live docs before writing non-trivial code:
+
+- Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
+- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse deploy`, and friends.
+
+If anything in the bundled reference disagrees with the live docs, trust the live docs.
 
 ## Steps
 

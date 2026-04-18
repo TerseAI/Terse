@@ -18,9 +18,9 @@ import type {
 import { IntegrationType, isValidToolName } from "terse-types"
 import { ApiRoutes, buildRoute } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
-import { assertProjectRoot } from "./assertProjectRoot.js"
-import type { LanguageProvider } from "./providers/LanguageProvider.js"
+import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
+import { assertProjectRoot } from "../assertProjectRoot.js"
+import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import {
     type AttioAttributeData,
     type AttioInstanceData,
@@ -33,8 +33,8 @@ import {
     type PosthogInstanceData,
     type SlackInstanceData,
     type ToolDefinition
-} from "./providers/codegenTypes.js"
-import { resolveProvider } from "./providers/resolveProvider.js"
+} from "../providers/codegenTypes.js"
+import { resolveProvider } from "../providers/resolveProvider.js"
 
 // ── Main ──────────────────────────────────────────────────────────────
 
