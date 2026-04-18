@@ -151,6 +151,8 @@ Runs a job locally with an explicit event payload. Unlike `test`, this is non-in
 
 Pass a **serialized event**: JSON with `integrationType`, `eventType`, `formattedContent`, `debugLog`, and `data`. The `data` field is the full canonical trigger object (the same discriminated shape live runs use). Use `terse test` and inspect a sample, or copy the structure from Activity when debugging.
 
+Alternatively, set `TERSE_RUN_ID` to a run ID from [Activity](/core-concepts/activity-and-observability) and omit `--event` / `--event-file`. The CLI fetches that run’s serialized trigger event from the Terse backend (the same payload shape a live run would pass to `onTrigger`).
+
 ```bash
 terse run my-job --event-file ./event.json
 ```
@@ -180,7 +182,17 @@ Example `event.json` for a manual cron-style run (`formattedContent` and `debugL
 | `--event <json>`      | Inline serialized event JSON                        |
 | `--event-file <path>` | Path to a JSON file containing the serialized event |
 
-One of `--event` or `--event-file` is required.
+Provide `--event` or `--event-file`, or set **`TERSE_RUN_ID`** in the environment so the CLI can load the serialized trigger event for that run from the backend.
+
+## `terse replay [run-id]`
+
+Replays a past run on your machine: fetches the serialized trigger event for the given run ID and executes that workflow’s `onTrigger` locally (with verbose agent output). Use the run ID from the Activity list or run drawer.
+
+```bash
+terse replay run_abc123
+```
+
+This complements **Re-trigger** in the Terse app, which runs the workflow again on the platform with the same trigger payload.
 
 ## `terse deploy`
 
