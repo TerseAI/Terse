@@ -114,10 +114,6 @@ async function exchangeForApiKey(accessToken: string): Promise<DeviceTokenExchan
     return res.json() as Promise<DeviceTokenExchangeResponse>
 }
 
-/**
- * Run the full device authorization login flow.
- * Returns the API key on success, or null if the user cancels.
- */
 export async function login(): Promise<{ apiKey: string; displayName: string | null } | null> {
     const spinner = ora("Requesting login code").start()
 
@@ -162,13 +158,6 @@ export async function login(): Promise<{ apiKey: string; displayName: string | n
     return { apiKey: exchangeData.apiKey, displayName: exchangeData.user.displayName }
 }
 
-/**
- * Run login and persist the API key to the user config file. If a valid key already
- * exists, prompt before re-authenticating.
- *
- * Returns the API key + display name on success (freshly minted or pre-existing),
- * or null if the user cancelled or the flow failed.
- */
 export async function loginAndPersist(): Promise<{ apiKey: string; displayName: string | null } | null> {
     const stored = getStoredApiKey()
     if (stored) {
@@ -196,18 +185,12 @@ export async function loginAndPersist(): Promise<{ apiKey: string; displayName: 
     return result
 }
 
-/**
- * Returns the display name of the currently-authenticated user, or null if no key
- * is stored or the saved key is invalid. Looks at the global CLI config only —
- * project-level keys (self-hosted) are handled by `getProjectAttachedUserName`.
- */
 export async function getExistingAuthenticatedUserName(): Promise<string | null> {
     const stored = getStoredApiKey()
     if (!stored) return null
     return fetchDisplayNameForKey(stored)
 }
 
-/** Remove saved CLI credentials. Returns true if a key was present before clearing. */
 export function logout(): boolean {
     return clearStoredApiKey()
 }
@@ -221,11 +204,6 @@ async function fetchDisplayNameForKey(apiKey: string): Promise<string | null> {
     }
 }
 
-/**
- * Self-hosted: validate the project's `.env` TERSE_API_KEY (not the global CLI config).
- * Used by `terse attach` to detect "already attached" — self-hosted users keep the key in
- * their app's environment so their server can authenticate at runtime.
- */
 export async function getProjectAttachedUserName(targetDir: string): Promise<string | null> {
     const projectKey = readApiKeyFromDir(targetDir)
     if (!projectKey) return null

@@ -5,7 +5,6 @@ import ora from "ora"
 
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
-
 import { setStoredApiKey } from "../userConfig.js"
 
 import { getProjectAttachedUserName, login } from "./auth.js"
