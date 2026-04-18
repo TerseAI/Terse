@@ -218,15 +218,19 @@ if (isGithubPRTrigger(event)) {
 
 ## Terse CLI
 
+The authoritative reference for every command and flag lives at https://docs.useterse.ai/reference/cli — pull it whenever you need details. Quick summary:
+
 | Command | Description |
 |---------|-------------|
 | `terse init [name] --language <ts|typescript|py|python>` | Scaffold a new project. Defaults to TypeScript. |
 | `terse login` | Authenticate and write `TERSE_API_KEY` into `.env` |
 | `terse generate` | Regenerate `src/terse.generated.ts` or `src/terse_generated.py` from connected integrations |
-| `terse integrate` | Open the web UI to connect services |
-| `terse run [job] --event <json>` | Run a job with event JSON |
-| `terse run [job] --event-file <path>` | Run a job with event JSON from a file |
+| `terse integrate` | Connect third-party integrations and re-run `terse generate` |
+| `terse run [job] --event <json>` | Run a job with an inline serialized event JSON |
+| `terse run [job] --event-file <path>` | Run a job with a serialized event JSON from a file |
 | `terse test [job]` | Fetch real sample events and run interactively |
+| `terse history [job]` | List past production runs for a deployed job (use `--triggers` / `--events` / `--run-id` to drill in; `--json` to pipe into tools) |
+| `terse replay <run-id>` | Re-run a past production run locally with verbose agent output |
 | `terse deploy` | Deploy all jobs (syncs — removed jobs deleted remotely) |
 
 ### Typical Workflow
