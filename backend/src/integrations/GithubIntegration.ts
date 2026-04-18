@@ -426,6 +426,21 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
 // MARK: - GithubTriggerRuntime
 
+function prActionLabel(eventType: GitHubEventType): string {
+    switch (eventType) {
+        case GitHubEventType.PR_OPENED:
+            return "opened"
+        case GitHubEventType.PR_MERGED:
+            return "merged"
+        case GitHubEventType.PR_CLOSED:
+            return "closed"
+        case GitHubEventType.PR_SYNCHRONIZE:
+            return "updated"
+        default:
+            return eventType
+    }
+}
+
 export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.GITHUB
     entityType = HydratorType.GITHUB_EVENT
@@ -467,13 +482,42 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
-        return {
+        const { eventType, username, repositoryName, pullRequest, commits, branch } = this.data
+
+        const base = {
             event: "github_event",
             integration: IntegrationType.GITHUB,
-            source: this.data.repositoryName,
-            title: this.data.eventType,
-            subheader: this.data.username,
-            url: `https://github.com/${this.data.repositoryName}/`
+            source: repositoryName
+        } as const
+
+        if (pullRequest) {
+            const action = prActionLabel(eventType)
+            return {
+                ...base,
+                title: `#${pullRequest.number} ${pullRequest.title}`.trim(),
+                subheader: `${username} ${action} PR in ${repositoryName}`,
+                url: pullRequest.url || `https://github.com/${repositoryName}/pull/${pullRequest.number}`
+            }
+        }
+
+        if (eventType === GitHubEventType.PUSH) {
+            const firstCommit = commits?.[0]
+            const commitMessage = (firstCommit?.message ?? firstCommit?.name ?? "").split("\n")[0]
+            const commitCount = commits?.length ?? 0
+            const title = commitCount > 1 ? `${commitCount} commits to ${branch}` : commitMessage || `Push to ${branch}`
+            return {
+                ...base,
+                title,
+                subheader: `${username} pushed to ${branch} in ${repositoryName}`,
+                url: firstCommit ? `https://github.com/${repositoryName}/commit/${firstCommit.sha}` : `https://github.com/${repositoryName}/tree/${branch}`
+            }
+        }
+
+        return {
+            ...base,
+            title: eventType,
+            subheader: `${username} in ${repositoryName}`,
+            url: `https://github.com/${repositoryName}/`
         }
     }
 
