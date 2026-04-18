@@ -6,10 +6,10 @@ import ora from "ora"
 import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail, readEnvVar } from "./api.js"
-import { loadJobRegistry } from "./loadJob.js"
-import type { LanguageProvider } from "./providers/LanguageProvider.js"
-import { resolveProvider } from "./providers/resolveProvider.js"
+import { fetchWithAuth, readApiKeyOrBail, readEnvVar } from "../api.js"
+import { loadJobRegistry } from "../loadJob.js"
+import type { LanguageProvider } from "../providers/LanguageProvider.js"
+import { resolveProvider } from "../providers/resolveProvider.js"
 
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string) {
     const apiKey = readApiKeyOrBail({

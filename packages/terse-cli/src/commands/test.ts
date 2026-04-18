@@ -5,11 +5,11 @@ import { IntegrationType } from "terse-sdk"
 import { ApiRoutes, debugTrigger, formatTriggerForAgent } from "terse-types"
 import type { SerializedEvent, Trigger } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
-import { assertProjectRoot } from "./assertProjectRoot.js"
-import { loadJob } from "./loadJob.js"
-import type { LanguageProvider } from "./providers/LanguageProvider.js"
-import { resolveProvider } from "./providers/resolveProvider.js"
+import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
+import { assertProjectRoot } from "../assertProjectRoot.js"
+import { loadJob } from "../loadJob.js"
+import type { LanguageProvider } from "../providers/LanguageProvider.js"
+import { resolveProvider } from "../providers/resolveProvider.js"
 
 export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     assertProjectRoot(provider)

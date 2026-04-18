@@ -8,7 +8,14 @@ argument-hint: <job-name>
 
 Improve the Terse job named: **$ARGUMENTS**
 
-For complete SDK reference (triggers, skills, events, TerseAgent API), see [sdk-reference.md](reference/sdk-reference.md).
+## Reference docs
+
+The bundled [sdk-reference.md](reference/sdk-reference.md) is a quick offline cheat sheet, but Terse evolves fast. Always pull the live docs before making non-trivial changes:
+
+- Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
+- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, `test`, and `run`.
+
+If anything in the bundled reference disagrees with the live docs, trust the live docs.
 
 ## Steps
 
@@ -27,7 +34,33 @@ Then open the right files:
 Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
 If the generated file is missing or stale for the requested integration, rerun `terse generate` instead of guessing at missing helpers.
 
-### 2. Analyze for improvements
+### 2. Pull production run history
+
+Before guessing at improvements, look at how the job has actually behaved in production. The `terse history` CLI command fetches past runs from the deployed agent so you can see what went wrong.
+
+Recommended invocations (see https://docs.useterse.ai/reference/cli for the full flag list):
+
+```bash
+# Recent runs as JSON, with the trigger event payload for each one (cheap, ideal for this skill)
+terse history "<job-name>" --json --triggers --limit 20
+
+# Narrow to failures only
+terse history "<job-name>" --json --triggers --status failed,cancelled --limit 20
+
+# Full chat history (model events + trigger event) for a single run — heavier, use when you need to see exactly what the agent decided
+terse history --run-id <run-id> --json
+```
+
+What to look for:
+
+- **Failed or cancelled runs** — the trigger event shows the input that broke the job.
+- **Repeated patterns** — the same kind of event misbehaving suggests a missing filter, a vague prompt, or a missing skill.
+- **Wasted runs** — bot events, drafts, or no-op events that should have been filtered out.
+- **Wrong tool choices** — the agent reaching for `runAndWait` when a deterministic `Agent.tools.*` call would have been correct (or vice versa).
+
+If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus any sample events from `terse test`.
+
+### 3. Analyze for improvements
 
 Evaluate each area below. Not every area will need changes — focus on the ones that make the biggest difference.
 
@@ -74,13 +107,44 @@ Python: `event.formatted_content`
 - **Unnecessary skills**: Are there skills the agent doesn't actually use? Remove them to reduce confusion.
 - **Scope**: Are repos/channels/teams scoped correctly? Too broad gives the agent access to things it shouldn't touch. Too narrow prevents it from doing its job.
 
-### 3. Implement improvements
+### 4. Implement improvements
 
 Edit the language-specific entry file directly. Make the changes. Never edit the generated file by hand; rerun `terse generate` if the helper surface needs to change.
 
-### 4. Explain changes
+### 5. Verify the changes locally
 
-After implementing, summarize what you changed and why.
+Don't hand the change back without proving it still works. Two complementary loops:
+
+**Replay the exact production run that failed.** If you used `terse history` in step 2 to find a bad run, replay it locally with the new code:
+
+```bash
+terse replay <run-id>
+```
+
+`terse replay` fetches the original serialized trigger event from the Terse backend and runs your job's `onTrigger` against it locally with verbose agent output. This is the fastest way to confirm the bug you saw in production is actually fixed.
+
+**Or run against fresh sample events.** When there is no specific run to reproduce, or to make sure you didn't regress the happy path:
+
+```bash
+terse test "<job-name>"
+```
+
+`terse test` pulls real sample events from the backend (or generates synthetic ones for cron and webhook triggers) and runs the handler interactively.
+
+For both commands, see https://docs.useterse.ai/reference/cli for the full option list.
+
+### 6. Typecheck the project
+
+After local execution looks healthy, run the project's typechecker so the change is statically valid before deploy:
+
+- TypeScript: `pnpm exec tsc --noEmit` (or `npx tsc --noEmit`, or `pnpm run build` if the scaffolded `build` script is unchanged).
+- Python: `uv run ty check` (the scaffolded Python projects ship with the `ty` typechecker as a dev dependency).
+
+Fix any errors before reporting back. If the project uses a different typechecker (mypy, pyright, etc.), use whatever the repo is configured for.
+
+### 7. Explain changes
+
+After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test` invocations confirmed the fix.
 
 ## Common Improvement Patterns
 

@@ -3,17 +3,18 @@
 import chalk from "chalk"
 import { Command } from "commander"
 
-import { attach } from "./attach.js"
-import { loginAndWriteEnv } from "./auth.js"
-import { deploy } from "./deploy.js"
-import { generate } from "./generate.js"
-import { init } from "./init.js"
-import { integrate } from "./integrate.js"
+import { attach } from "./commands/attach.js"
+import { loginAndWriteEnv } from "./commands/auth.js"
+import { deploy } from "./commands/deploy.js"
+import { generate } from "./commands/generate.js"
+import { history } from "./commands/history.js"
+import { init } from "./commands/init.js"
+import { integrate } from "./commands/integrate.js"
+import { replay } from "./commands/replay.js"
+import { run } from "./commands/run.js"
+import { test } from "./commands/test.js"
 import { isPromptCancellationError } from "./promptErrors.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
-import { replay } from "./replay.js"
-import { run } from "./run.js"
-import { test } from "./test.js"
 
 const program = new Command()
 
@@ -94,6 +95,40 @@ program
     .action(async (runId: string) => {
         await replay(runId)
     })
+
+program
+    .command("history")
+    .description("View past run events for a job (use --json to pipe into tooling like the Claude Code /improve skill)")
+    .argument("[job-name]", "Name of the job to view the history of")
+    .option("--json", "Output runs as JSON for machine consumption")
+    .option("--limit <n>", "Max runs to fetch (default 20, max 100)", v => parseInt(v, 10))
+    .option("--page <n>", "Page number (1-indexed)", v => parseInt(v, 10))
+    .option("--status <list>", "Comma-separated statuses (success,failed,cancelled,skipped,in_progress,awaiting_approval)")
+    .option("--since <iso>", "Only include runs at or after this ISO timestamp")
+    .option("--until <iso>", "Only include runs at or before this ISO timestamp")
+    .option("--query <q>", "Free-text search across trigger, decision and event fields")
+    .option("--triggers", "Also fetch the input trigger event JSON for each run (cheap, recommended for /improve)")
+    .option("--events", "Also fetch the full model event stream for each run (heavy, includes trigger event)")
+    .option("--run-id <id>", "Show full chat events for a single run instead of a list")
+    .action(
+        async (
+            jobName: string | undefined,
+            opts: {
+                json?: boolean
+                limit?: number
+                page?: number
+                status?: string
+                since?: string
+                until?: string
+                query?: string
+                triggers?: boolean
+                events?: boolean
+                runId?: string
+            }
+        ) => {
+            await history(jobName, opts)
+        }
+    )
 
 try {
     await program.parseAsync()
