@@ -4,7 +4,7 @@ import chalk from "chalk"
 import { Command } from "commander"
 
 import { attach } from "./commands/attach.js"
-import { loginAndWriteEnv } from "./commands/auth.js"
+import { loginAndPersist, logout } from "./commands/auth.js"
 import { deploy } from "./commands/deploy.js"
 import { generate } from "./commands/generate.js"
 import { history } from "./commands/history.js"
@@ -39,10 +39,22 @@ program
 
 program
     .command("login")
-    .description("Authenticate with Terse via your browser")
+    .description("Authenticate with Terse via your browser (saves credentials to your user config)")
     .action(async () => {
-        const success = await loginAndWriteEnv(process.cwd())
-        if (!success) process.exit(1)
+        const result = await loginAndPersist()
+        if (!result) process.exit(1)
+    })
+
+program
+    .command("logout")
+    .description("Remove saved Terse credentials from your user config")
+    .action(() => {
+        const removed = logout()
+        if (removed) {
+            console.log(chalk.green("  Logged out."))
+        } else {
+            console.log(chalk.dim("  Not logged in."))
+        }
     })
 
 program
