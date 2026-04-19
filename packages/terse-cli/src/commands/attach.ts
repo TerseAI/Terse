@@ -5,8 +5,9 @@ import ora from "ora"
 
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
+import { setStoredApiKey } from "../userConfig.js"
 
-import { getExistingAuthenticatedUserName, login } from "./auth.js"
+import { getProjectAttachedUserName, login } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 
@@ -14,7 +15,7 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
     const cwd = process.cwd()
     const projectName = path.basename(cwd)
 
-    const existingUserName = await getExistingAuthenticatedUserName(cwd)
+    const existingUserName = await getProjectAttachedUserName(cwd)
 
     if (existingUserName) {
         console.log(`\n  ${chalk.green.bold("Already set up")} for ${chalk.bold(existingUserName)}.\n`)
@@ -32,7 +33,10 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
 
     const result = await login()
     if (result?.apiKey) {
-        console.log(`\n  Add this to your ${chalk.bold(".env")} file:\n`)
+        // Save to user config so the CLI itself works without .env. The user still needs to
+        // paste the key into their app's environment for the SDK runtime on their server.
+        setStoredApiKey(result.apiKey)
+        console.log(`\n  Add this to your server's environment (e.g. ${chalk.bold(".env")}) so your app can authenticate at runtime:\n`)
         console.log(`TERSE_API_KEY=${result.apiKey}`)
         console.log("")
     } else {

@@ -13,8 +13,8 @@ import { resolveProvider } from "../providers/resolveProvider.js"
 
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string) {
     const apiKey = readApiKeyOrBail({
-        title: "Error: No TERSE_API_KEY found in .env",
-        detail: "Run `terse init` to set up your project, or add TERSE_API_KEY to your .env file."
+        title: "Error: Not authenticated.",
+        detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
     })
 
     const registry = await loadJobRegistry(provider, entryFile)

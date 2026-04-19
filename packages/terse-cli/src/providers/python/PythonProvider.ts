@@ -6,6 +6,7 @@ import path from "node:path"
 import type { CreateJobParameters, TypedTrigger } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 
+import { readApiKey } from "../../api.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
@@ -178,10 +179,18 @@ export class PythonProvider implements LanguageProvider {
     }
 
     protected buildPythonEnv(cwd: string): NodeJS.ProcessEnv {
-        return {
+        const env: NodeJS.ProcessEnv = {
             ...loadDotenv(cwd),
             UV_CACHE_DIR: path.join(os.tmpdir(), "terse-uv-cache")
         }
+        // Inject the resolved CLI key (process.env > user config > legacy .env) so the Python
+        // subprocess sees TERSE_API_KEY even when it lives in the global CLI auth file rather
+        // than the project's .env. process.env still wins, matching readApiKey() precedence.
+        const resolvedKey = readApiKey()
+        if (resolvedKey && !env.TERSE_API_KEY) {
+            env.TERSE_API_KEY = resolvedKey
+        }
+        return env
     }
 
     protected async execUvCommand(
