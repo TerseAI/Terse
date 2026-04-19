@@ -44,7 +44,7 @@ terse init my-project --language python
 
 ## `terse login`
 
-Authenticates with Terse using a device authorization flow and writes `TERSE_API_KEY` to your project's `.env` file.
+Authenticates with Terse using a device authorization flow and saves your API key to a **user-level config file** (managed by the CLI; the path is printed when you sign in successfully).
 
 ```bash
 terse login
@@ -56,9 +56,17 @@ terse login
 2. Opens your browser to a verification page
 3. Polls until you complete the browser authorization
 4. Exchanges the token with the Terse backend for an API key
-5. Writes `TERSE_API_KEY` to `.env` (creates or updates)
+5. Persists the API key in your user config so the CLI can authenticate on later runs
 
-If a valid API key already exists, you'll be prompted before re-authenticating.
+If a valid API key is already saved, you'll be prompted before re-authenticating.
+
+## `terse logout`
+
+Removes the API key from your user config (the same store `terse login` writes to).
+
+```bash
+terse logout
+```
 
 ## `terse integrate`
 
@@ -236,8 +244,15 @@ terse deploy
 - Jobs removed from your code are removed from the platform
 - Your entire project is zipped, uploaded, and hosted serverlessly
 
-## Required environment variable
+## API key for the CLI and your app
 
-Commands that call the Terse API need **`TERSE_API_KEY`**. `terse login` writes it to `.env` in the project directory; when you run the CLI from that directory, it loads `.env` automatically. You can also **`export TERSE_API_KEY`** in your environment if the process cannot read `.env` (for example in a restricted sandbox).
+Commands that call the Terse API resolve credentials in this order:
 
-`terse init` runs the full setup flow, including login. `terse login` only authenticates and updates `.env`.
+1. **`TERSE_API_KEY` in the process environment** (for example `export TERSE_API_KEY=...` in your shell or CI)
+2. **The API key saved by `terse login`** in your user config
+
+After `terse init` or `terse login`, you usually do not need a project `.env` file **for the CLI**—authentication is stored per user on your machine.
+
+**Runtime (SDK and servers):** Workflows and `terse-sdk` still read **`TERSE_API_KEY`** from the environment at runtime (for example from a `.env` file you create from the scaffolded `.env.example`, or from your host’s secret store). Set that variable wherever your Node or Python process runs.
+
+`terse init` runs the full setup flow, including login. `terse login` only authenticates and updates your user config; use **`terse logout`** to clear it.
