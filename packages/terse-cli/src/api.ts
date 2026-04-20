@@ -32,11 +32,16 @@ export function readEnvVarFromDir(dir: string, name: string): string | null {
 }
 
 export function readApiKey(): string | null {
+    ensureDotenvLoaded()
+
     const fromProcessEnv = process.env.TERSE_API_KEY
     if (fromProcessEnv) return fromProcessEnv
 
     const fromUserConfig = getStoredApiKey()
-    if (fromUserConfig) return fromUserConfig
+    if (fromUserConfig) {
+        process.env.TERSE_API_KEY = fromUserConfig
+        return fromUserConfig
+    }
 
     return null
 }
