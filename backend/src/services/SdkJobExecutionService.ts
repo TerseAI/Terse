@@ -4,12 +4,14 @@ import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
 
 import { StreamEventEmitter } from "../agent/AgentRunner/StreamProcessor"
-import { attachSdkSourceImageToRun, finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
+import { attachProjectDeployToRun, finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
 import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../agent/systemEvents/processOutputSystemEvent"
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
+import { SDKAgent } from "../types/prisma"
+import { getActiveDeployForProject } from "../utility/projectHelper"
 import { extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
@@ -23,7 +25,7 @@ import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLay
 export interface SdkJobExecutionParams {
     gcsKey: string
     runId: string
-    agentId: string
+    agent: SDKAgent
     orgId: string
     userId: string
     user: User
@@ -80,22 +82,22 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { gcsKey, runId, agentId, orgId, userId, user, jobName } = params
+        const { gcsKey, runId, agent, orgId, userId, user, jobName } = params
         const executionStart = performance.now()
 
-        this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId, user })
+        this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
 
         let sandboxApiKey: string | undefined
         let sandboxTokenId: string | undefined
 
         try {
-            let sourceImage = await this.resolveOrPrepareSourceImage({ agentId, gcsKey, orgId, runId })
+            let sourceImage = await this.resolveOrPrepareSourceImage({ agent, gcsKey, orgId, runId })
             let executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
 
             const { rawToken, tokenId } = await this.createSandboxApiToken(userId, orgId)
             sandboxApiKey = rawToken
             sandboxTokenId = tokenId
-            logger.info("SDK sandbox: created temp API token", { runId, agentId })
+            logger.info("SDK sandbox: created temp API token", { runId, agentId: agent.id })
 
             void this.cleanupStaleSandboxTokens(orgId).catch(err => {
                 logger.warn("Failed to cleanup stale sandbox tokens", { error: err })
@@ -113,29 +115,29 @@ export class SdkJobExecutionService {
                 jobName,
                 sandboxService: new ModalSandboxService(),
                 runId,
-                agentId,
+                agentId: agent.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId
             })
 
             if (result.exitCode === 0) {
                 await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
-                logger.info("SDK sandbox: terse run completed", { runId, agentId, runtime: executor.runtime })
+                logger.info("SDK sandbox: terse run completed", { runId, agentId: agent.id, runtime: executor.runtime })
             } else {
                 const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
                 await markRunFailed(runId, errorMsg, "agent")
-                logger.error("SDK sandbox: terse run failed", { runId, agentId, exitCode: result.exitCode, runtime: executor.runtime })
+                logger.error("SDK sandbox: terse run failed", { runId, agentId: agent.id, exitCode: result.exitCode, runtime: executor.runtime })
             }
 
-            emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-            logger.info("SDK sandbox: total execution finished", { runId, agentId, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
+            emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
+            logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
         } catch (error) {
             const errorMessage = extractErrorMessage(error)
-            logger.error("SDK job execution failed", { error, runId, agentId, totalDuration: this.elapsed(executionStart) })
+            logger.error("SDK job execution failed", { error, runId, agentId: agent.id, totalDuration: this.elapsed(executionStart) })
 
             try {
                 await markRunFailed(runId, errorMessage, "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
             } catch (persistError) {
                 logger.error("Failed to mark run as failed after SDK execution error", { error: persistError, runId })
             }
@@ -148,55 +150,53 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async resolveOrPrepareSourceImage(params: { agentId: string; gcsKey: string; orgId: string; runId: string }): Promise<ResolvedSdkSourceImage> {
-        const { agentId, gcsKey, orgId, runId } = params
-        const prompt = await db().automation_prompts.findUnique({
-            where: { automation_id: agentId },
-            select: { current_sdk_source_image_id: true }
-        })
+    private async resolveOrPrepareSourceImage(params: { agent: SDKAgent; gcsKey: string; orgId: string; runId: string }): Promise<ResolvedSdkSourceImage> {
+        const { agent, gcsKey, orgId, runId } = params
+        const activeDeploy = await getActiveDeployForProject(agent.project.id)
+        if (!activeDeploy) {
+            throw new Error(`SDK agent "${agent.id}" is missing active deploy`)
+        }
 
-        if (prompt?.current_sdk_source_image_id) {
-            const sourceImage = await this.getSourceImageRecord(prompt.current_sdk_source_image_id)
+        if (activeDeploy.sdk_source_image_id) {
+            const sourceImage = await this.getSourceImageRecord(activeDeploy.sdk_source_image_id)
             if (sourceImage) {
                 await this.touchSourceImageUsage(sourceImage)
-                await attachSdkSourceImageToRun(runId, sourceImage.recordId)
+                await attachProjectDeployToRun(runId, activeDeploy.id)
                 return sourceImage
             }
 
             logger.warn("SDK sandbox: prompt referenced missing sdk_source_images row, rebuilding from GCS", {
-                agentId,
+                agentId: agent.id,
                 runId,
-                sourceImageId: prompt.current_sdk_source_image_id
+                sourceImageId: activeDeploy.sdk_source_image_id
             })
         }
 
-        const zipBuffer = await this.downloadSourceZipFromGcs(gcsKey, runId, agentId)
-        return this.prepareAndLinkSourceImage({ agentId, gcsKey, orgId, runId, zipBuffer })
+        const zipBuffer = await this.downloadSourceZipFromGcs(gcsKey, runId, agent.id)
+        return this.prepareAndLinkSourceImage({ agent, gcsKey, orgId, runId, zipBuffer })
     }
 
-    private async prepareAndLinkSourceImage(params: { agentId: string; gcsKey: string; orgId: string; runId: string; zipBuffer: Buffer }): Promise<ResolvedSdkSourceImage> {
-        const { agentId, gcsKey, orgId, runId, zipBuffer } = params
+    private async prepareAndLinkSourceImage(params: { agent: SDKAgent; gcsKey: string; orgId: string; runId: string; zipBuffer: Buffer }): Promise<ResolvedSdkSourceImage> {
+        const { agent, gcsKey, orgId, runId, zipBuffer } = params
         const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
             zipBuffer,
             gcsKey,
             organizationId: orgId
         })
 
-        await db().automation_prompts.upsert({
-            where: { automation_id: agentId },
-            update: {
-                current_sdk_source_image_id: preparedImages.sourceImageId,
-                source_code_gcs_key: gcsKey
-            },
-            create: {
-                automation_id: agentId,
-                content: "[SDK]",
-                current_sdk_source_image_id: preparedImages.sourceImageId,
-                source_code_gcs_key: gcsKey
-            }
-        })
+        const activeDeploy = await getActiveDeployForProject(agent.project.id)
+        if (!activeDeploy) {
+            throw new Error(`SDK agent "${agent.id}" is missing active deploy`)
+        }
 
-        await attachSdkSourceImageToRun(runId, preparedImages.sourceImageId)
+        if (!activeDeploy.sdk_source_image_id) {
+            await db().project_deploys.update({
+                where: { id: activeDeploy.id },
+                data: { sdk_source_image_id: preparedImages.sourceImageId }
+            })
+        }
+
+        await attachProjectDeployToRun(runId, activeDeploy.id)
 
         const sourceImage = await this.getSourceImageRecord(preparedImages.sourceImageId)
         if (!sourceImage) {

@@ -14,10 +14,11 @@ import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { downloadSdkDeployZip } from "../services/FileStorageService"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
-import { AgentWithNotificationSettingsRelations, AgentWithPromptRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
+import { AgentWithNotificationSettingsRelations, AgentWithPromptRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction, SDKAgent, isSDKAgent } from "../types/prisma"
 import { trackAgentCreated } from "../utility/analytics"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
+import { getActiveSourceCodeGcsKeyForAutomation } from "../utility/projectHelper"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
 import { buildWebhookUrl } from "../utility/webhookUrl"
@@ -481,7 +482,8 @@ export async function getUserAgents(req: Request, res: Response) {
                         include: getOutputConfigInclude()
                     },
                     notification_settings: true,
-                    tool_approvals: true
+                    tool_approvals: true,
+                    project: true
                 },
                 orderBy: { created_at: "desc" },
                 skip,
@@ -606,7 +608,8 @@ export async function getUserAgent(req: Request, res: Response) {
                     include: getOutputConfigInclude()
                 },
                 notification_settings: true,
-                tool_approvals: true
+                tool_approvals: true,
+                project: true
             }
         })
 
@@ -647,7 +650,8 @@ export async function createAgent(req: Request, res: Response) {
             requireApproval,
             notificationSettings,
             createdByUserId: userId,
-            toolApprovals
+            toolApprovals,
+            metadata: null
         })
 
         res.status(201).json({ success: true, id })
@@ -764,7 +768,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         name: agent.name,
         isActive: agent.is_active,
         requireApproval: agent.require_approval ?? false,
-        prompt: agent.prompt ? { text: agent.prompt.content, remoteServerUrl: agent.prompt.remote_server_url ?? undefined } : { text: "" },
+        prompt: agent.prompt ? { text: agent.prompt.content } : { text: "" },
         triggers: agent.inputs.map(trigger => ({
             id: trigger.id,
             config: convertPrismaConfigToConfigData(trigger),
@@ -783,7 +787,8 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
         createdByUserId: agent.user_id,
         updatedAt: agent.updated_at.toISOString(),
-        source: agent.source
+        source: agent.source,
+        metadata: agent.project ? { remoteServerUrl: agent.project.remote_server_url ?? null } : null
     }
 }
 
@@ -865,18 +870,31 @@ export async function getAgentFiles(req: Request, res: Response) {
     const agentId = req.params.agentId
 
     try {
-        const agent: AgentWithPromptRelations | null = await db().automations.findFirst({
+        const agent: AgentWithRelations | null = await db().automations.findFirst({
             where: {
                 id: agentId,
                 organization_id: organizationId
             },
             include: {
-                prompt: true
+                prompt: true,
+                project: true,
+                inputs: {
+                    include: getInputConfigInclude()
+                },
+                outputs: {
+                    include: getOutputConfigInclude()
+                },
+                tool_approvals: true
             }
         })
 
         if (!agent) {
             res.status(404).json({ error: "Agent files not found" })
+            return
+        }
+
+        if (!isSDKAgent(agent)) {
+            res.status(400).json({ error: "Agent is not a SDK agent" })
             return
         }
 
@@ -905,18 +923,31 @@ export async function getAgentFileContent(req: Request, res: Response) {
     }
 
     try {
-        const agent: AgentWithPromptRelations | null = await db().automations.findFirst({
+        const agent: AgentWithRelations | null = await db().automations.findFirst({
             where: {
                 id: agentId,
                 organization_id: organizationId
             },
             include: {
-                prompt: true
+                prompt: true,
+                project: true,
+                inputs: {
+                    include: getInputConfigInclude()
+                },
+                outputs: {
+                    include: getOutputConfigInclude()
+                },
+                tool_approvals: true
             }
         })
 
         if (!agent) {
             res.status(404).json({ error: "Agent not found" })
+            return
+        }
+
+        if (!isSDKAgent(agent)) {
+            res.status(400).json({ error: "Agent is not a SDK agent" })
             return
         }
 
@@ -937,8 +968,8 @@ type SdkZipTreeNode = { id: string; name: string; children?: SdkZipTreeNode[] }
 
 const MAX_SDK_ZIP_SIZE_BYTES = 50 * 1024 * 1024 // 50 MB
 
-async function loadSdkSourceZip(agent: AgentWithPromptRelations): Promise<AdmZip | null> {
-    const gcsKey = agent.prompt?.source_code_gcs_key
+async function loadSdkSourceZip(agent: SDKAgent): Promise<AdmZip | null> {
+    const gcsKey = await getActiveSourceCodeGcsKeyForAutomation(agent)
     if (!gcsKey) {
         return null
     }
@@ -1052,7 +1083,7 @@ function mimeTypeForSdkPath(path: string): string {
     return "application/octet-stream"
 }
 
-async function getAgentFilesFromGCS(agent: AgentWithPromptRelations): Promise<File[]> {
+async function getAgentFilesFromGCS(agent: SDKAgent): Promise<File[]> {
     const zip = await loadSdkSourceZip(agent)
     if (!zip) {
         return []
@@ -1060,7 +1091,7 @@ async function getAgentFilesFromGCS(agent: AgentWithPromptRelations): Promise<Fi
     return listSdkZipPathsRecursive(zip)
 }
 
-async function getAgentFileFromGCS(agent: AgentWithPromptRelations, fileId: string): Promise<AgentFileContentResponse | null> {
+async function getAgentFileFromGCS(agent: SDKAgent, fileId: string): Promise<AgentFileContentResponse | null> {
     let decodedPath = fileId
     try {
         decodedPath = decodeURIComponent(fileId)

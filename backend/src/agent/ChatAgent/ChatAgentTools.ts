@@ -198,7 +198,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                         outputs: {
                             include: getOutputConfigInclude()
                         },
-                        user: true
+                        user: true,
+                        project: true
                     }
                 })
                 if (!agent) {

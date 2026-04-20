@@ -327,6 +327,11 @@ export const agentNotificationSettingsSchema = z.object({
 })
 export type AgentNotificationSettings = z.infer<typeof agentNotificationSettingsSchema>
 
+export const jobMetadataSchema = z.object({
+    remoteServerUrl: z.string().nullable()
+})
+export type JobMetadata = z.infer<typeof jobMetadataSchema>
+
 export const agentSchema = z.object({
     id: z.string(),
     name: z.string(),
@@ -339,7 +344,8 @@ export const agentSchema = z.object({
     notificationSettings: agentNotificationSettingsSchema.nullable(),
     toolApprovals: z.array(z.string()).nullable(),
     updatedAt: z.string().nullable(),
-    source: z.enum(["WEB_UI", "SDK"]).nullable()
+    source: z.enum(["WEB_UI", "SDK"]).nullable(),
+    metadata: jobMetadataSchema.nullable()
 })
 export type Agent = z.infer<typeof agentSchema>
 
@@ -710,7 +716,6 @@ export const sdkDeployResultSchema = z.object({
     jobName: z.string(),
     automationId: z.string(),
     isUpdate: z.boolean(),
-    signingSecret: z.string().optional(),
     triggers: z
         .array(
             z.object({
@@ -728,6 +733,7 @@ export const sdkDeployRemovedSchema = z.object({
 
 export const sdkDeployResponseBodySchema = z.object({
     success: z.boolean(),
+    signingSecret: z.string().optional(),
     results: z.array(sdkDeployResultSchema),
     removed: z.array(sdkDeployRemovedSchema),
     error: z.string().optional(),

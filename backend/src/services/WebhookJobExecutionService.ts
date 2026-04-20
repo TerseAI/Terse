@@ -5,6 +5,7 @@ import { User, webhookJobTriggerResponseSchema } from "terse-types/types"
 import { finalizeRunStatus, markRunFailed, markRunSkipped } from "../agent/AgentRunner/runHistory"
 import logger from "../logger"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
+import { SDKAgent } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 import { buildSignatureHeaders } from "../utility/webhookHmac"
 
@@ -13,7 +14,7 @@ import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from ".
 export interface WebhookJobExecutionParams {
     remoteServerUrl: string
     runId: string
-    agentId: string
+    agent: SDKAgent
     orgId: string
     user: User
     event: SerializedEvent
@@ -23,18 +24,18 @@ export interface WebhookJobExecutionParams {
 
 export class WebhookJobExecutionService {
     async execute(params: WebhookJobExecutionParams): Promise<void> {
-        const { remoteServerUrl, runId, agentId, orgId, event, jobName, signingSecret } = params
+        const { remoteServerUrl, runId, agent, orgId, event, jobName, signingSecret } = params
 
         try {
             const challenge = await runWebhookJobHandshakeChallenge({ remoteServerUrl, signingSecret })
-            logger.info("Webhook job: handshake then deliver", { runId, agentId, triggerUrl: challenge.triggerUrl })
+            logger.info("Webhook job: handshake then deliver", { runId, agentId: agent.id, triggerUrl: challenge.triggerUrl })
 
             if (!challenge.ok) {
                 await markRunFailed(runId, challenge.message, "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
                 logger.error("Webhook job: handshake failed", {
                     runId,
-                    agentId,
+                    agentId: agent.id,
                     triggerUrl: challenge.triggerUrl,
                     step: challenge.step,
                     httpStatus: challenge.httpStatus
@@ -42,7 +43,7 @@ export class WebhookJobExecutionService {
                 return
             }
 
-            logger.info("Challenge successful, delivering event", { runId, agentId, event })
+            logger.info("Challenge successful, delivering event", { runId, agentId: agent.id, event })
 
             const deliverController = new AbortController()
             const deliverTimeout = setTimeout(() => deliverController.abort(), WEBHOOK_JOB_FETCH_TIMEOUT_MS)
@@ -66,8 +67,8 @@ export class WebhookJobExecutionService {
                 const body = await deliverResponse.text().catch(() => "")
                 const detail = body.slice(0, 500)
                 await markRunFailed(runId, `Webhook delivery returned ${deliverResponse.status}: ${detail}`, "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
-                logger.error("Webhook job: delivery non-2xx", { runId, agentId, status: deliverResponse.status, detail })
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
+                logger.error("Webhook job: delivery non-2xx", { runId, agentId: agent.id, status: deliverResponse.status, detail })
                 return
             }
 
@@ -85,23 +86,23 @@ export class WebhookJobExecutionService {
 
             if (filtered) {
                 await markRunSkipped(runId, "Job filter excluded this event")
-                logger.info("Webhook job: trigger delivered but job filter skipped the run", { runId, agentId, jobName })
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+                logger.info("Webhook job: trigger delivered but job filter skipped the run", { runId, agentId: agent.id, jobName })
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
                 return
             } else {
-                logger.info("Webhook job: trigger delivered; awaiting SDK agent run for completion", { runId, agentId, jobName })
+                logger.info("Webhook job: trigger delivered; awaiting SDK agent run for completion", { runId, agentId: agent.id, jobName })
             }
 
             await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
-            emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+            emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
         } catch (error) {
             const errorMessage = error instanceof Error && error.name === "AbortError" ? "Webhook request timed out" : extractErrorMessage(error)
 
-            logger.error("Webhook job execution failed", { error, runId, agentId })
+            logger.error("Webhook job execution failed", { error, runId, agentId: agent.id })
 
             try {
                 await markRunFailed(runId, errorMessage, "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
             } catch (e) {
                 logger.error("Failed to mark webhook run as failed", { error: e, runId })
             }

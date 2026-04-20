@@ -41,6 +41,17 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
 
     const { remoteServerUrl, jobs, sourceZipBase64, projectId } = sdkDeployRequestBodySchema.parse(req.body)
 
+    const project = await db().projects.findUnique({
+        where: { id: projectId },
+        select: {
+            signing_secret: true
+        }
+    })
+
+    if (!project) {
+        return res.status(404).json({ success: false, error: "Project not found! Make sure you are deploying to the correct project." })
+    }
+
     if (!sourceZipBase64 && !remoteServerUrl) {
         return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
     } else if (sourceZipBase64 && remoteServerUrl) {
@@ -76,7 +87,29 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
         currentSdkSourceImageId = preparedImages.sourceImageId
     }
 
-    const deploy = await db().project_deploys.create({
+    // Self hosted!
+    if (remoteServerUrl) {
+        await prisma.projects.update({
+            where: { id: projectId },
+            data: {
+                remote_server_url: remoteServerUrl
+            }
+        })
+
+        // Keep this stable if we have one already
+        if (!project.signing_secret) {
+            const signingSecret = generateWebhookSecret()
+            await prisma.projects.update({
+                where: { id: projectId },
+                data: {
+                    signing_secret: signingSecret
+                }
+            })
+            project.signing_secret = signingSecret
+        }
+    }
+
+    const deploy = await prisma.project_deploys.create({
         data: {
             project_id: projectId,
             sdk_source_image_id: currentSdkSourceImageId,
@@ -90,33 +123,23 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
             where: {
                 name: job.jobName,
                 organization_id: organizationId,
-                source: "SDK"
+                source: "SDK",
+                project_id: projectId
             },
             include: { inputs: { include: getInputConfigInclude() } }
         })
 
         const isUpdate = !!existing
         const agent = isUpdate
-            ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId, {
-                  currentSdkSourceImageId,
-                  gcsKey,
-                  remoteServerUrl
-              })
-            : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, {
-                  currentSdkSourceImageId,
-                  gcsKey,
-                  remoteServerUrl
-              })
+            ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId)
+            : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, projectId)
 
         await setupAgentTriggers(agent)
-
-        const prompt = await prisma.automation_prompts.findUnique({ where: { automation_id: agent.id }, select: { signing_secret: true } })
 
         results.push({
             jobName: job.jobName,
             automationId: agent.id,
-            isUpdate,
-            signingSecret: prompt?.signing_secret ?? undefined
+            isUpdate
         })
 
         emitCacheInvalidationWithWildcard(organizationId, "agentFiles", agent.id)
@@ -159,23 +182,15 @@ async function uploadSourceZipToGcs(zipBuffer: Buffer): Promise<string> {
     return uploadSdkDeployZip(zipBuffer)
 }
 
-type SdkDeploymentArtifacts = {
-    currentSdkSourceImageId?: string
-    gcsKey?: string
-    remoteServerUrl?: string
-}
-
 async function updateExistingAutomation(
     prisma: ReturnType<typeof db>,
     existing: AgentWithTriggerRelations,
     jobName: string,
     triggers: TriggerConfigData[],
     organizationId: string,
-    userId: string,
-    artifacts: SdkDeploymentArtifacts = {}
+    userId: string
 ): Promise<AgentWithTriggerRelations> {
     const automationId = existing.id
-    const { currentSdkSourceImageId, gcsKey, remoteServerUrl } = artifacts
 
     // Preserve webhook tokens so URLs stay stable across redeploys
     const preservedWebhookTokens = existing.inputs.filter(input => input.webhook_config).map(input => input.webhook_config!.webhook_token)
@@ -229,10 +244,8 @@ async function createNewAutomation(
     triggers: TriggerConfigData[],
     organizationId: string,
     userId: string,
-    artifacts: SdkDeploymentArtifacts = {}
+    projectId: string
 ): Promise<AgentWithTriggerRelations> {
-    const { currentSdkSourceImageId, gcsKey, remoteServerUrl } = artifacts
-
     return prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
             data: {
@@ -241,7 +254,8 @@ async function createNewAutomation(
                 name: jobName,
                 is_active: true,
                 require_approval: false,
-                source: "SDK"
+                source: "SDK",
+                project_id: projectId
             }
         })
 

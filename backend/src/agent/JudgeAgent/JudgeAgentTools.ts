@@ -52,7 +52,8 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                             include: getOutputConfigInclude()
                         },
                         tool_approvals: true,
-                        notification_settings: true
+                        notification_settings: true,
+                        project: true
                     }
                 })
 
@@ -342,7 +343,8 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                         outputs: {
                             include: getOutputConfigInclude()
                         },
-                        tool_approvals: true
+                        tool_approvals: true,
+                        project: true
                     }
                 })
 
@@ -357,7 +359,7 @@ export function buildJudgeAgentTools(user: User): Tool[] {
                     agentName: automation.name
                 })
 
-                const outputs = OutputFactory.createOutputsFromAgent(automation as AgentWithRelations)
+                const outputs = OutputFactory.createOutputsFromAgent(automation)
                 const session: Session = {
                     user,
                     isUserInitiated: true

@@ -278,9 +278,8 @@ model projects {
   signing_secret    String?
   remote_server_url String?
 
-  automations       automations[]
-  sdk_source_images sdk_source_images[]
-  deploys           project_deploys[]
+  automations automations[]
+  deploys     project_deploys[]
 
   @@unique([organization_id, name])
 }
@@ -356,10 +355,8 @@ model sdk_source_images {
   last_used_at        DateTime @default(now())
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
-  project_id          String // This cannot be null. If an image exists, it must be associated with a project.
 
   dependency_image sdk_dependency_images @relation(fields: [dependency_image_id], references: [id], onDelete: Cascade)
-  project          projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
   deploys          project_deploys[]
 
   @@unique([organization_id, dependency_image_id, source_hash])
@@ -371,15 +368,15 @@ model sdk_source_images {
 model project_deploys {
   id                  String       @id @default(cuid())
   project_id          String
-  sdk_source_image_id String
-  deployed_by_user_id String?
+  sdk_source_image_id String?
+  deployed_by_user_id String
   status              DeployStatus
   created_at          DateTime     @default(now())
   updated_at          DateTime     @updatedAt
 
   project          projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  sdk_source_image sdk_source_images     @relation(fields: [sdk_source_image_id], references: [id], onDelete: Cascade)
-  deployed_by      users?                @relation(fields: [deployed_by_user_id], references: [id], onDelete: SetNull)
+  sdk_source_image sdk_source_images?    @relation(fields: [sdk_source_image_id], references: [id], onDelete: Cascade)
+  deployed_by      users                 @relation(fields: [deployed_by_user_id], references: [id], onDelete: SetNull)
   runs             run_history_records[]
 
   @@index([project_id, created_at(sort: Desc)])

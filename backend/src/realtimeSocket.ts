@@ -199,7 +199,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     outputs: {
                         include: getOutputConfigInclude()
                     },
-                    tool_approvals: true
+                    tool_approvals: true,
+                    project: true
                 }
             })
 

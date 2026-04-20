@@ -80,7 +80,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             console.log(chalk.dim(`  Mode: user infrastructure`))
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
 
-            const signingSecret = result.results.find(r => r.signingSecret)?.signingSecret
+            const signingSecret = result.signingSecret
             if (signingSecret) {
                 const existingSecret = readEnvVar("TERSE_SIGNING_SECRET")
                 if (!existingSecret) {
