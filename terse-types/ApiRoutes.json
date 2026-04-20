@@ -134,6 +134,7 @@
         "AGENT_RUN": "/sdk/agent-run",
         "APPROVAL_DECISION": "/sdk/approval-decision",
         "SESSION_EVENTS": "/sdk/session-events",
+        "CREATE_PROJECT": "/sdk/projects",
         "DEPLOY": "/sdk/deploy",
         "DEVICE_TOKEN_EXCHANGE": "/sdk/auth/device-token-exchange",
         "INTEGRATION_FIELDS": "/sdk/integrations/:integrationType/fields",

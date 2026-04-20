@@ -666,6 +666,17 @@ export const sdkApprovalDecisionRequestBodySchema = z.object({
 })
 export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionRequestBodySchema>
 
+export const sdkCreateProjectRequestBodySchema = z.object({
+    name: z.string().min(1)
+})
+export type SdkCreateProjectRequestBody = z.infer<typeof sdkCreateProjectRequestBodySchema>
+
+export const sdkCreateProjectResponseBodySchema = z.object({
+    projectId: z.string(),
+    name: z.string()
+})
+export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
+
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
     triggers: z.array(triggerConfigDataSchema)

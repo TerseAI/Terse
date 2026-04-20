@@ -25,8 +25,11 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     })
     const runId = readRunId()
 
-    let rawEvent: unknown
+    const { job } = await loadJob(provider, jobName, entryFile)
+
+    let parsedEvent: SerializedEvent
     if (eventJson) {
+        let rawEvent: unknown
         try {
             rawEvent = JSON.parse(eventJson)
         } catch (error) {
@@ -34,28 +37,30 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
             console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
             process.exit(1)
         }
+
+        if (!rawEvent) {
+            console.error(chalk.red("Error: --event <json> or --event-file <path> is required.\n"))
+            console.error(chalk.dim('  Usage: terse run --event \'{"integrationType":"...","eventType":"...","formattedContent":"...","debugLog":"...","data":{...}}\''))
+            console.error(chalk.dim("         terse run --event-file ./event.json"))
+            console.error(chalk.dim("  Tip:   Use `terse test` to interactively pick a sample event.\n"))
+            process.exit(1)
+        }
+
+        try {
+            parsedEvent = serializedEventSchema.parse(rawEvent)
+        } catch (error) {
+            console.error(chalk.red("Error: --event does not match the canonical Trigger schema."))
+            console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
+            process.exit(1)
+        }
     } else {
-        rawEvent = await resolveEventFromRunId(runId, apiKey)
+        const resolvedEvent = await resolveEventFromRunId(runId, apiKey)
+        if (!resolvedEvent) {
+            console.error(chalk.red("Error: Could not resolve event from run ID."))
+            process.exit(1)
+        }
+        parsedEvent = resolvedEvent.event
     }
 
-    if (!rawEvent) {
-        console.error(chalk.red("Error: --event <json> or --event-file <path> is required.\n"))
-        console.error(chalk.dim('  Usage: terse run --event \'{"integrationType":"...","eventType":"...","formattedContent":"...","debugLog":"...","data":{...}}\''))
-        console.error(chalk.dim("         terse run --event-file ./event.json"))
-        console.error(chalk.dim("  Tip:   Use `terse test` to interactively pick a sample event.\n"))
-        process.exit(1)
-    }
-
-    const { job } = await loadJob(provider, jobName, entryFile)
-
-    let parsed: SerializedEvent
-    try {
-        parsed = serializedEventSchema.parse(rawEvent)
-    } catch (error) {
-        console.error(chalk.red("Error: --event does not match the canonical Trigger schema."))
-        console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
-        process.exit(1)
-    }
-
-    await provider.executeJob(job, runId, parsed, { entryFile })
+    await provider.executeJob(job, runId, parsedEvent, { entryFile })
 }
