@@ -674,6 +674,7 @@ export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
 export const sdkDeployRequestBodySchema = z
     .object({
+        projectId: z.string().optional(),
         jobs: z.array(sdkDeployJobSchema),
         remoteServerUrl: z.string().optional(),
         sourceZipBase64: z.string().optional()
