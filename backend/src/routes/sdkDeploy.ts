@@ -153,6 +153,11 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
         })
     }
 
+    await prisma.project_deploys.update({
+        where: { id: deploy.id },
+        data: { status: "SUCCEEDED" }
+    })
+
     // Delete any SDK automations not in this deploy
     const deployedNames = new Set(jobs.map(j => j.jobName))
     const removed = await removeStaleAutomations(prisma, organizationId, deployedNames)

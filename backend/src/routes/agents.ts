@@ -868,7 +868,6 @@ export async function getAgentFiles(req: Request, res: Response) {
 
     const organizationId = req.session.user.organizationId
     const agentId = req.params.agentId
-
     try {
         const agent: AgentWithRelations | null = await db().automations.findFirst({
             where: {

@@ -16,13 +16,16 @@ export async function getActiveDeployForProject(projectId: string): Promise<proj
 }
 
 export async function getActiveSourceCodeGcsKeyForProject(projectId: string): Promise<string | null> {
-    const deploy = await getActiveDeployForProject(projectId)
-    return deploy?.sdk_source_image_id ?? null
+    const deploy = await db().project_deploys.findFirst({
+        where: { project_id: projectId, status: "SUCCEEDED" },
+        orderBy: { created_at: "desc" },
+        include: { sdk_source_image: true }
+    })
+    return deploy?.sdk_source_image?.gcs_key ?? null
 }
 
 export async function getActiveSourceCodeGcsKeyForJob(agent: SDKAgent): Promise<string | null> {
-    const activeDeploy = await getActiveDeployForProject(agent.project.id)
-    return activeDeploy?.sdk_source_image_id ?? null
+    return getActiveSourceCodeGcsKeyForProject(agent.project.id)
 }
 
 export async function getActiveSourceCodeGcsKeyForAutomation(automation: AgentWithRelations): Promise<string | null> {
@@ -30,8 +33,7 @@ export async function getActiveSourceCodeGcsKeyForAutomation(automation: AgentWi
         return null
     }
 
-    const activeDeploy = await getActiveDeployForProject(automation.project.id)
-    return activeDeploy?.sdk_source_image_id ?? null
+    return getActiveSourceCodeGcsKeyForProject(automation.project.id)
 }
 export async function getRemoteServerUrlForAutomation(automation: AgentWithRelations): Promise<string | null> {
     if (!isSDKAgent(automation)) {

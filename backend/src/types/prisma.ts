@@ -1,7 +1,5 @@
-import {
-    $Enums,
-    Prisma,
-    PrismaClient,
+import { $Enums, Prisma, PrismaClient } from "@prisma/client"
+import type {
     approval_slack_messages,
     automation_inputs,
     automation_linear_configs,
@@ -204,7 +202,7 @@ export type RunHistoryRawEventWithRelations = Prisma.run_history_raw_eventsGetPa
 export type RunHistoryActionType = $Enums.RunHistoryActionType
 
 // Re-export the original types too
-export {
+export type {
     approval_slack_messages,
     automation_inputs,
     automation_linear_configs,
