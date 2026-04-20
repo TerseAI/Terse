@@ -38,6 +38,7 @@ model users {
   workos_integrations       workos_integrations[]
   attio_integrations        attio_integrations[]
   snowflake_integrations    snowflake_integrations[]
+  project_deploys           project_deploys[]
 
   @@index([workos_id])
 }
@@ -266,6 +267,24 @@ model snowflake_integrations {
   @@index([organization_id])
 }
 
+model projects {
+  id              String   @id @default(cuid())
+  organization_id String // No ACL at the moment. Put it on the roadmap.
+  name            String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Only for self hosted projects
+  signing_secret    String?
+  remote_server_url String?
+
+  automations       automations[]
+  sdk_source_images sdk_source_images[]
+  deploys           project_deploys[]
+
+  @@unique([organization_id, name])
+}
+
 // Automation tables
 model automations {
   id                   String           @id @default(cuid())
@@ -290,6 +309,8 @@ model automations {
   agent_reviews              agent_reviews[]
   agent_improvements         agent_improvements[]
   sent_notifications         sent_notifications[]
+  project                    projects?                         @relation(fields: [project_id], references: [id])
+  project_id                 String?
 
   @@index([user_id])
   @@index([organization_id])
@@ -299,18 +320,13 @@ model automations {
 
 // Separate table for prompts (future-proof for versioning, templates, etc.)
 model automation_prompts {
-  id                          String   @id @default(cuid())
-  automation_id               String   @unique
-  content                     String   @db.Text
-  source_code_gcs_key         String?
-  current_sdk_source_image_id String?
-  remote_server_url           String?
-  signing_secret              String?
-  created_at                  DateTime @default(now())
-  updated_at                  DateTime @updatedAt
+  id            String   @id @default(cuid())
+  automation_id String   @unique
+  content       String   @db.Text
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
-  automation               automations        @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  current_sdk_source_image sdk_source_images? @relation("CurrentSdkSourceImage", fields: [current_sdk_source_image_id], references: [id], onDelete: SetNull)
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 }
 
 model sdk_dependency_images {
@@ -340,15 +356,42 @@ model sdk_source_images {
   last_used_at        DateTime @default(now())
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
+  project_id          String // This cannot be null. If an image exists, it must be associated with a project.
 
-  dependency_image    sdk_dependency_images @relation(fields: [dependency_image_id], references: [id], onDelete: Cascade)
-  current_for_prompts automation_prompts[]  @relation("CurrentSdkSourceImage")
-  runs                run_history_records[] @relation("RunSdkSourceImage")
+  dependency_image sdk_dependency_images @relation(fields: [dependency_image_id], references: [id], onDelete: Cascade)
+  runs             run_history_records[] @relation("RunSdkSourceImage")
+  project          projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  deploys          project_deploys[]
 
   @@unique([organization_id, dependency_image_id, source_hash])
   @@index([organization_id])
   @@index([gcs_key])
   @@index([last_used_at])
+}
+
+model project_deploys {
+  id                  String       @id @default(cuid())
+  project_id          String
+  sdk_source_image_id String
+  deployed_by_user_id String?
+  status              DeployStatus
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+
+  project          projects          @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  sdk_source_image sdk_source_images @relation(fields: [sdk_source_image_id], references: [id], onDelete: Cascade)
+  deployed_by      users?            @relation(fields: [deployed_by_user_id], references: [id], onDelete: SetNull)
+
+  @@index([project_id, created_at(sort: Desc)])
+  @@index([sdk_source_image_id])
+  @@index([deployed_by_user_id])
+}
+
+enum DeployStatus {
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+  ROLLED_BACK
 }
 
 // Polymorphic inputs - can reference any integration type
