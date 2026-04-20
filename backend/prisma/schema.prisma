@@ -359,7 +359,6 @@ model sdk_source_images {
   project_id          String // This cannot be null. If an image exists, it must be associated with a project.
 
   dependency_image sdk_dependency_images @relation(fields: [dependency_image_id], references: [id], onDelete: Cascade)
-  runs             run_history_records[] @relation("RunSdkSourceImage")
   project          projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
   deploys          project_deploys[]
 
@@ -378,9 +377,10 @@ model project_deploys {
   created_at          DateTime     @default(now())
   updated_at          DateTime     @updatedAt
 
-  project          projects          @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  sdk_source_image sdk_source_images @relation(fields: [sdk_source_image_id], references: [id], onDelete: Cascade)
-  deployed_by      users?            @relation(fields: [deployed_by_user_id], references: [id], onDelete: SetNull)
+  project          projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  sdk_source_image sdk_source_images     @relation(fields: [sdk_source_image_id], references: [id], onDelete: Cascade)
+  deployed_by      users?                @relation(fields: [deployed_by_user_id], references: [id], onDelete: SetNull)
+  runs             run_history_records[]
 
   @@index([project_id, created_at(sort: Desc)])
   @@index([sdk_source_image_id])
@@ -766,7 +766,7 @@ enum RunHistoryChatEventType {
 model run_history_records {
   id                    String                   @id @default(cuid())
   automation_id         String
-  sdk_source_image_id   String?
+  project_deploy_id     String?
   // Timestamp of the run (when the trigger was processed)
   timestamp             DateTime                 @default(now())
   // Trigger details (denormalized onto the record for fast reads)
@@ -794,7 +794,7 @@ model run_history_records {
   updated_at            DateTime                 @updatedAt
 
   automation              automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  sdk_source_image        sdk_source_images?        @relation("RunSdkSourceImage", fields: [sdk_source_image_id], references: [id], onDelete: SetNull)
+  project_deploy          project_deploys?          @relation(fields: [project_deploy_id], references: [id], onDelete: SetNull)
   actions                 run_history_actions[]
   pending_approval        pending_approvals?
   raw_events              run_history_raw_events[]
@@ -802,7 +802,7 @@ model run_history_records {
   sent_notifications      sent_notifications[]
 
   @@index([automation_id])
-  @@index([sdk_source_image_id])
+  @@index([project_deploy_id])
   @@index([status])
   @@index([timestamp])
   @@index([automation_id, timestamp]) // Composite index for user filtering + time range queries
