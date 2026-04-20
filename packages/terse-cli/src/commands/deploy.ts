@@ -8,6 +8,7 @@ import type { SdkDeployResponseBody } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail, readEnvVar } from "../api.js"
 import { loadJobRegistry } from "../loadJob.js"
+import { readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
@@ -16,6 +17,8 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         title: "Error: Not authenticated.",
         detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
     })
+
+    const { projectId } = readProjectConfigOrBail()
 
     const registry = await loadJobRegistry(provider, entryFile)
     const jobs = [...registry.values()]
@@ -40,6 +43,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
     try {
         const body = sdkDeployRequestBodySchema.parse({
+            projectId,
             jobs: jobs.map(job => ({
                 jobName: job.name,
                 triggers: job.triggers

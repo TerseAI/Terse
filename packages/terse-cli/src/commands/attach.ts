@@ -3,6 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
 
+import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfig, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { setStoredApiKey } from "../userConfig.js"
@@ -41,6 +42,20 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
         console.log("")
     } else {
         console.log(chalk.dim("  You can run `terse login` later to authenticate."))
+    }
+
+    // Create the remote project and write terse.config.json (skip if the repo already has one, e.g. cloned from a teammate).
+    if (result?.apiKey && !readProjectConfig(cwd)) {
+        const linkSpinner = ora("Creating Terse project").start()
+        try {
+            const config = await createRemoteProject(result.apiKey, projectName)
+            writeProjectConfig(cwd, config)
+            linkSpinner.succeed(`Created Terse project (${config.projectId})`)
+            console.log(`  ${chalk.green("+")} ${PROJECT_CONFIG_FILENAME}`)
+        } catch (error) {
+            linkSpinner.fail(`Failed to create Terse project: ${(error as Error).message}`)
+            console.log(chalk.dim(`  You'll need to create a ${PROJECT_CONFIG_FILENAME} manually before running ${chalk.cyan("terse deploy")}.`))
+        }
     }
 
     await listAndPromptIntegrations()

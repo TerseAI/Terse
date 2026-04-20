@@ -677,6 +677,12 @@ export const sdkCreateProjectResponseBodySchema = z.object({
 })
 export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
 
+export const terseProjectConfigSchema = z.object({
+    projectId: z.string().min(1),
+    name: z.string().min(1)
+})
+export type TerseProjectConfig = z.infer<typeof terseProjectConfigSchema>
+
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
     triggers: z.array(triggerConfigDataSchema)
@@ -685,7 +691,7 @@ export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
 export const sdkDeployRequestBodySchema = z
     .object({
-        projectId: z.string().optional(),
+        projectId: z.string(),
         jobs: z.array(sdkDeployJobSchema),
         remoteServerUrl: z.string().optional(),
         sourceZipBase64: z.string().optional()

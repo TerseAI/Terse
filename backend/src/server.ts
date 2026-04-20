@@ -37,6 +37,7 @@ import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { getPendingApprovals } from "./routes/pendingApprovals"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
+import { handleProjectCreate } from "./routes/project"
 import { refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
@@ -727,6 +728,10 @@ app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.PENDING_APPROVALS.LIST, authMiddleware, async (req, res) => {
     getPendingApprovals(req, res)
+})
+
+app.post(ApiRoutes.SDK.CREATE_PROJECT, authMiddleware, async (req, res) => {
+    handleProjectCreate(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS
