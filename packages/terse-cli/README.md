@@ -63,48 +63,6 @@ Deploy all jobs to the Terse platform. This syncs with the server — jobs that 
 
 If `TERSE_JOB_URL` is unset, hosted deploys now prompt for confirmation before uploading a zip of the current project directory.
 
-### `terse serve`
-
-Start a local job server that receives job dispatches from the Terse backend and executes them in-process — using your local `node_modules` instead of the cloud sandbox. Useful during active development to skip sandbox cold starts and iterate quickly.
-
-```bash
-terse serve                          # Listen on port 3000
-terse serve --port 4242              # Custom port
-terse serve --cwd /path/to/agent     # Load jobs from a different directory
-terse serve --entry-file src/jobs.ts # Override the default entry file
-```
-
-**Setup:**
-
-1. Add `TERSE_SIGNING_SECRET=<value>` to your `.env` file. Find the signing secret in the Terse dashboard under your agent's settings.
-2. Set your agent's **Remote Server URL** to `http://localhost:3000` (or your chosen port) in the Terse dashboard.
-3. Run `terse serve` — it will print the loaded jobs and wait for dispatches.
-4. Fire a trigger as normal. The backend will route the job to your local server instead of the cloud sandbox.
-
-When you're done, remove the Remote Server URL from the dashboard to switch back to cloud execution.
-
-**Using a local SDK build:**
-
-If you're developing changes to `terse-sdk` locally, point your job project at the local package before running `terse serve`:
-
-```bash
-# In your job project's package.json:
-{ "dependencies": { "terse-sdk": "file:../terse-sdk" } }
-
-npm install
-terse serve
-```
-
-`terse serve` executes jobs in-process using your project's own `node_modules`, so it picks up the local SDK automatically.
-
-**Multi-project setup:**
-
-If your jobs live in a separate directory, use `--cwd`:
-
-```bash
-terse serve --cwd /path/to/my-agent-project
-```
-
 ## Getting Started
 
 ```bash

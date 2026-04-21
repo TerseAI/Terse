@@ -12,7 +12,6 @@ import { init } from "./commands/init.js"
 import { integrate } from "./commands/integrate.js"
 import { replay } from "./commands/replay.js"
 import { run } from "./commands/run.js"
-import { serve } from "./commands/serve.js"
 import { test } from "./commands/test.js"
 import { isPromptCancellationError } from "./promptErrors.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
@@ -99,17 +98,6 @@ program
     .option("--entry-file <path>", "Path to the job entry file (overrides default)")
     .action(async (opts?: { entryFile?: string }) => {
         await deploy(resolveProvider(), opts?.entryFile)
-    })
-
-program
-    .command("serve")
-    .description("Start a local job server that receives dispatches from the Terse backend and executes them in-process")
-    .option("--port <port>", "Port to listen on", "3000")
-    .option("--cwd <path>", "Project directory to load jobs from (defaults to current directory)")
-    .option("--entry-file <path>", "Path to the job entry file (overrides default)")
-    .option("-v, --verbose", "Log request headers, body size, and timestamp deltas")
-    .action(async (opts?: { port?: string; cwd?: string; entryFile?: string; verbose?: boolean }) => {
-        await serve({ port: parseInt(opts?.port ?? "3000", 10), cwd: opts?.cwd, entryFile: opts?.entryFile, verbose: opts?.verbose }, resolveProvider({ cwd: opts?.cwd }))
     })
 
 program

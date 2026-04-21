@@ -5,7 +5,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { CreateJobParameters } from "terse-sdk"
-import { __clearRegisteredTerseInstances, __getRegisteredTerseInstances, createSDKTrigger, getJobContext, runWithJobContext } from "terse-sdk"
+import { __getRegisteredTerseInstances, createSDKTrigger, getJobContext, runWithJobContext } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
@@ -98,7 +98,6 @@ export class TypeScriptProvider implements LanguageProvider {
         const entryPath = path.join(cwd, resolvedEntryFile)
 
         try {
-            __clearRegisteredTerseInstances()
             await tsImport(entryPath, parentURL)
         } catch (error) {
             if (isModuleNotFoundError(error)) {
