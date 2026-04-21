@@ -684,6 +684,24 @@ export const sdkCreateProjectResponseBodySchema = z.object({
 })
 export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
 
+export const projectDetailResponseSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    createdAt: z.string(),
+    remoteServerUrl: z.string().nullable(),
+    isSelfHosted: z.boolean(),
+    hasSigningSecret: z.boolean(),
+    hasProjectApiKey: z.boolean(),
+    jobs: z.array(
+        z.object({
+            id: z.string(),
+            name: z.string(),
+            isActive: z.boolean()
+        })
+    )
+})
+export type ProjectDetailResponse = z.infer<typeof projectDetailResponseSchema>
+
 export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
     name: z.string().min(1),
@@ -737,6 +755,7 @@ export const sdkDeployRemovedSchema = z.object({
 export const sdkDeployResponseBodySchema = z.object({
     success: z.boolean(),
     signingSecret: z.string().optional(),
+    projectApiKey: z.string().optional(),
     results: z.array(sdkDeployResultSchema),
     removed: z.array(sdkDeployRemovedSchema),
     error: z.string().optional(),

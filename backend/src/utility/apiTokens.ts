@@ -38,6 +38,30 @@ export async function createApiToken(userId: string, organizationId: string, nam
     }
 }
 
+export async function createProjectScopedToken(params: {
+    projectId: string
+    projectName: string
+    organizationId: string
+    createdByUserId: string
+}): Promise<{ rawToken: string; tokenId: string }> {
+    const rawToken = generateRawToken()
+    const tokenHash = hashToken(rawToken)
+    const tokenPrefix = rawToken.slice(0, 14)
+
+    const token = await db().api_tokens.create({
+        data: {
+            user_id: params.createdByUserId,
+            organization_id: params.organizationId,
+            project_id: params.projectId,
+            name: `proj_${params.projectName}`,
+            token_hash: tokenHash,
+            token_prefix: tokenPrefix
+        }
+    })
+
+    return { rawToken, tokenId: token.id }
+}
+
 export async function getApiTokensForUser(userId: string, organizationId: string): Promise<ApiToken[]> {
     const tokens = await db().api_tokens.findMany({
         where: { user_id: userId, organization_id: organizationId },

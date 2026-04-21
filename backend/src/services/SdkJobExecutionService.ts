@@ -94,7 +94,7 @@ export class SdkJobExecutionService {
             let sourceImage = await this.resolveOrPrepareSourceImage({ agent, gcsKey, orgId, runId })
             let executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
 
-            const { rawToken, tokenId } = await this.createSandboxApiToken(userId, orgId)
+            const { rawToken, tokenId } = await this.createSandboxApiToken(userId, orgId, agent.project.id)
             sandboxApiKey = rawToken
             sandboxTokenId = tokenId
             logger.info("SDK sandbox: created temp API token", { runId, agentId: agent.id })
@@ -538,7 +538,7 @@ export class SdkJobExecutionService {
         throw new Error(`Unsupported SDK runtime: ${runtime}`)
     }
 
-    private async createSandboxApiToken(userId: string, organizationId: string): Promise<{ rawToken: string; tokenId: string }> {
+    private async createSandboxApiToken(userId: string, organizationId: string, projectId: string): Promise<{ rawToken: string; tokenId: string }> {
         const rawToken = `terse_${crypto.randomBytes(32).toString("hex")}`
         const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex")
         const tokenPrefix = rawToken.slice(0, 14)
@@ -547,6 +547,7 @@ export class SdkJobExecutionService {
             data: {
                 user_id: userId,
                 organization_id: organizationId,
+                project_id: projectId,
                 name: "sdk-sandbox-runner",
                 token_hash: tokenHash,
                 token_prefix: tokenPrefix

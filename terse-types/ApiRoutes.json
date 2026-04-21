@@ -124,6 +124,9 @@
         "LIST": "/api-tokens",
         "BY_ID": "/api-tokens/:id"
     },
+    "PROJECTS": {
+        "BY_ID": "/projects/:id"
+    },
     "SDK": {
         "ME": "/sdk/me",
         "SAMPLE_EVENTS": "/sdk/sample-events",

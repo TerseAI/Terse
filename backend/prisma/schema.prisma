@@ -280,6 +280,7 @@ model projects {
 
   automations automations[]
   deploys     project_deploys[]
+  api_tokens  api_tokens[]
 
   @@unique([organization_id, name])
 }
@@ -939,6 +940,7 @@ model api_tokens {
   id              String    @id @default(cuid())
   user_id         String
   organization_id String
+  project_id      String?
   name            String
   token_hash      String    @unique
   token_prefix    String
@@ -946,10 +948,12 @@ model api_tokens {
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user    users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  project projects? @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([organization_id])
+  @@index([project_id])
   @@index([token_hash])
 }
 

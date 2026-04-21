@@ -95,11 +95,16 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
 
             const signingSecret = result.signingSecret
-            if (signingSecret) {
-                console.log(chalk.yellow(`\n  ${chalk.bold("Signing secret generated.")} Save it now — it will not be shown again.`))
-                console.log(chalk.dim(`  If lost, rotate it from the Terse dashboard to issue a new one.\n`))
-                console.log(`  Add this to your ${chalk.bold(".env")} file:\n`)
-                console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
+            const projectApiKey = result.projectApiKey
+            if (signingSecret || projectApiKey) {
+                const labels: string[] = []
+                if (signingSecret) labels.push("signing secret")
+                if (projectApiKey) labels.push("project API key")
+                console.log(chalk.yellow(`\n  ${chalk.bold(`New ${labels.join(" and ")} generated.`)} Save now, will not be shown again.`))
+                console.log(chalk.dim(`  If lost, rotate from the Terse dashboard to issue a new one.\n`))
+                console.log(`  Add to your ${chalk.bold(".env")} file:\n`)
+                if (projectApiKey) console.log(`TERSE_API_KEY=${projectApiKey}`)
+                if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
                 console.log("")
             }
         } else {

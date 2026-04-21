@@ -45,6 +45,7 @@ import {
     NotionResourcesResponse,
     OAuthInstallationDetails,
     PosthogProjectsResponse,
+    ProjectDetailResponse,
     RecentAgent,
     SdkJobServerCheckResponse,
     SlackChannelsResponse,
@@ -287,6 +288,11 @@ interface BackendService {
      * Gets a single agent by ID
      */
     getAgentById(id: string): Promise<Agent>
+
+    /**
+     * Fetches the detail view for a single project.
+     */
+    getProjectById(id: string): Promise<ProjectDetailResponse>
 
     /**
      * Verifies that a self-hosted SDK job server is reachable and correctly configured
@@ -1051,6 +1057,17 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting agent:", error)
+                throw error
+            })
+    },
+
+    getProjectById: (id: string) => {
+        const url = buildRoute(ApiRoutes.PROJECTS.BY_ID, { id })
+        return axios
+            .get<ProjectDetailResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting project:", error)
                 throw error
             })
     },

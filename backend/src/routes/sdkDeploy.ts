@@ -13,6 +13,7 @@ import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 import { UrlValidationError, validateRemoteServerUrl } from "../utility/urlValidation"
+import { createProjectScopedToken } from "../utility/apiTokens"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
 import { createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
@@ -44,7 +45,9 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     const project = await db().projects.findUnique({
         where: { id: projectId },
         select: {
-            signing_secret: true
+            name: true,
+            signing_secret: true,
+            api_tokens: { select: { id: true }, take: 1 }
         }
     })
 
@@ -89,6 +92,7 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
 
     // Self hosted!
     let signingSecretJustGenerated = false
+    let newProjectApiKey: string | undefined
     if (remoteServerUrl) {
         await prisma.projects.update({
             where: { id: projectId },
@@ -97,9 +101,9 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
             }
         })
 
-        // Keep this stable if we have one already. Secret is returned to the
-        // client only on first generation — on subsequent deploys the user must
-        // rotate to recover a lost secret.
+        // Signing secret and project-scoped API key are returned to the client
+        // only on first generation. On subsequent deploys the user must rotate
+        // from the dashboard to recover a lost credential.
         if (!project.signing_secret) {
             const signingSecret = generateWebhookSecret()
             await prisma.projects.update({
@@ -110,6 +114,16 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
             })
             project.signing_secret = signingSecret
             signingSecretJustGenerated = true
+        }
+
+        if (project.api_tokens.length === 0) {
+            const { rawToken } = await createProjectScopedToken({
+                projectId,
+                projectName: project.name,
+                organizationId,
+                createdByUserId: userId
+            })
+            newProjectApiKey = rawToken
         }
     }
 
@@ -173,7 +187,8 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
         success: true,
         results,
         removed,
-        signingSecret: signingSecretJustGenerated ? project.signing_secret ?? undefined : undefined
+        signingSecret: signingSecretJustGenerated ? (project.signing_secret ?? undefined) : undefined,
+        projectApiKey: newProjectApiKey
     }
 
     return res.status(200).json(response)
