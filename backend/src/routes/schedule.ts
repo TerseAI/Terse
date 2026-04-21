@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
-import type { ParallelMonitorDetectedWebhookPayload, SerializedEvent, Trigger, TriggerWithEventRequest } from "terse-types"
+import { type ParallelMonitorDetectedWebhookPayload, ParallelMonitorDetectedWebhookPayloadSchema, type SerializedEvent, type Trigger, type TriggerWithEventRequest } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEventParamsSchema, triggerWithEventRequestSchema } from "terse-types/types"
@@ -156,7 +156,8 @@ export async function handleWebMonitorWebhook(req: Request, res: Response) {
 
     let parsedJson: ParallelMonitorDetectedWebhookPayload
     try {
-        parsedJson = JSON.parse(bodyStr) as ParallelMonitorDetectedWebhookPayload
+        const rawJson = JSON.parse(bodyStr)
+        parsedJson = ParallelMonitorDetectedWebhookPayloadSchema.parse(rawJson)
     } catch {
         res.status(400).send("Invalid JSON")
         return

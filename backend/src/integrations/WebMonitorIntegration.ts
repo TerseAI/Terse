@@ -184,13 +184,7 @@ export class WebMonitorIntegrationManager
         return []
     }
 
-    async getSampleEvents(
-        _integrationId: string,
-        organizationId: string,
-        _userId: string,
-        triggerConfig: ConfigData,
-        options?: { limit?: number; triggerId?: string }
-    ): Promise<TriggerRuntime[]> {
+    async getSampleEvents(_integrationId: string, organizationId: string, _userId: string, triggerConfig: ConfigData, options?: { limit?: number; triggerId?: string }): Promise<TriggerRuntime[]> {
         if (triggerConfig.configType !== ConfigType.WEBMONITOR) {
             return []
         }

@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client"
-import { ConfigType, WebMonitorConfig } from "terse-types/Configs"
+import { ConfigType, WebMonitorConfig, WebMonitorConfigSchema } from "terse-types/Configs"
 
 import { PrismaTransaction } from "../types/prisma"
 
@@ -11,12 +11,7 @@ export class WebMonitorTrigger implements Trigger<WebMonitorConfig> {
     constructor() {}
 
     async validateConfig(trigger: WebMonitorConfig, _userId: string): Promise<void> {
-        if (!trigger.query?.trim()) {
-            throw new Error("Web Event trigger requires a non-empty query")
-        }
-        if (!trigger.frequency?.number || !trigger.frequency?.unit) {
-            throw new Error("Web Event trigger requires a frequency number and unit")
-        }
+        WebMonitorConfigSchema.parse(trigger)
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: WebMonitorConfig): Promise<void> {

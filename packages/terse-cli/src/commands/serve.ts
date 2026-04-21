@@ -1,23 +1,14 @@
 import chalk from "chalk"
 import crypto from "node:crypto"
 import http from "node:http"
-import {
-    TERSE_SIGNATURE_HEADER,
-    TERSE_SIGNATURE_VERSION,
-    TERSE_TIMESTAMP_HEADER,
-    webhookJobChallengeRequestSchema,
-    webhookJobTriggerRequestSchema,
-} from "terse-types/types"
+import { TERSE_SIGNATURE_HEADER, TERSE_SIGNATURE_VERSION, TERSE_TIMESTAMP_HEADER, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types/types"
 
 import { readApiKeyOrBail, readEnvVar } from "../api.js"
 import { loadJobRegistry } from "../loadJob.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
-export async function serve(
-    opts: { port: number; cwd?: string; entryFile?: string; verbose?: boolean },
-    provider?: LanguageProvider
-): Promise<void> {
+export async function serve(opts: { port: number; cwd?: string; entryFile?: string; verbose?: boolean }, provider?: LanguageProvider): Promise<void> {
     if (opts.cwd) {
         process.chdir(opts.cwd)
     }
@@ -85,12 +76,7 @@ export async function serve(
         const ts = req.headers[TERSE_TIMESTAMP_HEADER]
 
         if (typeof sig !== "string" || typeof ts !== "string") {
-            const missing = [
-                typeof sig !== "string" && TERSE_SIGNATURE_HEADER,
-                typeof ts !== "string" && TERSE_TIMESTAMP_HEADER,
-            ]
-                .filter(Boolean)
-                .join(", ")
+            const missing = [typeof sig !== "string" && TERSE_SIGNATURE_HEADER, typeof ts !== "string" && TERSE_TIMESTAMP_HEADER].filter(Boolean).join(", ")
             console.error(chalk.red(`  missing headers: ${missing}`))
             respond(401, JSON.stringify({ error: "Invalid signature" }), "Missing headers")
             return
@@ -183,13 +169,7 @@ function readBody(req: http.IncomingMessage): Promise<string> {
 }
 
 function computeRequestSignature(signingSecret: string, timestamp: number, body: string): string {
-    return (
-        `${TERSE_SIGNATURE_VERSION}=` +
-        crypto
-            .createHmac("sha256", signingSecret)
-            .update(`${TERSE_SIGNATURE_VERSION}:${timestamp}:${body}`)
-            .digest("hex")
-    )
+    return `${TERSE_SIGNATURE_VERSION}=` + crypto.createHmac("sha256", signingSecret).update(`${TERSE_SIGNATURE_VERSION}:${timestamp}:${body}`).digest("hex")
 }
 
 function verifyRequestSignature(signingSecret: string, signature: string, timestamp: number, body: string): boolean {
