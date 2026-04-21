@@ -6,7 +6,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import BreadCrumb from "./components/BreadCrumb"
 import { AppSidebar } from "./components/Sidebar/Sidebar"
-import Spin from "./components/loading/Spin"
+import AppBootScreen from "./components/loading/AppBootScreen"
 import { ThemeProvider } from "./components/theme-provider"
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
@@ -94,7 +94,7 @@ function Content() {
     }, [navigate, user?.organizationId])
 
     if (isLoading) {
-        return <Spin />
+        return <AppBootScreen />
     }
 
     // If user is not part of an organization, redirect to org creation
@@ -110,9 +110,7 @@ function Content() {
                         <AppLayout />
                     </div>
                 ) : (
-                    <div key="redirecting" className="h-full grid place-items-center">
-                        <Spin />
-                    </div>
+                    <AppBootScreen key="redirecting" />
                 )}
             </AnimatePresence>
         </>
