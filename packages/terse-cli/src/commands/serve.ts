@@ -172,12 +172,6 @@ function computeRequestSignature(signingSecret: string, timestamp: number, body:
     return `${TERSE_SIGNATURE_VERSION}=` + crypto.createHmac("sha256", signingSecret).update(`${TERSE_SIGNATURE_VERSION}:${timestamp}:${body}`).digest("hex")
 }
 
-function verifyRequestSignature(signingSecret: string, signature: string, timestamp: number, body: string): boolean {
-    const expected = computeRequestSignature(signingSecret, timestamp, body)
-    if (signature.length !== expected.length) return false
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
-}
-
 function computeChallengeSignature(signingSecret: string, challengeToken: string): string {
     return crypto.createHmac("sha256", signingSecret).update(challengeToken).digest("hex")
 }
