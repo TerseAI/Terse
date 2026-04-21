@@ -21,7 +21,8 @@ export enum ConfigType {
     WORKOS_OUTPUT = "workos_output",
     ATTIO_OUTPUT = "attio_output",
     SNOWFLAKE_OUTPUT = "snowflake_output",
-    WEBHOOK_INPUT = "webhook_input"
+    WEBHOOK_INPUT = "webhook_input",
+    WEBEVENT_MONITOR = "webevent_monitor"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -208,6 +209,15 @@ export const WebhookInputConfigMetadata = {
     isOutput: false
 } as const satisfies ConfigDetails
 
+export const WebEventMonitorConfigMetadata = {
+    configType: ConfigType.WEBEVENT_MONITOR,
+    name: "Web Event",
+    description: "Run when scheduled web monitoring detects relevant changes",
+    integrationType: IntegrationType.WEBEVENT,
+    isInput: true,
+    isOutput: false
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -229,7 +239,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata,
-    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata
+    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
+    [ConfigType.WEBEVENT_MONITOR]: WebEventMonitorConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -897,6 +908,42 @@ export class WebhookInputConfig extends BaseConfigInstance<IntegrationType.WEBHO
     }
 }
 
+export const WebEventMonitorConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.WEBEVENT),
+    configType: z.literal(ConfigType.WEBEVENT_MONITOR),
+    query: z.string(),
+    frequency: z.object({
+        number: z.number(),
+        unit: z.enum(["h", "d", "w"])
+    })
+})
+export type WebEventMonitorConfigData = z.infer<typeof WebEventMonitorConfigSchema>
+export type WebEventMonitorConfigInstance = WebEventMonitorConfigData & ConfigBehavior
+
+export class WebEventMonitorConfig extends BaseConfigInstance<IntegrationType.WEBEVENT, ConfigType.WEBEVENT_MONITOR, "system"> implements WebEventMonitorConfigInstance {
+    constructor(
+        public query: string,
+        public frequency: {
+            number: number
+            unit: "h" | "d" | "w"
+        }
+    ) {
+        super("system", IntegrationType.WEBEVENT, ConfigType.WEBEVENT_MONITOR)
+    }
+
+    isComplete(): boolean {
+        return !!(this.query && this.frequency)
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Web Event`]
+        if (this.query) parts.push(`Query: ${this.query}`)
+        if (this.frequency) parts.push(`Frequency: ${this.frequency}`)
+        return parts.join("\n")
+    }
+}
+
 export const configDataSchema = z.union([
     GmailConfigSchema,
     SlackConfigSchema,
@@ -917,7 +964,8 @@ export const configDataSchema = z.union([
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
-    WebhookInputConfigSchema
+    WebhookInputConfigSchema,
+    WebEventMonitorConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -929,7 +977,8 @@ export const triggerConfigDataSchema = z.union([
     GitHubConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
-    WebhookInputConfigSchema
+    WebhookInputConfigSchema,
+    WebEventMonitorConfigSchema
 ])
 export type TriggerConfigData = z.infer<typeof triggerConfigDataSchema>
 
@@ -982,6 +1031,8 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
             return !!config.projectId
         case ConfigType.TIME_TRIGGER:
             return !!config.cronExpression
+        case ConfigType.WEBEVENT_MONITOR:
+            return !!(config.query && config.frequency)
         case ConfigType.LAUNCHDARKLY:
             return !!(config.projectKey && config.environmentKeys.length > 0)
         case ConfigType.WORKOS_INPUT:
@@ -1101,6 +1152,12 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Snowflake Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
+        case ConfigType.WEBEVENT_MONITOR: {
+            const parts = [`Type: Web Event`]
+            if (config.query) parts.push(`Query: ${config.query}`)
+            if (config.frequency) parts.push(`Frequency: ${config.frequency}`)
+            return parts.join("\n")
+        }
         default: {
             const _exhaustive: never = config
             return _exhaustive
@@ -1131,6 +1188,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
     [ConfigType.SNOWFLAKE_OUTPUT]: typeof SnowflakeOutputConfig
     [ConfigType.WEBHOOK_INPUT]: typeof WebhookInputConfig
+    [ConfigType.WEBEVENT_MONITOR]: typeof WebEventMonitorConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1152,5 +1210,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
-    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig
+    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
+    [ConfigType.WEBEVENT_MONITOR]: WebEventMonitorConfig
 } as const satisfies ConfigMetadataMap

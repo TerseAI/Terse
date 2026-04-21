@@ -11,7 +11,8 @@ export function getInputConfigInclude() {
         gmail_config: true,
         time_trigger_config: true,
         workos_config: true,
-        webhook_config: true
+        webhook_config: true,
+        webevent_config: true
     } as const
 }
 

@@ -1,5 +1,16 @@
 import { IntegrationType } from "./Integrations"
-import type { CronTrigger, GithubTrigger, GmailTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
+import type {
+    CronTrigger,
+    GithubTrigger,
+    GmailTrigger,
+    LinearTrigger,
+    ManualSampleTrigger,
+    SlackTrigger,
+    Trigger,
+    WebEventTrigger,
+    WebhookTrigger,
+    WorkOSTrigger
+} from "./Triggers"
 
 interface TriggerPresenter<TEvent extends Trigger> {
     formatForAgent(event: TEvent): string
@@ -55,6 +66,10 @@ const TriggerPresenters = {
     [IntegrationType.CRON_JOB]: {
         formatForAgent: formatCronTrigger,
         debug: (event: CronTrigger): string => (event.isManualTrigger ? "Manual Trigger" : "Scheduled Event")
+    },
+    [IntegrationType.WEBEVENT]: {
+        formatForAgent: formatWebEventTrigger,
+        debug: (event: WebEventTrigger): string => `Web Event: ${event.query.slice(0, 80)}${event.query.length > 80 ? "…" : ""}`
     }
 } as TriggerPresenterRegistry
 
@@ -74,6 +89,8 @@ function dispatchPresenter(event: IntegrationTrigger, method: keyof TriggerPrese
             return TriggerPresenters[IntegrationType.WEBHOOK][method](event)
         case IntegrationType.CRON_JOB:
             return TriggerPresenters[IntegrationType.CRON_JOB][method](event)
+        case IntegrationType.WEBEVENT:
+            return TriggerPresenters[IntegrationType.WEBEVENT][method](event)
     }
 }
 
@@ -284,6 +301,15 @@ function formatWorkOSTrigger(event: WorkOSTrigger): string {
 
 function formatWebhookTrigger(event: WebhookTrigger): string {
     return `Webhook request received.\n\nMethod: ${event.method}\n\nPayload:\n${JSON.stringify(event.body, null, 2)}`
+}
+
+function formatWebEventTrigger(event: WebEventTrigger): string {
+    const lines = [
+        `Web event for monitored query (frequency: ${event.frequency}).`,
+        `Query: ${event.query}`,
+        `Payload:\n${JSON.stringify(event.payload, null, 2)}`
+    ]
+    return lines.join("\n\n")
 }
 
 function formatCronTrigger(event: CronTrigger): string {

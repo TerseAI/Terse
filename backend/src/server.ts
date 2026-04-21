@@ -41,7 +41,7 @@ import { refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
-import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent } from "./routes/schedule"
+import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebEventMonitorWebhook } from "./routes/schedule"
 import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
 import { handleSdkDeploy } from "./routes/sdkDeploy"
 import { handleSdkIntegrationFields, handleSdkIntegrationFormSubmit } from "./routes/sdkIntegrations"
@@ -158,7 +158,13 @@ const DEFAULT_BODY_LIMIT = "1mb"
 
 // Parse JSON for all routes except Slack events, Linear webhook, and WorkOS webhook (which need raw body for signature verification)
 app.use((req, res, next) => {
-    if (req.path === "/slack/events" || req.path === "/linear/webhook" || req.path === ApiRoutes.WEBHOOKS.WORKOS || req.path.startsWith("/webhooks/workos-trigger/")) {
+    if (
+        req.path === "/slack/events" ||
+        req.path === "/linear/webhook" ||
+        req.path === ApiRoutes.WEBHOOKS.WORKOS ||
+        req.path.startsWith("/webhooks/workos-trigger/") ||
+        req.path.startsWith("/webhooks/webevent/")
+    ) {
         next()
     } else {
         // Use larger limit for webhook routes that may receive large payloads (e.g., GitHub PR events with large bodies)
@@ -248,6 +254,12 @@ app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, async (req, res) =
 
 app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, async (req, res) => {
     handleScheduleWebhook(req, res)
+})
+
+app.use(ApiRoutes.WEBHOOKS.WEBEVENT_BY_INPUT_ID, express.raw({ type: "application/json", limit: LARGE_BODY_LIMIT }))
+
+app.post(ApiRoutes.WEBHOOKS.WEBEVENT_BY_INPUT_ID, async (req, res) => {
+    handleWebEventMonitorWebhook(req, res)
 })
 
 app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, async (req, res) => {

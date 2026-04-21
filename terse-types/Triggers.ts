@@ -304,6 +304,9 @@ export type WebhookTriggerType = z.infer<typeof webhookTriggerTypeSchema>
 export const cronTriggerTypeSchema = z.literal("cron")
 export type CronTriggerType = z.infer<typeof cronTriggerTypeSchema>
 
+export const webEventTriggerTypeSchema = z.literal("web_event")
+export type WebEventTriggerType = z.infer<typeof webEventTriggerTypeSchema>
+
 export const manualSampleTriggerTypeSchema = z.literal("manual_sample")
 export type ManualSampleTriggerType = z.infer<typeof manualSampleTriggerTypeSchema>
 
@@ -315,6 +318,7 @@ export const TriggerTypeSchema = z.union([
     workOSEventTypeSchema,
     webhookTriggerTypeSchema,
     cronTriggerTypeSchema,
+    webEventTriggerTypeSchema,
     manualSampleTriggerTypeSchema
 ])
 export type TriggerType = z.infer<typeof TriggerTypeSchema>
@@ -536,6 +540,19 @@ export const cronTriggerSchema = baseTriggerSchema.extend({
 })
 export type CronTrigger = z.infer<typeof cronTriggerSchema>
 
+export const webEventTriggerSchema = baseTriggerSchema.extend({
+    integrationType: z.literal(IntegrationType.WEBEVENT),
+    eventType: webEventTriggerTypeSchema,
+    inputId: z.string(),
+    query: z.string(),
+    frequency: z.object({
+        number: z.number(),
+        unit: z.enum(["h", "d", "w"])
+    }),
+    payload: z.record(z.string(), z.unknown())
+})
+export type WebEventTrigger = z.infer<typeof webEventTriggerSchema>
+
 export const manualSampleTriggerSchema = baseTriggerSchema.extend({
     eventType: manualSampleTriggerTypeSchema
 })
@@ -549,6 +566,7 @@ export const TriggerSchema = z.union([
     workOSTriggerSchema,
     webhookTriggerSchema,
     cronTriggerSchema,
+    webEventTriggerSchema,
     manualSampleTriggerSchema
 ])
 export type Trigger = z.infer<typeof TriggerSchema>

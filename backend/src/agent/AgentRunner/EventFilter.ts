@@ -152,6 +152,16 @@ export async function filterEvent(event: TriggerRuntime, agentWithRelations: Age
         }
     }
 
+    if (event.integrationType === IntegrationType.WEBEVENT) {
+        return {
+            result: {
+                isRelevant: true,
+                reason: "Web event is relevant",
+                confidence: 1
+            }
+        }
+    }
+
     if (!agentWithRelations.prompt) {
         throw new Error("Agent prompt is required for event filtering")
     }

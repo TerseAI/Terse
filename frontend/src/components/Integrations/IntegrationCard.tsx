@@ -52,6 +52,7 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
         case IntegrationType.SNOWFLAKE:
             return <SnowflakeIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:
+        case IntegrationType.WEBEVENT:
             return null
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing

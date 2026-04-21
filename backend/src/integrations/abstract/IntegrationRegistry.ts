@@ -11,6 +11,7 @@ import { NotionIntegrationManager } from "../NotionIntegration"
 import { PosthogIntegrationManager } from "../PosthogIntegration"
 import { SlackIntegrationManager } from "../SlackIntegration"
 import { SnowflakeIntegrationManager } from "../SnowflakeIntegration"
+import { WebEventIntegrationManager } from "../WebEventIntegration"
 import { WorkOSIntegrationManager } from "../WorkOSIntegration"
 
 import { FormIntegrationInstallation, Integration, OAuthIntegrationInstallation } from "./Integration"
@@ -18,7 +19,12 @@ import { FormIntegrationInstallation, Integration, OAuthIntegrationInstallation 
 type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails, any> & (OAuthIntegrationInstallation<IntegrationType> | FormIntegrationInstallation<IntegrationType>)
 
 // System integrations that don't require user ownership validation
-const SYSTEM_INTEGRATION_TYPES: IntegrationType[] = [IntegrationType.TERSE, IntegrationType.CRON_JOB, IntegrationType.WEBHOOK]
+const SYSTEM_INTEGRATION_TYPES: IntegrationType[] = [
+    IntegrationType.TERSE,
+    IntegrationType.CRON_JOB,
+    IntegrationType.WEBHOOK,
+    IntegrationType.WEBEVENT
+]
 
 export function isSystemIntegration(integrationType: IntegrationType): boolean {
     return SYSTEM_INTEGRATION_TYPES.includes(integrationType)
@@ -26,6 +32,7 @@ export function isSystemIntegration(integrationType: IntegrationType): boolean {
 
 export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new CronJobIntegrationManager(),
+    new WebEventIntegrationManager(),
     new GithubIntegrationManager(),
     new GmailIntegrationManager(),
     new LinearIntegrationManager(),
