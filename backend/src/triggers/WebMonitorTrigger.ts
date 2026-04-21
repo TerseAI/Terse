@@ -26,7 +26,7 @@ export class WebMonitorTrigger implements Trigger<WebMonitorConfig> {
                 query: trigger.query,
                 frequency_number: trigger.frequency.number,
                 frequency_unit: trigger.frequency.unit,
-                output_schema: trigger.outputSchema ? (trigger.toJSON().outputSchema as Prisma.InputJsonValue) : undefined
+                output_schema: trigger.outputSchema ? (trigger.outputSchema as Prisma.InputJsonValue) : undefined
             }
         })
     }

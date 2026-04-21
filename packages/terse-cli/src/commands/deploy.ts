@@ -20,16 +20,17 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     const registry = await loadJobRegistry(provider, entryFile)
     const jobs = [...registry.values()]
 
-    // If TERSE_REMOTE_SERVER_URL (or legacy TERSE_JOB_URL) is set in .env, deploy
-    // in URL mode (user infrastructure). No source code is zipped or uploaded.
-    const remoteServerUrl = readEnvVar("TERSE_REMOTE_SERVER_URL") ?? readEnvVar("TERSE_JOB_URL")
-    const isUrlMode = !!remoteServerUrl
+    // TERSE_REMOTE_SERVER_URL / TERSE_JOB_URL acts as a default for any jobs that
+    // do not specify remoteServerUrl in code.
+    const defaultRemoteServerUrl = readEnvVar("TERSE_REMOTE_SERVER_URL") ?? readEnvVar("TERSE_JOB_URL")
+    const allJobsHaveRemoteServerUrl = jobs.every(job => !!(job.remoteServerUrl ?? defaultRemoteServerUrl))
+    const needsHostedDeployment = !allJobsHaveRemoteServerUrl
 
     let sourceZipBase64: string | undefined
     let fileCount = 0
     let zipSizeBytes = 0
 
-    if (!isUrlMode) {
+    if (needsHostedDeployment) {
         const zipPayload = buildZipPayload(provider)
         sourceZipBase64 = zipPayload.sourceZipBase64
         fileCount = zipPayload.fileCount
@@ -42,9 +43,10 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         const body = sdkDeployRequestBodySchema.parse({
             jobs: jobs.map(job => ({
                 jobName: job.name,
-                triggers: job.triggers.map(trigger => JSON.parse(JSON.stringify(trigger)))
+                triggers: job.triggers.map(trigger => JSON.parse(JSON.stringify(trigger))),
+                remoteServerUrl: job.remoteServerUrl
             })),
-            remoteServerUrl: isUrlMode ? remoteServerUrl : undefined,
+            remoteServerUrl: defaultRemoteServerUrl ?? undefined,
             sourceZipBase64
         })
 
@@ -72,9 +74,11 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             }
         }
 
-        if (isUrlMode) {
+        if (allJobsHaveRemoteServerUrl) {
             console.log(chalk.dim(`  Mode: user infrastructure`))
-            console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
+            if (defaultRemoteServerUrl) {
+                console.log(chalk.dim(`  Default server URL: ${defaultRemoteServerUrl}`))
+            }
 
             const signingSecret = result.results.find(r => r.signingSecret)?.signingSecret
             if (signingSecret) {
@@ -84,6 +88,11 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
                     console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
                     console.log("")
                 }
+            }
+        } else if (defaultRemoteServerUrl || jobs.some(job => job.remoteServerUrl)) {
+            console.log(chalk.dim(`  Mode: mixed hosted + user infrastructure`))
+            if (defaultRemoteServerUrl) {
+                console.log(chalk.dim(`  Default server URL: ${defaultRemoteServerUrl}`))
             }
         } else {
             console.log(chalk.dim(`  Files: ${fileCount}`))

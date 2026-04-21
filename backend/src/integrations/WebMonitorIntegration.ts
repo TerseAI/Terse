@@ -9,7 +9,7 @@ import {
     WebMonitorTrigger,
     buildRoute
 } from "terse-types"
-import { FrequencyUnit, WebMonitorOutputSchema } from "terse-types/Configs"
+import { ConfigData, ConfigType, FrequencyUnit, WebMonitorConfig, WebMonitorOutputSchema } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { IntegrationInstance, IntegrationType, WebMonitorIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -44,6 +44,22 @@ interface CreateMonitorBody {
     output_schema?: WebMonitorOutputSchema
 }
 
+function toParallelOutputSchema(outputSchema?: WebMonitorOutputSchema): { type: "json"; json_schema: Record<string, unknown> } | undefined {
+    if (!outputSchema) {
+        return undefined
+    }
+
+    const jsonSchema = JSON.parse(JSON.stringify(outputSchema.jsonSchema)) as Record<string, unknown>
+    if ("~standard" in jsonSchema) {
+        delete jsonSchema["~standard"]
+    }
+
+    return {
+        type: "json",
+        json_schema: jsonSchema
+    }
+}
+
 interface CreateMonitorResponse {
     monitor_id?: string
 }
@@ -64,7 +80,7 @@ async function createMonitor(body: CreateMonitorBody): Promise<{ monitor_id?: st
             frequency: `${frequency.number}${frequencyUnit}`,
             webhook,
             metadata,
-            output_schema
+            output_schema: toParallelOutputSchema(output_schema)
         }
     })) as CreateMonitorResponse // casting based on the docs
     return { monitor_id: monitor.monitor_id }
@@ -82,6 +98,18 @@ async function getEventGroup(monitorId: string, eventGroupId: string): Promise<P
     }
 
     return (response.events ?? []).map(event => ParallelMonitorEventSchema.parse(event))
+}
+
+async function listMonitorEvents(monitorId: string, lookbackPeriod: string = "10d"): Promise<ParallelMonitorEvent[]> {
+    const client = new Client({ apiKey: settings.parallel.apiKey })
+    const response = (await client.get(`/v1alpha/monitors/${monitorId}/events?lookback_period=${encodeURIComponent(lookbackPeriod)}`)) as {
+        events?: Array<unknown>
+    }
+
+    return (response.events ?? [])
+        .filter((event): event is Record<string, unknown> => !!event && typeof event === "object" && !Array.isArray(event))
+        .filter(event => event.type === "event")
+        .map(event => ParallelMonitorEventSchema.parse(event))
 }
 
 function truncate(value: string, maxLength: number): string {
@@ -154,6 +182,41 @@ export class WebMonitorIntegrationManager
 
     async getAllActiveInstances(): Promise<IntegrationInstance[]> {
         return []
+    }
+
+    async getSampleEvents(
+        _integrationId: string,
+        organizationId: string,
+        _userId: string,
+        triggerConfig: ConfigData,
+        options?: { limit?: number; triggerId?: string }
+    ): Promise<TriggerRuntime[]> {
+        if (triggerConfig.configType !== ConfigType.WEBMONITOR) {
+            return []
+        }
+
+        const resolvedConfig = triggerConfig as WebMonitorConfig
+        const limit = options?.limit ?? 5
+        const providerMonitorId = await this.resolveProviderMonitorId(organizationId, resolvedConfig, options?.triggerId)
+        if (!providerMonitorId) {
+            return []
+        }
+
+        const historicalEvents = await listMonitorEvents(providerMonitorId)
+
+        return historicalEvents.slice(0, limit).map(
+            event =>
+                new WebMonitorTriggerRuntime({
+                    inputId: options?.triggerId ?? "sample",
+                    automationId: "sample",
+                    query: resolvedConfig.query,
+                    frequency: resolvedConfig.frequency,
+                    monitorId: providerMonitorId,
+                    eventGroupId: event.event_group_id,
+                    metadata: {},
+                    event
+                })
+        )
     }
 
     async processWebhookEvent(event: WebMonitorWebhookPayload): Promise<void> {
@@ -315,6 +378,49 @@ export class WebMonitorIntegrationManager
         const baseUrl = settings.urls.backend
         const path = buildRoute(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, { inputId })
         return `${baseUrl}${path}`
+    }
+
+    private async resolveProviderMonitorId(organizationId: string, triggerConfig: WebMonitorConfig, triggerId?: string): Promise<string | null> {
+        if (triggerId) {
+            const exact = await db().automation_webmonitor_configs.findFirst({
+                where: {
+                    automation_input_id: triggerId,
+                    automation_input: {
+                        automation: {
+                            organization_id: organizationId
+                        }
+                    }
+                },
+                select: {
+                    provider_monitor_id: true
+                }
+            })
+
+            if (exact?.provider_monitor_id) {
+                return exact.provider_monitor_id
+            }
+        }
+
+        const fallback = await db().automation_webmonitor_configs.findFirst({
+            where: {
+                query: triggerConfig.query,
+                frequency_number: triggerConfig.frequency.number,
+                frequency_unit: triggerConfig.frequency.unit,
+                automation_input: {
+                    automation: {
+                        organization_id: organizationId
+                    }
+                }
+            },
+            orderBy: {
+                updated_at: "desc"
+            },
+            select: {
+                provider_monitor_id: true
+            }
+        })
+
+        return fallback?.provider_monitor_id ?? null
     }
 }
 

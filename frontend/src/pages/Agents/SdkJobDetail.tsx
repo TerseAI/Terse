@@ -9,6 +9,7 @@ import { FrontendRoutes } from "terse-types"
 import type { AgentTrigger, FrequencyUnit, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
+import ToolCallParameters from "../../components/ToolCallParameters"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
@@ -36,7 +37,7 @@ function WebMonitorTriggerCard({ trigger }: { trigger: AgentTrigger }) {
         return null
     }
 
-    const { query, frequency } = trigger.config
+    const { query, frequency, outputSchema } = trigger.config
 
     return (
         <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]">
@@ -48,6 +49,18 @@ function WebMonitorTriggerCard({ trigger }: { trigger: AgentTrigger }) {
                     <p className="text-sm font-medium text-foreground">Web Monitor</p>
                     <p className="text-sm text-muted-foreground">{formatWebMonitorFrequency(frequency)}</p>
                     <p className="text-sm leading-6 text-foreground/80 break-words">{query}</p>
+                    {outputSchema ? (
+                        <div className="mt-3 rounded-md bg-muted/40 p-2">
+                            <ToolCallParameters
+                                parameters={JSON.stringify({
+                                    ...(outputSchema.jsonSchema.properties ? { properties: outputSchema.jsonSchema.properties } : {}),
+                                    ...(outputSchema.jsonSchema.required ? { required: outputSchema.jsonSchema.required } : {})
+                                })}
+                                label="Structured output"
+                                collapsed={true}
+                            />
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>
