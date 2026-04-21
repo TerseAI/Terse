@@ -251,8 +251,8 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
     }
 
     if (channelInput.webmonitor_config) {
-        const w = channelInput.webmonitor_config
-        return new WebMonitorConfig(w.query, { number: w.frequency_number, unit: w.frequency_unit }, (w.output_schema as object | null) ?? undefined)
+        // query/frequency/output_schema are no longer stored — owned by Parallel API and rehydrated at runtime
+        return new WebMonitorConfig("", { number: 1, unit: "day" })
     }
 
     // Type guard to ensure we implement conversion here

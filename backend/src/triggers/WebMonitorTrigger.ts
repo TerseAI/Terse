@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
-import { ConfigType, WebMonitorConfig, WebMonitorConfigSchema } from "terse-types/Configs"
+import { ConfigType, WebMonitorConfig, WebMonitorConfigSchema, WebMonitorOutputSchema } from "terse-types/Configs"
 
+import { buildWebhookUrl, createMonitor } from "../integrations/WebMonitorIntegration"
 import { PrismaTransaction } from "../types/prisma"
 
 import { Trigger } from "./Trigger"
@@ -15,13 +16,23 @@ export class WebMonitorTrigger implements Trigger<WebMonitorConfig> {
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: WebMonitorConfig): Promise<void> {
+        const webhookUrl = buildWebhookUrl(agentTriggerId)
+        const created = await createMonitor({
+            query: trigger.query,
+            frequency: trigger.frequency,
+            webhook: { url: webhookUrl, event_types: ["monitor.event.detected"] },
+            metadata: { terse_automation_input_id: agentTriggerId },
+            output_schema: trigger.outputSchema as WebMonitorOutputSchema | undefined
+        })
+        const monitorId = created.monitor_id
+        if (!monitorId) {
+            throw new Error("Parallel monitor create response missing monitor_id")
+        }
+
         await tx.automation_webmonitor_configs.create({
             data: {
                 automation_input_id: agentTriggerId,
-                query: trigger.query,
-                frequency_number: trigger.frequency.number,
-                frequency_unit: trigger.frequency.unit,
-                output_schema: trigger.outputSchema ? (trigger.outputSchema as Prisma.InputJsonValue) : undefined
+                provider_monitor_id: monitorId
             }
         })
     }

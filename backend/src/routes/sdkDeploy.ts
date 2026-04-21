@@ -28,15 +28,11 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
     try {
         const { remoteServerUrl, jobs, sourceZipBase64 } = sdkDeployRequestBodySchema.parse(req.body)
-        const hasAnyRemoteServerUrl = !!remoteServerUrl || jobs.some(job => !!job.remoteServerUrl)
-        const requiresHostedArtifacts = jobs.some(job => !(job.remoteServerUrl ?? remoteServerUrl))
 
-        if (!sourceZipBase64 && !hasAnyRemoteServerUrl) {
+        if (!sourceZipBase64 && !remoteServerUrl) {
             return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
-        }
-
-        if (requiresHostedArtifacts && !sourceZipBase64) {
-            return res.status(400).json({ success: false, error: "sourceZipBase64 is required for jobs without a remoteServerUrl" })
+        } else if (sourceZipBase64 && remoteServerUrl) {
+            return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
         }
 
         if (remoteServerUrl) {
@@ -69,19 +65,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         }
 
         for (const job of jobs) {
-            const effectiveRemoteServerUrl = job.remoteServerUrl ?? remoteServerUrl
-
-            if (effectiveRemoteServerUrl) {
-                try {
-                    await validateRemoteServerUrl(effectiveRemoteServerUrl)
-                } catch (error) {
-                    if (error instanceof UrlValidationError) {
-                        return res.status(400).json({ success: false, error: error.message })
-                    }
-                    throw error
-                }
-            }
-
             const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
                 where: {
                     name: job.jobName,
@@ -96,12 +79,12 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId, {
                       currentSdkSourceImageId,
                       gcsKey,
-                      remoteServerUrl: effectiveRemoteServerUrl
+                      remoteServerUrl
                   })
                 : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, {
                       currentSdkSourceImageId,
                       gcsKey,
-                      remoteServerUrl: effectiveRemoteServerUrl
+                      remoteServerUrl
                   })
 
             await setupAgentTriggers(agent)

@@ -130,17 +130,6 @@ export type SlackMessageTrigger = SDKTrigger<_RawSlackMessageTrigger>
 export type SlackReactionAddedTrigger = SDKTrigger<_RawSlackReactionAddedTrigger>
 export type SlackTrigger = SDKTrigger<_RawSlackTrigger>
 export type WebhookTrigger<TBody = unknown> = SDKTrigger<_RawWebhookTrigger<TBody>>
-/**
- * Web Monitor trigger payload.
- *
- * For best inference, do not annotate the `onTrigger` callback parameter manually;
- * let `createJob({ triggers: [...] })` infer the event type from `WebMonitor.onEvent(...)`.
- *
- * If you want an explicit type annotation, prefer:
- * `WebMonitorTriggerFor<typeof outputSchema>`
- * or
- * `WebMonitorTrigger<z.infer<typeof outputSchema>>`
- */
 export type WebMonitorTrigger<TStructured = unknown> = SDKTrigger<_RawWebMonitorTrigger<TStructured>>
 export type WebMonitorTriggerFor<TSchema> = WebMonitorTrigger<InferStructuredOutput<TSchema>>
 export type WorkOSInvitationAcceptedTrigger = SDKTrigger<_RawWorkOSInvitationAcceptedTrigger>

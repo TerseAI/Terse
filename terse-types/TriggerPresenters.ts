@@ -58,7 +58,7 @@ const TriggerPresenters = {
     },
     [IntegrationType.WEBMONITOR]: {
         formatForAgent: formatWebMonitorTrigger,
-        debug: (event: WebMonitorTrigger): string => `Web Monitor: ${event.query.slice(0, 80)}${event.query.length > 80 ? "…" : ""}`
+        debug: (event: WebMonitorTrigger): string => `${event.query.slice(0, 80)}${event.query.length > 80 ? "…" : ""}`
     }
 } as TriggerPresenterRegistry
 

@@ -668,8 +668,7 @@ export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionR
 
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
-    triggers: z.array(triggerConfigDataSchema),
-    remoteServerUrl: z.string().optional()
+    triggers: z.array(triggerConfigDataSchema)
 })
 export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
@@ -679,12 +678,12 @@ export const sdkDeployRequestBodySchema = z
         remoteServerUrl: z.string().optional(),
         sourceZipBase64: z.string().optional()
     })
-    .refine(data => data.remoteServerUrl != null || data.sourceZipBase64 != null || data.jobs.some(job => job.remoteServerUrl != null), {
-        message: "Either sourceZipBase64, a top-level remoteServerUrl, or a job-level remoteServerUrl is required",
-        path: ["sourceZipBase64"]
+    .refine(data => !(data.remoteServerUrl && data.sourceZipBase64), {
+        message: "remoteServerUrl and sourceZipBase64 cannot be provided together",
+        path: ["remoteServerUrl"]
     })
-    .refine(data => data.jobs.every(job => job.remoteServerUrl != null || data.remoteServerUrl != null || data.sourceZipBase64 != null), {
-        message: "sourceZipBase64 is required for jobs without a remoteServerUrl",
+    .refine(data => data.remoteServerUrl != null || data.sourceZipBase64 != null, {
+        message: "Either remoteServerUrl or sourceZipBase64 is required",
         path: ["sourceZipBase64"]
     })
 export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>

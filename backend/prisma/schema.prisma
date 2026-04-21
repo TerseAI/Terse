@@ -608,21 +608,11 @@ model automation_webhook_configs {
   @@index([webhook_token])
 }
 
-enum FrequencyUnit {
-  hour
-  day
-  week
-}
-
 // Web Event (scheduled web monitor) trigger configuration
 model automation_webmonitor_configs {
-  id                  String        @id @default(cuid())
-  automation_input_id String        @unique
-  query               String
-  frequency_number    Int
-  frequency_unit      FrequencyUnit
+  id                  String  @id @default(cuid())
+  automation_input_id String  @unique
   provider_monitor_id String?
-  output_schema       Json?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

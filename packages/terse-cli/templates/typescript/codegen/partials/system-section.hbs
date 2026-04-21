@@ -19,15 +19,6 @@ export const Webhook = {
 {{sectionHeader "WebMonitor"}}
 
 export const WebMonitor = {
-    /**
-     * Use in `triggers[]` — trigger when scheduled web monitoring detects relevant changes.
-     *
-     * For best type inference in `onTrigger`, do not manually annotate the callback parameter.
-     * Let `createJob(...)` infer it from this trigger.
-     *
-     * If you want an explicit annotation, use:
-     * `WebMonitorTriggerFor<typeof outputSchema>`
-     */
     onEvent<const TSchema>(opts: {
         query: string
         frequency: { number: number; unit: FrequencyUnit }
