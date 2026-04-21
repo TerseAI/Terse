@@ -160,7 +160,7 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
 
     // Delete any SDK automations not in this deploy
     const deployedNames = new Set(jobs.map(j => j.jobName))
-    const removed = await removeStaleAutomations(prisma, organizationId, deployedNames)
+    const removed = await removeStaleAutomations(prisma, organizationId, deployedNames, projectId)
 
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")
@@ -330,10 +330,10 @@ async function createTriggersForAutomation(tx: PrismaTransaction, automationId: 
 //     }
 // }
 
-async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>): Promise<{ id: string; name: string }[]> {
+async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>, projectId: string): Promise<{ id: string; name: string }[]> {
     // Lightweight query to identify which automations are stale
     const sdkAutomations = await prisma.automations.findMany({
-        where: { organization_id: organizationId, source: "SDK" },
+        where: { organization_id: organizationId, source: "SDK", project_id: projectId },
         select: { id: true, name: true }
     })
 

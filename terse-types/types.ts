@@ -328,7 +328,9 @@ export const agentNotificationSettingsSchema = z.object({
 export type AgentNotificationSettings = z.infer<typeof agentNotificationSettingsSchema>
 
 export const jobMetadataSchema = z.object({
-    remoteServerUrl: z.string().nullable()
+    remoteServerUrl: z.string().nullable(),
+    projectId: z.string().nullable(),
+    projectName: z.string().nullable()
 })
 export type JobMetadata = z.infer<typeof jobMetadataSchema>
 
@@ -685,7 +687,9 @@ export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectRespon
 
 export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
-    name: z.string().min(1)
+    name: z.string().min(1),
+    selfHosted: z.boolean().optional(),
+    remoteServerUrl: z.string().optional()
 })
 export type TerseProjectConfig = z.infer<typeof terseProjectConfigSchema>
 

@@ -788,7 +788,13 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
         createdByUserId: agent.user_id,
         updatedAt: agent.updated_at.toISOString(),
         source: agent.source,
-        metadata: agent.project ? { remoteServerUrl: agent.project.remote_server_url ?? null } : null
+        metadata: agent.project
+            ? {
+                  remoteServerUrl: agent.project.remote_server_url ?? null,
+                  projectId: agent.project.id,
+                  projectName: agent.project.name
+              }
+            : null
     }
 }
 

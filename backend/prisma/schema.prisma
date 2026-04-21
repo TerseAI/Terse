@@ -314,7 +314,7 @@ model automations {
   @@index([user_id])
   @@index([organization_id])
   @@index([is_active])
-  @@index([name, organization_id, source])
+  @@index([name, organization_id, source, project_id])
 }
 
 // Separate table for prompts (future-proof for versioning, templates, etc.)

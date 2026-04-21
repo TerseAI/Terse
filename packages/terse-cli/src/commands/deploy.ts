@@ -8,7 +8,7 @@ import type { SdkDeployResponseBody } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail, readEnvVar } from "../api.js"
 import { loadJobRegistry } from "../loadJob.js"
-import { readProjectConfigOrBail } from "../projectConfig.js"
+import { PROJECT_CONFIG_FILENAME, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
@@ -18,14 +18,28 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
     })
 
-    const { projectId } = readProjectConfigOrBail()
+    const config = readProjectConfigOrBail()
+    const { projectId } = config
 
     const registry = await loadJobRegistry(provider, entryFile)
     const jobs = [...registry.values()]
 
-    // If TERSE_REMOTE_SERVER_URL (or legacy TERSE_JOB_URL) is set in .env, deploy
-    // in URL mode (user infrastructure). No source code is zipped or uploaded.
-    const remoteServerUrl = readEnvVar("TERSE_REMOTE_SERVER_URL") ?? readEnvVar("TERSE_JOB_URL")
+    // Self-hosted mode is driven entirely by terse.config.json (selfHosted + remoteServerUrl).
+    const remoteServerUrl = config.remoteServerUrl?.trim() || undefined
+
+    if (config.selfHosted && !remoteServerUrl) {
+        console.error(chalk.red(`\n  Error: Self-hosted mode is enabled but no server URL is configured.`))
+        console.error(chalk.dim(`  Set ${chalk.cyan("remoteServerUrl")} in ${chalk.cyan(PROJECT_CONFIG_FILENAME)} to the URL where your Terse SDK is running.\n`))
+        console.error(`  Example:`)
+        console.error(chalk.dim(`    {`))
+        console.error(chalk.dim(`      "projectId": "${projectId}",`))
+        console.error(chalk.dim(`      "name": "${config.name}",`))
+        console.error(chalk.dim(`      "selfHosted": true,`))
+        console.error(chalk.dim(`      "remoteServerUrl": "https://your-app.example.com"`))
+        console.error(chalk.dim(`    }\n`))
+        process.exit(1)
+    }
+
     const isUrlMode = !!remoteServerUrl
 
     let sourceZipBase64: string | undefined
