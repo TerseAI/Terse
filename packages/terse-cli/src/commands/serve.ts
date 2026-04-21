@@ -1,14 +1,23 @@
 import chalk from "chalk"
 import crypto from "node:crypto"
 import http from "node:http"
-import { TERSE_SIGNATURE_HEADER, TERSE_SIGNATURE_VERSION, TERSE_TIMESTAMP_HEADER } from "terse-types/types"
+import {
+    TERSE_SIGNATURE_HEADER,
+    TERSE_SIGNATURE_VERSION,
+    TERSE_TIMESTAMP_HEADER,
+    webhookJobChallengeRequestSchema,
+    webhookJobTriggerRequestSchema,
+} from "terse-types/types"
 
 import { readApiKeyOrBail, readEnvVar } from "../api.js"
 import { loadJobRegistry } from "../loadJob.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
-export async function serve(opts: { port: number; cwd?: string; entryFile?: string }, provider?: LanguageProvider): Promise<void> {
+export async function serve(
+    opts: { port: number; cwd?: string; entryFile?: string; verbose?: boolean },
+    provider?: LanguageProvider
+): Promise<void> {
     if (opts.cwd) {
         process.chdir(opts.cwd)
     }
@@ -30,27 +39,79 @@ export async function serve(opts: { port: number; cwd?: string; entryFile?: stri
     const registry = await loadJobRegistry(resolvedProvider, opts.entryFile)
 
     const server = http.createServer(async (req, res) => {
-        if (req.method !== "POST" || req.url !== "/webhook/terse/trigger") {
-            res.writeHead(404, { "Content-Type": "application/json" })
-            res.end(JSON.stringify({ error: "Not found" }))
+        const startMs = Date.now()
+
+        const method = req.method ?? "UNKNOWN"
+        const url = req.url ?? "/"
+
+        console.log(chalk.dim(`\n→ ${method} ${url}`))
+
+        if (opts.verbose) {
+            const redactedHeaders = { ...req.headers }
+            if (redactedHeaders[TERSE_SIGNATURE_HEADER]) {
+                redactedHeaders[TERSE_SIGNATURE_HEADER] = "<redacted>"
+            }
+            console.log(chalk.dim(`  headers: ${JSON.stringify(redactedHeaders)}`))
+        }
+
+        function respond(status: number, body: string, reason: string) {
+            const elapsed = Date.now() - startMs
+            const statusColor = status < 300 ? chalk.green : chalk.red
+            console.log(statusColor(`← ${status}  ${reason}  (${elapsed}ms)`))
+            res.writeHead(status, { "Content-Type": "application/json" })
+            res.end(body)
+        }
+
+        if (method !== "POST" || url !== "/webhook/terse/trigger") {
+            console.log(chalk.yellow(`  unexpected route: ${method} ${url} (expected POST /webhook/terse/trigger)`))
+            respond(404, JSON.stringify({ error: "Not found" }), "Not found")
             return
         }
 
         let rawBody: string
         try {
             rawBody = await readBody(req)
-        } catch {
-            res.writeHead(400)
-            res.end()
+        } catch (err) {
+            console.error(chalk.red(`  failed to read request body: ${err}`))
+            respond(400, "", "Body read error")
             return
+        }
+
+        if (opts.verbose) {
+            console.log(chalk.dim(`  body length: ${rawBody.length} bytes`))
         }
 
         const sig = req.headers[TERSE_SIGNATURE_HEADER]
         const ts = req.headers[TERSE_TIMESTAMP_HEADER]
 
-        if (typeof sig !== "string" || typeof ts !== "string" || !verifyRequestSignature(signingSecret, sig, parseInt(ts, 10), rawBody)) {
-            res.writeHead(401, { "Content-Type": "application/json" })
-            res.end(JSON.stringify({ error: "Invalid signature" }))
+        if (typeof sig !== "string" || typeof ts !== "string") {
+            const missing = [
+                typeof sig !== "string" && TERSE_SIGNATURE_HEADER,
+                typeof ts !== "string" && TERSE_TIMESTAMP_HEADER,
+            ]
+                .filter(Boolean)
+                .join(", ")
+            console.error(chalk.red(`  missing headers: ${missing}`))
+            respond(401, JSON.stringify({ error: "Invalid signature" }), "Missing headers")
+            return
+        }
+
+        const timestamp = parseInt(ts, 10)
+        const nowMs = Date.now()
+        const deltaSeconds = Math.round((nowMs - timestamp * 1000) / 1000)
+
+        if (opts.verbose) {
+            console.log(chalk.dim(`  timestamp delta: ${deltaSeconds}s ago`))
+        }
+
+        const computed = computeRequestSignature(signingSecret, timestamp, rawBody)
+        if (sig !== computed) {
+            console.error(chalk.red(`  signature verification failed`))
+            console.error(chalk.red(`  secret length : ${signingSecret.length} (expected 64)`))
+            console.error(chalk.red(`  received sig  : ${sig}`))
+            console.error(chalk.red(`  computed sig  : ${computed}`))
+            console.error(chalk.red(`  base string   : ${TERSE_SIGNATURE_VERSION}:${timestamp}:${rawBody.slice(0, 100)}`))
+            respond(401, JSON.stringify({ error: "Invalid signature" }), "Invalid signature")
             return
         }
 
@@ -58,52 +119,57 @@ export async function serve(opts: { port: number; cwd?: string; entryFile?: stri
         try {
             payload = JSON.parse(rawBody)
         } catch {
-            res.writeHead(400, { "Content-Type": "application/json" })
-            res.end(JSON.stringify({ error: "Invalid JSON" }))
+            const preview = rawBody.slice(0, 100)
+            console.error(chalk.red(`  invalid JSON — body preview: ${preview}`))
+            respond(400, JSON.stringify({ error: "Invalid JSON" }), "Invalid JSON")
             return
         }
 
         // Challenge handshake — backend sends this before the first real job dispatch
-        if (isChallengePayload(payload)) {
-            const signature = computeChallengeSignature(signingSecret, payload.challenge)
-            res.writeHead(200, { "Content-Type": "application/json" })
-            res.end(JSON.stringify({ challenge: payload.challenge, signature }))
-            console.log(chalk.dim("  Handshake challenge completed."))
+        const challengeResult = webhookJobChallengeRequestSchema.safeParse(payload)
+        if (challengeResult.success) {
+            const { challenge } = challengeResult.data
+            const signature = computeChallengeSignature(signingSecret, challenge)
+            console.log(chalk.yellow(`  handshake challenge: ${challenge.slice(0, 8)}…`))
+            respond(200, JSON.stringify({ challenge, signature }), "Handshake OK")
             return
         }
 
         // Job dispatch
-        if (!isJobDispatchPayload(payload)) {
-            res.writeHead(400, { "Content-Type": "application/json" })
-            res.end(JSON.stringify({ error: "Missing required fields: jobName, runId, event" }))
+        const dispatchResult = webhookJobTriggerRequestSchema.safeParse(payload)
+        if (!dispatchResult.success) {
+            const issues = dispatchResult.error.format()
+            console.error(chalk.red(`  invalid dispatch payload: ${JSON.stringify(issues)}`))
+            respond(400, JSON.stringify({ error: "Missing required fields: jobName, runId, event" }), "Invalid payload")
             return
         }
 
-        const { jobName, runId, event } = payload
+        const { jobName, runId, event } = dispatchResult.data
         const job = registry.get(jobName)
 
         if (!job) {
-            console.error(chalk.red(`  Job "${jobName}" not found. Available: ${[...registry.keys()].join(", ")}`))
-            res.writeHead(404, { "Content-Type": "application/json" })
-            res.end(JSON.stringify({ error: `Job "${jobName}" not found` }))
+            console.error(chalk.red(`  job "${jobName}" not found — available: ${[...registry.keys()].join(", ")}`))
+            respond(404, JSON.stringify({ error: `Job "${jobName}" not found` }), `Job not found`)
             return
         }
 
         // Respond immediately — job executes asynchronously
-        res.writeHead(200, { "Content-Type": "application/json" })
-        res.end("{}")
-
-        console.log(chalk.cyan(`\n  Running job "${jobName}" (run: ${runId})`))
+        respond(200, "{}", `Running job "${jobName}"`)
+        console.log(chalk.cyan(`  job: ${jobName}  run: ${runId}`))
 
         resolvedProvider.executeJob(job, runId, event as any, { entryFile: opts.entryFile }).catch(err => {
-            console.error(chalk.red(`  Job "${jobName}" failed:`), err)
+            console.error(chalk.red(`  job "${jobName}" failed:`), err)
         })
     })
 
     server.listen(opts.port, () => {
         console.log(chalk.green(`\n  terse serve listening on http://localhost:${opts.port}`))
         console.log(chalk.dim(`  Loaded ${registry.size} job${registry.size === 1 ? "" : "s"}: ${[...registry.keys()].join(", ")}`))
-        console.log(chalk.dim(`  Point your agent's Remote Server URL to http://localhost:${opts.port}\n`))
+        console.log(chalk.dim(`  Point your agent's Remote Server URL to http://localhost:${opts.port}`))
+        if (opts.verbose) {
+            console.log(chalk.dim(`  Verbose logging enabled`))
+        }
+        console.log()
     })
 }
 
@@ -116,20 +182,22 @@ function readBody(req: http.IncomingMessage): Promise<string> {
     })
 }
 
+function computeRequestSignature(signingSecret: string, timestamp: number, body: string): string {
+    return (
+        `${TERSE_SIGNATURE_VERSION}=` +
+        crypto
+            .createHmac("sha256", signingSecret)
+            .update(`${TERSE_SIGNATURE_VERSION}:${timestamp}:${body}`)
+            .digest("hex")
+    )
+}
+
 function verifyRequestSignature(signingSecret: string, signature: string, timestamp: number, body: string): boolean {
-    const expected = `${TERSE_SIGNATURE_VERSION}=` + crypto.createHmac("sha256", signingSecret).update(`${TERSE_SIGNATURE_VERSION}:${timestamp}:${body}`).digest("hex")
+    const expected = computeRequestSignature(signingSecret, timestamp, body)
     if (signature.length !== expected.length) return false
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
 }
 
 function computeChallengeSignature(signingSecret: string, challengeToken: string): string {
     return crypto.createHmac("sha256", signingSecret).update(challengeToken).digest("hex")
-}
-
-function isChallengePayload(payload: unknown): payload is { type: "challenge"; challenge: string } {
-    return typeof payload === "object" && payload !== null && "type" in payload && (payload as any).type === "challenge" && typeof (payload as any).challenge === "string"
-}
-
-function isJobDispatchPayload(payload: unknown): payload is { jobName: string; runId: string; event: unknown } {
-    return typeof payload === "object" && payload !== null && typeof (payload as any).jobName === "string" && typeof (payload as any).runId === "string" && "event" in (payload as any)
 }

@@ -40,29 +40,27 @@ function WebMonitorTriggerCard({ trigger }: { trigger: AgentTrigger }) {
     const { query, frequency, outputSchema } = trigger.config
 
     return (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]">
-            <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center text-foreground">
-                    <Radar className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="text-sm font-medium text-foreground">Web Monitor</p>
-                    <p className="text-sm text-muted-foreground">{formatWebMonitorFrequency(frequency)}</p>
-                    <p className="text-sm leading-6 text-foreground/80 break-words">{query}</p>
-                    {outputSchema ? (
-                        <div className="mt-3 rounded-md bg-muted/40 p-2">
-                            <ToolCallParameters
-                                parameters={JSON.stringify({
-                                    ...(outputSchema.jsonSchema.properties ? { properties: outputSchema.jsonSchema.properties } : {}),
-                                    ...(outputSchema.jsonSchema.required ? { required: outputSchema.jsonSchema.required } : {})
-                                })}
-                                label="Structured output"
-                                collapsed={true}
-                            />
-                        </div>
-                    ) : null}
-                </div>
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-3 py-2">
+                <Radar className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/50">Web Monitor</span>
+                <span className="ml-auto text-[11px] font-medium tabular-nums text-muted-foreground">{formatWebMonitorFrequency(frequency)}</span>
             </div>
+            <div className="px-3 py-3">
+                <p className="text-sm leading-relaxed text-foreground break-words">{query}</p>
+            </div>
+            {outputSchema ? (
+                <div className="border-t border-border/40 px-3 pb-3 pt-2.5">
+                    <ToolCallParameters
+                        parameters={JSON.stringify({
+                            ...(outputSchema.jsonSchema.properties ? { properties: outputSchema.jsonSchema.properties } : {}),
+                            ...(outputSchema.jsonSchema.required ? { required: outputSchema.jsonSchema.required } : {})
+                        })}
+                        label="Structured output"
+                        collapsed={true}
+                    />
+                </div>
+            ) : null}
         </div>
     )
 }

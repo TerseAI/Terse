@@ -107,8 +107,9 @@ program
     .option("--port <port>", "Port to listen on", "3000")
     .option("--cwd <path>", "Project directory to load jobs from (defaults to current directory)")
     .option("--entry-file <path>", "Path to the job entry file (overrides default)")
-    .action(async (opts?: { port?: string; cwd?: string; entryFile?: string }) => {
-        await serve({ port: parseInt(opts?.port ?? "3000", 10), cwd: opts?.cwd, entryFile: opts?.entryFile }, resolveProvider({ cwd: opts?.cwd }))
+    .option("-v, --verbose", "Log request headers, body size, and timestamp deltas")
+    .action(async (opts?: { port?: string; cwd?: string; entryFile?: string; verbose?: boolean }) => {
+        await serve({ port: parseInt(opts?.port ?? "3000", 10), cwd: opts?.cwd, entryFile: opts?.entryFile, verbose: opts?.verbose }, resolveProvider({ cwd: opts?.cwd }))
     })
 
 program

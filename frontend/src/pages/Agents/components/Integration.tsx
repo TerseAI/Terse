@@ -1,4 +1,4 @@
-import { BinocularsIcon, WebhookIcon } from "lucide-react"
+import { RadarIcon, WebhookIcon } from "lucide-react"
 import { ConfigType } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 
@@ -54,7 +54,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.WEBHOOK_INPUT:
             return <WebhookIcon />
         case ConfigType.WEBMONITOR:
-            return <BinocularsIcon />
+            return <RadarIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -79,7 +79,7 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
         case IntegrationType.WEBHOOK:
             return <WebhookIcon />
         case IntegrationType.WEBMONITOR:
-            return <BinocularsIcon />
+            return <RadarIcon />
         case IntegrationType.POSTHOG:
             return <PosthogIcon />
         case IntegrationType.LAUNCHDARKLY:
