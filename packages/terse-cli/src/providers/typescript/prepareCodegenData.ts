@@ -1005,7 +1005,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
 }
 
 function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSectionContext> {
-    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookTrigger", "CronTrigger", "TypedTrigger"], {
+    return sectionData(["TimeTriggerConfig", "TerseConfig", "TypedSkill", "WebhookInputConfig", "WebhookTrigger", "CronTrigger", "TypedTrigger", "WebEventMonitorConfig", "WebEventTrigger"], {
         skillToolType: buildSkillToolTypeForIntegration(tools, "terse")
     })
 }

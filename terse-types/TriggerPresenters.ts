@@ -305,7 +305,7 @@ function formatWebhookTrigger(event: WebhookTrigger): string {
 
 function formatWebEventTrigger(event: WebEventTrigger): string {
     const lines = [
-        `Web event for monitored query (frequency: ${event.frequency}).`,
+        `Web event for monitored query (frequency: ${event.frequency.number}${event.frequency.unit}).`,
         `Query: ${event.query}`,
         `Payload:\n${JSON.stringify(event.payload, null, 2)}`
     ]

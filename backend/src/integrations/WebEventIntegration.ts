@@ -124,6 +124,7 @@ export class WebEventIntegrationManager
         await runWithUserContext(user, async () => {
             const runtime = new WebEventTriggerRuntime({
                 inputId,
+                automationId: agentTrigger.automation_id,
                 query: cfg.query,
                 frequency: { number: cfg.frequency_number, unit: cfg.frequency_unit },
                 payload: payloadRecord
@@ -220,9 +221,11 @@ export class WebEventIntegrationManager
 export class WebEventTriggerRuntime extends TriggerRuntime<WebEventTrigger> {
     readonly integrationType = IntegrationType.WEBEVENT
     data: WebEventTrigger
+    private readonly automationId: string
 
-    constructor(params: { inputId: string; query: string; frequency: { number: number; unit: "h" | "d" | "w" }; payload: Record<string, unknown> }) {
+    constructor(params: { inputId: string; automationId: string; query: string; frequency: { number: number; unit: "h" | "d" | "w" }; payload: Record<string, unknown> }) {
         super()
+        this.automationId = params.automationId
         this.data = {
             integrationType: IntegrationType.WEBEVENT,
             eventType: "web_event",
@@ -247,7 +250,7 @@ export class WebEventTriggerRuntime extends TriggerRuntime<WebEventTrigger> {
             source: "Web Event",
             title: "Web Event",
             subheader: "Scheduled web monitoring",
-            url: buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: this.data.inputId })
+            url: buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: this.automationId })
         }
     }
 }

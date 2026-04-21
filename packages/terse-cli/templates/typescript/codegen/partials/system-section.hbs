@@ -3,7 +3,7 @@
 export const Schedule = {
     /** Use in `triggers[]` — run on a cron schedule */
     cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
-        return new TimeTriggerConfig(opts.expression) 
+        return new TimeTriggerConfig(opts.expression)
     },
 }
 
@@ -13,6 +13,15 @@ export const Webhook = {
     /** Use in `triggers[]` — trigger via an external HTTP request to a generated URL */
     onRequest<TBody = unknown>(): TypedTrigger<WebhookTrigger<TBody>> {
         return new WebhookInputConfig()
+    },
+}
+
+{{sectionHeader "WebEvent"}}
+
+export const WebEvent = {
+    /** Use in `triggers[]` — trigger when scheduled web monitoring detects relevant changes */
+    onEvent(opts: { query: string; frequency: { number: number; unit: "h" | "d" | "w" } }): TypedTrigger<WebEventTrigger> {
+        return new WebEventMonitorConfig(opts.query, opts.frequency)
     },
 }
 

@@ -30,6 +30,7 @@ import type {
     SlackReactionAddedTrigger as _RawSlackReactionAddedTrigger,
     SlackTrigger as _RawSlackTrigger,
     Trigger as _RawTrigger,
+    WebEventTrigger as _RawWebEventTrigger,
     WebhookTrigger as _RawWebhookTrigger,
     WorkOSInvitationAcceptedTrigger as _RawWorkOSInvitationAcceptedTrigger,
     WorkOSInvitationCreatedTrigger as _RawWorkOSInvitationCreatedTrigger,
@@ -99,6 +100,7 @@ export {
     AttioOutputConfig,
     SnowflakeOutputConfig,
     WebhookInputConfig,
+    WebEventMonitorConfig,
     SlackEventType,
     GitHubEventType,
     LinearEventType,
@@ -128,6 +130,7 @@ export type SlackMessageTrigger = SDKTrigger<_RawSlackMessageTrigger>
 export type SlackReactionAddedTrigger = SDKTrigger<_RawSlackReactionAddedTrigger>
 export type SlackTrigger = SDKTrigger<_RawSlackTrigger>
 export type WebhookTrigger<TBody = unknown> = SDKTrigger<_RawWebhookTrigger<TBody>>
+export type WebEventTrigger = SDKTrigger<_RawWebEventTrigger>
 export type WorkOSInvitationAcceptedTrigger = SDKTrigger<_RawWorkOSInvitationAcceptedTrigger>
 export type WorkOSInvitationCreatedTrigger = SDKTrigger<_RawWorkOSInvitationCreatedTrigger>
 export type WorkOSInvitationTrigger = SDKTrigger<_RawWorkOSInvitationTrigger>

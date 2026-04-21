@@ -939,7 +939,7 @@ export class WebEventMonitorConfig extends BaseConfigInstance<IntegrationType.WE
     formatForAgent(): string {
         const parts = [`Type: Web Event`]
         if (this.query) parts.push(`Query: ${this.query}`)
-        if (this.frequency) parts.push(`Frequency: ${this.frequency}`)
+        if (this.frequency) parts.push(`Frequency: ${this.frequency.number}${this.frequency.unit}`)
         return parts.join("\n")
     }
 }
@@ -1155,7 +1155,7 @@ export function formatConfigForAgent(config: ConfigData): string {
         case ConfigType.WEBEVENT_MONITOR: {
             const parts = [`Type: Web Event`]
             if (config.query) parts.push(`Query: ${config.query}`)
-            if (config.frequency) parts.push(`Frequency: ${config.frequency}`)
+            if (config.frequency) parts.push(`Frequency: ${config.frequency.number}${config.frequency.unit}`)
             return parts.join("\n")
         }
         default: {
