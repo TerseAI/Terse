@@ -1,6 +1,7 @@
+import { Link } from "react-router-dom"
+
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import { ChevronRight, Folder } from "lucide-react"
-import { Link } from "react-router-dom"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import { Agent } from "terse-types/types"
 

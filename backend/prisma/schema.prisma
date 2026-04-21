@@ -309,7 +309,7 @@ model automations {
   agent_reviews              agent_reviews[]
   agent_improvements         agent_improvements[]
   sent_notifications         sent_notifications[]
-  project                    projects?                         @relation(fields: [project_id], references: [id])
+  project                    projects?                         @relation(fields: [project_id], references: [id], onDelete: Cascade)
   project_id                 String?
 
   @@index([user_id])

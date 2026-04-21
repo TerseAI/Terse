@@ -1,9 +1,17 @@
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
+import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { ProjectDetailResponse, User } from "terse-types/types"
 import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from "terse-types/types"
 
+import logger from "../logger"
 import { db } from "../prismaClient"
+import { emitCacheInvalidationWithKey } from "../realtimeSocket"
+import { getInputConfigInclude } from "../utility/prismaIncludes"
+
+import { tearDownAgentTriggers } from "./agents"
+
+const ACTIVE_RUN_STATUSES: RunHistoryStatus[] = [RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL]
 
 export async function handleGetProjectById(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -52,6 +60,60 @@ export async function handleGetProjectById(req: Request, res: Response) {
     }
 
     return res.status(200).json(response)
+}
+
+export async function handleProjectDelete(req: Request, res: Response) {
+    const user = req.session?.user as User | undefined
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Unauthorized" })
+    }
+
+    const { id } = req.params
+    if (!id) {
+        return res.status(400).json({ error: "Project id is required" })
+    }
+
+    const project = await db().projects.findFirst({
+        where: { id, organization_id: user.organizationId },
+        include: {
+            automations: { include: { inputs: { include: getInputConfigInclude() } } }
+        }
+    })
+
+    if (!project) {
+        return res.status(404).json({ error: "Project not found" })
+    }
+
+    const automationIds = project.automations.map(a => a.id)
+
+    if (automationIds.length > 0) {
+        const activeRun = await db().run_history_records.findFirst({
+            where: {
+                automation_id: { in: automationIds },
+                status: { in: ACTIVE_RUN_STATUSES }
+            },
+            select: { id: true }
+        })
+
+        if (activeRun) {
+            return res.status(409).json({
+                error: "Project has in-flight runs. Wait for them to finish before deleting."
+            })
+        }
+    }
+
+    for (const automation of project.automations) {
+        await tearDownAgentTriggers(automation)
+    }
+
+    await db().projects.delete({ where: { id } })
+
+    emitCacheInvalidationWithKey(user.organizationId, "agents")
+    emitCacheInvalidationWithKey(user.organizationId, "recentAgents")
+
+    logger.info("Project deleted", { projectId: id, organizationId: user.organizationId, automationCount: automationIds.length })
+
+    return res.status(204).send()
 }
 
 export async function handleProjectCreate(req: Request, res: Response) {

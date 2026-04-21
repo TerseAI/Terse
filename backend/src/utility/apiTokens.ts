@@ -38,12 +38,7 @@ export async function createApiToken(userId: string, organizationId: string, nam
     }
 }
 
-export async function createProjectScopedToken(params: {
-    projectId: string
-    projectName: string
-    organizationId: string
-    createdByUserId: string
-}): Promise<{ rawToken: string; tokenId: string }> {
+export async function createProjectScopedToken(params: { projectId: string; projectName: string; organizationId: string; createdByUserId: string }): Promise<{ rawToken: string; tokenId: string }> {
     const rawToken = generateRawToken()
     const tokenHash = hashToken(rawToken)
     const tokenPrefix = rawToken.slice(0, 14)

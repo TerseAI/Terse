@@ -1,16 +1,24 @@
-import { Link, useParams } from "react-router-dom"
+import { useState } from "react"
+import { Link, useNavigate, useParams } from "react-router-dom"
 
-import { CheckCircle2, Circle, Key, Server, Shield } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Circle, Key, Server, Shield } from "lucide-react"
+import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { Badge } from "../../components/ui/badge"
+import { Button } from "../../components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
 import { SidebarTrigger } from "../../components/ui/sidebar"
-import { useProject } from "../../hooks/api/useProject"
+import { useProject, useProjectMutations } from "../../hooks/api/useProject"
 
 export default function ProjectDetail() {
     const { id } = useParams<{ id: string }>()
+    const navigate = useNavigate()
     const { project, isLoading, isError } = useProject(id ?? null)
+    const { deleteProject } = useProjectMutations()
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     if (isLoading) {
         return <CenteredMessage text="Loading..." aria="true" />
@@ -18,6 +26,25 @@ export default function ProjectDetail() {
 
     if (isError || !project) {
         return <CenteredMessage text="Project not found" />
+    }
+
+    const handleDelete = async () => {
+        setIsDeleting(true)
+        try {
+            await deleteProject(project.id)
+            toast.success(`Deleted project "${project.name}"`)
+            navigate(FrontendRoutes.APP)
+        } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } })?.response?.status
+            if (status === 409) {
+                toast.error("Can't delete: project has in-flight runs. Wait for them to finish.")
+            } else {
+                toast.error("Failed to delete project")
+            }
+        } finally {
+            setIsDeleting(false)
+            setShowDeleteDialog(false)
+        }
     }
 
     return (
@@ -40,7 +67,28 @@ export default function ProjectDetail() {
                 {project.isSelfHosted && <SelfHostedSection remoteServerUrl={project.remoteServerUrl} />}
                 {project.isSelfHosted && <CredentialsSection hasSigningSecret={project.hasSigningSecret} hasProjectApiKey={project.hasProjectApiKey} />}
                 <JobsSection jobs={project.jobs} />
+                <DangerZoneSection jobCount={project.jobs.length} onDelete={() => setShowDeleteDialog(true)} />
             </div>
+
+            <Dialog open={showDeleteDialog} onOpenChange={open => !open && setShowDeleteDialog(false)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete project</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete <span className="font-semibold">{project.name}</span>
+                            {project.jobs.length > 0 ? ` and all ${project.jobs.length} job${project.jobs.length === 1 ? "" : "s"} inside it` : ""}, along with run history and credentials. This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                            {isDeleting ? "Deleting..." : "Delete project"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
@@ -92,6 +140,23 @@ function CredentialRow({ icon, label, configured }: { icon: React.ReactNode; lab
     )
 }
 
+function DangerZoneSection({ jobCount, onDelete }: { jobCount: number; onDelete: () => void }) {
+    return (
+        <section>
+            <SectionHeader icon={<AlertTriangle className="h-4 w-4 text-destructive" />} title="Danger zone" />
+            <div className="rounded-md border border-destructive/40 p-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">Delete project</div>
+                    <div className="text-xs text-muted-foreground">Removes the project{jobCount > 0 ? `, its ${jobCount} job${jobCount === 1 ? "" : "s"},` : ""} and all associated run history.</div>
+                </div>
+                <Button variant="destructive" size="sm" onClick={onDelete}>
+                    Delete
+                </Button>
+            </div>
+        </section>
+    )
+}
+
 function JobsSection({ jobs }: { jobs: { id: string; name: string; isActive: boolean }[] }) {
     return (
         <section>
@@ -101,11 +166,7 @@ function JobsSection({ jobs }: { jobs: { id: string; name: string; isActive: boo
             ) : (
                 <div className="rounded-md border border-input divide-y divide-input">
                     {jobs.map(job => (
-                        <Link
-                            key={job.id}
-                            to={buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: job.id })}
-                            className="flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors"
-                        >
+                        <Link key={job.id} to={buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: job.id })} className="flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors">
                             <span className="text-sm truncate">{job.name}</span>
                             <Badge variant="outline" className={`ml-auto ${job.isActive ? "text-success border-success" : "text-muted-foreground"}`}>
                                 {job.isActive ? "Active" : "Paused"}

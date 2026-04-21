@@ -295,6 +295,11 @@ interface BackendService {
     getProjectById(id: string): Promise<ProjectDetailResponse>
 
     /**
+     * Deletes a project and all its jobs. Throws if the project has in-flight runs.
+     */
+    deleteProject(id: string): Promise<void>
+
+    /**
      * Verifies that a self-hosted SDK job server is reachable and correctly configured
      */
     verifySdkJobServer(agentId: string): Promise<SdkJobServerCheckResponse>
@@ -1070,6 +1075,11 @@ export const BackendProvider: BackendService = {
                 console.error("Error getting project:", error)
                 throw error
             })
+    },
+
+    deleteProject: (id: string) => {
+        const url = buildRoute(ApiRoutes.PROJECTS.BY_ID, { id })
+        return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(() => undefined)
     },
 
     verifySdkJobServer: (agentId: string) => {
