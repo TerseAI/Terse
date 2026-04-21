@@ -21,7 +21,7 @@ export default function ProjectDetail() {
     const [isDeleting, setIsDeleting] = useState(false)
 
     if (isLoading) {
-        return <CenteredMessage text="Loading..." aria="true" />
+        return <CenteredMessage text="Loading..." />
     }
 
     if (isError || !project) {
@@ -76,7 +76,8 @@ export default function ProjectDetail() {
                         <DialogTitle>Delete project</DialogTitle>
                         <DialogDescription>
                             This will permanently delete <span className="font-semibold">{project.name}</span>
-                            {project.jobs.length > 0 ? ` and all ${project.jobs.length} job${project.jobs.length === 1 ? "" : "s"} inside it` : ""}, along with run history and credentials. This cannot be undone.
+                            {project.jobs.length > 0 ? ` and all ${project.jobs.length} job${project.jobs.length === 1 ? "" : "s"} inside it` : ""}, along with run history and credentials. This cannot
+                            be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -188,9 +189,9 @@ function SectionHeader({ icon, title }: { icon?: React.ReactNode; title: string 
     )
 }
 
-function CenteredMessage({ text, aria }: { text: string; aria?: string }) {
+function CenteredMessage({ text }: { text: string }) {
     return (
-        <div className="flex h-full items-center justify-center" aria-busy={aria}>
+        <div className="flex h-full items-center justify-center">
             <div className="text-muted-foreground text-sm" role="status">
                 {text}
             </div>
