@@ -193,6 +193,11 @@ export function __getRegisteredTerseInstances(): TerseLike[] {
     return g[TERSE_INSTANCES_KEY] ?? []
 }
 
+/** Clears the process-wide Terse instance list (CLI hot-reload before re-import). */
+export function __clearRegisteredTerseInstances(): void {
+    delete (globalThis as GlobalWithInstances)[TERSE_INSTANCES_KEY]
+}
+
 export class Terse {
     readonly jobs = new Map<string, CreateJobParameters>()
 

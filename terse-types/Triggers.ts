@@ -304,7 +304,7 @@ export type WebhookTriggerType = z.infer<typeof webhookTriggerTypeSchema>
 export const cronTriggerTypeSchema = z.literal("cron")
 export type CronTriggerType = z.infer<typeof cronTriggerTypeSchema>
 
-export const webMonitorTriggerTypeSchema = z.literal("web_event")
+export const webMonitorTriggerTypeSchema = z.literal("webmonitor")
 export type WebMonitorTriggerType = z.infer<typeof webMonitorTriggerTypeSchema>
 
 export const manualSampleTriggerTypeSchema = z.literal("manual_sample")

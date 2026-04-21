@@ -439,7 +439,7 @@ export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<u
         const rawPayload = params.event.result.type === "json" ? params.event.output || JSON.stringify(params.event.result.content) : undefined
         this.data = {
             integrationType: IntegrationType.WEBMONITOR,
-            eventType: "web_event",
+            eventType: "webmonitor",
             inputId: params.inputId,
             query: params.query,
             frequency: { number: params.frequency.number, unit: params.frequency.unit },
@@ -464,7 +464,7 @@ export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<u
     createTriggerMetadata(): RunHistoryTrigger {
         const firstSourceUrl = this.data.sourceUrls[0]
         return {
-            event: "web_monitor",
+            event: "webmonitor",
             integration: IntegrationType.WEBMONITOR,
             source: extractWebMonitorSource(this.data.query, firstSourceUrl),
             title: extractWebMonitorTitle(this.data.payload, this.data.rawPayload),

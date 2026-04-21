@@ -1,4 +1,5 @@
 import chalk from "chalk"
+import chokidar from "chokidar"
 import crypto from "node:crypto"
 import http from "node:http"
 import { TERSE_SIGNATURE_HEADER, TERSE_SIGNATURE_VERSION, TERSE_TIMESTAMP_HEADER, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types/types"
@@ -27,7 +28,42 @@ export async function serve(opts: { port: number; cwd?: string; entryFile?: stri
     })
 
     const resolvedProvider = provider ?? resolveProvider()
-    const registry = await loadJobRegistry(resolvedProvider, opts.entryFile)
+    let registry = await loadJobRegistry(resolvedProvider, opts.entryFile)
+
+    let reloadTimer: NodeJS.Timeout | undefined
+    let reloadInFlight: Promise<void> | undefined
+
+    async function reloadRegistry(reason: string): Promise<void> {
+        if (reloadInFlight) {
+            return reloadInFlight
+        }
+
+        reloadInFlight = (async () => {
+            try {
+                const nextRegistry = await loadJobRegistry(resolvedProvider, opts.entryFile)
+                registry = nextRegistry
+                console.log(chalk.blue(`  Reloaded job registry (${reason})`))
+                console.log(chalk.dim(`  Loaded ${registry.size} job${registry.size === 1 ? "" : "s"}: ${[...registry.keys()].join(", ")}`))
+            } catch (err) {
+                console.error(chalk.red(`  Failed to reload job registry (${reason}):`), err)
+                console.error(chalk.dim("  Keeping previous registry in memory."))
+            } finally {
+                reloadInFlight = undefined
+            }
+        })()
+
+        return reloadInFlight
+    }
+
+    function scheduleReload(reason: string): void {
+        if (reloadTimer) {
+            clearTimeout(reloadTimer)
+        }
+
+        reloadTimer = setTimeout(() => {
+            void reloadRegistry(reason)
+        }, 150)
+    }
 
     const server = http.createServer(async (req, res) => {
         const startMs = Date.now()
@@ -148,6 +184,33 @@ export async function serve(opts: { port: number; cwd?: string; entryFile?: stri
         })
     })
 
+    // File watcher for hot reloading
+    const watchTarget = opts.entryFile ?? process.cwd()
+
+    const watcher = chokidar.watch(watchTarget, {
+        ignored: [/(^|[\/\\])\../, /node_modules/, /\.turbo/, /\.next/, /dist/, /build/, /\.cache/],
+        ignoreInitial: true,
+        awaitWriteFinish: {
+            stabilityThreshold: 200,
+            pollInterval: 50
+        }
+    })
+
+    watcher.on("all", (eventName, changedPath) => {
+        if (!/\.(ts|tsx|js|jsx|mjs|cjs|mts|cts|json)$/.test(changedPath)) {
+            return
+        }
+
+        console.log(chalk.yellow(`  Detected ${eventName}: ${changedPath}`))
+        scheduleReload(changedPath)
+    })
+
+    watcher.on("error", err => {
+        console.error(chalk.red("  File watcher error:"), err)
+    })
+
+    console.log(chalk.dim(`  Watching for job file changes in ${watchTarget}`))
+
     server.listen(opts.port, () => {
         console.log(chalk.green(`\n  terse serve listening on http://localhost:${opts.port}`))
         console.log(chalk.dim(`  Loaded ${registry.size} job${registry.size === 1 ? "" : "s"}: ${[...registry.keys()].join(", ")}`))
@@ -157,6 +220,18 @@ export async function serve(opts: { port: number; cwd?: string; entryFile?: stri
         }
         console.log()
     })
+
+    const shutdown = () => {
+        if (reloadTimer) {
+            clearTimeout(reloadTimer)
+            reloadTimer = undefined
+        }
+        void watcher.close()
+        server.close()
+    }
+
+    process.once("SIGINT", shutdown)
+    process.once("SIGTERM", shutdown)
 }
 
 function readBody(req: http.IncomingMessage): Promise<string> {
