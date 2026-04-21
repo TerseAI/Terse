@@ -77,10 +77,7 @@ export class WebMonitorIntegrationManager
             return []
         }
 
-        const [monitorConfig, historicalEvents] = await Promise.all([
-            getMonitor(providerMonitorId),
-            listMonitorEvents(providerMonitorId)
-        ])
+        const [monitorConfig, historicalEvents] = await Promise.all([getMonitor(providerMonitorId), listMonitorEvents(providerMonitorId)])
 
         return historicalEvents.slice(0, limit).map(
             event =>
@@ -150,10 +147,7 @@ export class WebMonitorIntegrationManager
             return
         }
 
-        const [monitorConfig, events] = await Promise.all([
-            getMonitor(monitorId),
-            getEventGroup(monitorId, eventGroupId)
-        ])
+        const [monitorConfig, events] = await Promise.all([getMonitor(monitorId), getEventGroup(monitorId, eventGroupId)])
 
         if (events.length === 0) {
             logger.warn("Web event trigger event group returned no events", { inputId, monitorId, eventGroupId })
@@ -222,7 +216,6 @@ export class WebMonitorIntegrationManager
             statusCode: 400
         }
     }
-
 }
 
 export function buildWebhookUrl(inputId: string): string {
