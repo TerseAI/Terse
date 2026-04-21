@@ -88,6 +88,7 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     }
 
     // Self hosted!
+    let signingSecretJustGenerated = false
     if (remoteServerUrl) {
         await prisma.projects.update({
             where: { id: projectId },
@@ -96,7 +97,9 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
             }
         })
 
-        // Keep this stable if we have one already
+        // Keep this stable if we have one already. Secret is returned to the
+        // client only on first generation — on subsequent deploys the user must
+        // rotate to recover a lost secret.
         if (!project.signing_secret) {
             const signingSecret = generateWebhookSecret()
             await prisma.projects.update({
@@ -106,6 +109,7 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
                 }
             })
             project.signing_secret = signingSecret
+            signingSecretJustGenerated = true
         }
     }
 
@@ -165,7 +169,12 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")
 
-    const response: SdkDeployResponseBody = { success: true, results, removed }
+    const response: SdkDeployResponseBody = {
+        success: true,
+        results,
+        removed,
+        signingSecret: signingSecretJustGenerated ? project.signing_secret ?? undefined : undefined
+    }
 
     return res.status(200).json(response)
 }

@@ -6,7 +6,7 @@ import ora from "ora"
 import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail, readEnvVar } from "../api.js"
+import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { loadJobRegistry } from "../loadJob.js"
 import { PROJECT_CONFIG_FILENAME, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
@@ -96,12 +96,11 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
             const signingSecret = result.signingSecret
             if (signingSecret) {
-                const existingSecret = readEnvVar("TERSE_SIGNING_SECRET")
-                if (!existingSecret) {
-                    console.log(`\n  Add this to your ${chalk.bold(".env")} file:\n`)
-                    console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
-                    console.log("")
-                }
+                console.log(chalk.yellow(`\n  ${chalk.bold("Signing secret generated.")} Save it now — it will not be shown again.`))
+                console.log(chalk.dim(`  If lost, rotate it from the Terse dashboard to issue a new one.\n`))
+                console.log(`  Add this to your ${chalk.bold(".env")} file:\n`)
+                console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
+                console.log("")
             }
         } else {
             console.log(chalk.dim(`  Files: ${fileCount}`))

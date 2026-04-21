@@ -39,9 +39,7 @@ function AppBootScreen({ className, revealAfterMs = 400 }: AppBootScreenProps) {
 
     useEffect(() => {
         const revealTimer = window.setTimeout(() => setVisible(true), revealAfterMs)
-        const tierTimers = STATUS_TIERS.map((t, i) =>
-            window.setTimeout(() => setTier(i), revealAfterMs + t.atMs)
-        )
+        const tierTimers = STATUS_TIERS.map((t, i) => window.setTimeout(() => setTier(i), revealAfterMs + t.atMs))
 
         return () => {
             window.clearTimeout(revealTimer)
@@ -60,20 +58,9 @@ function AppBootScreen({ className, revealAfterMs = 400 }: AppBootScreenProps) {
     const statusCopy = tier >= 0 ? STATUS_TIERS[tier].copy : null
 
     return (
-        <div
-            role="status"
-            aria-label="Loading Terse"
-            className={cn(
-                "relative grid h-full min-h-[100dvh] place-items-center overflow-hidden bg-background",
-                className
-            )}
-        >
+        <div role="status" aria-label="Loading Terse" className={cn("relative grid h-full min-h-[100dvh] place-items-center overflow-hidden bg-background", className)}>
             <div className="flex flex-col items-center gap-7">
-                <svg
-                    viewBox="0 0 64 64"
-                    aria-hidden
-                    className="h-[clamp(7rem,18vmin,11rem)] w-[clamp(7rem,18vmin,11rem)]"
-                >
+                <svg viewBox="0 0 64 64" aria-hidden className="h-[clamp(7rem,18vmin,11rem)] w-[clamp(7rem,18vmin,11rem)]">
                     <path className="app-boot-t" d="M2 4 h38 v12 h-13 v44 h-12 v-44 h-13 z" fill="#2a8a8a" />
 
                     <circle className="app-boot-dot app-boot-dot-1" cx="50" cy="14" r="7" fill="#f5c542" />
@@ -84,10 +71,7 @@ function AppBootScreen({ className, revealAfterMs = 400 }: AppBootScreenProps) {
                 <p
                     key={tier}
                     aria-live="polite"
-                    className={cn(
-                        "min-h-[1.25rem] max-w-[32ch] text-center text-[0.8125rem] leading-tight text-muted-foreground",
-                        statusCopy ? "app-boot-status" : "opacity-0"
-                    )}
+                    className={cn("min-h-[1.25rem] max-w-[32ch] text-center text-[0.8125rem] leading-tight text-muted-foreground", statusCopy ? "app-boot-status" : "opacity-0")}
                 >
                     {statusCopy ?? "\u00A0"}
                 </p>
