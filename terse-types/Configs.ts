@@ -1015,9 +1015,7 @@ export class WebMonitorConfig extends BaseConfigInstance<IntegrationType.WEBMONI
     ) {
         super("system", IntegrationType.WEBMONITOR, ConfigType.WEBMONITOR)
         this.rawOutputSchema = outputSchema
-        if (!isZodSchemaLike(outputSchema)) {
-            this.outputSchema = normalizeWebMonitorOutputSchema(outputSchema)
-        }
+        this.outputSchema = normalizeWebMonitorOutputSchema(outputSchema)
     }
 
     isComplete(): boolean {

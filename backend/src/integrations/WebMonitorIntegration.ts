@@ -345,6 +345,7 @@ export async function createMonitor(body: CreateMonitorBody): Promise<{ monitor_
 interface GetMonitorResponse {
     query: string
     frequency: { number: number; unit: FrequencyUnit }
+    outputSchema?: WebMonitorOutputSchema
 }
 
 export async function getMonitor(monitorId: string): Promise<GetMonitorResponse> {
@@ -352,10 +353,15 @@ export async function getMonitor(monitorId: string): Promise<GetMonitorResponse>
     const response = (await client.get(`/v1alpha/monitors/${monitorId}`)) as {
         query: string
         frequency: string
+        output_schema?: { type: "json"; json_schema: Record<string, unknown> } | null
     }
+    const outputSchema: WebMonitorOutputSchema | undefined = response.output_schema
+        ? { type: "json", jsonSchema: response.output_schema.json_schema }
+        : undefined
     return {
         query: response.query,
-        frequency: parseParallelFrequency(response.frequency)
+        frequency: parseParallelFrequency(response.frequency),
+        outputSchema
     }
 }
 

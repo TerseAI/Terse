@@ -2,11 +2,12 @@ import AdmZip from "adm-zip"
 import { Request, Response } from "express"
 import mime from "mime"
 import { isValidToolName } from "terse-types"
-import { ConfigData } from "terse-types/Configs"
+import { ConfigData, WebMonitorConfig } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { Agent, AgentDraft, AgentFileContentResponse, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, File, agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
+import { getMonitor } from "../integrations/WebMonitorIntegration"
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
@@ -491,7 +492,7 @@ export async function getUserAgents(req: Request, res: Response) {
 
         // Transform the data to match frontend format
         const response: AgentsResponse = {
-            agents: agents.map(agent => transformAgentToFrontendFormat(agent)),
+            agents: await Promise.all(agents.map(agent => transformAgentToFrontendFormat(agent))),
             pagination: {
                 page,
                 limit: pageSize,
@@ -565,14 +566,16 @@ export async function getRecentAgents(req: Request, res: Response) {
         }
 
         // Transform the data to match frontend format with timestamps
-        const response = agents.map(agent => {
-            const lastEventTimestamp = lastEventMap.get(agent.id)
-            return {
-                ...transformAgentToFrontendFormat(agent),
-                updatedAt: agent.updated_at.toISOString(),
-                lastEventProcessedAt: lastEventTimestamp ? lastEventTimestamp.toISOString() : null
-            }
-        })
+        const response = await Promise.all(
+            agents.map(async agent => {
+                const lastEventTimestamp = lastEventMap.get(agent.id)
+                return {
+                    ...(await transformAgentToFrontendFormat(agent)),
+                    updatedAt: agent.updated_at.toISOString(),
+                    lastEventProcessedAt: lastEventTimestamp ? lastEventTimestamp.toISOString() : null
+                }
+            })
+        )
 
         res.status(200).json(response)
     } catch (error) {
@@ -616,7 +619,7 @@ export async function getUserAgent(req: Request, res: Response) {
         }
 
         // Transform the data to match frontend format
-        const response: Agent = transformAgentToFrontendFormat(agent)
+        const response: Agent = await transformAgentToFrontendFormat(agent)
 
         res.status(200).json(response)
     } catch (error) {
@@ -757,19 +760,37 @@ function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { 
     return {}
 }
 
+async function rehydrateTriggerConfig(trigger: AgentWithRelations["inputs"][number]): Promise<ConfigData> {
+    const base = convertPrismaConfigToConfigData(trigger)
+    const monitorId = trigger.webmonitor_config?.provider_monitor_id
+    if (base.configType !== "webmonitor" || !monitorId) {
+        return base
+    }
+    try {
+        const { query, frequency, outputSchema } = await getMonitor(monitorId)
+        return new WebMonitorConfig(query, frequency, outputSchema)
+    } catch (error) {
+        logger.warn("Failed to rehydrate WebMonitor config from Parallel API", { monitorId, error })
+        return base
+    }
+}
+
 // Helper function to transform AgentWithRelations to frontend Agent format
-function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<AgentWithNotificationSettingsRelations>): Agent {
+async function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<AgentWithNotificationSettingsRelations>): Promise<Agent> {
+    const triggers = await Promise.all(
+        agent.inputs.map(async trigger => ({
+            id: trigger.id,
+            config: await rehydrateTriggerConfig(trigger),
+            ...buildTriggerMetadata(trigger)
+        }))
+    )
     return {
         id: agent.id,
         name: agent.name,
         isActive: agent.is_active,
         requireApproval: agent.require_approval ?? false,
         prompt: agent.prompt ? { text: agent.prompt.content, remoteServerUrl: agent.prompt.remote_server_url ?? undefined } : { text: "" },
-        triggers: agent.inputs.map(trigger => ({
-            id: trigger.id,
-            config: convertPrismaConfigToConfigData(trigger),
-            ...buildTriggerMetadata(trigger)
-        })),
+        triggers,
         outputs: (agent.outputs ?? []).map(output => ({
             id: output.id,
             config: convertPrismaOutputConfigToConfigData(output)
@@ -798,6 +819,7 @@ export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Prom
             const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)
 
             if (integration) {
+                console.log({ trigger })
                 await integration.setupAgentTrigger(trigger.integration_id, trigger)
                 logger.info(`✅ Setup completed for ${trigger.config_type} trigger (ID: ${trigger.id})`, {
                     configType: trigger.config_type,
