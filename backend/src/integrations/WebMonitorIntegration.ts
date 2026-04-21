@@ -355,9 +355,7 @@ export async function getMonitor(monitorId: string): Promise<GetMonitorResponse>
         frequency: string
         output_schema?: { type: "json"; json_schema: Record<string, unknown> } | null
     }
-    const outputSchema: WebMonitorOutputSchema | undefined = response.output_schema
-        ? { type: "json", jsonSchema: response.output_schema.json_schema }
-        : undefined
+    const outputSchema: WebMonitorOutputSchema | undefined = response.output_schema ? { type: "json", jsonSchema: response.output_schema.json_schema } : undefined
     return {
         query: response.query,
         frequency: parseParallelFrequency(response.frequency),
