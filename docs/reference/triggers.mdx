@@ -205,37 +205,48 @@ triggers=[
 
 ### Web Monitor
 
+Track web changes continuously and get notified when there are updates.
+
+
 | Trigger                  | Event type          | Description                                                  |
 | ------------------------ | ------------------- | ------------------------------------------------------------ |
 | `WebMonitor.onEvent()`   | `WebMonitorTrigger` | Fires when scheduled web monitoring detects relevant changes |
 
-Terse creates and manages the underlying monitor. You define the query and how often to check; your agent runs whenever new relevant content is detected.
-
-**Config:** A natural-language `query` describing what to track, and a `frequency` specifying how often to check.
-
 <CodeGroup>
 ```ts TypeScript
-triggers: [
-  WebMonitor.onEvent({
-    query: "Acme Corp funding announcements or acquisitions",
-    frequency: { number: 1, unit: "day" },
-  }),
-]
+
+const outputSchema = z.object({
+  summary: z.string(),
+  sentiment: z.enum(["positive", "negative", "neutral"]),
+});
+
+await client.createJob({
+  name: "Web monitor trigger",
+  triggers: [
+    WebMonitor.onEvent({
+      query: "What is going on in the Strait of Hormuz?",
+      frequency: { number: 1, unit: "hour" },
+      outputSchema: outputSchema,
+    }),
+  ],
+  onTrigger: async (event) => {
+    // Can safely infer the type of summary/sentiment coming from event
+    const summary = event.payload.summary;
+    const sentiment = event.payload.sentiment;
+
+    const prompt = `News on the strait of hormuz: ${summary} Sentiment: ${sentiment}`;
+    const agent = TerseAgent.create({
+      prompt: prompt,
+      skills: [Slack.skill({ channel: SlackChannel.AllTerseInc })],
+    });
+
+    await agent.runAndWait(
+      "Analyze the news and post a summary to the Slack channel: " + prompt,
+    );
+  },
+});
 ```
 </CodeGroup>
-
-<Expandable title="Event payload">
-  - `query` - the monitoring query that fired
-  - `frequency` - `{ number: number, unit: "h" | "d" | "w" }` — the configured check interval
-  - `monitorId` - the Parallel monitor id that fired
-  - `eventGroupId` - the Parallel event group id for this detection
-  - `metadata` - string metadata echoed back from monitor creation
-  - `payload` - the fetched event payload for this trigger; typed from `outputSchema` when provided, otherwise a string
-  - `rawPayload` - the raw text output for the event; only present when `outputSchema` is used
-  - `outputType` - `"text"` or `"json"`
-  - `eventDate` - the event date from Parallel
-  - `sourceUrls` - source URLs for the detected event
-</Expandable>
 
 #### Writing effective queries
 
@@ -258,12 +269,6 @@ The monitor matches by intent, not keywords. Write your query as a natural sente
 | `1h`      | Breaking news, social signals, fast-moving markets              |
 | `1d`      | Press releases, blog posts, job postings, pricing page changes  |
 | `1w`      | Regulatory filings, quarterly reports, slow competitive signals |
-
-For historical research (what happened in the past), use a research task rather than a monitor.
-
-#### Testing on demand
-
-Web Monitor triggers fire on a schedule, but you don't have to wait for the first real detection to test your agent. Use **Run with sample event** in the dashboard to fire a synthetic event immediately — paste in a representative `payload` and iterate on your agent logic before the first live detection arrives.
 
 ## System triggers
 
