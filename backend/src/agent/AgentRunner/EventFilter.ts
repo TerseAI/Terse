@@ -152,7 +152,7 @@ export async function filterEvent(event: TriggerRuntime, agentWithRelations: Age
         }
     }
 
-    if (event.integrationType === IntegrationType.WEBEVENT) {
+    if (event.integrationType === IntegrationType.WEBMONITOR) {
         return {
             result: {
                 isRelevant: true,

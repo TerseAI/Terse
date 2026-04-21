@@ -22,10 +22,12 @@ export enum ConfigType {
     ATTIO_OUTPUT = "attio_output",
     SNOWFLAKE_OUTPUT = "snowflake_output",
     WEBHOOK_INPUT = "webhook_input",
-    WEBEVENT_MONITOR = "webevent_monitor"
+    WEBMONITOR = "webmonitor"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
+export const frequencyUnitSchema = z.enum(["hour", "day", "week"])
+export type FrequencyUnit = z.infer<typeof frequencyUnitSchema>
 
 // MARK: Config Metadata
 export interface ConfigDetails {
@@ -209,11 +211,11 @@ export const WebhookInputConfigMetadata = {
     isOutput: false
 } as const satisfies ConfigDetails
 
-export const WebEventMonitorConfigMetadata = {
-    configType: ConfigType.WEBEVENT_MONITOR,
-    name: "Web Event",
+export const WebMonitorConfigMetadata = {
+    configType: ConfigType.WEBMONITOR,
+    name: "Web Monitor",
     description: "Run when scheduled web monitoring detects relevant changes",
-    integrationType: IntegrationType.WEBEVENT,
+    integrationType: IntegrationType.WEBMONITOR,
     isInput: true,
     isOutput: false
 } as const satisfies ConfigDetails
@@ -240,7 +242,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
-    [ConfigType.WEBEVENT_MONITOR]: WebEventMonitorConfigMetadata
+    [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -304,6 +306,10 @@ export type ConfigInstance = ConfigInstanceType & ConfigBehavior
 export type ConfigBehavior = {
     isComplete(): boolean
     formatForAgent(): string
+}
+
+function isZodSchemaLike(value: unknown): value is z.ZodTypeAny {
+    return !!value && typeof value === "object" && "_zod" in value
 }
 
 abstract class BaseConfigInstance<TIntegrationType extends IntegrationType, TConfigType extends ConfigType, TIntegrationId extends string = string> implements ConfigInstance, ConfigBehavior {
@@ -908,28 +914,110 @@ export class WebhookInputConfig extends BaseConfigInstance<IntegrationType.WEBHO
     }
 }
 
-export const WebEventMonitorConfigSchema = ConfigInstanceSchema.extend({
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === "object" && !Array.isArray(value)
+}
+
+function validateWebMonitorJsonSchema(jsonSchema: Record<string, unknown>): void {
+    if (jsonSchema.type !== "object") {
+        throw new Error("WebMonitor outputSchema must serialize to a top-level JSON schema object.")
+    }
+
+    const properties = jsonSchema.properties
+    if (!isPlainObject(properties)) {
+        throw new Error("WebMonitor outputSchema must define an object with properties.")
+    }
+
+    for (const [key, rawProperty] of Object.entries(properties)) {
+        if (!isPlainObject(rawProperty)) {
+            throw new Error(`WebMonitor outputSchema property "${key}" must be a JSON schema object.`)
+        }
+
+        const propertyType = rawProperty.type
+        const enumValues = rawProperty.enum
+
+        const isStringProperty = propertyType === "string"
+        const isStringEnum = Array.isArray(enumValues) && enumValues.every(value => typeof value === "string")
+
+        if (!isStringProperty && !isStringEnum) {
+            throw new Error(`WebMonitor outputSchema property "${key}" must be a string or string enum.`)
+        }
+
+        if ("properties" in rawProperty || "items" in rawProperty || "oneOf" in rawProperty || "anyOf" in rawProperty || "allOf" in rawProperty) {
+            throw new Error(`WebMonitor outputSchema property "${key}" must be flat; nested schemas are not supported.`)
+        }
+    }
+}
+
+export const WebMonitorOutputSchemaSchema = z.object({
+    type: z.literal("json"),
+    jsonSchema: z.record(z.string(), z.unknown())
+})
+export type WebMonitorOutputSchema = z.infer<typeof WebMonitorOutputSchemaSchema>
+
+function normalizeWebMonitorOutputSchema(value: unknown): WebMonitorOutputSchema | undefined {
+    if (value == null) {
+        return undefined
+    }
+
+    if (isZodSchemaLike(value)) {
+        const jsonSchema = z.toJSONSchema(value, {
+            target: "draft-2020-12",
+            unrepresentable: "any",
+            cycles: "throw"
+        })
+
+        if (!isPlainObject(jsonSchema)) {
+            throw new Error("WebMonitor outputSchema did not produce a valid JSON schema object.")
+        }
+
+        if ("$schema" in jsonSchema) {
+            delete jsonSchema.$schema
+        }
+
+        validateWebMonitorJsonSchema(jsonSchema)
+        return {
+            type: "json",
+            jsonSchema
+        }
+    }
+
+    const parsed = WebMonitorOutputSchemaSchema.parse(value)
+    validateWebMonitorJsonSchema(parsed.jsonSchema)
+    return parsed
+}
+
+export const WebMonitorConfigSchema = ConfigInstanceSchema.extend({
     integrationId: z.literal("system"),
-    integrationType: z.literal(IntegrationType.WEBEVENT),
-    configType: z.literal(ConfigType.WEBEVENT_MONITOR),
+    integrationType: z.literal(IntegrationType.WEBMONITOR),
+    configType: z.literal(ConfigType.WEBMONITOR),
     query: z.string(),
     frequency: z.object({
         number: z.number(),
-        unit: z.enum(["h", "d", "w"])
-    })
+        unit: frequencyUnitSchema
+    }),
+    outputSchema: z.preprocess(value => normalizeWebMonitorOutputSchema(value), WebMonitorOutputSchemaSchema.optional())
 })
-export type WebEventMonitorConfigData = z.infer<typeof WebEventMonitorConfigSchema>
-export type WebEventMonitorConfigInstance = WebEventMonitorConfigData & ConfigBehavior
+export type WebMonitorConfigData = z.infer<typeof WebMonitorConfigSchema>
+export type WebMonitorConfigInstance = WebMonitorConfigData & ConfigBehavior
 
-export class WebEventMonitorConfig extends BaseConfigInstance<IntegrationType.WEBEVENT, ConfigType.WEBEVENT_MONITOR, "system"> implements WebEventMonitorConfigInstance {
+export class WebMonitorConfig extends BaseConfigInstance<IntegrationType.WEBMONITOR, ConfigType.WEBMONITOR, "system"> implements WebMonitorConfigInstance {
+    public readonly outputSchema?: WebMonitorOutputSchema
+    private readonly rawOutputSchema?: unknown
+
     constructor(
         public query: string,
         public frequency: {
             number: number
-            unit: "h" | "d" | "w"
-        }
+            unit: FrequencyUnit
+        },
+        outputSchema?: unknown
     ) {
-        super("system", IntegrationType.WEBEVENT, ConfigType.WEBEVENT_MONITOR)
+        super("system", IntegrationType.WEBMONITOR, ConfigType.WEBMONITOR)
+        this.rawOutputSchema = outputSchema
+        if (!isZodSchemaLike(outputSchema)) {
+            this.outputSchema = normalizeWebMonitorOutputSchema(outputSchema)
+        }
     }
 
     isComplete(): boolean {
@@ -937,10 +1025,22 @@ export class WebEventMonitorConfig extends BaseConfigInstance<IntegrationType.WE
     }
 
     formatForAgent(): string {
-        const parts = [`Type: Web Event`]
+        const parts = [`Type: Web Monitor`]
         if (this.query) parts.push(`Query: ${this.query}`)
         if (this.frequency) parts.push(`Frequency: ${this.frequency.number}${this.frequency.unit}`)
+        if (this.outputSchema) parts.push(`Structured Output: ${typeof this.outputSchema === "object" ? "enabled" : "configured"}`)
         return parts.join("\n")
+    }
+
+    toJSON(): WebMonitorConfigData {
+        return WebMonitorConfigSchema.parse({
+            integrationId: this.integrationId,
+            integrationType: this.integrationType,
+            configType: this.configType,
+            query: this.query,
+            frequency: this.frequency,
+            outputSchema: this.rawOutputSchema ?? this.outputSchema
+        })
     }
 }
 
@@ -965,7 +1065,7 @@ export const configDataSchema = z.union([
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
     WebhookInputConfigSchema,
-    WebEventMonitorConfigSchema
+    WebMonitorConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -978,7 +1078,7 @@ export const triggerConfigDataSchema = z.union([
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
     WebhookInputConfigSchema,
-    WebEventMonitorConfigSchema
+    WebMonitorConfigSchema
 ])
 export type TriggerConfigData = z.infer<typeof triggerConfigDataSchema>
 
@@ -1031,7 +1131,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
             return !!config.projectId
         case ConfigType.TIME_TRIGGER:
             return !!config.cronExpression
-        case ConfigType.WEBEVENT_MONITOR:
+        case ConfigType.WEBMONITOR:
             return !!(config.query && config.frequency)
         case ConfigType.LAUNCHDARKLY:
             return !!(config.projectKey && config.environmentKeys.length > 0)
@@ -1152,7 +1252,7 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Snowflake Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
-        case ConfigType.WEBEVENT_MONITOR: {
+        case ConfigType.WEBMONITOR: {
             const parts = [`Type: Web Event`]
             if (config.query) parts.push(`Query: ${config.query}`)
             if (config.frequency) parts.push(`Frequency: ${config.frequency.number}${config.frequency.unit}`)
@@ -1188,7 +1288,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
     [ConfigType.SNOWFLAKE_OUTPUT]: typeof SnowflakeOutputConfig
     [ConfigType.WEBHOOK_INPUT]: typeof WebhookInputConfig
-    [ConfigType.WEBEVENT_MONITOR]: typeof WebEventMonitorConfig
+    [ConfigType.WEBMONITOR]: typeof WebMonitorConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1211,5 +1311,5 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
-    [ConfigType.WEBEVENT_MONITOR]: WebEventMonitorConfig
+    [ConfigType.WEBMONITOR]: WebMonitorConfig
 } as const satisfies ConfigMetadataMap

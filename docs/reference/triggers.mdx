@@ -203,6 +203,68 @@ triggers=[
   - `organization` - present on organization events: `{ id, name }`
 </Expandable>
 
+### Web Monitor
+
+| Trigger                  | Event type          | Description                                                  |
+| ------------------------ | ------------------- | ------------------------------------------------------------ |
+| `WebMonitor.onEvent()`   | `WebMonitorTrigger` | Fires when scheduled web monitoring detects relevant changes |
+
+Terse creates and manages the underlying monitor. You define the query and how often to check; your agent runs whenever new relevant content is detected.
+
+**Config:** A natural-language `query` describing what to track, and a `frequency` specifying how often to check.
+
+<CodeGroup>
+```ts TypeScript
+triggers: [
+  WebMonitor.onEvent({
+    query: "Acme Corp funding announcements or acquisitions",
+    frequency: { number: 1, unit: "day" },
+  }),
+]
+```
+</CodeGroup>
+
+<Expandable title="Event payload">
+  - `query` - the monitoring query that fired
+  - `frequency` - `{ number: number, unit: "h" | "d" | "w" }` — the configured check interval
+  - `monitorId` - the Parallel monitor id that fired
+  - `eventGroupId` - the Parallel event group id for this detection
+  - `metadata` - string metadata echoed back from monitor creation
+  - `payload` - the fetched event payload for this trigger; typed from `outputSchema` when provided, otherwise a string
+  - `rawPayload` - the raw text output for the event; only present when `outputSchema` is used
+  - `outputType` - `"text"` or `"json"`
+  - `eventDate` - the event date from Parallel
+  - `sourceUrls` - source URLs for the detected event
+</Expandable>
+
+#### Writing effective queries
+
+The monitor matches by intent, not keywords. Write your query as a natural sentence describing what you care about — not a search string.
+
+**Do:**
+- Write in plain language: `"Acme Corp product launches or pricing changes"`
+- Be specific about subject and signal: `"FDA approval decisions for GLP-1 drugs"`
+- Combine related signals: `"OpenAI or Anthropic model releases and benchmark results"`
+
+**Don't:**
+- Use Boolean operators (`AND`, `OR`, `NOT`) — this is not a search engine
+- Include specific dates — monitors track new developments going forward, not history
+- Write keyword dumps: `"acme corp acme funding raise series B"`
+
+**Choosing frequency:**
+
+| Frequency | Best for                                                        |
+| --------- | --------------------------------------------------------------- |
+| `1h`      | Breaking news, social signals, fast-moving markets              |
+| `1d`      | Press releases, blog posts, job postings, pricing page changes  |
+| `1w`      | Regulatory filings, quarterly reports, slow competitive signals |
+
+For historical research (what happened in the past), use a research task rather than a monitor.
+
+#### Testing on demand
+
+Web Monitor triggers fire on a schedule, but you don't have to wait for the first real detection to test your agent. Use **Run with sample event** in the dashboard to fire a synthetic event immediately — paste in a representative `payload` and iterate on your agent logic before the first live detection arrives.
+
 ## System triggers
 
 ### Schedule

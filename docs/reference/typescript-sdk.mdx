@@ -170,6 +170,51 @@ if (parsed.score < 0 || parsed.score > 100) {
 }
 ````
 
+### Typed WebMonitor structured output
+
+`WebMonitor.onEvent(...)` can infer the trigger `payload` from a Zod schema passed as `outputSchema`.
+
+```ts
+const schema = z.object({
+    company_name: z.string(),
+    sentiment: z.enum(["positive", "negative"]),
+    description: z.string()
+})
+
+triggers: [
+    WebMonitor.onEvent({
+        query: "Company announcements with sentiment",
+        frequency: { number: 1, unit: "day" },
+        outputSchema: schema
+    })
+]
+```
+
+Inside `onTrigger`, `event.payload` is directly typed:
+
+```ts
+event.payload.company_name
+event.payload.sentiment
+event.rawPayload // present when outputSchema is used
+event.sourceUrls
+```
+
+Important: for best inference, do not manually annotate the `onTrigger` parameter as plain `WebMonitorTrigger`, because that drops the schema-specific payload type.
+
+Prefer one of these:
+
+```ts
+onTrigger: async event => {
+    event.payload.company_name
+}
+```
+
+```ts
+onTrigger: async (event: WebMonitorTriggerFor<typeof schema>) => {
+    event.payload.company_name
+}
+```
+
 ## Filtering events
 
 Use `filter` to skip runs for events that don't match your criteria. Return `true` to run, `false` to skip.

@@ -16,12 +16,24 @@ export const Webhook = {
     },
 }
 
-{{sectionHeader "WebEvent"}}
+{{sectionHeader "WebMonitor"}}
 
-export const WebEvent = {
-    /** Use in `triggers[]` — trigger when scheduled web monitoring detects relevant changes */
-    onEvent(opts: { query: string; frequency: { number: number; unit: "h" | "d" | "w" } }): TypedTrigger<WebEventTrigger> {
-        return new WebEventMonitorConfig(opts.query, opts.frequency)
+export const WebMonitor = {
+    /**
+     * Use in `triggers[]` — trigger when scheduled web monitoring detects relevant changes.
+     *
+     * For best type inference in `onTrigger`, do not manually annotate the callback parameter.
+     * Let `createJob(...)` infer it from this trigger.
+     *
+     * If you want an explicit annotation, use:
+     * `WebMonitorTriggerFor<typeof outputSchema>`
+     */
+    onEvent<const TSchema>(opts: {
+        query: string
+        frequency: { number: number; unit: FrequencyUnit }
+        outputSchema?: TSchema
+    }): TypedTrigger<WebMonitorTrigger<InferStructuredOutput<TSchema>>> {
+        return new WebMonitorConfig(opts.query, opts.frequency, opts.outputSchema) as TypedTrigger<WebMonitorTrigger<InferStructuredOutput<TSchema>>>
     },
 }
 
@@ -33,4 +45,3 @@ export const Terse = {
         return new TerseConfig() as TypedSkill<{{{skillToolType}}}>
     },
 }
-

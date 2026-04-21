@@ -21,7 +21,7 @@ import {
     SnowflakeOutputConfig,
     TerseConfig,
     TimeTriggerConfig,
-    WebEventMonitorConfig,
+    WebMonitorConfig,
     WebhookInputConfig,
     WorkOSEventType,
     WorkOSInputConfig,
@@ -62,8 +62,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.SNOWFLAKE
         case IntegrationType.WEBHOOK:
             return PrismaIntegrationType.WEBHOOK
-        case IntegrationType.WEBEVENT:
-            return PrismaIntegrationType.WEBEVENT
+        case IntegrationType.WEBMONITOR:
+            return PrismaIntegrationType.WEBMONITOR
         default:
             throw integrationType satisfies never
     }
@@ -101,8 +101,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.SNOWFLAKE
         case PrismaIntegrationType.WEBHOOK:
             return IntegrationType.WEBHOOK
-        case PrismaIntegrationType.WEBEVENT:
-            return IntegrationType.WEBEVENT
+        case PrismaIntegrationType.WEBMONITOR:
+            return IntegrationType.WEBMONITOR
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -139,8 +139,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.SNOWFLAKE
         case IntegrationType.WEBHOOK:
             return PrismaIntegrationType.WEBHOOK
-        case IntegrationType.WEBEVENT:
-            return PrismaIntegrationType.WEBEVENT
+        case IntegrationType.WEBMONITOR:
+            return PrismaIntegrationType.WEBMONITOR
         default:
             throw integrationType satisfies never
     }
@@ -179,8 +179,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.SNOWFLAKE
         case PrismaIntegrationType.WEBHOOK:
             return IntegrationType.WEBHOOK
-        case PrismaIntegrationType.WEBEVENT:
-            return IntegrationType.WEBEVENT
+        case PrismaIntegrationType.WEBMONITOR:
+            return IntegrationType.WEBMONITOR
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -250,9 +250,9 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         return new WebhookInputConfig()
     }
 
-    if (channelInput.webevent_config) {
-        const w = channelInput.webevent_config
-        return new WebEventMonitorConfig(w.query, { number: w.frequency_number, unit: w.frequency_unit })
+    if (channelInput.webmonitor_config) {
+        const w = channelInput.webmonitor_config
+        return new WebMonitorConfig(w.query, { number: w.frequency_number, unit: w.frequency_unit }, (w.output_schema as object | null) ?? undefined)
     }
 
     // Type guard to ensure we implement conversion here
@@ -267,7 +267,7 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         case InputConfigType.TIME_TRIGGER:
         case InputConfigType.WORKOS_INPUT:
         case InputConfigType.WEBHOOK_INPUT:
-        case InputConfigType.WEBEVENT_MONITOR:
+        case InputConfigType.WEBMONITOR:
             break
         default:
             throw channelInput.config_type satisfies never
@@ -388,8 +388,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.WORKOS_INPUT
         case ConfigType.WEBHOOK_INPUT:
             return InputConfigType.WEBHOOK_INPUT
-        case ConfigType.WEBEVENT_MONITOR:
-            return InputConfigType.WEBEVENT_MONITOR
+        case ConfigType.WEBMONITOR:
+            return InputConfigType.WEBMONITOR
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error("SLACK_OUTPUT is an output type, not an input type")
@@ -436,8 +436,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.WORKOS_INPUT
         case InputConfigType.WEBHOOK_INPUT:
             return ConfigType.WEBHOOK_INPUT
-        case InputConfigType.WEBEVENT_MONITOR:
-            return ConfigType.WEBEVENT_MONITOR
+        case InputConfigType.WEBMONITOR:
+            return ConfigType.WEBMONITOR
         default:
             throw inputConfigType satisfies never
     }

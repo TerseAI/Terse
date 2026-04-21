@@ -2,11 +2,11 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, Code, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Server, Trash2, Zap } from "lucide-react"
+import { Clock, Code, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Radar, Server, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { CONFIG_DETAILS, ConfigType } from "terse-types"
 import { FrontendRoutes } from "terse-types"
-import type { AgentTrigger, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
+import type { AgentTrigger, FrequencyUnit, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
 import { Badge } from "../../components/ui/badge"
@@ -24,6 +24,35 @@ import { WebhookTriggerCard } from "./components/WebhookTriggerCard"
 import { AgentFileExplorer } from "./tabs/AgentFileExplorer"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
+
+function formatWebMonitorFrequency(frequency: { number: number; unit: FrequencyUnit }) {
+    const amount = Math.max(1, frequency.number)
+    const { unit } = frequency
+    return amount === 1 ? `Every ${unit}` : `Every ${amount} ${unit}s`
+}
+
+function WebMonitorTriggerCard({ trigger }: { trigger: AgentTrigger }) {
+    if (trigger.config.configType !== ConfigType.WEBMONITOR) {
+        return null
+    }
+
+    const { query, frequency } = trigger.config
+
+    return (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]">
+            <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center text-foreground">
+                    <Radar className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="text-sm font-medium text-foreground">Web Monitor</p>
+                    <p className="text-sm text-muted-foreground">{formatWebMonitorFrequency(frequency)}</p>
+                    <p className="text-sm leading-6 text-foreground/80 break-words">{query}</p>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const navigate = useNavigate()
@@ -366,6 +395,10 @@ function OverviewTab({ triggers, updatedAt, isActive }: { triggers: AgentTrigger
 
                             if (configType === ConfigType.WEBHOOK_INPUT) {
                                 return <WebhookTriggerCard key={trigger.id} trigger={trigger} />
+                            }
+
+                            if (configType === ConfigType.WEBMONITOR) {
+                                return <WebMonitorTriggerCard key={trigger.id} trigger={trigger} />
                             }
 
                             const details = CONFIG_DETAILS[configType as keyof typeof CONFIG_DETAILS]

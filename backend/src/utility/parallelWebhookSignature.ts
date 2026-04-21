@@ -5,16 +5,7 @@ export function computeParallelWebhookSignature(secret: string, webhookId: strin
     return crypto.createHmac("sha256", secret).update(payload).digest("base64")
 }
 
-/**
- * Verifies Parallel / Standard Webhooks `webhook-signature` header (space-delimited `v1,<base64>` entries).
- */
-export function verifyParallelWebhookSignature(
-    webhookSignatureHeader: string | undefined,
-    secret: string,
-    webhookId: string,
-    webhookTimestamp: string,
-    rawBody: string | Buffer
-): boolean {
+export function verifyParallelWebhookSignature(webhookSignatureHeader: string | undefined, secret: string, webhookId: string, webhookTimestamp: string, rawBody: string | Buffer): boolean {
     if (!webhookSignatureHeader) {
         return false
     }

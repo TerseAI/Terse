@@ -53,7 +53,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <SnowflakeIcon />
         case ConfigType.WEBHOOK_INPUT:
             return <WebhookIcon />
-        case ConfigType.WEBEVENT_MONITOR:
+        case ConfigType.WEBMONITOR:
             return <BinocularsIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
@@ -78,7 +78,7 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <CalendarClockIcon />
         case IntegrationType.WEBHOOK:
             return <WebhookIcon />
-        case IntegrationType.WEBEVENT:
+        case IntegrationType.WEBMONITOR:
             return <BinocularsIcon />
         case IntegrationType.POSTHOG:
             return <PosthogIcon />

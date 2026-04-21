@@ -16,7 +16,7 @@ export enum IntegrationType {
     ATTIO = "attio",
     SNOWFLAKE = "snowflake",
     WEBHOOK = "webhook",
-    WEBEVENT = "webevent"
+    WEBMONITOR = "webmonitor"
 }
 export const integrationTypeEnum = z.enum(IntegrationType)
 
@@ -102,9 +102,9 @@ export const CronJobIntegrationMetadata = {
     isOutput: false
 } as const satisfies IntegrationDetails
 
-export const WebEventIntegrationMetadata = {
-    type: IntegrationType.WEBEVENT,
-    name: "Web Event",
+export const WebMonitorIntegrationMetadata = {
+    type: IntegrationType.WEBMONITOR,
+    name: "Web Monitor",
     description: "Trigger when scheduled web monitoring detects relevant changes",
     isInput: true,
     isOutput: false
@@ -167,7 +167,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.ATTIO]: AttioIntegrationMetadata,
     [IntegrationType.SNOWFLAKE]: SnowflakeIntegrationMetadata,
     [IntegrationType.WEBHOOK]: WebhookIntegrationMetadata,
-    [IntegrationType.WEBEVENT]: WebEventIntegrationMetadata
+    [IntegrationType.WEBMONITOR]: WebMonitorIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -201,7 +201,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.ATTIO]: NoInstallationOptions
     [IntegrationType.SNOWFLAKE]: NoInstallationOptions
     [IntegrationType.WEBHOOK]: NoInstallationOptions
-    [IntegrationType.WEBEVENT]: NoInstallationOptions
+    [IntegrationType.WEBMONITOR]: NoInstallationOptions
 }>
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T]

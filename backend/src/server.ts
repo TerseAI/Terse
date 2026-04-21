@@ -41,7 +41,7 @@ import { refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
-import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebEventMonitorWebhook } from "./routes/schedule"
+import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebMonitorWebhook } from "./routes/schedule"
 import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
 import { handleSdkDeploy } from "./routes/sdkDeploy"
 import { handleSdkIntegrationFields, handleSdkIntegrationFormSubmit } from "./routes/sdkIntegrations"
@@ -163,7 +163,7 @@ app.use((req, res, next) => {
         req.path === "/linear/webhook" ||
         req.path === ApiRoutes.WEBHOOKS.WORKOS ||
         req.path.startsWith("/webhooks/workos-trigger/") ||
-        req.path.startsWith("/webhooks/webevent/")
+        req.path.startsWith("/webhooks/webmonitor/")
     ) {
         next()
     } else {
@@ -256,10 +256,10 @@ app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, async (req, res) => {
     handleScheduleWebhook(req, res)
 })
 
-app.use(ApiRoutes.WEBHOOKS.WEBEVENT_BY_INPUT_ID, express.raw({ type: "application/json", limit: LARGE_BODY_LIMIT }))
+app.use(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, express.raw({ type: "application/json", limit: LARGE_BODY_LIMIT }))
 
-app.post(ApiRoutes.WEBHOOKS.WEBEVENT_BY_INPUT_ID, async (req, res) => {
-    handleWebEventMonitorWebhook(req, res)
+app.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, async (req, res) => {
+    handleWebMonitorWebhook(req, res)
 })
 
 app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, async (req, res) => {

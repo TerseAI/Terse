@@ -16,6 +16,8 @@ export type SDKTrigger<TEvent extends Trigger = Trigger> = TEvent & {
     debugLog(): string
 }
 
+export type InferStructuredOutput<TSchema, TFallback = string> = TSchema extends { _output: infer TOutput } ? TOutput : TFallback
+
 export function createSDKTrigger(serialized: SerializedEvent): SDKTrigger {
     return Object.assign({}, serialized.data, {
         formatForAgentRunner: () => serialized.formattedContent,
