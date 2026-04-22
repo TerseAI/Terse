@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
-import { SkillConfigData, TriggerConfigData } from "terse-types/Configs"
+import { TriggerConfigData } from "terse-types/Configs"
 import { SdkDeployResponseBody, User, sdkDeployRequestBodySchema } from "terse-types/types"
+import { SdkDeployStage } from "terse-types/types"
 
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
@@ -42,7 +43,7 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     const organizationId = user.organizationId
     const sessionId = typeof req.headers["x-terse-session-id"] === "string" ? req.headers["x-terse-session-id"] : undefined
 
-    const emitStage = (stage: import("terse-types/types").SdkDeployStage) => {
+    const emitStage = (stage: SdkDeployStage) => {
         if (sessionId) emitSessionEvent(sessionId, { type: "deploy_stage", stage })
     }
 

@@ -1,5 +1,5 @@
-import { confirm } from "@inquirer/prompts"
 import { intro, log, outro, spinner } from "@clack/prompts"
+import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
 import { zipSync } from "fflate"
 import fs from "node:fs"
@@ -20,20 +20,6 @@ const stageMessages: Record<SdkDeployStage, string> = {
     BUILDING_DEPENDENCY_IMAGE: "Building dependency image",
     BUILDING_SOURCE_IMAGE: "Building source image",
     CONFIGURING_AUTOMATIONS: "Configuring automations"
-}
-
-function osc8Link(text: string, url: string): string {
-    return `\u001B]8;;${url}\u0007${text}\u001B]8;;\u0007`
-}
-
-function supportsHyperlinks(): boolean {
-    if (process.env.FORCE_HYPERLINK) return process.env.FORCE_HYPERLINK !== "0"
-    const { TERM_PROGRAM, VTE_VERSION } = process.env
-    return ["iTerm.app", "WezTerm", "vscode", "Hyper"].includes(TERM_PROGRAM ?? "") || !!VTE_VERSION
-}
-
-function agentLink(url: string): string {
-    return supportsHyperlinks() ? osc8Link("Open →", url) : chalk.dim(url)
 }
 
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
@@ -130,7 +116,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         for (const r of deployResult.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
             const agentUrl = `${FRONTEND_URL}/agents/${r.automationId}`
-            log.step(`${verb}: ${chalk.bold(r.jobName)}  ${agentLink(agentUrl)}`)
+            log.step(`${verb}: ${chalk.bold(r.jobName)}  ${chalk.dim(agentUrl)}`)
             if (r.triggers) {
                 for (const t of r.triggers) {
                     if (t.metadata?.webhookUrl) {
