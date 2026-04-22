@@ -819,7 +819,6 @@ export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Prom
             const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)
 
             if (integration) {
-                console.log({ trigger })
                 await integration.setupAgentTrigger(trigger.integration_id, trigger)
                 logger.info(`✅ Setup completed for ${trigger.config_type} trigger (ID: ${trigger.id})`, {
                     configType: trigger.config_type,

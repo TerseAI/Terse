@@ -224,25 +224,21 @@ await client.createJob({
   name: "Web monitor trigger",
   triggers: [
     WebMonitor.onEvent({
-      query: "What is going on in the Strait of Hormuz?",
-      frequency: { number: 1, unit: "hour" },
+      query: "What are a16z's latest investments?",
+      frequency: { number: 1, unit: "day" },
       outputSchema: outputSchema,
     }),
   ],
   onTrigger: async (event) => {
-    // Can safely infer the type of summary/sentiment coming from event
-    const summary = event.payload.summary;
-    const sentiment = event.payload.sentiment;
-
-    const prompt = `News on the strait of hormuz: ${summary} Sentiment: ${sentiment}`;
     const agent = TerseAgent.create({
-      prompt: prompt,
+      prompt:
+        "You are alerted when the web monitor finds new material. Read the event (query, payload, and structured fields), decide what matters, and post a concise summary to Slack.",
       skills: [Slack.skill({ channel: SlackChannel.AllTerseInc })],
     });
 
-    await agent.runAndWait(
-      "Analyze the news and post a summary to the Slack channel: " + prompt,
-    );
+    // Use formatForAgentRunner() as the user message so the monitor query and
+    // payload are not duplicated inside TerseAgent.prompt and again in runAndWait.
+    await agent.runAndWait(event.formatForAgentRunner());
   },
 });
 ```
@@ -253,7 +249,8 @@ await client.createJob({
 The monitor matches by intent, not keywords. Write your query as a natural sentence describing what you care about — not a search string.
 
 **Do:**
-- Write in plain language: `"Acme Corp product launches or pricing changes"`
+- Write in plain language: `"What are a16z's latest investments?"`
+- Track narratives and social buzz: `"What are people saying on Twitter about Cloud agents?"`
 - Be specific about subject and signal: `"FDA approval decisions for GLP-1 drugs"`
 - Combine related signals: `"OpenAI or Anthropic model releases and benchmark results"`
 

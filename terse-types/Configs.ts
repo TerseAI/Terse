@@ -918,37 +918,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === "object" && !Array.isArray(value)
 }
 
-function validateWebMonitorJsonSchema(jsonSchema: Record<string, unknown>): void {
-    if (jsonSchema.type !== "object") {
-        throw new Error("WebMonitor outputSchema must serialize to a top-level JSON schema object.")
-    }
-
-    const properties = jsonSchema.properties
-    if (!isPlainObject(properties)) {
-        throw new Error("WebMonitor outputSchema must define an object with properties.")
-    }
-
-    for (const [key, rawProperty] of Object.entries(properties)) {
-        if (!isPlainObject(rawProperty)) {
-            throw new Error(`WebMonitor outputSchema property "${key}" must be a JSON schema object.`)
-        }
-
-        const propertyType = rawProperty.type
-        const enumValues = rawProperty.enum
-
-        const isStringProperty = propertyType === "string"
-        const isStringEnum = Array.isArray(enumValues) && enumValues.every(value => typeof value === "string")
-
-        if (!isStringProperty && !isStringEnum) {
-            throw new Error(`WebMonitor outputSchema property "${key}" must be a string or string enum.`)
-        }
-
-        if ("properties" in rawProperty || "items" in rawProperty || "oneOf" in rawProperty || "anyOf" in rawProperty || "allOf" in rawProperty) {
-            throw new Error(`WebMonitor outputSchema property "${key}" must be flat; nested schemas are not supported.`)
-        }
-    }
-}
-
 export const WebMonitorOutputSchemaSchema = z.object({
     type: z.literal("json"),
     jsonSchema: z.record(z.string(), z.unknown())
@@ -975,16 +944,10 @@ function normalizeWebMonitorOutputSchema(value: unknown): WebMonitorOutputSchema
             delete jsonSchema.$schema
         }
 
-        validateWebMonitorJsonSchema(jsonSchema)
-        return {
-            type: "json",
-            jsonSchema
-        }
+        return { type: "json", jsonSchema }
     }
 
-    const parsed = WebMonitorOutputSchemaSchema.parse(value)
-    validateWebMonitorJsonSchema(parsed.jsonSchema)
-    return parsed
+    return WebMonitorOutputSchemaSchema.parse(value)
 }
 
 export const WebMonitorConfigSchema = ConfigInstanceSchema.extend({

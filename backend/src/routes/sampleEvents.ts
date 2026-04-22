@@ -1,7 +1,5 @@
 import { Request, Response } from "express"
 import type { SerializedEvent, User } from "terse-types"
-import { ConfigType } from "terse-types/Configs"
-import { IntegrationType } from "terse-types/Integrations"
 import { sdkSampleEventsRequestSchema } from "terse-types/types"
 
 import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"

@@ -24,7 +24,7 @@ export const WebMonitor = {
         frequency: { number: number; unit: FrequencyUnit }
         outputSchema?: TSchema
     }): TypedTrigger<WebMonitorTrigger<InferStructuredOutput<TSchema>>> {
-        return new WebMonitorConfig(opts.query, opts.frequency, opts.outputSchema) as TypedTrigger<WebMonitorTrigger<InferStructuredOutput<TSchema>>>
+        return new WebMonitorConfig(opts.query, opts.frequency, opts.outputSchema)
     },
 }
 

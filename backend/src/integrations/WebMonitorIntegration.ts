@@ -305,7 +305,7 @@ function toParallelOutputSchema(outputSchema?: WebMonitorOutputSchema): { type: 
         return undefined
     }
 
-    const jsonSchema = JSON.parse(JSON.stringify(outputSchema.jsonSchema)) as Record<string, unknown>
+    const jsonSchema = JSON.parse(JSON.stringify(outputSchema.jsonSchema))
     if ("~standard" in jsonSchema) {
         delete jsonSchema["~standard"]
     }
