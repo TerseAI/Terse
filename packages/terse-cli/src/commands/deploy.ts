@@ -142,8 +142,10 @@ async function tryRecoverStaleProject(error: unknown, args: { apiKey: string; co
     if (args.hasRetried) return false
     if (!process.stdout.isTTY || !process.stdin.isTTY) return false
 
-    console.log(chalk.yellow(`\n  Project "${args.config.name}" (${args.config.projectId}) no longer exists.`))
-    const proceed = await confirm({ message: `Create a new project and re-link this directory?`, default: false })
+    console.log(chalk.yellow(`\n  The project linked in ${PROJECT_CONFIG_FILENAME} no longer exists.`))
+    console.log(`  This usually means it was deleted from the dashboard, or this config came from another machine.`)
+    console.log(chalk.dim(`\n  Project: "${args.config.name}" (${args.config.projectId})\n`))
+    const proceed = await confirm({ message: `Create a new project named "${args.config.name}" and re-link this directory?`, default: false })
     if (!proceed) process.exit(1)
 
     const newProject = await createRemoteProject(args.apiKey, args.config.name)
