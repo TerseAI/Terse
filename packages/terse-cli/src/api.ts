@@ -110,7 +110,19 @@ async function fetchRawWithAuth(
 }
 
 export async function fetchWithAuthAndSession<T>(urlPath: string, apiKey: string, sessionId: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "GET"): Promise<T> {
-    return fetchWithAuth<T>(urlPath, apiKey, { params, type, sessionId })
+    const res = await fetchRawWithAuth(urlPath, apiKey, { params, type, sessionId })
+
+    const contentType = res.headers.get("content-type") ?? ""
+    if (!contentType.includes("application/json")) {
+        throw new Error(`Expected JSON from ${urlPath} but got ${contentType || "unknown content-type"} (HTTP ${res.status}).\n` + `  Is the Terse backend running on ${BACKEND_URL}?`)
+    }
+
+    if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
+        throw new ApiError(res.status, body)
+    }
+
+    return res.json() as Promise<T>
 }
 
 export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "GET"): Promise<T> {
