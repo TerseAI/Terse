@@ -35,6 +35,7 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
         triggerConfig: ConfigData,
         options?: {
             limit?: number
+            triggerId?: string
         }
     ): Promise<TriggerRuntime[]>
 }

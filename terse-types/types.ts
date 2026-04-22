@@ -872,6 +872,7 @@ export const sdkSampleEventsRequestSchema = z.object({
     triggers: z
         .array(
             z.object({
+                triggerId: z.string().optional(),
                 integrationId: z.string(),
                 integrationType: integrationTypeEnum,
                 config: configDataSchema

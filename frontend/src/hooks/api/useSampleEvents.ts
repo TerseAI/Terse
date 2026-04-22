@@ -26,6 +26,7 @@ export function useSampleEvents(triggers: AgentTrigger[], automationId?: string)
         try {
             const result = await BackendProvider.fetchSampleEvents(
                 integrationTriggers.map(t => ({
+                    triggerId: t.id,
                     integrationId: t.config.integrationId,
                     integrationType: t.config.integrationType,
                     config: t.config

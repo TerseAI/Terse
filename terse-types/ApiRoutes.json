@@ -156,6 +156,7 @@
         "WORKOS": "/webhooks/workos",
         "LINEAR_BY_USER_ID": "/webhooks/linear/:userId",
         "SCHEDULE_BY_INPUT_ID": "/webhooks/schedule/:inputId",
+        "WEBMONITOR_BY_INPUT_ID": "/webhooks/webmonitor/:inputId",
         "WORKOS_TRIGGER_BY_INTEGRATION_ID": "/webhooks/workos-trigger/:integrationId",
         "WEBHOOK_TRIGGER_BY_TOKEN": "/webhooks/trigger/:webhookToken"
     },

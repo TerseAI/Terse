@@ -3,7 +3,7 @@
 export const Schedule = {
     /** Use in `triggers[]` — run on a cron schedule */
     cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
-        return new TimeTriggerConfig(opts.expression) 
+        return new TimeTriggerConfig(opts.expression)
     },
 }
 
@@ -16,6 +16,18 @@ export const Webhook = {
     },
 }
 
+{{sectionHeader "WebMonitor"}}
+
+export const WebMonitor = {
+    onEvent<const TSchema>(opts: {
+        query: string
+        frequency: { number: number; unit: FrequencyUnit }
+        outputSchema?: TSchema
+    }): TypedTrigger<WebMonitorTrigger<InferStructuredOutput<TSchema>>> {
+        return new WebMonitorConfig(opts.query, opts.frequency, opts.outputSchema)
+    },
+}
+
 {{sectionHeader "Terse"}}
 
 export const Terse = {
@@ -24,4 +36,3 @@ export const Terse = {
         return new TerseConfig() as TypedSkill<{{{skillToolType}}}>
     },
 }
-

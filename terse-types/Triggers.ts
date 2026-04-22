@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { GitHubEventType, WorkOSEventType, gitHubEventTypeSchema, gmailEventTypeSchema, linearEventTypeSchema, slackEventTypeSchema, workOSEventTypeSchema } from "./Configs"
+import { GitHubEventType, WorkOSEventType, frequencyUnitSchema, gitHubEventTypeSchema, gmailEventTypeSchema, linearEventTypeSchema, slackEventTypeSchema, workOSEventTypeSchema } from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
 import { debugTrigger as debugTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"
@@ -304,6 +304,9 @@ export type WebhookTriggerType = z.infer<typeof webhookTriggerTypeSchema>
 export const cronTriggerTypeSchema = z.literal("cron")
 export type CronTriggerType = z.infer<typeof cronTriggerTypeSchema>
 
+export const webMonitorTriggerTypeSchema = z.literal("webmonitor")
+export type WebMonitorTriggerType = z.infer<typeof webMonitorTriggerTypeSchema>
+
 export const manualSampleTriggerTypeSchema = z.literal("manual_sample")
 export type ManualSampleTriggerType = z.infer<typeof manualSampleTriggerTypeSchema>
 
@@ -315,6 +318,7 @@ export const TriggerTypeSchema = z.union([
     workOSEventTypeSchema,
     webhookTriggerTypeSchema,
     cronTriggerTypeSchema,
+    webMonitorTriggerTypeSchema,
     manualSampleTriggerTypeSchema
 ])
 export type TriggerType = z.infer<typeof TriggerTypeSchema>
@@ -536,6 +540,67 @@ export const cronTriggerSchema = baseTriggerSchema.extend({
 })
 export type CronTrigger = z.infer<typeof cronTriggerSchema>
 
+export const ParallelMonitorDetectedWebhookPayloadSchema = z.object({
+    type: z.literal("monitor.event.detected"),
+    timestamp: z.string(),
+    data: z.object({
+        event: z.object({
+            event_group_id: z.string()
+        }),
+        metadata: z.record(z.string(), z.string()),
+        monitor_id: z.string()
+    })
+})
+export type ParallelMonitorDetectedWebhookPayload = z.infer<typeof ParallelMonitorDetectedWebhookPayloadSchema>
+
+export const ParallelMonitorTextResultSchema = z.object({
+    type: z.literal("text"),
+    content: z.string()
+})
+export type ParallelMonitorTextResult = z.infer<typeof ParallelMonitorTextResultSchema>
+
+export const ParallelMonitorJsonResultSchema = z.object({
+    type: z.literal("json"),
+    content: z.unknown()
+})
+export type ParallelMonitorJsonResult<TStructured = unknown> = Omit<z.infer<typeof ParallelMonitorJsonResultSchema>, "content"> & {
+    content: TStructured
+}
+
+export const ParallelMonitorEventSchema = z.object({
+    type: z.literal("event"),
+    event_group_id: z.string(),
+    output: z.string(),
+    event_date: z.string(),
+    source_urls: z.array(z.string()),
+    result: z.discriminatedUnion("type", [ParallelMonitorTextResultSchema, ParallelMonitorJsonResultSchema])
+})
+export type ParallelMonitorEvent<TStructured = unknown> = Omit<z.infer<typeof ParallelMonitorEventSchema>, "result"> & {
+    result: ParallelMonitorTextResult | ParallelMonitorJsonResult<TStructured>
+}
+
+export const webMonitorTriggerSchema = baseTriggerSchema.extend({
+    integrationType: z.literal(IntegrationType.WEBMONITOR),
+    eventType: webMonitorTriggerTypeSchema,
+    inputId: z.string(),
+    query: z.string(),
+    frequency: z.object({
+        number: z.number().min(1).max(30).int(),
+        unit: frequencyUnitSchema
+    }),
+    monitorId: z.string(),
+    eventGroupId: z.string(),
+    metadata: z.record(z.string(), z.string()),
+    outputType: z.enum(["text", "json"]),
+    rawPayload: z.string().optional(),
+    payload: z.unknown(),
+    eventDate: z.string(),
+    sourceUrls: z.array(z.string())
+})
+export type WebMonitorTrigger<TPayload = string> = Omit<z.infer<typeof webMonitorTriggerSchema>, "payload"> & {
+    payload: TPayload
+}
+
 export const manualSampleTriggerSchema = baseTriggerSchema.extend({
     eventType: manualSampleTriggerTypeSchema
 })
@@ -549,6 +614,7 @@ export const TriggerSchema = z.union([
     workOSTriggerSchema,
     webhookTriggerSchema,
     cronTriggerSchema,
+    webMonitorTriggerSchema,
     manualSampleTriggerSchema
 ])
 export type Trigger = z.infer<typeof TriggerSchema>

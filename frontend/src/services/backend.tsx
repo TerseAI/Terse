@@ -435,7 +435,7 @@ interface BackendService {
     /**
      * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
      */
-    fetchSampleEvents(triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>): Promise<{ events: SerializedEvent[] }>
+    fetchSampleEvents(triggers: Array<{ triggerId?: string; integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>): Promise<{ events: SerializedEvent[] }>
 
     /**
      * Triggers an automation with a specific event payload (e.g. a sample event)
@@ -1391,7 +1391,7 @@ export const BackendProvider: BackendService = {
             })
     },
 
-    fetchSampleEvents: (triggers: Array<{ integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {
+    fetchSampleEvents: (triggers: Array<{ triggerId?: string; integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {
         return axios
             .post<{ events: SerializedEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
             .then(response => response.data)

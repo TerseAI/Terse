@@ -1,5 +1,5 @@
 import { IntegrationType } from "./Integrations"
-import type { CronTrigger, GithubTrigger, GmailTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
+import type { CronTrigger, GithubTrigger, GmailTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebMonitorTrigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
 
 interface TriggerPresenter<TEvent extends Trigger> {
     formatForAgent(event: TEvent): string
@@ -55,6 +55,10 @@ const TriggerPresenters = {
     [IntegrationType.CRON_JOB]: {
         formatForAgent: formatCronTrigger,
         debug: (event: CronTrigger): string => (event.isManualTrigger ? "Manual Trigger" : "Scheduled Event")
+    },
+    [IntegrationType.WEBMONITOR]: {
+        formatForAgent: formatWebMonitorTrigger,
+        debug: (event: WebMonitorTrigger): string => `${event.query.slice(0, 80)}${event.query.length > 80 ? "…" : ""}`
     }
 } as TriggerPresenterRegistry
 
@@ -74,6 +78,8 @@ function dispatchPresenter(event: IntegrationTrigger, method: keyof TriggerPrese
             return TriggerPresenters[IntegrationType.WEBHOOK][method](event)
         case IntegrationType.CRON_JOB:
             return TriggerPresenters[IntegrationType.CRON_JOB][method](event)
+        case IntegrationType.WEBMONITOR:
+            return TriggerPresenters[IntegrationType.WEBMONITOR][method](event)
     }
 }
 
@@ -284,6 +290,26 @@ function formatWorkOSTrigger(event: WorkOSTrigger): string {
 
 function formatWebhookTrigger(event: WebhookTrigger): string {
     return `Webhook request received.\n\nMethod: ${event.method}\n\nPayload:\n${JSON.stringify(event.body, null, 2)}`
+}
+
+function formatWebMonitorTrigger(event: WebMonitorTrigger): string {
+    const lines = [
+        `Web event for monitored query (frequency: ${event.frequency.number}${event.frequency.unit}).`,
+        `Query: ${event.query}`,
+        `Monitor ID: ${event.monitorId}`,
+        `Event Group ID: ${event.eventGroupId}`,
+        `Output Type: ${event.outputType}`
+    ]
+
+    if (Object.keys(event.metadata).length > 0) {
+        lines.push(`Metadata:\n${JSON.stringify(event.metadata, null, 2)}`)
+    }
+
+    lines.push(`Payload:\n${JSON.stringify(event.payload, null, 2)}`)
+    if (event.rawPayload) {
+        lines.push(`Raw Payload:\n${event.rawPayload}`)
+    }
+    return lines.join("\n\n")
 }
 
 function formatCronTrigger(event: CronTrigger): string {

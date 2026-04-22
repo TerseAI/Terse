@@ -30,6 +30,7 @@ import type {
     SlackReactionAddedTrigger as _RawSlackReactionAddedTrigger,
     SlackTrigger as _RawSlackTrigger,
     Trigger as _RawTrigger,
+    WebMonitorTrigger as _RawWebMonitorTrigger,
     WebhookTrigger as _RawWebhookTrigger,
     WorkOSInvitationAcceptedTrigger as _RawWorkOSInvitationAcceptedTrigger,
     WorkOSInvitationCreatedTrigger as _RawWorkOSInvitationCreatedTrigger,
@@ -51,7 +52,7 @@ import type {
 import { getJobContext, runWithJobContext } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
-import { type InferEvents, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
+import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -74,7 +75,7 @@ export type { OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent,
 
 // Re-export SDK-specific types
 export { createSDKTrigger } from "./types.js"
-export type { ToolboxEntry, SDKTrigger, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals } from "./types.js"
+export type { ToolboxEntry, SDKTrigger, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals, InferStructuredOutput } from "./types.js"
 
 // Re-export shared types for consumer convenience
 export {
@@ -99,6 +100,7 @@ export {
     AttioOutputConfig,
     SnowflakeOutputConfig,
     WebhookInputConfig,
+    WebMonitorConfig,
     SlackEventType,
     GitHubEventType,
     LinearEventType,
@@ -128,6 +130,8 @@ export type SlackMessageTrigger = SDKTrigger<_RawSlackMessageTrigger>
 export type SlackReactionAddedTrigger = SDKTrigger<_RawSlackReactionAddedTrigger>
 export type SlackTrigger = SDKTrigger<_RawSlackTrigger>
 export type WebhookTrigger<TBody = unknown> = SDKTrigger<_RawWebhookTrigger<TBody>>
+export type WebMonitorTrigger<TStructured = unknown> = SDKTrigger<_RawWebMonitorTrigger<TStructured>>
+export type WebMonitorTriggerFor<TSchema> = WebMonitorTrigger<InferStructuredOutput<TSchema>>
 export type WorkOSInvitationAcceptedTrigger = SDKTrigger<_RawWorkOSInvitationAcceptedTrigger>
 export type WorkOSInvitationCreatedTrigger = SDKTrigger<_RawWorkOSInvitationCreatedTrigger>
 export type WorkOSInvitationTrigger = SDKTrigger<_RawWorkOSInvitationTrigger>
@@ -145,7 +149,7 @@ export type WorkOSUserUpdatedTrigger = SDKTrigger<_RawWorkOSUserUpdatedTrigger>
 export type WorkOSUserTrigger = SDKTrigger<_RawWorkOSUserTrigger>
 
 export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
-export { IntegrationType } from "terse-types"
+export { IntegrationType, FrequencyUnit } from "terse-types"
 
 export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
 
