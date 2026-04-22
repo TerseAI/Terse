@@ -1,3 +1,4 @@
+import Bottleneck from "bottleneck"
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager"
 
 import { gcp } from "../config/settings"
@@ -5,6 +6,10 @@ import logger from "../logger"
 
 const GRPC_NOT_FOUND = 5
 const GRPC_ALREADY_EXISTS = 6
+const SECRET_MANAGER_REQUESTS_PER_MINUTE = 600
+const SECRET_MANAGER_RATE_LIMIT_FRACTION = 0.25
+const SECRET_MANAGER_MAX_REQUESTS_PER_MINUTE = SECRET_MANAGER_REQUESTS_PER_MINUTE * SECRET_MANAGER_RATE_LIMIT_FRACTION
+const SECRET_MANAGER_MIN_INTERVAL_MS = Math.ceil(60_000 / SECRET_MANAGER_MAX_REQUESTS_PER_MINUTE)
 
 interface GrpcError {
     code?: number
@@ -17,6 +22,14 @@ function isGrpcError(error: unknown): error is GrpcError {
 
 export function isSecretManagerNotFoundError(error: unknown): boolean {
     return isGrpcError(error) && error.code === GRPC_NOT_FOUND
+}
+
+
+type SecretVersionCleanupReport = {
+    numberOfSecretsCleared: number
+    numberOfVersionsCleared: number
+    numberOfErrors: number
+    errors: string[]
 }
 
 export class SecretManagerClient {
@@ -46,7 +59,6 @@ export class SecretManagerClient {
             this.client = new SecretManagerServiceClient({
                 credentials: credentials
             })
-
             this.projectId = projectId
 
             logger.info("Secret Manager client initialized", { projectId, location })
@@ -87,6 +99,171 @@ export class SecretManagerClient {
             logger.error("Failed to create Secret Manager secret", { error, secretId })
             throw error
         }
+    }
+
+    private extractSecretId(secretName: string | null | undefined): string {
+        if (!secretName) {
+            throw new Error("Secret name is required")
+        }
+
+        const parts = secretName.split("/")
+        return parts[parts.length - 1] || secretName
+    }
+
+    private extractVersionNumber(versionName: string | null | undefined): number | null {
+        if (!versionName) {
+            return null
+        }
+
+        const parts = versionName.split("/")
+        const versionPart = parts[parts.length - 1]
+        const versionNumber = Number(versionPart)
+
+        return Number.isInteger(versionNumber) ? versionNumber : null
+    }
+
+    private isDestroyedVersion(state: string | number | null | undefined): boolean {
+        return state === "DESTROYED" || state === 3
+    }
+
+    private createCleanupLimiter(): Bottleneck {
+        return new Bottleneck({
+            maxConcurrent: 1,
+            minTime: SECRET_MANAGER_MIN_INTERVAL_MS
+        })
+    }
+
+    private async runCleanupRequest<T>(limiter: Bottleneck, request: () => Promise<T>): Promise<T> {
+        return limiter.schedule(request)
+    }
+
+    private async listAllSecrets(readLimiter: Bottleneck): Promise<Array<{ name?: string | null }>> {
+        const secrets: Array<{ name?: string | null }> = []
+        let pageToken: string | undefined
+
+        do {
+            const [pageSecrets, , response] = await this.runCleanupRequest(readLimiter, () =>
+                this.client.listSecrets({
+                    parent: this.getParentPath(),
+                    pageSize: 1000,
+                    pageToken
+                })
+            )
+
+            secrets.push(...pageSecrets)
+            pageToken = response?.nextPageToken || undefined
+        } while (pageToken)
+
+        return secrets
+    }
+
+    private async listAllSecretVersions(secretPath: string, readLimiter: Bottleneck): Promise<Array<{ name?: string | null; state?: string | number | null }>> {
+        const versions: Array<{ name?: string | null; state?: string | number | null }> = []
+        let pageToken: string | undefined
+
+        do {
+            const [pageVersions, , response] = await this.runCleanupRequest(readLimiter, () =>
+                this.client.listSecretVersions({
+                    parent: secretPath,
+                    pageSize: 1000,
+                    pageToken
+                })
+            )
+
+            versions.push(...pageVersions)
+            pageToken = response?.nextPageToken || undefined
+        } while (pageToken)
+
+        return versions
+    }
+
+    async clearOldSecretVersions(): Promise<SecretVersionCleanupReport> {
+        const report: SecretVersionCleanupReport = {
+            numberOfSecretsCleared: 0,
+            numberOfVersionsCleared: 0,
+            numberOfErrors: 0,
+            errors: []
+        }
+        const readLimiter = this.createCleanupLimiter()
+        const writeLimiter = this.createCleanupLimiter()
+
+        try {
+            const secrets = await this.listAllSecrets(readLimiter)
+
+            for (const secret of secrets) {
+                const secretPath = secret.name
+                if (!secretPath) {
+                    report.numberOfErrors++
+                    report.errors.push("Encountered a secret without a name")
+                    continue
+                }
+
+                try {
+                    const versions = await this.listAllSecretVersions(secretPath, readLimiter)
+                    const candidateVersions = versions.filter(version => {
+                        const versionNumber = this.extractVersionNumber(version.name)
+
+                        return versionNumber !== null && !this.isDestroyedVersion(version.state)
+                    })
+
+                    if (candidateVersions.length <= 1) {
+                        continue
+                    }
+
+                    const latestVersionNumber = Math.max(
+                        ...candidateVersions.map(version => this.extractVersionNumber(version.name)!)
+                    )
+
+                    const versionsToDestroy = candidateVersions.filter(version => this.extractVersionNumber(version.name)! !== latestVersionNumber)
+
+                    if (versionsToDestroy.length === 0) {
+                        continue
+                    }
+
+                    let destroyedForSecret = 0
+
+                    for (const version of versionsToDestroy) {
+                        if (!version.name) {
+                            continue
+                        }
+
+                        try {
+                            await this.runCleanupRequest(writeLimiter, () => this.client.destroySecretVersion({ name: version.name! }))
+                            destroyedForSecret++
+                        } catch (error) {
+                            report.numberOfErrors++
+                            report.errors.push(`Failed to destroy ${version.name}: ${error instanceof Error ? error.message : "Unknown error"}`)
+                            logger.warn("Failed to destroy old secret version", {
+                                secretPath,
+                                version: version.name,
+                                error
+                            })
+                        }
+                    }
+
+                    if (destroyedForSecret > 0) {
+                        report.numberOfSecretsCleared++
+                        report.numberOfVersionsCleared += destroyedForSecret
+                        logger.info("Cleared old secret versions", {
+                            secretId: this.extractSecretId(secretPath),
+                            secretPath,
+                            clearedVersions: destroyedForSecret,
+                            latestVersionNumber
+                        })
+                    }
+                } catch (error) {
+                    report.numberOfErrors++
+                    report.errors.push(`Failed to process ${secretPath}: ${error instanceof Error ? error.message : "Unknown error"}`)
+                    logger.warn("Failed to clear old secret versions for secret", { secretPath, error })
+                }
+            }
+        } catch (error) {
+            report.numberOfErrors++
+            report.errors.push(`Failed to list secrets: ${error instanceof Error ? error.message : "Unknown error"}`)
+            logger.error("Failed to clear old secret versions", { error })
+        }
+
+        return report
     }
 
     /**
@@ -131,12 +308,11 @@ export class SecretManagerClient {
         }
 
         try {
-            const [version] = await this.client.addSecretVersion({
+            await this.client.addSecretVersion({
                 parent,
                 payload
             })
             logger.debug("Stored secret version in Secret Manager", { secretId })
-            await this.destroyPreviousVersions(parent, version.name!)
             return
         } catch (error) {
             if (!isGrpcError(error) || error.code !== GRPC_NOT_FOUND) {
@@ -147,13 +323,11 @@ export class SecretManagerClient {
 
         await this.createSecretIfMissing(secretId)
 
-        const [version] = await this.client.addSecretVersion({
+        await this.client.addSecretVersion({
             parent,
             payload
         })
-
         logger.debug("Created secret then stored initial version in Secret Manager", { secretId })
-        await this.destroyPreviousVersions(parent, version.name!)
     }
 
     async getSecret(secretId: string): Promise<string> {

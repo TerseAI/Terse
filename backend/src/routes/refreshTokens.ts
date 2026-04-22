@@ -5,6 +5,7 @@ import { isOAuthIntegrationInstallation } from "../integrations/abstract/Integra
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
+import { getSecretManagerClient } from "../utility/secretManagerClient"
 
 /**
  * Refresh tokens for all OAuth integrations
@@ -117,6 +118,42 @@ export async function refreshAllTokens(req: Request, res: Response) {
         })
     } catch (error) {
         logger.error("Error in token refresh cron job:", { error })
+        return res.status(500).json({
+            error: "Internal server error",
+            message: error instanceof Error ? error.message : "Unknown error"
+        })
+    }
+}
+
+export async function clearOldSecretVersions(req: Request, res: Response) {
+    logger.info("Clearing old secret versions cron job triggered")
+
+    // Validate request comes from Google Cloud Scheduler
+    if (!validateCloudSchedulerRequest(req, "ClearOldSecretVersions")) {
+        logger.error("Unauthorized: Request did not pass Cloud Scheduler validation")
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    try {
+        const report = await getSecretManagerClient().clearOldSecretVersions()
+
+        logger.info("Clear old secret versions completed", {
+            numberOfSecretsCleared: report.numberOfSecretsCleared,
+            numberOfVersionsCleared: report.numberOfVersionsCleared,
+            numberOfErrors: report.numberOfErrors
+        })
+
+        return res.json({
+            message: "Clear old secret versions completed",
+            summary: {
+                secretsCleared: report.numberOfSecretsCleared,
+                versionsCleared: report.numberOfVersionsCleared,
+                errors: report.numberOfErrors
+            },
+            errors: report.errors
+        })
+    } catch (error) {
+        logger.error("Error in clear old secret versions cron job:", { error })
         return res.status(500).json({
             error: "Internal server error",
             message: error instanceof Error ? error.message : "Unknown error"

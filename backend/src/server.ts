@@ -37,7 +37,7 @@ import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { getPendingApprovals } from "./routes/pendingApprovals"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
-import { refreshAllTokens } from "./routes/refreshTokens"
+import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
@@ -215,6 +215,10 @@ app.use(cookieParser())
 
 app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
     refreshAllTokens(req, res)
+})
+
+app.post(ApiRoutes.CLEAR_OLD_SECRET_VERSIONS, async (req, res) => {
+    clearOldSecretVersions(req, res)
 })
 
 app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
