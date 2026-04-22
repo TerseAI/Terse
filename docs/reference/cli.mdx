@@ -4,11 +4,11 @@ description: "Reference for the terse CLI"
 icon: "terminal"
 ---
 
-The `terse` CLI scaffolds, generates, tests, runs, and deploys Terse projects in TypeScript.
+The `terse` CLI scaffolds, generates, tests, and deploys Terse projects in TypeScript.
 
 Commands auto-detect a TypeScript Terse project from the current directory based on project markers.
 
-For TypeScript projects, `terse test`, `terse run`, and `terse deploy` discover workflows across all constructed `new Terse()` instances in your imported entry file graph (not just one module). Keep workflow names unique across instances.
+For TypeScript projects, `terse test` and `terse deploy` discover workflows across all constructed `new Terse()` instances in your imported entry file graph (not just one module). Keep workflow names unique across instances.
 
 | Language   | Project markers                 | Entry file     | Generated file           |
 | ---------- | ------------------------------- | -------------- | ------------------------ |
@@ -140,45 +140,6 @@ terse test my-job
 
 If you only have one job, it's selected automatically.
 
-## `terse run [job-name]`
-
-Runs a job locally with an explicit event payload. Unlike `test`, this is non-interactive and does not fetch sample events.
-
-Pass a **serialized event**: JSON with `integrationType`, `eventType`, `formattedContent`, `debugLog`, and `data`. The `data` field is the full canonical trigger object (the same discriminated shape live runs use). Use `terse test` and inspect a sample, or copy the structure from Activity when debugging.
-
-Alternatively, set `TERSE_RUN_ID` to a run ID from [Activity](/core-concepts/activity-and-observability) and omit `--event` / `--event-file`. The CLI fetches that run’s serialized trigger event from the Terse backend (the same payload shape a live run would pass to `onTrigger`).
-
-```bash
-terse run my-job --event-file ./event.json
-```
-
-Example `event.json` for a manual cron-style run (`formattedContent` and `debugLog` should match what the platform would produce for the same `data` payload):
-
-```json
-{
-    "integrationType": "cron_job",
-    "eventType": "cron",
-    "formattedContent": "This is a manually triggered event for the channel input trigger_123.\n\nUser provided context for this manual trigger:\nManual trigger",
-    "debugLog": "Manual Trigger",
-    "data": {
-        "integrationType": "cron_job",
-        "eventType": "cron",
-        "inputId": "trigger_123",
-        "isManualTrigger": true,
-        "manualContext": "Manual trigger"
-    }
-}
-```
-
-**Options:**
-
-| Flag                  | Description                                         |
-| --------------------- | --------------------------------------------------- |
-| `--event <json>`      | Inline serialized event JSON                        |
-| `--event-file <path>` | Path to a JSON file containing the serialized event |
-
-Provide `--event` or `--event-file`, or set **`TERSE_RUN_ID`** in the environment so the CLI can load the serialized trigger event for that run from the backend.
-
 ## `terse replay [run-id]`
 
 Replays a past run on your machine: fetches the serialized trigger event for the given run ID and executes that workflow’s `onTrigger` locally (with verbose agent output). Use the run ID from the Activity list or run drawer.
@@ -215,6 +176,22 @@ terse history --run-id run_abc123
 | `--triggers` | Include the input trigger event JSON for each listed run |
 | `--events` | Include the full model event stream for each listed run |
 | `--run-id <id>` | Show chat events for one run instead of listing runs for a job |
+
+## `terse dashboard`
+
+Opens the Terse web app in your default browser. Uses `TERSE_FRONTEND_URL` when set (for example when pointing at a staging app); otherwise opens production.
+
+```bash
+terse dashboard
+```
+
+## `terse docs`
+
+Opens the Terse documentation site in your default browser. Uses `TERSE_DOCS_URL` when set; otherwise opens the public docs.
+
+```bash
+terse docs
+```
 
 ## `terse deploy`
 

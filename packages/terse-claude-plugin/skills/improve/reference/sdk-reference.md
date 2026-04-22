@@ -180,12 +180,12 @@ The authoritative reference for every command and flag lives at https://docs.use
 | `terse login` | Authenticate and write `TERSE_API_KEY` into `.env` |
 | `terse generate` | Regenerate `src/terse.generated.ts` from connected integrations |
 | `terse integrate` | Connect third-party integrations and re-run `terse generate` |
-| `terse run [job] --event <json>` | Run a job with an inline serialized event JSON |
-| `terse run [job] --event-file <path>` | Run a job with a serialized event JSON from a file |
 | `terse test [job]` | Fetch real sample events and run interactively |
 | `terse history [job]` | List past production runs for a deployed job (use `--triggers` / `--events` / `--run-id` to drill in; `--json` to pipe into tools) |
 | `terse replay <run-id>` | Re-run a past production run locally with verbose agent output |
 | `terse deploy` | Deploy all jobs (syncs — removed jobs deleted remotely) |
+| `terse dashboard` | Open the Terse web app in your browser |
+| `terse docs` | Open Terse documentation in your browser |
 
 ### Typical Workflow
 ```bash
