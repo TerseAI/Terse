@@ -1,8 +1,18 @@
 import { formatConfigForAgent } from "terse-types"
 
 import logger from "../../logger"
-import { AgentOutput, AgentOutputWithConfigs, AgentTrigger, AgentTriggerWithConfigs, AgentWithRelations } from "../../types/prisma"
+import { AgentOutput, AgentOutputWithConfigs, AgentPrompt, AgentTrigger, AgentTriggerWithConfigs } from "../../types/prisma"
 import { convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../../utility/typeConverters"
+
+type FormattableAgent = {
+    id: string
+    name: string
+    is_active: boolean
+    require_approval: boolean
+    prompt: AgentPrompt | null
+    inputs: AgentTriggerWithConfigs[]
+    outputs: AgentOutputWithConfigs[]
+}
 
 type RunTriggerContextMessageInput = {
     userContext?: string
@@ -42,7 +52,7 @@ export function isScaffoldedRunContextUserMessage(text: string): boolean {
     return normalized.includes("<EVENT>")
 }
 
-export function formatAgentForSystemPrompt(agent: AgentWithRelations): string {
+export function formatAgentForSystemPrompt(agent: FormattableAgent): string {
     const sections: string[] = []
 
     // Header with name, ID, and status

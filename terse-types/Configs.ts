@@ -959,7 +959,7 @@ export const WebMonitorConfigSchema = ConfigInstanceSchema.extend({
         number: z.number(),
         unit: frequencyUnitSchema
     }),
-    outputSchema: z.preprocess(value => normalizeWebMonitorOutputSchema(value), WebMonitorOutputSchemaSchema.optional())
+    outputSchema: z.preprocess(value => normalizeWebMonitorOutputSchema(value), WebMonitorOutputSchemaSchema.nullable().optional())
 })
 export type WebMonitorConfigData = z.infer<typeof WebMonitorConfigSchema>
 export type WebMonitorConfigInstance = WebMonitorConfigData & ConfigBehavior
