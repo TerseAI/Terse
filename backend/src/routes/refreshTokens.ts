@@ -1,11 +1,34 @@
 import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
+import { z } from "zod"
 
 import { isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 import { getSecretManagerClient } from "../utility/secretManagerClient"
+
+const clearOldSecretVersionsRequestSchema = z.object({
+    dryRun: z.preprocess(value => {
+        if (value === undefined) {
+            return false
+        }
+
+        if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase()
+
+            if (normalized === "true" || normalized === "1" || normalized === "yes") {
+                return true
+            }
+
+            if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "") {
+                return false
+            }
+        }
+
+        return value
+    }, z.boolean())
+})
 
 /**
  * Refresh tokens for all OAuth integrations
@@ -134,22 +157,36 @@ export async function clearOldSecretVersions(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
+    const parsedInput = clearOldSecretVersionsRequestSchema.safeParse({
+        dryRun: req.query.dryRun ?? req.body?.dryRun
+    })
+
+    if (!parsedInput.success) {
+        return res.status(400).json({
+            error: "Invalid request",
+            details: parsedInput.error.flatten()
+        })
+    }
+
     try {
-        const report = await getSecretManagerClient().clearOldSecretVersions()
+        const report = await getSecretManagerClient().clearOldSecretVersions(parsedInput.data)
 
         logger.info("Clear old secret versions completed", {
+            dryRun: report.dryRun,
             numberOfSecretsCleared: report.numberOfSecretsCleared,
             numberOfVersionsCleared: report.numberOfVersionsCleared,
             numberOfErrors: report.numberOfErrors
         })
 
         return res.json({
-            message: "Clear old secret versions completed",
+            message: report.dryRun ? "Dry run for clearing old secret versions completed" : "Clear old secret versions completed",
             summary: {
+                dryRun: report.dryRun,
                 secretsCleared: report.numberOfSecretsCleared,
                 versionsCleared: report.numberOfVersionsCleared,
                 errors: report.numberOfErrors
             },
+            plannedDestructions: report.plannedDestructions,
             errors: report.errors
         })
     } catch (error) {

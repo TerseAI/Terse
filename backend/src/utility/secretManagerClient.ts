@@ -24,12 +24,18 @@ export function isSecretManagerNotFoundError(error: unknown): boolean {
     return isGrpcError(error) && error.code === GRPC_NOT_FOUND
 }
 
-
 type SecretVersionCleanupReport = {
+    dryRun: boolean
     numberOfSecretsCleared: number
     numberOfVersionsCleared: number
     numberOfErrors: number
     errors: string[]
+    plannedDestructions: Array<{
+        secretId: string
+        secretPath: string
+        versionNames: string[]
+        latestEnabledVersionNumber: number
+    }>
 }
 
 export class SecretManagerClient {
@@ -126,6 +132,10 @@ export class SecretManagerClient {
         return state === "DESTROYED" || state === 3
     }
 
+    private isEnabledVersion(state: string | number | null | undefined): boolean {
+        return state === "ENABLED" || state === 1
+    }
+
     private createCleanupLimiter(): Bottleneck {
         return new Bottleneck({
             maxConcurrent: 1,
@@ -137,12 +147,12 @@ export class SecretManagerClient {
         return limiter.schedule(request)
     }
 
-    private async listAllSecrets(readLimiter: Bottleneck): Promise<Array<{ name?: string | null }>> {
+    private async listAllSecrets(limiter: Bottleneck): Promise<Array<{ name?: string | null }>> {
         const secrets: Array<{ name?: string | null }> = []
         let pageToken: string | undefined
 
         do {
-            const [pageSecrets, , response] = await this.runCleanupRequest(readLimiter, () =>
+            const [pageSecrets, , response] = await this.runCleanupRequest(limiter, () =>
                 this.client.listSecrets({
                     parent: this.getParentPath(),
                     pageSize: 1000,
@@ -157,12 +167,12 @@ export class SecretManagerClient {
         return secrets
     }
 
-    private async listAllSecretVersions(secretPath: string, readLimiter: Bottleneck): Promise<Array<{ name?: string | null; state?: string | number | null }>> {
+    private async listAllSecretVersions(secretPath: string, limiter: Bottleneck): Promise<Array<{ name?: string | null; state?: string | number | null }>> {
         const versions: Array<{ name?: string | null; state?: string | number | null }> = []
         let pageToken: string | undefined
 
         do {
-            const [pageVersions, , response] = await this.runCleanupRequest(readLimiter, () =>
+            const [pageVersions, , response] = await this.runCleanupRequest(limiter, () =>
                 this.client.listSecretVersions({
                     parent: secretPath,
                     pageSize: 1000,
@@ -177,18 +187,20 @@ export class SecretManagerClient {
         return versions
     }
 
-    async clearOldSecretVersions(): Promise<SecretVersionCleanupReport> {
+    async clearOldSecretVersions(options?: { dryRun?: boolean }): Promise<SecretVersionCleanupReport> {
+        const dryRun = options?.dryRun === true
         const report: SecretVersionCleanupReport = {
+            dryRun,
             numberOfSecretsCleared: 0,
             numberOfVersionsCleared: 0,
             numberOfErrors: 0,
-            errors: []
+            errors: [],
+            plannedDestructions: []
         }
-        const readLimiter = this.createCleanupLimiter()
-        const writeLimiter = this.createCleanupLimiter()
+        const limiter = this.createCleanupLimiter()
 
         try {
-            const secrets = await this.listAllSecrets(readLimiter)
+            const secrets = await this.listAllSecrets(limiter)
 
             for (const secret of secrets) {
                 const secretPath = secret.name
@@ -199,26 +211,33 @@ export class SecretManagerClient {
                 }
 
                 try {
-                    const versions = await this.listAllSecretVersions(secretPath, readLimiter)
-                    const candidateVersions = versions.filter(version => {
+                    const versions = await this.listAllSecretVersions(secretPath, limiter)
+                    const enabledVersions = versions.filter(version => {
                         const versionNumber = this.extractVersionNumber(version.name)
 
-                        return versionNumber !== null && !this.isDestroyedVersion(version.state)
+                        return versionNumber !== null && this.isEnabledVersion(version.state) && !this.isDestroyedVersion(version.state)
                     })
 
-                    if (candidateVersions.length <= 1) {
+                    if (enabledVersions.length <= 1) {
                         continue
                     }
 
-                    const latestVersionNumber = Math.max(
-                        ...candidateVersions.map(version => this.extractVersionNumber(version.name)!)
+                    const latestEnabledVersionNumber = Math.max(
+                        ...enabledVersions.map(version => this.extractVersionNumber(version.name)!)
                     )
 
-                    const versionsToDestroy = candidateVersions.filter(version => this.extractVersionNumber(version.name)! !== latestVersionNumber)
+                    const versionsToDestroy = enabledVersions.filter(version => this.extractVersionNumber(version.name)! !== latestEnabledVersionNumber)
 
                     if (versionsToDestroy.length === 0) {
                         continue
                     }
+
+                    report.plannedDestructions.push({
+                        secretId: this.extractSecretId(secretPath),
+                        secretPath,
+                        versionNames: versionsToDestroy.map(version => version.name!).filter(Boolean),
+                        latestEnabledVersionNumber
+                    })
 
                     let destroyedForSecret = 0
 
@@ -227,8 +246,13 @@ export class SecretManagerClient {
                             continue
                         }
 
+                        if (dryRun) {
+                            destroyedForSecret++
+                            continue
+                        }
+
                         try {
-                            await this.runCleanupRequest(writeLimiter, () => this.client.destroySecretVersion({ name: version.name! }))
+                            await this.runCleanupRequest(limiter, () => this.client.destroySecretVersion({ name: version.name! }))
                             destroyedForSecret++
                         } catch (error) {
                             report.numberOfErrors++
@@ -244,11 +268,12 @@ export class SecretManagerClient {
                     if (destroyedForSecret > 0) {
                         report.numberOfSecretsCleared++
                         report.numberOfVersionsCleared += destroyedForSecret
-                        logger.info("Cleared old secret versions", {
+                        logger.info(dryRun ? "Dry run identified old secret versions" : "Cleared old secret versions", {
                             secretId: this.extractSecretId(secretPath),
                             secretPath,
                             clearedVersions: destroyedForSecret,
-                            latestVersionNumber
+                            latestEnabledVersionNumber,
+                            dryRun
                         })
                     }
                 } catch (error) {
