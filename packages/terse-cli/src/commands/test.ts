@@ -38,6 +38,7 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
                 apiKey,
                 {
                     triggers: integrationTriggers.map(trigger => ({
+                        triggerId: undefined,
                         integrationId: trigger.integrationId,
                         integrationType: trigger.integrationType,
                         config: trigger

@@ -74,7 +74,7 @@ async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeR
     }
 
     // Filter out system integrations
-    const userFacing = integrations.filter(i => i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB)
+    const userFacing = integrations.filter(i => i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB && i.integrationType !== IntegrationType.WEBMONITOR)
 
     if (userFacing.length === 0) {
         console.log(chalk.yellow("\n  No integrations available.\n"))

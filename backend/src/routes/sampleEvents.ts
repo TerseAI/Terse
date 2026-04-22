@@ -1,7 +1,5 @@
 import { Request, Response } from "express"
 import type { SerializedEvent, User } from "terse-types"
-import { ConfigType } from "terse-types/Configs"
-import { IntegrationType } from "terse-types/Integrations"
 import { sdkSampleEventsRequestSchema } from "terse-types/types"
 
 import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"
@@ -19,7 +17,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
     const events: SerializedEvent[] = []
 
     for (const trigger of triggers) {
-        const { integrationId, integrationType, config } = trigger
+        const { triggerId, integrationId, integrationType, config } = trigger
 
         if (!integrationId || !integrationType) {
             logger.warn("[sample-events] Skipping trigger with missing fields", { trigger })
@@ -27,7 +25,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
         }
 
         try {
-            const inputEvents = await fetchSampleEvents(integrationId, integrationType, config, user.organizationId, user.id, { limit: 5 })
+            const inputEvents = await fetchSampleEvents(integrationId, integrationType, config, user.organizationId, user.id, { limit: 5, triggerId })
 
             for (const evt of inputEvents) {
                 events.push(evt.getSerializedEvent())
