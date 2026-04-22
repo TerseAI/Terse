@@ -78,20 +78,43 @@ export function readRunId(): string | null {
     return readEnvVar("TERSE_RUN_ID")
 }
 
-export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: Record<string, unknown> = {}, type: "GET" | "POST" = "GET"): Promise<T> {
+type AuthenticatedRequestMethod = "GET" | "POST"
+
+async function fetchRawWithAuth(
+    urlPath: string,
+    apiKey: string,
+    options: {
+        params?: Record<string, unknown>
+        type?: AuthenticatedRequestMethod
+        sessionId?: string
+    } = {}
+): Promise<Response> {
+    const { params = {}, type = "GET", sessionId } = options
+
     let res: Response
     try {
         res = await fetch(`${BACKEND_URL}${urlPath}`, {
             method: type,
             headers: {
                 Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                ...(sessionId ? { "x-terse-session-id": sessionId } : {})
             },
             body: type === "POST" ? JSON.stringify(params) : undefined
         })
     } catch (err: any) {
         throw new Error(`Could not connect to ${BACKEND_URL} — is the backend running?\n  ${err.message}`)
     }
+
+    return res
+}
+
+export async function fetchWithAuthAndSession<T>(urlPath: string, apiKey: string, sessionId: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "GET"): Promise<T> {
+    return fetchWithAuth<T>(urlPath, apiKey, { params, type, sessionId })
+}
+
+export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "GET"): Promise<T> {
+    const res = await fetchRawWithAuth(urlPath, apiKey, { params, type })
 
     const contentType = res.headers.get("content-type") ?? ""
     if (!contentType.includes("application/json")) {

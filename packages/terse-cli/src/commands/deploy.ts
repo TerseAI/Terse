@@ -1,17 +1,19 @@
+import { intro, log, outro, spinner } from "@clack/prompts"
 import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
 import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
-import ora from "ora"
-import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
+import { ApiRoutes, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
-import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
+import { ApiError, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
+import { FRONTEND_URL } from "../config.js"
 import { loadJobRegistry } from "../loadJob.js"
 import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfigOrBail, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
+import { openSessionStream } from "../providers/shared/sessionStream.js"
 
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
     const apiKey = readApiKeyOrBail({
@@ -54,7 +56,18 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         zipSizeBytes = zipPayload.zipSizeBytes
     }
 
-    const spinner = ora(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}...`).start()
+    intro(`terse deploy`)
+
+    const s = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
+    s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
+
+    const session = await openSessionStream(apiKey, {
+        onEvent: event => {
+            if (event.type === "deploy_stage") {
+                s.message(getStageMessage(event.stage))
+            }
+        }
+    })
 
     try {
         const body = sdkDeployRequestBodySchema.parse({
@@ -67,25 +80,18 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             sourceZipBase64
         })
 
-        const result = await fetchWithAuth<SdkDeployResponseBody>(ApiRoutes.SDK.DEPLOY, apiKey, body, "POST")
+        const deployResult = await fetchWithAuthAndSession<SdkDeployResponseBody>(ApiRoutes.SDK.DEPLOY, apiKey, session.sessionId, body, "POST")
 
-        if (!result.success) {
-            spinner.fail(chalk.red(`Deploy failed: ${result.error}`))
-            if (result.details) {
-                console.error(chalk.dim(`  ${result.details}`))
-            }
-            process.exit(1)
-        }
+        s.stop(`Deployed ${deployResult.results.length} job${deployResult.results.length === 1 ? "" : "s"}`)
 
-        spinner.succeed(chalk.green(`Deployed ${result.results.length} job${result.results.length === 1 ? "" : "s"}`))
-
-        for (const r of result.results) {
+        for (const r of deployResult.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
-            console.log(chalk.dim(`  ${verb} "${r.jobName}" (${r.automationId})`))
+            const agentUrl = `${FRONTEND_URL}/agents/${r.automationId}`
+            log.step(`${verb}: ${chalk.bold(r.jobName)}  ${chalk.dim(agentUrl)}`)
             if (r.triggers) {
                 for (const t of r.triggers) {
                     if (t.metadata?.webhookUrl) {
-                        console.log(chalk.cyan(`    Webhook URL: ${t.metadata.webhookUrl}`))
+                        log.info(`Webhook URL: ${chalk.cyan(t.metadata.webhookUrl)}`)
                     }
                 }
             }
@@ -95,8 +101,8 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             console.log(chalk.dim(`  Mode: user infrastructure`))
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
 
-            const signingSecret = result.signingSecret
-            const projectApiKey = result.projectApiKey
+            const signingSecret = deployResult.signingSecret
+            const projectApiKey = deployResult.projectApiKey
             if (signingSecret || projectApiKey) {
                 const labels: string[] = []
                 if (signingSecret) labels.push("signing secret")
@@ -108,28 +114,28 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
                 if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
                 console.log("")
             }
+            log.info(`Mode: user infrastructure  ${chalk.dim(remoteServerUrl!)}`)
         } else {
-            console.log(chalk.dim(`  Files: ${fileCount}`))
-            console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
+            log.info(`${fileCount} files  ${chalk.dim(`${(zipSizeBytes / 1024).toFixed(1)} KB`)}`)
         }
 
-        if (result.removed.length > 0) {
-            console.log(chalk.yellow(`\nRemoved ${result.removed.length} stale job${result.removed.length === 1 ? "" : "s"} no longer in project:`))
-            for (const r of result.removed) {
-                console.log(chalk.dim(`  - ${r.name} (${r.id})`))
-            }
+        if (deployResult.removed.length > 0) {
+            log.warn(`Removed ${deployResult.removed.length} stale job${deployResult.removed.length === 1 ? "" : "s"}: ${deployResult.removed.map(r => r.name).join(", ")}`)
         }
+
+        outro("Done")
     } catch (error) {
-        spinner.stop()
+        s.stop(`Deploy failed: ${(error as Error).message}`)
         if (await tryRecoverStaleProject(error, { apiKey, config, hasRetried })) {
             return deploy(provider, entryFile, true)
         }
 
-        spinner.fail(chalk.red(`Deploy failed: ${(error as Error).message}`))
         if (isProjectGoneError(error)) {
             console.error(chalk.dim(`  Run ${chalk.cyan("terse attach")} to link this directory to an existing project.`))
         }
         process.exit(1)
+    } finally {
+        session.close()
     }
 }
 
@@ -189,5 +195,22 @@ function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string;
         sourceZipBase64: Buffer.from(zipData).toString("base64"),
         fileCount,
         zipSizeBytes: zipData.length
+    }
+}
+
+function getStageMessage(stage: SdkDeployStage): string {
+    switch (stage) {
+        case "UPLOADING_SOURCE":
+            return "Uploading source"
+        case "BUILDING_DEPENDENCY_IMAGE":
+            return "Building dependency image"
+        case "BUILDING_SOURCE_IMAGE":
+            return "Building source image"
+        case "CONFIGURING_AUTOMATIONS":
+            return "Configuring automations"
+        default: {
+            const exhaustiveCheck: never = stage
+            return exhaustiveCheck
+        }
     }
 }
