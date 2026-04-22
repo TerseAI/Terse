@@ -2,7 +2,6 @@ import { INTEGRATION_METADATA, IntegrationInstance, IntegrationType } from "ters
 
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../../integrations/abstract/IntegrationRegistry"
 import { db } from "../../prismaClient"
-import { AgentWithRelations } from "../../types/prisma"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getUserForOrg } from "../../utility/workos"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
@@ -45,7 +44,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
 
     const existingIntegrationsList = integrationInstanceDescriptions.length > 0 ? `\n- ${integrationInstanceDescriptions.join("\n- ")}` : "\nYou currently have no integrations connected."
 
-    const currentUserAgents: AgentWithRelations[] = await db().automations.findMany({
+    const currentUserAgents = await db().automations.findMany({
         where: {
             organization_id: organizationId
         },
@@ -57,9 +56,7 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
             },
             outputs: {
                 include: getOutputConfigInclude()
-            },
-            user: true,
-            project: true
+            }
         }
     })
 

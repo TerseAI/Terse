@@ -1,10 +1,35 @@
 import { RunContext, tool } from "@openai/agents"
 import { Tool } from "@openai/agents-core"
-import { ConfigData, CronTrigger, Trigger, buildRoute } from "terse-types"
+import {
+    AttioOutputConfigSchema,
+    ConfigData,
+    CronTrigger,
+    DatadogConfigSchema,
+    GitHubConfigSchema,
+    GitHubSkillConfigSchema,
+    GmailConfigSchema,
+    GmailDraftOutputConfigSchema,
+    GmailOutputConfigSchema,
+    LaunchDarklyConfigSchema,
+    LinearInputConfigSchema,
+    LinearOutputConfigSchema,
+    NotionConfigSchema,
+    PosthogConfigSchema,
+    SlackConfigSchema,
+    SlackOutputConfigSchema,
+    SnowflakeOutputConfigSchema,
+    TerseConfigSchema,
+    TimeTriggerConfigSchema,
+    Trigger,
+    WebhookInputConfigSchema,
+    WorkOSInputConfigSchema,
+    WorkOSOutputConfigSchema,
+    buildRoute
+} from "terse-types"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { RunHistoryStatus, TrackingParams } from "terse-types"
-import { AgentDraft, AgentNotificationSettings, User, agentCreateSchema, agentTriggerSchema } from "terse-types"
+import { AgentDraft, AgentNotificationSettings, User, agentNotificationSettingsSchema, agentPromptSchema, jobMetadataSchema } from "terse-types"
 import { z } from "zod"
 
 import { filterEvent } from "../../agent/AgentRunner/EventFilter"
@@ -46,6 +71,54 @@ async function getDefaultNotificationSettings(userId: string): Promise<AgentNoti
     }
 }
 
+const chatAgentTriggerConfigSchema = z.union([
+    GmailConfigSchema,
+    SlackConfigSchema,
+    LinearInputConfigSchema,
+    GitHubConfigSchema,
+    TimeTriggerConfigSchema,
+    WorkOSInputConfigSchema,
+    WebhookInputConfigSchema
+])
+
+const chatAgentTriggerSchema = z.object({
+    id: z.string(),
+    config: chatAgentTriggerConfigSchema
+})
+
+const chatAgentOutputConfigSchema = z.union([
+    SlackOutputConfigSchema,
+    GmailOutputConfigSchema,
+    GmailDraftOutputConfigSchema,
+    NotionConfigSchema,
+    LinearOutputConfigSchema,
+    GitHubSkillConfigSchema,
+    PosthogConfigSchema,
+    DatadogConfigSchema,
+    LaunchDarklyConfigSchema,
+    TerseConfigSchema,
+    WorkOSOutputConfigSchema,
+    AttioOutputConfigSchema,
+    SnowflakeOutputConfigSchema
+])
+
+const chatAgentOutputSchema = z.object({
+    id: z.string(),
+    config: chatAgentOutputConfigSchema
+})
+
+const chatAgentCreateSchema = z.object({
+    name: z.string(),
+    isActive: z.boolean(),
+    requireApproval: z.boolean(),
+    prompt: agentPromptSchema,
+    triggers: z.array(chatAgentTriggerSchema),
+    outputs: z.array(chatAgentOutputSchema),
+    notificationSettings: agentNotificationSettingsSchema.nullable(),
+    toolApprovals: z.array(z.string()).nullable(),
+    metadata: jobMetadataSchema.nullable()
+})
+
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         tool({ ...chatWebSearchTool, errorFunction: formatError }),
@@ -55,7 +128,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "Once you have all the information you need, you can use this tool to persist and apply the automation. You can use this to create and update agents. If you are creating, just leave the id empty.",
             parameters: z.object({
-                agent: agentCreateSchema,
+                agent: chatAgentCreateSchema,
                 id: z.string().nullable().describe("The ID of the agent to update. If not provided, a new agent will be created.")
             }),
             execute: async ({ agent, id }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
@@ -159,7 +232,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             parameters: z.object({
                 integrationId: z.string().describe("The integration ID to fetch sample events for"),
                 integrationType: z.enum(IntegrationType).describe("The integration type"),
-                triggerConfig: agentTriggerSchema.omit({ id: true }).describe("The trigger config to fetch sample events for"),
+                triggerConfig: chatAgentTriggerSchema.omit({ id: true }).describe("The trigger config to fetch sample events for"),
                 agentId: z.string().nullable().describe("Optional agent ID to preview filter results against"),
                 options: z
                     .object({
