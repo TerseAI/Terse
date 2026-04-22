@@ -109,8 +109,8 @@ async function fetchRawWithAuth(
     return res
 }
 
-export async function fetchWithAuthAndSession(urlPath: string, apiKey: string, sessionId: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "GET"): Promise<Response> {
-    return fetchRawWithAuth(urlPath, apiKey, { params, type, sessionId })
+export async function fetchWithAuthAndSession<T>(urlPath: string, apiKey: string, sessionId: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "GET"): Promise<T> {
+    return fetchWithAuth<T>(urlPath, apiKey, { params, type, sessionId })
 }
 
 export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "GET"): Promise<T> {

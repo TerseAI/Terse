@@ -80,21 +80,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             sourceZipBase64
         })
 
-        const res = await fetchWithAuthAndSession(ApiRoutes.SDK.DEPLOY, apiKey, session.sessionId, body, "POST")
-
-        const result = (await res.json().catch(() => ({}))) as Partial<SdkDeployResponseBody> & { errorCode?: string }
-
-        if (res.status === 404 && result.errorCode === "PROJECT_NOT_FOUND") {
-            throw new ApiError(404, result as Record<string, unknown>)
-        }
-
-        if (!res.ok || !result.success) {
-            s.stop(`Deploy failed: ${result.error ?? res.statusText}`)
-            if (result.details) log.error(String(result.details))
-            process.exit(1)
-        }
-
-        const deployResult = result as SdkDeployResponseBody
+        const deployResult = await fetchWithAuthAndSession<SdkDeployResponseBody>(ApiRoutes.SDK.DEPLOY, apiKey, session.sessionId, body, "POST")
 
         s.stop(`Deployed ${deployResult.results.length} job${deployResult.results.length === 1 ? "" : "s"}`)
 
