@@ -1,5 +1,5 @@
-import Bottleneck from "bottleneck"
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager"
+import Bottleneck from "bottleneck"
 
 import { gcp } from "../config/settings"
 import logger from "../logger"
@@ -222,9 +222,7 @@ export class SecretManagerClient {
                         continue
                     }
 
-                    const latestEnabledVersionNumber = Math.max(
-                        ...enabledVersions.map(version => this.extractVersionNumber(version.name)!)
-                    )
+                    const latestEnabledVersionNumber = Math.max(...enabledVersions.map(version => this.extractVersionNumber(version.name)!))
 
                     const versionsToDestroy = enabledVersions.filter(version => this.extractVersionNumber(version.name)! !== latestEnabledVersionNumber)
 

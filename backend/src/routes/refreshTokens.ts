@@ -10,23 +10,7 @@ import { getSecretManagerClient } from "../utility/secretManagerClient"
 
 const clearOldSecretVersionsRequestSchema = z.object({
     dryRun: z.preprocess(value => {
-        if (value === undefined) {
-            return false
-        }
-
-        if (typeof value === "string") {
-            const normalized = value.trim().toLowerCase()
-
-            if (normalized === "true" || normalized === "1" || normalized === "yes") {
-                return true
-            }
-
-            if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "") {
-                return false
-            }
-        }
-
-        return value
+        return value !== undefined && typeof value === "string" && value.trim().toLowerCase() === "true"
     }, z.boolean())
 })
 
