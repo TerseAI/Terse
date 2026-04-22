@@ -58,7 +58,8 @@ export async function buildChatAgentSystemPrompt(userId: string, organizationId:
             outputs: {
                 include: getOutputConfigInclude()
             },
-            user: true
+            user: true,
+            project: true
         }
     })
 

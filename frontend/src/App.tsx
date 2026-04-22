@@ -6,7 +6,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import BreadCrumb from "./components/BreadCrumb"
 import { AppSidebar } from "./components/Sidebar/Sidebar"
-import Spin from "./components/loading/Spin"
+import AppBootScreen from "./components/loading/AppBootScreen"
 import { ThemeProvider } from "./components/theme-provider"
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
@@ -22,6 +22,7 @@ import OAuthError from "./pages/OAuthError"
 import OAuthSuccess from "./pages/OAuthSuccess"
 import OrganizationCreationPage from "./pages/OrganizationCreationPage"
 import ProfilePage from "./pages/ProfilePage"
+import ProjectDetail from "./pages/Projects/ProjectDetail"
 import StatsPage from "./pages/Stats"
 import { ModelContextProvider } from "./services/ModelContextProvider"
 import { RunHistoryChatDrawerProvider } from "./services/RunHistoryChatDrawerContext"
@@ -43,6 +44,7 @@ function App() {
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
+                            <Route path={FrontendRoutes.PROJECTS.BY_ID} element={<ProjectDetail />} />
                             <Route path="activity" element={<ActivityPage />} />
                             <Route path="stats" element={<StatsPage />} />
                             <Route path="integrations" element={<IntegrationPage />} />
@@ -94,7 +96,7 @@ function Content() {
     }, [navigate, user?.organizationId])
 
     if (isLoading) {
-        return <Spin />
+        return <AppBootScreen />
     }
 
     // If user is not part of an organization, redirect to org creation
@@ -110,9 +112,7 @@ function Content() {
                         <AppLayout />
                     </div>
                 ) : (
-                    <div key="redirecting" className="h-full grid place-items-center">
-                        <Spin />
-                    </div>
+                    <AppBootScreen key="redirecting" />
                 )}
             </AnimatePresence>
         </>

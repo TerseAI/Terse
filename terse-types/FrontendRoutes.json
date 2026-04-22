@@ -16,6 +16,9 @@
         "ALERTS": "/app/agents/:id?tab=setup&section=alerts",
         "RUN_HISTORY": "/app/agents/:id?tab=history&runId=:runId"
     },
+    "PROJECTS": {
+        "BY_ID": "/app/projects/:id"
+    },
     "INTEGRATIONS": "/app/integrations",
     "ACTIVITY": "/app/activity",
     "STATS": "/app/stats",

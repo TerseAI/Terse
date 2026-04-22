@@ -5,7 +5,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { CreateJobParameters } from "terse-sdk"
-import { __getRegisteredTerseInstances, createSDKTrigger, getJobContext, runWithJobContext } from "terse-sdk"
+import { __getRegisteredTerseInstances, __resetRegisteredTerseInstances, createSDKTrigger, getJobContext, runWithJobContext } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
@@ -96,6 +96,12 @@ export class TypeScriptProvider implements LanguageProvider {
         }
 
         const entryPath = path.join(cwd, resolvedEntryFile)
+
+        // Clear any Terse instances registered by a previous call in the same
+        // process (e.g. the first attempt of a deploy that then retried after
+        // re-linking). tsImport re-executes the entry module on each call, so
+        // without this reset the retry would see both the old and new instances.
+        __resetRegisteredTerseInstances()
 
         try {
             await tsImport(entryPath, parentURL)

@@ -1,7 +1,5 @@
-import {
-    $Enums,
-    Prisma,
-    PrismaClient,
+import { $Enums, Prisma, PrismaClient } from "@prisma/client"
+import type {
     approval_slack_messages,
     automation_inputs,
     automation_linear_configs,
@@ -15,6 +13,8 @@ import {
     linear_integrations,
     notion_integrations,
     output_change_attributions,
+    project_deploys,
+    projects,
     run_history_raw_events,
     slack_integrations,
     user_notification_destinations,
@@ -25,6 +25,8 @@ import {
 
 // PascalCase aliases
 export type User = users
+
+export type Project = projects
 
 export type LinearIntegration = linear_integrations
 
@@ -148,6 +150,7 @@ export type AgentWithOutputRelations = AutomationWithOutputRelations // Alias fo
 export type AutomationWithPromptRelations = Prisma.automationsGetPayload<{
     include: {
         prompt: true
+        project: true
     }
 }>
 export type AgentWithPromptRelations = AutomationWithPromptRelations // Alias for rebranding (formerly ChannelWithPromptRelations)
@@ -169,6 +172,14 @@ export type AgentWithToolApprovalsRelations = AutomationWithToolApprovalsRelatio
 
 export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithToolApprovalsRelations>
 export type AgentWithRelations = AgentWithTriggerRelations & AgentWithOutputRelations & AgentWithPromptRelations & AgentWithToolApprovalsRelations
+
+export type SDKAgent = Omit<AgentWithRelations, "project"> & {
+    project: Project
+}
+
+export function isSDKAgent(agent: AgentWithRelations): agent is SDKAgent {
+    return agent.source === "SDK" && agent.project !== null
+}
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0]
@@ -193,7 +204,7 @@ export type RunHistoryRawEventWithRelations = Prisma.run_history_raw_eventsGetPa
 export type RunHistoryActionType = $Enums.RunHistoryActionType
 
 // Re-export the original types too
-export {
+export type {
     approval_slack_messages,
     automation_inputs,
     automation_linear_configs,
@@ -210,5 +221,7 @@ export {
     slack_integrations,
     user_notification_destinations,
     user_slack_integrations,
-    users
+    users,
+    project_deploys,
+    projects
 }

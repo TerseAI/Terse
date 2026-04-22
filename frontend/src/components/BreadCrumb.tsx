@@ -4,6 +4,7 @@ import { ChevronDownIcon } from "lucide-react"
 
 import { useAgent } from "@/hooks/api/useAgents"
 import { useAgents } from "@/hooks/api/useAgents"
+import { useProject } from "@/hooks/api/useProject"
 
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "./ui/breadcrumb"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu"
@@ -17,7 +18,8 @@ const routeLabels: Record<string, string> = {
     agents: "Agents",
     new: "New Agent",
     integrations: "Integrations",
-    notifications: "Notifications"
+    notifications: "Notifications",
+    projects: "Projects"
 }
 
 type BreadCrumbProps = {
@@ -34,6 +36,10 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
     // Get channel if we're on an channel detail page
     const channelId = params.id && location.pathname.includes("/agents/") && params.id !== "new" ? params.id : null
     const { agent, isLoading } = useAgent(channelId)
+
+    // Get project if we're on a project detail page
+    const projectPathId = params.id && location.pathname.includes("/projects/") ? params.id : null
+    const { project, isLoading: isProjectLoading } = useProject(projectPathId)
 
     // Build breadcrumb items
     const buildBreadcrumbItems = () => {
@@ -101,6 +107,19 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
                     )
                     break
                 }
+            } else if (segment === "projects" && appSegments[i + 1]) {
+                items.push(
+                    <BreadcrumbItem key="projects">
+                        <BreadcrumbPage>Projects</BreadcrumbPage>
+                    </BreadcrumbItem>
+                )
+                items.push(<BreadcrumbSeparator key="sep-project" />)
+                items.push(
+                    <BreadcrumbItem key="project-detail">
+                        <BreadcrumbPage>{isProjectLoading ? "Loading..." : project?.name || appSegments[i + 1]}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                )
+                break
             } else {
                 // Regular segment
                 const label = routeLabels[segment] || segment
@@ -132,9 +151,9 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
         return null
     }
 
-    // Agent detail pages manage their own header unless explicitly rendered inline there.
+    // Agent and project detail pages manage their own header unless explicitly rendered inline there.
     const appSegments = pathSegments.filter(seg => seg !== "app")
-    if (!inline && appSegments[0] === "agents" && appSegments.length >= 2) {
+    if (!inline && (appSegments[0] === "agents" || appSegments[0] === "projects") && appSegments.length >= 2) {
         return null
     }
 

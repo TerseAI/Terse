@@ -150,7 +150,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     }
 
     const handleVerifyServer = async () => {
-        if (!agent?.prompt?.remoteServerUrl) return
+        if (!agent?.metadata?.remoteServerUrl) return
 
         setIsVerifyingServer(true)
         try {
@@ -177,7 +177,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     }
 
     const triggers = agent.triggers ?? []
-    const hasSelfHostedJobUrl = agent.source === "SDK" && !!agent.prompt?.remoteServerUrl
+    const hasSelfHostedJobUrl = agent.source === "SDK" && !!agent.metadata?.remoteServerUrl
 
     return (
         <div className="flex h-full min-w-0 flex-col">

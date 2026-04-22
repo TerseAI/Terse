@@ -3,6 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
 
+import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfig, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { setStoredApiKey } from "../userConfig.js"
@@ -43,6 +44,24 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
         console.log(chalk.dim("  You can run `terse login` later to authenticate."))
     }
 
+    // Create the remote project and write terse.config.json (skip if the repo already has one, e.g. cloned from a teammate).
+    // attach mode defaults to self-hosted: the user's jobs run on their own infrastructure.
+    // We write the selfHosted flag plus an empty remoteServerUrl placeholder so the user knows where to fill it in.
+    if (result?.apiKey && !readProjectConfig(cwd)) {
+        const linkSpinner = ora("Creating Terse project").start()
+        try {
+            const config = await createRemoteProject(result.apiKey, projectName)
+            const selfHostedConfig = { ...config, selfHosted: true, remoteServerUrl: "" }
+            writeProjectConfig(cwd, selfHostedConfig)
+            linkSpinner.succeed(`Created Terse project (${config.projectId})`)
+            console.log(`  ${chalk.green("+")} ${PROJECT_CONFIG_FILENAME}`)
+            console.log(chalk.dim(`    Self-hosted mode enabled. Set ${chalk.cyan("remoteServerUrl")} in ${PROJECT_CONFIG_FILENAME} before running ${chalk.cyan("terse deploy")}.`))
+        } catch (error) {
+            linkSpinner.fail(`Failed to create Terse project: ${(error as Error).message}`)
+            console.log(chalk.dim(`  You'll need to create a ${PROJECT_CONFIG_FILENAME} manually before running ${chalk.cyan("terse deploy")}.`))
+        }
+    }
+
     await listAndPromptIntegrations()
 
     if (canGenerateFromCurrentDirectory(provider, cwd)) {
@@ -63,7 +82,7 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
     console.log(`  1. Install ${chalk.cyan("terse-sdk")} in this repo if you haven't already`)
     console.log(`  2. Add your Terse job definitions to ${chalk.cyan(provider.entryFile)} and import that file from your app startup path`)
     console.log(chalk.dim(`     If your self-hosted app keeps jobs in another file, use ${chalk.cyan("--entry-file")} with terse test, terse run, and terse deploy.`))
-    console.log(`  3. Set ${chalk.cyan("TERSE_REMOTE_SERVER_URL")} in ${chalk.cyan(".env")} before running ${chalk.cyan("terse deploy")}`)
+    console.log(`  3. Set ${chalk.cyan("remoteServerUrl")} in ${chalk.cyan(PROJECT_CONFIG_FILENAME)} before running ${chalk.cyan("terse deploy")}`)
     console.log(`  4. Run ${chalk.cyan("terse integrate")} to connect integrations`)
     console.log("")
 }
