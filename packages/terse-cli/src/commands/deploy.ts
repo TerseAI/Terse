@@ -7,20 +7,13 @@ import path from "node:path"
 import { ApiRoutes, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
-import { ApiError, readApiKeyOrBail } from "../api.js"
-import { BACKEND_URL, FRONTEND_URL } from "../config.js"
+import { ApiError, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
+import { FRONTEND_URL } from "../config.js"
 import { loadJobRegistry } from "../loadJob.js"
 import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfigOrBail, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { openSessionStream } from "../providers/shared/sessionStream.js"
-
-const stageMessages: Record<SdkDeployStage, string> = {
-    UPLOADING_SOURCE: "Uploading source",
-    BUILDING_DEPENDENCY_IMAGE: "Building dependency image",
-    BUILDING_SOURCE_IMAGE: "Building source image",
-    CONFIGURING_AUTOMATIONS: "Configuring automations"
-}
 
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
     const apiKey = readApiKeyOrBail({
@@ -71,7 +64,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     const session = await openSessionStream(apiKey, {
         onEvent: event => {
             if (event.type === "deploy_stage") {
-                s.message(stageMessages[event.stage])
+                s.message(getStageMessage(event.stage))
             }
         }
     })
@@ -87,15 +80,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             sourceZipBase64
         })
 
-        const res = await fetch(`${BACKEND_URL}${ApiRoutes.SDK.DEPLOY}`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-                "x-terse-session-id": session.sessionId
-            },
-            body: JSON.stringify(body)
-        })
+        const res = await fetchWithAuthAndSession(ApiRoutes.SDK.DEPLOY, apiKey, session.sessionId, body, "POST")
 
         const result = (await res.json().catch(() => ({}))) as Partial<SdkDeployResponseBody> & { errorCode?: string }
 
@@ -224,5 +209,22 @@ function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string;
         sourceZipBase64: Buffer.from(zipData).toString("base64"),
         fileCount,
         zipSizeBytes: zipData.length
+    }
+}
+
+function getStageMessage(stage: SdkDeployStage): string {
+    switch (stage) {
+        case "UPLOADING_SOURCE":
+            return "Uploading source"
+        case "BUILDING_DEPENDENCY_IMAGE":
+            return "Building dependency image"
+        case "BUILDING_SOURCE_IMAGE":
+            return "Building source image"
+        case "CONFIGURING_AUTOMATIONS":
+            return "Configuring automations"
+        default: {
+            const exhaustiveCheck: never = stage
+            return exhaustiveCheck
+        }
     }
 }
