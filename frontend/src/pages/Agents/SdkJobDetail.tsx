@@ -2,68 +2,31 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, Code, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Radar, Server, Trash2, Zap } from "lucide-react"
+import { Loader2, MoreVertical, Pause, Play, Radar, Server, Trash2, Zap } from "lucide-react"
+import { DateTime } from "luxon"
 import { toast } from "sonner"
-import { CONFIG_DETAILS, ConfigType } from "terse-types"
-import { FrontendRoutes } from "terse-types"
+import { CONFIG_DETAILS, ConfigType, FrontendRoutes } from "terse-types"
 import type { AgentTrigger, FrequencyUnit, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
+import type { Agent } from "terse-types/types"
 
-import BreadCrumb from "../../components/BreadCrumb"
 import ToolCallParameters from "../../components/ToolCallParameters"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../../components/ui/dropdown-menu"
-import { SidebarTrigger } from "../../components/ui/sidebar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip"
 import { useAgent, useAgentMutations } from "../../hooks/api/useAgents"
 import { useSampleEvents } from "../../hooks/api/useSampleEvents"
+import { cn } from "../../lib/utils"
 import { BackendProvider } from "../../services/backend"
+import { formatTimestamp } from "../../utility/timeUtils"
+import { CenteredMessage, Dot, PageFrame, SectionLabel } from "../Projects/ProjectDetailShared"
 
 import { IconForConfigType } from "./components/Integration"
 import { SdkJobServerCheckDialog } from "./components/SdkJobServerCheckDialog"
 import { WebhookTriggerCard } from "./components/WebhookTriggerCard"
-import { AgentFileExplorer } from "./tabs/AgentFileExplorer"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
-
-function formatWebMonitorFrequency(frequency: { number: number; unit: FrequencyUnit }) {
-    const amount = Math.max(1, frequency.number)
-    const { unit } = frequency
-    return amount === 1 ? `Every ${unit}` : `Every ${amount} ${unit}s`
-}
-
-function WebMonitorTriggerCard({ trigger }: { trigger: AgentTrigger }) {
-    if (trigger.config.configType !== ConfigType.WEBMONITOR) {
-        return null
-    }
-
-    const { query, frequency, outputSchema } = trigger.config
-
-    return (
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-3 py-2">
-                <Radar className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/50">Web Monitor</span>
-                <span className="ml-auto text-[11px] font-medium tabular-nums text-muted-foreground">{formatWebMonitorFrequency(frequency)}</span>
-            </div>
-            <div className="px-3 py-3">
-                <p className="text-sm leading-relaxed text-foreground break-words">{query}</p>
-            </div>
-            {outputSchema ? (
-                <div className="border-t border-border/40 px-3 pb-3 pt-2.5">
-                    <ToolCallParameters
-                        parameters={JSON.stringify({
-                            ...(outputSchema.jsonSchema.properties ? { properties: outputSchema.jsonSchema.properties } : {}),
-                            ...(outputSchema.jsonSchema.required ? { required: outputSchema.jsonSchema.required } : {})
-                        })}
-                        label="Structured output"
-                        collapsed={true}
-                    />
-                </div>
-            ) : null}
-        </div>
-    )
-}
 
 export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const navigate = useNavigate()
@@ -126,7 +89,6 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
             return
         }
 
-        // Fall back to manual cron trigger for time-only jobs
         const triggerId = agent.triggers?.[0]?.id
         if (!triggerId) {
             toast.error("No trigger configured for this job")
@@ -136,7 +98,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
         try {
             await BackendProvider.triggerManually(triggerId, "Manual trigger from SDK job detail page")
             toast.success("Job triggered")
-            setSelectedTab(1)
+            setSelectedTab(0)
         } catch {
             toast.error("Failed to trigger job")
         } finally {
@@ -146,7 +108,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
     const handleSelectEvent = async (event: SerializedEvent) => {
         await triggerWithEvent(event)
-        setSelectedTab(1)
+        setSelectedTab(0)
     }
 
     const handleVerifyServer = async () => {
@@ -168,133 +130,46 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
     if (isLoading || !agent) {
         return (
-            <div className="flex h-full items-center justify-center" aria-busy="true">
-                <div className="text-muted-foreground text-sm" role="status">
-                    Loading...
-                </div>
-            </div>
+            <PageFrame>
+                <CenteredMessage text="Loading job…" />
+            </PageFrame>
         )
     }
 
     const triggers = agent.triggers ?? []
     const hasSelfHostedJobUrl = agent.source === "SDK" && !!agent.metadata?.remoteServerUrl
+    const triggerCount = triggers.length
+    const canTrigger = agent.isActive && triggerCount > 0
 
     return (
-        <div className="flex h-full min-w-0 flex-col">
-            {/* Header */}
-            <div className="flex items-center gap-4 px-2 py-2.5">
-                <SidebarTrigger />
-                <div className="hidden sm:block">
-                    <BreadCrumb inline />
-                </div>
-            </div>
+        <TooltipProvider delayDuration={200}>
+            <PageFrame>
+                <JobHeading
+                    agent={agent}
+                    triggerCount={triggerCount}
+                    canTrigger={canTrigger}
+                    isBusy={isBusy}
+                    isFetchingSamples={isFetchingSamples}
+                    onTriggerNow={handleTriggerNow}
+                    onToggleActive={handleToggleActive}
+                    onDelete={() => setShowDeleteDialog(true)}
+                />
 
-            <div className="flex items-center gap-3 px-4 pb-2">
-                <h1 className="text-lg font-semibold truncate">{agent.name}</h1>
-                <Badge variant="outline" className={agent.isActive ? "text-success border-success" : "text-muted-foreground"}>
-                    {agent.isActive ? "Active" : "Paused"}
-                </Badge>
-                <div className="ml-auto flex items-center gap-2">
-                    {hasSelfHostedJobUrl && (
-                        <Button variant="outline" size="sm" onClick={handleVerifyServer} disabled={isVerifyingServer}>
-                            {isVerifyingServer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Server className="h-4 w-4" />}
-                            Verify Server
-                        </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={handleTriggerNow} disabled={isBusy || !agent.isActive || !agent.triggers?.length}>
-                        {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                        {isFetchingSamples ? "Fetching events…" : "Trigger Now"}
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={handleToggleActive}>
-                                {agent.isActive ? (
-                                    <>
-                                        <Pause className="h-4 w-4" />
-                                        Pause Job
-                                    </>
-                                ) : (
-                                    <>
-                                        <Play className="h-4 w-4" />
-                                        Resume Job
-                                    </>
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-                                <Trash2 className="h-4 w-4" />
-                                Delete Job
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
+                <TriggersSection triggers={triggers} />
 
-            {/* Tabs */}
-            <TabGroup selectedIndex={selectedTab} onChange={setSelectedTab} className="flex flex-1 flex-col min-h-0 pl-2">
-                <TabList className="flex gap-2 border-b border-input items-center pt-2">
-                    <Tab
-                        className={({ selected }) =>
-                            `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
-                        }
-                    >
-                        <Info className="h-4 w-4" />
-                        <span>Overview</span>
-                    </Tab>
-                    <Tab
-                        className={({ selected }) =>
-                            `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
-                        }
-                    >
-                        <Clock className="h-4 w-4" />
-                        <span>Activity</span>
-                    </Tab>
-                    <Tab
-                        className={({ selected }) =>
-                            `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
-                        }
-                    >
-                        <Lightbulb className="h-4 w-4" />
-                        <span>Improvements</span>
-                        {pendingCount > 0 && (
-                            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">{pendingCount}</span>
-                        )}
-                    </Tab>
-                    <Tab
-                        className={({ selected }) =>
-                            `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"}`
-                        }
-                    >
-                        <Code className="h-4 w-4" />
-                        <span>Code</span>
-                    </Tab>
-                </TabList>
+                {hasSelfHostedJobUrl ? (
+                    <EnvironmentSection remoteServerUrl={agent.metadata?.remoteServerUrl ?? null} isVerifying={isVerifyingServer} onVerify={handleVerifyServer} />
+                ) : null}
 
-                <div className={selectedTab === 3 ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "min-h-0 flex-1 overflow-y-auto"}>
-                    {selectedTab === 0 ? (
-                        <OverviewTab triggers={triggers} updatedAt={agent.updatedAt} isActive={agent.isActive} />
-                    ) : selectedTab === 1 ? (
-                        <AgentRunHistoryTab agentId={agentId} />
-                    ) : selectedTab === 2 ? (
-                        <AgentImprovementsTab agentId={agentId} source="SDK" />
-                    ) : (
-                        <AgentFileExplorer agentId={agentId} />
-                    )}
-                </div>
-            </TabGroup>
+                <ActivitySection agentId={agentId} pendingCount={pendingCount} selectedTab={selectedTab} onTabChange={setSelectedTab} />
+            </PageFrame>
 
-            {/* Delete dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={open => !open && setShowDeleteDialog(false)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Job</DialogTitle>
+                        <DialogTitle>Delete job</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete <span className="font-semibold">{agent.name}</span>? This action cannot be undone and will remove all associated run history.
+                            This will permanently delete <span className="text-foreground font-semibold">{agent.name}</span> and all associated run history. This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -302,7 +177,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                             Cancel
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                            {isDeleting ? "Deleting..." : "Delete Job"}
+                            {isDeleting ? "Deleting…" : "Delete job"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -310,7 +185,6 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
             <SdkJobServerCheckDialog open={showServerCheckDialog} result={serverCheckResult} onClose={() => setShowServerCheckDialog(false)} />
 
-            {/* Sample events picker dialog */}
             <SampleEventsDialog
                 events={sampleEvents}
                 open={showSamplesDialog}
@@ -319,7 +193,277 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                 onSelect={handleSelectEvent}
                 onClose={closeSamplesDialog}
             />
+        </TooltipProvider>
+    )
+}
+
+function JobHeading({
+    agent,
+    triggerCount,
+    canTrigger,
+    isBusy,
+    isFetchingSamples,
+    onTriggerNow,
+    onToggleActive,
+    onDelete
+}: {
+    agent: Agent
+    triggerCount: number
+    canTrigger: boolean
+    isBusy: boolean
+    isFetchingSamples: boolean
+    onTriggerNow: () => void
+    onToggleActive: () => void
+    onDelete: () => void
+}) {
+    const updatedAbsolute = agent.updatedAt ? DateTime.fromISO(agent.updatedAt).toFormat("LLL d, yyyy · h:mm:ss a") : null
+    const updatedRelative = agent.updatedAt ? formatTimestamp(agent.updatedAt) : null
+    const primaryTriggerLabel = primaryTriggerSummary(agent.triggers ?? [])
+
+    return (
+        <header>
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
+                <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <h1 className="text-foreground truncate text-[clamp(1.625rem,2.5vw,2rem)] leading-tight font-semibold tracking-tight">{agent.name}</h1>
+                        {agent.isActive ? <ActiveBadge /> : <PausedBadge />}
+                    </div>
+
+                    <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                        <span>Deployed via SDK</span>
+                        {triggerCount === 1 && primaryTriggerLabel ? (
+                            <>
+                                <Dot />
+                                <span>
+                                    Triggered by <span className="text-foreground font-medium">{primaryTriggerLabel}</span>
+                                </span>
+                            </>
+                        ) : triggerCount > 1 ? (
+                            <>
+                                <Dot />
+                                <span className="tabular-nums">{triggerCount} triggers</span>
+                            </>
+                        ) : null}
+                        {updatedRelative ? (
+                            <>
+                                <Dot />
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="tabular-nums cursor-default">Updated {updatedRelative}</span>
+                                    </TooltipTrigger>
+                                    {updatedAbsolute ? <TooltipContent>{updatedAbsolute}</TooltipContent> : null}
+                                </Tooltip>
+                            </>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={onTriggerNow} disabled={isBusy || !canTrigger} title={!canTrigger ? "Requires an active job with at least one trigger" : undefined}>
+                        {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                        {isFetchingSamples ? "Fetching events…" : "Trigger now"}
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label="Job actions">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={onToggleActive}>
+                                {agent.isActive ? (
+                                    <>
+                                        <Pause className="h-4 w-4" />
+                                        Pause job
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play className="h-4 w-4" />
+                                        Resume job
+                                    </>
+                                )}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                                <Trash2 className="h-4 w-4" />
+                                Delete job
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+        </header>
+    )
+}
+
+function ActiveBadge() {
+    return (
+        <Badge variant="secondary" className="text-foreground shrink-0">
+            <span aria-hidden className="bg-success relative flex h-1.5 w-1.5 rounded-full">
+                <span className="bg-success absolute inset-0 animate-ping rounded-full opacity-60" />
+            </span>
+            Active
+        </Badge>
+    )
+}
+
+function PausedBadge() {
+    return (
+        <Badge variant="secondary" className="text-muted-foreground shrink-0">
+            <span aria-hidden className="bg-muted-foreground/50 h-1.5 w-1.5 rounded-full" />
+            Paused
+        </Badge>
+    )
+}
+
+function primaryTriggerSummary(triggers: AgentTrigger[]): string | null {
+    const first = triggers[0]
+    if (!first) return null
+    const type = first.config.configType
+    if (type === ConfigType.WEBHOOK_INPUT) return "Webhook"
+    if (type === ConfigType.WEBMONITOR) return "Web monitor"
+    const details = CONFIG_DETAILS[type as keyof typeof CONFIG_DETAILS]
+    return details?.name ?? null
+}
+
+function TriggersSection({ triggers }: { triggers: AgentTrigger[] }) {
+    return (
+        <section className="mt-8">
+            <SectionLabel>Triggers</SectionLabel>
+            {triggers.length === 0 ? (
+                <TriggersEmpty />
+            ) : (
+                <div className="space-y-2">
+                    {triggers.map(trigger => {
+                        const configType = trigger.config.configType
+
+                        if (configType === ConfigType.WEBHOOK_INPUT) {
+                            return <WebhookTriggerCard key={trigger.id} trigger={trigger} />
+                        }
+
+                        if (configType === ConfigType.WEBMONITOR) {
+                            return <WebMonitorTriggerCard key={trigger.id} trigger={trigger} />
+                        }
+
+                        const details = CONFIG_DETAILS[configType as keyof typeof CONFIG_DETAILS]
+                        return (
+                            <div key={trigger.id} className="border-border/60 bg-muted/10 flex items-center gap-3 rounded-lg border px-4 py-3">
+                                <div className="h-6 w-6 shrink-0">
+                                    <IconForConfigType type={configType} />
+                                </div>
+                                <span className="text-foreground text-sm font-medium">{details?.name ?? configType}</span>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+        </section>
+    )
+}
+
+function TriggersEmpty() {
+    return (
+        <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
+            <p className="text-foreground text-sm">No triggers configured.</p>
+            <p className="text-muted-foreground mt-1 text-xs">Add a trigger in your SDK project to connect this job to events or schedules.</p>
         </div>
+    )
+}
+
+function formatWebMonitorFrequency(frequency: { number: number; unit: FrequencyUnit }) {
+    const amount = Math.max(1, frequency.number)
+    const { unit } = frequency
+    return amount === 1 ? `Every ${unit}` : `Every ${amount} ${unit}s`
+}
+
+function WebMonitorTriggerCard({ trigger }: { trigger: AgentTrigger }) {
+    if (trigger.config.configType !== ConfigType.WEBMONITOR) {
+        return null
+    }
+
+    const { query, frequency, outputSchema } = trigger.config
+
+    return (
+        <div className="border-border/60 bg-card overflow-hidden rounded-lg border">
+            <div className="border-border/60 bg-muted/30 flex items-center gap-2 border-b px-4 py-2">
+                <Radar className="text-muted-foreground/60 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="text-muted-foreground/70 text-[10px] font-semibold tracking-[0.14em] uppercase">Web monitor</span>
+                <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">{formatWebMonitorFrequency(frequency)}</span>
+            </div>
+            <div className="px-4 py-3">
+                <p className="text-foreground text-sm leading-relaxed break-words">{query}</p>
+            </div>
+            {outputSchema ? (
+                <div className="border-border/40 border-t px-4 pt-2.5 pb-3">
+                    <ToolCallParameters
+                        parameters={JSON.stringify({
+                            ...(outputSchema.jsonSchema.properties ? { properties: outputSchema.jsonSchema.properties } : {}),
+                            ...(outputSchema.jsonSchema.required ? { required: outputSchema.jsonSchema.required } : {})
+                        })}
+                        label="Structured output"
+                        collapsed={true}
+                    />
+                </div>
+            ) : null}
+        </div>
+    )
+}
+
+function EnvironmentSection({ remoteServerUrl, isVerifying, onVerify }: { remoteServerUrl: string | null; isVerifying: boolean; onVerify: () => void }) {
+    return (
+        <section className="mt-8">
+            <div className="mb-3 flex items-center justify-between gap-4">
+                <SectionLabel className="mb-0">Environment</SectionLabel>
+                <Button variant="outline" size="sm" onClick={onVerify} disabled={isVerifying}>
+                    {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Server className="h-3.5 w-3.5" />}
+                    Verify server
+                </Button>
+            </div>
+            <div className="border-border/60 bg-muted/10 overflow-hidden rounded-lg border">
+                <div className="px-4 py-3">
+                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">Remote server</div>
+                    <div className="mt-1.5 text-sm">
+                        {remoteServerUrl ? <code className="text-foreground font-mono text-[13px] break-all">{remoteServerUrl}</code> : <span className="text-muted-foreground">—</span>}
+                    </div>
+                </div>
+            </div>
+        </section>
+    )
+}
+
+function ActivitySection({ agentId, pendingCount, selectedTab, onTabChange }: { agentId: string; pendingCount: number; selectedTab: number; onTabChange: (i: number) => void }) {
+    return (
+        <section className="mt-10">
+            <TabGroup selectedIndex={selectedTab} onChange={onTabChange}>
+                <TabList className="border-border/60 flex items-baseline gap-6 border-b">
+                    <StreamTab label="Activity" />
+                    <StreamTab label="Improvements" badge={pendingCount} />
+                </TabList>
+
+                <div className="pt-5">
+                    {selectedTab === 0 ? <AgentRunHistoryTab agentId={agentId} /> : <AgentImprovementsTab agentId={agentId} source="SDK" />}
+                </div>
+            </TabGroup>
+        </section>
+    )
+}
+
+function StreamTab({ label, badge }: { label: string; badge?: number }) {
+    return (
+        <Tab
+            className={({ selected }) =>
+                cn(
+                    "group focus:outline-none",
+                    "relative -mb-px inline-flex items-center gap-2 border-b-2 pb-3 text-[10px] font-semibold tracking-[0.18em] uppercase transition-colors",
+                    selected ? "text-foreground border-foreground" : "text-muted-foreground hover:text-foreground border-transparent"
+                )
+            }
+        >
+            <span>{label}</span>
+            {badge && badge > 0 ? (
+                <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">{badge}</span>
+            ) : null}
+        </Tab>
     )
 }
 
@@ -340,9 +484,9 @@ function SampleEventsDialog({
 }) {
     return (
         <Dialog open={open} onOpenChange={v => !v && !isFetching && onClose()}>
-            <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+            <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col">
                 <DialogHeader>
-                    <DialogTitle>{isFetching ? "Fetching Sample Events…" : "Select a Sample Event"}</DialogTitle>
+                    <DialogTitle>{isFetching ? "Fetching sample events…" : "Select a sample event"}</DialogTitle>
                     <DialogDescription>
                         {isFetching
                             ? "Pulling recent events from your connected integrations. This may take a few seconds."
@@ -350,16 +494,16 @@ function SampleEventsDialog({
                     </DialogDescription>
                 </DialogHeader>
                 {isFetching ? (
-                    <div className="flex flex-col items-center justify-center py-12 gap-3">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Fetching sample events…</p>
+                    <div className="flex flex-col items-center justify-center gap-3 py-12">
+                        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+                        <p className="text-muted-foreground text-sm">Fetching sample events…</p>
                     </div>
                 ) : (
-                    <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
+                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                         {events.map((event, i) => (
                             <button
                                 key={i}
-                                className="w-full text-left rounded-md border border-input p-3 space-y-1.5 hover:bg-accent/50 transition-colors disabled:opacity-50"
+                                className="border-border/60 hover:bg-muted/40 w-full space-y-1.5 rounded-lg border p-3 text-left transition-colors disabled:opacity-50"
                                 onClick={() => onSelect(event)}
                                 disabled={isTriggering}
                             >
@@ -367,10 +511,10 @@ function SampleEventsDialog({
                                     <Badge variant="outline" className="text-xs">
                                         {event.integrationType}
                                     </Badge>
-                                    <span className="text-sm font-medium truncate">{event.debugLog}</span>
-                                    <Zap className="h-3.5 w-3.5 text-muted-foreground ml-auto shrink-0" />
+                                    <span className="truncate text-sm font-medium">{event.debugLog}</span>
+                                    <Zap className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" />
                                 </div>
-                                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-32 overflow-y-auto bg-muted/50 rounded p-2">{event.formattedContent}</pre>
+                                <pre className="text-muted-foreground bg-muted/50 max-h-32 overflow-y-auto rounded-md p-2 text-xs break-words whitespace-pre-wrap">{event.formattedContent}</pre>
                             </button>
                         ))}
                     </div>
@@ -382,63 +526,5 @@ function SampleEventsDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    )
-}
-
-function OverviewTab({ triggers, updatedAt, isActive }: { triggers: AgentTrigger[]; updatedAt: string | null; isActive: boolean }) {
-    return (
-        <div className="p-4 space-y-6 max-w-2xl">
-            {/* Status */}
-            <div className="space-y-1.5">
-                <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                <p className="text-sm">{isActive ? "Active — this job is listening for events and running automatically." : "Paused — this job will not process any events until resumed."}</p>
-            </div>
-
-            {/* Triggers */}
-            <div className="space-y-1.5">
-                <h3 className="text-sm font-medium text-muted-foreground">Triggers</h3>
-                {triggers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No triggers configured.</p>
-                ) : (
-                    <div className="space-y-2">
-                        {triggers.map(trigger => {
-                            const configType = trigger.config.configType
-
-                            if (configType === ConfigType.WEBHOOK_INPUT) {
-                                return <WebhookTriggerCard key={trigger.id} trigger={trigger} />
-                            }
-
-                            if (configType === ConfigType.WEBMONITOR) {
-                                return <WebMonitorTriggerCard key={trigger.id} trigger={trigger} />
-                            }
-
-                            const details = CONFIG_DETAILS[configType as keyof typeof CONFIG_DETAILS]
-                            return (
-                                <div key={trigger.id} className="flex items-center gap-2 rounded-md border border-input p-2.5">
-                                    <div className="w-6 h-6 shrink-0">
-                                        <IconForConfigType type={configType} />
-                                    </div>
-                                    <span className="text-sm">{details?.name ?? configType}</span>
-                                </div>
-                            )
-                        })}
-                    </div>
-                )}
-            </div>
-
-            {/* Source */}
-            <div className="space-y-1.5">
-                <h3 className="text-sm font-medium text-muted-foreground">Source</h3>
-                <p className="text-sm">Deployed via SDK. Configuration is managed in code.</p>
-            </div>
-
-            {/* Last deployed */}
-            {updatedAt && (
-                <div className="space-y-1.5">
-                    <h3 className="text-sm font-medium text-muted-foreground">Last Deployed</h3>
-                    <p className="text-sm">{new Date(updatedAt).toLocaleString()}</p>
-                </div>
-            )}
-        </div>
     )
 }
