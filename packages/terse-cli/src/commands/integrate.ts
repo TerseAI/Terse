@@ -1,11 +1,11 @@
 import { confirm, input, password, select } from "@inquirer/prompts"
 import chalk from "chalk"
-import { spawn } from "node:child_process"
 import ora from "ora"
 import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
 
 import { readApiKey, readApiKeyOrBail } from "../api.js"
 import { ConfigurationFieldDefinition, FormFieldDefinition, fetchInstallationUrl, fetchIntegrationFields, fetchIntegrations, pollForConnection, submitIntegrationForm } from "../integrationApi.js"
+import { openUrlInBrowser } from "../openBrowser.js"
 
 import { generate } from "./generate.js"
 
@@ -199,7 +199,7 @@ async function handleOAuthIntegration(apiKey: string, integrationType: string, c
 
     console.log(`\n  ${chalk.bold("Complete authorization in your browser:")}\n`)
     console.log(`  ${chalk.cyan(installationDetails.oauthUrl)}\n`)
-    openInBrowser(installationDetails.oauthUrl)
+    openUrlInBrowser(installationDetails.oauthUrl)
 
     const pollSpinner = ora("Waiting for authorization to complete").start()
     const connected = await pollForConnection(apiKey, integrationType)
@@ -209,25 +209,6 @@ async function handleOAuthIntegration(apiKey: string, integrationType: string, c
         return true
     } else {
         pollSpinner.fail("Authorization timed out — please try again")
-        return false
-    }
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function openInBrowser(url: string): boolean {
-    try {
-        if (process.platform === "darwin") {
-            spawn("open", [url], { detached: true, stdio: "ignore" }).unref()
-            return true
-        }
-        if (process.platform === "win32") {
-            spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore" }).unref()
-            return true
-        }
-        spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref()
-        return true
-    } catch {
         return false
     }
 }

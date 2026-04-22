@@ -81,7 +81,7 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
     console.log("  Next steps:\n")
     console.log(`  1. Install ${chalk.cyan("terse-sdk")} in this repo if you haven't already`)
     console.log(`  2. Add your Terse job definitions to ${chalk.cyan(provider.entryFile)} and import that file from your app startup path`)
-    console.log(chalk.dim(`     If your self-hosted app keeps jobs in another file, use ${chalk.cyan("--entry-file")} with terse test, terse run, and terse deploy.`))
+    console.log(chalk.dim(`     If your self-hosted app keeps jobs in another file, use ${chalk.cyan("--entry-file")} with terse test and terse deploy.`))
     console.log(`  3. Set ${chalk.cyan("remoteServerUrl")} in ${chalk.cyan(PROJECT_CONFIG_FILENAME)} before running ${chalk.cyan("terse deploy")}`)
     console.log(`  4. Run ${chalk.cyan("terse integrate")} to connect integrations`)
     console.log("")
