@@ -43,7 +43,10 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     const { remoteServerUrl, jobs, sourceZipBase64, projectId } = sdkDeployRequestBodySchema.parse(req.body)
 
     const project = await db().projects.findUnique({
-        where: { id: projectId },
+        where: {
+            id: projectId,
+            organization_id: organizationId
+        },
         select: {
             name: true,
             signing_secret: true,
@@ -52,7 +55,11 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     })
 
     if (!project) {
-        return res.status(404).json({ success: false, error: "Project not found! Make sure you are deploying to the correct project." })
+        return res.status(404).json({
+            success: false,
+            error: "Project not found. The project linked in terse.config.json no longer exists in this organization.",
+            errorCode: "PROJECT_NOT_FOUND"
+        })
     }
 
     if (!sourceZipBase64 && !remoteServerUrl) {

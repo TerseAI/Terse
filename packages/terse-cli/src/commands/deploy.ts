@@ -1,18 +1,19 @@
+import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
 import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
 import ora from "ora"
 import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
-import type { SdkDeployResponseBody } from "terse-types"
+import type { SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
+import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { loadJobRegistry } from "../loadJob.js"
-import { PROJECT_CONFIG_FILENAME, readProjectConfigOrBail } from "../projectConfig.js"
+import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfigOrBail, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
-export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string) {
+export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
     const apiKey = readApiKeyOrBail({
         title: "Error: Not authenticated.",
         detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
@@ -119,9 +120,36 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             }
         }
     } catch (error) {
+        spinner.stop()
+        if (await tryRecoverStaleProject(error, { apiKey, config, hasRetried })) {
+            return deploy(provider, entryFile, true)
+        }
+
         spinner.fail(chalk.red(`Deploy failed: ${(error as Error).message}`))
+        if (isProjectGoneError(error)) {
+            console.error(chalk.dim(`  Run ${chalk.cyan("terse attach")} to link this directory to an existing project.`))
+        }
         process.exit(1)
     }
+}
+
+function isProjectGoneError(error: unknown): error is ApiError {
+    return error instanceof ApiError && error.status === 404 && error.body.errorCode === "PROJECT_NOT_FOUND"
+}
+
+async function tryRecoverStaleProject(error: unknown, args: { apiKey: string; config: TerseProjectConfig; hasRetried: boolean }): Promise<boolean> {
+    if (!isProjectGoneError(error)) return false
+    if (args.hasRetried) return false
+    if (!process.stdout.isTTY || !process.stdin.isTTY) return false
+
+    console.log(chalk.yellow(`\n  Project "${args.config.name}" (${args.config.projectId}) no longer exists.`))
+    const proceed = await confirm({ message: `Create a new project and re-link this directory?`, default: false })
+    if (!proceed) process.exit(1)
+
+    const newProject = await createRemoteProject(args.apiKey, args.config.name)
+    writeProjectConfig(process.cwd(), { ...args.config, projectId: newProject.projectId })
+    console.log(chalk.green(`  Re-linked to ${newProject.projectId}. Retrying deploy…\n`))
+    return true
 }
 
 function collectFiles(dir: string, baseDir: string, provider: LanguageProvider): Record<string, Uint8Array> {

@@ -8,6 +8,17 @@ import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHis
 import { BACKEND_URL } from "./config.js"
 import { getStoredApiKey } from "./userConfig.js"
 
+/** Thrown by `fetchWithAuth` on any non-2xx. Exposes `status` and the parsed body so callers can branch on specific failures. */
+export class ApiError extends Error {
+    constructor(
+        readonly status: number,
+        readonly body: Record<string, unknown>
+    ) {
+        super(`HTTP ${status} — ${body.error || JSON.stringify(body)}`)
+        this.name = "ApiError"
+    }
+}
+
 let dotenvLoadedFor: string | null = null
 
 function ensureDotenvLoaded(cwd: string = process.cwd()): void {
@@ -89,7 +100,7 @@ export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: 
 
     if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
-        throw new Error(`${res.status} ${res.statusText} — ${urlPath}\n  ${body.error || JSON.stringify(body)}`)
+        throw new ApiError(res.status, body)
     }
 
     return res.json() as Promise<T>
