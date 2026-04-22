@@ -27,7 +27,7 @@ Scaffold a new Terse project with boilerplate code and config.
 If you run `terse init` inside an existing npm project with no project name, the CLI uses attach mode instead of overwriting `package.json`. In attach mode it asks whether you want to self-host via `TERSE_JOB_URL` or use serverless deploys, and it warns that serverless deploys upload a zip of the current project directory to GCS.
 
 TypeScript projects register jobs in `src/terse.jobs.ts`. In existing apps, import that file from your normal startup path.
-If your self-hosted app keeps jobs in another file, pass `--entry-file` to `terse test`, `terse run`, or `terse deploy`.
+If your self-hosted app keeps jobs in another file, pass `--entry-file` to `terse test` or `terse deploy`.
 
 ### `terse generate`
 
@@ -36,15 +36,6 @@ Generate TypeScript types for your connected integrations (creates `terse.genera
 ### `terse integrate`
 
 Open the integrations page in the Terse Web UI to connect services like GitHub, Slack, Linear, etc.
-
-### `terse run [job-name]`
-
-Execute a job's `onTrigger` handler locally with a serialized event payload.
-
-```bash
-terse run my-job --event-file ./event.json
-terse run my-job --entry-file src/server.py --event-file ./event.json
-```
 
 ### `terse test [job-name]`
 
