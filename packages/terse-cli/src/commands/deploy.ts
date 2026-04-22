@@ -1,17 +1,50 @@
+<<<<<<< Updated upstream
 import { confirm } from "@inquirer/prompts"
+=======
+import { intro, log, note, outro, spinner } from "@clack/prompts"
+>>>>>>> Stashed changes
 import chalk from "chalk"
 import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
+<<<<<<< Updated upstream
 import ora from "ora"
 import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
 import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
+=======
+import { ApiRoutes, SdkDeployResponseBody, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types"
+
+import { readApiKeyOrBail, readEnvVar } from "../api.js"
+import { BACKEND_URL, FRONTEND_URL } from "../config.js"
+>>>>>>> Stashed changes
 import { loadJobRegistry } from "../loadJob.js"
 import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfigOrBail, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
+import { openSessionStream } from "../providers/shared/sessionStream.js"
+
+const stageMessages: Record<SdkDeployStage, string> = {
+    UPLOADING_SOURCE: "Uploading source",
+    BUILDING_DEPENDENCY_IMAGE: "Building dependency image",
+    BUILDING_SOURCE_IMAGE: "Building source image",
+    CONFIGURING_AUTOMATIONS: "Configuring automations"
+}
+
+function osc8Link(text: string, url: string): string {
+    return `\u001B]8;;${url}\u0007${text}\u001B]8;;\u0007`
+}
+
+function supportsHyperlinks(): boolean {
+    if (process.env.FORCE_HYPERLINK) return process.env.FORCE_HYPERLINK !== "0"
+    const { TERM_PROGRAM, VTE_VERSION } = process.env
+    return ["iTerm.app", "WezTerm", "vscode", "Hyper"].includes(TERM_PROGRAM ?? "") || !!VTE_VERSION
+}
+
+function agentLink(url: string): string {
+    return supportsHyperlinks() ? osc8Link("Open →", url) : chalk.dim(url)
+}
 
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
     const apiKey = readApiKeyOrBail({
@@ -25,6 +58,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     const registry = await loadJobRegistry(provider, entryFile)
     const jobs = [...registry.values()]
 
+<<<<<<< Updated upstream
     // Self-hosted mode is driven entirely by terse.config.json (selfHosted + remoteServerUrl).
     const remoteServerUrl = config.remoteServerUrl?.trim() || undefined
 
@@ -41,6 +75,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         process.exit(1)
     }
 
+=======
+    const remoteServerUrl = readEnvVar("TERSE_REMOTE_SERVER_URL") ?? readEnvVar("TERSE_JOB_URL")
+>>>>>>> Stashed changes
     const isUrlMode = !!remoteServerUrl
 
     let sourceZipBase64: string | undefined
@@ -54,7 +91,18 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         zipSizeBytes = zipPayload.zipSizeBytes
     }
 
-    const spinner = ora(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}...`).start()
+    intro(`terse deploy`)
+
+    const s = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
+    s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
+
+    const session = await openSessionStream(apiKey, {
+        onEvent: event => {
+            if (event.type === "deploy_stage") {
+                s.message(stageMessages[event.stage])
+            }
+        }
+    })
 
     try {
         const body = sdkDeployRequestBodySchema.parse({
@@ -67,31 +115,41 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             sourceZipBase64
         })
 
-        const result = await fetchWithAuth<SdkDeployResponseBody>(ApiRoutes.SDK.DEPLOY, apiKey, body, "POST")
+        const res = await fetch(`${BACKEND_URL}${ApiRoutes.SDK.DEPLOY}`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "x-terse-session-id": session.sessionId
+            },
+            body: JSON.stringify(body)
+        })
 
-        if (!result.success) {
-            spinner.fail(chalk.red(`Deploy failed: ${result.error}`))
-            if (result.details) {
-                console.error(chalk.dim(`  ${result.details}`))
-            }
+        const result = (await res.json()) as SdkDeployResponseBody
+
+        if (!res.ok || !result.success) {
+            s.stop(`Deploy failed: ${result.error ?? res.statusText}`)
+            if (result.details) log.error(String(result.details))
             process.exit(1)
         }
 
-        spinner.succeed(chalk.green(`Deployed ${result.results.length} job${result.results.length === 1 ? "" : "s"}`))
+        s.stop(`Deployed ${result.results.length} job${result.results.length === 1 ? "" : "s"}`)
 
         for (const r of result.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
-            console.log(chalk.dim(`  ${verb} "${r.jobName}" (${r.automationId})`))
+            const agentUrl = `${FRONTEND_URL}/agents/${r.automationId}`
+            log.step(`${verb}: ${chalk.bold(r.jobName)}  ${agentLink(agentUrl)}`)
             if (r.triggers) {
                 for (const t of r.triggers) {
                     if (t.metadata?.webhookUrl) {
-                        console.log(chalk.cyan(`    Webhook URL: ${t.metadata.webhookUrl}`))
+                        log.info(`Webhook URL: ${chalk.cyan(t.metadata.webhookUrl)}`)
                     }
                 }
             }
         }
 
         if (isUrlMode) {
+<<<<<<< Updated upstream
             console.log(chalk.dim(`  Mode: user infrastructure`))
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
 
@@ -107,19 +165,24 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
                 if (projectApiKey) console.log(`TERSE_API_KEY=${projectApiKey}`)
                 if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
                 console.log("")
+=======
+            const signingSecret = result.results.find(r => r.signingSecret)?.signingSecret
+            if (signingSecret && !readEnvVar("TERSE_SIGNING_SECRET")) {
+                note(`TERSE_SIGNING_SECRET=${signingSecret}`, "Add to your .env file")
+>>>>>>> Stashed changes
             }
+            log.info(`Mode: user infrastructure  ${chalk.dim(remoteServerUrl!)}`)
         } else {
-            console.log(chalk.dim(`  Files: ${fileCount}`))
-            console.log(chalk.dim(`  Zip size: ${(zipSizeBytes / 1024).toFixed(1)} KB`))
+            log.info(`${fileCount} files  ${chalk.dim(`${(zipSizeBytes / 1024).toFixed(1)} KB`)}`)
         }
 
         if (result.removed.length > 0) {
-            console.log(chalk.yellow(`\nRemoved ${result.removed.length} stale job${result.removed.length === 1 ? "" : "s"} no longer in project:`))
-            for (const r of result.removed) {
-                console.log(chalk.dim(`  - ${r.name} (${r.id})`))
-            }
+            log.warn(`Removed ${result.removed.length} stale job${result.removed.length === 1 ? "" : "s"}: ${result.removed.map(r => r.name).join(", ")}`)
         }
+
+        outro("Done")
     } catch (error) {
+<<<<<<< Updated upstream
         spinner.stop()
         if (await tryRecoverStaleProject(error, { apiKey, config, hasRetried })) {
             return deploy(provider, entryFile, true)
@@ -129,7 +192,12 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         if (isProjectGoneError(error)) {
             console.error(chalk.dim(`  Run ${chalk.cyan("terse attach")} to link this directory to an existing project.`))
         }
+=======
+        s.stop(`Deploy failed: ${(error as Error).message}`)
+>>>>>>> Stashed changes
         process.exit(1)
+    } finally {
+        session.close()
     }
 }
 

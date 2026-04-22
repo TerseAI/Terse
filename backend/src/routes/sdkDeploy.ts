@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { SkillConfigData, TriggerConfigData } from "terse-types/Configs"
 import { SdkDeployResponseBody, User, sdkDeployRequestBodySchema } from "terse-types/types"
 
+import { emitSessionEvent } from "../agent/SessionEventBus"
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -39,7 +40,26 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
 
     const userId = user.id
     const organizationId = user.organizationId
+    const sessionId = typeof req.headers["x-terse-session-id"] === "string" ? req.headers["x-terse-session-id"] : undefined
 
+    const emitStage = (stage: import("terse-types/types").SdkDeployStage) => {
+        if (sessionId) emitSessionEvent(sessionId, { type: "deploy_stage", stage })
+    }
+
+    const { remoteServerUrl, jobs, sourceZipBase64 } = sdkDeployRequestBodySchema.parse(req.body)
+
+    if (remoteServerUrl) {
+        try {
+            await validateRemoteServerUrl(remoteServerUrl)
+        } catch (error) {
+            if (error instanceof UrlValidationError) {
+                return res.status(400).json({ success: false, error: error.message })
+            }
+            throw error
+        }
+    }
+
+<<<<<<< Updated upstream
     const { remoteServerUrl, jobs, sourceZipBase64, projectId } = sdkDeployRequestBodySchema.parse(req.body)
 
     const project = await db().projects.findUnique({
@@ -60,6 +80,89 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
             error: "Project not found. The project linked in terse.config.json no longer exists in this organization.",
             errorCode: "PROJECT_NOT_FOUND"
         })
+=======
+    try {
+        const results: SdkDeployResponseBody["results"] = []
+        const prisma = db()
+
+        let sourceZipBuffer: Buffer | undefined
+        let gcsKey: string | undefined
+        let currentSdkSourceImageId: string | undefined
+        if (sourceZipBase64) {
+            emitStage("UPLOADING_SOURCE")
+            sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64)
+            gcsKey = await uploadSourceZipToGcs(sourceZipBuffer)
+
+            const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
+                zipBuffer: sourceZipBuffer,
+                gcsKey,
+                organizationId,
+                onProgress: phase => {
+                    emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
+                }
+            })
+            currentSdkSourceImageId = preparedImages.sourceImageId
+        }
+
+        emitStage("CONFIGURING_AUTOMATIONS")
+
+        for (const job of jobs) {
+            const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
+                where: {
+                    name: job.jobName,
+                    organization_id: organizationId,
+                    source: "SDK"
+                },
+                include: { inputs: { include: getInputConfigInclude() } }
+            })
+
+            const isUpdate = !!existing
+            const agent = isUpdate
+                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId, {
+                      currentSdkSourceImageId,
+                      gcsKey,
+                      remoteServerUrl
+                  })
+                : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, {
+                      currentSdkSourceImageId,
+                      gcsKey,
+                      remoteServerUrl
+                  })
+
+            await setupAgentTriggers(agent)
+
+            const prompt = await prisma.automation_prompts.findUnique({ where: { automation_id: agent.id }, select: { signing_secret: true } })
+
+            results.push({
+                jobName: job.jobName,
+                automationId: agent.id,
+                isUpdate,
+                signingSecret: prompt?.signing_secret ?? undefined
+            })
+
+            emitCacheInvalidationWithWildcard(organizationId, "agentFiles", agent.id)
+            emitCacheInvalidationWithWildcard(organizationId, "agentFileContent", agent.id)
+
+            logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
+                automationId: agent.id,
+                jobName: job.jobName,
+                organizationId,
+                triggerCount: job.triggers.length
+            })
+        }
+
+        const deployedNames = new Set(jobs.map(j => j.jobName))
+        const removed = await removeStaleAutomations(prisma, organizationId, deployedNames)
+
+        emitCacheInvalidationWithKey(organizationId, "recentAgents")
+        emitCacheInvalidationWithKey(organizationId, "agents")
+
+        const response: SdkDeployResponseBody = { success: true, results, removed }
+        return res.status(200).json(response)
+    } catch (error) {
+        logger.error("SDK deploy failed", { error, userId })
+        return res.status(500).json({ success: false, error: "Deploy failed", details: extractErrorMessage(error) })
+>>>>>>> Stashed changes
     }
 
     if (!sourceZipBase64 && !remoteServerUrl) {
@@ -201,13 +304,11 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     return res.status(200).json(response)
 }
 
-function parseSourceZipBuffer(sourceZipBase64: string, res: Response): Buffer {
+function parseSourceZipBuffer(sourceZipBase64: string): Buffer {
     const zipBuffer = Buffer.from(sourceZipBase64, "base64")
     if (zipBuffer.length === 0) {
-        res.status(400).json({ success: false, error: "sourceZipBase64 is empty" })
         throw new Error("sourceZipBase64 is empty")
     }
-
     return zipBuffer
 }
 
