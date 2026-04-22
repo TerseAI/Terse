@@ -165,6 +165,7 @@
         "TRIGGER_WITH_EVENT": "/schedule/trigger-with-event/:automationId"
     },
     "REFRESH_TOKENS": "/refresh-tokens",
+    "CLEAR_OLD_SECRET_VERSIONS": "/clear-old-secret-versions",
     "REVIEW_AGENTS": "/review-agents",
     "CLEANUP_SDK_IMAGES": "/cleanup-sdk-images",
     "USERS": {
