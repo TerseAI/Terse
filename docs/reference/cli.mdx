@@ -1,21 +1,18 @@
 ---
 title: "CLI reference"
-description: "Reference for the terse CLI across TypeScript and Python projects."
+description: "Reference for the terse CLI"
 icon: "terminal"
 ---
 
-The `terse` CLI scaffolds, generates, tests, runs, and deploys Terse projects in both TypeScript and Python.
+The `terse` CLI scaffolds, generates, tests, runs, and deploys Terse projects in TypeScript.
 
-All commands auto-detect the project language from the current directory based on marker files.
+Commands auto-detect a TypeScript Terse project from the current directory based on project markers.
 
 For TypeScript projects, `terse test`, `terse run`, and `terse deploy` discover workflows across all constructed `new Terse()` instances in your imported entry file graph (not just one module). Keep workflow names unique across instances.
 
 | Language   | Project markers                 | Entry file     | Generated file           |
 | ---------- | ------------------------------- | -------------- | ------------------------ |
 | TypeScript | `package.json`, `src/index.ts`  | `src/index.ts` | `src/terse.generated.ts` |
-| Python     | `pyproject.toml`, `src/main.py` | `src/main.py`  | `src/terse_generated.py` |
-
-Python projects require [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency management and local execution.
 
 ## `terse init [project-name]`
 
@@ -25,21 +22,12 @@ Scaffolds a new project and runs the full setup flow: installs dependencies, aut
 ```bash TypeScript
 terse init my-project
 ```
-```bash Python
-terse init my-project --language python
-```
 </CodeGroup>
-
-**Options:**
-
-| Flag                    | Description                           | Default |
-| ----------------------- | ------------------------------------- | ------- |
-| `-l, --language <lang>` | `ts`, `typescript`, `py`, or `python` | `ts`    |
 
 **What it does in order:**
 
 1. Creates the project directory and scaffolds files (config, `.gitignore`, entry file)
-2. Detects your package manager (pnpm/npm for TypeScript, uv for Python) and installs dependencies
+2. Detects your package manager (pnpm or npm) and installs dependencies
 3. Runs `terse login` to authenticate
 4. Runs `terse integrate` to check and connect integrations
 5. Runs `terse generate` to produce your typed SDK
@@ -94,7 +82,7 @@ terse integrate
 
 ## `terse generate`
 
-Fetches your connected integrations and their resources from the Terse backend, then writes a typed SDK file for your project language.
+Fetches your connected integrations and their resources from the Terse backend, then writes `src/terse.generated.ts`.
 
 ```bash
 terse generate
@@ -105,9 +93,6 @@ terse generate
 <CodeGroup>
 ```text TypeScript
 src/terse.generated.ts
-```
-```text Python
-src/terse_generated.py
 ```
 </CodeGroup>
 
@@ -255,6 +240,6 @@ Commands that call the Terse API resolve credentials in this order:
 
 After `terse init` or `terse login`, you usually do not need a project `.env` file **for the CLI**—authentication is stored per user on your machine.
 
-**Runtime (SDK and servers):** Workflows and `terse-sdk` still read **`TERSE_API_KEY`** from the environment at runtime (for example from a `.env` file you create from the scaffolded `.env.example`, or from your host’s secret store). Set that variable wherever your Node or Python process runs.
+**Runtime (SDK and servers):** Workflows and `terse-sdk` still read **`TERSE_API_KEY`** from the environment at runtime (for example from a `.env` file you create from the scaffolded `.env.example`, or from your host's secret store). Set that variable wherever your Node process runs.
 
 `terse init` runs the full setup flow, including login. `terse login` only authenticates and updates your user config; use **`terse logout`** to clear it.

@@ -24,9 +24,9 @@ program
     .command("init")
     .description("Scaffold a new Terse project")
     .argument("[project-name]", "Name for the project directory")
-    .option("-l, --language <language>", "Project language (ts|typescript|py|python)", "ts")
-    .action(async (projectName?: string, options?: { language?: string }) => {
-        const provider = resolveProvider({ command: "init", language: options?.language })
+    .action(async (projectName?: string) => {
+        const language = "ts"
+        const provider = resolveProvider({ command: "init", language })
         await init(projectName, provider)
     })
 

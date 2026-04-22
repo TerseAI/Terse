@@ -24,7 +24,6 @@ After connecting, run `terse generate` to turn your active integrations into typ
 `terse generate` reads your connected integrations and their resources (repos, channels, lists, teams, projects), then writes a typed SDK file for your project:
 
 - `src/terse.generated.ts` for TypeScript
-- `src/terse_generated.py` for Python
 
 The generated file gives you four things:
 
@@ -59,21 +58,6 @@ await client.createJob({
         const summary = await agent.runAndWait("Enrich and summarize this deal.", event)
     }
 })
-```
-
-```python Python
-@app.job(
-    name="deal-enrichment",
-    triggers=[Attio.on_record_created(list=AttioList.Pipeline.NewDeals)],
-    skills=[
-        Attio.skill(lists=[AttioList.Pipeline.NewDeals]),
-        Apollo.skill(),
-        Slack.skill(channel=SlackChannel.DealDesk),
-    ],
-)
-def run_job(event, agent: TerseAgent) -> None:
-    # The model can use Attio, Apollo, and Slack tools
-    summary = agent.run_and_wait("Enrich and summarize this deal.", event)
 ```
 
 </CodeGroup>
@@ -113,23 +97,6 @@ await client.createJob({
         })
     }
 })
-```
-
-```python Python
-@app.job(
-    name="weekly-digest",
-    triggers=[Schedule.cron("0 9 * * 1")],
-    skills=[Attio.skill(lists=[AttioList.Pipeline.NewDeals])],
-)
-def run_job(event, agent: TerseAgent) -> None:
-    # Agentic: model can only use Attio (the declared skill)
-    summary = agent.run_and_wait("Summarize this week's pipeline activity.", event)
-
-    # Deterministic: code can always call Slack directly
-    agent.tools.slack.send_message(
-        channel=SlackChannel.DealDesk,
-        message=summary,
-    )
 ```
 
 </CodeGroup>

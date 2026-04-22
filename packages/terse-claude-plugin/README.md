@@ -49,7 +49,7 @@ Improve an existing Terse SDK job. The skill:
    - **Skill configuration** — completeness, scope, unnecessary skills
 3. Implements the changes in `src/index.ts` / `src/main.py`.
 4. Verifies locally with `terse replay <run-id>` against the failing run, or `terse test` against fresh sample events.
-5. Runs the project's typechecker (`tsc --noEmit` for TypeScript, `ty check` for Python) before reporting back.
+5. Runs the project's typechecker (`tsc --noEmit` for TypeScript) before reporting back.
 
 **Example:**
 

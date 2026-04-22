@@ -27,21 +27,19 @@ export function resolveProvider(opts?: { command?: string; language?: string; cw
     }
 
     if (matches.length > 1) {
-        console.error(`Error: Multiple Terse project types detected: ${matches.map(provider => provider.displayName).join(", ")}.`)
+        console.error("Error: Multiple Terse project setups detected in the current directory.")
         process.exit(1)
     }
 
-    console.error("Error: Could not detect Terse project language in the current directory.")
-    for (const provider of PROVIDERS) {
-        console.error(`  ${provider.displayName}: ${provider.detectionMarkers.requiredFiles.join(", ")}`)
-    }
+    console.error("Error: Could not detect a supported Terse project in the current directory.")
+    console.error("  Expected TypeScript project markers: package.json, src/index.ts")
     process.exit(1)
 }
 
 export function resolveProviderByLanguage(language: string): LanguageProvider {
     const normalized = LANGUAGE_ALIASES[language.toLowerCase()]
     if (!normalized) {
-        console.error(`Error: Unsupported language "${language}". Use ts, typescript, py, or python.`)
+        console.error(`Error: Unsupported init target "${language}". Use ts or typescript.`)
         process.exit(1)
     }
 

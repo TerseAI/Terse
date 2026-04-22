@@ -16,7 +16,7 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
         Each job's triggers (e.g. a GitHub webhook, a cron schedule) and skills (e.g. Slack, Apollo) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never need to reconfigure external services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.
     </Step>
     <Step title="A trigger fires">
-        When an event matches one of your triggers, Terse spins up an isolated [Modal](https://modal.com) sandbox with the right runtime: `node:22-slim` for TypeScript or `python:3.11-slim` for Python, detected automatically from your `package.json` or `pyproject.toml`.
+        When an event matches one of your triggers, Terse spins up an isolated [Modal](https://modal.com) sandbox with the right runtime: `node:22-slim` for TypeScript, detected automatically from your `package.json`.
     </Step>
     <Step title="Your handler executes">
         Inside the container, your code is extracted, dependencies are installed, and `terse run` loads your job. A `TerseAgent` is created with the skills you defined, and your `onTrigger` handler executes. It can call tools deterministically, prompt the agent, or both. When the run completes, the container is torn down and results are logged.
@@ -34,9 +34,6 @@ The CLI respects standard ignore patterns. The following are always excluded:
 <Tabs>
     <Tab title="TypeScript">
         `node_modules`, `.git`, `dist`, `.next`, `.turbo`, `.env`, `.DS_Store`
-    </Tab>
-    <Tab title="Python">
-        `.venv`, `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.git`, `.env`, `.DS_Store`
     </Tab>
 </Tabs>
 
