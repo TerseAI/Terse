@@ -203,6 +203,70 @@ triggers=[
   - `organization` - present on organization events: `{ id, name }`
 </Expandable>
 
+### Web Monitor
+
+Track web changes continuously and get notified when there are updates.
+
+
+| Trigger                  | Event type          | Description                                                  |
+| ------------------------ | ------------------- | ------------------------------------------------------------ |
+| `WebMonitor.onEvent()`   | `WebMonitorTrigger` | Fires when scheduled web monitoring detects relevant changes |
+
+<CodeGroup>
+```ts TypeScript
+
+const outputSchema = z.object({
+  summary: z.string(),
+  sentiment: z.enum(["positive", "negative", "neutral"]),
+});
+
+await client.createJob({
+  name: "Web monitor trigger",
+  triggers: [
+    WebMonitor.onEvent({
+      query: "What are a16z's latest investments?",
+      frequency: { number: 1, unit: "day" },
+      outputSchema: outputSchema,
+    }),
+  ],
+  onTrigger: async (event) => {
+    const agent = TerseAgent.create({
+      prompt:
+        "You are alerted when the web monitor finds new material. Read the event (query, payload, and structured fields), decide what matters, and post a concise summary to Slack.",
+      skills: [Slack.skill({ channel: SlackChannel.AllTerseInc })],
+    });
+
+    // Use formatForAgentRunner() as the user message so the monitor query and
+    // payload are not duplicated inside TerseAgent.prompt and again in runAndWait.
+    await agent.runAndWait(event.formatForAgentRunner());
+  },
+});
+```
+</CodeGroup>
+
+#### Writing effective queries
+
+The monitor matches by intent, not keywords. Write your query as a natural sentence describing what you care about — not a search string.
+
+**Do:**
+- Write in plain language: `"What are a16z's latest investments?"`
+- Track narratives and social buzz: `"What are people saying on Twitter about Cloud agents?"`
+- Be specific about subject and signal: `"FDA approval decisions for GLP-1 drugs"`
+- Combine related signals: `"OpenAI or Anthropic model releases and benchmark results"`
+
+**Don't:**
+- Use Boolean operators (`AND`, `OR`, `NOT`) — this is not a search engine
+- Include specific dates — monitors track new developments going forward, not history
+- Write keyword dumps: `"acme corp acme funding raise series B"`
+
+**Choosing frequency:**
+
+| Frequency | Best for                                                        |
+| --------- | --------------------------------------------------------------- |
+| `1h`      | Breaking news, social signals, fast-moving markets              |
+| `1d`      | Press releases, blog posts, job postings, pricing page changes  |
+| `1w`      | Regulatory filings, quarterly reports, slow competitive signals |
+
 ## System triggers
 
 ### Schedule

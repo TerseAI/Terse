@@ -1,17 +1,20 @@
+import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
-import type { SerializedEvent, Trigger, TriggerWithEventRequest } from "terse-types"
+import { type ParallelMonitorDetectedWebhookPayload, ParallelMonitorDetectedWebhookPayloadSchema, type SerializedEvent, type Trigger, type TriggerWithEventRequest } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEventParamsSchema, triggerWithEventRequestSchema } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { cloudScheduler } from "../config/settings"
+import { cloudScheduler, settings } from "../config/settings"
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
 import { buildGithubTriggerMetadata } from "../integrations/GithubIntegration"
+import { WebMonitorIntegrationManager } from "../integrations/WebMonitorIntegration"
 import { TriggerRuntime } from "../integrations/abstract/TriggerRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { verifyParallelWebhookSignature } from "../utility/parallelWebhookSignature"
 import { extractErrorMessage } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
 
@@ -119,6 +122,73 @@ export async function handleScheduleWebhook(req: Request, res: Response) {
     cronJobManager.processWebhookEvent({ inputId }).catch(error => {
         logger.error("❌ Error processing schedule webhook", { error, inputId })
     })
+}
+
+function isPrismaUniqueViolation(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
+}
+
+export async function handleWebMonitorWebhook(req: Request, res: Response) {
+    const { inputId } = req.params
+    const rawBody = req.body
+    const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString("utf8") : String(rawBody ?? "")
+
+    const webhookId = (req.get("webhook-id") ?? req.headers["webhook-id"]) as string | undefined
+    const webhookTimestamp = (req.get("webhook-timestamp") ?? req.headers["webhook-timestamp"]) as string | undefined
+    const webhookSignature = (req.get("webhook-signature") ?? req.headers["webhook-signature"]) as string | undefined
+
+    if (!inputId) {
+        res.status(400).send("Missing inputId")
+        return
+    }
+
+    if (!webhookId || !webhookTimestamp) {
+        logger.warn("Web event webhook missing id or timestamp headers", { inputId })
+        res.status(400).send("Missing webhook headers")
+        return
+    }
+
+    if (!verifyParallelWebhookSignature(webhookSignature, settings.parallel.webhookSecret, webhookId, webhookTimestamp, bodyStr)) {
+        logger.warn("Web event webhook signature verification failed", { inputId })
+        res.status(401).send("Invalid signature")
+        return
+    }
+
+    let parsedJson: ParallelMonitorDetectedWebhookPayload
+    try {
+        const rawJson = JSON.parse(bodyStr)
+        parsedJson = ParallelMonitorDetectedWebhookPayloadSchema.parse(rawJson)
+    } catch {
+        res.status(400).send("Invalid JSON")
+        return
+    }
+
+    try {
+        await db().webmonitor_webhook_deliveries.create({
+            data: { webhook_id: webhookId }
+        })
+    } catch (error) {
+        if (isPrismaUniqueViolation(error)) {
+            res.status(200).send("OK")
+            return
+        }
+        logger.error("Web event webhook dedupe insert failed", { error, inputId })
+        res.status(500).send("Server error")
+        return
+    }
+
+    res.status(200).send("OK")
+
+    const manager = new WebMonitorIntegrationManager()
+    manager
+        .processWebhookEvent({
+            inputId,
+            rawBody: bodyStr,
+            parsedJson
+        })
+        .catch(error => {
+            logger.error("Error processing web event webhook", { error, inputId })
+        })
 }
 
 export async function handleTriggerWithEvent(req: Request, res: Response) {
