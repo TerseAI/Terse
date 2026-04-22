@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Activity, BarChart3, Bell, ChevronRight, Home, Plug, Plus, Terminal, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, ChevronRight, Home, KeyRound, Plug, Plus, Terminal, Zap } from "lucide-react"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useAgents } from "@/hooks/api/useAgents"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
+import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
 
 import { SdkJobsList } from "./SdkJobsList"
 import { AppSidebarFooter } from "./SidebarFooter"
@@ -90,20 +91,22 @@ function ApplicationNavigation({ agents, sdkJobs, loading }: ApplicationNavigati
         <SidebarMenu>
             <PlainNavItem title="Home" url={FrontendRoutes.APP} icon={Home} iconColor="text-primary" />
 
-            <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                        <SidebarMenuButton>
-                            <Zap className="text-primary" />
-                            <span>Agents</span>
-                            <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                        </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                        <AgentsList agents={agents} loading={loading} />
-                    </CollapsibleContent>
-                </SidebarMenuItem>
-            </Collapsible>
+            {agents.length > 0 && (
+                <Collapsible defaultOpen className="group/collapsible">
+                    <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                            <SidebarMenuButton>
+                                <Zap className="text-primary" />
+                                <span>Agents</span>
+                                <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                            <AgentsList agents={agents} loading={loading} />
+                        </CollapsibleContent>
+                    </SidebarMenuItem>
+                </Collapsible>
+            )}
 
             {(sdkJobs.length > 0 || loading) && (
                 <Collapsible defaultOpen asChild>
@@ -111,7 +114,7 @@ function ApplicationNavigation({ agents, sdkJobs, loading }: ApplicationNavigati
                         <CollapsibleTrigger asChild>
                             <SidebarMenuButton className="cursor-pointer">
                                 <Terminal className="text-primary" />
-                                <span>SDK Jobs</span>
+                                <span>Jobs</span>
                                 <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                             </SidebarMenuButton>
                         </CollapsibleTrigger>
@@ -132,10 +135,17 @@ function SettingsNavigation() {
     const location = useLocation()
     const { approvals } = usePendingApprovals({ status: "pending" })
     const pendingCount = approvals.length
+    const showSdkInterface = useFeatureFlag(FeatureFlags.SDK_INTERFACE)
+
+    const settingsItems: NavItem[] = [
+        { title: "Integrations", url: FrontendRoutes.INTEGRATIONS, icon: Plug, iconColor: "text-primary" },
+        { title: "Notifications", url: FrontendRoutes.NOTIFICATIONS, icon: Bell, iconColor: "text-primary" },
+        ...(showSdkInterface ? [{ title: "API Tokens", url: FrontendRoutes.API_TOKENS, icon: KeyRound, iconColor: "text-primary" }] : [])
+    ]
 
     return (
         <SidebarMenu>
-            {SettingsItems.map(item => (
+            {settingsItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                         <Link to={item.url} className="relative">
@@ -230,18 +240,3 @@ interface NavItem {
     icon: LucideIcon
     iconColor?: string
 }
-
-const SettingsItems: NavItem[] = [
-    {
-        title: "Integrations",
-        url: FrontendRoutes.INTEGRATIONS,
-        icon: Plug,
-        iconColor: "text-primary"
-    },
-    {
-        title: "Notifications",
-        url: FrontendRoutes.NOTIFICATIONS,
-        icon: Bell,
-        iconColor: "text-primary"
-    }
-]
