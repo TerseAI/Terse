@@ -157,9 +157,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
                 <TriggersSection triggers={triggers} />
 
-                {hasSelfHostedJobUrl ? (
-                    <EnvironmentSection remoteServerUrl={agent.metadata?.remoteServerUrl ?? null} isVerifying={isVerifyingServer} onVerify={handleVerifyServer} />
-                ) : null}
+                {hasSelfHostedJobUrl ? <EnvironmentSection remoteServerUrl={agent.metadata?.remoteServerUrl ?? null} isVerifying={isVerifyingServer} onVerify={handleVerifyServer} /> : null}
 
                 <ActivitySection agentId={agentId} pendingCount={pendingCount} selectedTab={selectedTab} onTabChange={setSelectedTab} />
             </PageFrame>
@@ -440,9 +438,7 @@ function ActivitySection({ agentId, pendingCount, selectedTab, onTabChange }: { 
                     <StreamTab label="Improvements" badge={pendingCount} />
                 </TabList>
 
-                <div className="pt-5">
-                    {selectedTab === 0 ? <AgentRunHistoryTab agentId={agentId} /> : <AgentImprovementsTab agentId={agentId} source="SDK" />}
-                </div>
+                <div className="pt-5">{selectedTab === 0 ? <AgentRunHistoryTab agentId={agentId} /> : <AgentImprovementsTab agentId={agentId} source="SDK" />}</div>
             </TabGroup>
         </section>
     )
