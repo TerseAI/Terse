@@ -302,11 +302,7 @@ function CreateTokenDialog({ open, createdRawToken, onOpenChange, onCreated }: C
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{isReveal ? "Your new token is ready" : "Create API token"}</DialogTitle>
-                    <DialogDescription>
-                        {isReveal
-                            ? "Copy this token now. For security, we won't show it again."
-                            : "Give your token a name to help you remember what it's for."}
-                    </DialogDescription>
+                    <DialogDescription>{isReveal ? "Copy this token now. For security, we won't show it again." : "Give your token a name to help you remember what it's for."}</DialogDescription>
                 </DialogHeader>
 
                 {isReveal ? (
@@ -453,9 +449,7 @@ function RevokeTokenDialog({ token, onOpenChange, onRevoked }: RevokeTokenDialog
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Revoke token</DialogTitle>
-                    <DialogDescription>
-                        Revoke "{token?.name}"? Any SDK job or script using this token will stop working immediately. This cannot be undone.
-                    </DialogDescription>
+                    <DialogDescription>Revoke "{token?.name}"? Any SDK job or script using this token will stop working immediately. This cannot be undone.</DialogDescription>
                 </DialogHeader>
                 {error && <p className="text-xs text-destructive">{error}</p>}
                 <DialogFooter>

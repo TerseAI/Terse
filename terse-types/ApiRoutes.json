@@ -125,7 +125,10 @@
         "BY_ID": "/api-tokens/:id"
     },
     "PROJECTS": {
-        "BY_ID": "/projects/:id"
+        "BY_ID": "/projects/:id",
+        "DEPLOYS": "/projects/:id/deploys",
+        "SOURCE_FILES": "/projects/:id/source/files",
+        "SOURCE_FILE_CONTENT": "/projects/:id/source/files/:fileId"
     },
     "SDK": {
         "ME": "/sdk/me",

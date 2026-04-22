@@ -155,9 +155,19 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
         })
 
         const isUpdate = !!existing
-        const agent = isUpdate
-            ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId)
-            : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, projectId)
+        let agent: AgentWithTriggerRelations
+        try {
+            agent = isUpdate
+                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId)
+                : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, projectId)
+        } catch (error) {
+            logger.error("Failed to create or update automation", { error })
+            await prisma.project_deploys.update({
+                where: { id: deploy.id },
+                data: { status: "FAILED" }
+            })
+            return res.status(500).json({ success: false, error: "Failed to create or update automation" })
+        }
 
         await setupAgentTriggers(agent)
 
