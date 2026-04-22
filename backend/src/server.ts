@@ -38,6 +38,7 @@ import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUr
 import { getPendingApprovals } from "./routes/pendingApprovals"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
+import { handleGetProjectById, handleProjectCreate, handleProjectDelete } from "./routes/project"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
@@ -743,6 +744,18 @@ app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.PENDING_APPROVALS.LIST, authMiddleware, async (req, res) => {
     getPendingApprovals(req, res)
+})
+
+app.post(ApiRoutes.SDK.CREATE_PROJECT, authMiddleware, async (req, res) => {
+    handleProjectCreate(req, res)
+})
+
+app.get(ApiRoutes.PROJECTS.BY_ID, authMiddleware, async (req, res) => {
+    handleGetProjectById(req, res)
+})
+
+app.delete(ApiRoutes.PROJECTS.BY_ID, authMiddleware, async (req, res) => {
+    handleProjectDelete(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

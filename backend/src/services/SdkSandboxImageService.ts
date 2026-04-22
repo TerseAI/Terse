@@ -134,12 +134,7 @@ export class SdkSandboxImageService {
 
         const staleSourceImages = await prisma.sdk_source_images.findMany({
             where: {
-                current_for_prompts: { none: {} },
-                runs: {
-                    none: {
-                        status: { in: ACTIVE_RUN_STATUSES }
-                    }
-                },
+                deploys: { none: {} },
                 last_used_at: { lt: sourceCutoff }
             },
             orderBy: { last_used_at: "asc" },

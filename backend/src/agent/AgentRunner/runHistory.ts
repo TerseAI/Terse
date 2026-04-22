@@ -91,11 +91,11 @@ export async function finalizeRunStatus(runId: string, status: CompletedRunStatu
     })
 }
 
-export async function attachSdkSourceImageToRun(runId: string, sdkSourceImageId: string): Promise<void> {
+export async function attachProjectDeployToRun(runId: string, projectDeployId: string): Promise<void> {
     const prisma = db()
     await prisma.run_history_records.update({
         where: { id: runId },
-        data: { sdk_source_image_id: sdkSourceImageId }
+        data: { project_deploy_id: projectDeployId }
     })
 }
 

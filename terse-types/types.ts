@@ -229,8 +229,7 @@ export const agentOutputSchema = z.object({
 export type AgentOutput = z.infer<typeof agentOutputSchema>
 
 export const agentPromptSchema = z.object({
-    text: z.string(),
-    remoteServerUrl: z.string().optional().nullable()
+    text: z.string()
 })
 export type AgentPrompt = z.infer<typeof agentPromptSchema>
 
@@ -327,6 +326,13 @@ export const agentNotificationSettingsSchema = z.object({
 })
 export type AgentNotificationSettings = z.infer<typeof agentNotificationSettingsSchema>
 
+export const jobMetadataSchema = z.object({
+    remoteServerUrl: z.string().nullable(),
+    projectId: z.string().nullable(),
+    projectName: z.string().nullable()
+})
+export type JobMetadata = z.infer<typeof jobMetadataSchema>
+
 export const agentSchema = z.object({
     id: z.string(),
     name: z.string(),
@@ -339,7 +345,8 @@ export const agentSchema = z.object({
     notificationSettings: agentNotificationSettingsSchema.nullable(),
     toolApprovals: z.array(z.string()).nullable(),
     updatedAt: z.string().nullable(),
-    source: z.enum(["WEB_UI", "SDK"]).nullable()
+    source: z.enum(["WEB_UI", "SDK"]).nullable(),
+    metadata: jobMetadataSchema.nullable()
 })
 export type Agent = z.infer<typeof agentSchema>
 
@@ -666,6 +673,43 @@ export const sdkApprovalDecisionRequestBodySchema = z.object({
 })
 export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionRequestBodySchema>
 
+export const sdkCreateProjectRequestBodySchema = z.object({
+    name: z.string().min(1)
+})
+export type SdkCreateProjectRequestBody = z.infer<typeof sdkCreateProjectRequestBodySchema>
+
+export const sdkCreateProjectResponseBodySchema = z.object({
+    projectId: z.string(),
+    name: z.string()
+})
+export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
+
+export const projectDetailResponseSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    createdAt: z.string(),
+    remoteServerUrl: z.string().nullable(),
+    isSelfHosted: z.boolean(),
+    hasSigningSecret: z.boolean(),
+    hasProjectApiKey: z.boolean(),
+    jobs: z.array(
+        z.object({
+            id: z.string(),
+            name: z.string(),
+            isActive: z.boolean()
+        })
+    )
+})
+export type ProjectDetailResponse = z.infer<typeof projectDetailResponseSchema>
+
+export const terseProjectConfigSchema = z.object({
+    projectId: z.string().min(1),
+    name: z.string().min(1),
+    selfHosted: z.boolean().optional(),
+    remoteServerUrl: z.string().optional()
+})
+export type TerseProjectConfig = z.infer<typeof terseProjectConfigSchema>
+
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
     triggers: z.array(triggerConfigDataSchema)
@@ -674,6 +718,7 @@ export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 
 export const sdkDeployRequestBodySchema = z
     .object({
+        projectId: z.string(),
         jobs: z.array(sdkDeployJobSchema),
         remoteServerUrl: z.string().optional(),
         sourceZipBase64: z.string().optional()
@@ -692,7 +737,6 @@ export const sdkDeployResultSchema = z.object({
     jobName: z.string(),
     automationId: z.string(),
     isUpdate: z.boolean(),
-    signingSecret: z.string().optional(),
     triggers: z
         .array(
             z.object({
@@ -710,6 +754,8 @@ export const sdkDeployRemovedSchema = z.object({
 
 export const sdkDeployResponseBodySchema = z.object({
     success: z.boolean(),
+    signingSecret: z.string().optional(),
+    projectApiKey: z.string().optional(),
     results: z.array(sdkDeployResultSchema),
     removed: z.array(sdkDeployRemovedSchema),
     error: z.string().optional(),

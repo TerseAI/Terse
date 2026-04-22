@@ -1,6 +1,7 @@
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
+import { getActiveSourceCodeGcsKeyForAutomation } from "../../utility/projectHelper"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
 
 import { computeAverageRunDurationMs } from "./runMetrics"
@@ -23,14 +24,15 @@ export async function fetchAgentConfig(automationId: string, orgId: string) {
                 include: getOutputConfigInclude()
             },
             tool_approvals: true,
-            notification_settings: true
+            notification_settings: true,
+            project: true
         }
     })
 
     if (!automation) throw new Error("Agent not found")
 
     const formattedConfig = formatAgentForSystemPrompt(automation)
-
+    const gcsKey = automation.project ? await getActiveSourceCodeGcsKeyForAutomation(automation) : null
     return {
         formattedConfig,
         rawConfig: {
@@ -46,7 +48,7 @@ export async function fetchAgentConfig(automationId: string, orgId: string) {
             toolApprovals: automation.tool_approvals.map(row => row.tool_name),
             notificationSettings: automation.notification_settings
         },
-        gcsKey: automation.prompt?.source_code_gcs_key ?? undefined
+        gcsKey: gcsKey ?? undefined
     }
 }
 

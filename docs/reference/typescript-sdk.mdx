@@ -37,6 +37,10 @@ The SDK client. Used to register workflows in `src/terse.jobs.ts`.
 const client = new Terse()
 ```
 
+You can create multiple `Terse` instances in the same project. During `terse test`, `terse run`, and `terse deploy`, the CLI loads workflows from every constructed instance in your imported entry graph.
+
+Keep workflow names globally unique across instances. If two instances register the same job name, the CLI exits with an error so you can resolve the conflict.
+
 ## `createJob(...)`
 
 Defines the workflow contract.
