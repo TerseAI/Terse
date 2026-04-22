@@ -8,6 +8,8 @@ The `terse` CLI scaffolds, generates, tests, runs, and deploys Terse projects in
 
 All commands auto-detect the project language from the current directory based on marker files.
 
+For TypeScript projects, `terse test`, `terse run`, and `terse deploy` discover workflows across all constructed `new Terse()` instances in your imported entry file graph (not just one module). Keep workflow names unique across instances.
+
 | Language   | Project markers                 | Entry file     | Generated file           |
 | ---------- | ------------------------------- | -------------- | ------------------------ |
 | TypeScript | `package.json`, `src/index.ts`  | `src/index.ts` | `src/terse.generated.ts` |
