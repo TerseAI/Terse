@@ -178,6 +178,12 @@ export const settings = {
     optional: {
         redisUrl: optionalEnv("REDIS_URL"),
         cookieDomain: optionalEnv("COOKIE_DOMAIN")
+    },
+
+    // Parallel (Web Event monitors + webhook verification)
+    parallel: {
+        apiKey: requireEnv("PARALLEL_API_KEY"),
+        webhookSecret: requireEnv("PARALLEL_WEBHOOK_SECRET")
     }
 } as const
 

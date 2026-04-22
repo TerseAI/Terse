@@ -372,6 +372,7 @@ model automation_inputs {
   workos_config       automation_workos_configs?
   attio_config        automation_attio_configs?
   webhook_config      automation_webhook_configs?
+  webmonitor_config   automation_webmonitor_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -607,6 +608,25 @@ model automation_webhook_configs {
   @@index([webhook_token])
 }
 
+// Web Event (scheduled web monitor) trigger configuration
+model automation_webmonitor_configs {
+  id                  String  @id @default(cuid())
+  automation_input_id String  @unique
+  provider_monitor_id String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+}
+
+// Idempotent webhook deliveries (Parallel webhook-id deduplication)
+model webmonitor_webhook_deliveries {
+  id          String   @id @default(cuid())
+  webhook_id  String   @unique
+  received_at DateTime @default(now())
+}
+
 model automation_workos_output_configs {
   id                   String   @id @default(cuid())
   automation_output_id String   @unique
@@ -642,6 +662,7 @@ enum IntegrationType {
   ATTIO
   SNOWFLAKE
   WEBHOOK
+  WEBMONITOR
 }
 
 enum InputConfigType {
@@ -655,6 +676,7 @@ enum InputConfigType {
   TIME_TRIGGER
   WORKOS_INPUT
   WEBHOOK_INPUT
+  WEBMONITOR
 }
 
 enum OutputConfigType {

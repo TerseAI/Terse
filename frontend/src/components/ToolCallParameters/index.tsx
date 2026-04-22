@@ -3,6 +3,7 @@ import JsonView from "@uiw/react-json-view"
 interface ToolCallParametersProps {
     parameters: string
     label?: string
+    collapsed?: number | boolean
 }
 
 /** Theme derived from ShadCN CSS variables — automatically respects light/dark mode */
@@ -22,7 +23,7 @@ const theme = {
     "--w-rjv-colon-color": "var(--muted-foreground)"
 } as React.CSSProperties
 
-const ToolCallParameters = ({ parameters, label }: ToolCallParametersProps) => {
+const ToolCallParameters = ({ parameters, label, collapsed = 2 }: ToolCallParametersProps) => {
     let parsed: object
     try {
         const value = JSON.parse(parameters)
@@ -44,7 +45,7 @@ const ToolCallParameters = ({ parameters, label }: ToolCallParametersProps) => {
     return (
         <div className="space-y-1">
             {label && <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">{label}</div>}
-            <JsonView value={parsed} style={theme} shortenTextAfterLength={80} collapsed={2} displayDataTypes={false} displayObjectSize={false} enableClipboard={false} />
+            <JsonView value={parsed} style={theme} shortenTextAfterLength={80} collapsed={collapsed} displayDataTypes={false} displayObjectSize={false} enableClipboard={false} />
         </div>
     )
 }
