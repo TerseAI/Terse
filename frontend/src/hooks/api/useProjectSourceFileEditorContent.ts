@@ -1,6 +1,6 @@
 import useSWR from "swr"
-import type { AgentFileContentResponse } from "terse-types/types"
 import { projectSourceFileContentKey } from "terse-types/InvalidationKeys"
+import type { AgentFileContentResponse } from "terse-types/types"
 
 import { decodeArchiveFileText } from "../../lib/decodeArchiveFile"
 import { BackendProvider } from "../../services/backend"
@@ -22,7 +22,8 @@ export function useProjectSourceFileEditorContent(projectId: string | null, sele
     const key = projectId && selectedFileId ? projectSourceFileContentKey(projectId, selectedFileId) : null
 
     const { data, error } = useSWR<AgentFileContentResponse>(key, projectId && selectedFileId ? () => BackendProvider.getProjectSourceFileContent(projectId, selectedFileId) : null, {
-        keepPreviousData: true
+        keepPreviousData: true,
+        revalidateOnFocus: false
     })
 
     if (!selectedFileId || !projectId) {

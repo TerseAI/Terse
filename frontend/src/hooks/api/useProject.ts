@@ -8,7 +8,9 @@ function projectDetailKey(id: string | null) {
 }
 
 export function useProject(id: string | null) {
-    const { data, error, isValidating, mutate } = useSWR<ProjectDetailResponse>(projectDetailKey(id), id ? () => BackendProvider.getProjectById(id) : null)
+    const { data, error, isValidating, mutate } = useSWR<ProjectDetailResponse>(projectDetailKey(id), id ? () => BackendProvider.getProjectById(id) : null, {
+        revalidateOnFocus: false
+    })
 
     return {
         project: data,

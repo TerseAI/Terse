@@ -1,6 +1,6 @@
 import useSWR from "swr"
-import type { ProjectSourceFilesResponse } from "terse-types/types"
 import { projectSourceFilesKey } from "terse-types/InvalidationKeys"
+import type { ProjectSourceFilesResponse } from "terse-types/types"
 
 import { BackendProvider } from "../../services/backend"
 
@@ -8,7 +8,8 @@ export function useProjectSourceFiles(projectId: string | null) {
     const key = projectId ? projectSourceFilesKey(projectId) : null
 
     const { data, error, isValidating, mutate } = useSWR<ProjectSourceFilesResponse>(key, projectId ? () => BackendProvider.getProjectSourceFiles(projectId) : null, {
-        keepPreviousData: true
+        keepPreviousData: true,
+        revalidateOnFocus: false
     })
 
     return {

@@ -9,8 +9,8 @@ import { TooltipProvider } from "../../components/ui/tooltip"
 import { useProjectDeploys } from "../../hooks/api/useProjectDeploys"
 import { cn } from "../../lib/utils"
 import { BackendProvider } from "../../services/backend"
-
 import { SdkJobServerCheckDialog } from "../Agents/components/SdkJobServerCheckDialog"
+
 import { DeleteProjectAction, DeploymentsSection, Heading, PageFrame, SectionLabel } from "./ProjectDetailShared"
 
 export default function ProjectDetailSelfHosted({ project }: { project: ProjectDetailResponse }) {
@@ -79,7 +79,7 @@ function EnvironmentSection({
     canVerify: boolean
 }) {
     return (
-        <section className="animate-in fade-in-0 mt-6 duration-500" style={{ animationDelay: "40ms" }}>
+        <section className="mt-6">
             <div className="mb-3 flex items-center justify-between gap-4">
                 <SectionLabel className="mb-0">Environment</SectionLabel>
                 <Button variant="outline" size="sm" onClick={onVerifyServer} disabled={isVerifyingServer || !canVerify} title={canVerify ? undefined : "Deploy a job first to verify the server"}>
@@ -128,12 +128,7 @@ function RemoteServerValue({ url }: { url: string | null }) {
     return (
         <div className="flex min-w-0 items-center gap-2">
             <code className="text-foreground min-w-0 flex-1 truncate font-mono text-[13px]">{url}</code>
-            <button
-                type="button"
-                onClick={handleCopy}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted/50 shrink-0 rounded-md p-1 transition-colors"
-                aria-label="Copy server URL"
-            >
+            <button type="button" onClick={handleCopy} className="text-muted-foreground hover:text-foreground hover:bg-muted/50 shrink-0 rounded-md p-1 transition-colors" aria-label="Copy server URL">
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
         </div>

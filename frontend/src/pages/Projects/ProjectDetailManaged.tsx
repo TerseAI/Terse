@@ -40,7 +40,7 @@ function SourceSection({ projectId, activeDeploy }: { projectId: string; activeD
     const shortDeployId = activeDeploy?.id.slice(-7)
 
     return (
-        <section className="animate-in fade-in-0 mt-8 duration-500" style={{ animationDelay: "120ms" }}>
+        <section className="mt-8">
             <div className="flex items-baseline justify-between gap-4">
                 <SectionLabel>Source</SectionLabel>
                 {activeDeploy ? (

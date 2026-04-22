@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom"
 
 import { AlertTriangle, CheckCircle2, CircleDot, Loader2, RotateCcw, XCircle } from "lucide-react"
 import { DateTime } from "luxon"
-
-import { formatTimestamp } from "../../utility/timeUtils"
 import { toast } from "sonner"
 import { FrontendRoutes } from "terse-types"
 import type { ProjectDeploy, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
@@ -18,6 +16,7 @@ import { SidebarTrigger } from "../../components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip"
 import { useProjectMutations } from "../../hooks/api/useProject"
 import { cn } from "../../lib/utils"
+import { formatTimestamp } from "../../utility/timeUtils"
 
 export function PageFrame({ children }: { children: React.ReactNode }) {
     return (
@@ -46,7 +45,7 @@ export function Heading({
     const isDeploying = latestDeploy?.status === "IN_PROGRESS"
 
     return (
-        <header className="animate-in fade-in-0 duration-500">
+        <header>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <h1 className="text-foreground text-[clamp(1.625rem,2.5vw,2rem)] leading-tight font-semibold tracking-tight">{project.name}</h1>
                 <Badge variant="outline" className="text-muted-foreground border-border/80 shrink-0 text-[11px] font-medium">
@@ -93,7 +92,7 @@ function DeployingBadge() {
 
 export function DeploymentsSection({ deploys, isLoading }: { deploys: ProjectDeploy[] | undefined; isLoading: boolean }) {
     return (
-        <section className="animate-in fade-in-0 mt-8 duration-500" style={{ animationDelay: "80ms" }}>
+        <section className="mt-8">
             <div className="flex items-baseline justify-between gap-4">
                 <SectionLabel>Deployments</SectionLabel>
                 {deploys && deploys.length > 0 ? <span className="text-muted-foreground text-[11px] tabular-nums">Last {deploys.length} · newest first</span> : null}
@@ -235,7 +234,7 @@ export function DeleteProjectAction({ project }: { project: Pick<ProjectDetailRe
 
     return (
         <>
-            <section className="animate-in fade-in-0 mt-10 duration-500" style={{ animationDelay: "160ms" }}>
+            <section className="mt-10">
                 <h2 className="text-destructive mb-3 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase">
                     <AlertTriangle className="h-3 w-3" />
                     Danger zone
@@ -259,8 +258,8 @@ export function DeleteProjectAction({ project }: { project: Pick<ProjectDetailRe
                         <DialogTitle>Delete project</DialogTitle>
                         <DialogDescription>
                             This will permanently delete <span className="text-foreground font-semibold">{project.name}</span>
-                            {project.jobs.length > 0 ? ` and all ${project.jobs.length} job${project.jobs.length === 1 ? "" : "s"} inside it` : ""}, along with run history and credentials. This
-                            cannot be undone.
+                            {project.jobs.length > 0 ? ` and all ${project.jobs.length} job${project.jobs.length === 1 ? "" : "s"} inside it` : ""}, along with run history and credentials. This cannot
+                            be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
