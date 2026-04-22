@@ -6,7 +6,7 @@ icon: "boxes"
 
 A job is the core building block in Terse. It connects an event (the trigger) to the code that should run when that event happens (the handler), with a set of integrations available to use along the way (skills). When you deploy a Terse project, you're deploying one or more jobs.
 
-In the SDK, you define jobs with `createJob()` in TypeScript or `@app.job()` in Python. In the Terse app and across these docs, we call them **workflows**. Same thing, different name.
+In the SDK, you define jobs with `createJob()` in TypeScript. In the Terse app and across these docs, we call them **workflows**. Same thing, different name.
 
 ## Anatomy of a job
 
@@ -23,21 +23,6 @@ await client.createJob({
         // your logic here
     }
 })
-```
-
-```python Python
-@app.job(
-    name="new-deal-enrichment",
-    triggers=[Attio.on_record_created(list=AttioList.Pipeline.NewDeals)],
-    skills=[
-        Attio.skill(lists=[AttioList.Pipeline.NewDeals]),
-        Apollo.skill(),
-        Slack.skill(channel=SlackChannel.DealDesk),
-    ],
-)
-def run_job(event, agent: TerseAgent) -> None:
-    # your logic here
-    pass
 ```
 
 </CodeGroup>
@@ -66,7 +51,7 @@ Trigger fires → Filter (optional) → Handler executes → Run recorded in Act
 
 1. **Trigger fires.** An event arrives from the connected integration or on the configured schedule.
 2. **Filter evaluates.** If you defined a `filter` function, Terse calls it with the event. Return `false` to skip the run entirely. No tokens spent, no side effects.
-3. **Handler executes.** Your `onTrigger` (TypeScript) or decorated function (Python) runs with the event payload and a `TerseAgent`. You control the logic: call tools deterministically, hand off to the model, or both.
+3. **Handler executes.** Your `onTrigger` (TypeScript) runs with the event payload and a `TerseAgent`. You control the logic: call tools deterministically, hand off to the model, or both.
 4. **Run is recorded.** Every execution, whether it succeeds or fails, is logged in Activity with the full action trace so you can inspect what happened.
 
 ## Deterministic vs. agentic
@@ -104,29 +89,6 @@ onTrigger: async (event: Trigger, agent: TerseAgent) => {
 }
 ```
 
-```python Python
-def run_job(event, agent: TerseAgent) -> None:
-    # Deterministic: always enrich
-    company = agent.tools.apollo.enrich_company(
-        domain=event.record.values.company_domain,
-    )
-
-    # Agentic: let the model reason about the data
-    summary = agent.run_and_wait(
-        f"Summarize this company for the account owner.\n"
-        f"Industry: {company.industry}\n"
-        f"Employees: {company.employee_count}",
-        event,
-    )
-
-    # Deterministic: always write the result back
-    agent.tools.attio.update_record(
-        list=AttioList.Pipeline.NewDeals,
-        record_id=event.record.id,
-        fields={"research_summary": summary},
-    )
-```
-
 </CodeGroup>
 
 ## Filtering events
@@ -150,28 +112,11 @@ await client.createJob({
 })
 ```
 
-```python Python
-def contract_stage_only(event) -> bool:
-    return event.record.values.stage == "contract-sent"
-
-@app.job(
-    name="contract-alerts",
-    triggers=[Attio.on_record_updated(list=AttioList.Pipeline.OpenDeals)],
-    skills=[Slack.skill(channel=SlackChannel.DealDesk)],
-    filter=contract_stage_only,
-)
-def run_job(event, agent: TerseAgent) -> None:
-    agent.tools.slack.send_message(
-        channel=SlackChannel.DealDesk,
-        message=f"Contract sent for {event.record.values.company_name}.",
-    )
-```
-
 </CodeGroup>
 
 ## Tool approvals
 
-For jobs that write to production systems, you can require human approval before specific tools execute. List the tool names in `toolApprovals` (TypeScript) or `tool_approvals` (Python). During local testing, the CLI prompts in your terminal. In production, approval requests appear in the Terse app under **Notifications**.
+For jobs that write to production systems, you can require human approval before specific tools execute. List the tool names in `toolApprovals` (TypeScript). During local testing, the CLI prompts in your terminal. In production, approval requests appear in the Terse app under **Notifications**.
 
 ## Lifecycle
 

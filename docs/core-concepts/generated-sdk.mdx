@@ -9,7 +9,6 @@ icon: "file-code-2"
 Running `terse generate` writes a single typed file to your project:
 
 - `src/terse.generated.ts` for TypeScript
-- `src/terse_generated.py` for Python
 
 Every trigger, skill, deterministic tool wrapper, and real workspace resource (channels, repos, lists, objects, owners) is exported as a typed value. Your workflows import from it. Your coding agent reads it. The compiler enforces it.
 
@@ -25,7 +24,10 @@ Every workspace resource is exported as a typed constant. No UUIDs in your workf
 
 ```ts src/terse.generated.ts
 export class SlackChannel {
-    constructor(public readonly channelId: string, public readonly name: string) {}
+    constructor(
+        public readonly channelId: string,
+        public readonly name: string
+    ) {}
 
     static DealDesk = new SlackChannel("C08XYZ1234", "deal-desk")
     static Engineering = new SlackChannel("C09ABC5678", "engineering")
@@ -53,7 +55,10 @@ export class Repos {
 }
 
 export class AttioList {
-    constructor(public readonly listId: string, public readonly name: string) {}
+    constructor(
+        public readonly listId: string,
+        public readonly name: string
+    ) {}
 
     static Pipeline = {
         NewDeals: new AttioList("f1e3c0b2-…", "new-deals"),
@@ -70,20 +75,32 @@ Each integration becomes a namespace of typed trigger builders and a `skill()` c
 ```ts src/terse.generated.ts
 export const Slack = {
     /** Trigger on any message in a channel */
-    onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> { /* … */ },
+    onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
+        /* … */
+    },
     /** Trigger when the Slack app is directly mentioned */
-    onAppMention(opts: { channel: SlackChannel }): TypedTrigger<SlackAppMentionTrigger> { /* … */ },
+    onAppMention(opts: { channel: SlackChannel }): TypedTrigger<SlackAppMentionTrigger> {
+        /* … */
+    },
     /** Use in `skills[]` */
-    skill(opts: { channel: SlackChannel }): TypedSkill<SlackTools> { /* … */ }
+    skill(opts: { channel: SlackChannel }): TypedSkill<SlackTools> {
+        /* … */
+    }
 }
 
 export const GitHub = {
     /** Trigger when a pull request is opened */
-    onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> { /* … */ },
+    onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> {
+        /* … */
+    },
     /** Trigger when a pull request is merged */
-    onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> { /* … */ },
+    onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> {
+        /* … */
+    },
     /** Use in `skills[]` */
-    skill(opts: { repos: Repos[] }): TypedSkill<GitHubTools> { /* … */ }
+    skill(opts: { repos: Repos[] }): TypedSkill<GitHubTools> {
+        /* … */
+    }
 }
 ```
 
@@ -132,20 +149,14 @@ const client = new Terse()
 await client.createJob({
     name: "pr-summary-to-slack",
     triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
-    skills: [
-        GitHub.skill({ repos: [Repos.TerseAI.Terse] }),
-        Slack.skill({ channel: SlackChannel.Engineering })
-    ],
+    skills: [GitHub.skill({ repos: [Repos.TerseAI.Terse] }), Slack.skill({ channel: SlackChannel.Engineering })],
     onTrigger: async (event: Trigger, agent: TerseAgent) => {
         const message = await agent.tools.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pull_request.title}`
         })
 
-        await agent.runAndWait(
-            `Summarize this PR and reply in thread (ts: ${message.message_ts}).`,
-            event
-        )
+        await agent.runAndWait(`Summarize this PR and reply in thread (ts: ${message.message_ts}).`, event)
     }
 })
 ```
