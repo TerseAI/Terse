@@ -207,6 +207,7 @@ triggers=[
 
 Track web changes continuously and get notified when there are updates.
 
+You can add multiple `WebMonitor.onEvent(...)` triggers to the same workflow. Terse runs each monitor independently and calls the same `onTrigger` handler for every matching event.
 
 | Trigger                  | Event type          | Description                                                  |
 | ------------------------ | ------------------- | ------------------------------------------------------------ |
@@ -230,6 +231,11 @@ await client.createJob({
     }),
   ],
   onTrigger: async (event) => {
+    // outputSchema is inferred: payload.summary and payload.sentiment are typed
+    const summary = event.payload.summary;
+    const sentiment = event.payload.sentiment;
+    const sources = event.sourceUrls.join(", ");
+
     const agent = TerseAgent.create({
       prompt:
         "You are alerted when the web monitor finds new material. Read the event (query, payload, and structured fields), decide what matters, and post a concise summary to Slack.",
@@ -238,11 +244,27 @@ await client.createJob({
 
     // Use formatForAgentRunner() as the user message so the monitor query and
     // payload are not duplicated inside TerseAgent.prompt and again in runAndWait.
-    await agent.runAndWait(event.formatForAgentRunner());
+    await agent.runAndWait(
+      `${event.formatForAgentRunner()}\n\nSummary: ${summary}\nSentiment: ${sentiment}\nSources: ${sources}`
+    );
   },
 });
 ```
 </CodeGroup>
+
+If you need to annotate monitor events manually, import `WebMonitorTriggerFor` from `terse-sdk` and bind it to your Zod schema:
+
+```ts
+import type { WebMonitorTriggerFor } from "terse-sdk";
+import * as z from "zod";
+
+const outputSchema = z.object({
+  summary: z.string(),
+  sentiment: z.enum(["positive", "negative", "neutral"]),
+});
+
+type MonitorEvent = WebMonitorTriggerFor<typeof outputSchema>;
+```
 
 #### Writing effective queries
 
