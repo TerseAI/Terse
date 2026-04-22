@@ -1016,7 +1016,6 @@ function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSec
             "TypedTrigger",
             "WebMonitorConfig",
             "WebMonitorTrigger",
-            "WebMonitorTriggerFor",
             "FrequencyUnit",
             "InferStructuredOutput"
         ],
