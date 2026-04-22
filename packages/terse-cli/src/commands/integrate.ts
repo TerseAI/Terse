@@ -4,8 +4,8 @@ import ora from "ora"
 import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
 
 import { readApiKey, readApiKeyOrBail } from "../api.js"
-import { openUrlInBrowser } from "../openBrowser.js"
 import { ConfigurationFieldDefinition, FormFieldDefinition, fetchInstallationUrl, fetchIntegrationFields, fetchIntegrations, pollForConnection, submitIntegrationForm } from "../integrationApi.js"
+import { openUrlInBrowser } from "../openBrowser.js"
 
 import { generate } from "./generate.js"
 
@@ -212,4 +212,3 @@ async function handleOAuthIntegration(apiKey: string, integrationType: string, c
         return false
     }
 }
-
