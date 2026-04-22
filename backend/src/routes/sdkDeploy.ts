@@ -15,7 +15,7 @@ import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType
 import { UrlValidationError, validateRemoteServerUrl } from "../utility/urlValidation"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
-import { createOutputConfig, createTriggerConfig, persistToolApprovals, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
+import { createOutputConfig, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
     const user = req.session?.user as User | undefined

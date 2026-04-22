@@ -17,7 +17,7 @@ export async function fetchSampleEvents(
     triggerConfig: ConfigData,
     organizationId: string,
     userId: string,
-    options?: { limit?: number }
+    options?: { limit?: number; triggerId?: string }
 ): Promise<TriggerRuntime[]> {
     const limit = options?.limit ?? 5
 
@@ -32,7 +32,7 @@ export async function fetchSampleEvents(
         throw new Error(`Integration ${integrationType} not found or not in your organization`)
     }
 
-    const inputEvents = await manager.getSampleEvents(integrationId, organizationId, userId, triggerConfig, { limit })
+    const inputEvents = await manager.getSampleEvents(integrationId, organizationId, userId, triggerConfig, { limit, triggerId: options?.triggerId })
     logger.info("[fetchSampleEvents] Fetched raw events from integration", {
         integrationType,
         count: inputEvents.length

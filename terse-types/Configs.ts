@@ -21,10 +21,13 @@ export enum ConfigType {
     WORKOS_OUTPUT = "workos_output",
     ATTIO_OUTPUT = "attio_output",
     SNOWFLAKE_OUTPUT = "snowflake_output",
-    WEBHOOK_INPUT = "webhook_input"
+    WEBHOOK_INPUT = "webhook_input",
+    WEBMONITOR = "webmonitor"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
+export const frequencyUnitSchema = z.enum(["hour", "day", "week"])
+export type FrequencyUnit = z.infer<typeof frequencyUnitSchema>
 
 // MARK: Config Metadata
 export interface ConfigDetails {
@@ -208,6 +211,15 @@ export const WebhookInputConfigMetadata = {
     isOutput: false
 } as const satisfies ConfigDetails
 
+export const WebMonitorConfigMetadata = {
+    configType: ConfigType.WEBMONITOR,
+    name: "Web Monitor",
+    description: "Run when scheduled web monitoring detects relevant changes",
+    integrationType: IntegrationType.WEBMONITOR,
+    isInput: true,
+    isOutput: false
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -229,7 +241,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata,
-    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata
+    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
+    [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -293,6 +306,10 @@ export type ConfigInstance = ConfigInstanceType & ConfigBehavior
 export type ConfigBehavior = {
     isComplete(): boolean
     formatForAgent(): string
+}
+
+function isZodSchemaLike(value: unknown): value is z.ZodTypeAny {
+    return !!value && typeof value === "object" && "_zod" in value
 }
 
 abstract class BaseConfigInstance<TIntegrationType extends IntegrationType, TConfigType extends ConfigType, TIntegrationId extends string = string> implements ConfigInstance, ConfigBehavior {
@@ -897,6 +914,97 @@ export class WebhookInputConfig extends BaseConfigInstance<IntegrationType.WEBHO
     }
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === "object" && !Array.isArray(value)
+}
+
+export const WebMonitorOutputSchemaSchema = z.object({
+    type: z.literal("json"),
+    jsonSchema: z.record(z.string(), z.unknown())
+})
+export type WebMonitorOutputSchema = z.infer<typeof WebMonitorOutputSchemaSchema>
+
+function normalizeWebMonitorOutputSchema(value: unknown): WebMonitorOutputSchema | undefined {
+    if (value == null) {
+        return undefined
+    }
+
+    if (isZodSchemaLike(value)) {
+        const jsonSchema = z.toJSONSchema(value, {
+            target: "draft-2020-12",
+            unrepresentable: "any",
+            cycles: "throw"
+        })
+
+        if (!isPlainObject(jsonSchema)) {
+            throw new Error("WebMonitor outputSchema did not produce a valid JSON schema object.")
+        }
+
+        if ("$schema" in jsonSchema) {
+            delete jsonSchema.$schema
+        }
+
+        return { type: "json", jsonSchema }
+    }
+
+    return WebMonitorOutputSchemaSchema.parse(value)
+}
+
+export const WebMonitorConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.WEBMONITOR),
+    configType: z.literal(ConfigType.WEBMONITOR),
+    query: z.string(),
+    frequency: z.object({
+        number: z.number(),
+        unit: frequencyUnitSchema
+    }),
+    outputSchema: z.preprocess(value => normalizeWebMonitorOutputSchema(value), WebMonitorOutputSchemaSchema.optional())
+})
+export type WebMonitorConfigData = z.infer<typeof WebMonitorConfigSchema>
+export type WebMonitorConfigInstance = WebMonitorConfigData & ConfigBehavior
+
+export class WebMonitorConfig extends BaseConfigInstance<IntegrationType.WEBMONITOR, ConfigType.WEBMONITOR, "system"> implements WebMonitorConfigInstance {
+    public readonly outputSchema?: WebMonitorOutputSchema
+    private readonly rawOutputSchema?: unknown
+
+    constructor(
+        public query: string,
+        public frequency: {
+            number: number
+            unit: FrequencyUnit
+        },
+        outputSchema?: unknown
+    ) {
+        super("system", IntegrationType.WEBMONITOR, ConfigType.WEBMONITOR)
+        this.rawOutputSchema = outputSchema
+        this.outputSchema = normalizeWebMonitorOutputSchema(outputSchema)
+    }
+
+    isComplete(): boolean {
+        return !!(this.query && this.frequency)
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Web Monitor`]
+        if (this.query) parts.push(`Query: ${this.query}`)
+        if (this.frequency) parts.push(`Frequency: ${this.frequency.number}${this.frequency.unit}`)
+        if (this.outputSchema) parts.push(`Structured Output: ${typeof this.outputSchema === "object" ? "enabled" : "configured"}`)
+        return parts.join("\n")
+    }
+
+    toJSON(): WebMonitorConfigData {
+        return WebMonitorConfigSchema.parse({
+            integrationId: this.integrationId,
+            integrationType: this.integrationType,
+            configType: this.configType,
+            query: this.query,
+            frequency: this.frequency,
+            outputSchema: this.rawOutputSchema ?? this.outputSchema
+        })
+    }
+}
+
 export const configDataSchema = z.union([
     GmailConfigSchema,
     SlackConfigSchema,
@@ -917,7 +1025,8 @@ export const configDataSchema = z.union([
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
-    WebhookInputConfigSchema
+    WebhookInputConfigSchema,
+    WebMonitorConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -929,7 +1038,8 @@ export const triggerConfigDataSchema = z.union([
     GitHubConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
-    WebhookInputConfigSchema
+    WebhookInputConfigSchema,
+    WebMonitorConfigSchema
 ])
 export type TriggerConfigData = z.infer<typeof triggerConfigDataSchema>
 
@@ -982,6 +1092,8 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
             return !!config.projectId
         case ConfigType.TIME_TRIGGER:
             return !!config.cronExpression
+        case ConfigType.WEBMONITOR:
+            return !!(config.query && config.frequency)
         case ConfigType.LAUNCHDARKLY:
             return !!(config.projectKey && config.environmentKeys.length > 0)
         case ConfigType.WORKOS_INPUT:
@@ -1101,6 +1213,12 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Snowflake Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
+        case ConfigType.WEBMONITOR: {
+            const parts = [`Type: Web Event`]
+            if (config.query) parts.push(`Query: ${config.query}`)
+            if (config.frequency) parts.push(`Frequency: ${config.frequency.number}${config.frequency.unit}`)
+            return parts.join("\n")
+        }
         default: {
             const _exhaustive: never = config
             return _exhaustive
@@ -1131,6 +1249,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
     [ConfigType.SNOWFLAKE_OUTPUT]: typeof SnowflakeOutputConfig
     [ConfigType.WEBHOOK_INPUT]: typeof WebhookInputConfig
+    [ConfigType.WEBMONITOR]: typeof WebMonitorConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1152,5 +1271,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
-    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig
+    [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
+    [ConfigType.WEBMONITOR]: WebMonitorConfig
 } as const satisfies ConfigMetadataMap

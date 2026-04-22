@@ -2,13 +2,14 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Clock, Code, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Server, Trash2, Zap } from "lucide-react"
+import { Clock, Code, Info, Lightbulb, Loader2, MoreVertical, Pause, Play, Radar, Server, Trash2, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { CONFIG_DETAILS, ConfigType } from "terse-types"
 import { FrontendRoutes } from "terse-types"
-import type { AgentTrigger, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
+import type { AgentTrigger, FrequencyUnit, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
 
 import BreadCrumb from "../../components/BreadCrumb"
+import ToolCallParameters from "../../components/ToolCallParameters"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
@@ -24,6 +25,45 @@ import { WebhookTriggerCard } from "./components/WebhookTriggerCard"
 import { AgentFileExplorer } from "./tabs/AgentFileExplorer"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
+
+function formatWebMonitorFrequency(frequency: { number: number; unit: FrequencyUnit }) {
+    const amount = Math.max(1, frequency.number)
+    const { unit } = frequency
+    return amount === 1 ? `Every ${unit}` : `Every ${amount} ${unit}s`
+}
+
+function WebMonitorTriggerCard({ trigger }: { trigger: AgentTrigger }) {
+    if (trigger.config.configType !== ConfigType.WEBMONITOR) {
+        return null
+    }
+
+    const { query, frequency, outputSchema } = trigger.config
+
+    return (
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-3 py-2">
+                <Radar className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/50">Web Monitor</span>
+                <span className="ml-auto text-[11px] font-medium tabular-nums text-muted-foreground">{formatWebMonitorFrequency(frequency)}</span>
+            </div>
+            <div className="px-3 py-3">
+                <p className="text-sm leading-relaxed text-foreground break-words">{query}</p>
+            </div>
+            {outputSchema ? (
+                <div className="border-t border-border/40 px-3 pb-3 pt-2.5">
+                    <ToolCallParameters
+                        parameters={JSON.stringify({
+                            ...(outputSchema.jsonSchema.properties ? { properties: outputSchema.jsonSchema.properties } : {}),
+                            ...(outputSchema.jsonSchema.required ? { required: outputSchema.jsonSchema.required } : {})
+                        })}
+                        label="Structured output"
+                        collapsed={true}
+                    />
+                </div>
+            ) : null}
+        </div>
+    )
+}
 
 export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const navigate = useNavigate()
@@ -366,6 +406,10 @@ function OverviewTab({ triggers, updatedAt, isActive }: { triggers: AgentTrigger
 
                             if (configType === ConfigType.WEBHOOK_INPUT) {
                                 return <WebhookTriggerCard key={trigger.id} trigger={trigger} />
+                            }
+
+                            if (configType === ConfigType.WEBMONITOR) {
+                                return <WebMonitorTriggerCard key={trigger.id} trigger={trigger} />
                             }
 
                             const details = CONFIG_DETAILS[configType as keyof typeof CONFIG_DETAILS]
