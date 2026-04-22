@@ -85,14 +85,20 @@ export class SdkSandboxImageService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
-    async prepareFromSourceZip(params: { zipBuffer: Buffer; gcsKey: string; organizationId: string }): Promise<PreparedSdkSandboxImages> {
-        const { zipBuffer, gcsKey, organizationId } = params
+    async prepareFromSourceZip(params: {
+        zipBuffer: Buffer
+        gcsKey: string
+        organizationId: string
+        onProgress?: (phase: "dependency_image" | "source_image") => void
+    }): Promise<PreparedSdkSandboxImages> {
+        const { zipBuffer, gcsKey, organizationId, onProgress } = params
         const archive = new ZipSdkProjectArchive(zipBuffer)
         const executor = sdkRuntimeExecutorRegistry.resolve(archive.entries)
 
         const dependencyHash = executor.defineDependencyImage(archive).dependencyHash
         const sourceHash = archive.computeSourceHash()
 
+        onProgress?.("dependency_image")
         const dependencyImage = await this.ensureDependencyImage({
             archive,
             dependencyHash,
@@ -101,6 +107,7 @@ export class SdkSandboxImageService {
 
         const sourceLayerKey = computeSourceLayerKey({ organizationId, dependencyHash, sourceHash })
 
+        onProgress?.("source_image")
         const sourceImage = await this.ensureSourceImage({
             dependencyImageId: dependencyImage.id,
             dependencySandboxImageId: dependencyImage.image_id,

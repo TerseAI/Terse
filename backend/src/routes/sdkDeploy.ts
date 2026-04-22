@@ -1,7 +1,9 @@
 import { Request, Response } from "express"
-import { SkillConfigData, TriggerConfigData } from "terse-types/Configs"
+import { TriggerConfigData } from "terse-types/Configs"
 import { SdkDeployResponseBody, User, sdkDeployRequestBodySchema } from "terse-types/types"
+import { SdkDeployStage } from "terse-types/types"
 
+import { emitSessionEvent } from "../agent/SessionEventBus"
 import { isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -44,6 +46,23 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     const { remoteServerUrl, jobs, sourceZipBase64, projectId } = sdkDeployRequestBodySchema.parse(req.body)
 
     // Validate project exists and is owned by the user before attempting to create a deploy
+    const sessionId = typeof req.headers["x-terse-session-id"] === "string" ? req.headers["x-terse-session-id"] : undefined
+
+    const emitStage = (stage: SdkDeployStage) => {
+        if (sessionId) emitSessionEvent(sessionId, { type: "deploy_stage", stage })
+    }
+
+    if (remoteServerUrl) {
+        try {
+            await validateRemoteServerUrl(remoteServerUrl)
+        } catch (error) {
+            if (error instanceof UrlValidationError) {
+                return res.status(400).json({ success: false, error: error.message })
+            }
+            throw error
+        }
+    }
+
     const project = await db().projects.findUnique({
         where: {
             id: projectId,
@@ -79,29 +98,22 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
     }
 
-    if (remoteServerUrl) {
-        try {
-            await validateRemoteServerUrl(remoteServerUrl)
-        } catch (error) {
-            if (error instanceof UrlValidationError) {
-                return res.status(400).json({ success: false, error: error.message })
-            }
-            throw error
-        }
-    }
-
     const results: SdkDeployResponseBody["results"] = []
 
     let sourceZipBuffer: Buffer | undefined
     let gcsKey: string | undefined
     if (sourceZipBase64) {
-        sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64, res)
+        emitStage("UPLOADING_SOURCE")
+        sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64)
         gcsKey = await uploadSourceZipToGcs(sourceZipBuffer)
 
         const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
             zipBuffer: sourceZipBuffer,
             gcsKey,
-            organizationId
+            organizationId,
+            onProgress: phase => {
+                emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
+            }
         })
 
         await prisma.project_deploys.update({
@@ -146,6 +158,8 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
             newProjectApiKey = rawToken
         }
     }
+
+    emitStage("CONFIGURING_AUTOMATIONS")
 
     for (const job of jobs) {
         const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
@@ -219,13 +233,11 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     return res.status(200).json(response)
 }
 
-function parseSourceZipBuffer(sourceZipBase64: string, res: Response): Buffer {
+function parseSourceZipBuffer(sourceZipBase64: string): Buffer {
     const zipBuffer = Buffer.from(sourceZipBase64, "base64")
     if (zipBuffer.length === 0) {
-        res.status(400).json({ success: false, error: "sourceZipBase64 is empty" })
         throw new Error("sourceZipBase64 is empty")
     }
-
     return zipBuffer
 }
 

@@ -13,7 +13,7 @@ Improve the Terse job named: **$ARGUMENTS**
 The bundled [sdk-reference.md](reference/sdk-reference.md) is a quick offline cheat sheet, but Terse evolves fast. Always pull the live docs before making non-trivial changes:
 
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
-- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, `test`, and `run`.
+- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
 
 If anything in the bundled reference disagrees with the live docs, trust the live docs.
 
@@ -24,12 +24,10 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 Use project markers to detect the language:
 
 - TypeScript: `package.json` and `src/index.ts`
-- Python: `pyproject.toml` and `src/main.py`
 
 Then open the right files:
 
 - TypeScript: `src/index.ts` and `src/terse.generated.ts`
-- Python: `src/main.py` and `src/terse_generated.py`
 
 Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
 If the generated file is missing or stale for the requested integration, rerun `terse generate` instead of guessing at missing helpers.
@@ -69,7 +67,6 @@ Evaluate each area below. Not every area will need changes — focus on the ones
 - **Specificity**: Does the prompt tell the agent exactly what to do? Vague prompts like "handle this event" waste tokens and produce inconsistent results. Be specific: "Summarize the PR changes in 3 bullet points and post to Slack."
 - **Event context**: Does it include the full event payload?
 TypeScript: `event.formatForAgentRunner()`
-Python: `event.formatted_content`
 - **Edge cases**: Does the prompt explain what to do when things are ambiguous? E.g., "If the PR has no description, summarize from the diff only."
 - **Format instructions**: Does it specify the output format? "Format as Block Kit JSON" vs leaving it open.
 - **Length**: Is the prompt too long? Split multi-step instructions into separate agent runs or use deterministic tool calls for the predictable parts.
@@ -81,17 +78,9 @@ Python: `event.formatted_content`
 - **Specific sources**: Should events from certain users, repos, or channels be filtered?
 - **Cost**: Every unfiltered event triggers an agent run. Filters save real money.
 
-#### Type Safety and language fit
-
-- **Event type**: Is the event typed with the correct class for the language? Use `GithubPRTrigger` in TypeScript, or the matching `terse_sdk` event class in Python.
-- **Type guards**: When handling events from multiple trigger types, use `isGithubPRTrigger()`, `isGithubPushTrigger()`, etc.
-- **Imports**: Are trigger and skill types imported from the correct generated file?
-- **Method names**: Does the code use the right runtime API for the language? TypeScript uses `runAndWait()` / `executeTool()`. Python uses `run_and_wait()` / `execute_tool()`.
-- **Python generated surface**: If the project is Python, are you only using helpers that actually exist in `src/terse_generated.py`?
-
 #### Tool Usage
 
-- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers over an agent run. Use `Agent.tools.*` / `Agent.executeTool()` in TypeScript, or `agent.tools.*` / `agent.execute_tool()` in Python when the helper exists.
+- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers over an agent run. Use `Agent.tools.*` / `Agent.executeTool()` in TypeScript
 - **Multi-step**: Could a two-step approach work better? E.g., send a Slack message first with `Agent.tools.slack.sendMessage()`, then use `Agent.runAndWait()` to post an AI-generated summary as a thread reply.
 - **Tool results**: When using `Agent.tools.*`, capture the return value if subsequent steps need it (e.g., `message.message_ts` for threading).
 
@@ -138,7 +127,6 @@ For both commands, see https://docs.useterse.ai/reference/cli for the full optio
 After local execution looks healthy, run the project's typechecker so the change is statically valid before deploy:
 
 - TypeScript: `pnpm exec tsc --noEmit` (or `npx tsc --noEmit`, or `pnpm run build` if the scaffolded `build` script is unchanged).
-- Python: `uv run ty check` (the scaffolded Python projects ship with the `ty` typechecker as a dev dependency).
 
 Fix any errors before reporting back. If the project uses a different typechecker (mypy, pyright, etc.), use whatever the repo is configured for.
 
@@ -147,8 +135,6 @@ Fix any errors before reporting back. If the project uses a different typechecke
 After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test` invocations confirmed the fix.
 
 ## Common Improvement Patterns
-
-The examples below are in TypeScript. Apply the same reasoning in Python projects using `src/main.py`, `terse_sdk`, `terse_generated`, snake_case method names, and `event.formatted_content`. Only use helpers that actually exist in `src/terse_generated.py`.
 
 ### Add bot filtering
 ```typescript

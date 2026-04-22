@@ -155,6 +155,8 @@ jobs:
 
             - name: "[run] Execute CI test fixture"
               working-directory: packages/ci-test-fixture
+              env:
+                  TERSE_CLI_ENABLE_RUN: "1"
               run: terse run "Tell me a joke" --event-file ./src/sample-webhook-event.json
 
             # ── E2E (Python) ────────────────────────────────────────────────────
@@ -185,6 +187,8 @@ jobs:
 
             - name: "[run] Execute Python CI test fixture"
               working-directory: packages/ci-test-fixture-python
+              env:
+                  TERSE_CLI_ENABLE_RUN: "1"
               run: terse run "Tell me a joke" --event-file ./src/sample-webhook-event.json
 
             # ── Cleanup ───────────────────────────────────────────────────────────

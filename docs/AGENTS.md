@@ -32,7 +32,7 @@
 - Bold for UI elements: Click **Settings**
 - Code formatting for file names, commands, paths, and code references
 - Lead with the workflow, then explain why it matters
-- Prefer TypeScript examples when a page is language-neutral and the example needs integrations not yet surfaced in Python. When a page covers the shared CLI or project structure, document both languages.
+- Prefer TypeScript examples when a page is language-neutral. When a page covers the shared CLI or project structure, document both languages.
 - Default to GTM examples: CRM enrichment, routing, alerts, pipeline reporting, and handoff workflows
 - Use Attio as the primary CRM in examples unless a page needs CRM-agnostic language
 - Use Apollo as the primary enrichment provider in examples unless a page needs provider-agnostic language
@@ -43,12 +43,10 @@
 
 ## Content boundaries
 
-- Prioritize external developer docs for TypeScript workflows, Python workflows where supported, CLI workflows, templates, and the parts of the web UI needed to operate them.
+- Prioritize external developer docs for TypeScript workflows, CLI workflows, templates, and the parts of the web UI needed to operate them.
 - Document the user-visible app areas that matter for code workflows: Home, Workflows, Integrations, Activity, Stats, Notifications, and Profile.
 - Mention UI agents only when users need orientation or migration context.
 - Treat templates and comparison pages as first-class product docs, not side content.
 - Frame planned GTM integrations as waitlist or coming soon. Keep the current path clear.
 - Do not document internal admin tools, internal-only templates, implementation details of backend services, or unreleased product behavior.
-- Document the shared `terse` CLI as the primary path for both TypeScript and Python projects.
-- Keep Python-specific SDK and generated-surface details scoped to pages that need them.
 - Avoid internal implementation detail. Optimize for the clearest product story users can act on.

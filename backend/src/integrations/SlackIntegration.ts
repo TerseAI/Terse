@@ -711,7 +711,6 @@ export const fetchSlackChannelsForIntegration = async (userId: string, organizat
     if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
         throw createSlackRouteError("Slack integration not found", 404)
     }
-
     const token = await getSlackToken(userSlackIntegration)
     if (!token) {
         throw createSlackRouteError("Slack access token not found", 401, "The Slack integration token is missing. Please reconnect.", "SLACK_TOKEN_MISSING")

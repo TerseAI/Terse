@@ -18,9 +18,6 @@ npm install -g terse-cli
 ```bash TypeScript
 terse init my-project
 ```
-```bash Python
-terse init my-project --language python
-```
 </CodeGroup>
 
 `terse init` handles the full setup in one command:
@@ -41,16 +38,6 @@ my-project/
     terse.generated.ts    # generated SDK (do not edit)
   package.json
   tsconfig.json
-  .env.example            # copy to .env when you need project-level env vars
-  .gitignore
-```
-```text Python
-my-project/
-  src/
-    main.py               # your job definitions
-    terse_generated.py    # generated SDK (do not edit)
-  pyproject.toml
-  .python-version
   .env.example            # copy to .env when you need project-level env vars
   .gitignore
 ```

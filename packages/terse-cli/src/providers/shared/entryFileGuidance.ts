@@ -23,7 +23,6 @@ export function printMissingEntryFileGuidance(options: MissingEntryFileGuidanceO
     }
 
     console.error(chalk.dim(`  terse test --entry-file ${options.overrideExample}`))
-    console.error(chalk.dim(`  terse run my-job --entry-file ${options.overrideExample} --event-file ./event.json`))
     console.error(chalk.dim(`  terse deploy --entry-file ${options.overrideExample}`))
     process.exit(1)
 }
