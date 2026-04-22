@@ -9,15 +9,29 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { uploadSdkDeployZip } from "../services/FileStorageService"
 import { SdkSandboxImageService } from "../services/SdkSandboxImageService"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
+import { createProjectScopedToken } from "../utility/apiTokens"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 import { UrlValidationError, validateRemoteServerUrl } from "../utility/urlValidation"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
-import { createOutputConfig, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
+import { createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
+    try {
+        await handleSdkDeployInternal(req, res)
+    } catch (error) {
+        logger.error("SDK deploy failed", { error })
+        return res.status(500).json({
+            success: false,
+            error: "Deploy failed",
+            details: extractErrorMessage(error)
+        })
+    }
+}
+
+async function handleSdkDeployInternal(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
     if (!user) {
         return res.status(401).json({ success: false, error: "Unauthorized" })
@@ -26,107 +40,165 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const userId = user.id
     const organizationId = user.organizationId
 
-    try {
-        const { remoteServerUrl, jobs, sourceZipBase64 } = sdkDeployRequestBodySchema.parse(req.body)
+    const { remoteServerUrl, jobs, sourceZipBase64, projectId } = sdkDeployRequestBodySchema.parse(req.body)
 
-        if (!sourceZipBase64 && !remoteServerUrl) {
-            return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
-        } else if (sourceZipBase64 && remoteServerUrl) {
-            return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
+    const project = await db().projects.findUnique({
+        where: {
+            id: projectId,
+            organization_id: organizationId
+        },
+        select: {
+            name: true,
+            signing_secret: true,
+            api_tokens: { select: { id: true }, take: 1 }
         }
+    })
 
-        if (remoteServerUrl) {
-            try {
-                await validateRemoteServerUrl(remoteServerUrl)
-            } catch (error) {
-                if (error instanceof UrlValidationError) {
-                    return res.status(400).json({ success: false, error: error.message })
-                }
-                throw error
-            }
-        }
-
-        const results: SdkDeployResponseBody["results"] = []
-        const prisma = db()
-
-        let sourceZipBuffer: Buffer | undefined
-        let gcsKey: string | undefined
-        let currentSdkSourceImageId: string | undefined
-        if (sourceZipBase64) {
-            sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64, res)
-            gcsKey = await uploadSourceZipToGcs(sourceZipBuffer)
-
-            const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
-                zipBuffer: sourceZipBuffer,
-                gcsKey,
-                organizationId
-            })
-            currentSdkSourceImageId = preparedImages.sourceImageId
-        }
-
-        for (const job of jobs) {
-            const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
-                where: {
-                    name: job.jobName,
-                    organization_id: organizationId,
-                    source: "SDK"
-                },
-                include: { inputs: { include: getInputConfigInclude() } }
-            })
-
-            const isUpdate = !!existing
-            const agent = isUpdate
-                ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId, {
-                      currentSdkSourceImageId,
-                      gcsKey,
-                      remoteServerUrl
-                  })
-                : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, {
-                      currentSdkSourceImageId,
-                      gcsKey,
-                      remoteServerUrl
-                  })
-
-            await setupAgentTriggers(agent)
-
-            const prompt = await prisma.automation_prompts.findUnique({ where: { automation_id: agent.id }, select: { signing_secret: true } })
-
-            results.push({
-                jobName: job.jobName,
-                automationId: agent.id,
-                isUpdate,
-                signingSecret: prompt?.signing_secret ?? undefined
-            })
-
-            emitCacheInvalidationWithWildcard(organizationId, "agentFiles", agent.id)
-            emitCacheInvalidationWithWildcard(organizationId, "agentFileContent", agent.id)
-
-            logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
-                automationId: agent.id,
-                jobName: job.jobName,
-                organizationId,
-                triggerCount: job.triggers.length
-            })
-        }
-
-        // Delete any SDK automations not in this deploy
-        const deployedNames = new Set(jobs.map(j => j.jobName))
-        const removed = await removeStaleAutomations(prisma, organizationId, deployedNames)
-
-        emitCacheInvalidationWithKey(organizationId, "recentAgents")
-        emitCacheInvalidationWithKey(organizationId, "agents")
-
-        const response: SdkDeployResponseBody = { success: true, results, removed }
-
-        return res.status(200).json(response)
-    } catch (error) {
-        logger.error("SDK deploy failed", { error, userId })
-        return res.status(500).json({
+    if (!project) {
+        return res.status(404).json({
             success: false,
-            error: "Deploy failed",
-            details: extractErrorMessage(error)
+            error: "Project not found. The project linked in terse.config.json no longer exists in this organization.",
+            errorCode: "PROJECT_NOT_FOUND"
         })
     }
+
+    if (!sourceZipBase64 && !remoteServerUrl) {
+        return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
+    } else if (sourceZipBase64 && remoteServerUrl) {
+        return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
+    }
+
+    if (remoteServerUrl) {
+        try {
+            await validateRemoteServerUrl(remoteServerUrl)
+        } catch (error) {
+            if (error instanceof UrlValidationError) {
+                return res.status(400).json({ success: false, error: error.message })
+            }
+            throw error
+        }
+    }
+
+    const results: SdkDeployResponseBody["results"] = []
+    const prisma = db()
+
+    let sourceZipBuffer: Buffer | undefined
+    let gcsKey: string | undefined
+    let currentSdkSourceImageId: string | undefined
+    if (sourceZipBase64) {
+        sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64, res)
+        gcsKey = await uploadSourceZipToGcs(sourceZipBuffer)
+
+        const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
+            zipBuffer: sourceZipBuffer,
+            gcsKey,
+            organizationId
+        })
+        currentSdkSourceImageId = preparedImages.sourceImageId
+    }
+
+    // Self hosted!
+    let signingSecretJustGenerated = false
+    let newProjectApiKey: string | undefined
+    if (remoteServerUrl) {
+        await prisma.projects.update({
+            where: { id: projectId },
+            data: {
+                remote_server_url: remoteServerUrl
+            }
+        })
+
+        // Signing secret and project-scoped API key are returned to the client
+        // only on first generation. On subsequent deploys the user must rotate
+        // from the dashboard to recover a lost credential.
+        if (!project.signing_secret) {
+            const signingSecret = generateWebhookSecret()
+            await prisma.projects.update({
+                where: { id: projectId },
+                data: {
+                    signing_secret: signingSecret
+                }
+            })
+            project.signing_secret = signingSecret
+            signingSecretJustGenerated = true
+        }
+
+        if (project.api_tokens.length === 0) {
+            const { rawToken } = await createProjectScopedToken({
+                projectId,
+                projectName: project.name,
+                organizationId,
+                createdByUserId: userId
+            })
+            newProjectApiKey = rawToken
+        }
+    }
+
+    const deploy = await prisma.project_deploys.create({
+        data: {
+            project_id: projectId,
+            sdk_source_image_id: currentSdkSourceImageId,
+            deployed_by_user_id: userId,
+            status: "IN_PROGRESS"
+        }
+    })
+
+    for (const job of jobs) {
+        const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
+            where: {
+                name: job.jobName,
+                organization_id: organizationId,
+                source: "SDK",
+                project_id: projectId
+            },
+            include: { inputs: { include: getInputConfigInclude() } }
+        })
+
+        const isUpdate = !!existing
+        const agent = isUpdate
+            ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId)
+            : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, projectId)
+
+        await setupAgentTriggers(agent)
+
+        results.push({
+            jobName: job.jobName,
+            automationId: agent.id,
+            isUpdate
+        })
+
+        emitCacheInvalidationWithWildcard(organizationId, "agentFiles", agent.id)
+        emitCacheInvalidationWithWildcard(organizationId, "agentFileContent", agent.id)
+
+        logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, {
+            automationId: agent.id,
+            jobName: job.jobName,
+            organizationId,
+            triggerCount: job.triggers.length
+        })
+    }
+
+    await prisma.project_deploys.update({
+        where: { id: deploy.id },
+        data: { status: "SUCCEEDED" }
+    })
+
+    // Delete any SDK automations not in this deploy
+    const deployedNames = new Set(jobs.map(j => j.jobName))
+    const removed = await removeStaleAutomations(prisma, organizationId, deployedNames, projectId)
+
+    emitCacheInvalidationWithKey(organizationId, "recentAgents")
+    emitCacheInvalidationWithKey(organizationId, "agents")
+
+    const response: SdkDeployResponseBody = {
+        success: true,
+        results,
+        removed,
+        signingSecret: signingSecretJustGenerated ? (project.signing_secret ?? undefined) : undefined,
+        projectApiKey: newProjectApiKey
+    }
+
+    return res.status(200).json(response)
 }
 
 function parseSourceZipBuffer(sourceZipBase64: string, res: Response): Buffer {
@@ -146,23 +218,15 @@ async function uploadSourceZipToGcs(zipBuffer: Buffer): Promise<string> {
     return uploadSdkDeployZip(zipBuffer)
 }
 
-type SdkDeploymentArtifacts = {
-    currentSdkSourceImageId?: string
-    gcsKey?: string
-    remoteServerUrl?: string
-}
-
 async function updateExistingAutomation(
     prisma: ReturnType<typeof db>,
     existing: AgentWithTriggerRelations,
     jobName: string,
     triggers: TriggerConfigData[],
     organizationId: string,
-    userId: string,
-    artifacts: SdkDeploymentArtifacts = {}
+    userId: string
 ): Promise<AgentWithTriggerRelations> {
     const automationId = existing.id
-    const { currentSdkSourceImageId, gcsKey, remoteServerUrl } = artifacts
 
     // Preserve webhook tokens so URLs stay stable across redeploys
     const preservedWebhookTokens = existing.inputs.filter(input => input.webhook_config).map(input => input.webhook_config!.webhook_token)
@@ -183,24 +247,6 @@ async function updateExistingAutomation(
             data: {
                 name: jobName,
                 is_active: true
-            }
-        })
-
-        await tx.automation_prompts.upsert({
-            where: { automation_id: automationId },
-            update: {
-                content: "[SDK]",
-                current_sdk_source_image_id: currentSdkSourceImageId ?? null,
-                source_code_gcs_key: gcsKey ?? null,
-                remote_server_url: remoteServerUrl ?? null
-            },
-            create: {
-                automation_id: automationId,
-                content: "[SDK]",
-                current_sdk_source_image_id: currentSdkSourceImageId ?? null,
-                source_code_gcs_key: gcsKey ?? null,
-                remote_server_url: remoteServerUrl ?? null,
-                signing_secret: generateWebhookSecret()
             }
         })
 
@@ -234,10 +280,8 @@ async function createNewAutomation(
     triggers: TriggerConfigData[],
     organizationId: string,
     userId: string,
-    artifacts: SdkDeploymentArtifacts = {}
+    projectId: string
 ): Promise<AgentWithTriggerRelations> {
-    const { currentSdkSourceImageId, gcsKey, remoteServerUrl } = artifacts
-
     return prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
             data: {
@@ -246,18 +290,17 @@ async function createNewAutomation(
                 name: jobName,
                 is_active: true,
                 require_approval: false,
-                source: "SDK"
+                source: "SDK",
+                project_id: projectId
             }
         })
+
+        // generateWebhookSecret()
 
         await tx.automation_prompts.create({
             data: {
                 automation_id: newAgent.id,
-                content: "[SDK]",
-                current_sdk_source_image_id: currentSdkSourceImageId,
-                source_code_gcs_key: gcsKey,
-                remote_server_url: remoteServerUrl,
-                signing_secret: generateWebhookSecret()
+                content: "[SDK]"
             }
         })
 
@@ -293,34 +336,35 @@ async function createTriggersForAutomation(tx: PrismaTransaction, automationId: 
     }
 }
 
-async function createOutputsForAutomation(tx: PrismaTransaction, automationId: string, outputs: SkillConfigData[], organizationId: string, userId: string) {
-    for (const output of outputs) {
-        const integrationId = output.integrationId
-        if (!integrationId) {
-            throw new Error(`Integration ID is required for ${output.integrationType}`)
-        }
+// We may decide to bring this back! Structure still TBD
+// async function createOutputsForAutomation(tx: PrismaTransaction, automationId: string, outputs: SkillConfigData[], organizationId: string, userId: string) {
+//     for (const output of outputs) {
+//         const integrationId = output.integrationId
+//         if (!integrationId) {
+//             throw new Error(`Integration ID is required for ${output.integrationType}`)
+//         }
 
-        const isOwner = await validateUserOwnsIntegration(organizationId, output.integrationType, integrationId)
-        if (!isOwner) {
-            throw new Error(`Integration ${output.integrationType} not found or not owned by user`)
-        }
+//         const isOwner = await validateUserOwnsIntegration(organizationId, output.integrationType, integrationId)
+//         if (!isOwner) {
+//             throw new Error(`Integration ${output.integrationType} not found or not owned by user`)
+//         }
 
-        const newOutput = await tx.automation_outputs.create({
-            data: {
-                automation_id: automationId,
-                config_type: convertConfigTypeToOutputConfigType(output.configType),
-                integration_id: integrationId
-            }
-        })
+//         const newOutput = await tx.automation_outputs.create({
+//             data: {
+//                 automation_id: automationId,
+//                 config_type: convertConfigTypeToOutputConfigType(output.configType),
+//                 integration_id: integrationId
+//             }
+//         })
 
-        await createOutputConfig(tx, newOutput.id, output, userId)
-    }
-}
+//         await createOutputConfig(tx, newOutput.id, output, userId)
+//     }
+// }
 
-async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>): Promise<{ id: string; name: string }[]> {
+async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>, projectId: string): Promise<{ id: string; name: string }[]> {
     // Lightweight query to identify which automations are stale
     const sdkAutomations = await prisma.automations.findMany({
-        where: { organization_id: organizationId, source: "SDK" },
+        where: { organization_id: organizationId, source: "SDK", project_id: projectId },
         select: { id: true, name: true }
     })
 

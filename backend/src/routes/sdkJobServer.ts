@@ -21,7 +21,7 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
             },
             select: {
                 source: true,
-                prompt: {
+                project: {
                     select: {
                         remote_server_url: true,
                         signing_secret: true
@@ -34,7 +34,7 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
             return res.status(404).json({ error: "Agent not found" })
         }
 
-        if (agent.source !== "SDK" || !agent.prompt?.remote_server_url) {
+        if (agent.source !== "SDK" || !agent.project?.remote_server_url) {
             const response: SdkJobServerCheckResponse = {
                 success: false,
                 message: "This SDK job does not have a self-hosted server URL configured."
@@ -42,7 +42,7 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
             return res.status(400).json(response)
         }
 
-        if (!agent.prompt.signing_secret) {
+        if (!agent.project?.signing_secret) {
             const response: SdkJobServerCheckResponse = {
                 success: false,
                 message: "This SDK job does not have a signing secret configured. Try redeploying."
@@ -51,8 +51,8 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
         }
 
         const result = await runWebhookJobHandshakeChallenge({
-            remoteServerUrl: agent.prompt.remote_server_url,
-            signingSecret: agent.prompt.signing_secret
+            remoteServerUrl: agent.project.remote_server_url,
+            signingSecret: agent.project.signing_secret
         })
 
         if (result.ok) {

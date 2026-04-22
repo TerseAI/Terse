@@ -13,10 +13,11 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRu
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
-import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
+import { AgentWithRelations, Agent as PrismaAgent, SDKAgent, isSDKAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
+import { getActiveDeployForProject } from "../../utility/projectHelper"
 import { classifyAgentError } from "../agentErrorUtils"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
@@ -85,7 +86,8 @@ export class EventProcessor {
                 outputs: {
                     include: getOutputConfigInclude()
                 },
-                tool_approvals: true
+                tool_approvals: true,
+                project: true
             }
         })
 
@@ -186,7 +188,8 @@ export class EventProcessor {
                 outputs: {
                     include: getOutputConfigInclude()
                 },
-                tool_approvals: true
+                tool_approvals: true,
+                project: true
             }
         })
     }
@@ -240,15 +243,17 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
         }
 
+        const activeDeploy = agent.project?.id ? await getActiveDeployForProject(agent.project.id) : null
+
         // SDK agents with a remote_server_url trigger the user's own infrastructure via webhook
-        if (agent.source === "SDK" && agent.prompt?.remote_server_url) {
+        if (isSDKAgent(agent) && agent.project.remote_server_url) {
             return this.processWebhookAgent(agent, existingRunId)
         }
 
         // SDK agents run in a Modal sandbox instead of the normal agent pipeline
-        else if (agent.source === "SDK" && agent.prompt?.source_code_gcs_key) {
+        else if (isSDKAgent(agent) && activeDeploy?.sdk_source_image_id) {
             return this.processSdkAgent(agent, existingRunId)
-        } else if (agent.source === "SDK") {
+        } else if (isSDKAgent(agent)) {
             logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name, source: agent.source })
             throw new Error(`Unknown agent source: ${agent.source}`)
         }
@@ -413,10 +418,11 @@ export class EventProcessor {
         }
     }
 
-    private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
+    private async processSdkAgent(agent: SDKAgent, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
+        const activeDeploy = await getActiveDeployForProject(agent.project.id)
 
-        const gcsKey = agent.prompt?.source_code_gcs_key
+        const gcsKey = activeDeploy?.sdk_source_image_id
         if (!gcsKey) {
             throw new Error(`SDK agent "${agent.name}" is missing source_code_gcs_key`)
         }
@@ -429,7 +435,7 @@ export class EventProcessor {
             .execute({
                 gcsKey,
                 runId,
-                agentId: agent.id,
+                agent,
                 orgId: this.user.organizationId,
                 userId: agent.user_id,
                 user: this.user,
@@ -446,17 +452,17 @@ export class EventProcessor {
         return new ProcessorResult(true, "SDK job execution started", agent, undefined, runId)
     }
 
-    private async processWebhookAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
+    private async processWebhookAgent(agent: SDKAgent, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
         const event = this.inputEvent.getSerializedEvent()
 
-        const remoteServerUrl = agent.prompt?.remote_server_url
+        const remoteServerUrl = agent.project.remote_server_url
         if (!remoteServerUrl) {
             throw new Error(`Webhook agent "${agent.name}" is missing remote_server_url`)
         }
 
-        const signingSecret = agent.prompt?.signing_secret
+        const signingSecret = agent.project.signing_secret
         if (!signingSecret) {
             throw new Error(`Webhook agent "${agent.name}" is missing signing_secret`)
         }
@@ -469,7 +475,7 @@ export class EventProcessor {
             .execute({
                 remoteServerUrl,
                 runId,
-                agentId: agent.id,
+                agent,
                 orgId: this.user.organizationId,
                 user: this.user,
                 event,
