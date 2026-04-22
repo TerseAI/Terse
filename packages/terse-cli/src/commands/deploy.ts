@@ -1,24 +1,14 @@
-<<<<<<< Updated upstream
 import { confirm } from "@inquirer/prompts"
-=======
-import { intro, log, note, outro, spinner } from "@clack/prompts"
->>>>>>> Stashed changes
+import { intro, log, outro, spinner } from "@clack/prompts"
 import chalk from "chalk"
 import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
-<<<<<<< Updated upstream
-import ora from "ora"
-import { ApiRoutes, sdkDeployRequestBodySchema } from "terse-types"
+import { ApiRoutes, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types"
 import type { SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
-import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
-=======
-import { ApiRoutes, SdkDeployResponseBody, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types"
-
-import { readApiKeyOrBail, readEnvVar } from "../api.js"
+import { ApiError, readApiKeyOrBail } from "../api.js"
 import { BACKEND_URL, FRONTEND_URL } from "../config.js"
->>>>>>> Stashed changes
 import { loadJobRegistry } from "../loadJob.js"
 import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfigOrBail, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
@@ -58,7 +48,6 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     const registry = await loadJobRegistry(provider, entryFile)
     const jobs = [...registry.values()]
 
-<<<<<<< Updated upstream
     // Self-hosted mode is driven entirely by terse.config.json (selfHosted + remoteServerUrl).
     const remoteServerUrl = config.remoteServerUrl?.trim() || undefined
 
@@ -75,9 +64,6 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         process.exit(1)
     }
 
-=======
-    const remoteServerUrl = readEnvVar("TERSE_REMOTE_SERVER_URL") ?? readEnvVar("TERSE_JOB_URL")
->>>>>>> Stashed changes
     const isUrlMode = !!remoteServerUrl
 
     let sourceZipBase64: string | undefined
@@ -125,7 +111,11 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             body: JSON.stringify(body)
         })
 
-        const result = (await res.json()) as SdkDeployResponseBody
+        const result = (await res.json().catch(() => ({}))) as Partial<SdkDeployResponseBody> & { errorCode?: string }
+
+        if (res.status === 404 && result.errorCode === "PROJECT_NOT_FOUND") {
+            throw new ApiError(404, result as Record<string, unknown>)
+        }
 
         if (!res.ok || !result.success) {
             s.stop(`Deploy failed: ${result.error ?? res.statusText}`)
@@ -133,9 +123,11 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             process.exit(1)
         }
 
-        s.stop(`Deployed ${result.results.length} job${result.results.length === 1 ? "" : "s"}`)
+        const deployResult = result as SdkDeployResponseBody
 
-        for (const r of result.results) {
+        s.stop(`Deployed ${deployResult.results.length} job${deployResult.results.length === 1 ? "" : "s"}`)
+
+        for (const r of deployResult.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
             const agentUrl = `${FRONTEND_URL}/agents/${r.automationId}`
             log.step(`${verb}: ${chalk.bold(r.jobName)}  ${agentLink(agentUrl)}`)
@@ -149,12 +141,11 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         }
 
         if (isUrlMode) {
-<<<<<<< Updated upstream
             console.log(chalk.dim(`  Mode: user infrastructure`))
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
 
-            const signingSecret = result.signingSecret
-            const projectApiKey = result.projectApiKey
+            const signingSecret = deployResult.signingSecret
+            const projectApiKey = deployResult.projectApiKey
             if (signingSecret || projectApiKey) {
                 const labels: string[] = []
                 if (signingSecret) labels.push("signing secret")
@@ -165,36 +156,26 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
                 if (projectApiKey) console.log(`TERSE_API_KEY=${projectApiKey}`)
                 if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
                 console.log("")
-=======
-            const signingSecret = result.results.find(r => r.signingSecret)?.signingSecret
-            if (signingSecret && !readEnvVar("TERSE_SIGNING_SECRET")) {
-                note(`TERSE_SIGNING_SECRET=${signingSecret}`, "Add to your .env file")
->>>>>>> Stashed changes
             }
             log.info(`Mode: user infrastructure  ${chalk.dim(remoteServerUrl!)}`)
         } else {
             log.info(`${fileCount} files  ${chalk.dim(`${(zipSizeBytes / 1024).toFixed(1)} KB`)}`)
         }
 
-        if (result.removed.length > 0) {
-            log.warn(`Removed ${result.removed.length} stale job${result.removed.length === 1 ? "" : "s"}: ${result.removed.map(r => r.name).join(", ")}`)
+        if (deployResult.removed.length > 0) {
+            log.warn(`Removed ${deployResult.removed.length} stale job${deployResult.removed.length === 1 ? "" : "s"}: ${deployResult.removed.map(r => r.name).join(", ")}`)
         }
 
         outro("Done")
     } catch (error) {
-<<<<<<< Updated upstream
-        spinner.stop()
+        s.stop(`Deploy failed: ${(error as Error).message}`)
         if (await tryRecoverStaleProject(error, { apiKey, config, hasRetried })) {
             return deploy(provider, entryFile, true)
         }
 
-        spinner.fail(chalk.red(`Deploy failed: ${(error as Error).message}`))
         if (isProjectGoneError(error)) {
             console.error(chalk.dim(`  Run ${chalk.cyan("terse attach")} to link this directory to an existing project.`))
         }
-=======
-        s.stop(`Deploy failed: ${(error as Error).message}`)
->>>>>>> Stashed changes
         process.exit(1)
     } finally {
         session.close()
