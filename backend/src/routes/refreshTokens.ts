@@ -1,10 +1,18 @@
 import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
+import { z } from "zod"
 
 import { isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
+import { getSecretManagerClient } from "../utility/secretManagerClient"
+
+const clearOldSecretVersionsRequestSchema = z.object({
+    dryRun: z.preprocess(value => {
+        return value !== undefined && typeof value === "string" && value.trim().toLowerCase() === "true"
+    }, z.boolean())
+})
 
 /**
  * Refresh tokens for all OAuth integrations
@@ -117,6 +125,56 @@ export async function refreshAllTokens(req: Request, res: Response) {
         })
     } catch (error) {
         logger.error("Error in token refresh cron job:", { error })
+        return res.status(500).json({
+            error: "Internal server error",
+            message: error instanceof Error ? error.message : "Unknown error"
+        })
+    }
+}
+
+export async function clearOldSecretVersions(req: Request, res: Response) {
+    logger.info("Clearing old secret versions cron job triggered")
+
+    // Validate request comes from Google Cloud Scheduler
+    if (!validateCloudSchedulerRequest(req, "ClearOldSecretVersions")) {
+        logger.error("Unauthorized: Request did not pass Cloud Scheduler validation")
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    const parsedInput = clearOldSecretVersionsRequestSchema.safeParse({
+        dryRun: req.query.dryRun ?? req.body?.dryRun
+    })
+
+    if (!parsedInput.success) {
+        return res.status(400).json({
+            error: "Invalid request",
+            details: parsedInput.error.flatten()
+        })
+    }
+
+    try {
+        const report = await getSecretManagerClient().clearOldSecretVersions(parsedInput.data)
+
+        logger.info("Clear old secret versions completed", {
+            dryRun: report.dryRun,
+            numberOfSecretsCleared: report.numberOfSecretsCleared,
+            numberOfVersionsCleared: report.numberOfVersionsCleared,
+            numberOfErrors: report.numberOfErrors
+        })
+
+        return res.json({
+            message: report.dryRun ? "Dry run for clearing old secret versions completed" : "Clear old secret versions completed",
+            summary: {
+                dryRun: report.dryRun,
+                secretsCleared: report.numberOfSecretsCleared,
+                versionsCleared: report.numberOfVersionsCleared,
+                errors: report.numberOfErrors
+            },
+            plannedDestructions: report.plannedDestructions,
+            errors: report.errors
+        })
+    } catch (error) {
+        logger.error("Error in clear old secret versions cron job:", { error })
         return res.status(500).json({
             error: "Internal server error",
             message: error instanceof Error ? error.message : "Unknown error"
