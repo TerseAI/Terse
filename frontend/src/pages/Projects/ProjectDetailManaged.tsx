@@ -1,6 +1,5 @@
 import { useState } from "react"
 
-import { DateTime } from "luxon"
 import type { ProjectDeploy, ProjectDetailResponse } from "terse-types/types"
 
 import { FileExplorer, FileNode } from "../../components/Code/FileExplorer"
@@ -8,17 +7,19 @@ import { TooltipProvider } from "../../components/ui/tooltip"
 import { useProjectDeploys } from "../../hooks/api/useProjectDeploys"
 import { useProjectSourceFileEditorContent } from "../../hooks/api/useProjectSourceFileEditorContent"
 import { useProjectSourceFiles } from "../../hooks/api/useProjectSourceFiles"
+import { formatTimestamp } from "../../utility/timeUtils"
 
 import { DeleteProjectAction, DeploymentsSection, Dot, Heading, PageFrame, SectionLabel } from "./ProjectDetailShared"
 
 export default function ProjectDetailManaged({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
     const activeDeploy = deploys?.find(d => d.isActive) ?? null
+    const latestDeploy = deploys?.[0] ?? null
 
     return (
         <TooltipProvider delayDuration={200}>
             <PageFrame>
-                <Heading project={project} activeDeploy={activeDeploy} />
+                <Heading project={project} activeDeploy={activeDeploy} latestDeploy={latestDeploy} />
 
                 <DeploymentsSection deploys={deploys} isLoading={isLoadingDeploys} />
 
@@ -47,7 +48,7 @@ function SourceSection({ projectId, activeDeploy }: { projectId: string; activeD
                         <span>Viewing</span>
                         <code className="text-foreground font-mono tabular-nums">{shortDeployId}</code>
                         <Dot />
-                        <span className="tabular-nums">{DateTime.fromISO(activeDeploy.createdAt).toRelative()}</span>
+                        <span className="tabular-nums">{formatTimestamp(activeDeploy.createdAt)}</span>
                     </span>
                 ) : null}
             </div>

@@ -39,9 +39,11 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
 
     const userId = user.id
     const organizationId = user.organizationId
+    const prisma = db()
 
     const { remoteServerUrl, jobs, sourceZipBase64, projectId } = sdkDeployRequestBodySchema.parse(req.body)
 
+    // Validate project exists and is owned by the user before attempting to create a deploy
     const project = await db().projects.findUnique({
         where: {
             id: projectId,
@@ -62,6 +64,15 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
         })
     }
 
+    const deploy = await prisma.project_deploys.create({
+        data: {
+            project_id: projectId,
+            deployed_by_user_id: userId,
+            status: "IN_PROGRESS"
+        }
+    })
+    emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
+
     if (!sourceZipBase64 && !remoteServerUrl) {
         return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
     } else if (sourceZipBase64 && remoteServerUrl) {
@@ -80,11 +91,9 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
     }
 
     const results: SdkDeployResponseBody["results"] = []
-    const prisma = db()
 
     let sourceZipBuffer: Buffer | undefined
     let gcsKey: string | undefined
-    let currentSdkSourceImageId: string | undefined
     if (sourceZipBase64) {
         sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64, res)
         gcsKey = await uploadSourceZipToGcs(sourceZipBuffer)
@@ -94,7 +103,11 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
             gcsKey,
             organizationId
         })
-        currentSdkSourceImageId = preparedImages.sourceImageId
+
+        await prisma.project_deploys.update({
+            where: { id: deploy.id },
+            data: { sdk_source_image_id: preparedImages.sourceImageId }
+        })
     }
 
     // Self hosted!
@@ -134,15 +147,6 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
         }
     }
 
-    const deploy = await prisma.project_deploys.create({
-        data: {
-            project_id: projectId,
-            sdk_source_image_id: currentSdkSourceImageId,
-            deployed_by_user_id: userId,
-            status: "IN_PROGRESS"
-        }
-    })
-
     for (const job of jobs) {
         const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
             where: {
@@ -166,6 +170,7 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
                 where: { id: deploy.id },
                 data: { status: "FAILED" }
             })
+            emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
             return res.status(500).json({ success: false, error: "Failed to create or update automation" })
         }
 
@@ -199,6 +204,9 @@ async function handleSdkDeployInternal(req: Request, res: Response) {
 
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")
+    emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
+    emitCacheInvalidationWithWildcard(organizationId, "projectSourceFiles", projectId)
+    emitCacheInvalidationWithWildcard(organizationId, "project", projectId)
 
     const response: SdkDeployResponseBody = {
         success: true,

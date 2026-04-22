@@ -20,6 +20,7 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
     const [showDialog, setShowDialog] = useState(false)
 
     const activeDeploy = deploys?.find(d => d.isActive) ?? null
+    const latestDeploy = deploys?.[0] ?? null
     const firstJobId = project.jobs[0]?.id ?? null
 
     const handleVerifyServer = async () => {
@@ -41,7 +42,7 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
     return (
         <TooltipProvider delayDuration={200}>
             <PageFrame>
-                <Heading project={project} activeDeploy={activeDeploy} />
+                <Heading project={project} activeDeploy={activeDeploy} latestDeploy={latestDeploy} />
 
                 <EnvironmentSection
                     remoteServerUrl={project.remoteServerUrl}

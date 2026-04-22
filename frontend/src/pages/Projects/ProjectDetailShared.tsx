@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom"
 
 import { AlertTriangle, CheckCircle2, CircleDot, Loader2, RotateCcw, XCircle } from "lucide-react"
 import { DateTime } from "luxon"
+
+import { formatTimestamp } from "../../utility/timeUtils"
 import { toast } from "sonner"
 import { FrontendRoutes } from "terse-types"
 import type { ProjectDeploy, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
@@ -31,8 +33,17 @@ export function PageFrame({ children }: { children: React.ReactNode }) {
     )
 }
 
-export function Heading({ project, activeDeploy }: { project: Pick<ProjectDetailResponse, "name" | "isSelfHosted" | "createdAt">; activeDeploy: ProjectDeploy | null }) {
+export function Heading({
+    project,
+    activeDeploy,
+    latestDeploy
+}: {
+    project: Pick<ProjectDetailResponse, "name" | "isSelfHosted" | "createdAt">
+    activeDeploy: ProjectDeploy | null
+    latestDeploy: ProjectDeploy | null
+}) {
     const createdLabel = useMemo(() => DateTime.fromISO(project.createdAt).toFormat("LLL d, yyyy"), [project.createdAt])
+    const isDeploying = latestDeploy?.status === "IN_PROGRESS"
 
     return (
         <header className="animate-in fade-in-0 duration-500">
@@ -44,10 +55,11 @@ export function Heading({ project, activeDeploy }: { project: Pick<ProjectDetail
             </div>
 
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                {isDeploying ? <DeployingBadge /> : null}
                 {activeDeploy ? (
                     <>
                         <LiveBadge />
-                        <span className="tabular-nums">{DateTime.fromISO(activeDeploy.createdAt).toRelative()}</span>
+                        <span className="tabular-nums">{formatTimestamp(activeDeploy.createdAt)}</span>
                         {activeDeploy.deployedBy ? (
                             <>
                                 <Dot />
@@ -57,16 +69,25 @@ export function Heading({ project, activeDeploy }: { project: Pick<ProjectDetail
                             </>
                         ) : null}
                     </>
-                ) : (
+                ) : !isDeploying ? (
                     <Badge variant="secondary" className="text-foreground">
                         <CircleDot className="text-muted-foreground" />
                         No active deploy
                     </Badge>
-                )}
+                ) : null}
                 <Dot />
                 <span>Created {createdLabel}</span>
             </div>
         </header>
+    )
+}
+
+function DeployingBadge() {
+    return (
+        <Badge variant="secondary" className="text-foreground">
+            <Loader2 className="text-warning animate-spin" />
+            Deploying
+        </Badge>
     )
 }
 
@@ -94,9 +115,8 @@ export function DeploymentsSection({ deploys, isLoading }: { deploys: ProjectDep
 }
 
 function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
-    const dt = DateTime.fromISO(deploy.createdAt)
-    const relative = dt.toRelative() ?? ""
-    const absolute = dt.toFormat("LLL d, yyyy · h:mm:ss a")
+    const relative = formatTimestamp(deploy.createdAt)
+    const absolute = DateTime.fromISO(deploy.createdAt).toFormat("LLL d, yyyy · h:mm:ss a")
     const shortId = deploy.id.slice(-7)
 
     return (
