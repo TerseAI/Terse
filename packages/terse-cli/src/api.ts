@@ -109,13 +109,7 @@ async function fetchRawWithAuth(
     return res
 }
 
-export async function fetchWithAuthAndSession(
-    urlPath: string,
-    apiKey: string,
-    sessionId: string,
-    params: Record<string, unknown> = {},
-    type: AuthenticatedRequestMethod = "GET"
-): Promise<Response> {
+export async function fetchWithAuthAndSession(urlPath: string, apiKey: string, sessionId: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "GET"): Promise<Response> {
     return fetchRawWithAuth(urlPath, apiKey, { params, type, sessionId })
 }
 
