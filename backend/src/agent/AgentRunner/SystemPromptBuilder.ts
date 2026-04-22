@@ -52,6 +52,10 @@ export class BaseSystemPromptBuilder<T extends Session, TConfig extends ConfigDa
             .withSection(() => this.buildOutputsSection())
     }
 
+    withOutputsSection(): this {
+        return this.withSection(() => this.buildOutputsSection())
+    }
+
     async build(): Promise<string> {
         const results = await Promise.all(this.sections.map(fn => fn()))
         const validSections = results.filter((s): s is Section => s !== null)

@@ -26,59 +26,6 @@ import { StreamEventEmitter } from "./StreamProcessor"
 import { BaseSystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { clearPendingApprovalState as clearPendingApprovalStateDb, markRunInProgress as markRunInProgressDb, storePendingApprovalState } from "./runHistory"
 
-type SdkRunnerSession = SessionWithTracking<Session>
-
-type SdkAgentRunnerParams = {
-    runId: string
-    user: User
-    prompt: string
-    skills: ConfigData[]
-    toolApprovals: string[]
-    maxTurns: number
-    requireApproval: boolean
-    send: (event: SdkAgentStreamEvent) => void
-    isProductionRun?: boolean
-}
-
-type SdkAgentRunnerResult = {
-    loopResult: AgentRunnerLoopResult<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>>
-}
-
-const SDK_AGENT_ID = "sdk-agent-run"
-
-class InMemoryAgentSession implements AgentMemorySession {
-    private readonly sessionId: string
-    private items: AgentInputItem[] = []
-
-    constructor(sessionId: string) {
-        this.sessionId = sessionId
-    }
-
-    async getSessionId(): Promise<string> {
-        return this.sessionId
-    }
-
-    async getItems(limit?: number): Promise<AgentInputItem[]> {
-        if (limit === undefined || limit >= this.items.length) {
-            return [...this.items]
-        }
-        return this.items.slice(-limit)
-    }
-
-    async addItems(items: AgentInputItem[]): Promise<void> {
-        if (items.length === 0) return
-        this.items.push(...items)
-    }
-
-    async popItem(): Promise<AgentInputItem | undefined> {
-        return this.items.pop()
-    }
-
-    async clearSession(): Promise<void> {
-        this.items = []
-    }
-}
-
 export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>> {
     private readonly sdkRunId: string
     private readonly user: User
@@ -295,7 +242,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         }
     }
 
-    override async buildAgent(_params: {
+    override async buildAgent(params: {
         name: string
         systemPromptDeps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData>
         runContext: RunContext
@@ -303,8 +250,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         tools: Tool<SdkRunnerSession>[]
         modelSettings?: ModelSettings
     }): Promise<Agent<SdkRunnerSession, AgentOutputType>> {
-        const instructions = await new BaseSystemPromptBuilder<SdkRunnerSession, ConfigData>(_params.systemPromptDeps, _params.runContext)
-            .withStandardSections()
+        const instructions = await new BaseSystemPromptBuilder<SdkRunnerSession, ConfigData>(params.systemPromptDeps, params.runContext)
+            .withOutputsSection()
             .withSection(() => ({
                 header: "SDK USER INSTRUCTIONS",
                 content: this.prompt
@@ -312,11 +259,11 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             .build()
 
         this.agent = new Agent<SdkRunnerSession, AgentOutputType>({
-            name: _params.name,
-            model: _params.model,
+            name: params.name,
+            model: params.model,
             instructions,
-            tools: _params.tools,
-            modelSettings: _params.modelSettings
+            tools: params.tools,
+            modelSettings: params.modelSettings
         })
         return this.agent
     }
@@ -410,5 +357,58 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         }
 
         return outputs
+    }
+}
+
+type SdkRunnerSession = SessionWithTracking<Session>
+
+type SdkAgentRunnerParams = {
+    runId: string
+    user: User
+    prompt: string
+    skills: ConfigData[]
+    toolApprovals: string[]
+    maxTurns: number
+    requireApproval: boolean
+    send: (event: SdkAgentStreamEvent) => void
+    isProductionRun?: boolean
+}
+
+type SdkAgentRunnerResult = {
+    loopResult: AgentRunnerLoopResult<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>>
+}
+
+const SDK_AGENT_ID = "sdk-agent-run"
+
+class InMemoryAgentSession implements AgentMemorySession {
+    private readonly sessionId: string
+    private items: AgentInputItem[] = []
+
+    constructor(sessionId: string) {
+        this.sessionId = sessionId
+    }
+
+    async getSessionId(): Promise<string> {
+        return this.sessionId
+    }
+
+    async getItems(limit?: number): Promise<AgentInputItem[]> {
+        if (limit === undefined || limit >= this.items.length) {
+            return [...this.items]
+        }
+        return this.items.slice(-limit)
+    }
+
+    async addItems(items: AgentInputItem[]): Promise<void> {
+        if (items.length === 0) return
+        this.items.push(...items)
+    }
+
+    async popItem(): Promise<AgentInputItem | undefined> {
+        return this.items.pop()
+    }
+
+    async clearSession(): Promise<void> {
+        this.items = []
     }
 }
