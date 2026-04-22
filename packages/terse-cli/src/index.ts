@@ -5,7 +5,9 @@ import { Command } from "commander"
 
 import { attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
+import { openDashboard } from "./commands/dashboard.js"
 import { deploy } from "./commands/deploy.js"
+import { openDocs } from "./commands/docs.js"
 import { generate } from "./commands/generate.js"
 import { history } from "./commands/history.js"
 import { init } from "./commands/init.js"
@@ -13,75 +15,30 @@ import { integrate } from "./commands/integrate.js"
 import { replay } from "./commands/replay.js"
 import { run } from "./commands/run.js"
 import { test } from "./commands/test.js"
+import { isCliRunCommandEnabled } from "./env.js"
 import { isPromptCancellationError } from "./promptErrors.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
 
 const program = new Command()
 
-program.name("terse").description("The Terse CLI — scaffold and manage Terse projects").version("0.1.0")
+program.name("terse").description("The Terse CLI — create and manage Terse projects").version("0.1.0")
 
+program.commandsGroup("Getting started:")
 program
     .command("init")
-    .description("Scaffold a new Terse project")
+    .description("Create a new Terse project")
     .argument("[project-name]", "Name for the project directory")
     .action(async (projectName?: string) => {
         const language = "ts"
         const provider = resolveProvider({ command: "init", language })
         await init(projectName, provider)
     })
-
 program
     .command("attach")
     .description("Add Terse to an existing project (self-hosted)")
     .action(async () => {
         await attach()
     })
-
-program
-    .command("login")
-    .description("Authenticate with Terse via your browser (saves credentials to your user config)")
-    .action(async () => {
-        const result = await loginAndPersist()
-        if (!result) process.exit(1)
-    })
-
-program
-    .command("logout")
-    .description("Remove saved Terse credentials from your user config")
-    .action(() => {
-        const removed = logout()
-        if (removed) {
-            console.log(chalk.green("  Logged out."))
-        } else {
-            console.log(chalk.dim("  Not logged in."))
-        }
-    })
-
-program
-    .command("generate")
-    .description("Generate TypeScript types for your connected integrations")
-    .action(async () => {
-        await generate(resolveProvider())
-    })
-
-program
-    .command("integrate")
-    .description("Open the integrations page in the Terse Web UI")
-    .action(async () => {
-        await integrate()
-    })
-
-program
-    .command("run")
-    .description("Execute a job's onTrigger with a serialized event JSON")
-    .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
-    .option("--event <json>", "Serialized event JSON string")
-    .option("--event-file <path>", "Path to a JSON file containing the serialized event")
-    .option("--entry-file <path>", "Path to the job entry file (overrides default)")
-    .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; entryFile?: string }) => {
-        await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile)
-    })
-
 program
     .command("test")
     .description("Fetch sample events and run a job interactively")
@@ -91,7 +48,6 @@ program
     .action(async (jobName?: string, opts?: { verbose?: boolean; entryFile?: string }) => {
         await test(jobName, opts?.verbose, resolveProvider(), opts?.entryFile)
     })
-
 program
     .command("deploy")
     .description("Deploy all jobs to Terse (syncs with server — removed jobs are deleted)")
@@ -100,6 +56,35 @@ program
         await deploy(resolveProvider(), opts?.entryFile)
     })
 
+program.commandsGroup("Build with workspace context:")
+program
+    .command("integrate")
+    .description("Open the integrations page in the Terse Web UI")
+    .action(async () => {
+        await integrate()
+    })
+program
+    .command("generate")
+    .description("Autogenerate context from your connected workspaces")
+    .action(async () => {
+        await generate(resolveProvider())
+    })
+
+if (isCliRunCommandEnabled()) {
+    program.commandsGroup("Sandbox:")
+    program
+        .command("run")
+        .description("Execute a job with payload")
+        .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
+        .option("--event <json>", "Serialized event JSON string")
+        .option("--event-file <path>", "Path to a JSON file containing the serialized event")
+        .option("--entry-file <path>", "Path to the job entry file (overrides default)")
+        .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; entryFile?: string }) => {
+            await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile)
+        })
+}
+
+program.commandsGroup("Observability:")
 program
     .command("replay")
     .description("Replay a run locally on your machine")
@@ -107,7 +92,6 @@ program
     .action(async (runId: string) => {
         await replay(runId)
     })
-
 program
     .command("history")
     .description("View past run events for a job (use --json to pipe into tooling like the Claude Code /improve skill)")
@@ -141,6 +125,41 @@ program
             await history(jobName, opts)
         }
     )
+program
+    .command("dashboard")
+    .description("Open the Terse web app in your browser")
+    .action(() => {
+        openDashboard()
+    })
+
+program.commandsGroup("Authentication:")
+program
+    .command("login")
+    .description("Login to Terse")
+    .action(async () => {
+        const result = await loginAndPersist()
+        if (!result) process.exit(1)
+    })
+program
+    .command("logout")
+    .description("Logout of Terse")
+    .action(() => {
+        const removed = logout()
+        if (removed) {
+            console.log(chalk.green("  Logged out."))
+        } else {
+            console.log(chalk.dim("  Not logged in."))
+        }
+    })
+
+program.commandsGroup("Getting help:")
+program
+    .command("docs")
+    .description("Open Terse documentation in your browser")
+    .action(() => {
+        openDocs()
+    })
+program.helpCommand(true)
 
 try {
     await program.parseAsync()

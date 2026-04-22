@@ -107,6 +107,8 @@ export class SdkJobExecutionService {
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: settings.urls.backend ?? "http://localhost:3001",
                 TERSE_RUN_ID: runId,
+                /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
+                TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1"
             }
 
