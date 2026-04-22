@@ -22,19 +22,6 @@ Triggers define the event that starts your workflow. Each trigger is tied to an 
 ```ts TypeScript
 triggers: [GitHub.onPROpened({ repo: Repos.MyOrg.MyRepo })]
 ```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id=github_integration_id,
-        integration_type="github",
-        config_type="github",
-        config={
-            "repositoryIds": [repo_id],
-            "eventTypes": ["pull_request.opened"],
-        },
-    )
-]
-```
 </CodeGroup>
 
 <Expandable title="Event payload">
@@ -68,16 +55,6 @@ triggers=[
 ```ts TypeScript
 triggers: [Slack.onMessage({ channel: SlackChannel.Engineering })]
 ```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id=slack_integration_id,
-        integration_type="slack",
-        config_type="slack",
-        config={"channelId": SlackChannel.Engineering.channel_id},
-    )
-]
-```
 </CodeGroup>
 
 <Expandable title="Event payload">
@@ -103,11 +80,6 @@ triggers=[
 ```ts TypeScript
 triggers: [Linear.onIssueCreated({ team: LinearTeam.Engineering, project: LinearProject.Backend })]
 ```
-```python Python
-triggers=[
-    Linear.on_issue_created(team=LinearTeam.Engineering, project=LinearProject.Backend),
-]
-```
 </CodeGroup>
 
 <Expandable title="Event payload">
@@ -128,16 +100,6 @@ triggers=[
 ```ts TypeScript
 triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })]
 ```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id=attio_integration_id,
-        integration_type="attio",
-        config_type="attio_output",
-        config={"listId": list_id},
-    )
-]
-```
 </CodeGroup>
 
 ### Gmail
@@ -149,16 +111,6 @@ triggers=[
 <CodeGroup>
 ```ts TypeScript
 triggers: [Gmail.onNewEmail()]
-```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id=gmail_integration_id,
-        integration_type="gmail",
-        config_type="gmail",
-        config={},
-    )
-]
 ```
 </CodeGroup>
 
@@ -182,16 +134,6 @@ triggers=[
 <CodeGroup>
 ```ts TypeScript
 triggers: [WorkOS.onEvent({ eventTypes: ["user.created"] })]
-```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id=workos_integration_id,
-        integration_type="workos",
-        config_type="workos_input",
-        config={"eventTypes": ["user.created"]},
-    )
-]
 ```
 </CodeGroup>
 
@@ -301,9 +243,6 @@ The monitor matches by intent, not keywords. Write your query as a natural sente
 ```ts TypeScript
 triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am
 ```
-```python Python
-triggers=[Schedule.cron("0 9 * * 1")]  # Every Monday at 9am
-```
 </CodeGroup>
 
 <Expandable title="Event payload">
@@ -325,16 +264,6 @@ Pass a type argument to `Webhook.onRequest<YourPayload>()` so `onTrigger` and `f
 ```ts TypeScript
 triggers: [Webhook.onRequest()]
 ```
-```python Python
-triggers=[
-    TriggerConfig(
-        integration_id="system",
-        integration_type="webhook",
-        config_type="webhook_input",
-        config={},
-    )
-]
-```
 </CodeGroup>
 
 <Expandable title="Event payload">
@@ -353,11 +282,6 @@ interface Trigger {
   readonly integrationType: string
   readonly eventType: string
 }
-```
-```python Python
-class Trigger:
-    integration_type: str
-    event_type: str
 ```
 </CodeGroup>
 

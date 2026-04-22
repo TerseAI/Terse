@@ -10,7 +10,7 @@ You declare which tools need approval in your job definition. When the model (or
 
 ## Configuring tool approvals
 
-List the tool names that require approval in `toolApprovals` (TypeScript) or `tool_approvals` (Python):
+List the tool names that require approval in `toolApprovals` (TypeScript)
 
 <CodeGroup>
 
@@ -39,36 +39,6 @@ await client.createJob({
         })
     }
 })
-```
-
-```python Python
-@app.job(
-    name="deal-enrichment",
-    triggers=[Attio.on_record_created(list=AttioList.Pipeline.NewDeals)],
-    skills=[
-        Attio.skill(lists=[AttioList.Pipeline.NewDeals]),
-        Apollo.skill(),
-        Slack.skill(channel=SlackChannel.DealDesk),
-    ],
-    tool_approvals=["attio.updateRecord", "slack.sendMessage"],
-)
-def run_job(event, agent: TerseAgent) -> None:
-    # This call runs immediately
-    company = agent.tools.apollo.enrich_company(
-        domain=event.record.values.company_domain,
-    )
-
-    # These calls pause and wait for human approval
-    agent.tools.attio.update_record(
-        list=AttioList.Pipeline.NewDeals,
-        record_id=event.record.id,
-        fields={"research_summary": company.industry},
-    )
-
-    agent.tools.slack.send_message(
-        channel=SlackChannel.DealDesk,
-        message=f"New deal enriched: {event.record.values.company_name}",
-    )
 ```
 
 </CodeGroup>
@@ -115,11 +85,11 @@ Type `Y` to approve or `n` to reject. The run resumes immediately in the same te
 
 In production, approval requests are delivered through your configured notification channels and handled through the Terse app:
 
-| Channel | Experience |
-| ------- | ---------- |
-| **Slack** | Interactive message with **Approve** and **Reject** buttons so you can decide without leaving Slack |
-| **Email** | Notification with a link to the run in the Terse app |
-| **In-app** | Pending approvals appear in the **Notifications** page with approve/reject actions |
+| Channel    | Experience                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| **Slack**  | Interactive message with **Approve** and **Reject** buttons so you can decide without leaving Slack |
+| **Email**  | Notification with a link to the run in the Terse app                                                |
+| **In-app** | Pending approvals appear in the **Notifications** page with approve/reject actions                  |
 
 You can also approve or reject from the **Activity** tab by opening the paused run and reviewing the tool call in context.
 
@@ -128,12 +98,14 @@ You can also approve or reject from the **Activity** tab by opening the paused r
 Tool approvals add latency because the run waits for a human. Use them deliberately:
 
 **Good candidates for approval:**
+
 - Write operations to production CRMs during early development
 - Customer-facing messages (emails, Slack DMs to external contacts)
 - Database mutations (especially delete operations)
 - Any workflow where compliance requires a human checkpoint
 
 **Skip approval for:**
+
 - Read-only operations (queries, enrichment lookups)
 - Internal notifications (team Slack channels, internal dashboards)
 - Workflows that have been validated and are running reliably
