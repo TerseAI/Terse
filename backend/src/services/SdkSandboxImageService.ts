@@ -85,7 +85,12 @@ export class SdkSandboxImageService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
-    async prepareFromSourceZip(params: { zipBuffer: Buffer; gcsKey: string; organizationId: string; onProgress?: (phase: "dependency_image" | "source_image") => void }): Promise<PreparedSdkSandboxImages> {
+    async prepareFromSourceZip(params: {
+        zipBuffer: Buffer
+        gcsKey: string
+        organizationId: string
+        onProgress?: (phase: "dependency_image" | "source_image") => void
+    }): Promise<PreparedSdkSandboxImages> {
         const { zipBuffer, gcsKey, organizationId, onProgress } = params
         const archive = new ZipSdkProjectArchive(zipBuffer)
         const executor = sdkRuntimeExecutorRegistry.resolve(archive.entries)
