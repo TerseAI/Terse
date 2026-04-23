@@ -89,20 +89,22 @@ export class SdkSandboxImageService {
         zipBuffer: Buffer
         gcsKey: string
         organizationId: string
+        cliVersion: string
         onProgress?: (phase: "dependency_image" | "source_image") => void
     }): Promise<PreparedSdkSandboxImages> {
-        const { zipBuffer, gcsKey, organizationId, onProgress } = params
+        const { zipBuffer, gcsKey, organizationId, cliVersion, onProgress } = params
         const archive = new ZipSdkProjectArchive(zipBuffer)
         const executor = sdkRuntimeExecutorRegistry.resolve(archive.entries)
 
-        const dependencyHash = executor.defineDependencyImage(archive).dependencyHash
+        const dependencyHash = executor.defineDependencyImage(archive, cliVersion).dependencyHash
         const sourceHash = archive.computeSourceHash()
 
         onProgress?.("dependency_image")
         const dependencyImage = await this.ensureDependencyImage({
             archive,
             dependencyHash,
-            executor
+            executor,
+            cliVersion
         })
 
         const sourceLayerKey = computeSourceLayerKey({ organizationId, dependencyHash, sourceHash })
@@ -196,8 +198,8 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async ensureDependencyImage(params: { archive: SdkProjectArchive; dependencyHash: string; executor: SdkRuntimeExecutor }) {
-        const { archive, dependencyHash, executor } = params
+    private async ensureDependencyImage(params: { archive: SdkProjectArchive; dependencyHash: string; executor: SdkRuntimeExecutor; cliVersion: string }) {
+        const { archive, dependencyHash, executor, cliVersion } = params
         const prisma = db()
 
         const existing = await prisma.sdk_dependency_images.findUnique({
@@ -216,7 +218,7 @@ export class SdkSandboxImageService {
         }
 
         const buildStarted = performance.now()
-        const sandboxImageId = await this.buildDependencyImage(archive, executor, dependencyHash)
+        const sandboxImageId = await this.buildDependencyImage(archive, executor, dependencyHash, cliVersion)
 
         try {
             const row = await prisma.sdk_dependency_images.create({
@@ -224,6 +226,7 @@ export class SdkSandboxImageService {
                     dependency_hash: dependencyHash,
                     runtime: executor.runtime,
                     base_image_tag: executor.sandboxImage,
+                    cli_version: cliVersion,
                     image_id: sandboxImageId
                 }
             })
@@ -344,7 +347,7 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async buildDependencyImage(archive: SdkProjectArchive, executor: SdkRuntimeExecutor, dependencyHash: string): Promise<string> {
+    private async buildDependencyImage(archive: SdkProjectArchive, executor: SdkRuntimeExecutor, dependencyHash: string, cliVersion: string): Promise<string> {
         const sandboxService = new ModalSandboxService()
         const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
 
@@ -355,6 +358,7 @@ export class SdkSandboxImageService {
         const buildContext: SdkDependencyImageBuildContext = {
             sb,
             archive,
+            cliVersion,
             templateDir: this.getDependencyTemplateDir(executor.runtime),
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, executor.runtime)

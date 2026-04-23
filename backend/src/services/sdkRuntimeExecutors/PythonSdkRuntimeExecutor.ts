@@ -19,13 +19,13 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return entries.has("pyproject.toml")
     }
 
-    defineDependencyImage(archive: SdkProjectArchive): SdkDependencyImageDefinition {
+    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string): SdkDependencyImageDefinition {
         const relevantFiles = ["pyproject.toml", "uv.lock", ".python-version"]
         const hashPayload = {
-            version: 1,
+            version: 2,
             runtime: this.runtime,
             baseImage: this.sandboxImage,
-            cliPackages: ["terse-sdk@latest", "terse-cli@latest"],
+            terseCliSpec: `terse-cli@${cliVersion}`,
             files: Object.fromEntries(relevantFiles.filter(path => archive.has(path)).map(path => [path, archive.readText(path)]))
         }
 
@@ -47,7 +47,7 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         )
 
         await context.ensureSandboxCommand("install uv", "command -v uv >/dev/null || (curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh)")
-        await context.ensureSandboxCommand("install terse cli", "npm install -g terse-sdk@latest terse-cli@latest --no-fund >/dev/null")
+        await context.ensureSandboxCommand("install terse cli", `npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
 
         await context.writeFile(`${context.templateDir}/pyproject.toml`, pyproject)
 
@@ -85,7 +85,7 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         })
 
         await runSandboxStage(context, SandboxStage.INSTALLING_CLI, () =>
-            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install terse-sdk@latest terse-cli@latest --no-fund`)
+            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`)
         )
 
         return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)}`))
