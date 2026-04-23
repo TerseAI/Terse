@@ -20,6 +20,12 @@ Import these from `terse-sdk`:
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 
+For TypeScript workflows that use structured output schemas, also install and import `zod`:
+
+```bash
+npm install terse-sdk zod
+```
+
 ## Trigger payloads
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
@@ -126,6 +132,8 @@ Use `agent.tools.*` for guaranteed side effects. These wrappers are available wh
 ## Structured output
 
 `runAndWait` returns a string. When you need typed data from the model, parse the output explicitly.
+
+If you define schemas in workflow code, import them from `zod`. New TypeScript projects created with `terse init` include `zod` by default.
 
 ### Simple extraction
 
