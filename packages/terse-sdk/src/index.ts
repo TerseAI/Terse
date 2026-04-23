@@ -165,21 +165,35 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     remoteServerUrl?: string
 }
 
+export function createJob<TTriggers extends readonly TypedTrigger[]>(params: CreateJobParameters<TTriggers>) {
+    const currentJobs = fetchRegisteredJobs()
+    if (currentJobs.has(params.name)) {
+        throw new Error(`Job "${params.name}" is registered twice on this Terse instance.`)
+    }
+    const webhookCount = params.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK).length
+    if (webhookCount > 1) {
+        throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
+    }
+    registerJob<TTriggers>(params)
+}
+
 // Process-wide directory of Terse instances. Each `new Terse()` registers itself here on
 // construction so the CLI (via tsImport) can discover jobs across module-graph boundaries.
 // Keyed by a process-global Symbol so every copy of this module shares one array.
-type TerseLike = { jobs: Map<string, CreateJobParameters> }
-const TERSE_INSTANCES_KEY = Symbol.for("terse.instances")
-type GlobalWithInstances = typeof globalThis & { [TERSE_INSTANCES_KEY]?: TerseLike[] }
+// type JobsLike = { jobs: Map<string, CreateJobParameters> }
+const TERSE_INSTANCES_KEY = Symbol.for("jobs.instances")
+type GlobalWithInstances = typeof globalThis & { [TERSE_INSTANCES_KEY]?: Map<string, CreateJobParameters> }
 
-function registerInstance(terse: TerseLike): void {
+function registerJob<TTriggers extends readonly TypedTrigger[]>(job: CreateJobParameters<TTriggers>): void {
     const g = globalThis as GlobalWithInstances
-    ;(g[TERSE_INSTANCES_KEY] ??= []).push(terse)
+    g[TERSE_INSTANCES_KEY] ??= new Map<string, CreateJobParameters>()
+
+    g[TERSE_INSTANCES_KEY].set(job.name, job as unknown as CreateJobParameters)
 }
 
-export function __getRegisteredTerseInstances(): TerseLike[] {
+export function fetchRegisteredJobs(): Map<string, CreateJobParameters> {
     const g = globalThis as GlobalWithInstances
-    return g[TERSE_INSTANCES_KEY] ?? []
+    return g[TERSE_INSTANCES_KEY] ?? new Map<string, CreateJobParameters>()
 }
 
 // Clear the process-global instance registry. The CLI calls this before
@@ -187,27 +201,11 @@ export function __getRegisteredTerseInstances(): TerseLike[] {
 // from a clean slate instead of seeing stale instances from the first pass.
 export function __resetRegisteredTerseInstances(): void {
     const g = globalThis as GlobalWithInstances
-    g[TERSE_INSTANCES_KEY] = []
+    g[TERSE_INSTANCES_KEY] = new Map<string, CreateJobParameters>()
 }
 
 export class Terse {
-    readonly jobs = new Map<string, CreateJobParameters>()
-
-    constructor() {
-        registerInstance(this)
-    }
-
-    createJob<TTriggers extends readonly TypedTrigger[]>(params: CreateJobParameters<TTriggers>) {
-        if (this.jobs.has(params.name)) {
-            throw new Error(`Job "${params.name}" is registered twice on this Terse instance.`)
-        }
-        const webhookCount = params.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK).length
-        if (webhookCount > 1) {
-            throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
-        }
-        this.jobs.set(params.name, params as unknown as CreateJobParameters)
-    }
-
+    constructor() {}
     /**
      * Handle an incoming trigger request from the Terse backend.
      * Wire this into your own HTTP route (Express, Hono, Next.js, etc.).
@@ -257,10 +255,12 @@ export class Terse {
             throw new Error(`Invalid trigger payload: ${detail}`)
         }
 
+        const jobs = fetchRegisteredJobs()
+
         const { jobName, runId, event } = full.data
-        const job = this.jobs.get(jobName)
+        const job = jobs.get(jobName)
         if (!job) {
-            const available = [...this.jobs.keys()]
+            const available = [...jobs.keys()]
             throw new Error(
                 `Job "${jobName}" is not registered on this Terse instance. ` +
                     (available.length
