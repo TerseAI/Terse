@@ -2,14 +2,13 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Loader2, MoreVertical, Pause, Play, Radar, Server, Trash2, Zap } from "lucide-react"
+import { Loader2, MoreVertical, Pause, Play, Server, Trash2, Zap } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { CONFIG_DETAILS, ConfigType, FrontendRoutes } from "terse-types"
-import type { AgentTrigger, FrequencyUnit, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
+import type { AgentTrigger, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
 import type { Agent } from "terse-types/types"
 
-import ToolCallParameters from "../../components/ToolCallParameters"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
@@ -22,9 +21,8 @@ import { BackendProvider } from "../../services/backend"
 import { formatTimestamp } from "../../utility/timeUtils"
 import { CenteredMessage, Dot, PageFrame, SectionLabel } from "../Projects/ProjectDetailShared"
 
-import { IconForConfigType } from "./components/Integration"
 import { SdkJobServerCheckDialog } from "./components/SdkJobServerCheckDialog"
-import { WebhookTriggerCard } from "./components/WebhookTriggerCard"
+import { TriggerDetailCard } from "./components/TriggerDetailCard"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 
@@ -331,28 +329,10 @@ function TriggersSection({ triggers }: { triggers: AgentTrigger[] }) {
             {triggers.length === 0 ? (
                 <TriggersEmpty />
             ) : (
-                <div className="space-y-2">
-                    {triggers.map(trigger => {
-                        const configType = trigger.config.configType
-
-                        if (configType === ConfigType.WEBHOOK_INPUT) {
-                            return <WebhookTriggerCard key={trigger.id} trigger={trigger} />
-                        }
-
-                        if (configType === ConfigType.WEBMONITOR) {
-                            return <WebMonitorTriggerCard key={trigger.id} trigger={trigger} />
-                        }
-
-                        const details = CONFIG_DETAILS[configType as keyof typeof CONFIG_DETAILS]
-                        return (
-                            <div key={trigger.id} className="border-border/60 bg-muted/10 flex items-center gap-3 rounded-lg border px-4 py-3">
-                                <div className="h-6 w-6 shrink-0">
-                                    <IconForConfigType type={configType} />
-                                </div>
-                                <span className="text-foreground text-sm font-medium">{details?.name ?? configType}</span>
-                            </div>
-                        )
-                    })}
+                <div className="space-y-2.5">
+                    {triggers.map(trigger => (
+                        <TriggerDetailCard key={trigger.id} trigger={trigger} />
+                    ))}
                 </div>
             )}
         </section>
@@ -364,45 +344,6 @@ function TriggersEmpty() {
         <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
             <p className="text-foreground text-sm">No triggers configured.</p>
             <p className="text-muted-foreground mt-1 text-xs">Add a trigger in your SDK project to connect this job to events or schedules.</p>
-        </div>
-    )
-}
-
-function formatWebMonitorFrequency(frequency: { number: number; unit: FrequencyUnit }) {
-    const amount = Math.max(1, frequency.number)
-    const { unit } = frequency
-    return amount === 1 ? `Every ${unit}` : `Every ${amount} ${unit}s`
-}
-
-function WebMonitorTriggerCard({ trigger }: { trigger: AgentTrigger }) {
-    if (trigger.config.configType !== ConfigType.WEBMONITOR) {
-        return null
-    }
-
-    const { query, frequency, outputSchema } = trigger.config
-
-    return (
-        <div className="border-border/60 bg-card overflow-hidden rounded-lg border">
-            <div className="border-border/60 bg-muted/30 flex items-center gap-2 border-b px-4 py-2">
-                <Radar className="text-muted-foreground/60 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="text-muted-foreground/70 text-[10px] font-semibold tracking-[0.14em] uppercase">Web monitor</span>
-                <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">{formatWebMonitorFrequency(frequency)}</span>
-            </div>
-            <div className="px-4 py-3">
-                <p className="text-foreground text-sm leading-relaxed break-words">{query}</p>
-            </div>
-            {outputSchema ? (
-                <div className="border-border/40 border-t px-4 pt-2.5 pb-3">
-                    <ToolCallParameters
-                        parameters={JSON.stringify({
-                            ...(outputSchema.jsonSchema.properties ? { properties: outputSchema.jsonSchema.properties } : {}),
-                            ...(outputSchema.jsonSchema.required ? { required: outputSchema.jsonSchema.required } : {})
-                        })}
-                        label="Structured output"
-                        collapsed={true}
-                    />
-                </div>
-            ) : null}
         </div>
     )
 }
