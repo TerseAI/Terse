@@ -5,7 +5,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { CreateJobParameters } from "terse-sdk"
-import { __getRegisteredTerseInstances, __resetRegisteredTerseInstances, createSDKTrigger, getJobContext, runWithJobContext } from "terse-sdk"
+import { __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, runWithJobContext } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
@@ -124,24 +124,7 @@ export class TypeScriptProvider implements LanguageProvider {
             process.exit(1)
         }
 
-        const instances = __getRegisteredTerseInstances()
-        if (instances.length === 0) {
-            console.error(chalk.red(`No Terse instances were constructed after importing ${resolvedEntryFile}.`))
-            console.error(chalk.dim("Make sure this file, or something it imports, creates a Terse instance (e.g. `const terse = new Terse()`)."))
-            process.exit(1)
-        }
-
-        const registry = new Map<string, CreateJobParameters>()
-        for (const terse of instances) {
-            for (const [name, job] of terse.jobs) {
-                if (registry.has(name)) {
-                    console.error(chalk.red(`Job "${name}" is registered on more than one Terse instance.`))
-                    console.error(chalk.dim("Job names must be unique across all Terse instances in a project."))
-                    process.exit(1)
-                }
-                registry.set(name, job)
-            }
-        }
+        const registry = fetchRegisteredJobs()
 
         if (registry.size === 0) {
             console.error(chalk.red(`No jobs found after importing ${resolvedEntryFile}.`))
