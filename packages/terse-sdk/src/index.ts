@@ -188,6 +188,10 @@ function registerJob<TTriggers extends readonly TypedTrigger[]>(job: CreateJobPa
     const g = globalThis as GlobalWithInstances
     g[TERSE_INSTANCES_KEY] ??= new Map<string, CreateJobParameters>()
 
+    if (g[TERSE_INSTANCES_KEY].has(job.name)) {
+        throw new Error(`Job "${job.name}" is registered twice on this Terse instance.`)
+    }
+
     g[TERSE_INSTANCES_KEY].set(job.name, job as unknown as CreateJobParameters)
 }
 
