@@ -23,7 +23,7 @@ Import these from `terse-sdk`:
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 
-For TypeScript workflows that use structured output schemas, also install and import `zod`:
+TypeScript projects from **`terse init`** already depend on **`zod`** (for structured output and schema-driven types such as `WebMonitorTriggerFor`). If you are on an older scaffold or added workflows by hand, add **`zod`** next to **`terse-sdk`**:
 
 ```bash
 npm install terse-sdk zod

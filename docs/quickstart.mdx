@@ -22,7 +22,7 @@ terse init my-project
 
 `terse init` handles the full setup in one command:
 
-1. Scaffolds your project files (`src/index.ts` or `src/main.py`, config, etc.)
+1. Scaffolds your project files (`src/terse.jobs.ts` for TypeScript or `src/main.py` for Python, config, etc.)
 2. Installs dependencies
 3. Opens the browser to authenticate via `terse login`
 4. Checks your connected integrations and prompts you to add more if needed
@@ -34,7 +34,7 @@ After init, your project looks like this:
 ```text TypeScript
 my-project/
   src/
-    index.ts              # your job definitions
+    terse.jobs.ts         # your workflow definitions (createJob)
     terse.generated.ts    # generated SDK (do not edit)
   package.json
   tsconfig.json
@@ -48,7 +48,7 @@ my-project/
   </Step>
   <Step title="Write your workflow">
 
-Open `src/index.ts` (or `src/main.py`) and define a job. The scaffolded file includes a starter example. Your generated SDK gives you typed helpers for every integration you connected: trigger builders, skill constructors, resource constants, and deterministic tool wrappers.
+Open **`src/terse.jobs.ts`** (TypeScript) or **`src/main.py`** (Python) and define a workflow. The scaffolded file includes a starter example. TypeScript templates include **`zod`** for structured-output patterns. Your generated SDK gives you typed helpers for every integration you connected: trigger builders, skill constructors, resource constants, and deterministic tool wrappers.
 
   </Step>
   <Step title="Test locally">

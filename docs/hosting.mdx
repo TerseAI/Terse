@@ -19,7 +19,7 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
         When an event matches one of your triggers, Terse spins up an isolated [Modal](https://modal.com) sandbox with the right runtime: `node:22-slim` for TypeScript, detected automatically from your `package.json`.
     </Step>
     <Step title="Your handler executes">
-        Inside the container, your code is extracted, dependencies are installed, and your workflow runs with the serialized trigger payload. A `TerseAgent` is created with the skills you defined, and your `onTrigger` handler executes. It can call tools deterministically, prompt the agent, or both. When the run completes, the container is torn down and results are logged.
+        Inside the container, your code is extracted, dependencies from **`package.json`** are installed (including packages such as **`zod`** for structured output), and your workflow runs with the serialized trigger payload. A `TerseAgent` is created with the skills you defined, and your `onTrigger` handler executes. It can call tools deterministically, prompt the agent, or both. When the run completes, the container is torn down and results are logged.
     </Step>
 </Steps>
 
