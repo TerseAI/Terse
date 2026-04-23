@@ -54,9 +54,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.toolApprovals = params.toolApprovals
         this.send = params.send
         this.isProductionRun = !!params.isProductionRun
-        this.outputType = params.outputSchema
-            ? { type: "json_schema", name: "output", strict: true, schema: params.outputSchema as JsonSchemaDefinition["schema"] }
-            : undefined
+        this.outputType = params.outputSchema ? { type: "json_schema", name: "output", strict: true, schema: params.outputSchema as JsonSchemaDefinition["schema"] } : undefined
         this.memorySession = params.isProductionRun ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
         this.streamEventEmitter = new StreamEventEmitter(getSocketIO(), {
             runId: params.runId,

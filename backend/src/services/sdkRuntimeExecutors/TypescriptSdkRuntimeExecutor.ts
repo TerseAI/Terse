@@ -19,15 +19,15 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return entries.has("package.json")
     }
 
-    defineDependencyImage(archive: SdkProjectArchive): SdkDependencyImageDefinition {
+    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string): SdkDependencyImageDefinition {
         const packageManager = this.detectPackageManager(archive)
         const relevantFiles = ["package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc"]
         const hashPayload = {
-            version: 1,
+            version: 2,
             runtime: this.runtime,
             baseImage: this.sandboxImage,
             packageManager,
-            cliPackages: ["terse-sdk@latest", "terse-cli@latest"],
+            terseCliSpec: `terse-cli@${cliVersion}`,
             files: Object.fromEntries(relevantFiles.filter(path => archive.has(path)).map(path => [path, archive.readText(path)]))
         }
 
@@ -57,26 +57,26 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             }
         }
 
-        await context.ensureSandboxCommand("install terse cli", "npm install -g terse-sdk@latest terse-cli@latest --no-fund >/dev/null")
+        await context.ensureSandboxCommand("install terse cli", `npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
         await context.ensureSandboxCommand("install cached TypeScript dependencies", this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg))
     }
 
     async prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void> {
         await context.ensureSandboxCommand(
-            "attach cached node_modules",
-            `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && ln -s ${context.escapeShellArg(`${this.getTemplateDir()}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
+            "copy cached node_modules",
+            `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && cp -R ${context.escapeShellArg(`${this.getTemplateDir()}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
         )
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
         if (context.usesPrebuiltImage) {
-            return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && terse run ${context.escapeShellArg(context.jobName)}`))
+            return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)}`))
         }
 
         await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, () => context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`))
 
         await runSandboxStage(context, SandboxStage.INSTALLING_CLI, () =>
-            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install terse-sdk@latest terse-cli@latest --no-fund`)
+            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`)
         )
 
         return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)}`))
