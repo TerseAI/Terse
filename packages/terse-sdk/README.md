@@ -5,8 +5,10 @@ TypeScript SDK for building jobs on the [Terse](https://terse.ai) platform.
 ## Installation
 
 ```bash
-npm install terse-sdk
+npm install terse-sdk zod
 ```
+
+`zod` is used for structured output schemas in TypeScript workflows.
 
 ## Quick Start
 

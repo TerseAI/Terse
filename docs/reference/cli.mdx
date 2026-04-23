@@ -8,11 +8,11 @@ The `terse` CLI scaffolds, generates, tests, and deploys Terse projects in TypeS
 
 Commands auto-detect a TypeScript Terse project from the current directory based on project markers.
 
-For TypeScript projects, `terse test` and `terse deploy` discover workflows across all constructed `new Terse()` instances in your imported entry file graph (not just one module). Keep workflow names unique across instances.
+For TypeScript projects, `terse test` and `terse deploy` load **`src/terse.jobs.ts`** (or a path you pass with **`--entry-file`**) and discover every workflow registered with **`createJob()`** in that module graph—including files reached by side-effect imports. Keep workflow **`name`** values unique; duplicate names throw when jobs register.
 
-| Language   | Project markers                 | Entry file     | Generated file           |
-| ---------- | ------------------------------- | -------------- | ------------------------ |
-| TypeScript | `package.json`, `src/index.ts`  | `src/index.ts` | `src/terse.generated.ts` |
+| Language   | Project markers                               | Entry file           | Generated file           |
+| ---------- | --------------------------------------------- | -------------------- | ------------------------ |
+| TypeScript | `package.json`, `tsconfig.json`             | `src/terse.jobs.ts`  | `src/terse.generated.ts` |
 
 ## `terse init [project-name]`
 
@@ -129,6 +129,7 @@ terse test my-job
 | Flag            | Description                             | Default |
 | --------------- | --------------------------------------- | ------- |
 | `-v, --verbose` | Show agent stream output during the run | Enabled |
+| `--entry-file <path>` | Override the default workflow entry file | Provider default (for example `src/index.ts`) |
 
 **How it works:**
 
@@ -200,6 +201,12 @@ Packages your project and deploys all jobs to the Terse platform. [Learn more ab
 ```bash
 terse deploy
 ```
+
+**Options:**
+
+| Flag | Description |
+| ---- | ----------- |
+| `--entry-file <path>` | Override the default workflow entry file |
 
 **What happens:**
 

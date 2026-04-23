@@ -3,6 +3,7 @@
 import chalk from "chalk"
 import { Command } from "commander"
 
+import { getCliVersion } from "./cliVersion.js"
 import { attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
 import { openDashboard } from "./commands/dashboard.js"
@@ -21,7 +22,7 @@ import { resolveProvider } from "./providers/resolveProvider.js"
 
 const program = new Command()
 
-program.name("terse").description("The Terse CLI — create and manage Terse projects").version("0.1.0")
+program.name("terse").description("The Terse CLI — create and manage Terse projects").version(getCliVersion())
 
 program.commandsGroup("Getting started:")
 program

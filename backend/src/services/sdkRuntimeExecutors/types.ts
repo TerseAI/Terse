@@ -26,6 +26,7 @@ export interface SdkDependencyImageDefinition {
 export interface SdkDependencyImageBuildContext {
     sb: Sandbox
     archive: SdkProjectArchive
+    cliVersion: string
     templateDir: string
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     writeFile: (path: string, content: string) => Promise<void>
@@ -47,6 +48,7 @@ export interface SdkRuntimeExecutorContext {
     jobName: string
     projectDir: string
     usesPrebuiltImage: boolean
+    cliVersion: string
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     runSandboxCommand: (label: string, command: string) => Promise<SandboxCommandResult>
     runSandboxCommandStreaming: (label: string, command: string) => Promise<SandboxCommandResult>
@@ -58,7 +60,7 @@ export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
     sandboxImage: string
     matchesArchive(entries: Set<string>): boolean
-    defineDependencyImage(archive: SdkProjectArchive): SdkDependencyImageDefinition
+    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string): SdkDependencyImageDefinition
     buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void>
     prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void>
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
