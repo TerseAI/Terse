@@ -1,15 +1,20 @@
 import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { ProjectDetailResponse, User } from "terse-types/types"
+import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectSourceFilesResponse, User } from "terse-types/types"
 import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from "terse-types/types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../realtimeSocket"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
+import { getActiveSourceCodeGcsKeyForProject } from "../utility/projectHelper"
+import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from "../utility/sdkZipReader"
+import { workos } from "../utility/workos"
 
 import { tearDownAgentTriggers } from "./agents"
+
+const MAX_DEPLOYS_RETURNED = 25
 
 const ACTIVE_RUN_STATUSES: RunHistoryStatus[] = [RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL]
 
@@ -114,6 +119,175 @@ export async function handleProjectDelete(req: Request, res: Response) {
     logger.info("Project deleted", { projectId: id, organizationId: user.organizationId, automationCount: automationIds.length })
 
     return res.status(204).send()
+}
+
+export async function handleGetProjectDeploys(req: Request, res: Response) {
+    const user = req.session?.user as User | undefined
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Unauthorized" })
+    }
+
+    const { id } = req.params
+    if (!id) {
+        return res.status(400).json({ error: "Project id is required" })
+    }
+
+    const project = await db().projects.findFirst({
+        where: { id, organization_id: user.organizationId },
+        select: { id: true }
+    })
+    if (!project) {
+        return res.status(404).json({ error: "Project not found" })
+    }
+
+    const [deployRows, activeDeploy] = await Promise.all([
+        db().project_deploys.findMany({
+            where: { project_id: id },
+            orderBy: { created_at: "desc" },
+            take: MAX_DEPLOYS_RETURNED,
+            include: { deployed_by: true }
+        }),
+        db().project_deploys.findFirst({
+            where: { project_id: id, status: "SUCCEEDED" },
+            orderBy: { created_at: "desc" },
+            select: { id: true }
+        })
+    ])
+
+    const workosIds = Array.from(new Set(deployRows.map(d => d.deployed_by?.workos_id).filter((w): w is string => !!w)))
+    const workosUsers = await Promise.all(
+        workosIds.map(async workosId => {
+            try {
+                const u = await workos.userManagement.getUser(workosId)
+                return [workosId, u] as const
+            } catch (error) {
+                logger.warn("Failed to fetch WorkOS user for deploy", { error, workosId })
+                return [workosId, null] as const
+            }
+        })
+    )
+    const workosUserById = new Map(workosUsers)
+
+    const deploys: ProjectDeploy[] = deployRows.map(d => {
+        const dbUser = d.deployed_by
+        const workosUser = dbUser?.workos_id ? workosUserById.get(dbUser.workos_id) : null
+        const deployedBy: ProjectDeployUser | null = dbUser
+            ? {
+                  id: dbUser.id,
+                  displayName: workosUser ? `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || workosUser.email : "Unknown",
+                  email: workosUser?.email ?? null,
+                  avatarUrl: workosUser?.profilePictureUrl ?? null
+              }
+            : null
+
+        return {
+            id: d.id,
+            status: d.status,
+            createdAt: d.created_at.toISOString(),
+            isActive: activeDeploy?.id === d.id,
+            deployedBy
+        }
+    })
+
+    const response: ProjectDeploysResponse = {
+        projectId: id,
+        deploys
+    }
+
+    return res.status(200).json(response)
+}
+
+export async function handleGetProjectSourceFiles(req: Request, res: Response) {
+    const user = req.session?.user as User | undefined
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Unauthorized" })
+    }
+
+    const { id } = req.params
+    if (!id) {
+        return res.status(400).json({ error: "Project id is required" })
+    }
+
+    const project = await db().projects.findFirst({
+        where: { id, organization_id: user.organizationId },
+        select: { id: true }
+    })
+    if (!project) {
+        return res.status(404).json({ error: "Project not found" })
+    }
+
+    try {
+        const activeDeploy = await db().project_deploys.findFirst({
+            where: { project_id: id, status: "SUCCEEDED" },
+            orderBy: { created_at: "desc" },
+            include: { sdk_source_image: true }
+        })
+
+        if (!activeDeploy?.sdk_source_image?.gcs_key) {
+            const response: ProjectSourceFilesResponse = {
+                projectId: id,
+                deployId: null,
+                deployedAt: null,
+                files: []
+            }
+            return res.status(200).json(response)
+        }
+
+        const zip = await loadSdkSourceZip(activeDeploy.sdk_source_image.gcs_key)
+        const files = zip ? listSdkZipPathsRecursive(zip) : []
+
+        const response: ProjectSourceFilesResponse = {
+            projectId: id,
+            deployId: activeDeploy.id,
+            deployedAt: activeDeploy.created_at.toISOString(),
+            files
+        }
+        return res.status(200).json(response)
+    } catch (error) {
+        logger.error("Error fetching project source files", { error, projectId: id })
+        return res.status(500).json({ error: "Failed to fetch project source files" })
+    }
+}
+
+export async function handleGetProjectSourceFileContent(req: Request, res: Response) {
+    const user = req.session?.user as User | undefined
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Unauthorized" })
+    }
+
+    const { id, fileId } = req.params
+    if (!id) {
+        return res.status(400).json({ error: "Project id is required" })
+    }
+    if (!fileId || typeof fileId !== "string") {
+        return res.status(400).json({ error: "Invalid file ID" })
+    }
+
+    const project = await db().projects.findFirst({
+        where: { id, organization_id: user.organizationId },
+        select: { id: true }
+    })
+    if (!project) {
+        return res.status(404).json({ error: "Project not found" })
+    }
+
+    try {
+        const gcsKey = await getActiveSourceCodeGcsKeyForProject(id)
+        const zip = await loadSdkSourceZip(gcsKey)
+        if (!zip) {
+            return res.status(404).json({ error: "No source archive for this project" })
+        }
+
+        const payload = extractSdkZipFile(zip, fileId)
+        if (!payload) {
+            return res.status(404).json({ error: "File not found" })
+        }
+
+        return res.status(200).json(payload)
+    } catch (error) {
+        logger.error("Error fetching project source file", { error, projectId: id, fileId })
+        return res.status(500).json({ error: "Failed to fetch project source file" })
+    }
 }
 
 export async function handleProjectCreate(req: Request, res: Response) {
