@@ -30,7 +30,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const organizationId = user.organizationId
     const prisma = db()
 
-    const { remoteServerUrl, jobs, sourceZipBase64, projectId } = sdkDeployRequestBodySchema.parse(req.body)
+    const { remoteServerUrl, jobs, sourceZipBase64, projectId, cliVersion } = sdkDeployRequestBodySchema.parse(req.body)
 
     // Validate project exists and is owned by the user before attempting to create a deploy
     const sessionId = typeof req.headers["x-terse-session-id"] === "string" ? req.headers["x-terse-session-id"] : undefined
@@ -74,7 +74,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         data: {
             project_id: projectId,
             deployed_by_user_id: userId,
-            status: "IN_PROGRESS"
+            status: "IN_PROGRESS",
+            cli_version: cliVersion
         }
     })
     try {
@@ -99,6 +100,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 zipBuffer: sourceZipBuffer,
                 gcsKey,
                 organizationId,
+                cliVersion,
                 onProgress: phase => {
                     emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
                 }

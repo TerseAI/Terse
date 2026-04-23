@@ -11,7 +11,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { SDKAgent } from "../types/prisma"
-import { getActiveDeployForProject } from "../utility/projectHelper"
+import { type ActiveProjectDeploy, getActiveDeployForProject } from "../utility/projectHelper"
 import { extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
@@ -32,12 +32,16 @@ export interface SdkJobExecutionParams {
     jobName: string
 }
 
-type ResolvedSdkSourceImage = {
+type SdkSourceImageRecord = {
     recordId: string
     imageId: string
     runtime: SdkProjectRuntime
     dependencyImageId: string
     sourceLayerKey: string
+}
+
+type ResolvedSdkSourceImage = SdkSourceImageRecord & {
+    cliVersion: string
     zipBuffer?: Buffer
 }
 
@@ -91,8 +95,8 @@ export class SdkJobExecutionService {
         let sandboxTokenId: string | undefined
 
         try {
-            let sourceImage = await this.resolveOrPrepareSourceImage({ agent, gcsKey, orgId, runId })
-            let executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
+            const sourceImage = await this.resolveOrPrepareSourceImage({ agent, gcsKey, orgId, runId })
+            const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
 
             const { rawToken, tokenId } = await this.createSandboxApiToken(userId, orgId, agent.project.id)
             sandboxApiKey = rawToken
@@ -119,7 +123,8 @@ export class SdkJobExecutionService {
                 runId,
                 agentId: agent.id,
                 sandboxEnv,
-                sourceImageRecordId: sourceImage.recordId
+                sourceImageRecordId: sourceImage.recordId,
+                cliVersion: sourceImage.cliVersion
             })
 
             if (result.exitCode === 0) {
@@ -159,12 +164,14 @@ export class SdkJobExecutionService {
             throw new Error(`SDK agent "${agent.id}" is missing active deploy`)
         }
 
+        const cliVersion = activeDeploy.cli_version ?? "latest"
+
         if (activeDeploy.sdk_source_image_id) {
             const sourceImage = await this.getSourceImageRecord(activeDeploy.sdk_source_image_id)
             if (sourceImage) {
                 await this.touchSourceImageUsage(sourceImage)
                 await attachProjectDeployToRun(runId, activeDeploy.id)
-                return sourceImage
+                return { ...sourceImage, cliVersion }
             }
 
             logger.warn("SDK sandbox: prompt referenced missing sdk_source_images row, rebuilding from GCS", {
@@ -175,21 +182,25 @@ export class SdkJobExecutionService {
         }
 
         const zipBuffer = await this.downloadSourceZipFromGcs(gcsKey, runId, agent.id)
-        return this.prepareAndLinkSourceImage({ agent, gcsKey, orgId, runId, zipBuffer })
+        return this.prepareAndLinkSourceImage({ agent, gcsKey, orgId, runId, zipBuffer, activeDeploy, cliVersion })
     }
 
-    private async prepareAndLinkSourceImage(params: { agent: SDKAgent; gcsKey: string; orgId: string; runId: string; zipBuffer: Buffer }): Promise<ResolvedSdkSourceImage> {
-        const { agent, gcsKey, orgId, runId, zipBuffer } = params
+    private async prepareAndLinkSourceImage(params: {
+        agent: SDKAgent
+        gcsKey: string
+        orgId: string
+        runId: string
+        zipBuffer: Buffer
+        activeDeploy: ActiveProjectDeploy
+        cliVersion: string
+    }): Promise<ResolvedSdkSourceImage> {
+        const { agent, gcsKey, orgId, runId, zipBuffer, activeDeploy, cliVersion } = params
         const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
             zipBuffer,
             gcsKey,
-            organizationId: orgId
+            organizationId: orgId,
+            cliVersion
         })
-
-        const activeDeploy = await getActiveDeployForProject(agent.project.id)
-        if (!activeDeploy) {
-            throw new Error(`SDK agent "${agent.id}" is missing active deploy`)
-        }
 
         if (!activeDeploy.sdk_source_image_id) {
             await db().project_deploys.update({
@@ -207,11 +218,12 @@ export class SdkJobExecutionService {
 
         return {
             ...sourceImage,
+            cliVersion,
             zipBuffer
         }
     }
 
-    private async getSourceImageRecord(sourceImageId: string): Promise<ResolvedSdkSourceImage | null> {
+    private async getSourceImageRecord(sourceImageId: string): Promise<SdkSourceImageRecord | null> {
         const record = await db().sdk_source_images.findUnique({
             where: { id: sourceImageId },
             select: {
@@ -244,7 +256,7 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async touchSourceImageUsage(sourceImage: Pick<ResolvedSdkSourceImage, "recordId" | "dependencyImageId">): Promise<void> {
+    private async touchSourceImageUsage(sourceImage: Pick<SdkSourceImageRecord, "recordId" | "dependencyImageId">): Promise<void> {
         const now = new Date()
         await db().$transaction([
             db().sdk_source_images.updateMany({
@@ -266,8 +278,9 @@ export class SdkJobExecutionService {
         agentId: string
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
+        cliVersion: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId } = params
+        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion } = params
 
         this.emitSandboxStatus(SandboxStage.BOOTING, "started")
         const bootStart = performance.now()
@@ -283,7 +296,7 @@ export class SdkJobExecutionService {
             })
             throw error
         }
-        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, SDK_SOURCE_IMAGE_PROJECT_DIR, true)
+        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, SDK_SOURCE_IMAGE_PROJECT_DIR, true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
     }
@@ -320,7 +333,8 @@ export class SdkJobExecutionService {
         agentId: string,
         jobName: string,
         projectDir: string,
-        usesPrebuiltImage: boolean
+        usesPrebuiltImage: boolean,
+        cliVersion: string
     ): SdkRuntimeExecutorContext {
         return {
             sb,
@@ -330,6 +344,7 @@ export class SdkJobExecutionService {
             jobName,
             projectDir,
             usesPrebuiltImage,
+            cliVersion,
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
             },
