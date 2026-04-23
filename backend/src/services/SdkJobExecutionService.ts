@@ -248,7 +248,7 @@ export class SdkJobExecutionService {
             runtime: this.parseRuntime(record.runtime),
             dependencyImageId: record.dependency_image_id,
             sourceLayerKey,
-            cliVersion: record.dependency_image.cli_version ?? "latest"
+            cliVersion: record.dependency_image.cli_version
         }
     }
 

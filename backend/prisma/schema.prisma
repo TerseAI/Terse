@@ -334,7 +334,7 @@ model sdk_dependency_images {
   dependency_hash String   @unique
   runtime         String
   base_image_tag  String
-  cli_version     String?
+  cli_version     String
   image_id        String   @unique
   last_used_at    DateTime @default(now())
   created_at      DateTime @default(now())
