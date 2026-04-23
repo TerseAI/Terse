@@ -1,7 +1,7 @@
+import { intro, log, outro } from "@clack/prompts"
 import chalk from "chalk"
 import fs from "node:fs"
 import path from "node:path"
-import ora from "ora"
 import type {
     AttioIntegration,
     DatadogIntegration,
@@ -15,11 +15,11 @@ import type {
     SnowflakeIntegration,
     WorkOSIntegration
 } from "terse-types"
-import { IntegrationType, isValidToolName } from "terse-types"
-import { ApiRoutes, buildRoute } from "terse-types"
+import { ApiRoutes, IntegrationType, buildRoute, isValidToolName } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
+import { createSpinner, formatSummaryList } from "../cliUi.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import {
     type AttioAttributeData,
@@ -36,27 +36,36 @@ import {
 } from "../providers/codegenTypes.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
-// ── Main ──────────────────────────────────────────────────────────────
+type GenerateOptions = {
+    showLifecycle?: boolean
+}
 
-export async function generate(provider: LanguageProvider = resolveProvider()): Promise<void> {
+export async function generate(provider: LanguageProvider = resolveProvider(), options: GenerateOptions = {}): Promise<void> {
+    const showLifecycle = options.showLifecycle ?? true
+
+    if (showLifecycle) {
+        intro("terse generate")
+    }
+
     assertProjectRoot(provider, provider.detectionMarkers)
 
     const totalStart = performance.now()
+    const s = createSpinner()
 
-    // 1. Read API key
+    s.start("Checking authentication")
+
     const apiKey = readApiKeyOrBail({
         title: "\n  Not authenticated.\n",
         detail: "  Run `terse login` to authenticate, or set TERSE_API_KEY in your environment.\n"
     })
 
-    // 2. Fetch active integrations
-    const spinner = ora("Fetching integrations...").start()
+    s.message("Fetching integrations")
 
     let activeTypes: IntegrationType[]
     try {
         activeTypes = await fetchWithAuth<IntegrationType[]>(ApiRoutes.INTEGRATIONS.ACTIVE, apiKey)
     } catch (error: any) {
-        spinner.fail("Failed to fetch integrations")
+        s.stop("Failed to fetch integrations")
         const message = String(error?.message || "")
         const isAuthError =
             message.includes("401") ||
@@ -73,26 +82,23 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         process.exit(1)
     }
 
-    // 3. Fetch tool definitions
-    spinner.text = "Fetching tool definitions..."
+    s.message("Fetching tool definitions")
 
     let toolDefs: ToolDefinition[] = []
     try {
         const resp = await fetchWithAuth<{ tools: ToolDefinition[] }>(ApiRoutes.SDK.TOOL_DEFINITIONS, apiKey)
-        // Filter to only tools whose integration matches an active integration type
         const activeSet = new Set(activeTypes as string[])
         toolDefs = resp.tools.filter(t => activeSet.has(t.integration))
         const skippedToolNames = [...new Set(toolDefs.filter(t => !isValidToolName(t.name)).map(t => t.name))].sort()
         toolDefs = toolDefs.filter(t => isValidToolName(t.name))
         if (skippedToolNames.length > 0) {
-            console.warn(chalk.yellow(`\n  Skipped ${skippedToolNames.length} tool(s) absent from terse-types ToolDefinitions: ${skippedToolNames.join(", ")}\n`))
+            log.warn(`Skipped ${skippedToolNames.length} tool(s) absent from terse-types ToolDefinitions: ${skippedToolNames.join(", ")}`)
         }
     } catch {
-        // Non-fatal: proceed without tool definitions
+        log.warn("Skipped tool definitions fetch; proceeding without typed tool wrappers")
     }
 
-    // 4. Fetch all integration instances + resources in parallel
-    spinner.text = "Fetching integration details..."
+    s.message("Fetching integration details")
 
     const input: CodegenInput = {
         github: [],
@@ -112,7 +118,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
     const has = (t: IntegrationType) => activeTypes.includes(t)
     const promises: Promise<void>[] = []
 
-    // ── GitHub (special: also fetches repositories per instance) ──
     if (has(IntegrationType.GITHUB)) {
         promises.push(
             safely(async () => {
@@ -130,7 +135,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── Gmail (no resources) ──
     if (has(IntegrationType.GMAIL)) {
         promises.push(
             safely(async () => {
@@ -140,7 +144,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── Slack (fetches channels per instance) ──
     if (has(IntegrationType.SLACK)) {
         promises.push(
             safely(async () => {
@@ -157,7 +160,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── Linear (fetches teams per instance) ──
     if (has(IntegrationType.LINEAR)) {
         promises.push(
             safely(async () => {
@@ -183,7 +185,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── Notion (fetches databases + pages per instance) ──
     if (has(IntegrationType.NOTION)) {
         promises.push(
             safely(async () => {
@@ -207,7 +208,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── PostHog (fetches projects per instance) ──
     if (has(IntegrationType.POSTHOG)) {
         promises.push(
             safely(async () => {
@@ -224,7 +224,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── Datadog (fetches indexes per instance) ──
     if (has(IntegrationType.DATADOG)) {
         promises.push(
             safely(async () => {
@@ -241,7 +240,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── LaunchDarkly (fetches projects per instance — URL path param) ──
     if (has(IntegrationType.LAUNCHDARKLY)) {
         promises.push(
             safely(async () => {
@@ -259,7 +257,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── WorkOS (no resources) ──
     if (has(IntegrationType.WORKOS)) {
         promises.push(
             safely(async () => {
@@ -269,7 +266,6 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
-    // ── Attio (fetches objects per instance — URL path param) ──
     if (has(IntegrationType.ATTIO)) {
         promises.push(
             safely(async () => {
@@ -322,33 +318,32 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         input.workos.length +
         input.attio.length
 
-    spinner.succeed(`Fetched ${integrationCount} integration(s)`)
+    s.message("Generating code")
 
-    // 5. Generate code
     const codegenStart = performance.now()
     const code = provider.renderGeneratedCode(input)
     const codegenMs = performance.now() - codegenStart
 
-    // 6. Write output
+    s.message("Writing generated file")
     writeOutput(code, provider)
+    s.stop(`Fetched ${integrationCount} integration(s)`)
 
-    // 7. Summary
     const totalMs = performance.now() - totalStart
+    const integrationSummary = summarizeIntegrations(input)
 
-    console.log("")
-    printSummary(input)
-    if (input.tools.length > 0) {
-        console.log(`  ${chalk.green("+")} ${input.tools.length} typed tool ${input.tools.length === 1 ? "wrapper" : "wrappers"}`)
+    if (integrationSummary) {
+        console.log(chalk.dim(`Integrations: ${integrationSummary}`))
     }
-    console.log(`  ${chalk.green("+")} Schedule trigger`)
-    console.log(`  ${chalk.green("+")} Terse skills (web search)`)
-    console.log("")
-    console.log(`  ${chalk.green.bold("Generated")} ${path.relative(process.cwd(), provider.resolveGeneratedCodePath(process.cwd()))}`)
-    console.log(`  ${chalk.dim(`Codegen: ${codegenMs.toFixed(0)}ms | Total: ${totalMs.toFixed(0)}ms`)}`)
-    console.log("")
-}
+    if (input.tools.length > 0) {
+        console.log(chalk.dim(`Generated types for ${input.tools.length} ${input.tools.length === 1 ? "tool" : "tools"}`))
+    }
+    console.log(chalk.dim(`Generated ${path.relative(process.cwd(), provider.resolveGeneratedCodePath(process.cwd()))}`))
+    console.log(chalk.dim(`Codegen: ${codegenMs.toFixed(0)}ms | Total: ${totalMs.toFixed(0)}ms`))
 
-// ── Helpers ───────────────────────────────────────────────────────────
+    if (showLifecycle) {
+        outro("Done")
+    }
+}
 
 async function safely(fn: () => Promise<void>): Promise<void> {
     try {
@@ -367,47 +362,24 @@ function writeOutput(code: string, provider: LanguageProvider): void {
     fs.writeFileSync(outputPath, code)
 }
 
-function printSummary(input: CodegenInput): void {
-    const g = chalk.green("+")
+function summarizeIntegrations(input: CodegenInput): string {
+    const parts: string[] = []
 
-    for (const inst of input.github) {
-        const name = inst.integration.account_name || inst.integration.id
-        const n = inst.repositories.length
-        console.log(`  ${g} GitHub (${name}) — ${n} ${n === 1 ? "repository" : "repositories"}`)
-    }
-    for (const inst of input.gmail) {
-        console.log(`  ${g} Gmail (${inst.displayName})`)
-    }
-    for (const inst of input.slack) {
-        const n = inst.channels.length
-        console.log(`  ${g} Slack (${inst.displayName}) — ${n} ${n === 1 ? "channel" : "channels"}`)
-    }
-    for (const inst of input.linear) {
-        const n = inst.teams.length
-        console.log(`  ${g} Linear (${inst.displayName}) — ${n} ${n === 1 ? "team" : "teams"}`)
-    }
-    for (const inst of input.notion) {
-        const d = inst.databases.length
-        const p = inst.pages.length
-        console.log(`  ${g} Notion (${inst.displayName}) — ${d} ${d === 1 ? "database" : "databases"}, ${p} ${p === 1 ? "page" : "pages"}`)
-    }
-    for (const inst of input.posthog) {
-        const n = inst.projects.length
-        console.log(`  ${g} PostHog (${inst.displayName}) — ${n} ${n === 1 ? "project" : "projects"}`)
-    }
-    for (const inst of input.datadog) {
-        const n = inst.indexes.length
-        console.log(`  ${g} Datadog (${inst.displayName}) — ${n} ${n === 1 ? "index" : "indexes"}`)
-    }
-    for (const inst of input.launchdarkly) {
-        const n = inst.projects.length
-        console.log(`  ${g} LaunchDarkly (${inst.displayName}) — ${n} ${n === 1 ? "project" : "projects"}`)
-    }
-    for (const inst of input.workos) {
-        console.log(`  ${g} WorkOS (${inst.displayName})`)
-    }
-    for (const inst of input.attio) {
-        const n = inst.objects.length
-        console.log(`  ${g} Attio (${inst.displayName}) — ${n} ${n === 1 ? "object" : "objects"}`)
-    }
+    if (input.github.length > 0) parts.push(labelWithCount("GitHub", input.github.length))
+    if (input.gmail.length > 0) parts.push(labelWithCount("Gmail", input.gmail.length))
+    if (input.slack.length > 0) parts.push(labelWithCount("Slack", input.slack.length))
+    if (input.linear.length > 0) parts.push(labelWithCount("Linear", input.linear.length))
+    if (input.notion.length > 0) parts.push(labelWithCount("Notion", input.notion.length))
+    if (input.posthog.length > 0) parts.push(labelWithCount("PostHog", input.posthog.length))
+    if (input.datadog.length > 0) parts.push(labelWithCount("Datadog", input.datadog.length))
+    if (input.launchdarkly.length > 0) parts.push(labelWithCount("LaunchDarkly", input.launchdarkly.length))
+    if (input.workos.length > 0) parts.push(labelWithCount("WorkOS", input.workos.length))
+    if (input.attio.length > 0) parts.push(labelWithCount("Attio", input.attio.length))
+    if (input.snowflake.length > 0) parts.push(labelWithCount("Snowflake", input.snowflake.length))
+
+    return formatSummaryList(parts, 10)
+}
+
+function labelWithCount(label: string, count: number): string {
+    return count === 1 ? label : `${label} (${count})`
 }
