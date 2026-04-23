@@ -1,9 +1,10 @@
+import { intro, log, outro } from "@clack/prompts"
 import { confirm, input, password, select } from "@inquirer/prompts"
 import chalk from "chalk"
-import ora from "ora"
 import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
 
 import { readApiKey, readApiKeyOrBail } from "../api.js"
+import { createSpinner, formatSummaryList } from "../cliUi.js"
 import { ConfigurationFieldDefinition, FormFieldDefinition, fetchInstallationUrl, fetchIntegrationFields, fetchIntegrations, pollForConnection, submitIntegrationForm } from "../integrationApi.js"
 import { openUrlInBrowser } from "../openBrowser.js"
 
@@ -14,7 +15,19 @@ type IntegrationChangeResult = {
     integrationType?: IntegrationType
 }
 
-export async function integrate(): Promise<void> {
+type IntegrateOptions = {
+    showLifecycle?: boolean
+    runGenerateAfterChange?: boolean
+}
+
+export async function integrate(options: IntegrateOptions = {}): Promise<void> {
+    const showLifecycle = options.showLifecycle ?? true
+    const runGenerateAfterChange = options.runGenerateAfterChange ?? true
+
+    if (showLifecycle) {
+        intro("terse integrate")
+    }
+
     const apiKey = readApiKeyOrBail()
     let didChangeAnyIntegration = false
 
@@ -22,24 +35,31 @@ export async function integrate(): Promise<void> {
     while (continueLoop) {
         const result = await connectOneIntegration(apiKey)
         didChangeAnyIntegration = didChangeAnyIntegration || result.status !== "unchanged"
-
-        console.log("")
         continueLoop = await confirm({ message: "Connect another integration?", default: false })
     }
 
-    if (didChangeAnyIntegration) {
-        await generate()
+    if (didChangeAnyIntegration && runGenerateAfterChange) {
+        await generate(undefined, { showLifecycle: false })
+    }
+
+    if (showLifecycle) {
+        outro("Done")
     }
 }
 
-export async function listAndPromptIntegrations(): Promise<void> {
+export async function listAndPromptIntegrations(options: IntegrateOptions = {}): Promise<void> {
     const apiKey = readApiKey()
     if (!apiKey) return
+
+    const s = createSpinner()
+    s.start("Fetching integrations")
 
     let integrations
     try {
         integrations = await fetchIntegrations(apiKey)
+        s.stop("Fetched integrations")
     } catch {
+        s.stop("Failed to fetch integrations")
         console.error(chalk.red("Failed to fetch integrations"))
         return
     }
@@ -47,37 +67,34 @@ export async function listAndPromptIntegrations(): Promise<void> {
     const active = integrations.filter(i => i.isActive && i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB)
 
     if (active.length > 0) {
-        console.log("\n  Connected integrations:\n")
-        for (const i of active) {
-            const meta = INTEGRATION_METADATA[i.integrationType]
-            console.log(`  ${chalk.green("✓")} ${meta?.name || i.integrationType}`)
-        }
-        console.log("")
+        const names = active.map(i => INTEGRATION_METADATA[i.integrationType]?.name || i.integrationType)
+        console.log(chalk.dim(`Connected integrations (${active.length}): ${formatSummaryList(names)}`))
         const addMore = await confirm({ message: "Connect another integration?", default: false })
-        if (addMore) await integrate()
+        if (addMore) await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange })
     } else {
-        console.log(chalk.dim("\n  No integrated tools yet.\n"))
-        await integrate()
+        console.log(chalk.dim("No integrated tools yet."))
+        await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange })
     }
 }
 
 async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeResult> {
-    const spinner = ora("Fetching integrations").start()
+    const s = createSpinner()
+    s.start("Fetching integrations")
+
     let integrations
     try {
         integrations = await fetchIntegrations(apiKey)
-        spinner.stop()
+        s.stop("Fetched integrations")
     } catch (err: any) {
-        spinner.fail("Failed to fetch integrations")
+        s.stop("Failed to fetch integrations")
         console.error(chalk.red(`  ${err.message}`))
         process.exit(1)
     }
 
-    // Filter out system integrations
     const userFacing = integrations.filter(i => i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB && i.integrationType !== IntegrationType.WEBMONITOR)
 
     if (userFacing.length === 0) {
-        console.log(chalk.yellow("\n  No integrations available.\n"))
+        log.warn("No integrations available.")
         return { status: "unchanged" }
     }
 
@@ -86,7 +103,7 @@ async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeR
         choices: userFacing.map(i => {
             const meta = INTEGRATION_METADATA[i.integrationType]
             const name = meta?.name || i.integrationType
-            const status = i.isActive ? chalk.green(" ✓ connected") : chalk.dim(" not connected")
+            const status = i.isActive ? chalk.green(" connected") : chalk.dim(" not connected")
             return {
                 name: `${name}${status}`,
                 value: i.integrationType,
@@ -96,14 +113,14 @@ async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeR
     })
     const selectedIntegration = userFacing.find(i => i.integrationType === selected)
 
-    // Fetch fields for the selected integration
-    const fieldsSpinner = ora("Loading integration details").start()
+    s.start("Loading integration details")
+
     let fieldsResponse
     try {
         fieldsResponse = await fetchIntegrationFields(apiKey, selected)
-        fieldsSpinner.stop()
+        s.stop("Loaded integration details")
     } catch (err: any) {
-        fieldsSpinner.fail("Failed to load integration details")
+        s.stop("Failed to load integration details")
         console.error(chalk.red(`  ${err.message}`))
         process.exit(1)
     }
@@ -114,26 +131,23 @@ async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeR
             status: didUpdate ? (selectedIntegration?.isActive ? "modified" : "added") : "unchanged",
             integrationType: selected
         }
-    } else if (fieldsResponse.installationType === "oauth") {
+    }
+    if (fieldsResponse.installationType === "oauth") {
         const didUpdate = await handleOAuthIntegration(apiKey, selected, fieldsResponse.fields as ConfigurationFieldDefinition[])
         return {
             status: didUpdate ? (selectedIntegration?.isActive ? "modified" : "added") : "unchanged",
             integrationType: selected
         }
-    } else {
-        console.log(chalk.yellow(`\n  Integration '${selected}' has an unsupported installation type.\n`))
-        return {
-            status: "unchanged",
-            integrationType: selected
-        }
+    }
+
+    log.warn(`Integration '${selected}' has an unsupported installation type.`)
+    return {
+        status: "unchanged",
+        integrationType: selected
     }
 }
 
-// ─── Form-based integrations (Datadog, PostHog, Snowflake, etc.) ─────────────
-
 async function handleFormIntegration(apiKey: string, integrationType: string, fields: FormFieldDefinition[]): Promise<boolean> {
-    console.log("")
-
     const formValues: Record<string, string> = {}
     for (const field of fields) {
         const hint = field.hint ? chalk.dim(` (${field.hint})`) : ""
@@ -152,30 +166,26 @@ async function handleFormIntegration(apiKey: string, integrationType: string, fi
         }
     }
 
-    const spinner = ora("Connecting integration").start()
+    const s = createSpinner()
+    s.start("Connecting integration")
     try {
         const result = await submitIntegrationForm(apiKey, integrationType, formValues)
         if (result.success) {
-            spinner.succeed(chalk.green("Integration connected successfully"))
+            s.stop("Integration connected successfully")
             return true
-        } else {
-            spinner.fail(`Failed to connect: ${result.error || "Unknown error"}`)
-            return false
         }
+        s.stop(`Failed to connect: ${result.error || "Unknown error"}`)
+        return false
     } catch (err: any) {
-        spinner.fail("Failed to connect integration")
+        s.stop("Failed to connect integration")
         console.error(chalk.red(`  ${err.message}`))
         return false
     }
 }
 
-// ─── OAuth-based integrations (Slack, GitHub, Gmail, etc.) ───────────────────
-
 async function handleOAuthIntegration(apiKey: string, integrationType: string, configFields: ConfigurationFieldDefinition[]): Promise<boolean> {
-    // Prompt for configuration fields if any (e.g. Slack's bot vs user choice)
     let options: Record<string, string> | undefined
     if (configFields.length > 0) {
-        console.log("")
         options = {}
         for (const field of configFields) {
             const value = await select({
@@ -186,29 +196,30 @@ async function handleOAuthIntegration(apiKey: string, integrationType: string, c
         }
     }
 
-    const spinner = ora("Getting authorization URL").start()
+    const s = createSpinner()
+    s.start("Getting authorization URL")
+
     let installationDetails
     try {
         installationDetails = await fetchInstallationUrl(apiKey, integrationType, options)
-        spinner.stop()
+        s.stop("Authorization URL ready")
     } catch (err: any) {
-        spinner.fail("Failed to get authorization URL")
+        s.stop("Failed to get authorization URL")
         console.error(chalk.red(`  ${err.message}`))
         return false
     }
 
-    console.log(`\n  ${chalk.bold("Complete authorization in your browser:")}\n`)
-    console.log(`  ${chalk.cyan(installationDetails.oauthUrl)}\n`)
+    log.info(`Complete authorization in your browser: ${chalk.cyan(installationDetails.oauthUrl)}`)
     openUrlInBrowser(installationDetails.oauthUrl)
 
-    const pollSpinner = ora("Waiting for authorization to complete").start()
+    s.start("Waiting for authorization to complete")
     const connected = await pollForConnection(apiKey, integrationType)
 
     if (connected) {
-        pollSpinner.succeed(chalk.green("Integration connected successfully"))
+        s.stop("Integration connected successfully")
         return true
-    } else {
-        pollSpinner.fail("Authorization timed out — please try again")
-        return false
     }
+
+    s.stop("Authorization timed out — please try again")
+    return false
 }
