@@ -15,7 +15,7 @@ import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
+import { FormFieldDefinition, FormIntegrationInstallation, FormIntegrationSetup, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]
@@ -38,6 +38,17 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                 return this.enrichInstance(i.id, apiKey || "")
             })
         )
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integrations = await this.getInstancesForOrganization(organizationId)
+        const [integration] = integrations
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Environment", integration.environment, integration.id)
     }
 
     formatIntegrationInstanceForAgent(instance: WorkOSIntegration): string {
@@ -138,6 +149,18 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                 hint: "The signing secret for verifying webhook payloads. You'll get this after creating the webhook endpoint in WorkOS."
             }
         ]
+    }
+
+    getFormSetup(): FormIntegrationSetup {
+        return {
+            title: "Get WorkOS Credentials",
+            url: "https://workos.com/docs/reference/api-authentication",
+            instructions: [
+                "Use the API key for the correct WorkOS environment.",
+                "Add the webhook signing secret only if you configured webhook verification.",
+                "Webhook setup reference: https://workos.com/docs/events/data-syncing/webhooks"
+            ]
+        }
     }
 
     async processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult> {

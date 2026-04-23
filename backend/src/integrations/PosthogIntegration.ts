@@ -4,11 +4,11 @@ import { PosthogProject } from "terse-types/types"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchPosthogProjects } from "../routes/posthog"
-import { SecretField, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, IntegrationWithResources } from "./abstract/Integration"
+import { FormFieldDefinition, FormIntegrationInstallation, FormIntegrationSetup, FormSubmissionInput, FormSubmissionResult, Integration, IntegrationWithResources, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 
 export class PosthogIntegrationManager implements Integration<PosthogIntegration, never, typeof PosthogIntegrationMetadata, PosthogProject>, FormIntegrationInstallation<IntegrationType.POSTHOG> {
     constructor() {}
@@ -28,6 +28,19 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
             email: pi.user_email || undefined,
             orgName: pi.org_name || undefined
         }))
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integration = await db().posthog_integrations.findFirst({
+            where: { organization_id: organizationId },
+            orderBy: { created_at: "asc" }
+        })
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Account", integration.org_name || integration.user_email || "PostHog", integration.id)
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<PosthogIntegration, PosthogProject>[]> {
@@ -83,7 +96,13 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve()
+        return db()
+            .$transaction(async tx => {
+                await tx.posthog_integrations.delete({ where: { id: integrationId } })
+            })
+            .then(async () => {
+                await deleteSecretsBestEffort([{ integrationType: IntegrationType.POSTHOG, recordId: integrationId, field: SecretField.ApiKey }])
+            })
     }
 
     async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {}
@@ -101,6 +120,18 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
                 hint: "Your PostHog API key can be found in your PostHog account settings."
             }
         ]
+    }
+
+    getFormSetup(): FormIntegrationSetup {
+        return {
+            title: "Get a PostHog Personal API Key",
+            url: "https://us.posthog.com/settings/user-api-keys",
+            instructions: [
+                "Use a Personal API Key, not a Project API Key.",
+                "Use a key from an account with access to the target PostHog project.",
+                "This integration currently supports US PostHog Cloud only."
+            ]
+        }
     }
 
     async processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult> {

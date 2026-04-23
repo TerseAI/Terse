@@ -28,7 +28,7 @@ export async function handleSdkIntegrationFields(req: Request, res: Response) {
     }
 
     if (isFormIntegrationInstallation(integration)) {
-        res.json({ installationType: "form", fields: integration.getFormFields() })
+        res.json({ installationType: "form", fields: integration.getFormFields(), setup: integration.getFormSetup?.() })
         return
     }
 

@@ -21,7 +21,7 @@ import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
+import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class WebMonitorIntegrationManager
@@ -37,6 +37,10 @@ export class WebMonitorIntegrationManager
 
     async getInstancesForOrganization(_organizationId: string): Promise<IntegrationInstance[]> {
         return []
+    }
+
+    async getCliDisplayStateForOrganization(_organizationId: string) {
+        return createNotConnectedCliDisplayState()
     }
 
     formatIntegrationInstanceForAgent(_instance: IntegrationInstance): string {

@@ -32,7 +32,7 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "./SlackClient"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class SlackIntegrationManager
@@ -56,6 +56,22 @@ export class SlackIntegrationManager
             teamName: usi.slack_integration.team_name,
             isBotUser: usi.is_bot_user
         }))
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integration = await db().user_slack_integrations.findFirst({
+            where: { organization_id: organizationId },
+            include: {
+                slack_integration: true
+            },
+            orderBy: { created_at: "asc" }
+        })
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Workspace", integration.slack_integration.team_name, integration.id)
     }
 
     async fetchResourcesForOrganization(
@@ -496,7 +512,43 @@ export class SlackIntegrationManager
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve()
+        return db()
+            .$transaction(async tx => {
+                const userSlackIntegration = await tx.user_slack_integrations.findUnique({
+                    where: { id: integrationId },
+                    include: { slack_integration: true }
+                })
+
+                if (!userSlackIntegration) {
+                    return null
+                }
+
+                await tx.user_slack_integrations.delete({ where: { id: integrationId } })
+
+                const remainingConnections = await tx.user_slack_integrations.count({
+                    where: { slack_team_id: userSlackIntegration.slack_team_id }
+                })
+
+                if (remainingConnections === 0) {
+                    await tx.slack_integrations.delete({ where: { team_id: userSlackIntegration.slack_team_id } })
+                }
+
+                return userSlackIntegration
+            })
+            .then(async userSlackIntegration => {
+                if (!userSlackIntegration) {
+                    return
+                }
+
+                const secrets: Array<{ integrationType: IntegrationType.SLACK; recordId: string; field: SecretField }> = [
+                    { integrationType: IntegrationType.SLACK, recordId: integrationId, field: SecretField.AuthedUserAccessToken }
+                ]
+                if (userSlackIntegration.slack_integration?.id) {
+                    secrets.push({ integrationType: IntegrationType.SLACK, recordId: userSlackIntegration.slack_integration.id, field: SecretField.AccessToken })
+                }
+
+                await deleteSecretsBestEffort(secrets)
+            })
     }
 
     async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {

@@ -498,6 +498,13 @@ export const formFieldDefinitionSchema = z.object({
 })
 export type FormFieldDefinition = z.infer<typeof formFieldDefinitionSchema>
 
+export const formIntegrationSetupSchema = z.object({
+    title: z.string(),
+    url: z.string(),
+    instructions: z.array(z.string())
+})
+export type FormIntegrationSetup = z.infer<typeof formIntegrationSetupSchema>
+
 export const configurationFieldTypeSchema = z.enum(["radio", "select"])
 export type ConfigurationFieldType = z.infer<typeof configurationFieldTypeSchema>
 
@@ -519,7 +526,8 @@ export type ConfigurationFieldDefinition = z.infer<typeof configurationFieldDefi
 
 export const integrationFieldsResponseSchema = z.object({
     installationType: z.enum(["form", "oauth"]),
-    fields: z.union([z.array(formFieldDefinitionSchema), z.array(configurationFieldDefinitionSchema)])
+    fields: z.union([z.array(formFieldDefinitionSchema), z.array(configurationFieldDefinitionSchema)]),
+    setup: formIntegrationSetupSchema.optional()
 })
 export type IntegrationFieldsResponse = z.infer<typeof integrationFieldsResponseSchema>
 

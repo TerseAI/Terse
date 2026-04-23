@@ -4,6 +4,12 @@ import type { CronTrigger, GithubTrigger, GmailTrigger, LinearTrigger, ManualSam
 interface TriggerPresenter<TEvent extends Trigger> {
     formatForAgent(event: TEvent): string
     debug(event: TEvent): string
+    display(event: TEvent): TriggerDisplay
+}
+
+export interface TriggerDisplay {
+    title: string
+    subtitle: string
 }
 
 type IntegrationTrigger = Exclude<Trigger, ManualSampleTrigger>
@@ -18,22 +24,32 @@ type TriggerPresenterRegistry = {
 const TriggerPresenters = {
     manual_sample: {
         formatForAgent: (event: ManualSampleTrigger): string => `Manual sample event for ${event.integrationType}.`,
-        debug: (event: ManualSampleTrigger): string => `${event.integrationType} ${event.eventType}`
+        debug: (event: ManualSampleTrigger): string => `${event.integrationType} ${event.eventType}`,
+        display: (event: ManualSampleTrigger): TriggerDisplay => ({
+            title: `Manual ${event.integrationType} sample`,
+            subtitle: event.eventType
+        })
     },
     [IntegrationType.GITHUB]: {
         formatForAgent: formatGithubTrigger,
-        debug: (event: GithubTrigger): string => `GitHub Event: ${event.eventType} - ${event.repository.owner}/${event.repository.name} - ${event.sender.login}`
+        debug: (event: GithubTrigger): string => `GitHub Event: ${event.eventType} - ${event.repository.owner}/${event.repository.name} - ${event.sender.login}`,
+        display: formatGithubDisplay
     },
     [IntegrationType.SLACK]: {
         formatForAgent: formatSlackTrigger,
         debug: (event: SlackTrigger): string => {
             const isDM = event.channelType === "im"
             return `Slack Event: ${event.eventType} - ${isDM ? "DM" : event.channelName || event.channelId} - ${event.userName || event.userId}`
-        }
+        },
+        display: formatSlackDisplay
     },
     [IntegrationType.GMAIL]: {
         formatForAgent: formatGmailTrigger,
-        debug: (event: GmailTrigger): string => `Gmail Event: ${event.subject} message ID: ${event.messageId}`
+        debug: (event: GmailTrigger): string => `Gmail Event: ${event.subject} message ID: ${event.messageId}`,
+        display: (event: GmailTrigger): TriggerDisplay => ({
+            title: event.subject || "(no subject)",
+            subtitle: `from ${event.from}`
+        })
     },
     [IntegrationType.LINEAR]: {
         formatForAgent: formatLinearTrigger,
@@ -42,27 +58,43 @@ const TriggerPresenters = {
                 return `Linear ${event.type} Event: ${event.data.identifier} - ${event.data.title} (${event.action})`
             }
             return `Linear ${event.type} Event: Comment on issue ${event.data.issueId || "Unknown"} (${event.action})`
+        },
+        display: (event: LinearTrigger): TriggerDisplay => {
+            if (event.type === "Issue") {
+                return {
+                    title: `${event.data.identifier} ${event.data.title}`,
+                    subtitle: `${event.data.team?.name || "Linear"} · ${event.action} issue`
+                }
+            }
+            return {
+                title: `Comment on ${event.data.issueId || "Unknown issue"}`,
+                subtitle: `${event.actor.name} · ${event.action} comment`
+            }
         }
     },
     [IntegrationType.WORKOS]: {
         formatForAgent: formatWorkOSTrigger,
-        debug: (event: WorkOSTrigger): string => `WorkOS ${event.eventType}`
+        debug: (event: WorkOSTrigger): string => `WorkOS ${event.eventType}`,
+        display: formatWorkOSDisplay
     },
     [IntegrationType.WEBHOOK]: {
         formatForAgent: formatWebhookTrigger,
-        debug: (event: WebhookTrigger): string => `Webhook Trigger (${event.method})`
+        debug: (event: WebhookTrigger): string => `Webhook Trigger (${event.method})`,
+        display: formatWebhookDisplay
     },
     [IntegrationType.CRON_JOB]: {
         formatForAgent: formatCronTrigger,
-        debug: (event: CronTrigger): string => (event.isManualTrigger ? "Manual Trigger" : "Scheduled Event")
+        debug: (event: CronTrigger): string => (event.isManualTrigger ? "Manual Trigger" : "Scheduled Event"),
+        display: formatCronDisplay
     },
     [IntegrationType.WEBMONITOR]: {
         formatForAgent: formatWebMonitorTrigger,
-        debug: (event: WebMonitorTrigger): string => `${event.query.slice(0, 80)}${event.query.length > 80 ? "…" : ""}`
+        debug: (event: WebMonitorTrigger): string => `${event.query.slice(0, 80)}${event.query.length > 80 ? "…" : ""}`,
+        display: formatWebMonitorDisplay
     }
 } as TriggerPresenterRegistry
 
-function dispatchPresenter(event: IntegrationTrigger, method: keyof TriggerPresenter<Trigger>): string {
+function dispatchPresenter(event: IntegrationTrigger, method: keyof TriggerPresenter<Trigger>): string | TriggerDisplay {
     switch (event.integrationType) {
         case IntegrationType.GITHUB:
             return TriggerPresenters[IntegrationType.GITHUB][method](event)
@@ -87,14 +119,21 @@ export function formatTriggerForAgent(event: Trigger): string {
     if (event.eventType === "manual_sample") {
         return TriggerPresenters.manual_sample.formatForAgent(event)
     }
-    return dispatchPresenter(event, "formatForAgent")
+    return dispatchPresenter(event, "formatForAgent") as string
 }
 
 export function debugTrigger(event: Trigger): string {
     if (event.eventType === "manual_sample") {
         return TriggerPresenters.manual_sample.debug(event)
     }
-    return dispatchPresenter(event, "debug")
+    return dispatchPresenter(event, "debug") as string
+}
+
+export function displayTrigger(event: Trigger): TriggerDisplay {
+    if (event.eventType === "manual_sample") {
+        return TriggerPresenters.manual_sample.display(event)
+    }
+    return dispatchPresenter(event, "display") as TriggerDisplay
 }
 
 function formatGithubTrigger(event: GithubTrigger): string {
@@ -211,6 +250,142 @@ function formatSlackTrigger(event: SlackTrigger): string {
                 : ""
         }
         `
+}
+
+function formatSlackDisplay(event: SlackTrigger): TriggerDisplay {
+    const channelLabel = event.channelType === "im" ? "DM" : event.channelName || event.channelId
+    const actorLabel = event.userName || event.userId
+
+    if (event.eventType === "reaction_added") {
+        return {
+            title: `:${event.reaction || "reaction"}: reaction`,
+            subtitle: `${channelLabel} by ${actorLabel}`
+        }
+    }
+
+    const messageText = event.text?.trim()
+    return {
+        title: messageText && messageText.length > 0 ? truncateForDisplay(messageText, 80) : "(no message text)",
+        subtitle: `${channelLabel} by ${actorLabel}`
+    }
+}
+
+function truncateForDisplay(value: string, maxLength: number): string {
+    return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value
+}
+
+function formatGithubDisplay(event: GithubTrigger): TriggerDisplay {
+    if (event.pullRequest) {
+        return {
+            title: `#${event.pullRequest.number} ${truncateForDisplay(event.pullRequest.title, 80)}`,
+            subtitle: `${event.repository.owner}/${event.repository.name} · ${event.eventType} by ${event.sender.login}`
+        }
+    }
+
+    if (event.commits.length > 0) {
+        const latestCommit = event.commits[event.commits.length - 1]
+        const commitMessage = latestCommit.message || (latestCommit as { name?: string }).name || latestCommit.sha.slice(0, 7)
+        return {
+            title: truncateForDisplay(commitMessage, 80),
+            subtitle: `${event.repository.owner}/${event.repository.name} · ${event.commits.length} commit${event.commits.length === 1 ? "" : "s"} on ${event.branch || "branch"}`
+        }
+    }
+
+    return {
+        title: `${event.repository.owner}/${event.repository.name}`,
+        subtitle: `${event.eventType} by ${event.sender.login}`
+    }
+}
+
+function formatWorkOSDisplay(event: WorkOSTrigger): TriggerDisplay {
+    if ("user" in event && event.user) {
+        return {
+            title: event.user.email,
+            subtitle: humanizeWorkOSEventType(event.eventType)
+        }
+    }
+
+    if ("organization" in event && event.organization) {
+        return {
+            title: event.organization.name,
+            subtitle: humanizeWorkOSEventType(event.eventType)
+        }
+    }
+
+    if ("invitation" in event && event.invitation) {
+        return {
+            title: event.invitation.email,
+            subtitle: humanizeWorkOSEventType(event.eventType)
+        }
+    }
+
+    if ("membership" in event && event.membership) {
+        return {
+            title: event.membership.role.slug,
+            subtitle: humanizeWorkOSEventType(event.eventType)
+        }
+    }
+
+    return {
+        title: "WorkOS event",
+        subtitle: humanizeWorkOSEventType(event.eventType)
+    }
+}
+
+function humanizeWorkOSEventType(eventType: string): string {
+    return eventType.replaceAll(".", " ")
+}
+
+function formatWebhookDisplay(event: WebhookTrigger): TriggerDisplay {
+    const bodyPreview = summarizeUnknown(event.body)
+    return {
+        title: bodyPreview || "Webhook trigger",
+        subtitle: event.method
+    }
+}
+
+function formatCronDisplay(event: CronTrigger): TriggerDisplay {
+    return {
+        title: event.isManualTrigger ? "Manual trigger" : "Scheduled event",
+        subtitle: event.manualContext ? truncateForDisplay(event.manualContext, 80) : event.inputId
+    }
+}
+
+function formatWebMonitorDisplay(event: WebMonitorTrigger): TriggerDisplay {
+    const sourceLabel = firstHost(event.sourceUrls)
+    const outputPreview = typeof event.payload === "string" ? event.payload : typeof event.rawPayload === "string" ? event.rawPayload : ""
+
+    return {
+        title: sourceLabel ? `Change detected on ${sourceLabel}` : "Web monitor match",
+        subtitle: truncateForDisplay(outputPreview || event.query, 100)
+    }
+}
+
+function firstHost(urls: string[]): string | null {
+    const first = urls[0]
+    if (!first) return null
+
+    try {
+        return new URL(first).host
+    } catch {
+        return first
+    }
+}
+
+function summarizeUnknown(value: unknown): string {
+    if (typeof value === "string") {
+        return truncateForDisplay(value.trim() || "Webhook trigger", 80)
+    }
+
+    if (value && typeof value === "object") {
+        const record = value as Record<string, unknown>
+        const preferred = [record.title, record.subject, record.name, record.action, record.type, record.event].find(v => typeof v === "string" && v.trim().length > 0)
+        if (typeof preferred === "string") {
+            return truncateForDisplay(preferred, 80)
+        }
+    }
+
+    return "Webhook trigger"
 }
 
 function formatGmailTrigger(event: GmailTrigger): string {

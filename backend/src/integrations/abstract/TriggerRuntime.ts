@@ -1,5 +1,5 @@
 import type { RunHistoryTrigger, SerializedEvent, Trigger } from "terse-types"
-import { debugTrigger, formatTriggerForAgent } from "terse-types"
+import { debugTrigger, displayTrigger, formatTriggerForAgent } from "terse-types"
 
 import { Identifiable } from "../../rag/Hydrator"
 import { StoredFile } from "../../services/FileStorageService"
@@ -48,6 +48,7 @@ export abstract class TriggerRuntime<TEvent extends Trigger = Trigger> {
             eventType: this.eventType,
             formattedContent: this.formatForAgentRunner(),
             debugLog: this.debugLog(),
+            display: displayTrigger(this.data),
             data: this.data
         }
     }

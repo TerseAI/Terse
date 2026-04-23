@@ -4,11 +4,11 @@ import { LaunchDarklyProject } from "terse-types/types"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
-import { SecretField, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, IntegrationWithResources } from "./abstract/Integration"
+import { FormFieldDefinition, FormIntegrationInstallation, FormIntegrationSetup, FormSubmissionInput, FormSubmissionResult, Integration, IntegrationWithResources, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 
 export class LaunchDarklyIntegrationManager
     implements Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata, LaunchDarklyProject>, FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY>
@@ -30,6 +30,19 @@ export class LaunchDarklyIntegrationManager
             email: li.user_email || undefined,
             tokenName: li.token_name || undefined
         }))
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integration = await db().launchdarkly_integrations.findFirst({
+            where: { organization_id: organizationId },
+            orderBy: { created_at: "asc" }
+        })
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Account", integration.token_name || integration.user_email || "LaunchDarkly", integration.id)
     }
 
     async fetchResourcesForOrganization(
@@ -101,7 +114,13 @@ export class LaunchDarklyIntegrationManager
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve()
+        return db()
+            .$transaction(async tx => {
+                await tx.launchdarkly_integrations.delete({ where: { id: integrationId } })
+            })
+            .then(async () => {
+                await deleteSecretsBestEffort([{ integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId, field: SecretField.ApiKey }])
+            })
     }
 
     async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {}
@@ -119,6 +138,18 @@ export class LaunchDarklyIntegrationManager
                 hint: "Your LaunchDarkly API key (service token or access token). Find this in LaunchDarkly under Account Settings → Authorization → Tokens."
             }
         ]
+    }
+
+    getFormSetup(): FormIntegrationSetup {
+        return {
+            title: "Create a LaunchDarkly Token",
+            url: "https://launchdarkly.com/docs/home/account/api-create",
+            instructions: [
+                "Prefer a service token for long-lived automation.",
+                "Grant read access to projects, environments, and feature flags.",
+                "Include audit log read access if you want change history."
+            ]
+        }
     }
 
     async processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult> {
