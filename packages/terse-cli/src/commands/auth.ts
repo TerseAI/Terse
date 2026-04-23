@@ -1,12 +1,12 @@
+import { log } from "@clack/prompts"
 import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
-import { exec } from "node:child_process"
-import process from "node:process"
-import ora from "ora"
 import type { DeviceTokenExchangeResponse } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
+import { createSpinner } from "../cliUi.js"
 import { BACKEND_URL, WORKOS_CLIENT_ID } from "../config.js"
+import { openUrlInBrowser } from "../openBrowser.js"
 import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setStoredApiKey } from "../userConfig.js"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
@@ -35,12 +35,6 @@ interface TokenResponse {
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-function openInBrowser(url: string): void {
-    const platform = process.platform
-    const cmd = platform === "darwin" ? "open" : platform === "win32" ? "start" : "xdg-open"
-    exec(`${cmd} "${url}"`)
 }
 
 async function requestDeviceCode(): Promise<DeviceCodeResponse> {
@@ -115,72 +109,69 @@ async function exchangeForApiKey(accessToken: string): Promise<DeviceTokenExchan
 }
 
 export async function login(): Promise<{ apiKey: string; displayName: string | null } | null> {
-    const spinner = ora("Requesting login code").start()
+    const s = createSpinner()
+    s.start("Requesting login code")
 
     let deviceData: DeviceCodeResponse
     try {
         deviceData = await requestDeviceCode()
-        spinner.stop()
+        s.stop("Login code ready")
     } catch (err: any) {
-        spinner.fail("Failed to start login flow")
+        s.stop("Failed to start login flow")
         console.error(chalk.red(`  ${err.message}`))
         return null
     }
 
-    console.log(`\n  ${chalk.bold("To sign in, open this URL in your browser:")}\n`)
-    console.log(`  ${chalk.cyan(deviceData.verification_uri_complete)}\n`)
-    console.log(`  Or visit ${chalk.cyan(deviceData.verification_uri)} and enter code: ${chalk.bold(deviceData.user_code)}\n`)
+    log.info(`Open ${chalk.cyan(deviceData.verification_uri_complete)} in your browser`)
+    log.info(`Or visit ${chalk.cyan(deviceData.verification_uri)} and enter code ${chalk.bold(deviceData.user_code)}`)
+    openUrlInBrowser(deviceData.verification_uri_complete)
 
-    openInBrowser(deviceData.verification_uri_complete)
-
-    const pollSpinner = ora("Waiting for authentication in browser").start()
+    s.start("Waiting for authentication in browser")
 
     let tokenData: TokenResponse
     try {
         tokenData = await pollForTokens(deviceData.device_code, deviceData.expires_in, deviceData.interval)
-        pollSpinner.text = "Exchanging token"
+        s.message("Exchanging token")
     } catch (err: any) {
-        pollSpinner.fail("Login failed")
+        s.stop("Login failed")
         console.error(chalk.red(`  ${err.message}`))
         return null
     }
 
-    let exchangeData: DeviceTokenExchangeResponse
     try {
-        exchangeData = await exchangeForApiKey(tokenData.access_token)
-        pollSpinner.succeed(`Logged in as ${chalk.bold(exchangeData.user.displayName || exchangeData.user.email)}`)
+        const exchangeData = await exchangeForApiKey(tokenData.access_token)
+        s.stop(`Logged in as ${exchangeData.user.displayName || exchangeData.user.email}`)
+        return { apiKey: exchangeData.apiKey, displayName: exchangeData.user.displayName }
     } catch (err: any) {
-        pollSpinner.fail("Failed to create API key")
+        s.stop("Failed to create API key")
         console.error(chalk.red(`  ${err.message}`))
         return null
     }
-
-    return { apiKey: exchangeData.apiKey, displayName: exchangeData.user.displayName }
 }
 
 export async function loginAndPersist(): Promise<{ apiKey: string; displayName: string | null } | null> {
     const stored = getStoredApiKey()
     if (stored) {
+        const s = createSpinner()
+        s.start("Checking existing API key")
         const existingName = await fetchDisplayNameForKey(stored)
         if (existingName) {
-            const spinner = ora("Checking existing API key").start()
-            spinner.succeed(`Already logged in as ${chalk.bold(existingName)}`)
+            s.stop(`Already logged in as ${existingName}`)
             const shouldContinue = await confirm({ message: "Log in again with a different account?", default: false })
             if (!shouldContinue) return { apiKey: stored, displayName: existingName }
         } else {
-            const spinner = ora("Checking existing API key").start()
-            spinner.warn("Existing API key is invalid or expired")
+            s.stop("Existing API key is invalid or expired")
         }
     }
 
     const result = await login()
     if (!result?.apiKey) {
-        console.log(chalk.dim("  You can run `terse login` later to authenticate."))
+        log.info("You can run `terse login` later to authenticate.")
         return null
     }
 
     setStoredApiKey(result.apiKey)
-    console.log(chalk.dim(`  Saved credentials to ${getAuthFilePath()}`))
+    log.info(chalk.dim(`Saved credentials to ${getAuthFilePath()}`))
 
     return result
 }

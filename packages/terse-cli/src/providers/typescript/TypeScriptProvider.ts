@@ -54,8 +54,8 @@ export class TypeScriptProvider implements LanguageProvider {
         return { projectName, sdkVersion }
     }
 
-    getPostInitSteps(packageManager: string): string[] {
-        return [`${packageManager} run build    Build the project`, `${packageManager} run dev      Run in development mode`]
+    getPostInitSteps(_packageManager: string): string[] {
+        return ["terse test       Run a sample event locally", "terse deploy     Deploy the project"]
     }
 
     detectPackageManager(): string {
