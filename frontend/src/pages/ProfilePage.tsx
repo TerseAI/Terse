@@ -1,14 +1,12 @@
 import { useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
-import { Key, Monitor, Shield, User2, Users } from "lucide-react"
+import { Monitor, Shield, User2, Users } from "lucide-react"
 
 import { UserTable } from "@/components/UserManagement/UserManagement"
-import { ApiTokensWidget } from "@/components/UserProfile/ApiTokensWidget"
 import { UserProfileWidget } from "@/components/UserProfile/UserProfileWidget"
 import { UserSecurityWidget } from "@/components/UserProfile/UserSecurityWidget"
 import { UserSessionsWidget } from "@/components/UserProfile/UserSessionsWidget"
-import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
 import { useAuth } from "@/services/auth"
 
 const tabClass = ({ selected }: { selected: boolean }) =>
@@ -16,16 +14,14 @@ const tabClass = ({ selected }: { selected: boolean }) =>
         selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
     }`
 
-const TAB_KEYS = ["profile", "sessions", "security", "api-tokens", "users"] as const
+const TAB_KEYS = ["profile", "sessions", "security", "users"] as const
 
 export default function ProfilePage() {
     const { user } = useAuth()
     const [searchParams] = useSearchParams()
     const isAdmin = user?.roles.includes("admin") ?? false
-    const showSdkInterface = useFeatureFlag(FeatureFlags.SDK_INTERFACE)
 
     const visibleTabs = TAB_KEYS.filter(key => {
-        if (key === "api-tokens") return showSdkInterface
         if (key === "users") return isAdmin
         return true
     })
@@ -49,12 +45,6 @@ export default function ProfilePage() {
                         <Shield className="h-4 w-4" />
                         <span>Security</span>
                     </Tab>
-                    {showSdkInterface && (
-                        <Tab className={tabClass}>
-                            <Key className="h-4 w-4" />
-                            <span>API Tokens</span>
-                        </Tab>
-                    )}
                     {isAdmin && (
                         <Tab className={tabClass}>
                             <Users className="h-4 w-4" />
@@ -72,11 +62,6 @@ export default function ProfilePage() {
                     <TabPanel className="flex-1 min-h-0 flex flex-col">
                         <UserSecurityWidget />
                     </TabPanel>
-                    {showSdkInterface && (
-                        <TabPanel className="flex-1 min-h-0 flex flex-col">
-                            <ApiTokensWidget />
-                        </TabPanel>
-                    )}
                     {isAdmin && (
                         <TabPanel className="flex-1 min-h-0 flex flex-col">
                             <UserTable />

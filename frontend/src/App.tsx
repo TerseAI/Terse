@@ -15,6 +15,7 @@ import ActivityPage from "./pages/Activity"
 import AgentDetail from "./pages/Agents/AgentDetail"
 import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
+import ApiTokensPage from "./pages/ApiTokens"
 import Home from "./pages/Home"
 import IntegrationPage from "./pages/IntegrationPage"
 import NotificationsPage from "./pages/Notifications"
@@ -49,6 +50,7 @@ function App() {
                             <Route path="stats" element={<StatsPage />} />
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
+                            <Route path="api-tokens" element={<ApiTokensPage />} />
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                         <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />

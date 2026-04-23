@@ -23,6 +23,7 @@
     "ACTIVITY": "/app/activity",
     "STATS": "/app/stats",
     "NOTIFICATIONS": "/app/notifications",
+    "API_TOKENS": "/app/api-tokens",
     "PROFILE": "/app/profile",
     "USER_MANAGEMENT": "/app/profile?tab=users",
     "ORGANIZATIONS": {

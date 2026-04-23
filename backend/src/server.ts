@@ -37,7 +37,7 @@ import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { getPendingApprovals } from "./routes/pendingApprovals"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
-import { handleGetProjectById, handleProjectCreate, handleProjectDelete } from "./routes/project"
+import { handleGetProjectById, handleGetProjectDeploys, handleGetProjectSourceFileContent, handleGetProjectSourceFiles, handleProjectCreate, handleProjectDelete } from "./routes/project"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
@@ -756,6 +756,18 @@ app.get(ApiRoutes.PROJECTS.BY_ID, authMiddleware, async (req, res) => {
 
 app.delete(ApiRoutes.PROJECTS.BY_ID, authMiddleware, async (req, res) => {
     handleProjectDelete(req, res)
+})
+
+app.get(ApiRoutes.PROJECTS.DEPLOYS, authMiddleware, async (req, res) => {
+    handleGetProjectDeploys(req, res)
+})
+
+app.get(ApiRoutes.PROJECTS.SOURCE_FILES, authMiddleware, async (req, res) => {
+    handleGetProjectSourceFiles(req, res)
+})
+
+app.get(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, authMiddleware, async (req, res) => {
+    handleGetProjectSourceFileContent(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS
