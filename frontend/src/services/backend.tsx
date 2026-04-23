@@ -45,7 +45,9 @@ import {
     NotionResourcesResponse,
     OAuthInstallationDetails,
     PosthogProjectsResponse,
+    ProjectDeploysResponse,
     ProjectDetailResponse,
+    ProjectSourceFilesResponse,
     RecentAgent,
     SdkJobServerCheckResponse,
     SlackChannelsResponse,
@@ -298,6 +300,21 @@ interface BackendService {
      * Deletes a project and all its jobs. Throws if the project has in-flight runs.
      */
     deleteProject(id: string): Promise<void>
+
+    /**
+     * Lists the most recent deploys for a project, newest first.
+     */
+    getProjectDeploys(id: string): Promise<ProjectDeploysResponse>
+
+    /**
+     * Lists the source files of a project's currently-active deploy.
+     */
+    getProjectSourceFiles(id: string): Promise<ProjectSourceFilesResponse>
+
+    /**
+     * Returns the raw bytes (base64) of a single file from the project's active deploy archive.
+     */
+    getProjectSourceFileContent(id: string, fileId: string): Promise<AgentFileContentResponse>
 
     /**
      * Verifies that a self-hosted SDK job server is reachable and correctly configured
@@ -1080,6 +1097,39 @@ export const BackendProvider: BackendService = {
     deleteProject: (id: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.BY_ID, { id })
         return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(() => undefined)
+    },
+
+    getProjectDeploys: (id: string) => {
+        const url = buildRoute(ApiRoutes.PROJECTS.DEPLOYS, { id })
+        return axios
+            .get<ProjectDeploysResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting project deploys:", error)
+                throw error
+            })
+    },
+
+    getProjectSourceFiles: (id: string) => {
+        const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILES, { id })
+        return axios
+            .get<ProjectSourceFilesResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting project source files:", error)
+                throw error
+            })
+    },
+
+    getProjectSourceFileContent: (id: string, fileId: string) => {
+        const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, { id, fileId })
+        return axios
+            .get<AgentFileContentResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error getting project source file content:", error)
+                throw error
+            })
     },
 
     verifySdkJobServer: (agentId: string) => {
