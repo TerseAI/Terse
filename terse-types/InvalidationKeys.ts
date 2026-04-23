@@ -196,3 +196,9 @@ export const userByIdKey = (userId: string | null | undefined): readonly [string
 export const agentFilesKey = (agentId: string): readonly [string, string] => ["agentFiles", agentId]
 
 export const agentFileContentKey = (agentId: string, fileId: string): readonly [string, string, string] => ["agentFileContent", agentId, fileId]
+
+export const projectDeploysKey = (projectId: string): readonly [string, string] => ["projectDeploys", projectId]
+
+export const projectSourceFilesKey = (projectId: string): readonly [string, string] => ["projectSourceFiles", projectId]
+
+export const projectSourceFileContentKey = (projectId: string, fileId: string): readonly [string, string, string] => ["projectSourceFileContent", projectId, fileId]

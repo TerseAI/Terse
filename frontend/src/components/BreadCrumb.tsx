@@ -19,6 +19,7 @@ const routeLabels: Record<string, string> = {
     new: "New Agent",
     integrations: "Integrations",
     notifications: "Notifications",
+    "api-tokens": "API Tokens",
     projects: "Projects"
 }
 
