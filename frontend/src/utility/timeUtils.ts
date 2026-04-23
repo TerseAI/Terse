@@ -27,6 +27,7 @@ export function formatTimestamp(timestamp?: string): string {
         const hours = Math.floor(diffMs / (1000 * 60 * 60))
         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
+        if (seconds < 5) return "just now"
         if (seconds < 60) return `${seconds}s ago`
         if (minutes < 60) return `${minutes}m ago`
         if (hours < 24) return `${hours}h ago`

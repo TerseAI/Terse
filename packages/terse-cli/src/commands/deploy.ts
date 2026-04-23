@@ -8,6 +8,7 @@ import { ApiRoutes, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-typ
 import type { SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
 import { ApiError, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
+import { getCliVersion } from "../cliVersion.js"
 import { FRONTEND_URL } from "../config.js"
 import { loadJobRegistry } from "../loadJob.js"
 import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfigOrBail, writeProjectConfig } from "../projectConfig.js"
@@ -72,6 +73,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     try {
         const body = sdkDeployRequestBodySchema.parse({
             projectId,
+            cliVersion: getCliVersion(),
             jobs: jobs.map(job => ({
                 jobName: job.name,
                 triggers: job.triggers

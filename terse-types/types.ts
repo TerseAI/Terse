@@ -725,6 +725,7 @@ export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
 export const sdkDeployRequestBodySchema = z
     .object({
         projectId: z.string(),
+        cliVersion: z.string(),
         jobs: z.array(sdkDeployJobSchema),
         remoteServerUrl: z.string().optional(),
         sourceZipBase64: z.string().optional()
@@ -954,3 +955,37 @@ export const agentFileContentResponseSchema = z.object({
     mimeType: z.string().optional()
 })
 export type AgentFileContentResponse = z.infer<typeof agentFileContentResponseSchema>
+
+export const projectDeployStatusSchema = z.enum(["IN_PROGRESS", "SUCCEEDED", "FAILED", "ROLLED_BACK"])
+export type ProjectDeployStatus = z.infer<typeof projectDeployStatusSchema>
+
+export const projectDeployUserSchema = z.object({
+    id: z.string(),
+    displayName: z.string(),
+    email: z.string().nullable(),
+    avatarUrl: z.string().nullable()
+})
+export type ProjectDeployUser = z.infer<typeof projectDeployUserSchema>
+
+export const projectDeploySchema = z.object({
+    id: z.string(),
+    status: projectDeployStatusSchema,
+    createdAt: z.string(),
+    isActive: z.boolean(),
+    deployedBy: projectDeployUserSchema.nullable()
+})
+export type ProjectDeploy = z.infer<typeof projectDeploySchema>
+
+export const projectDeploysResponseSchema = z.object({
+    projectId: z.string(),
+    deploys: z.array(projectDeploySchema)
+})
+export type ProjectDeploysResponse = z.infer<typeof projectDeploysResponseSchema>
+
+export const projectSourceFilesResponseSchema = z.object({
+    projectId: z.string(),
+    deployId: z.string().nullable(),
+    deployedAt: z.string().nullable(),
+    files: z.array(fileSchema)
+})
+export type ProjectSourceFilesResponse = z.infer<typeof projectSourceFilesResponseSchema>
