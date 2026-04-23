@@ -1,25 +1,26 @@
 {
-  "name": "terse-sdk",
-  "version": "0.1.24",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch --preserveWatchOutput",
-    "format": "pnpm exec prettier --config ../../.prettierrc --write \"src/**/*.ts\"",
-    "format:check": "pnpm exec prettier --config ../../.prettierrc --check \"src/**/*.ts\"",
-    "install-global": "npm run build && npm link"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "@slack/types": "^2.20.1",
-    "terse-types": "workspace:*"
-  }
+    "name": "terse-sdk",
+    "version": "0.1.24",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch --preserveWatchOutput",
+        "format": "pnpm exec prettier --config ../../.prettierrc --write \"src/**/*.ts\"",
+        "format:check": "pnpm exec prettier --config ../../.prettierrc --check \"src/**/*.ts\"",
+        "install-global": "npm run build && npm link"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.0.0",
+        "zod": "^4.3.6"
+    },
+    "dependencies": {
+        "@slack/types": "^2.20.1",
+        "terse-types": "workspace:*"
+    }
 }
