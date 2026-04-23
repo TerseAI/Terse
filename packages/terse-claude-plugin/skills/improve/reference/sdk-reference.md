@@ -18,7 +18,7 @@ my-project/
 └── .env                      # TERSE_API_KEY (required)
 ```
 
-- TypeScript jobs are registered with `client.createJob()` in `src/index.ts`.
+- TypeScript jobs are registered with `createJob()` in `src/index.ts`.
 - `src/terse.generated.ts` is the source of truth for available triggers, skills, resources, and deterministic wrappers.
 
 ## CreateJobParameters
@@ -27,10 +27,9 @@ my-project/
 type CreateJobParameters = {
     name: string                                       // unique human-readable name
     triggers: TypedTrigger[]                           // one or more trigger configs
-    skills: ConfigInstance[]                            // integration configs (agent tools)
     filter?: (event) => boolean | Promise<boolean>     // return false to skip
-    onTrigger: (event, Agent: TerseAgent) => Promise<void>  // automation logic
-    webhookURL?: string                                // optional webhook
+    onTrigger: (event) => Promise<void>                // automation logic
+    remoteServerUrl?: string                           // optional webhook host
 }
 ```
 

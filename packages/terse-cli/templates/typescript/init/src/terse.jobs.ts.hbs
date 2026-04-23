@@ -1,9 +1,7 @@
-import { Terse, TerseAgent, type GithubPRTrigger } from "terse-sdk"
+import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
 import { GitHub, Repos, Slack, SlackChannel } from "./terse.generated"
 
-const client = new Terse()
-
-await client.createJob({
+createJob({
     name: "Summarize PR and send slack message",
     triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
     onTrigger: async (event: GithubPRTrigger) => {

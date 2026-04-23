@@ -46,8 +46,7 @@ Never edit the generated file directly.
 If no runtime entry exists yet, create one for the current language:
 
 ```typescript
-import { Terse, TerseAgent } from "terse-sdk"
-const client = new Terse()
+import { createJob, TerseAgent } from "terse-sdk"
 ```
 
 ### 3. Pick triggers
@@ -100,30 +99,32 @@ Verify:
 ## Example
 
 ```typescript
-import { Terse, TerseAgent, GithubPRTrigger } from "terse-sdk"
+import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
 import { GitHub, Slack, Repos, SlackChannel } from "./terse.generated"
 
-const client = new Terse()
-
-await client.createJob({
+createJob({
     name: "Summarize PR and notify Slack",
     triggers: [GitHub.onPROpened({ repo: Repos.MyOrg.MyRepo })],
-    skills: [
-        GitHub.skill({ repos: [Repos.MyOrg.MyRepo] }),
-        Slack.skill({ channel: SlackChannel.Engineering }),
-    ],
     filter: async (event: GithubPRTrigger) => {
         return !event.sender.login.includes("[bot]")
     },
-    onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => {
-        const message = await Agent.tools.slack.sendMessage({
+    onTrigger: async (event: GithubPRTrigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You summarize pull requests and send concise Slack updates.",
+            skills: [
+                GitHub.skill({ repos: [Repos.MyOrg.MyRepo] }),
+                Slack.skill({ channel: SlackChannel.Engineering }),
+            ],
+        })
+
+        const message = await agent.tools.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
             thread_ts: "",
             blocks: "",
         })
 
-        await Agent.runAndWait(
+        await agent.runAndWait(
             `Summarize the changes in this PR and post as a thread reply ` +
             `(thread_ts: ${message.message_ts}). ` +
             `Focus on what changed, why it matters, and what reviewers should look at first. ` +
