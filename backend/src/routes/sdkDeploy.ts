@@ -74,8 +74,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         data: {
             project_id: projectId,
             deployed_by_user_id: userId,
-            status: "IN_PROGRESS",
-            cli_version: cliVersion
+            status: "IN_PROGRESS"
         }
     })
     try {

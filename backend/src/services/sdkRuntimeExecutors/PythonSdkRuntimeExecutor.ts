@@ -47,10 +47,7 @@ export class PythonSdkRuntimeExecutor implements SdkRuntimeExecutor {
         )
 
         await context.ensureSandboxCommand("install uv", "command -v uv >/dev/null || (curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh)")
-        await context.ensureSandboxCommand(
-            "install terse cli",
-            `npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`
-        )
+        await context.ensureSandboxCommand("install terse cli", `npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
 
         await context.writeFile(`${context.templateDir}/pyproject.toml`, pyproject)
 

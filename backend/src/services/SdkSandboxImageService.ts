@@ -226,6 +226,7 @@ export class SdkSandboxImageService {
                     dependency_hash: dependencyHash,
                     runtime: executor.runtime,
                     base_image_tag: executor.sandboxImage,
+                    cli_version: cliVersion,
                     image_id: sandboxImageId
                 }
             })

@@ -57,10 +57,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             }
         }
 
-        await context.ensureSandboxCommand(
-            "install terse cli",
-            `npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`
-        )
+        await context.ensureSandboxCommand("install terse cli", `npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
         await context.ensureSandboxCommand("install cached TypeScript dependencies", this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg))
     }
 

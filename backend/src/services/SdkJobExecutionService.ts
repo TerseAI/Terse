@@ -10,8 +10,8 @@ import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
-import { SDKAgent } from "../types/prisma"
-import { type ActiveProjectDeploy, getActiveDeployForProject } from "../utility/projectHelper"
+import { SDKAgent, project_deploys } from "../types/prisma"
+import { getActiveDeployForProject } from "../utility/projectHelper"
 import { extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
@@ -38,12 +38,10 @@ type SdkSourceImageRecord = {
     runtime: SdkProjectRuntime
     dependencyImageId: string
     sourceLayerKey: string
+    cliVersion: string
 }
 
-type ResolvedSdkSourceImage = SdkSourceImageRecord & {
-    cliVersion: string
-    zipBuffer?: Buffer
-}
+type ResolvedSdkSourceImage = SdkSourceImageRecord & { zipBuffer?: Buffer }
 
 export class SdkJobExecutionService {
     private emitter: StreamEventEmitter | null = null
@@ -164,14 +162,12 @@ export class SdkJobExecutionService {
             throw new Error(`SDK agent "${agent.id}" is missing active deploy`)
         }
 
-        const cliVersion = activeDeploy.cli_version ?? "latest"
-
         if (activeDeploy.sdk_source_image_id) {
             const sourceImage = await this.getSourceImageRecord(activeDeploy.sdk_source_image_id)
             if (sourceImage) {
                 await this.touchSourceImageUsage(sourceImage)
                 await attachProjectDeployToRun(runId, activeDeploy.id)
-                return { ...sourceImage, cliVersion }
+                return sourceImage
             }
 
             logger.warn("SDK sandbox: prompt referenced missing sdk_source_images row, rebuilding from GCS", {
@@ -182,7 +178,7 @@ export class SdkJobExecutionService {
         }
 
         const zipBuffer = await this.downloadSourceZipFromGcs(gcsKey, runId, agent.id)
-        return this.prepareAndLinkSourceImage({ agent, gcsKey, orgId, runId, zipBuffer, activeDeploy, cliVersion })
+        return this.prepareAndLinkSourceImage({ agent, gcsKey, orgId, runId, zipBuffer, activeDeploy })
     }
 
     private async prepareAndLinkSourceImage(params: {
@@ -191,10 +187,10 @@ export class SdkJobExecutionService {
         orgId: string
         runId: string
         zipBuffer: Buffer
-        activeDeploy: ActiveProjectDeploy
-        cliVersion: string
+        activeDeploy: project_deploys
     }): Promise<ResolvedSdkSourceImage> {
-        const { agent, gcsKey, orgId, runId, zipBuffer, activeDeploy, cliVersion } = params
+        const { agent, gcsKey, orgId, runId, zipBuffer, activeDeploy } = params
+        const cliVersion = "latest"
         const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
             zipBuffer,
             gcsKey,
@@ -218,7 +214,6 @@ export class SdkJobExecutionService {
 
         return {
             ...sourceImage,
-            cliVersion,
             zipBuffer
         }
     }
@@ -233,7 +228,7 @@ export class SdkJobExecutionService {
                 dependency_image_id: true,
                 organization_id: true,
                 source_hash: true,
-                dependency_image: { select: { dependency_hash: true } }
+                dependency_image: { select: { dependency_hash: true, cli_version: true } }
             }
         })
 
@@ -252,7 +247,8 @@ export class SdkJobExecutionService {
             imageId: record.image_id,
             runtime: this.parseRuntime(record.runtime),
             dependencyImageId: record.dependency_image_id,
-            sourceLayerKey
+            sourceLayerKey,
+            cliVersion: record.dependency_image.cli_version ?? "latest"
         }
     }
 
