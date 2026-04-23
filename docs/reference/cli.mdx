@@ -129,6 +129,7 @@ terse test my-job
 | Flag            | Description                             | Default |
 | --------------- | --------------------------------------- | ------- |
 | `-v, --verbose` | Show agent stream output during the run | Enabled |
+| `--entry-file <path>` | Override the default workflow entry file | Provider default (for example `src/index.ts`) |
 
 **How it works:**
 
@@ -200,6 +201,12 @@ Packages your project and deploys all jobs to the Terse platform. [Learn more ab
 ```bash
 terse deploy
 ```
+
+**Options:**
+
+| Flag | Description |
+| ---- | ----------- |
+| `--entry-file <path>` | Override the default workflow entry file |
 
 **What happens:**
 
