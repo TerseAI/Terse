@@ -159,7 +159,7 @@ async function inspectSampleEvent(event: SerializedEvent): Promise<"back" | "run
         console.log(chalk.dim(event.display.subtitle))
     }
     console.log("")
-    console.log(chalk.dim(event.formattedContent))
+    console.log(chalk.dim(truncate(normalizeSingleLine(event.formattedContent), 200)))
     console.log("")
 
     return abortIfCancelled(
