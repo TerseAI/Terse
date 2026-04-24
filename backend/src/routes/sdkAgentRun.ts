@@ -55,7 +55,8 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             toolApprovals: data.toolApprovals ?? [],
             send,
             isProductionRun,
-            options: data.options
+            options: data.options,
+            outputSchema: data.outputSchema
         })
 
         send({ type: "run_started", runId })
@@ -172,6 +173,7 @@ function createSdkRunner(params: {
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun: boolean
     options?: { maxTurns?: number; requireApproval?: boolean }
+    outputSchema?: Record<string, unknown>
 }): SdkAgentRunner {
     return new SdkAgentRunner({
         runId: params.runId,
@@ -182,6 +184,7 @@ function createSdkRunner(params: {
         maxTurns: params.options?.maxTurns ?? 50,
         requireApproval: params.options?.requireApproval ?? true,
         send: params.send,
-        isProductionRun: params.isProductionRun
+        isProductionRun: params.isProductionRun,
+        outputSchema: params.outputSchema
     })
 }

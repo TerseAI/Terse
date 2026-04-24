@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
 import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
@@ -38,6 +38,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly memorySession: AgentMemorySession
     private readonly isProductionRun: boolean
     private readonly streamEventEmitter: StreamEventEmitter
+    private readonly outputType: JsonSchemaDefinition | undefined
     private pendingApprovalState: PendingApprovalState | null = null
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
@@ -53,6 +54,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.toolApprovals = params.toolApprovals
         this.send = params.send
         this.isProductionRun = !!params.isProductionRun
+        // Todo: think about modifying users zod schema so it's compatible with strict mode. Avoids landmine where optional() crashes unless they add nullable.
+        this.outputType = params.outputSchema ? { type: "json_schema", name: "output", strict: true, schema: params.outputSchema as JsonSchemaDefinition["schema"] } : undefined
         this.memorySession = params.isProductionRun ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
         this.streamEventEmitter = new StreamEventEmitter(getSocketIO(), {
             runId: params.runId,
@@ -263,7 +266,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             model: params.model,
             instructions,
             tools: params.tools,
-            modelSettings: params.modelSettings
+            modelSettings: params.modelSettings,
+            ...(this.outputType ? { outputType: this.outputType } : {})
         })
         return this.agent
     }
@@ -300,9 +304,12 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     }
 
     static getFinalOutput(result: RunResult<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>>): string | null {
-        if (typeof result.finalOutput !== "string") return null
-        const output = result.finalOutput.trim()
-        return output || null
+        if (result.finalOutput == null) return null
+        if (typeof result.finalOutput === "string") {
+            const output = result.finalOutput.trim()
+            return output || null
+        }
+        return JSON.stringify(result.finalOutput)
     }
 
     hasToolFailures(): boolean {
@@ -372,6 +379,7 @@ type SdkAgentRunnerParams = {
     requireApproval: boolean
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun?: boolean
+    outputSchema?: Record<string, unknown>
 }
 
 type SdkAgentRunnerResult = {
