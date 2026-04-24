@@ -239,8 +239,7 @@ integrateCommand
 program
     .command("generate")
     .description("Autogenerate context from your connected workspaces")
-    .option("--quiet", "Suppress the intro/outro banner (useful when piping into other tooling)")
-    .action(async (opts: { quiet?: boolean }) => {
+    .action(async () => {
         await generate(resolveProvider())
     })
 
