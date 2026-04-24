@@ -256,7 +256,7 @@ export async function fetchSampleEventsForJob(job: CreateJobParameters, apiKey: 
                 eventType: "cron",
                 inputId: trigger.integrationId,
                 isManualTrigger: true,
-                manualContext: `Manual trigger from terse test (schedule: ${(trigger as any).cronExpression ?? "unknown"})`
+                manualContext: `Manual trigger from terse test (schedule: ${trigger.cronExpression})`
             })
         )
     }
