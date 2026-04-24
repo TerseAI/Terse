@@ -17,8 +17,9 @@ import type {
 } from "terse-types"
 import { ApiRoutes, IntegrationType, buildRoute, isValidToolName } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
+import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
+import { CliError, ErrorCode } from "../cliError.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import {
@@ -35,10 +36,6 @@ import {
     type ToolDefinition
 } from "../providers/codegenTypes.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
-
-type GenerateOptions = {
-    showLifecycle?: boolean
-}
 
 export async function generate(provider: LanguageProvider = resolveProvider()): Promise<void> {
     intro("terse generate")
@@ -63,6 +60,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         s.stop("Failed to fetch integrations")
         const message = String(error?.message || "")
         const isAuthError =
+            (error instanceof ApiError && (error.status === 401 || error.status === 403)) ||
             message.includes("401") ||
             message.includes("403") ||
             message.toLowerCase().includes("authentication failed") ||
@@ -70,11 +68,14 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
             message.toLowerCase().includes("forbidden")
 
         if (isAuthError) {
-            console.error(chalk.red("\n  Authentication failed: your TERSE_API_KEY was rejected.\n") + chalk.dim("  Run `terse login` to refresh your credentials and try again.\n"))
-        } else {
-            console.error(chalk.red(`\n  ${message}\n`))
+            throw new CliError("not_authenticated", "Authentication failed: your TERSE_API_KEY was rejected.", {
+                detail: "Run `terse login` to refresh your credentials and try again.",
+                actionRequired: true,
+                exitCode: ErrorCode.BAD_ARGUMENTS
+            })
         }
-        process.exit(1)
+
+        throw new CliError("fetch_integrations_failed", message || "Failed to fetch integrations.")
     }
 
     s.message("Fetching tool definitions")
@@ -373,4 +374,10 @@ function summarizeIntegrations(input: CodegenInput): string {
 
 function labelWithCount(label: string, count: number): string {
     return count === 1 ? label : `${label} (${count})`
+}
+
+// Types
+
+type GenerateOptions = {
+    showLifecycle?: boolean
 }

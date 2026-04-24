@@ -1,10 +1,10 @@
-import chalk from "chalk"
 import fs from "node:fs"
 import path from "node:path"
 import { ApiRoutes, sdkCreateProjectResponseBodySchema, terseProjectConfigSchema } from "terse-types"
 import type { TerseProjectConfig } from "terse-types"
 
 import { fetchWithAuth } from "./api.js"
+import { CliError } from "./cliError.js"
 
 export const PROJECT_CONFIG_FILENAME = "terse.config.json"
 
@@ -17,11 +17,20 @@ export function readProjectConfig(cwd: string = process.cwd()): TerseProjectConf
     if (!fs.existsSync(filePath)) return null
 
     const raw = fs.readFileSync(filePath, "utf8")
-    const parsed = terseProjectConfigSchema.safeParse(JSON.parse(raw))
+    let parsedJson: unknown
+    try {
+        parsedJson = JSON.parse(raw)
+    } catch (error) {
+        throw new CliError("project_config_malformed", `${PROJECT_CONFIG_FILENAME} is malformed.`, {
+            detail: error instanceof Error ? error.message : String(error)
+        })
+    }
+
+    const parsed = terseProjectConfigSchema.safeParse(parsedJson)
     if (!parsed.success) {
-        console.error(chalk.red(`Error: ${PROJECT_CONFIG_FILENAME} is malformed.`))
-        console.error(chalk.dim(parsed.error.issues.map(issue => `  - ${issue.path.join(".") || "(root)"}: ${issue.message}`).join("\n")))
-        process.exit(1)
+        throw new CliError("project_config_malformed", `${PROJECT_CONFIG_FILENAME} is malformed.`, {
+            detail: parsed.error.issues.map(issue => `${issue.path.join(".") || "(root)"}: ${issue.message}`).join("\n")
+        })
     }
 
     return parsed.data
@@ -31,11 +40,9 @@ export function readProjectConfigOrBail(cwd: string = process.cwd()): TerseProje
     const config = readProjectConfig(cwd)
     if (config) return config
 
-    console.error(chalk.red(`\n  Error: No ${PROJECT_CONFIG_FILENAME} found in ${cwd}.`))
-    console.error(chalk.dim(`  This project isn't linked to a Terse project yet.\n`))
-    console.error(`  For a new project, run ${chalk.cyan("terse init")}.`)
-    console.error(`  For an existing repo, run ${chalk.cyan("terse attach")}.\n`)
-    process.exit(1)
+    throw new CliError("project_not_attached", `No ${PROJECT_CONFIG_FILENAME} found in ${cwd}.`, {
+        detail: `This project isn't linked to a Terse project yet.\n\nFor a new project, run \`terse init\`.\nFor an existing repo, run \`terse attach\`.`
+    })
 }
 
 export function writeProjectConfig(cwd: string, config: TerseProjectConfig): void {

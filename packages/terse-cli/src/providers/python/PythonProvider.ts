@@ -7,6 +7,7 @@ import type { CreateJobParameters, TypedTrigger } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 
 import { readApiKey } from "../../api.js"
+import { CliError } from "../../cliError.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
@@ -126,16 +127,21 @@ export class PythonProvider implements LanguageProvider {
                 }
 
                 if (registry.size === 0) {
-                    console.error(chalk.red(`No jobs found. Make sure your ${resolvedEntryFile} registers at least one job with @app.job(...).`))
-                    process.exit(1)
+                    throw new CliError("no_jobs_found", "No jobs found.", {
+                        detail: `Make sure your ${resolvedEntryFile} registers at least one job with @app.job(...).`
+                    })
                 }
 
                 return registry
             })
         } catch (error) {
-            console.error(chalk.red(`Error importing ${resolvedEntryFile}:\n`))
-            printPythonCommandError(error)
-            process.exit(1)
+            if (error instanceof CliError) {
+                throw error
+            }
+
+            throw new CliError("entry_import_failed", `Could not import ${resolvedEntryFile}.`, {
+                detail: formatPythonCommandErrorDetail(error)
+            })
         }
     }
 
@@ -170,9 +176,9 @@ export class PythonProvider implements LanguageProvider {
                 await runStreamingPython(cwd, env, scriptPath, job.name)
             })
         } catch (error) {
-            console.error(chalk.red(`\n  Job "${job.name}" failed.\n`))
-            printPythonCommandError(error)
-            process.exit(1)
+            throw new CliError("job_execution_failed", `Job "${job.name}" failed.`, {
+                detail: formatPythonCommandErrorDetail(error)
+            })
         } finally {
             closeSession?.()
         }
@@ -456,17 +462,22 @@ function validatePythonSyntax(code: string): void {
     }
 }
 
-function printPythonCommandError(error: unknown): void {
+function formatPythonCommandErrorDetail(error: unknown): string {
     if (error instanceof Error) {
-        console.error(error.message)
+        const parts = [error.message]
         const stderr = (error as { stderr?: unknown }).stderr
         if (typeof stderr === "string" && stderr.trim()) {
-            console.error(stderr.trim())
+            if (stderr.trim() !== error.message.trim()) {
+                parts.push(stderr.trim())
+            }
         } else if (Buffer.isBuffer(stderr) && stderr.toString().trim()) {
-            console.error(stderr.toString().trim())
+            const stderrText = stderr.toString().trim()
+            if (stderrText !== error.message.trim()) {
+                parts.push(stderrText)
+            }
         }
-        return
+        return parts.join("\n")
     }
 
-    console.error(String(error))
+    return String(error)
 }

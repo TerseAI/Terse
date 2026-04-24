@@ -4,6 +4,7 @@ import { RunHistoryStatus } from "terse-types"
 import type { GetRunHistoryParams, RunHistoryStatus as RunHistoryStatusType } from "terse-types"
 
 import { fetchRunChatHistory, fetchRunHistory, readApiKeyOrBail, resolveAgentIdByJobName, resolveEventFromRunId } from "../api.js"
+import { CliError } from "../cliError.js"
 import { loadJob } from "../loadJob.js"
 import { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
@@ -12,19 +13,6 @@ import { type RunWithEvents, printRunChat, printRuns } from "./historyPrinters.j
 
 const VALID_STATUSES = new Set<RunHistoryStatusType>(Object.values(RunHistoryStatus) as RunHistoryStatusType[])
 const MAX_PAGE_SIZE = 100
-
-export type HistoryOptions = {
-    json?: boolean
-    limit?: number
-    page?: number
-    status?: string
-    since?: string
-    until?: string
-    query?: string
-    triggers?: boolean
-    events?: boolean
-    runId?: string
-}
 
 export async function history(jobName?: string, options: HistoryOptions = {}, provider: LanguageProvider = resolveProvider()): Promise<void> {
     const apiKey = readApiKeyOrBail()
@@ -53,8 +41,9 @@ export async function history(jobName?: string, options: HistoryOptions = {}, pr
 
     if (!agentId) {
         spinner?.fail(chalk.red(`No deployed agent found for job "${job.name}"`))
-        if (!options.json) console.log(chalk.dim(`  Have you run \`terse deploy\` for this job?`))
-        process.exit(1)
+        throw new CliError("no_deployed_agent", `No deployed agent found for job "${job.name}"`, {
+            detail: "Have you run `terse deploy` for this job?"
+        })
     }
 
     const params = buildParams(options)
@@ -128,4 +117,19 @@ function buildParams(options: HistoryOptions): GetRunHistoryParams {
     }
 
     return params
+}
+
+// Types
+
+export type HistoryOptions = {
+    json?: boolean
+    limit?: number
+    page?: number
+    status?: string
+    since?: string
+    until?: string
+    query?: string
+    triggers?: boolean
+    events?: boolean
+    runId?: string
 }

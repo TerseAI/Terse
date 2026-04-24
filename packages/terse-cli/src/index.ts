@@ -28,7 +28,15 @@ const NON_INTERACTIVE_OPTION = ["-y, --non-interactive", "Run non-interactively;
 
 const ENTRY_FILE_OPTION = ["--entry-file <path>", "Path to the job entry file (overrides default)"] as const
 
+function syncJsonErrorOutput(command: Command): void {
+    const { json } = command.opts<JsonOpts>()
+    setErrorOutputJson(Boolean(json))
+}
+
 program.name("terse").description("The Terse CLI — create and manage Terse projects").version(getCliVersion())
+program.hook("preAction", (_thisCommand, actionCommand) => {
+    syncJsonErrorOutput(actionCommand)
+})
 
 program.commandsGroup("Getting started:")
 program
@@ -78,7 +86,7 @@ Non-interactive subcommands (for AI agents and CI):
   $ terse test run --event-file sample.json # run a sample event from disk
 `
     )
-    .action(async (jobName?: string, opts?: { verbose?: boolean; entryFile?: string }) => {
+    .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean }) => {
         await test(jobName, opts?.verbose, resolveProvider(), opts?.entryFile)
     })
 
@@ -88,8 +96,7 @@ testCommand
     .argument("[job-name]", "Name of the job (auto-selects if only one exists)")
     .option("--json", "Emit JSON with the full event payload for each id")
     .option(...ENTRY_FILE_OPTION)
-    .action(async (jobName?: string, opts?: { json?: boolean; entryFile?: string }) => {
-        if (opts?.json) setErrorOutputJson(true)
+    .action(async (jobName?: string, opts?: JsonEntryFileOpts) => {
         await testList({ jobName, json: opts?.json, entryFile: opts?.entryFile })
     })
 
@@ -100,8 +107,7 @@ testCommand
     .argument("[job-name]", "Name of the job (auto-selects if only one exists)")
     .option("--json", "Emit JSON instead of rendered text")
     .option(...ENTRY_FILE_OPTION)
-    .action(async (id: string, jobName?: string, opts?: { json?: boolean; entryFile?: string }) => {
-        if (opts?.json) setErrorOutputJson(true)
+    .action(async (id: string, jobName?: string, opts?: JsonEntryFileOpts) => {
         await testShow({ id, jobName, json: opts?.json, entryFile: opts?.entryFile })
     })
 
@@ -137,7 +143,7 @@ program
     .command("deploy")
     .description("Deploy all jobs to Terse (syncs with server — removed jobs are deleted)")
     .option(...ENTRY_FILE_OPTION)
-    .action(async (opts?: { entryFile?: string }) => {
+    .action(async (opts?: EntryFileOpts) => {
         await deploy(resolveProvider(), opts?.entryFile)
     })
 
@@ -169,7 +175,6 @@ integrateCommand
     .option("--json", "Emit JSON")
     .option("--status <status>", "Filter to `connected` or `disconnected`")
     .action(async (opts: { json?: boolean; status?: string }) => {
-        if (opts.json) setErrorOutputJson(true)
         if (opts.status && opts.status !== "connected" && opts.status !== "disconnected") {
             throw new CliError("invalid_status_filter", `--status must be "connected" or "disconnected", got "${opts.status}".`)
         }
@@ -181,8 +186,7 @@ integrateCommand
     .description("Show schema and status for an integration type")
     .argument("<type>", "Integration type (e.g. slack, snowflake)")
     .option("--json", "Emit JSON")
-    .action(async (type: string, opts: { json?: boolean }) => {
-        if (opts.json) setErrorOutputJson(true)
+    .action(async (type: string, opts: JsonOpts) => {
         await integrateDescribe({ integrationType: type, json: opts.json })
     })
 
@@ -205,7 +209,6 @@ Examples:
 `
     )
     .action(async (type: string, opts: { field?: string[]; fieldsStdin?: boolean; force?: boolean; json?: boolean }) => {
-        if (opts.json) setErrorOutputJson(true)
         await integrateConnect({
             integrationType: type,
             fieldFlags: opts.field,
@@ -220,8 +223,7 @@ integrateCommand
     .description("Disconnect an integration")
     .argument("<type>", "Integration type (e.g. slack, snowflake)")
     .option("--json", "Emit JSON")
-    .action(async (type: string, opts: { json?: boolean }) => {
-        if (opts.json) setErrorOutputJson(true)
+    .action(async (type: string, opts: JsonOpts) => {
         await integrateDisconnect({ integrationType: type, json: opts.json })
     })
 
@@ -232,7 +234,6 @@ integrateCommand
     .option("--timeout <seconds>", "Timeout in seconds (default 300, max 900)", parseIntFlag)
     .option("--json", "Emit JSON")
     .action(async (type: string, opts: { timeout?: number; json?: boolean }) => {
-        if (opts.json) setErrorOutputJson(true)
         await integrateWait({ integrationType: type, timeoutSeconds: opts.timeout, json: opts.json })
     })
 
@@ -270,8 +271,8 @@ program
     .description("View past run events for a job (use --json to pipe into tooling like the Claude Code /improve skill)")
     .argument("[job-name]", "Name of the job to view the history of")
     .option("--json", "Output runs as JSON for machine consumption")
-    .option("--limit <n>", "Max runs to fetch (default 20, max 100)", v => parseInt(v, 10))
-    .option("--page <n>", "Page number (1-indexed)", v => parseInt(v, 10))
+    .option("--limit <n>", "Max runs to fetch (default 20, max 100)", parseIntFlag)
+    .option("--page <n>", "Page number (1-indexed)", parseIntFlag)
     .option("--status <list>", "Comma-separated statuses (success,failed,cancelled,skipped,in_progress,awaiting_approval)")
     .option("--since <iso>", "Only include runs at or after this ISO timestamp")
     .option("--until <iso>", "Only include runs at or before this ISO timestamp")
@@ -295,7 +296,6 @@ program
                 runId?: string
             }
         ) => {
-            if (opts.json) setErrorOutputJson(true)
             await history(jobName, opts)
         }
     )
@@ -350,3 +350,15 @@ try {
 
     throw error
 }
+
+// Types
+
+type JsonOpts = {
+    json?: boolean
+}
+
+type EntryFileOpts = {
+    entryFile?: string
+}
+
+type JsonEntryFileOpts = JsonOpts & EntryFileOpts

@@ -22,26 +22,6 @@ import { openUrlInBrowser } from "../openBrowser.js"
 
 import { generate } from "./generate.js"
 
-type IntegrationChangeResult = {
-    status: "added" | "modified" | "unchanged"
-    integrationType?: IntegrationType
-}
-
-type IntegrateOptions = {
-    showLifecycle?: boolean
-    runGenerateAfterChange?: boolean
-    nonInteractive?: boolean
-}
-
-type IntegrationAction = "back" | "connect" | "disconnect" | "keep" | "refresh_permissions"
-
-type GroupedIntegrationSelection = {
-    action: IntegrationAction
-    integrationType: IntegrationType
-}
-
-type UserFacingIntegration = IntegrationWithStatus
-
 const INTERNAL_INTEGRATION_TYPES = new Set<string>([IntegrationType.TERSE, IntegrationType.CRON_JOB, IntegrationType.WEBMONITOR])
 
 export async function integrate(options: IntegrateOptions = {}): Promise<void> {
@@ -461,11 +441,6 @@ function summaryFor(displayState: CliIntegrationDisplayState): { summaryLabel: s
     return { summaryLabel: null, summaryValue: null }
 }
 
-export type IntegrateListOpts = {
-    json?: boolean
-    status?: "connected" | "disconnected"
-}
-
 export async function integrateList(opts: IntegrateListOpts = {}): Promise<void> {
     const apiKey = readApiKeyOrBail()
     const integrations = (await fetchIntegrations(apiKey)).filter(i => !INTERNAL_INTEGRATION_TYPES.has(i.integrationType))
@@ -510,11 +485,6 @@ export async function integrateList(opts: IntegrateListOpts = {}): Promise<void>
     }
 }
 
-export type IntegrateDescribeOpts = {
-    integrationType: string
-    json?: boolean
-}
-
 export async function integrateDescribe(opts: IntegrateDescribeOpts): Promise<void> {
     const type = parseIntegrationTypeOrThrow(opts.integrationType)
     const apiKey = readApiKeyOrBail()
@@ -551,14 +521,6 @@ export async function integrateDescribe(opts: IntegrateDescribeOpts): Promise<vo
     } else {
         process.stdout.write("OAuth — use `terse integrate connect <type>` in an interactive terminal, or open the auth URL manually and poll with `terse integrate wait`.\n")
     }
-}
-
-export type IntegrateConnectOpts = {
-    integrationType: string
-    fieldFlags?: string[]
-    fieldsStdin?: boolean
-    force?: boolean
-    json?: boolean
 }
 
 export async function integrateConnect(opts: IntegrateConnectOpts): Promise<void> {
@@ -639,11 +601,6 @@ export async function integrateConnect(opts: IntegrateConnectOpts): Promise<void
     }
 }
 
-export type IntegrateDisconnectOpts = {
-    integrationType: string
-    json?: boolean
-}
-
 export async function integrateDisconnect(opts: IntegrateDisconnectOpts): Promise<void> {
     const type = parseIntegrationTypeOrThrow(opts.integrationType)
     const apiKey = readApiKeyOrBail()
@@ -659,12 +616,6 @@ export async function integrateDisconnect(opts: IntegrateDisconnectOpts): Promis
     } else {
         process.stdout.write(chalk.green(message) + "\n")
     }
-}
-
-export type IntegrateWaitOpts = {
-    integrationType: string
-    timeoutSeconds?: number
-    json?: boolean
 }
 
 const WAIT_DEFAULT_TIMEOUT_S = 300
@@ -702,4 +653,55 @@ export async function integrateWait(opts: IntegrateWaitOpts): Promise<void> {
     throw new CliError("wait_timeout", `Timed out after ${timeoutSeconds}s waiting for ${type} to connect.`, {
         detail: lastError ? `Last error: ${lastError}` : "Check the integration's connection status with `terse integrate list`."
     })
+}
+
+// Types
+
+type IntegrationChangeResult = {
+    status: "added" | "modified" | "unchanged"
+    integrationType?: IntegrationType
+}
+
+type IntegrateOptions = {
+    showLifecycle?: boolean
+    runGenerateAfterChange?: boolean
+    nonInteractive?: boolean
+}
+
+type IntegrationAction = "back" | "connect" | "disconnect" | "keep" | "refresh_permissions"
+
+type GroupedIntegrationSelection = {
+    action: IntegrationAction
+    integrationType: IntegrationType
+}
+
+type UserFacingIntegration = IntegrationWithStatus
+
+export type IntegrateListOpts = {
+    json?: boolean
+    status?: "connected" | "disconnected"
+}
+
+export type IntegrateDescribeOpts = {
+    integrationType: string
+    json?: boolean
+}
+
+export type IntegrateConnectOpts = {
+    integrationType: string
+    fieldFlags?: string[]
+    fieldsStdin?: boolean
+    force?: boolean
+    json?: boolean
+}
+
+export type IntegrateDisconnectOpts = {
+    integrationType: string
+    json?: boolean
+}
+
+export type IntegrateWaitOpts = {
+    integrationType: string
+    timeoutSeconds?: number
+    json?: boolean
 }

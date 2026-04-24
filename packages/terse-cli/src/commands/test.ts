@@ -45,8 +45,9 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     }
 
     if (events.length === 0) {
-        log.error("No sample events available. Make sure your triggers are configured and events have been received.")
-        process.exit(1)
+        throw new CliError("no_sample_events", "No sample events available.", {
+            detail: "Make sure your triggers are configured and events have been received."
+        })
     }
 
     writeCachedEvents(job.name, events)
@@ -65,13 +66,6 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
         runSpinner.stop("Run failed")
         throw error
     }
-}
-
-export type TestListOpts = {
-    jobName?: string
-    json?: boolean
-    entryFile?: string
-    provider?: LanguageProvider
 }
 
 export async function testList(opts: TestListOpts = {}): Promise<void> {
@@ -116,14 +110,6 @@ export async function testList(opts: TestListOpts = {}): Promise<void> {
     process.stdout.write(chalk.dim(`Run one with:  terse test run --id <id>\n`))
 }
 
-export type TestShowOpts = {
-    id: string
-    jobName?: string
-    json?: boolean
-    entryFile?: string
-    provider?: LanguageProvider
-}
-
 export async function testShow(opts: TestShowOpts): Promise<void> {
     const provider = opts.provider ?? resolveProvider()
     assertProjectRoot(provider)
@@ -138,16 +124,6 @@ export async function testShow(opts: TestShowOpts): Promise<void> {
     process.stdout.write(`${chalk.bold(formatEventLabel(event))}\n`)
     if (event.display?.subtitle) process.stdout.write(chalk.dim(event.display.subtitle) + "\n")
     process.stdout.write(`\n${event.formattedContent}\n`)
-}
-
-export type TestRunOpts = {
-    jobName?: string
-    id?: string
-    eventJson?: string
-    eventFile?: string
-    verbose?: boolean
-    entryFile?: string
-    provider?: LanguageProvider
 }
 
 export async function testRun(opts: TestRunOpts): Promise<void> {
@@ -357,4 +333,31 @@ function serializeEvent(event: Trigger): SerializedEvent {
         display: displayTrigger(event),
         data: event
     }
+}
+
+// Types
+
+export type TestListOpts = {
+    jobName?: string
+    json?: boolean
+    entryFile?: string
+    provider?: LanguageProvider
+}
+
+export type TestShowOpts = {
+    id: string
+    jobName?: string
+    json?: boolean
+    entryFile?: string
+    provider?: LanguageProvider
+}
+
+export type TestRunOpts = {
+    jobName?: string
+    id?: string
+    eventJson?: string
+    eventFile?: string
+    verbose?: boolean
+    entryFile?: string
+    provider?: LanguageProvider
 }

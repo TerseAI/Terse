@@ -15,26 +15,6 @@ const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"
 const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code"
 
-interface DeviceCodeResponse {
-    device_code: string
-    user_code: string
-    verification_uri: string
-    verification_uri_complete: string
-    interval: number
-    expires_in: number
-}
-
-interface TokenResponse {
-    user: {
-        id: string
-        email: string
-        first_name: string | null
-        last_name: string | null
-    }
-    access_token: string
-    refresh_token: string
-}
-
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -217,4 +197,26 @@ export async function getProjectAttachedUserName(targetDir: string): Promise<str
     const projectKey = readApiKeyFromDir(targetDir)
     if (!projectKey) return null
     return fetchDisplayNameForKey(projectKey)
+}
+
+// Types
+
+interface DeviceCodeResponse {
+    device_code: string
+    user_code: string
+    verification_uri: string
+    verification_uri_complete: string
+    interval: number
+    expires_in: number
+}
+
+interface TokenResponse {
+    user: {
+        id: string
+        email: string
+        first_name: string | null
+        last_name: string | null
+    }
+    access_token: string
+    refresh_token: string
 }
