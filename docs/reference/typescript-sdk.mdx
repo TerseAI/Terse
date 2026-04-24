@@ -52,7 +52,7 @@ Duplicate **`name`** values throw an error when the second job registers. At mos
 | `onTrigger`      | `(event) => Promise<void>`                      | The workflow handler. Called once per trigger event.                                              |
 | `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or the default).      |
 
-Pass **`skills`**, **`ToolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
+Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
 
 ```ts
 import { createJob, TerseAgent, type Trigger } from "terse-sdk"
@@ -111,7 +111,23 @@ Waits for the model to complete and returns the final output string.
 const output = await agent.runAndWait("Score the account and explain why.")
 ```
 
-Use `runAndWait` for most workflows where you need the full output before proceeding.
+Use this form when you want raw text output.
+
+### `runAndWait(userMessage, outputSchema)`
+
+Pass a `zod` schema to request structured output. The SDK sends the schema with the run, parses the final JSON, and validates it before returning.
+
+```ts
+import { z } from "zod"
+
+const ScoreSchema = z.object({
+    score: z.number().min(0).max(100),
+    rationale: z.string()
+})
+
+const scored = await agent.runAndWait("Score this account and explain why.", ScoreSchema)
+// scored is typed as: { score: number; rationale: string }
+```
 
 ### `executeTool(toolName, params)`
 
@@ -146,55 +162,7 @@ Use `agent.tools.*` for guaranteed side effects. These wrappers are available wh
 
 ## Structured output
 
-`runAndWait` returns a string. When you need typed data from the model, parse the output explicitly.
-
-If you define schemas in workflow code, import them from `zod`. New TypeScript projects created with `terse init` include `zod` by default.
-
-### Simple extraction
-
-```ts
-const result = await agent.runAndWait(
-    [
-        "Score this company from 1-100 for ICP fit.",
-        'Respond with ONLY a JSON object: { "score": <number>, "rationale": "<string>" }',
-        `Company: ${event.record.values.company_name}`,
-        `Industry: ${company.industry}`,
-        `Employees: ${company.employeeCount}`
-    ].join("\n")
-)
-
-const parsed = JSON.parse(result) as { score: number; rationale: string }
-
-await agent.tools.attio.updateRecord({
-    list: AttioList.Pipeline.NewDeals,
-    recordId: event.record.id,
-    fields: {
-        fit_score: parsed.score,
-        scoring_notes: parsed.rationale
-    }
-})
-```
-
-### Tips for structured output
-
-- Tell the model the exact JSON shape you expect.
-- Use `JSON.parse()` and handle the failure case, since the model may include markdown fencing or extra text.
-- For critical writes, validate the parsed result before passing it to `agent.tools.*`.
-
-````ts
-const raw = await agent.runAndWait(prompt)
-
-// Strip markdown code fences if present
-const cleaned = raw
-    .replace(/```json?\n?/g, "")
-    .replace(/```/g, "")
-    .trim()
-const parsed = JSON.parse(cleaned) as { score: number; rationale: string }
-
-if (parsed.score < 0 || parsed.score > 100) {
-    throw new Error(`Invalid score: ${parsed.score}`)
-}
-````
+Use `runAndWait(message, schema)` when you need typed, validated JSON. Use `runAndWait(message)` when you need free-form text.
 
 ## Filtering events
 
@@ -220,7 +188,7 @@ createJob({
 
 ## Tool approvals
 
-List tool names in **`ToolApprovals`** on **`TerseAgent.create()`** to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
+List tool names in **`toolApprovals`** on **`TerseAgent.create()`** to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
 
 ```ts
 createJob({
@@ -230,7 +198,7 @@ createJob({
         const agent = TerseAgent.create({
             prompt: "You enrich new deals and post summaries to Slack.",
             skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-            ToolApprovals: ["attio.updateRecord", "slack.sendMessage"]
+            toolApprovals: ["attio.updateRecord", "slack.sendMessage"]
         })
 
         const company = await agent.tools.apollo.enrichCompany({
@@ -256,7 +224,7 @@ createJob({
 })
 ```
 
-Use **`ToolApprovals`** for workflows that write to production systems during early development, or when compliance requires a human in the loop.
+Use **`toolApprovals`** for workflows that write to production systems during early development, or when compliance requires a human in the loop.
 
 ## Events
 
