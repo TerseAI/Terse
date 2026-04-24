@@ -73,6 +73,8 @@ terse integrate
 3. Lets you connect, switch, disconnect, or refresh that integration
 4. Re-runs `terse generate` after any changes
 
+For form-based integrations, the CLI can also show setup instructions (and open the provider setup URL) before prompting for credentials.
+
 **Connection types:**
 
 | Type  | Flow                                                                  | Integrations                                     |
@@ -136,7 +138,7 @@ terse test my-job
 1. Loads your job registry from the entry file
 2. Fetches sample events from the backend for integration-based triggers (e.g. real GitHub PR events, real Slack messages)
 3. Generates synthetic events for cron and webhook triggers
-4. Prompts you to select an event
+4. Prompts you to select an event, shows a preview, then asks you to confirm
 5. Executes your job's `onTrigger` handler locally
 
 If you only have one job, it's selected automatically.
