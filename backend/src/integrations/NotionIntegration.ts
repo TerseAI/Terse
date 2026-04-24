@@ -9,14 +9,21 @@ import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/sett
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
-import { SecretField, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
+import {
+    ConfigurationFieldDefinition,
+    Integration,
+    IntegrationWithResources,
+    OAuthIntegrationInstallation,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata, NotionResource>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() {}
@@ -40,6 +47,24 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             workspaceId: ni.workspace_id || undefined,
             workspaceName: ni.workspace_name || undefined
         }))
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integration = await db().notion_integrations.findFirst({
+            where: { organization_id: organizationId },
+            orderBy: { created_at: "asc" },
+            select: {
+                id: true,
+                workspace_id: true,
+                workspace_name: true
+            }
+        })
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Workspace", integration.workspace_name || integration.workspace_id || "Workspace", integration.id)
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<IntegrationWithResources<NotionIntegration, NotionResource>[]> {
@@ -239,7 +264,13 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve()
+        return db()
+            .$transaction(async tx => {
+                await tx.notion_integrations.delete({ where: { id: integrationId } })
+            })
+            .then(async () => {
+                await deleteSecretsBestEffort([{ integrationType: IntegrationType.NOTION, recordId: integrationId, field: SecretField.IntegrationToken }])
+            })
     }
 
     async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {

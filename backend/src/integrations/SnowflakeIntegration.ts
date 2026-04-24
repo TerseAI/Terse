@@ -7,7 +7,16 @@ import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/S
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
+import {
+    FormFieldDefinition,
+    FormIntegrationInstallation,
+    FormIntegrationSetup,
+    FormSubmissionInput,
+    FormSubmissionResult,
+    Integration,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 
 export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegration, never, typeof SnowflakeIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.SNOWFLAKE> {
     constructor() {}
@@ -57,6 +66,20 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
         ]
     }
 
+    getFormSetup(): FormIntegrationSetup {
+        return {
+            title: "Set Up Snowflake Key-Pair Authentication",
+            url: "https://docs.snowflake.com/en/user-guide/key-pair-auth",
+            instructions: [
+                "Generate an RSA key pair for the Snowflake user that Terse will use.",
+                "Assign the public key to that Snowflake user in Snowflake.",
+                "Grant a read-only role with warehouse usage and read access to the databases, schemas, tables, and views Terse should query.",
+                "Provide the PEM passphrase only if the private key is encrypted.",
+                "Account identifier reference: https://docs.snowflake.com/en/user-guide/admin-account-identifier"
+            ]
+        }
+    }
+
     async getInstancesForOrganization(organizationId: string): Promise<SnowflakeIntegration[]> {
         const integrations = await db().snowflake_integrations.findMany({
             where: { organization_id: organizationId },
@@ -77,6 +100,23 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
             databaseName: i.database_name || undefined,
             schemaName: i.schema_name || undefined
         }))
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integration = await db().snowflake_integrations.findFirst({
+            where: { organization_id: organizationId },
+            orderBy: { created_at: "asc" },
+            select: {
+                id: true,
+                account_identifier: true
+            }
+        })
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Account", integration.account_identifier, integration.id)
     }
 
     formatIntegrationInstanceForAgent(instance: SnowflakeIntegration): string {
@@ -109,7 +149,16 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve()
+        return db()
+            .$transaction(async tx => {
+                await tx.snowflake_integrations.delete({ where: { id: integrationId } })
+            })
+            .then(async () => {
+                await deleteSecretsBestEffort([
+                    { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKey },
+                    { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKeyPassphrase }
+                ])
+            })
     }
 
     async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {}

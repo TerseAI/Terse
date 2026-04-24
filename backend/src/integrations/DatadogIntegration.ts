@@ -3,11 +3,20 @@ import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from 
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
-import { SecretField, storeSecret } from "../services/SecretService"
+import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
+import {
+    FormFieldDefinition,
+    FormIntegrationInstallation,
+    FormIntegrationSetup,
+    FormSubmissionInput,
+    FormSubmissionResult,
+    Integration,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 
 export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.DATADOG> {
     constructor() {}
@@ -42,6 +51,18 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
         ]
     }
 
+    getFormSetup(): FormIntegrationSetup {
+        return {
+            title: "Create Datadog API and Application Keys",
+            url: "https://docs.datadoghq.com/account_management/api-app-keys/",
+            instructions: [
+                "Create an API key and an Application key.",
+                "The Application key must include `logs_read_data`, `logs_read_index_data`, and `rum_apps_read`.",
+                "Use the Datadog site that matches the region you enter here."
+            ]
+        }
+    }
+
     async getInstancesForOrganization(organizationId: string): Promise<DatadogIntegration[]> {
         const datadogIntegrations = await db().datadog_integrations.findMany({
             where: { organization_id: organizationId },
@@ -54,6 +75,19 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
             id: di.id,
             region: di.region
         }))
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integration = await db().datadog_integrations.findFirst({
+            where: { organization_id: organizationId },
+            orderBy: { created_at: "asc" }
+        })
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Region", integration.region, integration.id)
     }
 
     formatIntegrationInstanceForAgent(instance: DatadogIntegration): string {
@@ -81,7 +115,16 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve()
+        return db()
+            .$transaction(async tx => {
+                await tx.datadog_integrations.delete({ where: { id: integrationId } })
+            })
+            .then(async () => {
+                await deleteSecretsBestEffort([
+                    { integrationType: IntegrationType.DATADOG, recordId: integrationId, field: SecretField.ApiKey },
+                    { integrationType: IntegrationType.DATADOG, recordId: integrationId, field: SecretField.AppKey }
+                ])
+            })
     }
 
     async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {}

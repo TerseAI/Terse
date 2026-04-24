@@ -78,7 +78,7 @@ export function readRunId(): string | null {
     return readEnvVar("TERSE_RUN_ID")
 }
 
-type AuthenticatedRequestMethod = "GET" | "POST"
+type AuthenticatedRequestMethod = "GET" | "POST" | "DELETE"
 
 async function fetchRawWithAuth(
     urlPath: string,
@@ -100,7 +100,7 @@ async function fetchRawWithAuth(
                 "Content-Type": "application/json",
                 ...(sessionId ? { "x-terse-session-id": sessionId } : {})
             },
-            body: type === "POST" ? JSON.stringify(params) : undefined
+            body: type === "GET" || type === "DELETE" ? undefined : JSON.stringify(params)
         })
     } catch (err: any) {
         throw new Error(`Could not connect to ${BACKEND_URL} — is the backend running?\n  ${err.message}`)
