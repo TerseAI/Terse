@@ -597,7 +597,8 @@ export const sdkAgentRunRequestBodySchema = z.object({
     message: z.string(),
     skills: z.array(skillConfigDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
-    toolApprovals: z.array(z.string()).optional()
+    toolApprovals: z.array(z.string()).optional(),
+    outputSchema: z.record(z.string(), z.unknown()).optional()
 })
 export type SdkAgentRunRequestBody = z.infer<typeof sdkAgentRunRequestBodySchema>
 

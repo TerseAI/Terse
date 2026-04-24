@@ -48,6 +48,7 @@ import type {
     WorkOSUserTrigger as _RawWorkOSUserTrigger,
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
+import { z } from "zod"
 
 import { getJobContext, runWithJobContext } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
@@ -341,26 +342,29 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
      * sessionId, runId, and apiBaseUrl are picked up automatically from the
      * job context (AsyncLocalStorage) — no manual wiring needed.
      */
-    static create<TSkills extends readonly TypedSkill<string>[]>(params: { prompt: string; skills: [...TSkills]; ToolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills>
+    static create<TSkills extends readonly TypedSkill<string>[]>(params: { prompt: string; skills: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills>
     static create(params: { prompt: string }): TerseAgent<readonly []>
-    static create(params: { prompt: string; skills?: readonly TypedSkill<string>[]; ToolApprovals?: string[] }): TerseAgent {
+    static create<TSkills extends readonly TypedSkill<string>[] = readonly []>(params: { prompt: string; skills?: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills> {
         const ctx = getJobContext()
-        return new TerseAgent({
+        const skills = (params.skills ?? []) as TSkills
+        const toolApprovals = (params.toolApprovals ?? []) as InferToolApprovals<TSkills>[]
+        return new TerseAgent<TSkills>({
             prompt: params.prompt,
-            skills: params.skills ?? [],
-            toolApprovals: params.ToolApprovals ?? [],
+            skills,
+            toolApprovals,
             apiBaseUrl: ctx?.apiBaseUrl ?? resolveTerseBackendUrl(),
             sessionId: ctx?.sessionId,
             runId: ctx?.runId ?? null
         })
     }
 
-    async *run(userMessage: string): AsyncGenerator<TerseAgentResult> {
+    async *run(userMessage: string, outputSchema?: z.ZodType): AsyncGenerator<TerseAgentResult> {
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
             prompt: this.prompt,
             toolApprovals: this.toolApprovals,
             message: userMessage,
-            skills: this.skills
+            skills: this.skills,
+            outputSchema: outputSchema ? (z.toJSONSchema(outputSchema) as Record<string, unknown>) : undefined
         })
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
@@ -398,13 +402,19 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     /**
-     * Runs the agent to completion and discards streamed output.
-     * Useful when you only care that the run finished (or threw).
+     * Runs the agent to completion and returns the final output.
+     * When an `outputSchema` is provided, the final output is JSON-parsed and
+     * validated against the schema; the resolved value is the inferred type.
+     * Without a schema, returns the raw final output string.
      */
-    async runAndWait(userMessage: string): Promise<string> {
-        for await (const chunk of this.run(userMessage)) {
+    async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema: OutputSchema): Promise<z.infer<OutputSchema>>
+    async runAndWait(userMessage: string): Promise<string>
+    async runAndWait(userMessage: string, outputSchema?: z.ZodType): Promise<unknown> {
+        for await (const chunk of this.run(userMessage, outputSchema)) {
             if (chunk.type === EventType.FINAL_OUTPUT) {
-                return (chunk as FinalOutputResult).finalOutput
+                const raw = (chunk as FinalOutputResult).finalOutput
+                if (!outputSchema) return raw
+                return outputSchema.parse(JSON.parse(raw))
             }
         }
 
