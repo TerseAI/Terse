@@ -12,7 +12,7 @@ import { AgentTriggerWithConfigs } from "../types/prisma"
 import { SchedulerClient, createSchedulerClient } from "../utility/schedulerClient"
 import { getUserForOrg } from "../utility/workos"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration"
+import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export interface ScheduleWebhookEvent {
@@ -42,6 +42,10 @@ export class CronJobIntegrationManager
 
     async getInstancesForOrganization(_organizationId: string): Promise<IntegrationInstance[]> {
         return []
+    }
+
+    async getCliDisplayStateForOrganization(_organizationId: string) {
+        return createNotConnectedCliDisplayState()
     }
 
     formatIntegrationInstanceForAgent(_instance: IntegrationInstance): string {

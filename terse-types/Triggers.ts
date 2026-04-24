@@ -3,7 +3,7 @@ import { z } from "zod"
 import { GitHubEventType, WorkOSEventType, frequencyUnitSchema, gitHubEventTypeSchema, gmailEventTypeSchema, linearEventTypeSchema, slackEventTypeSchema, workOSEventTypeSchema } from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
-import { debugTrigger as debugTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"
+import { debugTrigger as debugTriggerWithPresenter, displayTrigger as displayTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"
 
 const providerTriggerTypeSchema = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
 
@@ -638,13 +638,24 @@ export function debugTrigger(event: Trigger): string {
     return debugTriggerWithPresenter(event)
 }
 
+export function displayTrigger(event: Trigger): SerializedEventDisplay {
+    return displayTriggerWithPresenter(event)
+}
+
 export const TriggerArraySchema = z.array(TriggerSchema)
+
+export const serializedEventDisplaySchema = z.object({
+    title: z.string(),
+    subtitle: z.string()
+})
+export type SerializedEventDisplay = z.infer<typeof serializedEventDisplaySchema>
 
 export const serializedEventSchema = z.object({
     integrationType: integrationTypeEnum,
     eventType: TriggerTypeSchema,
     formattedContent: z.string(),
     debugLog: z.string(),
+    display: serializedEventDisplaySchema.optional(),
     data: TriggerSchema
 })
 export type SerializedEvent = z.infer<typeof serializedEventSchema>

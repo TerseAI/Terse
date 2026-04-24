@@ -5660,6 +5660,14 @@ class SdkJobServerCheckResponse(TerseModel):
     http_status: Annotated[float | None, Field(alias="httpStatus")] = None
 
 
+class SerializedEventDisplay(TerseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    title: str
+    subtitle: str
+
+
 class SerializedEvent(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -5668,6 +5676,7 @@ class SerializedEvent(TerseModel):
     event_type: Annotated[TriggerType, Field(alias="eventType")]
     formatted_content: Annotated[str, Field(alias="formattedContent")]
     debug_log: Annotated[str, Field(alias="debugLog")]
+    display: SerializedEventDisplay | None = None
     data: Trigger
 
 

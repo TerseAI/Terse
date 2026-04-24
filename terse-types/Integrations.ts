@@ -274,8 +274,22 @@ export const SnowflakeIntegrationSchema = IntegrationInstanceSchema.extend({
 })
 export type SnowflakeIntegration = z.infer<typeof SnowflakeIntegrationSchema>
 
+export const CliIntegrationDisplayStateSchema = z.discriminatedUnion("status", [
+    z.object({
+        status: z.literal("not_connected")
+    }),
+    z.object({
+        status: z.literal("connected"),
+        summaryLabel: z.string(),
+        summaryValue: z.string(),
+        integrationId: z.string()
+    })
+])
+export type CliIntegrationDisplayState = z.infer<typeof CliIntegrationDisplayStateSchema>
+
 export const IntegrationWithStatusSchema = z.object({
     integrationType: integrationTypeEnum,
-    isActive: z.boolean()
+    isActive: z.boolean(),
+    cliDisplayState: CliIntegrationDisplayStateSchema
 })
 export type IntegrationWithStatus = z.infer<typeof IntegrationWithStatusSchema>

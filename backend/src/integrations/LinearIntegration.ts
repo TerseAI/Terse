@@ -17,7 +17,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { fetchLinearTeams } from "../routes/linear"
 import { StoredFile } from "../services/FileStorageService"
-import { SecretField, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
@@ -27,7 +27,14 @@ import { getUserForOrg } from "../utility/workos"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation } from "./abstract/Integration"
+import {
+    ConfigurationFieldDefinition,
+    Integration,
+    IntegrationWithResources,
+    OAuthIntegrationInstallation,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class LinearIntegrationManager
@@ -53,6 +60,19 @@ export class LinearIntegrationManager
             id: li.id,
             workspaceName: li.workspace_name
         }))
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integration = await db().linear_integrations.findFirst({
+            where: { organization_id: organizationId },
+            orderBy: { created_at: "asc" }
+        })
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Workspace", integration.workspace_name, integration.id)
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<LinearIntegration, LinearTeam>[]> {
@@ -333,7 +353,16 @@ export class LinearIntegrationManager
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve()
+        return db()
+            .$transaction(async tx => {
+                await tx.linear_integrations.delete({ where: { id: integrationId } })
+            })
+            .then(async () => {
+                await deleteSecretsBestEffort([
+                    { integrationType: IntegrationType.LINEAR, recordId: integrationId, field: SecretField.AccessToken },
+                    { integrationType: IntegrationType.LINEAR, recordId: integrationId, field: SecretField.RefreshToken }
+                ])
+            })
     }
 
     async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
