@@ -16,7 +16,14 @@ import { createOAuthStateToken } from "../utility/oauth"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import {
+    ConfigurationFieldDefinition,
+    Integration,
+    IntegrationWithResources,
+    OAuthIntegrationInstallation,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata, NotionResource>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() {}

@@ -27,7 +27,14 @@ import { getUserForOrg } from "../utility/workos"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import {
+    ConfigurationFieldDefinition,
+    Integration,
+    IntegrationWithResources,
+    OAuthIntegrationInstallation,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class LinearIntegrationManager

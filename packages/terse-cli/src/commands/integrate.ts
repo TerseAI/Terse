@@ -270,12 +270,7 @@ async function runInstallationFlow(apiKey: string, integrationType: IntegrationT
     return false
 }
 
-async function handleFormIntegration(
-    apiKey: string,
-    integrationType: IntegrationType,
-    fields: FormFieldDefinition[],
-    setup?: FormIntegrationSetup
-): Promise<boolean> {
+async function handleFormIntegration(apiKey: string, integrationType: IntegrationType, fields: FormFieldDefinition[], setup?: FormIntegrationSetup): Promise<boolean> {
     await showFormSetupGuidance(integrationType, setup)
 
     const formValues: Record<string, string> = {}

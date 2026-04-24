@@ -7,7 +7,16 @@ import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/S
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormIntegrationSetup, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import {
+    FormFieldDefinition,
+    FormIntegrationInstallation,
+    FormIntegrationSetup,
+    FormSubmissionInput,
+    FormSubmissionResult,
+    Integration,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 
 export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.DATADOG> {
     constructor() {}

@@ -8,7 +8,17 @@ import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "..
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { FormFieldDefinition, FormIntegrationInstallation, FormIntegrationSetup, FormSubmissionInput, FormSubmissionResult, Integration, IntegrationWithResources, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import {
+    FormFieldDefinition,
+    FormIntegrationInstallation,
+    FormIntegrationSetup,
+    FormSubmissionInput,
+    FormSubmissionResult,
+    Integration,
+    IntegrationWithResources,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 
 export class PosthogIntegrationManager implements Integration<PosthogIntegration, never, typeof PosthogIntegrationMetadata, PosthogProject>, FormIntegrationInstallation<IntegrationType.POSTHOG> {
     constructor() {}

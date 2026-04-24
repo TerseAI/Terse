@@ -15,7 +15,16 @@ import { AgentTriggerWithConfigs } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormIntegrationSetup, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import {
+    FormFieldDefinition,
+    FormIntegrationInstallation,
+    FormIntegrationSetup,
+    FormSubmissionInput,
+    FormSubmissionResult,
+    Integration,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]

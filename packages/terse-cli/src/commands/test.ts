@@ -121,7 +121,10 @@ function truncate(value: string, maxLength: number): string {
 }
 
 function normalizeSingleLine(value: string): string {
-    return value.replace(/\s*\n+\s*/g, " ").replace(/\s+/g, " ").trim()
+    return value
+        .replace(/\s*\n+\s*/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
 }
 
 function abortIfCancelled<T>(value: T | symbol): T {

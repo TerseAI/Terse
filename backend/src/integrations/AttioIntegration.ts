@@ -14,7 +14,14 @@ import { createOAuthStateToken } from "../utility/oauth"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { ConfigurationFieldDefinition, Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import {
+    ConfigurationFieldDefinition,
+    Integration,
+    IntegrationWithResources,
+    OAuthIntegrationInstallation,
+    createConnectedCliDisplayState,
+    createNotConnectedCliDisplayState
+} from "./abstract/Integration"
 
 export class AttioIntegrationManager implements Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject>, OAuthIntegrationInstallation<IntegrationType.ATTIO> {
     constructor() {}
