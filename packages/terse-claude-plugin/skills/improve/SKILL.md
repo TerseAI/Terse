@@ -57,7 +57,7 @@ What to look for:
 - **Failed or cancelled runs** — the trigger event shows the input that broke the job.
 - **Repeated patterns** — the same kind of event misbehaving suggests a missing filter, a vague prompt, or a missing skill.
 - **Wasted runs** — bot events, drafts, or no-op events that should have been filtered out.
-- **Wrong tool choices** — the agent reaching for `runAndWait` when a deterministic `Agent.tools.*` call would have been correct (or vice versa).
+- **Wrong tool choices** — the agent reaching for `runAndWait` when a deterministic `agent.tools.*` call would have been correct (or vice versa).
 
 If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus sample events from `terse test list`.
 
@@ -83,9 +83,10 @@ TypeScript: `event.formatForAgentRunner()`
 
 #### Tool Usage
 
-- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers over an agent run. Use `Agent.tools.*` / `Agent.executeTool()` in TypeScript
-- **Multi-step**: Could a two-step approach work better? E.g., send a Slack message first with `Agent.tools.slack.sendMessage()`, then use `Agent.runAndWait()` to post an AI-generated summary as a thread reply.
-- **Tool results**: When using `Agent.tools.*`, capture the return value if subsequent steps need it (e.g., `message.message_ts` for threading).
+- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers over an agent run. Use `agent.tools.*` / `agent.executeTool()` in TypeScript.
+- **Model access vs code access**: Missing entries in `skills` break model-driven tool use inside `run()` / `runAndWait()`, but they do not automatically prevent direct deterministic calls from code.
+- **Multi-step**: Could a two-step approach work better? E.g., send a Slack message first with `agent.tools.slack.sendMessage()`, then use `agent.runAndWait()` to post an AI-generated summary as a thread reply.
+- **Tool results**: When using `agent.tools.*`, capture the return value if subsequent steps need it (e.g., `message.message_ts` for threading).
 
 #### Error Handling
 
@@ -95,7 +96,7 @@ TypeScript: `event.formatForAgentRunner()`
 
 #### Skill Configuration
 
-- **Missing skills**: Are all needed integrations listed? If the prompt tells the agent to post to Slack but Slack isn't in `skills`, it will fail.
+- **Missing skills**: Are all integrations the model needs during `run()` / `runAndWait()` listed? If the prompt tells the model to post to Slack but Slack isn't in `skills`, that agentic step will fail.
 - **Unnecessary skills**: Are there skills the agent doesn't actually use? Remove them to reduce confusion.
 - **Scope**: Are repos/channels/teams scoped correctly? Too broad gives the agent access to things it shouldn't touch. Too narrow prevents it from doing its job.
 
@@ -149,22 +150,22 @@ After implementing and verifying, summarize what you changed and why. Where it h
 ### Add bot filtering
 ```typescript
 // BEFORE: runs on every event
-onTrigger: async (event, Agent) => { ... }
+onTrigger: async (event, agent: TerseAgent) => { ... }
 
 // AFTER: skip bot events
 filter: async (event: GithubPRTrigger) => {
     return !event.sender.login.includes("[bot]") && !event.pullRequest.merged
 },
-onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => { ... }
+onTrigger: async (event: GithubPRTrigger, agent: TerseAgent) => { ... }
 ```
 
 ### Improve prompt specificity
 ```typescript
 // BEFORE: vague
-await Agent.runAndWait(`Review this PR: ${event.formatForAgentRunner()}`)
+await agent.runAndWait(`Review this PR: ${event.formatForAgentRunner()}`)
 
 // AFTER: specific instructions, format, edge cases
-await Agent.runAndWait(
+await agent.runAndWait(
     `Review PR "${event.pullRequest.title}" (${event.pullRequest.url}). ` +
     `Look at the diff and leave a concise review comment. ` +
     `Focus on: correctness, edge cases, and naming. ` +
@@ -176,17 +177,17 @@ await Agent.runAndWait(
 ### Split deterministic + AI actions
 ```typescript
 // BEFORE: agent decides everything including the message send
-await Agent.runAndWait(`Send a welcome message and summarize: ${event.formatForAgentRunner()}`)
+await agent.runAndWait(`Send a welcome message and summarize: ${event.formatForAgentRunner()}`)
 
 // AFTER: deterministic send, then AI analysis in thread
-const message = await Agent.tools.slack.sendMessage({
+const message = await agent.tools.slack.sendMessage({
     channelId: SlackChannel.Engineering.channelId,
     message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
     thread_ts: "",
     blocks: "",
 })
 
-await Agent.runAndWait(
+await agent.runAndWait(
     `Summarize the changes in this PR and post as a thread reply ` +
     `(thread_ts: ${message.message_ts}). ` +
     `Context: ${event.formatForAgentRunner()}`
@@ -196,17 +197,17 @@ await Agent.runAndWait(
 ### Add type safety
 ```typescript
 // BEFORE: untyped event
-onTrigger: async (event, Agent) => {
-    await Agent.runAndWait(`Handle: ${event.formatForAgentRunner()}`)
+onTrigger: async (event, agent: TerseAgent) => {
+    await agent.runAndWait(`Handle: ${event.formatForAgentRunner()}`)
 }
 
 // AFTER: typed event with type guard
 import { GithubPRTrigger, isGithubPRTrigger } from "terse-sdk"
 
-onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => {
+onTrigger: async (event: GithubPRTrigger, agent: TerseAgent) => {
     if (!isGithubPRTrigger(event)) return
     const { title, url } = event.pullRequest
-    await Agent.runAndWait(
+    await agent.runAndWait(
         `Review PR "${title}" at ${url}. Context: ${event.formatForAgentRunner()}`
     )
 }

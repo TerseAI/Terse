@@ -81,7 +81,9 @@ Only use triggers and resources that actually exist in the generated file. Do no
 
 ### 5. Pick skills and connect missing integrations
 
-Add skill configs for every integration the agent needs to act on. The agent cannot use tools for services not listed in `skills`. Include all services mentioned in the user's request plus any the agent will need to complete its task.
+Add skill configs for every integration the model needs during `run()` or `runAndWait()`. Include all services mentioned in the user's request plus any integrations the model will need while reasoning.
+
+Deterministic wrappers like `agent.tools.*` and `agent.executeTool()` are separate: they are direct code paths, not model-selected tools. Do not use the `skills` list as a proxy for whether direct code can call a generated wrapper.
 
 The helper surface is language-specific. The CLI supports multiple languages, but it does not guarantee the same generated integrations in both.
 

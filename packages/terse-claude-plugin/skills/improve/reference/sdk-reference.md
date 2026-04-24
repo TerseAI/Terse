@@ -50,8 +50,8 @@ type CreateJobParameters = {
 
 | Approach | Use When |
 |----------|----------|
-| `Agent.runAndWait(prompt)` | The agent needs to decide what to do — summarize, analyze, choose actions |
-| `Agent.tools.*` / `Agent.executeTool()` | You know exactly what tool call to make — send a specific message, create a specific issue |
+| `agent.runAndWait(prompt)` | The agent needs to decide what to do — summarize, analyze, choose actions |
+| `agent.tools.*` / `agent.executeTool()` | You know exactly what tool call to make — send a specific message, create a specific issue |
 | Combination | Do a deterministic action first (send message), then let the agent decide (reply in thread with analysis) |
 
 ## Triggers
@@ -98,9 +98,9 @@ Schedule.every("0 9 * * 1")    // every Monday at 9 AM
 Schedule.every("*/30 * * * *") // every 30 minutes
 ```
 
-## Skills (Output Configs)
+## Skills (Model Access)
 
-Skills give the agent tools to act on external systems. The agent can **only** interact with systems it has skill configs for.
+Skills control what the model can use during `run()` and `runAndWait()`. They do not fully describe what your code can call deterministically through generated wrappers.
 
 The examples below show the broader TypeScript skill surface.
 
@@ -119,6 +119,9 @@ skills: [
     Terse.skill(),  // web search
 ]
 ```
+
+Use `skills` to scope model-visible integrations.
+Use `agent.tools.*` and `agent.executeTool()` for deterministic calls from code.
 
 ## Event Types
 
