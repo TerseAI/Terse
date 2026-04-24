@@ -16,7 +16,7 @@ Import these from `terse-sdk`:
 - `createJob`: registers a workflow (call at module top level or from imported modules)
 - `CreateJobParameters`: the object shape passed to `createJob`
 - `Terse`: client for `handleTrigger` when you self-host the webhook endpoint
-- `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`
+- `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`; use `onApprovalRequired` and `submitApprovalDecision` for programmatic tool approvals when streaming with `run()`
 - `EventType`: enum for values on streamed `TerseAgent` results
 - `Trigger`: the base event interface
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), and other per-integration exports (see `terse-sdk` package entry)
@@ -73,7 +73,7 @@ createJob({
 
 ## `Terse`
 
-Use a **`Terse`** instance for **`handleTrigger`**, which verifies signed webhook payloads from the Terse backend and runs the matching registered workflow. You do not need `new Terse()` only to call `createJob()`.
+Use a **`Terse`** instance for **`handleTrigger`**, which verifies signed webhook payloads from the Terse backend and runs the matching registered workflow. The method **awaits** your workflow’s `onTrigger` handler (and the agent session for that run) before it returns, so the HTTP response reflects a completed handler when the run succeeds. You do not need `new Terse()` only to call `createJob()`.
 
 ```ts
 import { Terse, TERSE_JOB_WEBHOOK_TRIGGER_PATH } from "terse-sdk"
@@ -189,6 +189,8 @@ createJob({
 ## Tool approvals
 
 List tool names in **`toolApprovals`** on **`TerseAgent.create()`** to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
+
+When you stream with **`run()`**, you can either handle **`ToolApprovalRequestedResult`** chunks yourself or set **`agent.onApprovalRequired`**. If you set the callback, the SDK calls it for each approval request and then posts the decision with **`submitApprovalDecision`** (same contract the app uses). If you omit the callback, approval events are still yielded but no decision is sent until you call **`submitApprovalDecision`** yourself.
 
 ```ts
 createJob({
