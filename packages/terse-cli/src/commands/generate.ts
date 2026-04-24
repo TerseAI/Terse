@@ -40,13 +40,8 @@ type GenerateOptions = {
     showLifecycle?: boolean
 }
 
-export async function generate(provider: LanguageProvider = resolveProvider(), options: GenerateOptions = {}): Promise<void> {
-    const showLifecycle = options.showLifecycle ?? true
-
-    if (showLifecycle) {
-        intro("terse generate")
-    }
-
+export async function generate(provider: LanguageProvider = resolveProvider()): Promise<void> {
+    intro("terse generate")
     assertProjectRoot(provider, provider.detectionMarkers)
 
     const totalStart = performance.now()
@@ -339,10 +334,6 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
     }
     console.log(chalk.dim(`Generated ${path.relative(process.cwd(), provider.resolveGeneratedCodePath(process.cwd()))}`))
     console.log(chalk.dim(`Codegen: ${codegenMs.toFixed(0)}ms | Total: ${totalMs.toFixed(0)}ms`))
-
-    if (showLifecycle) {
-        outro("Done")
-    }
 }
 
 async function safely(fn: () => Promise<void>): Promise<void> {

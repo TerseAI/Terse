@@ -8,8 +8,8 @@ The `terse` CLI has one scaffold command and a shared workflow CLI.
 
 `terse init` scaffolds a new TypeScript project. The rest of the CLI auto-detects a Terse TypeScript project from the current directory and loads workflows from the default entry file unless you pass `--entry-file`.
 
-| Language | Project markers | Default entry file | Generated file |
-| --- | --- | --- | --- |
+| Language   | Project markers                 | Default entry file                                                                  | Generated file           |
+| ---------- | ------------------------------- | ----------------------------------------------------------------------------------- | ------------------------ |
 | TypeScript | `package.json`, `tsconfig.json` | `src/terse.jobs.ts` (falls back to `src/index.ts` when loading an existing project) | `src/terse.generated.ts` |
 
 `terse test` and `terse deploy` discover every workflow registered with `createJob()` in the entry file's module graph, including files reached by side-effect imports. Keep workflow `name` values unique.
@@ -57,10 +57,10 @@ Before you run `terse deploy`, set `remoteServerUrl` in `terse.config.json` to t
 
 ```json
 {
-  "projectId": "proj_123",
-  "name": "my-app",
-  "selfHosted": true,
-  "remoteServerUrl": "https://your-app.example.com"
+    "projectId": "proj_123",
+    "name": "my-app",
+    "selfHosted": true,
+    "remoteServerUrl": "https://your-app.example.com"
 }
 ```
 
@@ -79,9 +79,9 @@ If you only have one workflow, the CLI selects it automatically. If you have mor
 
 **Options:**
 
-| Flag | Description | Default |
-| --- | --- | --- |
-| `-v, --verbose` | Show agent stream output during the run | Enabled |
+| Flag                  | Description                              | Default          |
+| --------------------- | ---------------------------------------- | ---------------- |
+| `-v, --verbose`       | Show agent stream output during the run  | Enabled          |
 | `--entry-file <path>` | Override the default workflow entry file | Provider default |
 
 **How it works:**
@@ -105,10 +105,10 @@ Use this command when you want a stable handle for a sample event without openin
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
-| `--json` | Emit JSON, including the full serialized event for each id |
-| `--entry-file <path>` | Override the default workflow entry file |
+| Flag                  | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `--json`              | Emit JSON, including the full serialized event for each id |
+| `--entry-file <path>` | Override the default workflow entry file                   |
 
 The CLI caches fetched sample events locally for one hour. `terse test show` and `terse test run --id` reuse that cache when they can.
 
@@ -123,10 +123,10 @@ terse test show 3f4d1c8a9b12 my-job --json
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
-| `--json` | Emit JSON instead of the rendered text view |
-| `--entry-file <path>` | Override the default workflow entry file |
+| Flag                  | Description                                 |
+| --------------------- | ------------------------------------------- |
+| `--json`              | Emit JSON instead of the rendered text view |
+| `--entry-file <path>` | Override the default workflow entry file    |
 
 The CLI looks up the id in the local cache first, then refetches the workflow's current sample events if needed.
 
@@ -143,13 +143,13 @@ Pass exactly one of `--id`, `--event`, or `--event-file`.
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
-| `--id <id>` | Run a cached or refetched sample event from `terse test list` |
-| `--event <json>` | Inline serialized trigger event JSON |
-| `--event-file <path>` | Path to a JSON file containing the serialized trigger event |
-| `-v, --verbose` | Show agent stream output during the run |
-| `--entry-file <path>` | Override the default workflow entry file |
+| Flag                  | Description                                                   |
+| --------------------- | ------------------------------------------------------------- |
+| `--id <id>`           | Run a cached or refetched sample event from `terse test list` |
+| `--event <json>`      | Inline serialized trigger event JSON                          |
+| `--event-file <path>` | Path to a JSON file containing the serialized trigger event   |
+| `-v, --verbose`       | Show agent stream output during the run                       |
+| `--entry-file <path>` | Override the default workflow entry file                      |
 
 ### `terse deploy`
 
@@ -162,8 +162,8 @@ terse deploy --entry-file src/server.ts
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
+| Flag                  | Description                              |
+| --------------------- | ---------------------------------------- |
 | `--entry-file <path>` | Override the default workflow entry file |
 
 **What happens:**
@@ -191,10 +191,10 @@ The interactive flow fetches your current integrations, shows provider-specific 
 
 **Connection types:**
 
-| Type | Flow | Integrations |
-| --- | --- | --- |
-| OAuth | Opens a browser for authorization and waits for the connection to complete | GitHub, Slack, Gmail, Linear, Notion, WorkOS |
-| Form | Prompts for credentials or account details in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
+| Type  | Flow                                                                       | Integrations                                     |
+| ----- | -------------------------------------------------------------------------- | ------------------------------------------------ |
+| OAuth | Opens a browser for authorization and waits for the connection to complete | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
+| Form  | Prompts for credentials or account details in the terminal                 | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
 
 #### `terse integrate list`
 
@@ -207,10 +207,10 @@ terse integrate list --status connected --json
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
+| Flag                | Description                             |
+| ------------------- | --------------------------------------- |
 | `--status <status>` | Filter to `connected` or `disconnected` |
-| `--json` | Emit machine-readable JSON |
+| `--json`            | Emit machine-readable JSON              |
 
 #### `terse integrate describe <type>`
 
@@ -225,8 +225,8 @@ Use this command to inspect the schema before you build a `connect` command.
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
+| Flag     | Description                |
+| -------- | -------------------------- |
 | `--json` | Emit machine-readable JSON |
 
 #### `terse integrate connect <type>`
@@ -240,12 +240,12 @@ terse integrate connect slack
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
-| `--field <key=value>` | Repeatable form field values |
-| `--fields-stdin` | Read a JSON object of additional field values from stdin |
-| `-f, --force` | Re-run the install even if the integration is already connected |
-| `--json` | Emit machine-readable JSON |
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--field <key=value>` | Repeatable form field values                                    |
+| `--fields-stdin`      | Read a JSON object of additional field values from stdin        |
+| `-f, --force`         | Re-run the install even if the integration is already connected |
+| `--json`              | Emit machine-readable JSON                                      |
 
 Use `--fields-stdin` for secrets so passwords and tokens do not end up in shell history.
 
@@ -262,8 +262,8 @@ terse integrate disconnect slack --json
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
+| Flag     | Description                |
+| -------- | -------------------------- |
 | `--json` | Emit machine-readable JSON |
 
 #### `terse integrate wait <type>`
@@ -279,10 +279,10 @@ Use this after `terse integrate connect <type>` for OAuth integrations such as S
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
+| Flag                  | Description                                         |
+| --------------------- | --------------------------------------------------- |
 | `--timeout <seconds>` | Timeout in seconds. Defaults to 300 and caps at 900 |
-| `--json` | Emit machine-readable JSON |
+| `--json`              | Emit machine-readable JSON                          |
 
 The `list`, `describe`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
 
@@ -292,14 +292,8 @@ Fetches your active integrations, their workspace resources, and the current too
 
 ```bash
 terse generate
-terse generate --quiet
+terse generate
 ```
-
-**Options:**
-
-| Flag | Description |
-| --- | --- |
-| `--quiet` | Suppress the intro and outro banner |
 
 **Outputs:**
 
@@ -307,12 +301,12 @@ terse generate --quiet
 
 **What the generated file contains:**
 
-| Category | Examples |
-| --- | --- |
-| Resource constants | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Pipeline.NewDeals` |
-| Trigger builders | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`, `Webhook.onRequest<BodyType>()` |
-| Skill constructors | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()` |
-| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()` |
+| Category                    | Examples                                                                                       |
+| --------------------------- | ---------------------------------------------------------------------------------------------- |
+| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Pipeline.NewDeals`                |
+| Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`, `Webhook.onRequest<BodyType>()` |
+| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                                             |
+| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()`                          |
 
 Each integration generates typed helpers from real workspace data such as repositories, channels, lists, projects, and tool definitions, so your workflows reference actual resources instead of raw ids.
 
@@ -346,18 +340,18 @@ When you pass `job-name`, the CLI matches your local workflow name to the deploy
 
 **Options:**
 
-| Flag | Description |
-| --- | --- |
-| `--json` | Print JSON instead of a table |
-| `--limit <n>` | Max runs to return. Default 20, max 100 |
-| `--page <n>` | Page number, 1-indexed |
+| Flag              | Description                                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------------- |
+| `--json`          | Print JSON instead of a table                                                                             |
+| `--limit <n>`     | Max runs to return. Default 20, max 100                                                                   |
+| `--page <n>`      | Page number, 1-indexed                                                                                    |
 | `--status <list>` | Comma-separated statuses: `success`, `failed`, `cancelled`, `skipped`, `in_progress`, `awaiting_approval` |
-| `--since <iso>` | Only runs at or after this ISO timestamp |
-| `--until <iso>` | Only runs at or before this ISO timestamp |
-| `--query <q>` | Free-text search across trigger, decision, and event fields |
-| `--triggers` | Also fetch the input trigger event JSON for each listed run |
-| `--events` | Also fetch the full model event stream for each listed run |
-| `--run-id <id>` | Show full chat events for one run instead of listing runs for a workflow |
+| `--since <iso>`   | Only runs at or after this ISO timestamp                                                                  |
+| `--until <iso>`   | Only runs at or before this ISO timestamp                                                                 |
+| `--query <q>`     | Free-text search across trigger, decision, and event fields                                               |
+| `--triggers`      | Also fetch the input trigger event JSON for each listed run                                               |
+| `--events`        | Also fetch the full model event stream for each listed run                                                |
+| `--run-id <id>`   | Show full chat events for one run instead of listing runs for a workflow                                  |
 
 Use `--triggers` when you want the serialized input event for each run. Use `--events` when you want the full stored conversation, including the trigger payload.
 

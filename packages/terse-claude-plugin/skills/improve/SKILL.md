@@ -31,7 +31,7 @@ Then open the right files:
 
 Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
 The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
-If the generated file is missing or stale for the requested integration, rerun `terse generate --quiet` instead of guessing at missing helpers.
+If the generated file is missing or stale for the requested integration, rerun `terse generate` instead of guessing at missing helpers.
 
 ### 2. Pull production run history
 

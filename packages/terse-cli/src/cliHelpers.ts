@@ -1,3 +1,5 @@
+import { InvalidArgumentError } from "commander"
+
 import { CliError } from "./cliError.js"
 
 export type NonInteractiveOpts = {
@@ -61,4 +63,16 @@ export async function readFieldsFromStdin(): Promise<Record<string, string>> {
         out[k] = v
     }
     return out
+}
+
+export function collectKeyValue(value: string, previous: string[]): string[] {
+    return [...previous, value]
+}
+
+export function parseIntFlag(value: string): number {
+    const n = Number.parseInt(value, 10)
+    if (!Number.isFinite(n) || n <= 0) {
+        throw new InvalidArgumentError(`Expected a positive integer, got "${value}".`)
+    }
+    return n
 }

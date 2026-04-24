@@ -86,7 +86,7 @@ export async function init(projectName?: string, provider: LanguageProvider = re
 
     s.start("Generating code")
     try {
-        await generate(provider, { showLifecycle: false })
+        await generate(provider)
         s.stop("Generated code")
     } catch {
         s.stop(`Failed to generate code. Run ${chalk.cyan("terse generate")} manually.`)

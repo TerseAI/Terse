@@ -68,7 +68,7 @@ export async function integrate(options: IntegrateOptions = {}): Promise<void> {
     }
 
     if (didChangeAnyIntegration && runGenerateAfterChange) {
-        await generate(undefined, { showLifecycle: false })
+        await generate(undefined)
     }
 
     if (showLifecycle) {

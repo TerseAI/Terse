@@ -41,8 +41,8 @@ Then open the generated file for that language:
 The canonical TypeScript job entry file is `src/terse.jobs.ts`.
 The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 
-If the generated file doesn't exist in an existing project, run `terse generate --quiet` before inventing helpers.
-If it exists but does not expose the helper the user expects, rerun `terse generate --quiet` before inventing anything.
+If the generated file doesn't exist in an existing project, run `terse generate` before inventing helpers.
+If it exists but does not expose the helper the user expects, rerun `terse generate` before inventing anything.
 In a brand-new empty directory, scaffold with `terse init` before reaching for `terse generate`.
 Never edit the generated file directly.
 
@@ -103,7 +103,7 @@ If a required integration is missing:
 - Put secrets on `--fields-stdin`, not `--field`
 - For OAuth installs, run `terse integrate connect <type> --json`. The CLI opens the user's browser automatically and exits 2 with a `handoff` payload that includes a `waitCommand`. Run that `waitCommand` (e.g. `terse integrate wait gmail`) to block until the user finishes authorization — it exits 0 when the connection is live. Only then continue. Do not dump the URL back to the user; the browser is already open.
 - If you need multiple OAuth integrations, do them one at a time: `connect <a> --json` → `wait <a>` → `connect <b> --json` → `wait <b>`. Do not batch the connect calls; the user can only authorize one browser tab at a time anyway.
-- After any connection or refresh, rerun `terse generate --quiet` and reopen `src/terse.generated.ts`
+- After any connection or refresh, rerun `terse generate` and reopen `src/terse.generated.ts`
 
 ### 6. Consider a filter
 

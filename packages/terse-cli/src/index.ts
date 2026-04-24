@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import chalk from "chalk"
-import { Command, InvalidArgumentError } from "commander"
+import { Command } from "commander"
 
 import { CliError, emitCliError, isCliError, setErrorOutputJson } from "./cliError.js"
-import { NonInteractiveOpts } from "./cliHelpers.js"
+import { NonInteractiveOpts, collectKeyValue, parseIntFlag } from "./cliHelpers.js"
 import { getCliVersion } from "./cliVersion.js"
 import { attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
@@ -24,6 +24,10 @@ import { resolveProvider } from "./providers/resolveProvider.js"
 
 const program = new Command()
 
+const NON_INTERACTIVE_OPTION = ["-y, --non-interactive", "Run non-interactively; fail fast if authentication or choices are required"] as const
+
+const ENTRY_FILE_OPTION = ["--entry-file <path>", "Path to the job entry file (overrides default)"] as const
+
 program.name("terse").description("The Terse CLI — create and manage Terse projects").version(getCliVersion())
 
 program.commandsGroup("Getting started:")
@@ -31,7 +35,7 @@ program
     .command("init")
     .description("Create a new Terse project")
     .argument("[project-name]", "Name for the project directory")
-    .option("-y, --non-interactive", "Run non-interactively; fail fast if authentication or choices are required")
+    .option(...NON_INTERACTIVE_OPTION)
     .addHelpText(
         "after",
         `
@@ -49,7 +53,7 @@ Examples:
 program
     .command("attach")
     .description("Add Terse to an existing project (self-hosted)")
-    .option("-y, --non-interactive", "Run non-interactively; fail fast if authentication or choices are required")
+    .option(...NON_INTERACTIVE_OPTION)
     .action(async (opts?: NonInteractiveOpts) => {
         await attach(resolveProvider(), opts)
     })
@@ -59,7 +63,7 @@ const testCommand = program
     .description("Fetch sample events and run a job interactively")
     .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
     .option("-v, --verbose", "Show agent stream output", true)
-    .option("--entry-file <path>", "Path to the job entry file (overrides default)")
+    .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
         `
@@ -83,7 +87,7 @@ testCommand
     .description("List sample events for a job with content-addressed ids")
     .argument("[job-name]", "Name of the job (auto-selects if only one exists)")
     .option("--json", "Emit JSON with the full event payload for each id")
-    .option("--entry-file <path>", "Path to the job entry file (overrides default)")
+    .option(...ENTRY_FILE_OPTION)
     .action(async (jobName?: string, opts?: { json?: boolean; entryFile?: string }) => {
         if (opts?.json) setErrorOutputJson(true)
         await testList({ jobName, json: opts?.json, entryFile: opts?.entryFile })
@@ -95,7 +99,7 @@ testCommand
     .argument("<id>", "Sample event id from `terse test list`")
     .argument("[job-name]", "Name of the job (auto-selects if only one exists)")
     .option("--json", "Emit JSON instead of rendered text")
-    .option("--entry-file <path>", "Path to the job entry file (overrides default)")
+    .option(...ENTRY_FILE_OPTION)
     .action(async (id: string, jobName?: string, opts?: { json?: boolean; entryFile?: string }) => {
         if (opts?.json) setErrorOutputJson(true)
         await testShow({ id, jobName, json: opts?.json, entryFile: opts?.entryFile })
@@ -109,7 +113,7 @@ testCommand
     .option("--event <json>", "Inline serialized event JSON string")
     .option("--event-file <path>", "Path to a JSON file containing the serialized event")
     .option("-v, --verbose", "Show agent stream output", true)
-    .option("--entry-file <path>", "Path to the job entry file (overrides default)")
+    .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
         `
@@ -132,7 +136,7 @@ Examples:
 program
     .command("deploy")
     .description("Deploy all jobs to Terse (syncs with server — removed jobs are deleted)")
-    .option("--entry-file <path>", "Path to the job entry file (overrides default)")
+    .option(...ENTRY_FILE_OPTION)
     .action(async (opts?: { entryFile?: string }) => {
         await deploy(resolveProvider(), opts?.entryFile)
     })
@@ -248,7 +252,7 @@ if (isCliRunCommandEnabled()) {
         .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
         .option("--event <json>", "Serialized event JSON string")
         .option("--event-file <path>", "Path to a JSON file containing the serialized event")
-        .option("--entry-file <path>", "Path to the job entry file (overrides default)")
+        .option(...ENTRY_FILE_OPTION)
         .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; entryFile?: string }) => {
             await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile)
         })
@@ -332,18 +336,6 @@ program
     })
 program.helpCommand(true)
 
-function collectKeyValue(value: string, previous: string[]): string[] {
-    return [...previous, value]
-}
-
-function parseIntFlag(value: string): number {
-    const n = Number.parseInt(value, 10)
-    if (!Number.isFinite(n) || n <= 0) {
-        throw new InvalidArgumentError(`Expected a positive integer, got "${value}".`)
-    }
-    return n
-}
-
 try {
     await program.parseAsync()
 } catch (error) {
@@ -353,8 +345,8 @@ try {
     }
 
     if (isCliError(error)) {
-        emitCliError(error as CliError)
-        process.exit((error as CliError).exitCode)
+        emitCliError(error)
+        process.exit(error.exitCode)
     }
 
     throw error

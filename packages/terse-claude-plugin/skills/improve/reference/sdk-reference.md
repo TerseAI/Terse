@@ -187,7 +187,7 @@ The authoritative reference for every command and flag lives at https://docs.use
 | `terse init [name]` | Scaffold a new project. Use `--non-interactive` (or `-y`) for non-interactive setup when authentication is already available. |
 | `terse attach` | Add Terse to an existing project. Use `--non-interactive` (or `-y`) for non-interactive attach flows. |
 | `terse login` | Authenticate and store the CLI API key in user config. |
-| `terse generate` | Regenerate `src/terse.generated.ts` from connected integrations. Use `--quiet` when scripting. |
+| `terse generate` | Regenerate `src/terse.generated.ts` from connected integrations. |
 | `terse integrate` | Interactive integration manager. |
 | `terse integrate list|describe|connect|wait|disconnect` | Machine-friendly integration inspection and connection flows. Use `--json` for agent/CI tooling. |
 | `terse test [job]` | Fetch real sample events and run interactively. Requires a TTY. |
@@ -216,7 +216,7 @@ terse deploy             # ship it
 terse init               # or: terse init my-project
 terse integrate list --json
 terse integrate describe github --json
-terse generate --quiet
+terse generate
 # edit src/terse.jobs.ts
 terse test list "my-job" --json
 terse test show <id> "my-job" --json
@@ -230,7 +230,7 @@ When the target directory is brand-new, missing `package.json`, `tsconfig.json`,
 ```bash
 terse integrate list --json
 terse integrate describe github --json
-terse generate --quiet
+terse generate
 # edit src/terse.jobs.ts
 terse test list "my-job" --json
 terse test show <id> "my-job" --json
