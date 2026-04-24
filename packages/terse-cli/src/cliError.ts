@@ -23,7 +23,7 @@ export type CliErrorOpts = {
     detail?: string
 }
 
-enum ErrorCode {
+export enum ErrorCode {
     GENERIC_ERROR = 1,
     BAD_ARGUMENTS = 2
 }

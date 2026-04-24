@@ -4,6 +4,7 @@ import chalk from "chalk"
 import { Command, InvalidArgumentError } from "commander"
 
 import { CliError, emitCliError, isCliError, setErrorOutputJson } from "./cliError.js"
+import { NonInteractiveOpts } from "./cliHelpers.js"
 import { getCliVersion } from "./cliVersion.js"
 import { attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
@@ -30,18 +31,17 @@ program
     .command("init")
     .description("Create a new Terse project")
     .argument("[project-name]", "Name for the project directory")
-    .option("-y, --yes", "Run non-interactively; fail fast if authentication or choices are required")
-    .option("--non-interactive", "Alias for --yes")
+    .option("-y, --non-interactive", "Run non-interactively; fail fast if authentication or choices are required")
     .addHelpText(
         "after",
         `
 Examples:
   $ terse init myproj                       # interactive scaffold
-  $ terse init myproj --yes                 # non-interactive; requires prior \`terse login\`
+  $ terse init myproj --non-interactive     # non-interactive; requires prior \`terse login\`
   $ terse init myproj < /dev/null           # auto non-interactive (no TTY)
 `
     )
-    .action(async (projectName?: string, opts?: { yes?: boolean; nonInteractive?: boolean }) => {
+    .action(async (projectName?: string, opts?: NonInteractiveOpts) => {
         const language = "ts"
         const provider = resolveProvider({ command: "init", language })
         await init(projectName, provider, opts)
@@ -49,9 +49,8 @@ Examples:
 program
     .command("attach")
     .description("Add Terse to an existing project (self-hosted)")
-    .option("-y, --yes", "Run non-interactively; fail fast if authentication or choices are required")
-    .option("--non-interactive", "Alias for --yes")
-    .action(async (opts?: { yes?: boolean; nonInteractive?: boolean }) => {
+    .option("-y, --non-interactive", "Run non-interactively; fail fast if authentication or choices are required")
+    .action(async (opts?: NonInteractiveOpts) => {
         await attach(resolveProvider(), opts)
     })
 

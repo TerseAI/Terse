@@ -1,29 +1,29 @@
 import { CliError } from "./cliError.js"
 
 export type NonInteractiveOpts = {
-    yes?: boolean
     nonInteractive?: boolean
 }
 
 /**
- * True when the CLI should avoid any interactive prompt. Honors the explicit
- * flag first, falls back to TTY detection so subprocess / piped invocations
- * behave non-interactively without the caller needing to pass `--yes`.
+ * True when the CLI should avoid any interactive prompt.
  */
 export function isNonInteractive(opts?: NonInteractiveOpts): boolean {
-    if (opts?.yes || opts?.nonInteractive) return true
+    if (opts?.nonInteractive) return true
     return !process.stdin.isTTY || !process.stdout.isTTY
 }
 
+/**
+ * Supports parsing a series of key=value flags from the CLI.
+ */
 export function parseKeyValueFlags(values: string[] | undefined): Record<string, string> {
     const out: Record<string, string> = {}
-    for (const raw of values ?? []) {
+    values?.forEach(raw => {
         const eq = raw.indexOf("=")
         if (eq <= 0) {
             throw new CliError("invalid_field", `Invalid --field value "${raw}"`, { detail: "Expected key=value" })
         }
         out[raw.slice(0, eq)] = raw.slice(eq + 1)
-    }
+    })
     return out
 }
 

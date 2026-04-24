@@ -184,8 +184,8 @@ The authoritative reference for every command and flag lives at https://docs.use
 
 | Command | Description |
 |---------|-------------|
-| `terse init [name]` | Scaffold a new project. Use `--yes` for non-interactive setup when authentication is already available. |
-| `terse attach` | Add Terse to an existing project. Use `--yes` for non-interactive attach flows. |
+| `terse init [name]` | Scaffold a new project. Use `--non-interactive` (or `-y`) for non-interactive setup when authentication is already available. |
+| `terse attach` | Add Terse to an existing project. Use `--non-interactive` (or `-y`) for non-interactive attach flows. |
 | `terse login` | Authenticate and store the CLI API key in user config. |
 | `terse generate` | Regenerate `src/terse.generated.ts` from connected integrations. Use `--quiet` when scripting. |
 | `terse integrate` | Interactive integration manager. |

@@ -9,9 +9,9 @@ import type { SerializedEvent, Trigger } from "terse-types"
 import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
 import { CliError } from "../cliError.js"
+import { isNonInteractive } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 import { loadJob } from "../loadJob.js"
-import { isNonInteractive } from "../nonInteractive.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { readCachedEvent, writeCachedEvents } from "../sampleEventCache.js"
@@ -225,12 +225,6 @@ function parseEventJson(raw: string): SerializedEvent {
     }
 }
 
-/**
- * Builds the list of sample events for a job. Integration triggers get real
- * events from the server; cron and webhook triggers get synthesized manual
- * events stamped with `_syntheticTriggerIndex` so two triggers of the same
- * kind on the same job produce distinct content hashes.
- */
 export async function fetchSampleEventsForJob(job: CreateJobParameters, apiKey: string): Promise<SerializedEvent[]> {
     const timeTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.CRON_JOB)
     const webhookTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK)
@@ -262,9 +256,8 @@ export async function fetchSampleEventsForJob(job: CreateJobParameters, apiKey: 
                 eventType: "cron",
                 inputId: trigger.integrationId,
                 isManualTrigger: true,
-                manualContext: `Manual trigger from terse test (schedule: ${(trigger as any).cronExpression ?? "unknown"})`,
-                _syntheticTriggerIndex: index
-            } as unknown as Trigger)
+                manualContext: `Manual trigger from terse test (schedule: ${(trigger as any).cronExpression ?? "unknown"})`
+            })
         )
     }
 
@@ -273,10 +266,10 @@ export async function fetchSampleEventsForJob(job: CreateJobParameters, apiKey: 
             serializeEvent({
                 integrationType: IntegrationType.WEBHOOK,
                 eventType: "webhook",
-                body: { _syntheticTriggerIndex: index },
+                body: {},
                 headers: {},
                 method: "POST"
-            } as unknown as Trigger)
+            })
         )
     }
 

@@ -3,7 +3,7 @@ import { CreateJobParameters } from "terse-sdk"
 
 import { assertProjectRoot } from "./assertProjectRoot.js"
 import { CliError } from "./cliError.js"
-import { type NonInteractiveOpts, isNonInteractive } from "./nonInteractive.js"
+import { type NonInteractiveOpts, isNonInteractive } from "./cliHelpers.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 
 /**

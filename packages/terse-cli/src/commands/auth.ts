@@ -4,10 +4,10 @@ import chalk from "chalk"
 import type { DeviceTokenExchangeResponse } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
-import { CliError } from "../cliError.js"
+import { CliError, ErrorCode } from "../cliError.js"
+import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 import { BACKEND_URL, WORKOS_CLIENT_ID } from "../config.js"
-import { type NonInteractiveOpts, isNonInteractive } from "../nonInteractive.js"
 import { openUrlInBrowser } from "../openBrowser.js"
 import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setStoredApiKey } from "../userConfig.js"
 
@@ -170,7 +170,7 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
                 throw new CliError("not_authenticated", "Stored credentials are invalid or expired.", {
                     detail: 'Run "terse login" to refresh them.',
                     actionRequired: true,
-                    exitCode: 2
+                    exitCode: ErrorCode.BAD_ARGUMENTS
                 })
             }
         }
@@ -178,7 +178,7 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
         throw new CliError("not_authenticated", "Not authenticated.", {
             detail: 'Run "terse login" first, then retry.',
             actionRequired: true,
-            exitCode: 2
+            exitCode: ErrorCode.BAD_ARGUMENTS
         })
     }
 

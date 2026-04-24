@@ -6,10 +6,6 @@ import type { SerializedEvent } from "terse-types"
  * the underlying Trigger payload (`event.data`) is identical — we deliberately
  * avoid hashing display strings like `formattedContent` because the server
  * renders relative timestamps that drift between calls.
- *
- * For synthetic cron/webhook events the CLI builds in test.ts, the caller is
- * responsible for ensuring each trigger produces a distinct `data` (e.g. by
- * stamping a `_syntheticTriggerIndex`).
  */
 export function hashEventKey(event: SerializedEvent): string {
     const material = JSON.stringify({

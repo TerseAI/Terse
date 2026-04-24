@@ -6,6 +6,7 @@ import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
 
 import { readApiKey, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
+import { type NonInteractiveOpts, isNonInteractive, parseKeyValueFlags, readFieldsFromStdin } from "../cliHelpers.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
 import {
     ConfigurationFieldDefinition,
@@ -17,7 +18,6 @@ import {
     pollForConnection,
     submitIntegrationForm
 } from "../integrationApi.js"
-import { type NonInteractiveOpts, isNonInteractive, parseKeyValueFlags, readFieldsFromStdin } from "../nonInteractive.js"
 import { openUrlInBrowser } from "../openBrowser.js"
 
 import { generate } from "./generate.js"
