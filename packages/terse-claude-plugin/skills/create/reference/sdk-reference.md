@@ -211,7 +211,22 @@ terse test               # interactive test with real events
 terse deploy             # ship it
 ```
 
-### Typical Agent-Friendly Workflow
+### Fresh Project Agent-Friendly Workflow
+```bash
+terse init               # or: terse init my-project
+terse integrate list --json
+terse integrate describe github --json
+terse generate --quiet
+# edit src/terse.jobs.ts
+terse test list "my-job" --json
+terse test show <id> "my-job" --json
+terse test run "my-job" --id <id>
+terse deploy
+```
+
+When the target directory is brand-new, missing `package.json`, `tsconfig.json`, and `src/terse.generated.ts` is expected before `terse init`.
+
+### Existing Project Agent-Friendly Workflow
 ```bash
 terse integrate list --json
 terse integrate describe github --json

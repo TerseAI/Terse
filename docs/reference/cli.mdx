@@ -249,7 +249,7 @@ terse integrate connect slack
 
 Use `--fields-stdin` for secrets so passwords and tokens do not end up in shell history.
 
-For form-based integrations, `connect` submits the provided field values immediately. For OAuth integrations, `connect` prints an authorization URL for you to open in a browser, then you finish the flow with `terse integrate wait`.
+For form-based integrations, `connect` submits the provided field values immediately. For OAuth integrations, `connect` opens the authorization URL in your default browser and exits 2 with a handoff payload (`{ "handoff": "oauth", "url", "waitCommand" }` in `--json` mode, or an `ACTION REQUIRED` line otherwise). Run the printed `waitCommand` (e.g. `terse integrate wait slack`) to block until authorization completes.
 
 #### `terse integrate disconnect <type>`
 

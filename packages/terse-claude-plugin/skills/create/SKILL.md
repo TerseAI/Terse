@@ -21,6 +21,13 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 ### 1. Detect the project language and read the generated helpers
 
+If the user explicitly wants a new Terse job in an empty or brand-new directory, treat that as a request to scaffold a fresh project there by default.
+
+- If the current directory is the target empty directory, run `terse init`.
+- If the user wants a new subdirectory created from the current directory, run `terse init <name>`.
+- Do not treat missing `package.json`, `tsconfig.json`, or `src/terse.generated.ts` as blockers in this case. `terse init` is what creates that scaffold.
+- After `terse init`, continue with integration inspection, verify generated helpers, and then implement the job in `src/terse.jobs.ts`.
+
 Use project markers to detect the language:
 
 - TypeScript: `package.json` and `tsconfig.json`
@@ -34,13 +41,16 @@ Then open the generated file for that language:
 The canonical TypeScript job entry file is `src/terse.jobs.ts`.
 The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 
-If the generated file doesn't exist, run `terse generate --quiet` before inventing helpers.
+If the generated file doesn't exist in an existing project, run `terse generate --quiet` before inventing helpers.
 If it exists but does not expose the helper the user expects, rerun `terse generate --quiet` before inventing anything.
+In a brand-new empty directory, scaffold with `terse init` before reaching for `terse generate`.
 Never edit the generated file directly.
 
 ### 2. Inspect integration state first
 
 Before choosing triggers or skills, check what the workspace is actually connected to:
+
+For a freshly scaffolded project, do this after `terse init`, not before.
 
 ```bash
 terse integrate list --json
@@ -91,7 +101,8 @@ If a required integration is missing:
 
 - For form installs, use `terse integrate connect <type> --field key=value --fields-stdin`
 - Put secrets on `--fields-stdin`, not `--field`
-- For OAuth installs, run `terse integrate connect <type> --json`; if the CLI returns `ACTION REQUIRED` or JSON with `actionRequired` / `url`, stop and surface that to the user
+- For OAuth installs, run `terse integrate connect <type> --json`. The CLI opens the user's browser automatically and exits 2 with a `handoff` payload that includes a `waitCommand`. Run that `waitCommand` (e.g. `terse integrate wait gmail`) to block until the user finishes authorization — it exits 0 when the connection is live. Only then continue. Do not dump the URL back to the user; the browser is already open.
+- If you need multiple OAuth integrations, do them one at a time: `connect <a> --json` → `wait <a>` → `connect <b> --json` → `wait <b>`. Do not batch the connect calls; the user can only authorize one browser tab at a time anyway.
 - After any connection or refresh, rerun `terse generate --quiet` and reopen `src/terse.generated.ts`
 
 ### 6. Consider a filter

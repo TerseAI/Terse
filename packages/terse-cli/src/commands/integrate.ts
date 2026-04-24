@@ -504,8 +504,9 @@ export async function integrateList(opts: IntegrateListOpts = {}): Promise<void>
     for (const integration of filtered) {
         const name = (INTEGRATION_METADATA[integration.integrationType]?.name ?? integration.integrationType).padEnd(longest)
         const status = integration.isActive ? chalk.green("connected") : chalk.dim("not connected")
-        const summary = formatIntegrationDisplaySummary(integration.cliDisplayState)
-        process.stdout.write(`  ${name}  ${status}  ${chalk.dim(summary)}\n`)
+        const { summaryLabel, summaryValue } = summaryFor(integration.cliDisplayState)
+        const summary = summaryLabel && summaryValue ? `  ${chalk.dim(`${summaryLabel}: ${summaryValue}`)}` : ""
+        process.stdout.write(`  ${name}  ${status}${summary}\n`)
     }
 }
 
@@ -579,12 +580,30 @@ export async function integrateConnect(opts: IntegrateConnectOpts): Promise<void
 
     if (fieldsResponse.installationType === "oauth") {
         const installation = await fetchInstallationUrl(apiKey, type)
-        throw new CliError("oauth_requires_browser", "OAuth integrations cannot be connected non-interactively.", {
-            detail: `Open the URL in a browser, then run \`terse integrate wait ${type}\` to block until authorization completes.`,
-            url: installation.oauthUrl,
-            actionRequired: true,
-            exitCode: 2
-        })
+        openUrlInBrowser(installation.oauthUrl)
+
+        const waitCommand = `terse integrate wait ${type}`
+
+        if (opts.json) {
+            const payload = {
+                handoff: "oauth",
+                type,
+                status: "disconnected" as const,
+                url: installation.oauthUrl,
+                waitCommand,
+                message: `Browser opened. Run \`${waitCommand}\` to block until authorization completes.`
+            }
+            process.stdout.write(JSON.stringify(payload, null, 2) + "\n")
+            process.exitCode = 2
+            return
+        }
+
+        const name = INTEGRATION_METADATA[type]?.name ?? type
+        process.stdout.write(chalk.yellow(`ACTION REQUIRED: authorize ${name} in your browser.`) + "\n")
+        process.stdout.write(chalk.cyan(`  ${installation.oauthUrl}`) + "\n")
+        process.stdout.write(chalk.dim(`  Browser opened. Run \`${waitCommand}\` to block until authorization completes.`) + "\n")
+        process.exitCode = 2
+        return
     }
 
     const formFields = fieldsResponse.fields as FormFieldDefinition[]

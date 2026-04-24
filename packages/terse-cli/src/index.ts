@@ -151,7 +151,7 @@ Examples:
   $ terse integrate list --json                       # enumerate integrations
   $ terse integrate describe snowflake --json         # see required fields
   $ terse integrate connect snowflake --field account=x --field username=y --fields-stdin <<< '{"password":"'"$PW"'"}'
-  $ terse integrate connect slack                     # OAuth → prints ACTION REQUIRED + URL
+  $ terse integrate connect slack                     # OAuth → opens browser, exit 2 (follow up with 'wait')
   $ terse integrate wait slack --timeout 300          # block until OAuth completes
   $ terse integrate disconnect snowflake
 `
@@ -185,8 +185,8 @@ integrateCommand
 
 integrateCommand
     .command("connect")
-    .description("Connect (or refresh) an integration non-interactively")
-    .argument("<type>", "Integration type (e.g. slack, snowflake)")
+    .description("Connect (or refresh) an integration. OAuth types open a browser and exit 2 — follow up with `wait` to block.")
+    .argument("<type>", "Integration type (e.g. slack, gmail, snowflake)")
     .option("--field <key=value>", "Form field value (repeatable). Never put secrets here — use --fields-stdin.", collectKeyValue, [])
     .option("--fields-stdin", "Read a JSON object of additional fields from stdin (secrets go here)")
     .option("-f, --force", "Re-run the install even if the integration is already connected")
@@ -196,7 +196,8 @@ integrateCommand
         `
 Examples:
   $ terse integrate connect snowflake --field account=xyz --field username=foo --fields-stdin <<< '{"password":"'"$PW"'"}'
-  $ terse integrate connect slack --json                    # prints OAuth URL envelope, exit 2
+  $ terse integrate connect slack                           # OAuth: opens browser, prints URL + wait command, exit 2
+  $ terse integrate connect slack --json                    # OAuth: opens browser, emits handoff JSON, exit 2
   $ terse integrate connect snowflake --force               # refresh an existing connection
 `
     )
@@ -223,8 +224,8 @@ integrateCommand
 
 integrateCommand
     .command("wait")
-    .description("Block until an OAuth integration finishes connecting (run after `connect` returns ACTION REQUIRED)")
-    .argument("<type>", "Integration type (e.g. slack)")
+    .description("Block until an OAuth integration finishes connecting (run after `connect` emits a handoff)")
+    .argument("<type>", "Integration type (e.g. slack, gmail)")
     .option("--timeout <seconds>", "Timeout in seconds (default 300, max 900)", parseIntFlag)
     .option("--json", "Emit JSON")
     .action(async (type: string, opts: { timeout?: number; json?: boolean }) => {
