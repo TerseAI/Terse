@@ -35,7 +35,7 @@ Generate TypeScript types for your connected integrations (creates `terse.genera
 
 ### `terse integrate`
 
-Open the integrations page in the Terse Web UI to connect services like GitHub, Slack, Linear, etc.
+Manage integrations from the CLI, including connect, switch, disconnect, and permission refresh flows.
 
 ### `terse test [job-name]`
 

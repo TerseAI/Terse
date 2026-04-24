@@ -84,15 +84,53 @@ export async function getAllIntegrations(req: Request, res: Response) {
     }
     const organizationId = req.session.user.organizationId
 
-    const activeIntegrationTypes = await getOrganizationActiveIntegrations(organizationId)
-    const activeIntegrationSet = new Set(activeIntegrationTypes)
+    const integrations: IntegrationWithStatus[] = await Promise.all(
+        INTEGRATION_REGISTRY.map(async integration => {
+            const cliDisplayState = await integration.getCliDisplayStateForOrganization(organizationId)
 
-    const integrations: IntegrationWithStatus[] = INTEGRATION_REGISTRY.map(integration => ({
-        integrationType: integration.integrationType,
-        isActive: activeIntegrationSet.has(integration.integrationType)
-    }))
+            return {
+                integrationType: integration.integrationType,
+                isActive: cliDisplayState.status === "connected",
+                cliDisplayState
+            }
+        })
+    )
 
     res.json(integrations)
+}
+
+export async function disconnectIntegration(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+
+    const { integrationType } = req.params
+    const integration = INTEGRATION_REGISTRY.find(i => i.integrationType === integrationType)
+
+    if (!integration) {
+        res.status(404).json({ error: `Integration '${integrationType}' not found` })
+        return
+    }
+
+    const cliDisplayState = await integration.getCliDisplayStateForOrganization(req.session.user.organizationId)
+    if (cliDisplayState.status !== "connected") {
+        res.status(400).json({ error: `Integration '${integrationType}' is not connected` })
+        return
+    }
+
+    try {
+        await integration.deleteInstallation(cliDisplayState.integrationId)
+        res.json({ success: true })
+    } catch (error: any) {
+        logger.error("Error disconnecting integration", {
+            error,
+            integrationType,
+            userId: req.session.user.id,
+            organizationId: req.session.user.organizationId
+        })
+        res.status(500).json({ error: error.message || "Failed to disconnect integration" })
+    }
 }
 
 // Keep for backwards compatibility

@@ -28,7 +28,7 @@ import { deviceTokenExchange } from "./routes/deviceTokenExchange"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
-import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
+import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearProjects, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { createNotificationDestination, deleteNotificationDestination, getNotificationDestinations, updateNotificationDestination } from "./routes/notificationDestinations"
@@ -620,6 +620,10 @@ app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, authMiddleware, asy
 
 app.get("/integrations", authMiddleware, async (req, res) => {
     getAllIntegrations(req, res)
+})
+
+app.delete(ApiRoutes.INTEGRATIONS.DISCONNECT_BY_TYPE, authMiddleware, async (req, res) => {
+    disconnectIntegration(req, res)
 })
 
 app.get("/integrations/active", authMiddleware, async (req, res) => {

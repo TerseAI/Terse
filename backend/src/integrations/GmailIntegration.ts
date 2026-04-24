@@ -15,7 +15,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { SecretField, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
 import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
@@ -23,7 +23,7 @@ import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
-import { ConfigurationFieldDefinition, Integration, OAuthIntegrationInstallation } from "./abstract/Integration"
+import { ConfigurationFieldDefinition, Integration, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 // OAuth2 scopes for Gmail
@@ -47,6 +47,19 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             historyId: gi.history_id,
             watchExpiration: gi.watch_expiration
         }))
+    }
+
+    async getCliDisplayStateForOrganization(organizationId: string) {
+        const integration = await db().gmail_integrations.findFirst({
+            where: { organization_id: organizationId, is_active: true },
+            orderBy: { created_at: "asc" }
+        })
+
+        if (!integration) {
+            return createNotConnectedCliDisplayState()
+        }
+
+        return createConnectedCliDisplayState("Account", integration.email, integration.id)
     }
 
     formatIntegrationInstanceForAgent(instance: GmailIntegration): string {
@@ -391,7 +404,16 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
-        return Promise.resolve()
+        return db()
+            .$transaction(async tx => {
+                await tx.gmail_integrations.delete({ where: { id: integrationId } })
+            })
+            .then(async () => {
+                await deleteSecretsBestEffort([
+                    { integrationType: IntegrationType.GMAIL, recordId: integrationId, field: SecretField.AccessToken },
+                    { integrationType: IntegrationType.GMAIL, recordId: integrationId, field: SecretField.RefreshToken }
+                ])
+            })
     }
 
     async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {

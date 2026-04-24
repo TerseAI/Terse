@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
-import { AdditionalStateParams, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
-import type { ConfigData, ConfigurationFieldDefinition, ConfigurationFieldType, ConfigurationOption, FormFieldDefinition, FormFieldType } from "terse-types"
+import { AdditionalStateParams, CliIntegrationDisplayState, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
+import type { ConfigData, ConfigurationFieldDefinition, ConfigurationFieldType, ConfigurationOption, FormFieldDefinition, FormFieldType, FormIntegrationSetup } from "terse-types"
 import { OAuthInstallationDetails } from "terse-types"
 
 import { AgentTriggerWithConfigs } from "../../types/prisma"
@@ -8,7 +8,7 @@ import { AgentTriggerWithConfigs } from "../../types/prisma"
 import type { FetchResourcesOptions } from "./FetchResourcesOptions"
 import type { TriggerRuntime } from "./TriggerRuntime"
 
-export type { FormFieldDefinition, ConfigurationFieldDefinition, ConfigurationOption, ConfigurationFieldType, FormFieldType } from "terse-types"
+export type { FormFieldDefinition, ConfigurationFieldDefinition, ConfigurationOption, ConfigurationFieldType, FormFieldType, FormIntegrationSetup } from "terse-types"
 
 export interface IntegrationWithResources<T extends IntegrationInstance, R> {
     integration: T
@@ -19,6 +19,7 @@ export interface IntegrationWithResources<T extends IntegrationInstance, R> {
 export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails, R> {
     integrationType: IntegrationType
     getInstancesForOrganization(organizationId: string): Promise<T[]>
+    getCliDisplayStateForOrganization(organizationId: string): Promise<CliIntegrationDisplayState>
     formatIntegrationInstanceForAgent(instance: T): string
     getAllActiveInstances(): Promise<T[]>
     processWebhookEvent(event: W): Promise<void>
@@ -55,6 +56,7 @@ export interface FormSubmissionResult {
 
 export interface FormIntegrationInstallation<T extends IntegrationType> {
     getFormFields(): FormFieldDefinition[]
+    getFormSetup?(): FormIntegrationSetup | undefined
     processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult>
 }
 
@@ -96,5 +98,18 @@ export function parseFormSubmissionFromRequest(req: Request): FormSubmissionInpu
         userId: req.session.user.id,
         organizationId: req.session.user.organizationId,
         formValues: req.body || {}
+    }
+}
+
+export function createNotConnectedCliDisplayState(): CliIntegrationDisplayState {
+    return { status: "not_connected" }
+}
+
+export function createConnectedCliDisplayState(summaryLabel: string, summaryValue: string, integrationId: string): CliIntegrationDisplayState {
+    return {
+        status: "connected",
+        summaryLabel,
+        summaryValue,
+        integrationId
     }
 }
