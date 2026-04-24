@@ -5,6 +5,7 @@ import path from "node:path"
 import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema } from "terse-types"
 import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
 
+import { CliError } from "./cliError.js"
 import { BACKEND_URL } from "./config.js"
 import { getStoredApiKey } from "./userConfig.js"
 
@@ -65,13 +66,11 @@ export function readApiKeyOrBail(options?: { title?: string; detail?: string }):
     const apiKey = readApiKey()
     if (apiKey) return apiKey
 
-    console.error(options?.title ? chalk.red(options.title) : chalk.red("\n  Not authenticated. Run `terse login` first.\n"))
-
-    if (options?.detail) {
-        console.error(chalk.dim(options.detail))
-    }
-
-    process.exit(1)
+    throw new CliError("not_authenticated", options?.title?.trim() || "Not authenticated. Run `terse login` first.", {
+        detail: options?.detail?.trim() || "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment.",
+        actionRequired: true,
+        exitCode: 2
+    })
 }
 
 export function readRunId(): string | null {

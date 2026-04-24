@@ -4,16 +4,18 @@ import fs from "node:fs"
 import path from "node:path"
 
 import { createSpinner, logNextSteps } from "../cliUi.js"
+import { type NonInteractiveOpts, isNonInteractive } from "../nonInteractive.js"
 import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfig, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { setStoredApiKey } from "../userConfig.js"
 
-import { getProjectAttachedUserName, login } from "./auth.js"
+import { getProjectAttachedUserName, loginAndPersist } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 
-export async function attach(provider: LanguageProvider = resolveProvider()): Promise<void> {
+export async function attach(provider: LanguageProvider = resolveProvider(), opts?: NonInteractiveOpts): Promise<void> {
+    const nonInteractive = isNonInteractive(opts)
     intro("terse attach")
 
     const cwd = process.cwd()
@@ -36,7 +38,7 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
     log.info(`Attaching Terse to existing project ${chalk.bold(projectName)}`)
     log.info("Self-hosted mode keeps your jobs on your own infrastructure via TERSE_REMOTE_SERVER_URL. No source code is uploaded to Terse.")
 
-    const result = await login()
+    const result = await loginAndPersist(opts)
     if (result?.apiKey) {
         setStoredApiKey(result.apiKey)
         log.info(`Add ${chalk.cyan("TERSE_API_KEY")} to your server environment so your app can authenticate at runtime.`)
@@ -62,7 +64,7 @@ export async function attach(provider: LanguageProvider = resolveProvider()): Pr
     }
 
     log.info("Reviewing integrations")
-    await listAndPromptIntegrations({ showLifecycle: false })
+    await listAndPromptIntegrations({ showLifecycle: false, nonInteractive })
 
     if (canGenerateFromCurrentDirectory(provider, cwd)) {
         const s = createSpinner()

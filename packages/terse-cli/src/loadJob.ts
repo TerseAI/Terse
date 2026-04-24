@@ -1,8 +1,9 @@
 import { select } from "@inquirer/prompts"
-import chalk from "chalk"
 import { CreateJobParameters } from "terse-sdk"
 
 import { assertProjectRoot } from "./assertProjectRoot.js"
+import { CliError } from "./cliError.js"
+import { type NonInteractiveOpts, isNonInteractive } from "./nonInteractive.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 
 /**
@@ -14,31 +15,32 @@ export async function loadJobRegistry(provider: LanguageProvider, entryFile?: st
     return provider.loadJobRegistry(entryFile)
 }
 
-export async function loadJob(provider: LanguageProvider, jobName?: string, entryFile?: string): Promise<{ job: CreateJobParameters }> {
+export async function loadJob(provider: LanguageProvider, jobName?: string, entryFile?: string, opts?: NonInteractiveOpts): Promise<{ job: CreateJobParameters }> {
     const registry = await loadJobRegistry(provider, entryFile)
 
     if (registry.size === 0) {
-        console.error(chalk.red("No jobs found."))
-        console.log(`\nMake sure ${provider.entryFile} registers at least one job.`)
-        console.log(`Check that your ${provider.detectionMarkers.requiredFiles.join(" and ")} are configured correctly.`)
-        process.exit(1)
+        throw new CliError("no_jobs_found", "No jobs found.", {
+            detail: `Make sure ${provider.entryFile} registers at least one job.`
+        })
     }
 
-    // Resolve which job to run
     let resolvedName: string
 
     if (jobName) {
         if (!registry.has(jobName)) {
-            console.error(chalk.red(`Job "${jobName}" not found.`))
-            console.log("\nAvailable jobs:")
-            for (const name of registry.keys()) {
-                console.log(`  - ${name}`)
-            }
-            process.exit(1)
+            const available = [...registry.keys()].join(", ")
+            throw new CliError("job_not_found", `Job "${jobName}" not found.`, {
+                detail: `Available jobs: ${available}`
+            })
         }
         resolvedName = jobName
     } else if (registry.size === 1) {
         resolvedName = registry.keys().next().value!
+    } else if (isNonInteractive(opts)) {
+        const available = [...registry.keys()].join(", ")
+        throw new CliError("job_selection_required", "Multiple jobs found — specify which one to use.", {
+            detail: `Available jobs: ${available}. Pass the job name as an argument.`
+        })
     } else {
         resolvedName = await select<string>({
             message: "Multiple jobs found. Which one?",

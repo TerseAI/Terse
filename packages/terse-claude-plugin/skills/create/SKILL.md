@@ -23,45 +23,76 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 Use project markers to detect the language:
 
-- TypeScript: `package.json` and `src/index.ts`
+- TypeScript: `package.json` and `tsconfig.json`
 
-These are the same markers the `terse` CLI uses after `terse init`.
+These are the same markers the `terse` CLI uses to detect a TypeScript Terse project.
 
 Then open the generated file for that language:
 
 - TypeScript: `src/terse.generated.ts`
 
-If the generated file doesn't exist, tell the user to run `terse generate` first.
-If it exists but does not expose the helper the user expects, rerun `terse generate` before inventing anything.
+The canonical TypeScript job entry file is `src/terse.jobs.ts`.
+The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 
-### 2. Open the entry file
+If the generated file doesn't exist, run `terse generate --quiet` before inventing helpers.
+If it exists but does not expose the helper the user expects, rerun `terse generate --quiet` before inventing anything.
+Never edit the generated file directly.
+
+### 2. Inspect integration state first
+
+Before choosing triggers or skills, check what the workspace is actually connected to:
+
+```bash
+terse integrate list --json
+terse integrate describe <type> --json
+```
+
+Use these commands to confirm:
+
+- which integrations are connected
+- whether the install is OAuth or form-based
+- which fields a form install requires
+
+Do not guess available integrations, resource scopes, or credential fields.
+
+When a CLI command is run with `--json`, it may return a structured error envelope instead of prose.
+If `error.actionRequired` is `true` or the command exits with code `2`, stop and surface the required next step or URL to the user instead of retrying blindly.
+
+### 3. Open the entry file
 
 Open the language-specific entry file:
 
-- TypeScript: `src/index.ts`
+- TypeScript: prefer `src/terse.jobs.ts`
 
-If it already has jobs, add the new one below them.
-Never edit the generated file directly.
-
+If the repo already uses a custom entry file, follow that layout and pass `--entry-file` on later `terse` commands.
+If `src/terse.jobs.ts` exists, add the new job below the existing jobs.
+If the repo only has `src/index.ts`, treat that as a legacy fallback instead of creating a second competing entry file.
 If no runtime entry exists yet, create one for the current language:
 
 ```typescript
 import { createJob, TerseAgent } from "terse-sdk"
 ```
 
-### 3. Pick triggers
+### 4. Pick triggers
 
 Choose triggers based on what events the job should respond to. Import trigger factories and resource constants from the generated file for the current language.
 
 Only use triggers and resources that actually exist in the generated file. Do not invent constants that are not defined there.
 
-### 4. Pick skills
+### 5. Pick skills and connect missing integrations
 
 Add skill configs for every integration the agent needs to act on. The agent cannot use tools for services not listed in `skills`. Include all services mentioned in the user's request plus any the agent will need to complete its task.
 
 The helper surface is language-specific. The CLI supports multiple languages, but it does not guarantee the same generated integrations in both.
 
-### 5. Consider a filter
+If a required integration is missing:
+
+- For form installs, use `terse integrate connect <type> --field key=value --fields-stdin`
+- Put secrets on `--fields-stdin`, not `--field`
+- For OAuth installs, run `terse integrate connect <type> --json`; if the CLI returns `ACTION REQUIRED` or JSON with `actionRequired` / `url`, stop and surface that to the user
+- After any connection or refresh, rerun `terse generate --quiet` and reopen `src/terse.generated.ts`
+
+### 6. Consider a filter
 
 Add a `filter` function if the job should skip certain events:
 - Bot-generated events (`event.sender.login.includes("[bot]")`)
@@ -70,7 +101,7 @@ Add a `filter` function if the job should skip certain events:
 
 Filters prevent unnecessary agent runs and save cost.
 
-### 6. Write the onTrigger handler
+### 7. Write the onTrigger handler
 
 Use the appropriate event type from the SDK for the current language.
 
@@ -80,21 +111,42 @@ Use the appropriate event type from the SDK for the current language.
 
 Choose the right approach for the handler:
 - **AI decision-making**
-TypeScript: `Agent.runAndWait(prompt, event)`
+TypeScript: `agent.runAndWait(prompt, event)`
 - **Deterministic actions**
-TypeScript: `Agent.tools.*` or `Agent.executeTool()`
+TypeScript: `agent.tools.*` or `agent.executeTool()`
 - **Combined**: Do a deterministic action first, then pass the result into an agent prompt
 
 Write clear, specific prompts. Tell the agent exactly what to do and what format to use. Avoid vague instructions like "handle this event."
 
-### 7. Final check
+### 8. Verify in an agent-friendly way
+
+Do not assume bare `terse test` is available. It needs an interactive terminal.
+
+In non-interactive contexts, prefer:
+
+```bash
+terse test list "<job-name>" --json
+terse test show <id> "<job-name>" --json
+terse test run "<job-name>" --id <id>
+```
+
+Use `terse test show` when you need to inspect the selected event before running it.
+Use `terse test run --event-file <path>` or `--event <json>` when you already have the exact serialized trigger payload.
+
+If multiple jobs exist, pass the job name explicitly because non-interactive job loading cannot prompt.
+Reserve bare `terse test` for manual sessions with a TTY.
+
+### 9. Final check
 
 Verify:
 - TypeScript imports reference actual exports from `terse-sdk` and `./terse.generated`
+- The job lives in `src/terse.jobs.ts` unless the repo intentionally uses a custom or legacy entry file
 - The job `name` is unique and descriptive
 - Every integration the agent needs is in `skills`
 - The event type in `onTrigger` matches the trigger type
+- The generated helpers reflect the current integration state
 - The prompt includes full event context for the language
+- Verification uses `terse test list/show/run` when the agent is not in an interactive terminal
 
 ## Example
 

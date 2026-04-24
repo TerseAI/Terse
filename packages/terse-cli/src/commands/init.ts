@@ -3,7 +3,9 @@ import chalk from "chalk"
 import fs from "node:fs"
 import path from "node:path"
 
+import { CliError } from "../cliError.js"
 import { createSpinner } from "../cliUi.js"
+import { type NonInteractiveOpts, isNonInteractive } from "../nonInteractive.js"
 import { PROJECT_CONFIG_FILENAME, createRemoteProject, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { fetchSdkVersion } from "../providers/fetchSdkVersion.js"
@@ -14,12 +16,13 @@ import { loginAndPersist } from "./auth.js"
 import { generate } from "./generate.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 
-export async function init(projectName?: string, provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" })): Promise<void> {
+export async function init(projectName?: string, provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" }), opts?: NonInteractiveOpts): Promise<void> {
+    const nonInteractive = isNonInteractive(opts)
+
     if (!projectName && fs.existsSync(path.join(process.cwd(), "package.json"))) {
-        console.error(chalk.red("\n  Error: Detected an existing npm project in this directory."))
-        console.error(chalk.dim("  terse init is for scaffolding new projects only.\n"))
-        console.error(`  To add Terse to this project for self-hosted mode, run ${chalk.cyan("terse attach")} instead.\n`)
-        process.exit(1)
+        throw new CliError("init_in_existing_project", "Detected an existing npm project in this directory.", {
+            detail: `terse init is for scaffolding new projects only. To add Terse to this project for self-hosted mode, run "terse attach" instead.`
+        })
     }
 
     intro("terse init")
@@ -29,8 +32,7 @@ export async function init(projectName?: string, provider: LanguageProvider = re
 
     if (projectName) {
         if (fs.existsSync(targetDir)) {
-            console.error(chalk.red(`Error: Directory "${projectName}" already exists.`))
-            process.exit(1)
+            throw new CliError("directory_exists", `Directory "${projectName}" already exists.`)
         }
         fs.mkdirSync(targetDir, { recursive: true })
     }
@@ -65,7 +67,7 @@ export async function init(projectName?: string, provider: LanguageProvider = re
         s.stop(`Failed to install dependencies. Run ${chalk.cyan(`${pm} install`)} manually.`)
     }
 
-    const loginResult = await loginAndPersist()
+    const loginResult = await loginAndPersist(opts)
     const isAuthenticated = !!loginResult
 
     if (loginResult?.apiKey) {
@@ -80,7 +82,7 @@ export async function init(projectName?: string, provider: LanguageProvider = re
         }
     }
 
-    await listAndPromptIntegrations({ showLifecycle: false })
+    await listAndPromptIntegrations({ showLifecycle: false, nonInteractive })
 
     s.start("Generating code")
     try {

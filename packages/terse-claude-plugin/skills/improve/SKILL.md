@@ -23,14 +23,15 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 Use project markers to detect the language:
 
-- TypeScript: `package.json` and `src/index.ts`
+- TypeScript: `package.json` and `tsconfig.json`
 
 Then open the right files:
 
-- TypeScript: `src/index.ts` and `src/terse.generated.ts`
+- TypeScript: `src/terse.jobs.ts` and `src/terse.generated.ts`
 
 Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
-If the generated file is missing or stale for the requested integration, rerun `terse generate` instead of guessing at missing helpers.
+The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
+If the generated file is missing or stale for the requested integration, rerun `terse generate --quiet` instead of guessing at missing helpers.
 
 ### 2. Pull production run history
 
@@ -49,6 +50,8 @@ terse history "<job-name>" --json --triggers --status failed,cancelled --limit 2
 terse history --run-id <run-id> --json
 ```
 
+If a JSON-mode command returns a structured `{ "error": ... }` envelope with `actionRequired: true`, or exits with code `2`, stop and surface the required next step or URL instead of treating it as a code bug.
+
 What to look for:
 
 - **Failed or cancelled runs** — the trigger event shows the input that broke the job.
@@ -56,7 +59,7 @@ What to look for:
 - **Wasted runs** — bot events, drafts, or no-op events that should have been filtered out.
 - **Wrong tool choices** — the agent reaching for `runAndWait` when a deterministic `Agent.tools.*` call would have been correct (or vice versa).
 
-If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus any sample events from `terse test`.
+If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus sample events from `terse test list`.
 
 ### 3. Analyze for improvements
 
@@ -112,15 +115,22 @@ terse replay <run-id>
 
 `terse replay` fetches the original serialized trigger event from the Terse backend and runs your job's `onTrigger` against it locally with verbose agent output. This is the fastest way to confirm the bug you saw in production is actually fixed.
 
-**Or run against fresh sample events.** When there is no specific run to reproduce, or to make sure you didn't regress the happy path:
+**Or run against fresh sample events non-interactively.** When there is no specific run to reproduce, or to make sure you didn't regress the happy path:
 
 ```bash
-terse test "<job-name>"
+terse test list "<job-name>" --json
+terse test show <id> "<job-name>" --json
+terse test run "<job-name>" --id <id>
 ```
 
-`terse test` pulls real sample events from the backend (or generates synthetic ones for cron and webhook triggers) and runs the handler interactively.
+`terse test list` pulls real sample events from the backend (or generates synthetic ones for cron and webhook triggers) and assigns content-addressed ids.
+`terse test show` lets you inspect a specific cached sample before running it.
+`terse test run` executes the handler without requiring a TTY.
 
-For both commands, see https://docs.useterse.ai/reference/cli for the full option list.
+If multiple jobs exist, pass the job name explicitly because non-interactive job loading cannot prompt.
+Reserve bare `terse test` for manual interactive sessions only.
+
+For all of these commands, see https://docs.useterse.ai/reference/cli for the full option list.
 
 ### 6. Typecheck the project
 
@@ -132,7 +142,7 @@ Fix any errors before reporting back. If the project uses a different typechecke
 
 ### 7. Explain changes
 
-After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test` invocations confirmed the fix.
+After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test list/show/run` invocations confirmed the fix.
 
 ## Common Improvement Patterns
 

@@ -4,8 +4,10 @@ import chalk from "chalk"
 import type { DeviceTokenExchangeResponse } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
+import { CliError } from "../cliError.js"
 import { createSpinner } from "../cliUi.js"
 import { BACKEND_URL, WORKOS_CLIENT_ID } from "../config.js"
+import { type NonInteractiveOpts, isNonInteractive } from "../nonInteractive.js"
 import { openUrlInBrowser } from "../openBrowser.js"
 import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setStoredApiKey } from "../userConfig.js"
 
@@ -149,19 +151,35 @@ export async function login(): Promise<{ apiKey: string; displayName: string | n
     }
 }
 
-export async function loginAndPersist(): Promise<{ apiKey: string; displayName: string | null } | null> {
+export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiKey: string; displayName: string | null } | null> {
+    const nonInteractive = isNonInteractive(opts)
     const stored = getStoredApiKey()
+
     if (stored) {
         const s = createSpinner()
         s.start("Checking existing API key")
         const existingName = await fetchDisplayNameForKey(stored)
         if (existingName) {
             s.stop(`Already logged in as ${existingName}`)
+            if (nonInteractive) return { apiKey: stored, displayName: existingName }
             const shouldContinue = await confirm({ message: "Log in again with a different account?", default: false })
             if (!shouldContinue) return { apiKey: stored, displayName: existingName }
         } else {
             s.stop("Existing API key is invalid or expired")
+            if (nonInteractive) {
+                throw new CliError("not_authenticated", "Stored credentials are invalid or expired.", {
+                    detail: 'Run "terse login" to refresh them.',
+                    actionRequired: true,
+                    exitCode: 2
+                })
+            }
         }
+    } else if (nonInteractive) {
+        throw new CliError("not_authenticated", "Not authenticated.", {
+            detail: 'Run "terse login" first, then retry.',
+            actionRequired: true,
+            exitCode: 2
+        })
     }
 
     const result = await login()

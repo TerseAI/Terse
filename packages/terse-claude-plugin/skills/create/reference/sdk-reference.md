@@ -11,15 +11,19 @@ TypeScript:
 ```
 my-project/
 ├── src/
-│   ├── index.ts              # Job definitions — the entry point
-│   └── terse.generated.ts    # Auto-generated integration types (never edit)
+│   ├── terse.jobs.ts         # Canonical job entry file
+│   ├── terse.generated.ts    # Auto-generated integration types (never edit)
+│   └── index.ts              # Optional app startup file that can import terse.jobs.ts
 ├── package.json
 ├── tsconfig.json
-└── .env                      # TERSE_API_KEY (required)
+└── .env.example              # Runtime env template
 ```
 
-- TypeScript jobs are registered with `createJob()` in `src/index.ts`.
+- TypeScript projects are detected from `package.json` and `tsconfig.json`.
+- TypeScript jobs are typically registered with `createJob()` in `src/terse.jobs.ts`.
+- The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 - `src/terse.generated.ts` is the source of truth for available triggers, skills, resources, and deterministic wrappers.
+- `terse login` stores CLI authentication in a user-level config file. Runtime code still reads `TERSE_API_KEY` from the environment where your app runs.
 
 ## CreateJobParameters
 
@@ -38,9 +42,9 @@ type CreateJobParameters = {
 | Goal | TypeScript | Description |
 |------|------------|-------------|
 | Run to completion | `agent.runAndWait(prompt, event?)` | Use for AI-driven decisions such as summarize, analyze, or triage. |
-| Stream output | `agent.run(prompt, event?)` |  Returns streamed agent events. |
+| Stream output | `agent.run(prompt, event?)` | Returns streamed agent events. |
 | Direct tool call by name | `agent.executeTool(toolName, params?)` | Bypass the model and call a deterministic tool directly. |
-| Generated tool wrappers | `agent.tools.<integration>.<method>(params)` |  Type-safe direct tool calls generated from connected integrations. |
+| Generated tool wrappers | `agent.tools.<integration>.<method>(params)` | Type-safe direct tool calls generated from connected integrations. |
 
 ### When to Use What
 
@@ -177,24 +181,41 @@ The authoritative reference for every command and flag lives at https://docs.use
 
 | Command | Description |
 |---------|-------------|
-| `terse init [name]` | Scaffold a new project. |
-| `terse login` | Authenticate and write `TERSE_API_KEY` into `.env` |
-| `terse generate` | Regenerate `src/terse.generated.ts` from connected integrations |
-| `terse integrate` | Connect third-party integrations and re-run `terse generate` |
-| `terse test [job]` | Fetch real sample events and run interactively |
+| `terse init [name]` | Scaffold a new project. Use `--yes` for non-interactive setup when authentication is already available. |
+| `terse attach` | Add Terse to an existing project. Use `--yes` for non-interactive attach flows. |
+| `terse login` | Authenticate and store the CLI API key in user config. |
+| `terse generate` | Regenerate `src/terse.generated.ts` from connected integrations. Use `--quiet` when scripting. |
+| `terse integrate` | Interactive integration manager. |
+| `terse integrate list|describe|connect|wait|disconnect` | Machine-friendly integration inspection and connection flows. Use `--json` for agent/CI tooling. |
+| `terse test [job]` | Fetch real sample events and run interactively. Requires a TTY. |
+| `terse test list|show|run` | Machine-friendly sample event listing, inspection, and execution. |
 | `terse history [job]` | List past production runs for a deployed job (use `--triggers` / `--events` / `--run-id` to drill in; `--json` to pipe into tools) |
 | `terse replay <run-id>` | Re-run a past production run locally with verbose agent output |
 | `terse deploy` | Deploy all jobs (syncs — removed jobs deleted remotely) |
 | `terse dashboard` | Open the Terse web app in your browser |
 | `terse docs` | Open Terse documentation in your browser |
 
-### Typical Workflow
+When you use `--json`, CLI errors may be emitted as structured JSON instead of prose. If `error.actionRequired` is `true`, or the process exits with code `2`, stop and surface the next step or URL instead of retrying blindly.
+
+### Typical Interactive Workflow
 ```bash
 terse init my-project
 cd my-project
-terse integrate          # connect services in web UI
+terse integrate
 terse generate           # pull typed integration constants
-# edit src/index.ts
-terse test               # test with real events
+# edit src/terse.jobs.ts
+terse test               # interactive test with real events
 terse deploy             # ship it
+```
+
+### Typical Agent-Friendly Workflow
+```bash
+terse integrate list --json
+terse integrate describe github --json
+terse generate --quiet
+# edit src/terse.jobs.ts
+terse test list "my-job" --json
+terse test show <id> "my-job" --json
+terse test run "my-job" --id <id>
+terse deploy
 ```
