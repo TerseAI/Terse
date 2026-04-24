@@ -241,7 +241,7 @@ program
     .description("Autogenerate context from your connected workspaces")
     .option("--quiet", "Suppress the intro/outro banner (useful when piping into other tooling)")
     .action(async (opts: { quiet?: boolean }) => {
-        await generate(resolveProvider(), { showLifecycle: !opts.quiet })
+        await generate(resolveProvider())
     })
 
 if (isCliRunCommandEnabled()) {
