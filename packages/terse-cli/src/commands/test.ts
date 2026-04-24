@@ -15,10 +15,7 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     intro("terse test")
     assertProjectRoot(provider)
 
-    const loadSpinner = createSpinner()
-    loadSpinner.start("Loading job")
     const { job } = await loadJob(provider, jobName, entryFile)
-    loadSpinner.stop(`Loaded job: ${job.name}`)
 
     const apiKey = readApiKeyOrBail({
         title: "Error: Not authenticated. Unable to fetch sample events.",
@@ -162,12 +159,12 @@ async function inspectSampleEvent(event: SerializedEvent): Promise<"back" | "run
         console.log(chalk.dim(event.display.subtitle))
     }
     console.log("")
-    console.log(chalk.dim(truncate(normalizeSingleLine(event.formattedContent), 200)))
+    console.log(chalk.dim(truncate(normalizeSingleLine(event.formattedContent), 300)))
     console.log("")
 
     return abortIfCancelled(
         await select<"back" | "run">({
-            message: "What do you want to do?",
+            message: "Run this event?",
             options: [
                 { label: "Run this sample event", value: "run" },
                 { label: "Choose another event", value: "back" }
