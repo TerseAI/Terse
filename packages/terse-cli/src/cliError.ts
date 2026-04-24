@@ -1,12 +1,5 @@
 import chalk from "chalk"
 
-export type CliErrorOpts = {
-    exitCode?: 1 | 2
-    actionRequired?: boolean
-    url?: string
-    detail?: string
-}
-
 export class CliError extends Error {
     readonly code: string
     readonly opts: CliErrorOpts
@@ -18,9 +11,21 @@ export class CliError extends Error {
         this.opts = opts
     }
 
-    get exitCode(): 1 | 2 {
-        return this.opts.exitCode ?? (this.opts.actionRequired ? 2 : 1)
+    get exitCode(): ErrorCode {
+        return this.opts.exitCode ?? (this.opts.actionRequired ? ErrorCode.BAD_ARGUMENTS : ErrorCode.GENERIC_ERROR)
     }
+}
+
+export type CliErrorOpts = {
+    exitCode?: ErrorCode
+    actionRequired?: boolean
+    url?: string
+    detail?: string
+}
+
+enum ErrorCode {
+    GENERIC_ERROR = 1,
+    BAD_ARGUMENTS = 2
 }
 
 export function isCliError(err: unknown): err is CliError {
@@ -40,17 +45,27 @@ export function formatCliErrorText(err: CliError): string {
 }
 
 export function formatCliErrorJson(err: CliError): string {
-    return (
-        JSON.stringify({
-            error: {
-                code: err.code,
-                message: err.message,
-                actionRequired: !!err.opts.actionRequired,
-                ...(err.opts.url ? { url: err.opts.url } : {}),
-                ...(err.opts.detail ? { detail: err.opts.detail } : {})
-            }
-        }) + "\n"
-    )
+    const error: {
+        code: string
+        message: string
+        actionRequired: boolean
+        url?: string
+        detail?: string
+    } = {
+        code: err.code,
+        message: err.message,
+        actionRequired: Boolean(err.opts.actionRequired)
+    }
+
+    if (err.opts.url) {
+        error.url = err.opts.url
+    }
+
+    if (err.opts.detail) {
+        error.detail = err.opts.detail
+    }
+
+    return JSON.stringify({ error }) + "\n"
 }
 
 /**
