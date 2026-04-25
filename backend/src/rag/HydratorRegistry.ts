@@ -6,6 +6,7 @@ import { GmailEventHydrator } from "./gmailRag/hydrator"
 import { LinearEventHydrator } from "./linearRag/hydrator"
 import { RunHistoryRawEventHydrator } from "./runHistoryRag/hydrator"
 import { SlackEventHydrator } from "./slackRag/hydrator"
+import { WebMonitorEventHydrator } from "./webMonitorRag/hydrator"
 import { WorkOSEventHydrator } from "./workosRag/hydrator"
 
 // Type-safe hydrator factory map
@@ -17,7 +18,8 @@ const HYDRATOR_FACTORIES: {
     [HydratorType.GITHUB_EVENT]: ctx => new GithubEventHydrator(ctx),
     [HydratorType.LINEAR_EVENT]: ctx => new LinearEventHydrator(ctx),
     [HydratorType.GMAIL_EVENT]: ctx => new GmailEventHydrator(ctx),
-    [HydratorType.WORKOS_EVENT]: ctx => new WorkOSEventHydrator(ctx)
+    [HydratorType.WORKOS_EVENT]: ctx => new WorkOSEventHydrator(ctx),
+    [HydratorType.WEBMONITOR_EVENT]: ctx => new WebMonitorEventHydrator(ctx)
 }
 
 // Create a composite hydrator for a namespace with context

@@ -1,6 +1,6 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
-import type { SerializedEvent } from "terse-types"
+import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -452,7 +452,8 @@ interface BackendService {
     /**
      * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
      */
-    fetchSampleEvents(triggers: Array<{ triggerId?: string; integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>): Promise<{ events: SerializedEvent[] }>
+    fetchSampleEvents(triggers: Array<{ triggerId?: string; integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>): Promise<{ events: SampleEventRef[] }>
+    hydrateSampleEvent(entityType: string, entityId: string): Promise<{ event: SerializedEvent }>
 
     /**
      * Triggers an automation with a specific event payload (e.g. a sample event)
@@ -1443,10 +1444,20 @@ export const BackendProvider: BackendService = {
 
     fetchSampleEvents: (triggers: Array<{ triggerId?: string; integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {
         return axios
-            .post<{ events: SerializedEvent[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
+            .post<{ events: SampleEventRef[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error("Error fetching sample events:", error)
+                throw error
+            })
+    },
+
+    hydrateSampleEvent: (entityType: string, entityId: string) => {
+        return axios
+            .post<{ event: SerializedEvent }>(`${backendBaseUrl}${ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT}`, { entityType, entityId }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error hydrating sample event:", error)
                 throw error
             })
     },

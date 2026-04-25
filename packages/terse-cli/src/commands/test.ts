@@ -4,7 +4,7 @@ import fs from "node:fs"
 import type { CreateJobParameters } from "terse-sdk"
 import { IntegrationType } from "terse-sdk"
 import { ApiRoutes, debugTrigger, displayTrigger, formatTriggerForAgent, serializedEventSchema } from "terse-types"
-import type { SerializedEvent, Trigger } from "terse-types"
+import type { SdkSampleEventRef as SampleEventRef, SerializedEvent, Trigger } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
@@ -14,8 +14,6 @@ import { createSpinner } from "../cliUi.js"
 import { loadJob } from "../loadJob.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
-import { readCachedEvent, writeCachedEvents } from "../sampleEventCache.js"
-import { hashEventKey } from "../sampleEventId.js"
 
 export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     if (isNonInteractive()) {
@@ -36,30 +34,31 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
 
     const spinner = createSpinner()
     spinner.start("Fetching sample events")
-    let events: SerializedEvent[] = []
+    let candidates: SampleEventCandidate[] = []
     try {
-        events = await fetchSampleEventsForJob(job, apiKey)
-        spinner.stop(`Fetched ${events.length} sample event${events.length === 1 ? "" : "s"}`)
+        candidates = await fetchSampleEventCandidatesForJob(job, apiKey)
+        spinner.stop(`Fetched ${candidates.length} sample event${candidates.length === 1 ? "" : "s"}`)
     } catch (err) {
         spinner.stop(err instanceof Error ? err.message : "Failed to fetch sample events.")
     }
 
-    if (events.length === 0) {
+    if (candidates.length === 0) {
+        const webhookHint = hasWebhookTrigger(job)
         throw new CliError("no_sample_events", "No sample events available.", {
-            detail: "Make sure your triggers are configured and events have been received."
+            detail: webhookHint
+                ? "Webhook triggers do not provide sample events yet. Use `--event` / `--event-file` with a concrete payload."
+                : "Make sure your triggers are configured and events have been received."
         })
     }
 
-    writeCachedEvents(job.name, events)
-
     log.info(`Testing job ${chalk.cyan(job.name)}`)
 
-    const choice = await chooseSampleEvent(events)
+    const event = await chooseSampleEvent(candidates, apiKey)
 
     const runSpinner = createSpinner()
-    runSpinner.start(`Running ${formatEventLabel(events[choice])}`)
+    runSpinner.start(`Running ${formatEventLabel(event)}`)
     try {
-        await provider.executeJob(job, null, events[choice], { verbose: !!verbose, entryFile })
+        await provider.executeJob(job, null, event, { verbose: !!verbose, entryFile })
         runSpinner.stop("Run completed")
         outro("Done")
     } catch (error) {
@@ -75,36 +74,38 @@ export async function testList(opts: TestListOpts = {}): Promise<void> {
     const { job } = await loadJob(provider, opts.jobName, opts.entryFile, { nonInteractive: true })
     const apiKey = readApiKeyOrBail()
 
-    const events = await fetchSampleEventsForJob(job, apiKey)
-    writeCachedEvents(job.name, events)
+    const candidates = await fetchSampleEventCandidatesForJob(job, apiKey)
 
     if (opts.json) {
         const payload = {
             job: job.name,
-            events: events.map(event => ({
-                id: hashEventKey(event),
-                integrationType: event.integrationType,
-                eventType: event.eventType,
-                label: formatEventLabel(event),
-                subtitle: event.display?.subtitle ?? null,
-                event
+            events: candidates.map(candidate => ({
+                id: candidate.id,
+                integrationType: candidate.integrationType,
+                eventType: candidate.eventType,
+                label: candidate.label,
+                subtitle: candidate.subtitle,
+                entityType: candidate.kind === "ref" ? candidate.entityType : null,
+                entityId: candidate.kind === "ref" ? candidate.entityId : null
             }))
         }
         process.stdout.write(JSON.stringify(payload, null, 2) + "\n")
         return
     }
 
-    if (events.length === 0) {
-        process.stdout.write("No sample events available.\n")
+    if (candidates.length === 0) {
+        if (hasWebhookTrigger(job)) {
+            process.stdout.write("No sample events available. Webhook triggers are not supported for test samples.\n")
+        } else {
+            process.stdout.write("No sample events available.\n")
+        }
         return
     }
 
     process.stdout.write(`Sample events for job ${job.name}:\n\n`)
-    for (const event of events) {
-        const id = hashEventKey(event)
-        const label = formatEventLabel(event)
-        const subtitle = event.display?.subtitle ? ` — ${normalizeSingleLine(event.display.subtitle)}` : ""
-        process.stdout.write(`  ${chalk.cyan(id)}  ${event.integrationType}/${event.eventType}  ${label}${chalk.dim(subtitle)}\n`)
+    for (const candidate of candidates) {
+        const subtitle = candidate.subtitle ? ` — ${normalizeSingleLine(candidate.subtitle)}` : ""
+        process.stdout.write(`  ${chalk.cyan(candidate.id)}  ${candidate.integrationType}/${candidate.eventType}  ${candidate.label}${chalk.dim(subtitle)}\n`)
     }
     process.stdout.write("\n")
     process.stdout.write(chalk.dim(`Run one with:  terse test run --id <id>\n`))
@@ -159,14 +160,10 @@ async function resolveEventById(provider: LanguageProvider, id: string, jobNameH
 }
 
 async function resolveEventByIdForJob(job: CreateJobParameters, id: string): Promise<SerializedEvent> {
-    const cached = readCachedEvent(id, job.name)
-    if (cached) return cached
-
     const apiKey = readApiKeyOrBail()
-    const events = await fetchSampleEventsForJob(job, apiKey)
-    writeCachedEvents(job.name, events)
-    const match = events.find(event => hashEventKey(event) === id)
-    if (match) return match
+    const candidates = await fetchSampleEventCandidatesForJob(job, apiKey)
+    const match = candidates.find(candidate => candidate.id === id)
+    if (match) return hydrateCandidateEvent(match, apiKey)
 
     throw new CliError("sample_not_found", `No sample event matches id ${id}.`, {
         detail: "Run `terse test list` to refresh — the event may have rotated out of the sample buffer."
@@ -201,15 +198,14 @@ function parseEventJson(raw: string): SerializedEvent {
     }
 }
 
-export async function fetchSampleEventsForJob(job: CreateJobParameters, apiKey: string): Promise<SerializedEvent[]> {
+export async function fetchSampleEventCandidatesForJob(job: CreateJobParameters, apiKey: string): Promise<SampleEventCandidate[]> {
     const timeTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.CRON_JOB)
-    const webhookTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.WEBHOOK)
     const integrationTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB && t.integrationType !== IntegrationType.WEBHOOK)
 
-    const events: SerializedEvent[] = []
+    const candidates: SampleEventCandidate[] = []
 
     if (integrationTriggers.length > 0) {
-        const result = await fetchWithAuth<{ events: SerializedEvent[] }>(
+        const result = await fetchWithAuth<{ events: SampleEventRef[] }>(
             ApiRoutes.SDK.SAMPLE_EVENTS,
             apiKey,
             {
@@ -222,42 +218,49 @@ export async function fetchSampleEventsForJob(job: CreateJobParameters, apiKey: 
             },
             "POST"
         )
-        events.push(...result.events)
+        candidates.push(
+            ...result.events.map(event => ({
+                id: encodeRefId(event.entityType, event.entityId),
+                kind: "ref" as const,
+                integrationType: event.integrationType,
+                eventType: event.eventType,
+                label: normalizeSingleLine(event.display?.title || `${event.integrationType} / ${event.eventType}`),
+                subtitle: event.display?.subtitle ?? null,
+                entityType: event.entityType,
+                entityId: event.entityId
+            }))
+        )
     }
 
     for (const [index, trigger] of timeTriggers.entries()) {
-        events.push(
-            serializeEvent({
-                integrationType: IntegrationType.CRON_JOB,
-                eventType: "cron",
-                inputId: trigger.integrationId,
-                isManualTrigger: true,
-                manualContext: `Manual trigger from terse test (schedule: ${trigger.cronExpression})`
-            })
-        )
+        const event = serializeEvent({
+            integrationType: IntegrationType.CRON_JOB,
+            eventType: "cron",
+            inputId: trigger.integrationId,
+            isManualTrigger: true,
+            manualContext: `Manual trigger from terse test (schedule: ${trigger.cronExpression})`
+        })
+        candidates.push({
+            id: `synthetic:cron:${index}`,
+            kind: "synthetic",
+            integrationType: event.integrationType,
+            eventType: event.eventType,
+            label: formatEventLabel(event),
+            subtitle: event.display?.subtitle ?? null,
+            event
+        })
     }
 
-    for (const [index] of webhookTriggers.entries()) {
-        events.push(
-            serializeEvent({
-                integrationType: IntegrationType.WEBHOOK,
-                eventType: "webhook",
-                body: {},
-                headers: {},
-                method: "POST"
-            })
-        )
-    }
-
-    return events
+    return candidates
 }
 
 function formatEventLabel(event: SerializedEvent): string {
     return normalizeSingleLine(event.display?.title || `${event.integrationType} / ${event.eventType}`)
 }
 
-function formatEventHint(event: SerializedEvent): string {
-    return truncate(normalizeSingleLine(event.display?.subtitle || event.debugLog), 120)
+function formatEventHint(candidate: SampleEventCandidate): string {
+    if (candidate.subtitle) return truncate(normalizeSingleLine(candidate.subtitle), 120)
+    return candidate.kind === "ref" ? truncate(`${candidate.integrationType}/${candidate.eventType}`, 120) : "Synthetic sample event"
 }
 
 function truncate(value: string, maxLength: number): string {
@@ -284,24 +287,42 @@ function abortIfCancelled<T>(value: T | symbol): T {
     return value as T
 }
 
-async function chooseSampleEvent(events: SerializedEvent[]): Promise<number> {
+async function chooseSampleEvent(candidates: SampleEventCandidate[], apiKey: string): Promise<SerializedEvent> {
     while (true) {
         const choice = abortIfCancelled(
             await select<number>({
                 message: "Choose a sample event",
-                options: events.map((event, index) => ({
-                    label: `${formatEventLabel(event)} ${chalk.dim("›")}`,
-                    hint: formatEventHint(event),
+                options: candidates.map((candidate, index) => ({
+                    label: `${candidate.label} ${chalk.dim("›")}`,
+                    hint: formatEventHint(candidate),
                     value: index
                 }))
             })
         )
 
-        const action = await inspectSampleEvent(events[choice])
+        const event = await hydrateCandidateEvent(candidates[choice], apiKey)
+        const action = await inspectSampleEvent(event)
         if (action === "run") {
-            return choice
+            return event
         }
     }
+}
+
+async function hydrateCandidateEvent(candidate: SampleEventCandidate, apiKey: string): Promise<SerializedEvent> {
+    if (candidate.kind === "synthetic") {
+        return candidate.event
+    }
+    const payload = await fetchWithAuth<{ event: SerializedEvent }>(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, apiKey, { entityType: candidate.entityType, entityId: candidate.entityId }, "POST")
+    return payload.event
+}
+
+function encodeRefId(entityType: string, entityId: string): string {
+    const token = Buffer.from(JSON.stringify({ entityType, entityId }), "utf8").toString("base64url")
+    return `ref:${token}`
+}
+
+function hasWebhookTrigger(job: CreateJobParameters): boolean {
+    return job.triggers.some(trigger => trigger.integrationType === IntegrationType.WEBHOOK)
 }
 
 async function inspectSampleEvent(event: SerializedEvent): Promise<"back" | "run"> {
@@ -361,3 +382,24 @@ export type TestRunOpts = {
     entryFile?: string
     provider?: LanguageProvider
 }
+
+type SampleEventCandidate =
+    | {
+          id: string
+          kind: "ref"
+          integrationType: string
+          eventType: string
+          label: string
+          subtitle: string | null
+          entityType: string
+          entityId: string
+      }
+    | {
+          id: string
+          kind: "synthetic"
+          integrationType: string
+          eventType: string
+          label: string
+          subtitle: string | null
+          event: SerializedEvent
+      }

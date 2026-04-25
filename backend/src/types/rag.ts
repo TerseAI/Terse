@@ -2,6 +2,7 @@ import type { GithubTriggerRuntime } from "../integrations/GithubIntegration"
 import type { GmailTriggerRuntime } from "../integrations/GmailIntegration"
 import type { LinearTriggerRuntime } from "../integrations/LinearIntegration"
 import type { SlackTriggerRuntime } from "../integrations/SlackIntegration"
+import type { WebMonitorTriggerRuntime } from "../integrations/WebMonitorIntegration"
 import type { WorkOSTriggerRuntime } from "../integrations/WorkOSIntegration"
 import logger from "../logger"
 import type { IdentifiableRunHistoryRawEvent } from "../rag/runHistoryRag/hydrator"
@@ -12,7 +13,8 @@ export enum HydratorType {
     GITHUB_EVENT = "github_event",
     LINEAR_EVENT = "linear_event",
     GMAIL_EVENT = "gmail_event",
-    WORKOS_EVENT = "workos_event"
+    WORKOS_EVENT = "workos_event",
+    WEBMONITOR_EVENT = "webmonitor_event"
 }
 
 const HYDRATOR_TYPE_VALUES = new Set(Object.values(HydratorType))
@@ -40,6 +42,7 @@ export type HydratorTypeMap = {
     [HydratorType.LINEAR_EVENT]: LinearTriggerRuntime
     [HydratorType.GMAIL_EVENT]: GmailTriggerRuntime
     [HydratorType.WORKOS_EVENT]: WorkOSTriggerRuntime
+    [HydratorType.WEBMONITOR_EVENT]: WebMonitorTriggerRuntime
 }
 
 export enum RAGNamespace {

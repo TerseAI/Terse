@@ -41,6 +41,7 @@ import { handleGetProjectById, handleGetProjectDeploys, handleGetProjectSourceFi
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
+import { handleHydrateSampleEvent } from "./routes/hydrateSampleEvent"
 import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebMonitorWebhook } from "./routes/schedule"
 import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
@@ -700,6 +701,10 @@ app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) =>
 
 app.post(ApiRoutes.SDK.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
     handleSampleEvents(req, res)
+})
+
+app.post(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, authMiddleware, async (req, res) => {
+    handleHydrateSampleEvent(req, res)
 })
 
 app.post(ApiRoutes.SDK.VERIFY_JOB_SERVER, authMiddleware, async (req, res) => {

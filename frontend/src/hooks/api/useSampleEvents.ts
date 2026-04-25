@@ -2,14 +2,15 @@ import { useCallback, useState } from "react"
 
 import { toast } from "sonner"
 import { IntegrationType } from "terse-types"
-import type { AgentTrigger, SerializedEvent } from "terse-types"
+import type { AgentTrigger } from "terse-types"
+import type { SdkSampleEventRef as SampleEventRef } from "terse-types"
 
 import { BackendProvider } from "../../services/backend"
 
 export function useSampleEvents(triggers: AgentTrigger[], automationId?: string) {
     const [isFetching, setIsFetching] = useState(false)
     const [isTriggering, setIsTriggering] = useState(false)
-    const [events, setEvents] = useState<SerializedEvent[]>([])
+    const [events, setEvents] = useState<SampleEventRef[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
     const integrationTriggers = triggers.filter(t => t.config.integrationType !== IntegrationType.CRON_JOB && t.config.integrationType !== IntegrationType.WEBHOOK)
@@ -45,11 +46,12 @@ export function useSampleEvents(triggers: AgentTrigger[], automationId?: string)
     }, [integrationTriggers])
 
     const triggerWithEvent = useCallback(
-        async (event: SerializedEvent) => {
+        async (eventRef: SampleEventRef) => {
             if (!automationId) return
             setIsTriggering(true)
             try {
-                await BackendProvider.triggerWithEvent(automationId, event)
+                const hydrated = await BackendProvider.hydrateSampleEvent(eventRef.entityType, eventRef.entityId)
+                await BackendProvider.triggerWithEvent(automationId, hydrated.event)
                 toast.success("Job triggered with selected event")
                 setIsDialogOpen(false)
             } catch {
