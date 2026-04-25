@@ -8,6 +8,7 @@ import { ApiRoutes, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-typ
 import type { SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
 import { ApiError, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
+import { CliError } from "../cliError.js"
 import { getCliVersion } from "../cliVersion.js"
 import { FRONTEND_URL } from "../config.js"
 import { loadJobRegistry } from "../loadJob.js"
@@ -32,16 +33,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     const remoteServerUrl = config.remoteServerUrl?.trim() || undefined
 
     if (config.selfHosted && !remoteServerUrl) {
-        console.error(chalk.red(`\n  Error: Self-hosted mode is enabled but no server URL is configured.`))
-        console.error(chalk.dim(`  Set ${chalk.cyan("remoteServerUrl")} in ${chalk.cyan(PROJECT_CONFIG_FILENAME)} to the URL where your Terse SDK is running.\n`))
-        console.error(`  Example:`)
-        console.error(chalk.dim(`    {`))
-        console.error(chalk.dim(`      "projectId": "${projectId}",`))
-        console.error(chalk.dim(`      "name": "${config.name}",`))
-        console.error(chalk.dim(`      "selfHosted": true,`))
-        console.error(chalk.dim(`      "remoteServerUrl": "https://your-app.example.com"`))
-        console.error(chalk.dim(`    }\n`))
-        process.exit(1)
+        throw new CliError("remote_server_url_missing", "Self-hosted mode is enabled but no server URL is configured.", {
+            detail: `Set \`remoteServerUrl\` in \`${PROJECT_CONFIG_FILENAME}\` to the URL where your Terse SDK is running.\n\nExample:\n  {\n    "projectId": "${projectId}",\n    "name": "${config.name}",\n    "selfHosted": true,\n    "remoteServerUrl": "https://your-app.example.com"\n  }`
+        })
     }
 
     const isUrlMode = !!remoteServerUrl
@@ -133,9 +127,17 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         }
 
         if (isProjectGoneError(error)) {
-            console.error(chalk.dim(`  Run ${chalk.cyan("terse attach")} to link this directory to an existing project.`))
+            throw new CliError("project_not_found", `The project linked in ${PROJECT_CONFIG_FILENAME} no longer exists.`, {
+                detail: `This usually means it was deleted from the dashboard, or this config came from another machine.\nRun \`terse attach\` to link this directory to an existing project.`
+            })
         }
-        process.exit(1)
+        if (error instanceof CliError) {
+            throw error
+        }
+
+        throw new CliError("deploy_failed", "Deploy failed.", {
+            detail: error instanceof Error ? error.message : String(error)
+        })
     } finally {
         session.close()
     }
@@ -188,8 +190,7 @@ function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string;
     const fileCount = Object.keys(files).length
 
     if (fileCount === 0) {
-        console.error(chalk.red("No files found to deploy"))
-        process.exit(1)
+        throw new CliError("no_files_to_deploy", "No files found to deploy")
     }
 
     const zipData = zipSync(files, { level: 6 })

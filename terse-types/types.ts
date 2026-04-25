@@ -16,7 +16,7 @@ import {
     linearTeamSchema,
     slackUserResponseSchema
 } from "./Tools"
-import { TriggerSchema, serializedEventSchema } from "./Triggers"
+import { TriggerSchema, TriggerTypeSchema, serializedEventDisplaySchema, serializedEventSchema } from "./Triggers"
 
 export const roleSchema = z.enum(["admin", "user"])
 export type Role = z.infer<typeof roleSchema>
@@ -897,6 +897,37 @@ export const sdkSampleEventsRequestSchema = z.object({
         .min(1)
 })
 export type SdkSampleEventsRequest = z.infer<typeof sdkSampleEventsRequestSchema>
+
+export const hydratorTypeEnum = z.enum(["run_history_raw_event", "slack_message_event", "github_event", "linear_event", "gmail_event", "workos_event", "webmonitor_event"])
+export type HydratorType = z.infer<typeof hydratorTypeEnum>
+
+export const identifiableSchema = z.object({
+    entityType: hydratorTypeEnum,
+    entityId: z.string()
+})
+export type Identifiable = z.infer<typeof identifiableSchema>
+
+export const sdkSampleEventRefSchema = z.object({
+    entity: identifiableSchema,
+    serializedEvent: serializedEventSchema
+})
+export type SdkSampleEventRef = z.infer<typeof sdkSampleEventRefSchema>
+
+export const sdkSampleEventsResponseSchema = z.object({
+    events: z.array(sdkSampleEventRefSchema)
+})
+export type SdkSampleEventsResponse = z.infer<typeof sdkSampleEventsResponseSchema>
+
+export const sdkHydrateSampleEventRequestSchema = z.object({
+    entityType: z.string(),
+    entityId: z.string()
+})
+export type SdkHydrateSampleEventRequest = z.infer<typeof sdkHydrateSampleEventRequestSchema>
+
+export const sdkHydrateSampleEventResponseSchema = z.object({
+    event: serializedEventSchema
+})
+export type SdkHydrateSampleEventResponse = z.infer<typeof sdkHydrateSampleEventResponseSchema>
 
 export const triggerWithEventRequestSchema = z.union([
     z.object({

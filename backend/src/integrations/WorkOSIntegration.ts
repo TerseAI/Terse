@@ -12,7 +12,6 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"
 
 import {
@@ -348,7 +347,7 @@ export interface WorkOSWebhookRequest {
 
 export class WorkOSTriggerRuntime extends TriggerRuntime<WorkOSTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.WORKOS
-    entityType = HydratorType.WORKOS_EVENT
+    readonly entityType = "workos_event"
     entityId: string
     data: WorkOSTrigger
 

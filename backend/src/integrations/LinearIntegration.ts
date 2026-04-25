@@ -20,7 +20,6 @@ import { StoredFile } from "../services/FileStorageService"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { HydratorType } from "../types/rag"
 import { createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
@@ -663,7 +662,7 @@ export async function validateLinearProjectExists(integrationId: string, project
 
 export class LinearTriggerRuntime extends TriggerRuntime<LinearTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.LINEAR
-    entityType = HydratorType.LINEAR_EVENT
+    readonly entityType = "linear_event"
     entityId: string
     data: LinearTrigger
     private integrationId: string

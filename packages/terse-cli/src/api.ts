@@ -1,10 +1,10 @@
-import chalk from "chalk"
 import dotenv from "dotenv"
 import fs from "node:fs"
 import path from "node:path"
 import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema } from "terse-types"
 import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
 
+import { CliError, ErrorCode } from "./cliError.js"
 import { BACKEND_URL } from "./config.js"
 import { getStoredApiKey } from "./userConfig.js"
 
@@ -65,13 +65,11 @@ export function readApiKeyOrBail(options?: { title?: string; detail?: string }):
     const apiKey = readApiKey()
     if (apiKey) return apiKey
 
-    console.error(options?.title ? chalk.red(options.title) : chalk.red("\n  Not authenticated. Run `terse login` first.\n"))
-
-    if (options?.detail) {
-        console.error(chalk.dim(options.detail))
-    }
-
-    process.exit(1)
+    throw new CliError("not_authenticated", options?.title?.trim() || "Not authenticated. Run `terse login` first.", {
+        detail: options?.detail?.trim() || "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment.",
+        actionRequired: true,
+        exitCode: ErrorCode.BAD_ARGUMENTS
+    })
 }
 
 export function readRunId(): string | null {
@@ -186,8 +184,8 @@ export async function resolveEventFromRunId(runId: string | null, apiKey: string
         const response = await fetchWithAuth<SdkRunTriggerEventResponse>(buildRoute(ApiRoutes.SDK.RUN_TRIGGER_EVENT, { runId }), apiKey)
         return sdkRunTriggerEventResponseSchema.parse(response)
     } catch (error) {
-        console.error(chalk.red(`Error: Could not fetch the trigger event for run ${runId}.`))
-        console.error(chalk.dim(error instanceof Error ? error.message : String(error)))
-        process.exit(1)
+        throw new CliError("run_trigger_event_fetch_failed", `Could not fetch the trigger event for run ${runId}.`, {
+            detail: error instanceof Error ? error.message : String(error)
+        })
     }
 }

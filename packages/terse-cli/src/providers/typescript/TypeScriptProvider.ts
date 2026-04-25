@@ -9,7 +9,8 @@ import { __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs,
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
-import { readApiKey } from "../../api.js"
+import { readApiKeyOrBail } from "../../api.js"
+import { CliError } from "../../cliError.js"
 import { BACKEND_URL } from "../../config.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
@@ -108,28 +109,22 @@ export class TypeScriptProvider implements LanguageProvider {
         } catch (error) {
             if (isModuleNotFoundError(error)) {
                 const missingPackage = extractMissingPackage(error)
-                console.error(chalk.red(`Error: Cannot find package '${missingPackage}' imported from ${resolvedEntryFile}`))
-                if (missingPackage === "terse-sdk") {
-                    console.error(chalk.dim("\nMake sure terse-sdk is installed in your project:"))
-                    console.error(chalk.dim("  npm install terse-sdk"))
-                    console.error(chalk.dim("  # or, for local SDK development"))
-                    console.error(chalk.dim("  npm link terse-sdk"))
-                } else {
-                    console.error(chalk.dim(`\nInstall the missing package: npm install ${missingPackage}`))
-                }
-            } else {
-                console.error(chalk.red(`Error importing ${resolvedEntryFile}:\n`))
-                console.error(error)
+                throw new CliError("entry_missing_dependency", `Cannot find package '${missingPackage}' imported from ${resolvedEntryFile}.`, {
+                    detail: formatMissingDependencyDetail(missingPackage)
+                })
             }
-            process.exit(1)
+
+            throw new CliError("entry_import_failed", `Could not import ${resolvedEntryFile}.`, {
+                detail: formatErrorDetail(error)
+            })
         }
 
         const registry = fetchRegisteredJobs()
 
         if (registry.size === 0) {
-            console.error(chalk.red(`No jobs found after importing ${resolvedEntryFile}.`))
-            console.error(chalk.dim("Make sure you call `createJob()` on a Terse instance."))
-            process.exit(1)
+            throw new CliError("no_jobs_found", `No jobs found after importing ${resolvedEntryFile}.`, {
+                detail: "Make sure you call `createJob()` on a Terse instance."
+            })
         }
 
         return registry
@@ -140,11 +135,10 @@ export class TypeScriptProvider implements LanguageProvider {
 
         const serializedEventRuntime = createSDKTrigger(event)
 
-        const apiKey = readApiKey()
-        if (!apiKey) {
-            console.error(chalk.red("TERSE_API_KEY is not set. Please set it in your environment variables."))
-            process.exit(1)
-        }
+        const apiKey = readApiKeyOrBail({
+            title: "TERSE_API_KEY is not set.",
+            detail: "Please set it in your environment variables."
+        })
 
         const session = await openSessionStream(apiKey, {
             verbose: true,
@@ -167,9 +161,9 @@ export class TypeScriptProvider implements LanguageProvider {
                 }
                 await job.onTrigger(serializedEventRuntime)
             } catch (error) {
-                console.error(chalk.red(`\n  Job "${job.name}" threw an error:\n`))
-                console.error(error)
-                process.exit(1)
+                throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {
+                    detail: formatErrorDetail(error)
+                })
             } finally {
                 closeSession?.()
             }
@@ -188,6 +182,22 @@ function isModuleNotFoundError(error: unknown): error is Error & { code: string 
 function extractMissingPackage(error: Error): string {
     const match = error.message.match(/Cannot find package '([^']+)'/)
     return match?.[1] ?? "unknown"
+}
+
+function formatMissingDependencyDetail(missingPackage: string): string {
+    if (missingPackage === "terse-sdk") {
+        return "Make sure terse-sdk is installed in your project:\n  npm install terse-sdk\n  # or, for local SDK development\n  npm link terse-sdk"
+    }
+
+    return `Install the missing package: npm install ${missingPackage}`
+}
+
+function formatErrorDetail(error: unknown): string {
+    if (error instanceof Error) {
+        return error.message
+    }
+
+    return String(error)
 }
 
 function resolveTypeScriptEntryFile(cwd: string): string | null {

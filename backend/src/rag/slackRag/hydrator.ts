@@ -4,7 +4,6 @@ import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import { SlackTriggerRuntime } from "../../integrations/SlackIntegration"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 // Derive SlackChannelType from conversations.info channel object
@@ -37,7 +36,7 @@ function parsePermalink(permalink: string): { channelId: string; timestamp: stri
 }
 
 export class SlackEventHydrator extends Hydrator<SlackTriggerRuntime> {
-    readonly entityType = HydratorType.SLACK_MESSAGE_EVENT
+    readonly entityType = "slack_message_event"
 
     constructor(ctx: HydrationContext) {
         super(ctx)
