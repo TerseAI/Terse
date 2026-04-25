@@ -1,6 +1,8 @@
 import fs from "node:fs"
 import path from "node:path"
 
+import { CliError } from "../cliError.js"
+
 import type { LanguageProvider } from "./LanguageProvider.js"
 import { pythonProvider } from "./python/PythonProvider.js"
 import { typeScriptProvider } from "./typescript/TypeScriptProvider.js"
@@ -27,26 +29,23 @@ export function resolveProvider(opts?: { command?: string; language?: string; cw
     }
 
     if (matches.length > 1) {
-        console.error("Error: Multiple Terse project setups detected in the current directory.")
-        process.exit(1)
+        throw new CliError("multiple_project_setups", "Multiple Terse project setups detected in the current directory.")
     }
 
-    console.error("Error: Could not detect a supported Terse project in the current directory.")
-    console.error("  Expected TypeScript project markers: package.json, src/index.ts")
-    process.exit(1)
+    throw new CliError("unsupported_project", "Could not detect a supported Terse project in the current directory.", {
+        detail: "Expected TypeScript project markers: package.json, src/index.ts"
+    })
 }
 
 export function resolveProviderByLanguage(language: string): LanguageProvider {
     const normalized = LANGUAGE_ALIASES[language.toLowerCase()]
     if (!normalized) {
-        console.error(`Error: Unsupported init target "${language}". Use ts or typescript.`)
-        process.exit(1)
+        throw new CliError("unsupported_init_language", `Unsupported init target "${language}". Use ts or typescript.`)
     }
 
     const provider = PROVIDERS.find(candidate => candidate.language === normalized)
     if (!provider) {
-        console.error(`Error: No provider registered for "${normalized}".`)
-        process.exit(1)
+        throw new CliError("provider_not_registered", `No provider registered for "${normalized}".`)
     }
 
     return provider

@@ -18,6 +18,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { settings } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
+import { Identifiable } from "../rag/Hydrator"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
@@ -228,8 +229,10 @@ export function buildWebhookUrl(inputId: string): string {
     return `${baseUrl}${path}`
 }
 
-export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<unknown>> {
+export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<unknown>> implements Identifiable {
     readonly integrationType = IntegrationType.WEBMONITOR
+    readonly entityType = "webmonitor_event"
+    readonly entityId: string
     data: WebMonitorTrigger<unknown>
     private readonly automationId: string
 
@@ -247,6 +250,7 @@ export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<u
         this.automationId = params.automationId
         const payload = params.event.result.content
         const rawPayload = params.event.result.type === "json" ? params.event.output || JSON.stringify(params.event.result.content) : undefined
+        this.entityId = `${params.monitorId}:${params.eventGroupId}:${encodeURIComponent(params.event.event_date)}`
         this.data = {
             integrationType: IntegrationType.WEBMONITOR,
             eventType: "webmonitor",
@@ -382,7 +386,7 @@ async function parallelMonitorsDelete(monitorId: string): Promise<void> {
     await client.delete(`/v1alpha/monitors/${monitorId}`)
 }
 
-async function getEventGroup(monitorId: string, eventGroupId: string): Promise<ParallelMonitorEvent[]> {
+export async function getEventGroup(monitorId: string, eventGroupId: string): Promise<ParallelMonitorEvent[]> {
     const client = new Client({ apiKey: settings.parallel.apiKey })
     const response = (await client.get(`/v1alpha/monitors/${monitorId}/event_groups/${eventGroupId}`)) as {
         events?: unknown[]

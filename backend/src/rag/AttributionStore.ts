@@ -1,5 +1,7 @@
+import { HydratorType } from "terse-types"
+
 import { db } from "../prismaClient"
-import { HydratorType, HydratorTypeMap, parseHydratorType } from "../types/rag"
+import { HydratorTypeMap, parseHydratorType } from "../types/rag"
 
 import { HydrationContext, Identifiable } from "./Hydrator"
 import { getHydrator } from "./HydratorRegistry"

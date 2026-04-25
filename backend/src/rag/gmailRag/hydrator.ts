@@ -7,11 +7,10 @@ import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationReg
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
-import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class GmailEventHydrator extends Hydrator<GmailTriggerRuntime> {
-    readonly entityType = HydratorType.GMAIL_EVENT
+    readonly entityType = "gmail_event"
 
     constructor(ctx: HydrationContext) {
         super(ctx)

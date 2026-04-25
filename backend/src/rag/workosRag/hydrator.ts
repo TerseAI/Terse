@@ -5,11 +5,10 @@ import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSTriggerRuntime, enrichWorkOSEventPa
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
-import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class WorkOSEventHydrator extends Hydrator<WorkOSTriggerRuntime> {
-    readonly entityType = HydratorType.WORKOS_EVENT
+    readonly entityType = "workos_event"
 
     constructor(ctx: HydrationContext) {
         super(ctx)
