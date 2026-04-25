@@ -1,6 +1,6 @@
-import { cancel, intro, isCancel, log, outro, select } from "@clack/prompts"
+import { cancel, confirm, intro, isCancel, log, outro, select } from "@clack/prompts"
 import chalk from "chalk"
-import { execFileSync } from "node:child_process"
+import { spawnSync } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -155,13 +155,36 @@ async function applyPatchLocallyAndMarkApplied(apiKey: string, agent: Agent, imp
     log.info(`Applying ${chalk.bold(improvement.title)} for ${chalk.cyan(agent.name)}`)
 
     const patchPath = writePatchToTempFile(improvement)
-    try {
-        runGitApply(patchPath)
+
+    const direct = runGitApply(["apply", patchPath])
+    if (direct.ok) {
         log.success(`Patch applied from ${chalk.dim(patchPath)}`)
-    } catch (error) {
-        log.error(`git apply failed: ${error instanceof Error ? error.message : String(error)}`)
-        console.log(chalk.dim(`  The patch file remains at ${patchPath} so you can try applying it manually.`))
-        process.exit(1)
+    } else {
+        const threeWay = runGitApply(["apply", "--3way", patchPath])
+        if (threeWay.ok) {
+            log.success(`Patch applied with 3-way merge from ${chalk.dim(patchPath)}`)
+            console.log(chalk.dim("  Review your working tree for conflict markers."))
+        } else {
+            log.error("Patch could not be applied cleanly.")
+            if (direct.stderr) console.log(chalk.dim(indentBlock(direct.stderr, "    ")))
+            log.warn("Your working copy has likely drifted from the snapshot this patch was generated against.")
+
+            const tryPartial = abortIfCancelled(
+                await confirm({
+                    message: "Apply with --reject? Successful hunks land in your working tree; failed hunks are written as .rej files for manual resolution.",
+                    initialValue: false
+                })
+            )
+
+            if (!tryPartial) {
+                console.log(chalk.dim(`  Patch saved at ${patchPath}.`))
+                process.exit(1)
+            }
+
+            const rejected = runGitApply(["apply", "--reject", "--ignore-whitespace", "-C1", patchPath])
+            if (rejected.stderr) console.log(chalk.dim(indentBlock(rejected.stderr, "    ")))
+            log.info("Run `git status` to see applied changes and any .rej files.")
+        }
     }
 
     const spinner = createSpinner()
@@ -188,8 +211,20 @@ function writePatchToTempFile(improvement: AgentImprovement): string {
     return filePath
 }
 
-function runGitApply(patchPath: string): void {
-    execFileSync("git", ["apply", patchPath], { stdio: "inherit" })
+function runGitApply(args: string[]): { ok: boolean; stderr: string } {
+    const result = spawnSync("git", args, { encoding: "utf8" })
+    if (result.error) {
+        return { ok: false, stderr: result.error.message }
+    }
+    const stderr = (result.stderr ?? "").trim()
+    return { ok: result.status === 0, stderr }
+}
+
+function indentBlock(value: string, indent: string): string {
+    return value
+        .split("\n")
+        .map(line => `${indent}${line}`)
+        .join("\n")
 }
 
 function pendingOnly(improvements: AgentImprovement[]): AgentImprovement[] {
