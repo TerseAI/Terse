@@ -4,7 +4,7 @@ import { Filter } from "@turbopuffer/turbopuffer/resources/index"
 import { openai } from "../../config/settings"
 import { EmbeddingSystem } from "../../search/EmbeddingSystem"
 import { RunHistoryRawEventWithRelations } from "../../types/prisma"
-import { HydratorType, RAGNamespace } from "../../types/rag"
+import { RAGNamespace } from "../../types/rag"
 import { Indexer } from "../indexer"
 import { SearchItem } from "../searchTypes"
 import { TurboPufferSearch } from "../turbopufferSearch"
@@ -44,7 +44,7 @@ export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations
             }
             return {
                 id: event.id,
-                entityType: HydratorType.RUN_HISTORY_RAW_EVENT,
+                entityType: "run_history_raw_event",
                 entityId: event.id,
                 content: conversationContent,
                 metadata: {

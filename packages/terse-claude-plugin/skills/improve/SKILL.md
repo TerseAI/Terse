@@ -23,13 +23,14 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 Use project markers to detect the language:
 
-- TypeScript: `package.json` and `src/index.ts`
+- TypeScript: `package.json` and `tsconfig.json`
 
 Then open the right files:
 
-- TypeScript: `src/index.ts` and `src/terse.generated.ts`
+- TypeScript: `src/terse.jobs.ts` and `src/terse.generated.ts`
 
 Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
+The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 If the generated file is missing or stale for the requested integration, rerun `terse generate` instead of guessing at missing helpers.
 
 ### 2. Pull production run history
@@ -49,14 +50,16 @@ terse history "<job-name>" --json --triggers --status failed,cancelled --limit 2
 terse history --run-id <run-id> --json
 ```
 
+If a JSON-mode command returns a structured `{ "error": ... }` envelope with `actionRequired: true`, or exits with code `2`, stop and surface the required next step or URL instead of treating it as a code bug.
+
 What to look for:
 
 - **Failed or cancelled runs** — the trigger event shows the input that broke the job.
 - **Repeated patterns** — the same kind of event misbehaving suggests a missing filter, a vague prompt, or a missing skill.
 - **Wasted runs** — bot events, drafts, or no-op events that should have been filtered out.
-- **Wrong tool choices** — the agent reaching for `runAndWait` when a deterministic `Agent.tools.*` call would have been correct (or vice versa).
+- **Wrong tool choices** — the agent reaching for `runAndWait` when a deterministic `agent.tools.*` call would have been correct (or vice versa).
 
-If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus any sample events from `terse test`.
+If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus sample events from `terse test list`.
 
 ### 3. Analyze for improvements
 
@@ -80,9 +83,10 @@ TypeScript: `event.formatForAgentRunner()`
 
 #### Tool Usage
 
-- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers over an agent run. Use `Agent.tools.*` / `Agent.executeTool()` in TypeScript
-- **Multi-step**: Could a two-step approach work better? E.g., send a Slack message first with `Agent.tools.slack.sendMessage()`, then use `Agent.runAndWait()` to post an AI-generated summary as a thread reply.
-- **Tool results**: When using `Agent.tools.*`, capture the return value if subsequent steps need it (e.g., `message.message_ts` for threading).
+- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers over an agent run. Use `agent.tools.*` / `agent.executeTool()` in TypeScript.
+- **Model access vs code access**: Missing entries in `skills` break model-driven tool use inside `run()` / `runAndWait()`, but they do not automatically prevent direct deterministic calls from code.
+- **Multi-step**: Could a two-step approach work better? E.g., send a Slack message first with `agent.tools.slack.sendMessage()`, then use `agent.runAndWait()` to post an AI-generated summary as a thread reply.
+- **Tool results**: When using `agent.tools.*`, capture the return value if subsequent steps need it (e.g., `message.message_ts` for threading).
 
 #### Error Handling
 
@@ -92,7 +96,7 @@ TypeScript: `event.formatForAgentRunner()`
 
 #### Skill Configuration
 
-- **Missing skills**: Are all needed integrations listed? If the prompt tells the agent to post to Slack but Slack isn't in `skills`, it will fail.
+- **Missing skills**: Are all integrations the model needs during `run()` / `runAndWait()` listed? If the prompt tells the model to post to Slack but Slack isn't in `skills`, that agentic step will fail.
 - **Unnecessary skills**: Are there skills the agent doesn't actually use? Remove them to reduce confusion.
 - **Scope**: Are repos/channels/teams scoped correctly? Too broad gives the agent access to things it shouldn't touch. Too narrow prevents it from doing its job.
 
@@ -112,15 +116,22 @@ terse replay <run-id>
 
 `terse replay` fetches the original serialized trigger event from the Terse backend and runs your job's `onTrigger` against it locally with verbose agent output. This is the fastest way to confirm the bug you saw in production is actually fixed.
 
-**Or run against fresh sample events.** When there is no specific run to reproduce, or to make sure you didn't regress the happy path:
+**Or run against fresh sample events non-interactively.** When there is no specific run to reproduce, or to make sure you didn't regress the happy path:
 
 ```bash
-terse test "<job-name>"
+terse test list "<job-name>" --json
+terse test show <id> "<job-name>" --json
+terse test run "<job-name>" --id <id>
 ```
 
-`terse test` pulls real sample events from the backend (or generates synthetic ones for cron and webhook triggers) and runs the handler interactively.
+`terse test list` pulls real sample events from the backend (or generates synthetic ones for cron and webhook triggers) and assigns content-addressed ids.
+`terse test show` lets you inspect a specific cached sample before running it.
+`terse test run` executes the handler without requiring a TTY.
 
-For both commands, see https://docs.useterse.ai/reference/cli for the full option list.
+If multiple jobs exist, pass the job name explicitly because non-interactive job loading cannot prompt.
+Reserve bare `terse test` for manual interactive sessions only.
+
+For all of these commands, see https://docs.useterse.ai/reference/cli for the full option list.
 
 ### 6. Typecheck the project
 
@@ -132,29 +143,29 @@ Fix any errors before reporting back. If the project uses a different typechecke
 
 ### 7. Explain changes
 
-After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test` invocations confirmed the fix.
+After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test list/show/run` invocations confirmed the fix.
 
 ## Common Improvement Patterns
 
 ### Add bot filtering
 ```typescript
 // BEFORE: runs on every event
-onTrigger: async (event, Agent) => { ... }
+onTrigger: async (event, agent: TerseAgent) => { ... }
 
 // AFTER: skip bot events
 filter: async (event: GithubPRTrigger) => {
     return !event.sender.login.includes("[bot]") && !event.pullRequest.merged
 },
-onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => { ... }
+onTrigger: async (event: GithubPRTrigger, agent: TerseAgent) => { ... }
 ```
 
 ### Improve prompt specificity
 ```typescript
 // BEFORE: vague
-await Agent.runAndWait(`Review this PR: ${event.formatForAgentRunner()}`)
+await agent.runAndWait(`Review this PR: ${event.formatForAgentRunner()}`)
 
 // AFTER: specific instructions, format, edge cases
-await Agent.runAndWait(
+await agent.runAndWait(
     `Review PR "${event.pullRequest.title}" (${event.pullRequest.url}). ` +
     `Look at the diff and leave a concise review comment. ` +
     `Focus on: correctness, edge cases, and naming. ` +
@@ -166,17 +177,17 @@ await Agent.runAndWait(
 ### Split deterministic + AI actions
 ```typescript
 // BEFORE: agent decides everything including the message send
-await Agent.runAndWait(`Send a welcome message and summarize: ${event.formatForAgentRunner()}`)
+await agent.runAndWait(`Send a welcome message and summarize: ${event.formatForAgentRunner()}`)
 
 // AFTER: deterministic send, then AI analysis in thread
-const message = await Agent.tools.slack.sendMessage({
+const message = await agent.tools.slack.sendMessage({
     channelId: SlackChannel.Engineering.channelId,
     message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
     thread_ts: "",
     blocks: "",
 })
 
-await Agent.runAndWait(
+await agent.runAndWait(
     `Summarize the changes in this PR and post as a thread reply ` +
     `(thread_ts: ${message.message_ts}). ` +
     `Context: ${event.formatForAgentRunner()}`
@@ -186,17 +197,17 @@ await Agent.runAndWait(
 ### Add type safety
 ```typescript
 // BEFORE: untyped event
-onTrigger: async (event, Agent) => {
-    await Agent.runAndWait(`Handle: ${event.formatForAgentRunner()}`)
+onTrigger: async (event, agent: TerseAgent) => {
+    await agent.runAndWait(`Handle: ${event.formatForAgentRunner()}`)
 }
 
 // AFTER: typed event with type guard
 import { GithubPRTrigger, isGithubPRTrigger } from "terse-sdk"
 
-onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => {
+onTrigger: async (event: GithubPRTrigger, agent: TerseAgent) => {
     if (!isGithubPRTrigger(event)) return
     const { title, url } = event.pullRequest
-    await Agent.runAndWait(
+    await agent.runAndWait(
         `Review PR "${title}" at ${url}. Context: ${event.formatForAgentRunner()}`
     )
 }

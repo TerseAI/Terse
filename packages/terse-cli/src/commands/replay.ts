@@ -1,6 +1,5 @@
-import chalk from "chalk"
-
 import { readApiKeyOrBail, resolveEventFromRunId } from "../api.js"
+import { CliError } from "../cliError.js"
 import { loadJob } from "../loadJob.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
@@ -9,15 +8,14 @@ export async function replay(runId: string, provider: LanguageProvider = resolve
     const apiKey = readApiKeyOrBail()
 
     if (!runId) {
-        console.error(chalk.red("Error: --run-id is required.\n"))
-        console.error(chalk.dim("  Usage: terse replay --run-id <run-id>"))
-        process.exit(1)
+        throw new CliError("missing_run_id", "--run-id is required.", {
+            detail: "Usage: terse replay --run-id <run-id>"
+        })
     }
 
     const runHistoryRecord = await resolveEventFromRunId(runId, apiKey)
     if (!runHistoryRecord) {
-        console.error(chalk.red("Error: Could not fetch the trigger event for run ${runId}.\n"))
-        process.exit(1)
+        throw new CliError("run_trigger_event_missing", `Could not fetch the trigger event for run ${runId}.`)
     }
 
     const { job } = await loadJob(provider, runHistoryRecord.agentName)

@@ -1,12 +1,11 @@
 import { db } from "../../prismaClient"
 import { RunHistoryRawEventWithRelations } from "../../types/prisma"
-import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable, WithIdentity } from "../Hydrator"
 
 export type IdentifiableRunHistoryRawEvent = WithIdentity<RunHistoryRawEventWithRelations>
 
 export class RunHistoryRawEventHydrator extends Hydrator<IdentifiableRunHistoryRawEvent> {
-    readonly entityType = HydratorType.RUN_HISTORY_RAW_EVENT
+    readonly entityType = "run_history_raw_event"
 
     constructor(ctx: HydrationContext) {
         super(ctx)

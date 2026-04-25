@@ -4,37 +4,372 @@ description: "Reference for the terse CLI"
 icon: "terminal"
 ---
 
-The `terse` CLI scaffolds, generates, tests, and deploys Terse projects in TypeScript.
+The `terse` CLI has one scaffold command and a shared workflow CLI.
 
-Commands auto-detect a TypeScript Terse project from the current directory based on project markers.
+`terse init` scaffolds a new TypeScript project. The rest of the CLI auto-detects a Terse TypeScript project from the current directory and loads workflows from the default entry file unless you pass `--entry-file`.
 
-For TypeScript projects, `terse test` and `terse deploy` load **`src/terse.jobs.ts`** (or a path you pass with **`--entry-file`**) and discover every workflow registered with **`createJob()`** in that module graph—including files reached by side-effect imports. Keep workflow **`name`** values unique; duplicate names throw when jobs register.
+| Language   | Project markers                 | Default entry file                                                                  | Generated file           |
+| ---------- | ------------------------------- | ----------------------------------------------------------------------------------- | ------------------------ |
+| TypeScript | `package.json`, `tsconfig.json` | `src/terse.jobs.ts` (falls back to `src/index.ts` when loading an existing project) | `src/terse.generated.ts` |
 
-| Language   | Project markers                               | Entry file           | Generated file           |
-| ---------- | --------------------------------------------- | -------------------- | ------------------------ |
-| TypeScript | `package.json`, `tsconfig.json`             | `src/terse.jobs.ts`  | `src/terse.generated.ts` |
+`terse test` and `terse deploy` discover every workflow registered with `createJob()` in the entry file's module graph, including files reached by side-effect imports. Keep workflow `name` values unique.
 
-## `terse init [project-name]`
+## Getting started
 
-Scaffolds a new project and runs the full setup flow: installs dependencies, authenticates, connects integrations, and generates your SDK.
+### `terse init [project-name]`
 
-<CodeGroup>
-```bash TypeScript
+Scaffolds a new TypeScript project and runs the full setup flow: install dependencies, authenticate, create a Terse project, review integrations, and generate helpers.
+
+```bash
 terse init my-project
 ```
-</CodeGroup>
+
+If you omit `project-name`, the CLI scaffolds into the current directory. If you run `terse init` in an existing npm project, the CLI tells you to use `terse attach` instead.
 
 **What it does in order:**
 
-1. Creates the project directory and scaffolds files (config, `.gitignore`, entry file)
-2. Detects your package manager (pnpm or npm) and installs dependencies
-3. Runs `terse login` to authenticate
-4. Runs `terse integrate` to check and connect integrations
-5. Runs `terse generate` to produce your typed SDK
+1. Creates the target directory and scaffolds `package.json`, `tsconfig.json`, `src/terse.jobs.ts`, `.env.example`, and `.gitignore`
+2. Detects `pnpm` or `npm` and installs dependencies
+3. Runs `terse login`
+4. Creates a Terse project and writes `terse.config.json`
+5. Reviews your current integrations
+6. Runs `terse generate`
 
-## `terse login`
+### `terse attach`
 
-Authenticates with Terse using a device authorization flow and saves your API key to a **user-level config file** (managed by the CLI; the path is printed when you sign in successfully).
+Links an existing repo to Terse in self-hosted mode.
+
+```bash
+terse attach
+```
+
+Use `terse attach` when you already have an application repo and want Terse to sync workflows to infrastructure you control instead of uploading source to Terse hosting.
+
+**What it does:**
+
+1. Authenticates with Terse
+2. Creates a Terse project if the repo is not already linked
+3. Writes `terse.config.json` with self-hosted mode enabled
+4. Reviews existing integrations and, in an interactive terminal, lets you connect more
+5. Runs `terse generate` when the current directory matches a supported project layout
+
+Before you run `terse deploy`, set `remoteServerUrl` in `terse.config.json` to the URL where your Terse SDK server is running.
+
+```json
+{
+    "projectId": "proj_123",
+    "name": "my-app",
+    "selfHosted": true,
+    "remoteServerUrl": "https://your-app.example.com"
+}
+```
+
+If your app keeps workflow definitions outside the default entry file, use `--entry-file` with `terse test` and `terse deploy`.
+
+### `terse test [job-name]`
+
+Fetches sample events and runs a local workflow against one selected event.
+
+```bash
+terse test
+terse test my-job
+```
+
+If you only have one workflow, the CLI selects it automatically. If you have more than one, the CLI prompts you to choose unless you pass `job-name`.
+
+**Options:**
+
+| Flag                  | Description                              | Default          |
+| --------------------- | ---------------------------------------- | ---------------- |
+| `-v, --verbose`       | Show agent stream output during the run  | Enabled          |
+| `--entry-file <path>` | Override the default workflow entry file | Provider default |
+
+**How it works:**
+
+1. Loads your local workflow registry from the entry file
+2. Fetches sample events from Terse for integration triggers such as GitHub, Slack, or Attio
+3. Synthesizes local sample events for cron and webhook triggers
+4. Prompts you to choose one sample event
+5. Executes the workflow locally
+
+#### `terse test list [job-name]`
+
+Lists sample events for a workflow and assigns each one a content-addressed id.
+
+```bash
+terse test list
+terse test list my-job --json
+```
+
+Use this command when you want a stable handle for a sample event without opening the interactive picker. The id stays the same as long as the underlying trigger payload stays the same.
+
+**Options:**
+
+| Flag                  | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `--json`              | Emit JSON, including the full serialized event for each id |
+| `--entry-file <path>` | Override the default workflow entry file                   |
+
+The CLI caches fetched sample events locally for one hour. `terse test show` and `terse test run --id` reuse that cache when they can.
+
+#### `terse test show <id> [job-name]`
+
+Shows the contents of one sample event.
+
+```bash
+terse test show 3f4d1c8a9b12
+terse test show 3f4d1c8a9b12 my-job --json
+```
+
+**Options:**
+
+| Flag                  | Description                                 |
+| --------------------- | ------------------------------------------- |
+| `--json`              | Emit JSON instead of the rendered text view |
+| `--entry-file <path>` | Override the default workflow entry file    |
+
+The CLI looks up the id in the local cache first, then refetches the workflow's current sample events if needed.
+
+#### `terse test run [job-name]`
+
+Runs a workflow against an explicit sample event.
+
+```bash
+terse test run --id 3f4d1c8a9b12
+terse test run my-job --event-file fixture.json
+```
+
+Pass exactly one of `--id`, `--event`, or `--event-file`.
+
+**Options:**
+
+| Flag                  | Description                                                   |
+| --------------------- | ------------------------------------------------------------- |
+| `--id <id>`           | Run a cached or refetched sample event from `terse test list` |
+| `--event <json>`      | Inline serialized trigger event JSON                          |
+| `--event-file <path>` | Path to a JSON file containing the serialized trigger event   |
+| `-v, --verbose`       | Show agent stream output during the run                       |
+| `--entry-file <path>` | Override the default workflow entry file                      |
+
+### `terse deploy`
+
+Packages your local project and syncs workflows to Terse. [Learn more about how deployment works.](/hosting)
+
+```bash
+terse deploy
+terse deploy --entry-file src/server.ts
+```
+
+**Options:**
+
+| Flag                  | Description                              |
+| --------------------- | ---------------------------------------- |
+| `--entry-file <path>` | Override the default workflow entry file |
+
+**What happens:**
+
+- New workflows are created on the platform
+- Existing workflows are updated
+- Workflows removed from your code are removed from Terse
+
+**Deployment modes:**
+
+- Hosted: the CLI zips the current project directory, uploads it, and Terse hosts the workflow for you
+- Self-hosted: the CLI reads `remoteServerUrl` from `terse.config.json` and configures Terse to call your own server instead of uploading source
+
+## Build with workspace context
+
+### `terse integrate`
+
+Interactive integration management from the terminal.
+
+```bash
+terse integrate
+```
+
+The interactive flow fetches your current integrations, shows provider-specific status, lets you connect, disconnect, or refresh one integration at a time, and reruns `terse generate` after any changes.
+
+**Connection types:**
+
+| Type  | Flow                                                                       | Integrations                                     |
+| ----- | -------------------------------------------------------------------------- | ------------------------------------------------ |
+| OAuth | Opens a browser for authorization and waits for the connection to complete | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
+| Form  | Prompts for credentials or account details in the terminal                 | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
+
+#### `terse integrate list`
+
+Lists integrations and their connection status.
+
+```bash
+terse integrate list
+terse integrate list --status connected --json
+```
+
+**Options:**
+
+| Flag                | Description                             |
+| ------------------- | --------------------------------------- |
+| `--status <status>` | Filter to `connected` or `disconnected` |
+| `--json`            | Emit machine-readable JSON              |
+
+#### `terse integrate describe <type>`
+
+Shows the current status, installation type, required fields, and any setup URL for one integration type.
+
+```bash
+terse integrate describe snowflake
+terse integrate describe slack --json
+```
+
+Use this command to inspect the schema before you build a `connect` command.
+
+**Options:**
+
+| Flag     | Description                |
+| -------- | -------------------------- |
+| `--json` | Emit machine-readable JSON |
+
+#### `terse integrate connect <type>`
+
+Connects or refreshes one integration without using the interactive picker.
+
+```bash
+terse integrate connect snowflake --field account=my-account --field username=alice --fields-stdin <<<'{"password":"..."}'
+terse integrate connect slack
+```
+
+**Options:**
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--field <key=value>` | Repeatable form field values                                    |
+| `--fields-stdin`      | Read a JSON object of additional field values from stdin        |
+| `-f, --force`         | Re-run the install even if the integration is already connected |
+| `--json`              | Emit machine-readable JSON                                      |
+
+Use `--fields-stdin` for secrets so passwords and tokens do not end up in shell history.
+
+For form-based integrations, `connect` submits the provided field values immediately. For OAuth integrations, `connect` opens the authorization URL in your default browser and exits 2 with a handoff payload (`{ "handoff": "oauth", "url", "waitCommand" }` in `--json` mode, or an `ACTION REQUIRED` line otherwise). Run the printed `waitCommand` (e.g. `terse integrate wait slack`) to block until authorization completes.
+
+#### `terse integrate disconnect <type>`
+
+Disconnects one integration.
+
+```bash
+terse integrate disconnect snowflake
+terse integrate disconnect slack --json
+```
+
+**Options:**
+
+| Flag     | Description                |
+| -------- | -------------------------- |
+| `--json` | Emit machine-readable JSON |
+
+#### `terse integrate wait <type>`
+
+Polls until an OAuth integration finishes connecting.
+
+```bash
+terse integrate connect slack
+terse integrate wait slack --timeout 300
+```
+
+Use this after `terse integrate connect <type>` for OAuth integrations such as Slack or GitHub.
+
+**Options:**
+
+| Flag                  | Description                                         |
+| --------------------- | --------------------------------------------------- |
+| `--timeout <seconds>` | Timeout in seconds. Defaults to 300 and caps at 900 |
+| `--json`              | Emit machine-readable JSON                          |
+
+The `list`, `describe`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
+
+### `terse generate`
+
+Fetches your active integrations, their workspace resources, and the current tool definitions from Terse, then writes generated helpers for your local project.
+
+```bash
+terse generate
+terse generate
+```
+
+**Outputs:**
+
+`terse generate` writes `src/terse.generated.ts`.
+
+**What the generated file contains:**
+
+| Category                    | Examples                                                                                       |
+| --------------------------- | ---------------------------------------------------------------------------------------------- |
+| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Pipeline.NewDeals`                |
+| Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`, `Webhook.onRequest<BodyType>()` |
+| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                                             |
+| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()`                          |
+
+Each integration generates typed helpers from real workspace data such as repositories, channels, lists, projects, and tool definitions, so your workflows reference actual resources instead of raw ids.
+
+TypeScript projects also get `Webhook` from `src/terse.generated.ts`. Pass a type argument to `Webhook.onRequest<YourBodyType>()` so `onTrigger` and `filter` infer `WebhookTrigger<YourBodyType>` for `event.body`. See [Webhook trigger](/reference/triggers#webhook).
+
+Run `terse generate` again after you connect or disconnect an integration, after resources change inside a connected workspace, or after you upgrade `terse-cli`.
+
+## Observability
+
+### `terse replay [run-id]`
+
+Fetches the stored trigger event for one past run and re-executes the matching local workflow on your machine with verbose output.
+
+```bash
+terse replay run_abc123
+```
+
+The CLI resolves the local workflow by the deployed workflow name stored on that run, then executes your current local code against the saved trigger payload.
+
+### `terse history [job-name]`
+
+Lists past runs for a deployed workflow or fetches the full chat history for a single run.
+
+```bash
+terse history my-job
+terse history my-job --json --triggers
+terse history --run-id run_abc123
+```
+
+When you pass `job-name`, the CLI matches your local workflow name to the deployed workflow on Terse. When you pass `--run-id`, the CLI skips workflow lookup and fetches that run directly.
+
+**Options:**
+
+| Flag              | Description                                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------------- |
+| `--json`          | Print JSON instead of a table                                                                             |
+| `--limit <n>`     | Max runs to return. Default 20, max 100                                                                   |
+| `--page <n>`      | Page number, 1-indexed                                                                                    |
+| `--status <list>` | Comma-separated statuses: `success`, `failed`, `cancelled`, `skipped`, `in_progress`, `awaiting_approval` |
+| `--since <iso>`   | Only runs at or after this ISO timestamp                                                                  |
+| `--until <iso>`   | Only runs at or before this ISO timestamp                                                                 |
+| `--query <q>`     | Free-text search across trigger, decision, and event fields                                               |
+| `--triggers`      | Also fetch the input trigger event JSON for each listed run                                               |
+| `--events`        | Also fetch the full model event stream for each listed run                                                |
+| `--run-id <id>`   | Show full chat events for one run instead of listing runs for a workflow                                  |
+
+Use `--triggers` when you want the serialized input event for each run. Use `--events` when you want the full stored conversation, including the trigger payload.
+
+### `terse dashboard`
+
+Opens the Terse web app in your default browser.
+
+```bash
+terse dashboard
+```
+
+If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
+
+## Authentication
+
+### `terse login`
+
+Authenticates with Terse using a device authorization flow and saves your API key to a user-level config file.
 
 ```bash
 terse login
@@ -46,184 +381,37 @@ terse login
 2. Opens your browser to a verification page
 3. Polls until you complete the browser authorization
 4. Exchanges the token with the Terse backend for an API key
-5. Persists the API key in your user config so the CLI can authenticate on later runs
+5. Saves the API key so later CLI commands can reuse it
 
-If a valid API key is already saved, you'll be prompted before re-authenticating.
+If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
 
-## `terse logout`
+### `terse logout`
 
-Removes the API key from your user config (the same store `terse login` writes to).
+Removes the saved API key from your user config.
 
 ```bash
 terse logout
 ```
 
-## `terse integrate`
+## Help
 
-Connects third-party integrations to your Terse workspace from the CLI. After connecting, automatically re-runs `terse generate` to update your SDK.
+### `terse docs`
 
-```bash
-terse integrate
-```
-
-**How it works:**
-
-1. Fetches your integrations and shows provider-specific connection state
-2. Prompts you to choose an integration
-3. Lets you connect, switch, disconnect, or refresh that integration
-4. Re-runs `terse generate` after any changes
-
-**Connection types:**
-
-| Type  | Flow                                                                  | Integrations                                     |
-| ----- | --------------------------------------------------------------------- | ------------------------------------------------ |
-| OAuth | Opens browser for authorization, polls until connected                | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
-| Form  | Prompts for credentials (API keys, account IDs, etc.) in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
-
-## `terse generate`
-
-Fetches your connected integrations and their resources from the Terse backend, then writes `src/terse.generated.ts`.
-
-```bash
-terse generate
-```
-
-**Outputs:**
-
-<CodeGroup>
-```text TypeScript
-src/terse.generated.ts
-```
-</CodeGroup>
-
-**What's in the generated file:**
-
-| Category                    | Examples                                                                                                    |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Deals`                                         |
-| Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`, `Webhook.onRequest<BodyType>()` (TypeScript) |
-| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                                                          |
-| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()`                                       |
-
-Each integration generates typed helpers based on the actual resources in your workspace (repos, channels, lists, projects, etc.), so your code references real names instead of raw IDs.
-
-TypeScript projects also get `Webhook` from `src/terse.generated.ts`. Pass a type argument to `Webhook.onRequest<YourBodyType>()` so `onTrigger` and `filter` infer `WebhookTrigger<YourBodyType>` for `event.body`. See [Webhook trigger](/reference/triggers#webhook).
-
-**When to re-run:**
-
-- After connecting or disconnecting an integration
-- After adding resources to a connected integration (new Slack channel, new GitHub repo, etc.)
-- After upgrading `terse-cli` (new tool definitions may be available)
-
-## `terse test [job-name]`
-
-Fetches real sample events from the Terse backend and runs your job locally against a selected event.
-
-```bash
-terse test
-terse test my-job
-```
-
-**Options:**
-
-| Flag            | Description                             | Default |
-| --------------- | --------------------------------------- | ------- |
-| `-v, --verbose` | Show agent stream output during the run | Enabled |
-| `--entry-file <path>` | Override the default workflow entry file | Provider default (for example `src/index.ts`) |
-
-**How it works:**
-
-1. Loads your job registry from the entry file
-2. Fetches sample events from the backend for integration-based triggers (e.g. real GitHub PR events, real Slack messages)
-3. Generates synthetic events for cron and webhook triggers
-4. Prompts you to select an event
-5. Executes your job's `onTrigger` handler locally
-
-If you only have one job, it's selected automatically.
-
-## `terse replay [run-id]`
-
-Replays a past run on your machine: fetches the serialized trigger event for the given run ID and executes that workflow’s `onTrigger` locally (with verbose agent output). Use the run ID from the Activity list or run drawer.
-
-```bash
-terse replay run_abc123
-```
-
-This complements **Re-trigger** in the Terse app, which runs the workflow again on the platform with the same trigger payload.
-
-## `terse history [job-name]`
-
-Lists past runs for a **deployed** workflow (the CLI matches your local job name to the agent on Terse). Optionally enriches each row with the input trigger payload or the full stored model stream.
-
-Use **`--json`** when you need machine-readable output for scripts or agent tooling. Use **`--triggers`** to attach each run’s serialized trigger event (the same shape a live run passes to `onTrigger`). **`--events`** fetches the full conversation per run (heavier; includes the trigger payload).
-
-```bash
-terse history my-job
-terse history my-job --json --triggers
-terse history --run-id run_abc123
-```
-
-**Options:**
-
-| Flag | Description |
-| ---- | ----------- |
-| `--json` | Print JSON instead of a table |
-| `--limit <n>` | Max runs to return (default 20, max 100) |
-| `--page <n>` | Page number (1-indexed) |
-| `--status <list>` | Comma-separated: `success`, `failed`, `cancelled`, `skipped`, `in_progress`, `awaiting_approval` |
-| `--since <iso>` | Only runs at or after this ISO timestamp |
-| `--until <iso>` | Only runs at or before this ISO timestamp |
-| `--query <q>` | Free-text search across trigger, decision, and event fields |
-| `--triggers` | Include the input trigger event JSON for each listed run |
-| `--events` | Include the full model event stream for each listed run |
-| `--run-id <id>` | Show chat events for one run instead of listing runs for a job |
-
-## `terse dashboard`
-
-Opens the Terse web app in your default browser. Uses `TERSE_FRONTEND_URL` when set (for example when pointing at a staging app); otherwise opens production.
-
-```bash
-terse dashboard
-```
-
-## `terse docs`
-
-Opens the Terse documentation site in your default browser. Uses `TERSE_DOCS_URL` when set; otherwise opens the public docs.
+Opens the Terse documentation site in your default browser.
 
 ```bash
 terse docs
 ```
 
-## `terse deploy`
+If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs.
 
-Packages your project and deploys all jobs to the Terse platform. [Learn more about how deployment works.](/hosting)
-
-```bash
-terse deploy
-```
-
-**Options:**
-
-| Flag | Description |
-| ---- | ----------- |
-| `--entry-file <path>` | Override the default workflow entry file |
-
-**What happens:**
-
-- New jobs are created on the platform
-- Existing jobs are updated (webhook URLs remain stable)
-- Jobs removed from your code are removed from the platform
-- Your entire project is zipped, uploaded, and hosted serverlessly
-
-## API key for the CLI and your app
+## API key resolution
 
 Commands that call the Terse API resolve credentials in this order:
 
-1. **`TERSE_API_KEY` in the process environment** (for example `export TERSE_API_KEY=...` in your shell or CI)
-2. **The API key saved by `terse login`** in your user config
+1. `TERSE_API_KEY` in the current process environment
+2. The API key saved by `terse login`
 
-After `terse init` or `terse login`, you usually do not need a project `.env` file **for the CLI**—authentication is stored per user on your machine.
+After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 
-**Runtime (SDK and servers):** Workflows and `terse-sdk` still read **`TERSE_API_KEY`** from the environment at runtime (for example from a `.env` file you create from the scaffolded `.env.example`, or from your host's secret store). Set that variable wherever your Node process runs.
-
-`terse init` runs the full setup flow, including login. `terse login` only authenticates and updates your user config; use **`terse logout`** to clear it.
+Your runtime still needs `TERSE_API_KEY` in its environment. Set that variable anywhere your Node process runs, such as a local `.env` file, a container secret, or your hosting provider's secret store.

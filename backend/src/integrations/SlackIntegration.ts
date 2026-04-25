@@ -23,7 +23,6 @@ import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensure
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
-import { HydratorType } from "../types/rag"
 import { Jwt } from "../utility/jwt"
 import { createOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
@@ -932,7 +931,7 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
 export class SlackTriggerRuntime extends TriggerRuntime<SlackTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.SLACK
     data: SlackTrigger
-    entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT
+    readonly entityType = "slack_message_event"
     entityId: string
     private storedFiles: StoredFile[]
     readonly integrationId: string

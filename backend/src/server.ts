@@ -27,6 +27,7 @@ import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrat
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
+import { handleHydrateSampleEvent } from "./routes/hydrateSampleEvent"
 import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
 import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
@@ -700,6 +701,10 @@ app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) =>
 
 app.post(ApiRoutes.SDK.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
     handleSampleEvents(req, res)
+})
+
+app.post(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, authMiddleware, async (req, res) => {
+    handleHydrateSampleEvent(req, res)
 })
 
 app.post(ApiRoutes.SDK.VERIFY_JOB_SERVER, authMiddleware, async (req, res) => {

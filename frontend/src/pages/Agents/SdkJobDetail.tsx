@@ -6,7 +6,8 @@ import { Loader2, MoreVertical, Pause, Play, Server, Trash2, Zap } from "lucide-
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { CONFIG_DETAILS, ConfigType, FrontendRoutes } from "terse-types"
-import type { AgentTrigger, SdkJobServerCheckResponse, SerializedEvent } from "terse-types"
+import type { AgentTrigger, SdkJobServerCheckResponse } from "terse-types"
+import type { SdkSampleEventRef as SampleEventRef } from "terse-types"
 import type { Agent } from "terse-types/types"
 
 import { Badge } from "../../components/ui/badge"
@@ -104,7 +105,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
         }
     }
 
-    const handleSelectEvent = async (event: SerializedEvent) => {
+    const handleSelectEvent = async (event: SampleEventRef) => {
         await triggerWithEvent(event)
         setSelectedTab(0)
     }
@@ -412,11 +413,11 @@ function SampleEventsDialog({
     onSelect,
     onClose
 }: {
-    events: SerializedEvent[]
+    events: SampleEventRef[]
     open: boolean
     isFetching: boolean
     isTriggering: boolean
-    onSelect: (event: SerializedEvent) => void
+    onSelect: (event: SampleEventRef) => void
     onClose: () => void
 }) {
     return (
@@ -446,12 +447,14 @@ function SampleEventsDialog({
                             >
                                 <div className="flex items-center gap-2">
                                     <Badge variant="outline" className="text-xs">
-                                        {event.integrationType}
+                                        {event.serializedEvent.integrationType}
                                     </Badge>
-                                    <span className="truncate text-sm font-medium">{event.debugLog}</span>
+                                    <span className="truncate text-sm font-medium">
+                                        {event.serializedEvent.display?.title || `${event.serializedEvent.integrationType}/${event.serializedEvent.eventType}`}
+                                    </span>
                                     <Zap className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" />
                                 </div>
-                                <pre className="text-muted-foreground bg-muted/50 max-h-32 overflow-y-auto rounded-md p-2 text-xs break-words whitespace-pre-wrap">{event.formattedContent}</pre>
+                                <div className="text-muted-foreground bg-muted/50 rounded-md p-2 text-xs">{event.serializedEvent.display?.subtitle || event.serializedEvent.eventType}</div>
                             </button>
                         ))}
                     </div>

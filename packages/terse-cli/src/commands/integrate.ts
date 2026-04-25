@@ -5,6 +5,8 @@ import type { CliIntegrationDisplayState, FormIntegrationSetup, IntegrationWithS
 import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
 
 import { readApiKey, readApiKeyOrBail } from "../api.js"
+import { CliError } from "../cliError.js"
+import { type NonInteractiveOpts, isNonInteractive, parseKeyValueFlags, readFieldsFromStdin } from "../cliHelpers.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
 import {
     ConfigurationFieldDefinition,
@@ -20,24 +22,7 @@ import { openUrlInBrowser } from "../openBrowser.js"
 
 import { generate } from "./generate.js"
 
-type IntegrationChangeResult = {
-    status: "added" | "modified" | "unchanged"
-    integrationType?: IntegrationType
-}
-
-type IntegrateOptions = {
-    showLifecycle?: boolean
-    runGenerateAfterChange?: boolean
-}
-
-type IntegrationAction = "back" | "connect" | "disconnect" | "keep" | "refresh_permissions"
-
-type GroupedIntegrationSelection = {
-    action: IntegrationAction
-    integrationType: IntegrationType
-}
-
-type UserFacingIntegration = IntegrationWithStatus
+const INTERNAL_INTEGRATION_TYPES = new Set<string>([IntegrationType.TERSE, IntegrationType.CRON_JOB, IntegrationType.WEBMONITOR])
 
 export async function integrate(options: IntegrateOptions = {}): Promise<void> {
     const showLifecycle = options.showLifecycle ?? true
@@ -63,7 +48,7 @@ export async function integrate(options: IntegrateOptions = {}): Promise<void> {
     }
 
     if (didChangeAnyIntegration && runGenerateAfterChange) {
-        await generate(undefined, { showLifecycle: false })
+        await generate(undefined)
     }
 
     if (showLifecycle) {
@@ -88,7 +73,17 @@ export async function listAndPromptIntegrations(options: IntegrateOptions = {}):
         return
     }
 
-    const active = integrations.filter(i => i.isActive && i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB)
+    const active = integrations.filter(i => i.isActive && !INTERNAL_INTEGRATION_TYPES.has(i.integrationType))
+
+    if (options.nonInteractive || isNonInteractive()) {
+        if (active.length > 0) {
+            const names = active.map(i => INTEGRATION_METADATA[i.integrationType]?.name || i.integrationType)
+            console.log(chalk.dim(`Connected integrations (${active.length}): ${formatSummaryList(names)}`))
+        } else {
+            console.log(chalk.dim("No integrated tools yet. Run `terse integrate` in an interactive terminal to connect some."))
+        }
+        return
+    }
 
     if (active.length > 0) {
         const names = active.map(i => INTEGRATION_METADATA[i.integrationType]?.name || i.integrationType)
@@ -155,11 +150,10 @@ async function fetchUserFacingIntegrations(apiKey: string): Promise<UserFacingIn
     try {
         const integrations = await fetchIntegrations(apiKey)
         s.stop("Fetched integrations")
-        return integrations.filter(i => i.integrationType !== IntegrationType.TERSE && i.integrationType !== IntegrationType.CRON_JOB && i.integrationType !== IntegrationType.WEBMONITOR)
+        return integrations.filter(i => !INTERNAL_INTEGRATION_TYPES.has(i.integrationType))
     } catch (err: any) {
         s.stop("Failed to fetch integrations")
-        console.error(chalk.red(`  ${err.message}`))
-        process.exit(1)
+        throw new CliError("fetch_integrations_failed", err?.message ?? "Failed to fetch integrations.")
     }
 }
 
@@ -421,4 +415,293 @@ function abortIfCancelled<T>(value: T | symbol): T {
     }
 
     return value
+}
+
+// -------------------------------------------------------------------------
+// Non-interactive subcommands
+// -------------------------------------------------------------------------
+
+function parseIntegrationTypeOrThrow(value: string): IntegrationType {
+    const normalized = value.toLowerCase()
+    const match = Object.values(IntegrationType).find(v => v === normalized)
+    if (!match) {
+        throw new CliError("unknown_integration_type", `Unknown integration type "${value}".`, {
+            detail: `Supported: ${Object.values(IntegrationType)
+                .filter(v => !INTERNAL_INTEGRATION_TYPES.has(v))
+                .join(", ")}`
+        })
+    }
+    return match as IntegrationType
+}
+
+function summaryFor(displayState: CliIntegrationDisplayState): { summaryLabel: string | null; summaryValue: string | null } {
+    if (displayState.status === "connected") {
+        return { summaryLabel: displayState.summaryLabel, summaryValue: displayState.summaryValue }
+    }
+    return { summaryLabel: null, summaryValue: null }
+}
+
+export async function integrateList(opts: IntegrateListOpts = {}): Promise<void> {
+    const apiKey = readApiKeyOrBail()
+    const integrations = (await fetchIntegrations(apiKey)).filter(i => !INTERNAL_INTEGRATION_TYPES.has(i.integrationType))
+
+    const filtered = integrations.filter(i => {
+        if (opts.status === "connected") return i.isActive
+        if (opts.status === "disconnected") return !i.isActive
+        return true
+    })
+
+    if (opts.json) {
+        const payload = {
+            integrations: await Promise.all(
+                filtered.map(async integration => {
+                    const { summaryLabel, summaryValue } = summaryFor(integration.cliDisplayState)
+                    return {
+                        type: integration.integrationType,
+                        status: integration.isActive ? "connected" : "disconnected",
+                        name: INTEGRATION_METADATA[integration.integrationType]?.name ?? integration.integrationType,
+                        summaryLabel,
+                        summaryValue
+                    }
+                })
+            )
+        }
+        process.stdout.write(JSON.stringify(payload, null, 2) + "\n")
+        return
+    }
+
+    if (filtered.length === 0) {
+        process.stdout.write("No integrations.\n")
+        return
+    }
+
+    const longest = filtered.reduce((max, i) => Math.max(max, (INTEGRATION_METADATA[i.integrationType]?.name ?? i.integrationType).length), 0)
+    for (const integration of filtered) {
+        const name = (INTEGRATION_METADATA[integration.integrationType]?.name ?? integration.integrationType).padEnd(longest)
+        const status = integration.isActive ? chalk.green("connected") : chalk.dim("not connected")
+        const { summaryLabel, summaryValue } = summaryFor(integration.cliDisplayState)
+        const summary = summaryLabel && summaryValue ? `  ${chalk.dim(`${summaryLabel}: ${summaryValue}`)}` : ""
+        process.stdout.write(`  ${name}  ${status}${summary}\n`)
+    }
+}
+
+export async function integrateDescribe(opts: IntegrateDescribeOpts): Promise<void> {
+    const type = parseIntegrationTypeOrThrow(opts.integrationType)
+    const apiKey = readApiKeyOrBail()
+
+    const [integrations, fieldsResponse] = await Promise.all([fetchIntegrations(apiKey), fetchIntegrationFields(apiKey, type)])
+    const match = integrations.find(i => i.integrationType === type)
+
+    const payload = {
+        type,
+        name: INTEGRATION_METADATA[type]?.name ?? type,
+        status: match?.isActive ? "connected" : "disconnected",
+        installationType: fieldsResponse.installationType,
+        fields: fieldsResponse.fields,
+        setup: fieldsResponse.setup ?? null
+    }
+
+    if (opts.json) {
+        process.stdout.write(JSON.stringify(payload, null, 2) + "\n")
+        return
+    }
+
+    process.stdout.write(`${chalk.bold(payload.name)}  ${payload.status === "connected" ? chalk.green("connected") : chalk.dim("not connected")}\n`)
+    process.stdout.write(`Installation: ${payload.installationType}\n\n`)
+    if (payload.installationType === "form") {
+        process.stdout.write("Fields:\n")
+        for (const field of payload.fields as FormFieldDefinition[]) {
+            const req = field.required ? chalk.yellow(" (required)") : chalk.dim(" (optional)")
+            const hint = field.hint ? ` — ${field.hint}` : ""
+            process.stdout.write(`  ${chalk.cyan(field.name)} [${field.type}]${req}${chalk.dim(hint)}\n`)
+        }
+        if (payload.setup) {
+            process.stdout.write(`\nSetup: ${chalk.cyan(payload.setup.url)}\n`)
+        }
+    } else {
+        process.stdout.write("OAuth — use `terse integrate connect <type>` in an interactive terminal, or open the auth URL manually and poll with `terse integrate wait`.\n")
+    }
+}
+
+export async function integrateConnect(opts: IntegrateConnectOpts): Promise<void> {
+    const type = parseIntegrationTypeOrThrow(opts.integrationType)
+    const apiKey = readApiKeyOrBail()
+
+    const [integrations, fieldsResponse] = await Promise.all([fetchIntegrations(apiKey), fetchIntegrationFields(apiKey, type)])
+    const existing = integrations.find(i => i.integrationType === type)
+
+    if (existing?.isActive && !opts.force) {
+        const message = `${INTEGRATION_METADATA[type]?.name ?? type} is already connected. Pass --force to refresh.`
+        if (opts.json) {
+            process.stdout.write(JSON.stringify({ type, status: "connected", changed: false, message }, null, 2) + "\n")
+        } else {
+            process.stdout.write(chalk.dim(message) + "\n")
+        }
+        return
+    }
+
+    if (fieldsResponse.installationType === "oauth") {
+        const installation = await fetchInstallationUrl(apiKey, type)
+        openUrlInBrowser(installation.oauthUrl)
+
+        const waitCommand = `terse integrate wait ${type}`
+
+        if (opts.json) {
+            const payload = {
+                handoff: "oauth",
+                type,
+                status: "disconnected" as const,
+                url: installation.oauthUrl,
+                waitCommand,
+                message: `Browser opened. Run \`${waitCommand}\` to block until authorization completes.`
+            }
+            process.stdout.write(JSON.stringify(payload, null, 2) + "\n")
+            process.exitCode = 2
+            return
+        }
+
+        const name = INTEGRATION_METADATA[type]?.name ?? type
+        process.stdout.write(chalk.yellow(`ACTION REQUIRED: authorize ${name} in your browser.`) + "\n")
+        process.stdout.write(chalk.cyan(`  ${installation.oauthUrl}`) + "\n")
+        process.stdout.write(chalk.dim(`  Browser opened. Run \`${waitCommand}\` to block until authorization completes.`) + "\n")
+        process.exitCode = 2
+        return
+    }
+
+    const formFields = fieldsResponse.fields as FormFieldDefinition[]
+    const fromFlags = parseKeyValueFlags(opts.fieldFlags)
+    const fromStdin = opts.fieldsStdin ? await readFieldsFromStdin() : {}
+    const provided = { ...fromFlags, ...fromStdin }
+
+    const knownFieldNames = new Set(formFields.map(f => f.name))
+    const unknown = Object.keys(provided).filter(name => !knownFieldNames.has(name))
+    if (unknown.length > 0) {
+        throw new CliError("unknown_fields", `Unknown field(s): ${unknown.join(", ")}`, {
+            detail: `Valid fields: ${formFields.map(f => f.name).join(", ")}`
+        })
+    }
+
+    const missing = formFields.filter(f => f.required && !provided[f.name]).map(f => f.name)
+    if (missing.length > 0) {
+        throw new CliError("missing_fields", `Missing required field(s): ${missing.join(", ")}`, {
+            detail: `Run \`terse integrate describe ${type} --json\` to see the full field schema.`
+        })
+    }
+
+    const result = await submitIntegrationForm(apiKey, type, provided)
+    if (!result.success) {
+        throw new CliError("connect_failed", result.error ?? "Failed to connect integration.")
+    }
+
+    const message = existing?.isActive ? `${type} refreshed.` : `${type} connected.`
+    if (opts.json) {
+        process.stdout.write(JSON.stringify({ type, status: "connected", changed: true, message }, null, 2) + "\n")
+    } else {
+        process.stdout.write(chalk.green(message) + "\n")
+    }
+}
+
+export async function integrateDisconnect(opts: IntegrateDisconnectOpts): Promise<void> {
+    const type = parseIntegrationTypeOrThrow(opts.integrationType)
+    const apiKey = readApiKeyOrBail()
+
+    const result = await disconnectIntegration(apiKey, type)
+    if (!result.success) {
+        throw new CliError("disconnect_failed", result.error ?? "Failed to disconnect integration.")
+    }
+
+    const message = `${type} disconnected.`
+    if (opts.json) {
+        process.stdout.write(JSON.stringify({ type, status: "disconnected", changed: true, message }, null, 2) + "\n")
+    } else {
+        process.stdout.write(chalk.green(message) + "\n")
+    }
+}
+
+const WAIT_DEFAULT_TIMEOUT_S = 300
+const WAIT_MAX_TIMEOUT_S = 900
+const WAIT_INTERVAL_MS = 2000
+
+export async function integrateWait(opts: IntegrateWaitOpts): Promise<void> {
+    const type = parseIntegrationTypeOrThrow(opts.integrationType)
+    const requested = opts.timeoutSeconds ?? WAIT_DEFAULT_TIMEOUT_S
+    const timeoutSeconds = Math.max(1, Math.min(WAIT_MAX_TIMEOUT_S, requested))
+    const apiKey = readApiKeyOrBail()
+
+    const deadline = Date.now() + timeoutSeconds * 1000
+    let lastError: string | null = null
+
+    while (Date.now() < deadline) {
+        try {
+            const integrations = await fetchIntegrations(apiKey)
+            const match = integrations.find(i => i.integrationType === type)
+            if (match?.isActive) {
+                const message = `${type} is connected.`
+                if (opts.json) {
+                    process.stdout.write(JSON.stringify({ type, status: "connected", message }, null, 2) + "\n")
+                } else {
+                    process.stdout.write(chalk.green(message) + "\n")
+                }
+                return
+            }
+        } catch (err) {
+            lastError = err instanceof Error ? err.message : String(err)
+        }
+        await new Promise(resolve => setTimeout(resolve, WAIT_INTERVAL_MS))
+    }
+
+    throw new CliError("wait_timeout", `Timed out after ${timeoutSeconds}s waiting for ${type} to connect.`, {
+        detail: lastError ? `Last error: ${lastError}` : "Check the integration's connection status with `terse integrate list`."
+    })
+}
+
+// Types
+
+type IntegrationChangeResult = {
+    status: "added" | "modified" | "unchanged"
+    integrationType?: IntegrationType
+}
+
+type IntegrateOptions = {
+    showLifecycle?: boolean
+    runGenerateAfterChange?: boolean
+    nonInteractive?: boolean
+}
+
+type IntegrationAction = "back" | "connect" | "disconnect" | "keep" | "refresh_permissions"
+
+type GroupedIntegrationSelection = {
+    action: IntegrationAction
+    integrationType: IntegrationType
+}
+
+type UserFacingIntegration = IntegrationWithStatus
+
+export type IntegrateListOpts = {
+    json?: boolean
+    status?: "connected" | "disconnected"
+}
+
+export type IntegrateDescribeOpts = {
+    integrationType: string
+    json?: boolean
+}
+
+export type IntegrateConnectOpts = {
+    integrationType: string
+    fieldFlags?: string[]
+    fieldsStdin?: boolean
+    force?: boolean
+    json?: boolean
+}
+
+export type IntegrateDisconnectOpts = {
+    integrationType: string
+    json?: boolean
+}
+
+export type IntegrateWaitOpts = {
+    integrationType: string
+    timeoutSeconds?: number
+    json?: boolean
 }
