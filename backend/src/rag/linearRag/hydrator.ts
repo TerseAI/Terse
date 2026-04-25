@@ -7,11 +7,10 @@ import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Inte
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class LinearEventHydrator extends Hydrator<LinearTriggerRuntime> {
-    readonly entityType = HydratorType.LINEAR_EVENT
+    readonly entityType = "linear_event"
 
     constructor(ctx: HydrationContext) {
         super(ctx)

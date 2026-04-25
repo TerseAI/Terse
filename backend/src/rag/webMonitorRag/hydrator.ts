@@ -1,10 +1,9 @@
 import { WebMonitorTriggerRuntime, getEventGroup, getMonitor } from "../../integrations/WebMonitorIntegration"
 import logger from "../../logger"
-import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class WebMonitorEventHydrator extends Hydrator<WebMonitorTriggerRuntime> {
-    readonly entityType = HydratorType.WEBMONITOR_EVENT
+    readonly entityType = "webmonitor_event"
 
     constructor(ctx: HydrationContext) {
         super(ctx)

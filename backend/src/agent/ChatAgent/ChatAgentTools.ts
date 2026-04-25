@@ -24,7 +24,8 @@ import {
     WebhookInputConfigSchema,
     WorkOSInputConfigSchema,
     WorkOSOutputConfigSchema,
-    buildRoute
+    buildRoute,
+    hydratorTypeEnum
 } from "terse-types"
 import { FROM_SETUP_CHAT_PARAM, FrontendRoutes } from "terse-types"
 import { IntegrationType } from "terse-types"
@@ -41,14 +42,13 @@ import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationReg
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import { fetchSampleEvents } from "../../integrations/abstract/sampleEvents"
 import logger from "../../logger"
-import { webExtractTool } from "../../outputs/terse/tools/webExtractTool"
-import { chatWebSearchTool, webSearchTool } from "../../outputs/terse/tools/webSearchTool"
+import { chatWebSearchTool } from "../../outputs/terse/tools/webSearchTool"
 import { db } from "../../prismaClient"
 import { requireHydrator } from "../../rag/HydratorRegistry"
-import { applyAgentForUser, isUuidV4, updateAgentForUser, validateUserOwnsIntegration } from "../../routes/agents"
+import { applyAgentForUser, isUuidV4, updateAgentForUser } from "../../routes/agents"
 import { formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
-import { HydratorType, requireHydratorType } from "../../types/rag"
+import { requireHydratorType } from "../../types/rag"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { extractErrorMessage } from "../../utility/strings"
 import { randomString } from "../../utility/strings"
@@ -350,7 +350,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             description:
                 "For cron/time trigger agents: call with only agentId (omit or pass null for entityType and entityId) to trigger the agent immediately. For event-based triggers, use entityType and entityId from getSampleEvents. This returns quickly with runId while the run continues in the background.",
             parameters: z.object({
-                entityType: z.enum(HydratorType).nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
+                entityType: hydratorTypeEnum.nullable().describe("The entity type from getSampleEvents. Not needed for cron/time trigger agents."),
                 entityId: z.string().nullable().describe("The entity ID from getSampleEvents. Not needed for cron/time trigger agents."),
                 agentId: z.string().describe("The agent ID to test the sample event against"),
                 manualContext: z

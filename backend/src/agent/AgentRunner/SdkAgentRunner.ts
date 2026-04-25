@@ -124,7 +124,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     }
 
     protected async onModelEvent(event: ModelEvent, timestamp: number): Promise<void> {
-        console.log("onModelEvent", event)
         this.streamEventEmitter.emit(event, timestamp)
         if (event.type === "TextDelta" && event.delta) {
             this.send({ type: "text", text: event.delta })

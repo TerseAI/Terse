@@ -17,7 +17,6 @@ import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
-import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
@@ -579,7 +578,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
 export class GmailTriggerRuntime extends TriggerRuntime<GmailTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.GMAIL
-    entityType = HydratorType.GMAIL_EVENT
+    readonly entityType = "gmail_event"
     entityId: string
     data: GmailTrigger
     private integrationId: string

@@ -22,7 +22,6 @@ import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
-import { HydratorType } from "../types/rag"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
@@ -428,7 +427,7 @@ function prActionLabel(eventType: GitHubEventType): string {
 
 export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implements Identifiable {
     readonly integrationType = IntegrationType.GITHUB
-    entityType = HydratorType.GITHUB_EVENT
+    readonly entityType = "github_event"
     entityId: string
     data: GithubTrigger
     private storedFiles: StoredFile[]

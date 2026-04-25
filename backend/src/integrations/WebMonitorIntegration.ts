@@ -20,7 +20,6 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { HydratorType } from "../types/rag"
 import { getUserForOrg } from "../utility/workos"
 
 import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
@@ -232,7 +231,7 @@ export function buildWebhookUrl(inputId: string): string {
 
 export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<unknown>> implements Identifiable {
     readonly integrationType = IntegrationType.WEBMONITOR
-    readonly entityType = HydratorType.WEBMONITOR_EVENT
+    readonly entityType = "webmonitor_event"
     readonly entityId: string
     data: WebMonitorTrigger<unknown>
     private readonly automationId: string

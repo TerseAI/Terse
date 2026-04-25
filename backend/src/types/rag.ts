@@ -1,3 +1,6 @@
+import { HydratorType } from "terse-types"
+import { hydratorTypeEnum } from "terse-types"
+
 import type { GithubTriggerRuntime } from "../integrations/GithubIntegration"
 import type { GmailTriggerRuntime } from "../integrations/GmailIntegration"
 import type { LinearTriggerRuntime } from "../integrations/LinearIntegration"
@@ -7,20 +10,8 @@ import type { WorkOSTriggerRuntime } from "../integrations/WorkOSIntegration"
 import logger from "../logger"
 import type { IdentifiableRunHistoryRawEvent } from "../rag/runHistoryRag/hydrator"
 
-export enum HydratorType {
-    RUN_HISTORY_RAW_EVENT = "run_history_raw_event",
-    SLACK_MESSAGE_EVENT = "slack_message_event",
-    GITHUB_EVENT = "github_event",
-    LINEAR_EVENT = "linear_event",
-    GMAIL_EVENT = "gmail_event",
-    WORKOS_EVENT = "workos_event",
-    WEBMONITOR_EVENT = "webmonitor_event"
-}
-
-const HYDRATOR_TYPE_VALUES = new Set(Object.values(HydratorType))
-
 export function isHydratorType(value: string): value is HydratorType {
-    return HYDRATOR_TYPE_VALUES.has(value as HydratorType)
+    return hydratorTypeEnum.safeParse(value).success
 }
 
 export function parseHydratorType(value: string): HydratorType | undefined {
@@ -36,13 +27,13 @@ export function requireHydratorType(value: string): HydratorType {
 }
 
 export type HydratorTypeMap = {
-    [HydratorType.RUN_HISTORY_RAW_EVENT]: IdentifiableRunHistoryRawEvent
-    [HydratorType.SLACK_MESSAGE_EVENT]: SlackTriggerRuntime
-    [HydratorType.GITHUB_EVENT]: GithubTriggerRuntime
-    [HydratorType.LINEAR_EVENT]: LinearTriggerRuntime
-    [HydratorType.GMAIL_EVENT]: GmailTriggerRuntime
-    [HydratorType.WORKOS_EVENT]: WorkOSTriggerRuntime
-    [HydratorType.WEBMONITOR_EVENT]: WebMonitorTriggerRuntime
+    ["run_history_raw_event"]: IdentifiableRunHistoryRawEvent
+    ["slack_message_event"]: SlackTriggerRuntime
+    ["github_event"]: GithubTriggerRuntime
+    ["linear_event"]: LinearTriggerRuntime
+    ["gmail_event"]: GmailTriggerRuntime
+    ["workos_event"]: WorkOSTriggerRuntime
+    ["webmonitor_event"]: WebMonitorTriggerRuntime
 }
 
 export enum RAGNamespace {
@@ -50,7 +41,7 @@ export enum RAGNamespace {
 }
 
 export type NamespaceToHydratorTypes = {
-    [RAGNamespace.RUN_HISTORY_MEMORY]: HydratorType.RUN_HISTORY_RAW_EVENT
+    [RAGNamespace.RUN_HISTORY_MEMORY]: "run_history_raw_event"
 }
 
 export type NamespaceToHydratorType = {

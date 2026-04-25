@@ -8,11 +8,10 @@ import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { StoredFile } from "../../services/FileStorageService"
 import { SecretField, getSecret } from "../../services/SecretService"
-import { HydratorType } from "../../types/rag"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
-    readonly entityType = HydratorType.GITHUB_EVENT
+    readonly entityType = "github_event"
 
     constructor(ctx: HydrationContext) {
         super(ctx)

@@ -1,4 +1,4 @@
-import { HydratorType } from "../types/rag"
+import { HydratorType } from "terse-types"
 
 // Base interface for any object that can be identified by entityType + entityId.
 export interface Identifiable {

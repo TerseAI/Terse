@@ -1,4 +1,6 @@
-import { HydratorType, HydratorTypeMap, RAGNamespace } from "../types/rag"
+import { HydratorType } from "terse-types"
+
+import { HydratorTypeMap, RAGNamespace } from "../types/rag"
 
 import { CompositeHydrator, HydrationContext, Hydrator, Identifiable } from "./Hydrator"
 import { GithubEventHydrator } from "./githubRag/hydrator"
@@ -13,13 +15,13 @@ import { WorkOSEventHydrator } from "./workosRag/hydrator"
 const HYDRATOR_FACTORIES: {
     [K in HydratorType]: (ctx: HydrationContext) => Hydrator<HydratorTypeMap[K]>
 } = {
-    [HydratorType.RUN_HISTORY_RAW_EVENT]: ctx => new RunHistoryRawEventHydrator(ctx),
-    [HydratorType.SLACK_MESSAGE_EVENT]: ctx => new SlackEventHydrator(ctx),
-    [HydratorType.GITHUB_EVENT]: ctx => new GithubEventHydrator(ctx),
-    [HydratorType.LINEAR_EVENT]: ctx => new LinearEventHydrator(ctx),
-    [HydratorType.GMAIL_EVENT]: ctx => new GmailEventHydrator(ctx),
-    [HydratorType.WORKOS_EVENT]: ctx => new WorkOSEventHydrator(ctx),
-    [HydratorType.WEBMONITOR_EVENT]: ctx => new WebMonitorEventHydrator(ctx)
+    ["run_history_raw_event"]: ctx => new RunHistoryRawEventHydrator(ctx),
+    ["slack_message_event"]: ctx => new SlackEventHydrator(ctx),
+    ["github_event"]: ctx => new GithubEventHydrator(ctx),
+    ["linear_event"]: ctx => new LinearEventHydrator(ctx),
+    ["gmail_event"]: ctx => new GmailEventHydrator(ctx),
+    ["workos_event"]: ctx => new WorkOSEventHydrator(ctx),
+    ["webmonitor_event"]: ctx => new WebMonitorEventHydrator(ctx)
 }
 
 // Create a composite hydrator for a namespace with context

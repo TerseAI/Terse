@@ -38,11 +38,8 @@ export async function handleSampleEvents(req: Request, res: Response) {
                 }
                 const serialized = evt.getSerializedEvent()
                 events.push({
-                    entityType: identifiable.entityType,
-                    entityId: identifiable.entityId,
-                    integrationType: serialized.integrationType,
-                    eventType: serialized.eventType,
-                    display: serialized.display
+                    entity: identifiable,
+                    serializedEvent: serialized
                 })
             }
         } catch (err) {

@@ -898,12 +898,18 @@ export const sdkSampleEventsRequestSchema = z.object({
 })
 export type SdkSampleEventsRequest = z.infer<typeof sdkSampleEventsRequestSchema>
 
+export const hydratorTypeEnum = z.enum(["run_history_raw_event", "slack_message_event", "github_event", "linear_event", "gmail_event", "workos_event", "webmonitor_event"])
+export type HydratorType = z.infer<typeof hydratorTypeEnum>
+
+export const identifiableSchema = z.object({
+    entityType: hydratorTypeEnum,
+    entityId: z.string()
+})
+export type Identifiable = z.infer<typeof identifiableSchema>
+
 export const sdkSampleEventRefSchema = z.object({
-    entityType: z.string(),
-    entityId: z.string(),
-    integrationType: integrationTypeEnum,
-    eventType: TriggerTypeSchema,
-    display: serializedEventDisplaySchema.optional()
+    entity: identifiableSchema,
+    serializedEvent: serializedEventSchema
 })
 export type SdkSampleEventRef = z.infer<typeof sdkSampleEventRefSchema>
 

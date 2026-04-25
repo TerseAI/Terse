@@ -50,7 +50,7 @@ export function useSampleEvents(triggers: AgentTrigger[], automationId?: string)
             if (!automationId) return
             setIsTriggering(true)
             try {
-                const hydrated = await BackendProvider.hydrateSampleEvent(eventRef.entityType, eventRef.entityId)
+                const hydrated = await BackendProvider.hydrateSampleEvent(eventRef.entity.entityType, eventRef.entity.entityId)
                 await BackendProvider.triggerWithEvent(automationId, hydrated.event)
                 toast.success("Job triggered with selected event")
                 setIsDialogOpen(false)

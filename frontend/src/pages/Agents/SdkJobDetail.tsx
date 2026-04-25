@@ -447,12 +447,14 @@ function SampleEventsDialog({
                             >
                                 <div className="flex items-center gap-2">
                                     <Badge variant="outline" className="text-xs">
-                                        {event.integrationType}
+                                        {event.serializedEvent.integrationType}
                                     </Badge>
-                                    <span className="truncate text-sm font-medium">{event.display?.title || `${event.integrationType}/${event.eventType}`}</span>
+                                    <span className="truncate text-sm font-medium">
+                                        {event.serializedEvent.display?.title || `${event.serializedEvent.integrationType}/${event.serializedEvent.eventType}`}
+                                    </span>
                                     <Zap className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" />
                                 </div>
-                                <div className="text-muted-foreground bg-muted/50 rounded-md p-2 text-xs">{event.display?.subtitle || event.eventType}</div>
+                                <div className="text-muted-foreground bg-muted/50 rounded-md p-2 text-xs">{event.serializedEvent.display?.subtitle || event.serializedEvent.eventType}</div>
                             </button>
                         ))}
                     </div>

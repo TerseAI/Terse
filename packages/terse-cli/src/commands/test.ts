@@ -220,14 +220,14 @@ export async function fetchSampleEventCandidatesForJob(job: CreateJobParameters,
         )
         candidates.push(
             ...result.events.map(event => ({
-                id: encodeRefId(event.entityType, event.entityId),
+                id: encodeRefId(event.entity.entityType, event.entity.entityId),
                 kind: "ref" as const,
-                integrationType: event.integrationType,
-                eventType: event.eventType,
-                label: normalizeSingleLine(event.display?.title || `${event.integrationType} / ${event.eventType}`),
-                subtitle: event.display?.subtitle ?? null,
-                entityType: event.entityType,
-                entityId: event.entityId
+                integrationType: event.serializedEvent.integrationType,
+                eventType: event.serializedEvent.eventType,
+                label: normalizeSingleLine(event.serializedEvent.display?.title || `${event.serializedEvent.integrationType} / ${event.serializedEvent.eventType}`),
+                subtitle: event.serializedEvent.display?.subtitle ?? null,
+                entityType: event.entity.entityType,
+                entityId: event.entity.entityId
             }))
         )
     }
