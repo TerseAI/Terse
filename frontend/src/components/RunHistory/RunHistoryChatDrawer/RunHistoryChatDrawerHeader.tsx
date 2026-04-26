@@ -90,7 +90,7 @@ export default function RunHistoryChatDrawerHeader({
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
-                <CopyCommandButton command={`terse replay ${runId}`} title="Click to copy CLI replay command" />
+                <CopyCommandButton command={`terse replay ${runId}`} title="Copy. Then run in your project's terminal" />
 
                 {hasTriggerPayload && onToggleTriggerPayload && (
                     <Button

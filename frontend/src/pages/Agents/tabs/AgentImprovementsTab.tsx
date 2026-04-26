@@ -177,6 +177,7 @@ export default function AgentImprovementsTab({ agentId, source, builderChatRef, 
             {improvementsEnabled && review && pendingImprovements.length > 0 && (
                 <>
                     <p className="text-sm text-muted-foreground">{review.summary}</p>
+                    {isSdk && <p className="text-xs text-muted-foreground">Run these commands from your project directory using the Terse CLI.</p>}
 
                     <Separator />
 
@@ -244,9 +245,7 @@ function ImprovementRow({
                     <span className="font-medium text-sm truncate">{improvement.title}</span>
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {isSdk && improvement.suggestedPatch && (
-                        <CopyCommandButton command={`terse apply ${improvement.id}`} title="Click to copy CLI apply command" disabled={disabled} />
-                    )}
+                    {isSdk && improvement.suggestedPatch && <CopyCommandButton command={`terse apply ${improvement.id}`} title="Copy. Then run in your project's terminal" disabled={disabled} />}
                     {!isSdk && (
                         <Button size="sm" onClick={onApply} disabled={disabled}>
                             {isApplying ? "Applying..." : "Apply"}
@@ -276,4 +275,3 @@ function ImprovementRow({
         </div>
     )
 }
-
