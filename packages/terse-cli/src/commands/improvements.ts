@@ -8,6 +8,8 @@ import { ApiRoutes, buildRoute } from "terse-types"
 import type { Agent, AgentImprovement, AgentsResponse, GetAgentImprovementsResponse } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
+import { CliError } from "../cliError.js"
+import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 
 type AgentWithImprovements = {
@@ -15,7 +17,15 @@ type AgentWithImprovements = {
     improvements: AgentImprovement[]
 }
 
-export async function applyImprovement(improvementId?: string): Promise<void> {
+export async function applyImprovement(improvementId?: string, opts?: NonInteractiveOpts): Promise<void> {
+    const nonInteractive = isNonInteractive(opts)
+
+    if (!improvementId && nonInteractive) {
+        throw new CliError("apply_requires_interactive", "`terse apply` needs an improvement id in non-interactive mode.", {
+            detail: "Pass the id as an argument: `terse apply <improvement-id>`. Run `terse list improvements` to find pending ids."
+        })
+    }
+
     intro("terse apply")
 
     const apiKey = readApiKeyOrBail()
@@ -28,12 +38,16 @@ export async function applyImprovement(improvementId?: string): Promise<void> {
     const target = improvementId ? findImprovementById(agentsWithImprovements, improvementId) : await promptForImprovement(agentsWithImprovements)
 
     if (!target) {
-        log.error(improvementId ? `No pending improvement found with id ${chalk.cyan(improvementId)}` : "No improvement selected")
-        process.exit(1)
+        if (improvementId) {
+            throw new CliError("improvement_not_found", `No pending improvement found with id ${improvementId}.`, {
+                detail: "Run `terse list improvements` to see available pending improvements."
+            })
+        }
+        throw new CliError("no_improvement_selected", "No improvement selected.")
     }
 
     const { agent, improvement } = target
-    await applyPatchLocallyAndMarkApplied(apiKey, agent, improvement)
+    await applyPatchLocallyAndMarkApplied(apiKey, agent, improvement, nonInteractive)
 
     outro("Done")
 }
@@ -146,10 +160,9 @@ async function fetchAgentsWithImprovements(apiKey: string): Promise<AgentWithImp
     return results.sort((a, b) => pendingOnly(b.improvements).length - pendingOnly(a.improvements).length || a.agent.name.localeCompare(b.agent.name))
 }
 
-async function applyPatchLocallyAndMarkApplied(apiKey: string, agent: Agent, improvement: AgentImprovement): Promise<void> {
+async function applyPatchLocallyAndMarkApplied(apiKey: string, agent: Agent, improvement: AgentImprovement, nonInteractive: boolean): Promise<void> {
     if (!improvement.suggestedPatch) {
-        log.error("This improvement has no downloadable patch.")
-        process.exit(1)
+        throw new CliError("improvement_no_patch", "This improvement has no downloadable patch.")
     }
 
     log.info(`Applying ${chalk.bold(improvement.title)} for ${chalk.cyan(agent.name)}`)
@@ -165,9 +178,14 @@ async function applyPatchLocallyAndMarkApplied(apiKey: string, agent: Agent, imp
             log.success(`Patch applied with 3-way merge from ${chalk.dim(patchPath)}`)
             console.log(chalk.dim("  Review your working tree for conflict markers."))
         } else {
-            log.error("Patch could not be applied cleanly.")
-            if (direct.stderr) console.log(chalk.dim(indentBlock(direct.stderr, "    ")))
             log.warn("Your working copy has likely drifted from the snapshot this patch was generated against.")
+            if (direct.stderr) console.log(chalk.dim(indentBlock(direct.stderr, "    ")))
+
+            if (nonInteractive) {
+                throw new CliError("patch_apply_failed", "Patch could not be applied cleanly.", {
+                    detail: `Patch saved at ${patchPath}. Re-run interactively to opt into a partial --reject apply.`
+                })
+            }
 
             const tryPartial = abortIfCancelled(
                 await confirm({
@@ -177,8 +195,9 @@ async function applyPatchLocallyAndMarkApplied(apiKey: string, agent: Agent, imp
             )
 
             if (!tryPartial) {
-                console.log(chalk.dim(`  Patch saved at ${patchPath}.`))
-                process.exit(1)
+                throw new CliError("patch_apply_failed", "Patch could not be applied cleanly.", {
+                    detail: `Patch saved at ${patchPath}.`
+                })
             }
 
             const rejected = runGitApply(["apply", "--reject", "--ignore-whitespace", "-C1", patchPath])

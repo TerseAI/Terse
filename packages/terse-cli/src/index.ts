@@ -264,8 +264,18 @@ program
     .command("apply")
     .description("Apply a suggested improvement patch locally (runs `git apply`)")
     .argument("[improvement-id]", "ID of the improvement to apply (prompts if omitted)")
-    .action(async (improvementId?: string) => {
-        await applyImprovement(improvementId)
+    .option(...NON_INTERACTIVE_OPTION)
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse apply                                   # interactive picker
+  $ terse apply <improvement-id>                  # apply a specific improvement
+  $ terse apply <improvement-id> --non-interactive  # fail fast on prompts (CI/agents)
+`
+    )
+    .action(async (improvementId?: string, opts?: NonInteractiveOpts) => {
+        await applyImprovement(improvementId, opts)
     })
 program
     .command("list")
