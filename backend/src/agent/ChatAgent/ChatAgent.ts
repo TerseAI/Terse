@@ -85,14 +85,6 @@ class ChatAgent {
         })
 
         for await (const event of result as AsyncIterable<RunStreamEvent>) {
-            try {
-                await memorySession.ingestStreamEvent(event)
-            } catch (error) {
-                logger.warn("Failed to ingest chat stream event into memory session", {
-                    sessionId: this.sessionId,
-                    error
-                })
-            }
             this.chatInterface.processStreamEvent(this.sessionId, event)
         }
 

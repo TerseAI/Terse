@@ -13,8 +13,7 @@ import {
     type ToolApprovalRequest,
     ToolApprovalResponse,
     type ToolCall,
-    type ToolCallComplete,
-    type ToolCallGenerating
+    type ToolCallComplete
 } from "terse-types"
 
 export type ChatEventPayload = {
@@ -27,7 +26,6 @@ export type UseCompletionSocketOptions = {
     subscribeToEvents?: ChatEventSubscription | null
     sendMessage: (message: ModelRequest) => void
     onDelta: (delta: TextDelta) => void
-    onToolCallGenerating: (toolCallGenerating: ToolCallGenerating) => void
     onToolCall: (toolCall: ToolCall) => void
     onToolCallComplete: (toolCallComplete: ToolCallComplete) => void
     onNaturalStop: () => void
@@ -46,7 +44,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         subscribeToEvents,
         sendMessage,
         onDelta,
-        onToolCallGenerating,
         onToolCall,
         onToolCallComplete,
         onNaturalStop,
@@ -61,7 +58,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     } = options
 
     const onDeltaRef = useRef(onDelta)
-    const onToolCallGeneratingRef = useRef(onToolCallGenerating)
     const onToolCallRef = useRef(onToolCall)
     const onToolCallCompleteRef = useRef(onToolCallComplete)
     const onNaturalStopRef = useRef(onNaturalStop)
@@ -79,7 +75,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     // Keep refs updated with latest versions
     useEffect(() => {
         onDeltaRef.current = onDelta
-        onToolCallGeneratingRef.current = onToolCallGenerating
         onToolCallRef.current = onToolCall
         onToolCallCompleteRef.current = onToolCallComplete
         onNaturalStopRef.current = onNaturalStop
@@ -91,21 +86,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onProcessOutputRef.current = onProcessOutput
         onRunErrorRef.current = onRunError
         onCancelledRef.current = onCancelled
-    }, [
-        onDelta,
-        onToolCallGenerating,
-        onToolCall,
-        onToolCallComplete,
-        onNaturalStop,
-        onFilterResult,
-        onThinking,
-        onToolApprovalRequest,
-        onToolApprovalResponse,
-        onSnippet,
-        onProcessOutput,
-        onRunError,
-        onCancelled
-    ])
+    }, [onDelta, onToolCall, onToolCallComplete, onNaturalStop, onFilterResult, onThinking, onToolApprovalRequest, onToolApprovalResponse, onSnippet, onProcessOutput, onRunError, onCancelled])
 
     // Subscribe to events
     useEffect(() => {
@@ -117,9 +98,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
             switch (message.type) {
                 case "TextDelta":
                     onDeltaRef.current(message)
-                    break
-                case "ToolCallGenerating":
-                    onToolCallGeneratingRef.current(message)
                     break
                 case "ToolCall":
                     onToolCallRef.current(message)

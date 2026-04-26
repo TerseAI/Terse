@@ -61,7 +61,6 @@ export class SdkJobExecutionService {
         const label = SANDBOX_STAGE_LABELS[stage]
 
         if (status === "started") {
-            this.emitter.emit({ type: "ToolCallGenerating", tool_name: label, step_id: stepId, timestamp: now }, now)
             this.emitter.emit({ type: "ToolCall", summary: label, step_id: stepId, parameters: "", integration: "sandbox", timestamp: now }, now)
             return
         }

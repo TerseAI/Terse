@@ -18,7 +18,6 @@ from ._generated import (
     ToolApprovalResponse,
     ToolCall,
     ToolCallComplete,
-    ToolCallGenerating,
     UserMessage,
 )
 
@@ -37,7 +36,6 @@ __all__ = [
     "ToolApprovalResponse",
     "ToolCall",
     "ToolCallComplete",
-    "ToolCallGenerating",
     "UserMessage",
     "RunError",
     "SharedErrorContext",

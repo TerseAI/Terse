@@ -20,10 +20,6 @@ interface ChatMemorySessionOptions extends BaseMemorySessionOptions {
     sessionId: string // chat_session_id from chat_sessions table
 }
 
-type CompletedAssistantTextMap = Map<string, Map<number, string>>
-type PendingFunctionCallsMap = Map<string, AgentInputItem>
-type CompletedFunctionCallIdsSet = Set<string>
-
 type StoredRawEvent = {
     id: string
     rawEvent: AgentInputItem
@@ -237,9 +233,6 @@ class BaseChatMemorySession implements Session {
     private readonly skipSave: boolean
     private readonly filterIncompleteToolCalls: boolean
     private readonly storage: RawEventStorageStrategy
-    private readonly completedAssistantTextByItemId: CompletedAssistantTextMap = new Map()
-    private readonly pendingFunctionCallsByCallId: PendingFunctionCallsMap = new Map()
-    private readonly completedFunctionCallIds: CompletedFunctionCallIdsSet = new Set()
 
     constructor(options: BaseMemorySessionOptions, storage: RawEventStorageStrategy) {
         this.sessionId = options.sessionId
@@ -278,16 +271,6 @@ class BaseChatMemorySession implements Session {
     async upsertItemByEventKey(item: AgentInputItem, eventKey: string): Promise<void> {
         if (this.skipSave) return
         await this.storage.upsertByEventKey(this.sessionId, eventKey, item, await this.getNextSequenceOrder())
-    }
-
-    async ingestStreamEvent(event: RunStreamEvent): Promise<void> {
-        if (this.skipSave) return
-        await ingestStreamEventToSession(event, {
-            completedAssistantTextByItemId: this.completedAssistantTextByItemId,
-            pendingFunctionCallsByCallId: this.pendingFunctionCallsByCallId,
-            completedFunctionCallIds: this.completedFunctionCallIds,
-            upsertItemByEventKey: (item, eventKey) => this.upsertItemByEventKey(item, eventKey)
-        })
     }
 
     async popItem(): Promise<AgentInputItem | undefined> {
@@ -332,132 +315,6 @@ export class ChatMemorySession extends BaseChatMemorySession {
     constructor(options: ChatMemorySessionOptions) {
         super(options, chatStorageStrategy)
     }
-}
-
-type IngestStreamEventOptions = {
-    completedAssistantTextByItemId: CompletedAssistantTextMap
-    pendingFunctionCallsByCallId: PendingFunctionCallsMap
-    completedFunctionCallIds: CompletedFunctionCallIdsSet
-    upsertItemByEventKey: (item: AgentInputItem, eventKey: string) => Promise<void>
-}
-
-async function ingestStreamEventToSession(event: RunStreamEvent, options: IngestStreamEventOptions): Promise<void> {
-    if (event.type === "run_item_stream_event") {
-        await persistRunItemStreamEvent(event, options)
-        return
-    }
-
-    const completedTextSegment = tryExtractCompletedTextSegment(event)
-    if (!completedTextSegment) return
-
-    const { itemId, contentIndex, text } = completedTextSegment
-    await persistCompletedAssistantTextSegment(itemId, contentIndex, text, options)
-}
-
-async function persistRunItemStreamEvent(event: RunStreamEvent & { type: "run_item_stream_event" }, options: IngestStreamEventOptions): Promise<void> {
-    const rawItem = (event as any)?.item?.rawItem
-    if (!isAgentInputItemRecord(rawItem)) {
-        return
-    }
-
-    // Keep aligned with SDK persistence semantics: approval placeholders are not persisted as raw output items.
-    if ((event as any).item?.type === "tool_approval_item") {
-        return
-    }
-
-    const clonedRawItem = cloneAgentItem(rawItem as AgentInputItem)
-
-    const clonedAny = clonedRawItem as any
-    const itemType = typeof clonedAny?.type === "string" ? clonedAny.type : ""
-    const callId = typeof clonedAny?.callId === "string" ? clonedAny.callId.trim() : ""
-
-    // Do not persist function_call stream items until a matching function_call_result arrives.
-    if (itemType === "function_call" && callId) {
-        if (options.completedFunctionCallIds.has(callId)) {
-            // If result has already been observed (out-of-order stream), persist immediately.
-            const completedCallEventKey = buildAgentInputItemEventKey(clonedRawItem)
-            await options.upsertItemByEventKey(clonedRawItem, completedCallEventKey)
-            return
-        }
-
-        options.pendingFunctionCallsByCallId.set(callId, clonedRawItem)
-        return
-    }
-
-    if (itemType === "function_call_result" && callId) {
-        options.completedFunctionCallIds.add(callId)
-
-        const pendingFunctionCall = options.pendingFunctionCallsByCallId.get(callId)
-        if (pendingFunctionCall) {
-            const pendingCallEventKey = buildAgentInputItemEventKey(pendingFunctionCall)
-            await options.upsertItemByEventKey(pendingFunctionCall, pendingCallEventKey)
-            options.pendingFunctionCallsByCallId.delete(callId)
-        }
-
-        const functionResultEventKey = buildAgentInputItemEventKey(clonedRawItem)
-        await options.upsertItemByEventKey(clonedRawItem, functionResultEventKey)
-        return
-    }
-
-    const eventKey = buildAgentInputItemEventKey(clonedRawItem)
-    await options.upsertItemByEventKey(clonedRawItem, eventKey)
-
-    if (clonedRawItem.type === "message" && clonedRawItem.role === "assistant" && typeof (clonedRawItem as any).id === "string") {
-        options.completedAssistantTextByItemId.delete((clonedRawItem as any).id)
-    }
-}
-
-type CompletedTextSegment = {
-    itemId: string
-    contentIndex: number
-    text: string
-}
-
-function tryExtractCompletedTextSegment(event: RunStreamEvent): CompletedTextSegment | null {
-    if (event.type !== "raw_model_stream_event" || (event as any).data?.type !== "model" || (event as any).data?.event?.type !== "response.output_text.done") {
-        return null
-    }
-
-    const eventData = (event as any).data.event
-    const itemId = typeof eventData?.item_id === "string" ? eventData.item_id.trim() : ""
-    const text = typeof eventData?.text === "string" ? eventData.text : ""
-    const contentIndexValue = Number.isInteger(eventData?.content_index) ? Number(eventData.content_index) : 0
-
-    if (!itemId || !text) return null
-
-    return {
-        itemId,
-        contentIndex: Math.max(0, contentIndexValue),
-        text
-    }
-}
-
-async function persistCompletedAssistantTextSegment(itemId: string, contentIndex: number, text: string, options: IngestStreamEventOptions): Promise<void> {
-    const existingParts = options.completedAssistantTextByItemId.get(itemId) ?? new Map<number, string>()
-    existingParts.set(contentIndex, text)
-    options.completedAssistantTextByItemId.set(itemId, existingParts)
-
-    const content = Array.from(existingParts.entries())
-        .sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)
-        .map(([, segmentText]) => ({
-            type: "output_text" as const,
-            text: segmentText
-        }))
-
-    const snapshotItem: AgentInputItem = {
-        type: "message",
-        id: itemId,
-        role: "assistant",
-        status: "in_progress",
-        content
-    } as AgentInputItem
-
-    const eventKey = buildAgentInputItemEventKey(snapshotItem)
-    await options.upsertItemByEventKey(snapshotItem, eventKey)
-}
-
-function isAgentInputItemRecord(value: unknown): value is AgentInputItem {
-    return typeof value === "object" && value !== null
 }
 
 export function buildAgentInputItemEventKey(item: AgentInputItem): string {

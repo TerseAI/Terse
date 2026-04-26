@@ -88,7 +88,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     if (parameters) {
         try {
             parsedParams = JSON.parse(parameters)
-        } catch (e) {
+        } catch (error) {
             // If parsing fails, treat as plain text
             parsedParams = parameters
         }

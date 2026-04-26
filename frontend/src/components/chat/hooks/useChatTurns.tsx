@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 import {
     type Cancelled,
@@ -12,8 +12,7 @@ import {
     type ToolApprovalRequest,
     type ToolApprovalResponse,
     type ToolCall,
-    type ToolCallComplete,
-    type ToolCallGenerating
+    type ToolCallComplete
 } from "terse-types"
 import { v4 as uuidv4 } from "uuid"
 
@@ -27,60 +26,10 @@ interface UseChatTurnsOptions {
 export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const [turns, setTurns] = useState<Turn[]>(initialTurns || [])
 
-    useEffect(() => {
-        if (!initialTurns) {
-            return
-        }
-        if (initialTurns && initialTurns.length > 0) {
-            setTurns(prev => {
-                if (prev.length === 0) {
-                    return initialTurns
-                }
-
-                // Server turns override local turns with the same step_id.
-                // Local turns that have no server counterpart are preserved.
-                // Also dedupe local tool-call placeholders when the same call ID
-                // is already present in server turns (stream + reload race).
-                const serverStepIds = new Set(initialTurns.map(t => t.step_id))
-                const serverFunctionCallIds = new Set(initialTurns.flatMap(t => t.function_calls.map(fc => fc.id)))
-
-                const localOnlyTurns = prev
-                    .filter(t => !serverStepIds.has(t.step_id))
-                    .map(turn => {
-                        if (turn.function_calls.length === 0) {
-                            return turn
-                        }
-
-                        const nextFunctionCalls = turn.function_calls.filter(fc => !serverFunctionCallIds.has(fc.id))
-                        if (nextFunctionCalls.length === turn.function_calls.length) {
-                            return turn
-                        }
-
-                        return {
-                            ...turn,
-                            function_calls: nextFunctionCalls
-                        }
-                    })
-                    .filter(turn => {
-                        if (turn.role === "user") {
-                            return true
-                        }
-                        const hasText = turn.text.trim().length > 0
-                        const hasFunctionCalls = turn.function_calls.length > 0
-                        const hasSnippets = (turn.snippets?.length ?? 0) > 0
-                        const hasProcessOutputs = (turn.process_outputs?.length ?? 0) > 0
-                        return hasText || hasFunctionCalls || hasSnippets || hasProcessOutputs
-                    })
-
-                return [...initialTurns, ...localOnlyTurns]
-            })
-        }
-    }, [initialTurns])
-
-    const handleDelta = ({ delta, step_id, timestamp }: TextDelta) => {
+    const handleDelta = ({ delta, response_id, timestamp }: TextDelta) => {
         setTurns(prev => {
             const next = prev.slice()
-            const i = next.findIndex(t => t.step_id === step_id)
+            const i = next.findIndex(t => t.id === response_id)
 
             if (i !== -1) {
                 const t = next[i]
@@ -94,7 +43,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             }
             return next.concat({
                 role: "assistant",
-                step_id,
+                id: response_id,
                 timestamp,
                 text: delta,
                 function_calls: [],
@@ -103,58 +52,13 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolCallGenerating = ({ tool_name, step_id, timestamp }: ToolCallGenerating) => {
+    const handleToolCall = ({ summary, id, parameters, timestamp }: ToolCall) => {
         setTurns(prev => {
             const next = prev.slice()
-            const i = next.findIndex(t => t.step_id === step_id)
+            const i = next.findIndex(t => t.id === id)
             if (i !== -1) {
                 const t = next[i]
-                const existingCallIndex = t.function_calls.findIndex(call => call.id === step_id)
-                const newCall = {
-                    id: step_id,
-                    name: tool_name,
-                    timestamp: timestamp,
-                    isGeneratingParams: true,
-                    isRunning: false,
-                    isWaitingForApproval: false,
-                    isWaitingForUserInput: false
-                }
-                if (existingCallIndex === -1) {
-                    t.function_calls.push(newCall)
-                } else {
-                    t.function_calls[existingCallIndex] = newCall
-                }
-                return next
-            } else {
-                return next.concat({
-                    role: "assistant",
-                    text: "",
-                    timestamp: timestamp,
-                    function_calls: [
-                        {
-                            id: step_id,
-                            name: tool_name,
-                            timestamp: timestamp,
-                            isGeneratingParams: true,
-                            isRunning: false,
-                            isWaitingForApproval: false,
-                            isWaitingForUserInput: false
-                        }
-                    ],
-                    isGenerating: true,
-                    step_id
-                })
-            }
-        })
-    }
-
-    const handleToolCall = ({ summary, step_id, parameters, timestamp }: ToolCall) => {
-        setTurns(prev => {
-            const next = prev.slice()
-            const i = next.findIndex(t => t.step_id === step_id)
-            if (i !== -1) {
-                const t = next[i]
-                const existingCallIndex = t.function_calls.findIndex(call => call.id === step_id)
+                const existingCallIndex = t.function_calls.findIndex(call => call.id === id)
                 if (existingCallIndex !== -1) {
                     t.function_calls[existingCallIndex] = {
                         ...t.function_calls[existingCallIndex],
@@ -164,7 +68,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     }
                 } else {
                     t.function_calls.push({
-                        id: step_id,
+                        id,
                         name: summary,
                         timestamp,
                         isGeneratingParams: false,
@@ -185,7 +89,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                         timestamp,
                         function_calls: [
                             {
-                                id: step_id,
+                                id,
                                 name: summary,
                                 timestamp,
                                 isGeneratingParams: false,
@@ -196,19 +100,19 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                             }
                         ],
                         isGenerating: true,
-                        step_id
+                        id
                     }
                 ]
             }
         })
     }
 
-    const handleToolApprovalRequest = ({ step_id }: ToolApprovalRequest) => {
+    const handleToolApprovalRequest = ({ id }: ToolApprovalRequest) => {
         setTurns(prev => {
             const updated = [...prev]
             // Find the tool call that needs approval
             for (const turn of updated) {
-                const toolCall = turn.function_calls.find(call => call.id === step_id)
+                const toolCall = turn.function_calls.find(call => call.id === id)
                 if (toolCall) {
                     toolCall.isRunning = false
                     toolCall.isWaitingForApproval = true
@@ -219,13 +123,13 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleToolApprovalResponse = ({ step_id, approved }: ToolApprovalResponse) => {
+    const handleToolApprovalResponse = ({ id, approved }: ToolApprovalResponse) => {
         if (approved) {
             // Mark as running again and approved
             setTurns(prev => {
                 const updated = [...prev]
                 for (const turn of updated) {
-                    const toolCall = turn.function_calls.find(call => call.id === step_id)
+                    const toolCall = turn.function_calls.find(call => call.id === id)
                     if (toolCall) {
                         toolCall.isRunning = true
                         toolCall.isWaitingForApproval = false
@@ -240,7 +144,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             setTurns(prev => {
                 const updated = [...prev]
                 for (const turn of updated) {
-                    const toolCall = turn.function_calls.find(call => call.id === step_id)
+                    const toolCall = turn.function_calls.find(call => call.id === id)
                     if (toolCall) {
                         toolCall.isRunning = false
                         toolCall.isWaitingForApproval = false
@@ -253,7 +157,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         }
     }
 
-    const handleToolCallComplete = ({ step_id, result, changed_items, errorContext }: ToolCallComplete & Pick<ModelEvent, "timestamp">) => {
+    const handleToolCallComplete = ({ id, result, changed_items, errorContext }: ToolCallComplete & Pick<ModelEvent, "timestamp">) => {
         setTurns(prev => {
             const updated = [...prev]
             let foundExistingCall = false
@@ -261,7 +165,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             // Search through all turns to find the tool call
             for (let i = 0; i < updated.length; i++) {
                 const turn = updated[i]
-                const toolCallIndex = turn.function_calls.findIndex(call => call.id === step_id)
+                const toolCallIndex = turn.function_calls.findIndex(call => call.id === id)
                 if (toolCallIndex === -1) continue
 
                 const existingCall = turn.function_calls[toolCallIndex]
@@ -289,7 +193,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleRunError = ({ error, code, timestamp }: RunError) => {
+    const handleRunError = ({ id, error, code, timestamp }: RunError) => {
         setTurns(prev => {
             const updated = [...prev]
             const last = updated[updated.length - 1]
@@ -303,7 +207,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     text: error,
                     timestamp: timestamp,
                     function_calls: [],
-                    step_id: "run-error",
+                    id: id,
                     isFailure: true,
                     ...(code && { errorCode: code })
                 }
@@ -330,7 +234,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 text: cancellation.reason || "",
                 timestamp: cancellation.timestamp,
                 function_calls: [],
-                step_id: "run-error",
+                id: cancellation.id,
                 isCancelled: true,
                 isGenerating: false,
                 isFailure: false,
@@ -339,7 +243,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         })
     }
 
-    const handleFilterResult = ({ isRelevant, reason, confidence, timestamp }: FilterResult) => {
+    const handleFilterResult = ({ id, isRelevant, reason, confidence, timestamp }: FilterResult) => {
         setTurns(prev => {
             const next = prev.slice()
             if (next.length > 0) {
@@ -354,7 +258,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     text: "",
                     timestamp: timestamp,
                     function_calls: [],
-                    step_id: "filter",
+                    id,
                     isGenerating: isRelevant ? true : false,
                     filter_result: {
                         isRelevant,
@@ -367,10 +271,10 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     }
 
     const handleThinking = (thinking: Thinking) => {
-        const { step_id: stepId, timestamp } = thinking
+        const { id, timestamp } = thinking
         setTurns(prev => {
             const next = prev.slice()
-            const t = next.findIndex(t => t.step_id === stepId)
+            const t = next.findIndex(t => t.id === id)
             if (t !== -1) {
                 next[t].isThinking = true
                 next[t].isGenerating = true
@@ -384,7 +288,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     text: "",
                     timestamp: timestamp,
                     function_calls: [],
-                    step_id: stepId,
+                    id,
                     isThinking: true,
                     isGenerating: true
                 }
@@ -398,7 +302,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             text: message,
             timestamp: Date.now(),
             function_calls: [],
-            step_id: clientTurnId,
+            id: clientTurnId,
             isGenerating: true
         }
         setTurns(prev => {
@@ -414,15 +318,14 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const handleSnippet = (snippetPayload: ChatSnippet, snippetTimestamp?: number) => {
         const normalized: ChatSnippet = {
             ...snippetPayload,
-            id: snippetPayload.id ?? uuidv4(),
-            ...(snippetPayload.step_id ? { step_id: snippetPayload.step_id } : {})
+            id: snippetPayload.id ?? uuidv4()
         }
 
         setTurns(prev => {
             const next = prev.slice()
 
             // Try to find the turn this snippet belongs to via step_id.
-            let targetIndex = normalized.step_id ? next.findIndex(t => t.step_id === normalized.step_id) : -1
+            let targetIndex = normalized.id ? next.findIndex(t => t.id === normalized.id) : -1
 
             // Fallback: attach to the last assistant turn.
             if (targetIndex === -1) {
@@ -437,7 +340,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
             if (targetIndex !== -1) {
                 const turn = next[targetIndex]
                 const existingSnippets = turn.snippets ?? []
-                const snippetForTurn = normalized.step_id ? normalized : { ...normalized, step_id: turn.step_id }
+                const snippetForTurn = normalized.id ? normalized : { ...normalized, id: turn.id }
                 next[targetIndex] = {
                     ...turn,
                     snippets: [...existingSnippets, snippetForTurn]
@@ -454,7 +357,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     text: "",
                     timestamp: snippetTimestamp ?? Date.now(),
                     function_calls: [],
-                    step_id: normalized.step_id || `snippet-${normalized.id}`,
+                    id: normalized.id || `snippet-${normalized.id}`,
                     snippets: [normalized]
                 }
             ]
@@ -478,7 +381,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     }
                 } else {
                     processOutputs.push({
-                        id: id ?? `process-output-${timestamp}-${processOutputs.length}`,
+                        id,
                         stream,
                         content,
                         label,
@@ -494,8 +397,6 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                 }
                 return next
             }
-
-            const stepId = id ?? `process-output-${timestamp}`
             return [
                 ...next,
                 {
@@ -503,10 +404,10 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     text: "",
                     timestamp,
                     function_calls: [],
-                    step_id: stepId,
+                    id,
                     process_outputs: [
                         {
-                            id: stepId,
+                            id,
                             stream,
                             content,
                             label,
@@ -546,7 +447,6 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         turns: sortedTurns,
         isPendingAssistantResponse,
         handleDelta,
-        handleToolCallGenerating,
         handleToolCall,
         handleToolApprovalRequest,
         handleToolApprovalResponse,

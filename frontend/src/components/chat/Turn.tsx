@@ -18,7 +18,7 @@ interface Turn {
     text: string
     timestamp: number
     function_calls: FunctionCallEvent[]
-    step_id: string
+    id: string
     isFailure?: boolean
     isGenerating?: boolean
     isThinking?: boolean

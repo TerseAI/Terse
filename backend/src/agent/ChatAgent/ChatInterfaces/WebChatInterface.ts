@@ -10,15 +10,7 @@ import type { MultipleChoiceQuestion } from "terse-types"
 import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry"
 import logger from "../../../logger"
 import { createOAuthStateToken } from "../../../utility/oauth"
-import {
-    createNaturalStopEvent,
-    createToolCallCompleteEvent,
-    tryExtractTextDelta,
-    tryExtractThinking,
-    tryExtractToolCall,
-    tryExtractToolCallCompleteData,
-    tryExtractToolCallGenerating
-} from "../../streaming"
+import { createNaturalStopEvent, createToolCallCompleteEvent } from "../../streaming"
 
 import ChatInterface from "./ChatInterface"
 
@@ -138,13 +130,6 @@ class WebChatInterface extends ChatInterface {
         const textDelta = tryExtractTextDelta(event)
         if (textDelta) {
             this.emitEvent(textDelta)
-            return
-        }
-
-        // Check for tool call generating (before arguments are complete)
-        const toolCallGenerating = tryExtractToolCallGenerating(event)
-        if (toolCallGenerating) {
-            this.emitEvent(toolCallGenerating)
             return
         }
 

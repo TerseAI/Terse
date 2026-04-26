@@ -75,7 +75,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: settings.signal
         })
 
-        await this.processStream(result, settings.memorySession)
+        await this.processStream(result)
         return this.buildResult(result)
     }
 
@@ -123,18 +123,13 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: params.settings.signal
         })
 
-        await this.processStream(result, params.settings.memorySession)
+        await this.processStream(result)
         return this.buildResult(result)
     }
 
-    private async processStream(result: StreamedRunResult<TSession, TAgent>, memorySession: AgentMemorySession): Promise<void> {
-        const streamIngestionSession = asStreamEventIngestionSession(memorySession)
+    private async processStream(result: StreamedRunResult<TSession, TAgent>): Promise<void> {
         const eventStream = transformAgentStreamToModelEvents(result, {
-            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
-            onRawStreamEvent: async streamEvent => {
-                if (!streamIngestionSession) return
-                await streamIngestionSession.ingestStreamEvent(streamEvent)
-            }
+            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions)
         })
 
         for await (const event of this.trackEventStream(eventStream)) {
@@ -158,9 +153,9 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
                     continue
                 }
                 const approvalRequest: ModelEvent = {
+                    id: stepId,
                     type: "ToolApprovalRequest",
                     timestamp: Date.now(),
-                    step_id: stepId,
                     name: interruption.name ?? "unknown_tool",
                     arguments: interruption.arguments ?? "{}"
                 }

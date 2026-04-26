@@ -164,9 +164,9 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
             }
             case "TextDelta": {
                 const e = event as TextDelta
-                const text = (stepBuffers.get(e.step_id) ?? "") + e.delta
-                stepBuffers.set(e.step_id, text)
-                const turn = getOrCreateTurn("assistant", e.step_id, e.timestamp)
+                const text = (stepBuffers.get(e.response_id) ?? "") + e.delta
+                stepBuffers.set(e.response_id, text)
+                const turn = getOrCreateTurn("assistant", e.response_id, e.timestamp)
                 turn.text = text
                 turn.isThinking = false
                 turn.isGenerating = true
@@ -175,9 +175,6 @@ export function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
             }
             case "ToolCall": {
                 const e = event as ToolCall
-                // Always use getOrCreateTurn so the ToolCall goes to its own step_id-keyed turn.
-                // This matches the streaming path where handleToolCallGenerating always creates a
-                // new turn per call_id, keeping ProcessOutput and ToolCall turns separate.
                 const turn = getOrCreateTurn("assistant", e.step_id, e.timestamp)
                 turn.disableAnimation = true
                 const existing = turn.function_calls.find(c => c.id === e.step_id)
