@@ -1,5 +1,6 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
+import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
 import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
@@ -259,7 +260,7 @@ type AgentInitializationParams<TSession extends AppSession> = {
     name: string
     systemPromptDeps: SystemPromptBuilderDependencies<TSession, ConfigData>
     runContext: RunContext
-    model: string
+    model: AiSdkModel
     tools: Tool<TSession>[]
     modelSettings?: ModelSettings
 }
