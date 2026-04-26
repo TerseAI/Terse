@@ -156,7 +156,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             this.send({
                 type: "tool_approval_requested",
                 toolApprovalRequested: {
-                    stepId: event.step_id,
+                    stepId: event.id,
                     toolName: event.name,
                     arguments: event.arguments
                 }

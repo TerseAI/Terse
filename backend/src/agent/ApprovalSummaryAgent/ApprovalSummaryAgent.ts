@@ -43,7 +43,7 @@ export async function generateApprovalSummary(runId: string, user: User, agentId
 
     let toolCallEvent: ToolCall | null = null
     for (const modelEvent of modelEvents) {
-        if (modelEvent.type === "ToolCall" && modelEvent.step_id === stepId) {
+        if (modelEvent.type === "ToolCall" && modelEvent.id === stepId) {
             toolCallEvent = modelEvent
             break
         }

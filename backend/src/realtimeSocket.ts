@@ -26,7 +26,6 @@ import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
 import { CancelAckResponse, USER_CANCELLED_REASON } from "./socketHandlers/activeExecution"
-import { registerBuilderChatHandler } from "./socketHandlers/builderChatHandler"
 import { AgentWithRelations } from "./types/prisma"
 import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
 import { randomString } from "./utility/strings"
@@ -426,7 +425,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
             const result = await ApprovalService.processApproval({
                 runId,
-                stepId: message.step_id,
+                stepId: message.id,
                 approved: message.approved,
                 rejectionReason: message.rejection_reason,
                 userId,
@@ -439,13 +438,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 logger.info(`[agent:chat:approval] Successfully processed approval for runId: ${runId}`)
             }
         })
-
-        // Listen for builder chat messages (in-app agent builder, organization-scoped)
-        try {
-            await registerBuilderChatHandler(socket, userId, organizationId ?? "")
-        } catch (err) {
-            logger.error("[builder:chat] Failed to register builder chat handler", { err, userId, organizationId })
-        }
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
         if (pub) {

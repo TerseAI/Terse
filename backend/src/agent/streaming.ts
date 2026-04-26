@@ -84,6 +84,7 @@ async function* yieldToolCallCompletionStream(
     }
     const toolCompleteData: ToolCallCompleteData = {
         id,
+        response_id: canonicalEvent.responseId,
         name: toolName ?? "unknown",
         callId: id,
         status: parsed.status,
@@ -98,7 +99,7 @@ async function* yieldToolCallCompletionStream(
         for (const snippet of toolCompleteData.snippets) {
             yield {
                 id: randomString(15),
-                response_id: id,
+                response_id: canonicalEvent.responseId,
                 type: "Snippet",
                 timestamp: Date.now(),
                 snippet
@@ -112,6 +113,7 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
 
     const event: ModelEvent = {
         id: data.id,
+        response_id: data.response_id,
         type: "ToolCallComplete",
         timestamp: Date.now(),
         tool_name: data.name,
@@ -127,19 +129,18 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
 }
 
 export function createNaturalStopEvent(): ModelEvent {
-    // generate a random step_id
     const ts = Date.now()
     const id = randomString(15)
-    return { type: "NaturalStop", id, timestamp: ts }
+    return { type: "NaturalStop", id, response_id: id, timestamp: ts }
 }
 
 export function createCancelledEvent(reason?: string): ModelEvent {
     const ts = Date.now()
     const id = randomString(15)
     if (reason?.trim()) {
-        return { type: "Cancelled", id, reason: reason.trim(), timestamp: ts }
+        return { type: "Cancelled", id, response_id: id, reason: reason.trim(), timestamp: ts }
     }
-    return { type: "Cancelled", id, timestamp: ts }
+    return { type: "Cancelled", id, response_id: id, timestamp: ts }
 }
 
 export enum RawModelStreamEventType {

@@ -6,8 +6,8 @@ import type { RunHistoryModelSocketEvent } from "terse-types/RunHistoryTypes"
 
 import { AwaitingResponseAnimation } from "@/components/chat/AwaitingResponseAnimation"
 import { Chat } from "@/components/chat/Chat"
-import { Turn } from "@/components/chat/Turn"
 import { type ChatEventSubscription } from "@/components/chat/hooks/useCompletionSocket"
+import type { Turn } from "@/components/chat/turnModel"
 import { useChatHistory } from "@/hooks/api/useChatHistory"
 import { cancelAgentChatRun, sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
 

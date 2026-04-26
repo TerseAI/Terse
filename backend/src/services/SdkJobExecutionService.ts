@@ -61,7 +61,7 @@ export class SdkJobExecutionService {
         const label = SANDBOX_STAGE_LABELS[stage]
 
         if (status === "started") {
-            this.emitter.emit({ type: "ToolCall", summary: label, step_id: stepId, parameters: "", integration: "sandbox", timestamp: now }, now)
+            this.emitter.emit({ type: "ToolCall", id: stepId, response_id: stepId, summary: label, parameters: "", integration: "sandbox", timestamp: now }, now)
             return
         }
 
@@ -70,8 +70,9 @@ export class SdkJobExecutionService {
 
         const event: ModelEvent = {
             type: "ToolCallComplete",
+            id: stepId,
+            response_id: stepId,
             tool_name: label,
-            step_id: stepId,
             status: status === "completed" ? ToolCallExecutionStatus.COMPLETED : ToolCallExecutionStatus.FAILED,
             changed_items: [],
             integration: "sandbox",
@@ -510,6 +511,7 @@ export class SdkJobExecutionService {
             {
                 type: "ProcessOutput",
                 id,
+                response_id: id,
                 label: input.label,
                 stream: input.stream,
                 content: input.content,

@@ -154,6 +154,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
                 }
                 const approvalRequest: ModelEvent = {
                     id: stepId,
+                    response_id: stepId,
                     type: "ToolApprovalRequest",
                     timestamp: Date.now(),
                     name: interruption.name ?? "unknown_tool",

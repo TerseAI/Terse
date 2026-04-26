@@ -13,10 +13,8 @@ import { Toaster } from "./components/ui/sonner"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
 import ActivityPage from "./pages/Activity"
 import AgentDetail from "./pages/Agents/AgentDetail"
-import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
 import ApiTokensPage from "./pages/ApiTokens"
-import Home from "./pages/Home"
 import IntegrationPage from "./pages/IntegrationPage"
 import NotificationsPage from "./pages/Notifications"
 import OAuthError from "./pages/OAuthError"
@@ -39,9 +37,8 @@ function App() {
                     <Routes>
                         <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
                         <Route path={FrontendRoutes.APP} element={<Content />}>
-                            <Route index element={<Home />} />
+                            <Route index element={<Navigate to="agents" replace />} />
                             <Route path="agents" element={<AgentsList />} />
-                            <Route path="agents/setup" element={<AgentSetup />} />
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />

@@ -21,7 +21,6 @@ import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
-import { getBuilderChatHistory } from "./routes/builderChat"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
@@ -350,12 +349,6 @@ app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, authMiddleware, async (req, res) => {
     getChatHistory(req, res)
-})
-
-// MARK: BUILDER CHAT
-
-app.get(ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID, authMiddleware, async (req, res) => {
-    getBuilderChatHistory(req, res)
 })
 
 // MARK: SESSION
