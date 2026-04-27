@@ -108,11 +108,7 @@ triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })]
 | -------------------- | ------------ | ----------------------- |
 | `Gmail.onNewEmail()` | `GmailEvent` | A new email is received |
 
-<CodeGroup>
-```ts TypeScript
-triggers: [Gmail.onNewEmail()]
-```
-</CodeGroup>
+<CodeGroup>```ts TypeScript triggers: [Gmail.onNewEmail()] ```</CodeGroup>
 
 <Expandable title="Event payload">
   - `data.subject` - email subject
@@ -151,32 +147,32 @@ Track web changes continuously and get notified when there are updates.
 
 You can add multiple `WebMonitor.onEvent(...)` triggers to the same workflow. Terse runs each monitor independently and calls the same `onTrigger` handler for every matching event.
 
-| Trigger                  | Event type          | Description                                                  |
-| ------------------------ | ------------------- | ------------------------------------------------------------ |
-| `WebMonitor.onEvent()`   | `WebMonitorTrigger` | Fires when scheduled web monitoring detects relevant changes |
+| Trigger                | Event type          | Description                                                  |
+| ---------------------- | ------------------- | ------------------------------------------------------------ |
+| `WebMonitor.onEvent()` | `WebMonitorTrigger` | Fires when scheduled web monitoring detects relevant changes |
 
 <CodeGroup>
 ```ts TypeScript
 
 const outputSchema = z.object({
-  summary: z.string(),
-  sentiment: z.enum(["positive", "negative", "neutral"]),
+summary: z.string(),
+sentiment: z.enum(["positive", "negative", "neutral"]),
 });
 
 await client.createJob({
-  name: "Web monitor trigger",
-  triggers: [
-    WebMonitor.onEvent({
-      query: "What are a16z's latest investments?",
-      frequency: { number: 1, unit: "day" },
-      outputSchema: outputSchema,
-    }),
-  ],
-  onTrigger: async (event) => {
-    // outputSchema is inferred: payload.summary and payload.sentiment are typed
-    const summary = event.payload.summary;
-    const sentiment = event.payload.sentiment;
-    const sources = event.sourceUrls.join(", ");
+name: "Web monitor trigger",
+triggers: [
+WebMonitor.onEvent({
+query: "What are a16z's latest investments?",
+frequency: { number: 1, unit: "day" },
+outputSchema: outputSchema,
+}),
+],
+onTrigger: async (event) => {
+// outputSchema is inferred: payload.summary and payload.sentiment are typed
+const summary = event.payload.summary;
+const sentiment = event.payload.sentiment;
+const sources = event.sourceUrls.join(", ");
 
     const agent = TerseAgent.create({
       prompt:
@@ -189,9 +185,11 @@ await client.createJob({
     await agent.runAndWait(
       `${event.formatForAgentRunner()}\n\nSummary: ${summary}\nSentiment: ${sentiment}\nSources: ${sources}`
     );
-  },
+
+},
 });
-```
+
+````
 </CodeGroup>
 
 If you need to annotate monitor events manually, import `WebMonitorTriggerFor` from `terse-sdk` and bind it to your Zod schema:
@@ -206,19 +204,21 @@ const outputSchema = z.object({
 });
 
 type MonitorEvent = WebMonitorTriggerFor<typeof outputSchema>;
-```
+````
 
 #### Writing effective queries
 
 The monitor matches by intent, not keywords. Write your query as a natural sentence describing what you care about — not a search string.
 
 **Do:**
+
 - Write in plain language: `"What are a16z's latest investments?"`
 - Track narratives and social buzz: `"What are people saying on Twitter about Cloud agents?"`
 - Be specific about subject and signal: `"FDA approval decisions for GLP-1 drugs"`
 - Combine related signals: `"OpenAI or Anthropic model releases and benchmark results"`
 
 **Don't:**
+
 - Use Boolean operators (`AND`, `OR`, `NOT`) — this is not a search engine
 - Include specific dates — monitors track new developments going forward, not history
 - Write keyword dumps: `"acme corp acme funding raise series B"`
@@ -239,15 +239,10 @@ The monitor matches by intent, not keywords. Write your query as a natural sente
 | ----------------- | ------------- | ------------------------ |
 | `Schedule.cron()` | `CronTrigger` | Fires on a cron schedule |
 
-<CodeGroup>
-```ts TypeScript
-triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am
-```
-</CodeGroup>
+<CodeGroup>```ts TypeScript triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am ```</CodeGroup>
 
 <Expandable title="Event payload">
-  - `data.isManualTrigger` - whether the run was triggered manually from the dashboard
-  - `data.manualContext` - optional context string provided on manual triggers
+    - `data.isManualTrigger` - whether the run was triggered manually from the dashboard - `data.manualContext` - optional context string provided on manual triggers
 </Expandable>
 
 ### Webhook
@@ -260,11 +255,7 @@ Webhook URLs are auto-generated on deploy and remain stable across redeploys.
 
 Pass a type argument to `Webhook.onRequest<YourPayload>()` so `onTrigger` and `filter` see your JSON body shape on `event.body` (defaults to `unknown` when omitted).
 
-<CodeGroup>
-```ts TypeScript
-triggers: [Webhook.onRequest()]
-```
-</CodeGroup>
+<CodeGroup>```ts TypeScript triggers: [Webhook.onRequest()] ```</CodeGroup>
 
 <Expandable title="Event payload">
   - `body` - parsed JSON request body (typed when you use `Webhook.onRequest<...>()`)

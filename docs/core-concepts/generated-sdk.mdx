@@ -140,23 +140,25 @@ declare module "terse-sdk" {
 Because every resource, trigger, skill, and tool is an export, your workflow code reads like a description of your business, not a scavenger hunt through admin UIs.
 
 ```ts src/index.ts
-import { Terse, TerseAgent, Trigger } from "terse-sdk"
+import { TerseAgent, Trigger, createJob } from "terse-sdk"
 
-import { AttioList, GitHub, Repos, Slack, SlackChannel } from "./terse.generated"
+import { GitHub, Repos, Slack, SlackChannel } from "./terse.generated"
 
-const client = new Terse()
-
-await client.createJob({
+createJob({
     name: "pr-summary-to-slack",
     triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
-    skills: [GitHub.skill({ repos: [Repos.TerseAI.Terse] }), Slack.skill({ channel: SlackChannel.Engineering })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You summarize PRs and post concise thread replies in Slack.",
+            skills: [GitHub.skill({ repos: [Repos.TerseAI.Terse] }), Slack.skill({ channel: SlackChannel.Engineering })]
+        })
+
         const message = await agent.tools.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pull_request.title}`
         })
 
-        await agent.runAndWait(`Summarize this PR and reply in thread (ts: ${message.message_ts}).`, event)
+        await agent.runAndWait(`Summarize this PR and reply in thread (ts: ${message.message_ts}).`)
     }
 })
 ```

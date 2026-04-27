@@ -25,31 +25,33 @@ terse generate
 ## Core workflow
 
 ```ts
-import { Terse, TerseAgent, Trigger } from "terse-sdk"
+import { TerseAgent, Trigger, createJob } from "terse-sdk"
 
 import { Apollo, Attio, AttioList, Slack, SlackChannel } from "./terse.generated"
 
-const client = new Terse()
-
-await client.createJob({
+createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You enrich new deals with firmographic context, score ICP fit, and recommend a next step.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })]
+        })
+
         const company = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
         })
 
-        const prompt = [
-            "Summarize ICP fit, timing, and a next step.",
-            `Company: ${event.record.values.company_name}`,
-            `Industry: ${company.industry}`,
-            `Employee count: ${company.employeeCount}`,
-            `Revenue: ${company.estimatedRevenue}`,
-            `Technologies: ${company.technologies.join(", ")}`
-        ].join("\n")
-
-        const summary = await agent.runAndWait(prompt, event)
+        const summary = await agent.runAndWait(
+            [
+                "Summarize ICP fit, timing, and a next step.",
+                `Company: ${event.record.values.company_name}`,
+                `Industry: ${company.industry}`,
+                `Employee count: ${company.employeeCount}`,
+                `Revenue: ${company.estimatedRevenue}`,
+                `Technologies: ${company.technologies.join(", ")}`
+            ].join("\n")
+        )
 
         await agent.tools.attio.updateRecord({
             list: AttioList.Pipeline.NewDeals,

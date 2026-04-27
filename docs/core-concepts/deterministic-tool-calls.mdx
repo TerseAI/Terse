@@ -25,17 +25,19 @@ The generated SDK attaches typed wrappers under `agent.tools.*` for every connec
 <CodeGroup>
 
 ```ts TypeScript
-import { Terse, TerseAgent, Trigger } from "terse-sdk"
+import { TerseAgent, Trigger, createJob } from "terse-sdk"
 
 import { Apollo, Attio, AttioList, Slack, SlackChannel } from "./terse.generated"
 
-const client = new Terse()
-
-await client.createJob({
+createJob({
     name: "new-deal-alert",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You alert the deal desk about new deals with quick context.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })]
+        })
+
         // Deterministic: enrich the company directly
         const enrichment = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
@@ -79,11 +81,15 @@ The real power is combining both in a single workflow. Use deterministic calls f
 <CodeGroup>
 
 ```ts TypeScript
-await client.createJob({
+createJob({
     name: "deal-enrichment-and-scoring",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You score new deals for ICP fit and notify the deal desk.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })]
+        })
+
         // 1. Deterministic: fetch enrichment data
         const enrichment = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
@@ -98,8 +104,7 @@ await client.createJob({
                 `Employees: ${enrichment.employeeCount}`,
                 `Technologies: ${enrichment.technologies.join(", ")}`,
                 'Respond with JSON: { "score": <number>, "rationale": "<string>" }'
-            ].join("\n"),
-            event
+            ].join("\n")
         )
 
         const parsed = JSON.parse(analysis) as { score: number; rationale: string }

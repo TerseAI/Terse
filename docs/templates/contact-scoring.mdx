@@ -25,32 +25,34 @@ terse generate
 ## Core workflow
 
 ```ts
-import { Terse, TerseAgent, Trigger } from "terse-sdk"
+import { createJob, TerseAgent, Trigger } from "terse-sdk"
 
 import { Apollo, Attio, AttioList } from "./terse.generated"
 
-const client = new Terse()
-
-await client.createJob({
+createJob({
     name: "contact-scoring",
     triggers: [Attio.onRecordCreated({ list: AttioList.Contacts.NewContacts })],
-    skills: [Attio.skill({ lists: [AttioList.Contacts.NewContacts] }), Apollo.skill()],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You score new contacts on fit and explain your reasoning briefly.",
+            skills: [Attio.skill({ lists: [AttioList.Contacts.NewContacts] }), Apollo.skill()]
+        })
+
         const company = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
         })
 
-        const prompt = [
-            "Score this contact from 1-100 and explain why.",
-            `Company: ${event.record.values.company_name}`,
-            `Domain: ${event.record.values.company_domain}`,
-            `Industry: ${company.industry}`,
-            `Employee count: ${company.employeeCount}`,
-            `Revenue: ${company.estimatedRevenue}`,
-            `Technologies: ${company.technologies.join(", ")}`
-        ].join("\n")
-
-        const result = await agent.runAndWait(prompt, event)
+        const result = await agent.runAndWait(
+            [
+                "Score this contact from 1-100 and explain why.",
+                `Company: ${event.record.values.company_name}`,
+                `Domain: ${event.record.values.company_domain}`,
+                `Industry: ${company.industry}`,
+                `Employee count: ${company.employeeCount}`,
+                `Revenue: ${company.estimatedRevenue}`,
+                `Technologies: ${company.technologies.join(", ")}`
+            ].join("\n")
+        )
 
         // Parse structured score from model output
         const scoreMatch = result.match(/\b(\d{1,3})\b/)
