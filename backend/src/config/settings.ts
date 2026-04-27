@@ -187,7 +187,7 @@ export const settings = {
     },
 
     aisdk: {
-        default: optionalEnv("MODEL_DEFAULT", "openai:gpt-5.2")
+        default: optionalEnv("MODEL_DEFAULT", "anthropic:claude-opus-4-7")
     }
 } as const
 
