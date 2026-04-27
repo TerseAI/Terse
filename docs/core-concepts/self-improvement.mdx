@@ -1,83 +1,21 @@
 ---
 title: "Self-improvement"
-description: "Terse reviews your past workflow runs every week and recommends concrete changes to prompts, triggers, outputs, and code."
+description: "Terse reviews your runs every week and ships patches against your workflow code."
 icon: "sparkles"
 ---
 
-Every workflow accumulates signal over time: which runs succeed, which ones fail, and why. Terse turns that signal into action. Once a week, it reviews the last seven days of runs for each workflow, identifies patterns, and surfaces specific improvements you can apply in one click.
+Once a week, a cron sweeps each workflow with **improvements enabled**, reads the last seven days of runs alongside your deployed source, and produces patches — real `git diff`s against the prompt, trigger, skills, or code in your workflow file.
 
-You don't need to build dashboards, read logs, or remember what went wrong last Tuesday. The platform does the analysis and tells you what to fix.
+Patches show up in the **Improvements** tab and in a weekly summary email. Apply them locally with the CLI:
 
-## How it works
-
+```bash
+terse list improvements
+terse apply <improvement-id>
 ```
-Runs accumulate → Weekly review triggers → Context assembled → Evaluator analyzes → Improvements saved → You get notified
-```
 
-### 1. Run history builds up
+`terse apply` runs `git apply` (with 3-way and `--reject` fallbacks if your code has drifted) and marks the improvement as **Applied** in the UI. **Dismiss** a card to hide it permanently.
 
-Every time a workflow executes, Terse records the result: success or failure, which tools were called, what decisions the model made, and how long the run took. This data lives in your Activity tab and powers the review process.
-
-### 2. Weekly review triggers
-
-A scheduled job runs once per week and checks every active workflow that has **improvements enabled**. It skips workflows with zero runs in the period (there's nothing to review) and workflows that already have four or more pending improvements, to avoid overwhelming you with suggestions.
-
-### 3. Context is assembled
-
-For each eligible workflow, Terse pulls together everything the evaluator needs:
-
-- **Workflow configuration.** Your prompt, connected integrations, trigger settings, and output configuration.
-- **Run summary.** Total runs, success rate, failure rate, filtered count, and average duration over the last seven days.
-- **Failed run details.** For up to five recent failures, the full action log and raw event trace. Failures are where the most useful improvements come from.
-- **Past improvements.** Every recommendation already made for this workflow, including whether you applied or dismissed it. This prevents the same suggestion from appearing twice.
-
-### 4. The evaluator analyzes
-
-Terse runs a dedicated evaluator against the assembled context. The evaluator looks for patterns across your runs and produces structured recommendations with a confidence score. Only improvements with **confidence of 0.7 or higher** are kept. Low-confidence suggestions are dropped automatically.
-
-For **SDK workflows**, the evaluator also has access to your deployed source code. It can read your workflow files, identify code-level issues, and generate patches (actual `git diff` output) that you can apply directly to your project.
-
-Each improvement targets a specific area:
-
-| Target area        | What it covers                                                          |
-| ------------------ | ----------------------------------------------------------------------- |
-| **`prompt`**       | Wording, structure, or missing context in your workflow prompt           |
-| **`trigger_config`** | Trigger settings that could be adjusted for better results            |
-| **`output_config`**  | Output formatting, destinations, or delivery configuration            |
-| **`code`**         | SDK workflow code: logic, error handling, tool usage (SDK only)         |
-| **`general`**      | Cross-cutting observations that don't fit a single area                 |
-
-### 5. Improvements are saved
-
-Each review cycle creates a **review record** (title, summary, how many runs were analyzed, and the review period) plus zero or more **improvement records**. Improvements start in a `PENDING` state. They're suggestions, not automatic changes.
-
-### 6. You get notified
-
-If the review produced at least one improvement, Terse sends you a **Weekly Agent Review** email with a summary and links to the Improvements tab for each affected workflow. You can disable these emails in your notification settings.
-
-## Reviewing and applying improvements
-
-Open any workflow and navigate to the **Improvements** tab. You'll see the most recent review summary at the top, followed by individual improvement cards.
-
-Each card shows what the evaluator found and what it recommends. You have three options:
-
-- **Apply.** For UI-built workflows, this sends the recommendation to the builder so you can review the change in context. For SDK workflows, the card includes the suggested patch for you to apply locally.
-- **Dismiss.** Hides the improvement. The evaluator won't suggest it again.
-- **Undo dismiss.** Brings back a dismissed improvement if you change your mind.
-
-## Enabling self-improvement
-
-Self-improvement is controlled per workflow. Toggle **Improvements** on in your workflow settings to opt in. When enabled, the weekly review includes that workflow. When disabled, it's skipped entirely.
-
-<Note>The weekly review only runs for workflows with at least one run in the past seven days. Creating a workflow and enabling improvements won't generate a review until the workflow has actually executed.</Note>
-
-## What the evaluator ignores
-
-The evaluator is designed to flag actionable issues, not noise. It explicitly ignores:
-
-- **Manual and test runs.** Frequent testing is normal and doesn't indicate a problem.
-- **Approval settings.** These are intentional configuration choices, not bugs.
-- **User-controlled configuration.** Trigger sources, notification toggles, and similar settings you manage directly.
+<Note>Workflows with no runs in the period, or four or more pending improvements, are skipped. Manual and test runs are ignored.</Note>
 
 ## Where to go next
 

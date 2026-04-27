@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ChevronRight, Download } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import { Agent, AgentImprovement } from "terse-types/types"
 
 import { Button } from "@/components/ui/button"
+import { CopyCommandButton } from "@/components/ui/copy-command-button"
 import { DiffViewer } from "@/components/ui/diff-viewer"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
@@ -13,7 +14,7 @@ import { useAgentImprovements } from "@/hooks/api/useAgentImprovements"
 import { BackendProvider } from "@/services/backend"
 import { formatRelativeTime } from "@/utility/timeUtils"
 
-import { CopyPatchDialog } from "../components/CopyPatchDialog"
+const CHAT_OPEN_DELAY_MS = 300
 
 type AgentImprovementsTabProps = {
     agentId: string | null
@@ -143,6 +144,7 @@ export default function AgentImprovementsTab({ agentId, source }: AgentImproveme
             {improvementsEnabled && review && pendingImprovements.length > 0 && (
                 <>
                     <p className="text-sm text-muted-foreground">{review.summary}</p>
+                    {isSdk && <p className="text-xs text-muted-foreground">Run these commands from your project directory using the Terse CLI.</p>}
 
                     <Separator />
 
@@ -210,16 +212,7 @@ function ImprovementRow({
                     <span className="font-medium text-sm truncate">{improvement.title}</span>
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {isSdk && improvement.suggestedPatch && (
-                        <CopyPatchDialog patch={improvement.suggestedPatch} title={improvement.title} onDownload={onApply}>
-                            {openDialog => (
-                                <Button size="sm" variant="outline" onClick={openDialog} disabled={disabled}>
-                                    <Download className="h-3.5 w-3.5 mr-1" />
-                                    Download Patch
-                                </Button>
-                            )}
-                        </CopyPatchDialog>
-                    )}
+                    {isSdk && improvement.suggestedPatch && <CopyCommandButton command={`terse apply ${improvement.id}`} title="Copy. Then run in your project's terminal" disabled={disabled} />}
                     {!isSdk && (
                         <Button size="sm" onClick={onApply} disabled={disabled}>
                             {isApplying ? "Applying..." : "Apply"}

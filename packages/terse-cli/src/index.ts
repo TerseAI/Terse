@@ -13,6 +13,7 @@ import { deploy } from "./commands/deploy.js"
 import { openDocs } from "./commands/docs.js"
 import { generate } from "./commands/generate.js"
 import { history } from "./commands/history.js"
+import { applyImprovement, listImprovements } from "./commands/improvements.js"
 import { init } from "./commands/init.js"
 import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateWait } from "./commands/integrate.js"
 import { replay } from "./commands/replay.js"
@@ -257,6 +258,33 @@ if (isCliRunCommandEnabled()) {
             await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile)
         })
 }
+
+program.commandsGroup("Improvements:")
+program
+    .command("apply")
+    .description("Apply a suggested improvement patch locally (runs `git apply`)")
+    .argument("[improvement-id]", "ID of the improvement to apply (prompts if omitted)")
+    .option(...NON_INTERACTIVE_OPTION)
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse apply                                   # interactive picker
+  $ terse apply <improvement-id>                  # apply a specific improvement
+  $ terse apply <improvement-id> --non-interactive  # fail fast on prompts (CI/agents)
+`
+    )
+    .action(async (improvementId?: string, opts?: NonInteractiveOpts) => {
+        await applyImprovement(improvementId, opts)
+    })
+program
+    .command("list")
+    .description("List Terse resources")
+    .addCommand(
+        new Command("improvements").description("List pending improvements across all agents").action(async () => {
+            await listImprovements()
+        })
+    )
 
 program.commandsGroup("Observability:")
 program
