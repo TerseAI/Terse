@@ -1,13 +1,12 @@
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Bell, BookOpen, ChevronRight, ExternalLink, Home, KeyRound, Plug, Terminal, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, BookOpen, ChevronRight, ExternalLink, Home, KeyRound, Plug, Terminal, Zap } from "lucide-react"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
 
-import { Button } from "@/components/ui/button"
 import {
     Sidebar,
     SidebarContent,
@@ -128,6 +127,8 @@ function ApplicationNavigation({ agents, sdkJobs, loading }: ApplicationNavigati
                 </Collapsible>
             )}
 
+            <PlainNavItem title="Activity" url={FrontendRoutes.ACTIVITY} icon={Activity} iconColor="text-primary" />
+            <PlainNavItem title="Stats" url={FrontendRoutes.STATS} icon={BarChart3} iconColor="text-primary" />
         </SidebarMenu>
     )
 }

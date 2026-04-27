@@ -2,7 +2,7 @@ import { createAnthropic } from "@ai-sdk/anthropic"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createProviderRegistry } from "ai"
 
-export const DEFAULT_MODEL_REF = "anthropic:claude-sonnet-4-6"
+export const DEFAULT_MODEL_REF = "openai:gpt-5.2"
 
 const SUPPORTED_PROVIDERS = ["anthropic", "openai"] as const
 type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number]
@@ -14,7 +14,7 @@ export type ModelReference = {
 }
 
 export function getDefaultModelRef(): string {
-    return process.env.AGENT_MODEL?.trim() || DEFAULT_MODEL_REF
+    return DEFAULT_MODEL_REF
 }
 
 export function listSupportedProviders(): readonly SupportedProvider[] {

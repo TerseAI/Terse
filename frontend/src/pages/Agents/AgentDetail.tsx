@@ -11,8 +11,6 @@ import { useAgent } from "../../hooks/api/useAgents"
 import { useTemplates } from "../../hooks/api/useTemplates"
 import { FeatureFlags, useFeatureFlag } from "../../hooks/useFeatureFlag"
 import { useTemplateHydration } from "../../hooks/useTemplateHydration"
-import { useModelContext } from "../../services/ModelContextProvider"
-import { AgentInputsDonatedState, AgentNameDonatedState, AgentOutputsDonatedState, AgentPromptDonatedState } from "../../utility/AgentModelDonation"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 
 import SdkJobDetail from "./SdkJobDetail"
@@ -25,7 +23,6 @@ const AGENT_DETAIL_TABS = ["setup", "history", "improvements"] as const
 function AgentDetail() {
     const { id, templateId } = useParams<{ id: string; templateId: string }>()
     const [searchParams, setSearchParams] = useSearchParams()
-    const { donate } = useModelContext()
 
     // Only pass agentId if it's not "new"
     const agentId: string | null = id && id !== "new" ? id : null
@@ -153,12 +150,6 @@ function AgentDetail() {
         mutate,
         updatedAt: agent?.updatedAt
     }
-
-    // Let the chat know about what's on the screen
-    donate("Agent Name", new AgentNameDonatedState(name ?? ""))
-    donate("Agent Inputs", new AgentInputsDonatedState(inputs))
-    donate("Agent Skills", new AgentOutputsDonatedState(outputs))
-    donate("Agent Prompt", new AgentPromptDonatedState(prompt ?? { text: "" }))
 
     // SDK-sourced agents get a simplified detail view
     if (agentId && agent?.source === "SDK") {

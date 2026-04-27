@@ -23,8 +23,6 @@ import EditableTextField from "../../../components/ui/EditableTextField"
 import { Badge } from "../../../components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
 import { cn } from "../../../lib/utils"
-import { useModelContext } from "../../../services/ModelContextProvider"
-import { AgentSetUpPageContext } from "../../../utility/AgentModelDonation"
 import AgentApprovalSettings from "../AgentApprovalSettings"
 import AgentNotificationSettings from "../AgentNotificationSettings"
 import { AddOutputModal } from "../components/AddOutputModal"
@@ -362,7 +360,6 @@ export default function AgentSetupTab({
     const { user: agentCreatorUser } = useUser(agentCreator)
     const defaultName = getDefaultAgentName(totalCount)
     void _setRequireApproval
-    const { donate } = useModelContext()
 
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null)
@@ -401,8 +398,6 @@ export default function AgentSetupTab({
     const [activeSection, setActiveSection] = useState<SetupSection>(
         sectionFromQuery && ["triggers", "prompt", "skills", "alerts"].includes(sectionFromQuery) ? (sectionFromQuery as SetupSection) : "triggers"
     )
-
-    donate("Agent Set Up Page Context", new AgentSetUpPageContext(activeSection))
 
     return (
         <div className="grid grid-cols-20 @container/agent-setup">
