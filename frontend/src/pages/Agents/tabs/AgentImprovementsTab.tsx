@@ -14,8 +14,6 @@ import { useAgentImprovements } from "@/hooks/api/useAgentImprovements"
 import { BackendProvider } from "@/services/backend"
 import { formatRelativeTime } from "@/utility/timeUtils"
 
-const CHAT_OPEN_DELAY_MS = 300
-
 type AgentImprovementsTabProps = {
     agentId: string | null
     source?: Agent["source"]
