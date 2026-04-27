@@ -127,14 +127,14 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: params.settings.signal
         })
 
-        await this.processStream(result, { initialResponseId: seedResponseId })
+        await this.processStream(result, { approvalDecision: { decision: params.decision, rejectionReason: params.rejectionReason, responseId: seedResponseId } })
         return this.buildResult(result)
     }
 
-    private async processStream(result: StreamedRunResult<TSession, TAgent>, options: { initialResponseId?: string } = {}): Promise<void> {
+    private async processStream(result: StreamedRunResult<TSession, TAgent>, options: { approvalDecision?: ApprovalDecision } = {}): Promise<void> {
         const eventStream = transformAgentStreamToModelEvents(result, {
             onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
-            initialResponseId: options.initialResponseId
+            approvalDecision: options.approvalDecision
         })
 
         for await (const event of this.trackEventStream(eventStream)) {
@@ -267,4 +267,10 @@ type AgentInitializationParams<TSession extends AppSession> = {
     model: AiSdkModel
     tools: Tool<TSession>[]
     modelSettings?: ModelSettings
+}
+
+export type ApprovalDecision = {
+    decision: "approve" | "reject"
+    rejectionReason?: string
+    responseId: string
 }

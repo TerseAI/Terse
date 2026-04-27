@@ -33,6 +33,7 @@ export function useChat({
         subscribeToEvents,
         sendMessage: sendModelRequest,
         onEvent: (event: ModelEvent) => {
+            console.log("useChat onEvent", JSON.stringify(event, null, 2))
             onEvent(event)
             if (event.type === "ToolCall") {
                 onToolCall?.(event)

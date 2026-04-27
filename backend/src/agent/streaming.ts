@@ -2,6 +2,7 @@ import { Agent, StreamedRunResult } from "@openai/agents"
 import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
+import { ApprovalDecision } from "../agent/AgentRunner/BaseAgentRunner"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
@@ -14,10 +15,15 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
     result: StreamedRunResult<T, Agent<T, any>>,
     options: {
         onToolCallComplete?: ToolCallCompleteHandler
-        initialResponseId?: string
+        approvalDecision?: ApprovalDecision
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
-    const { onToolCallComplete, initialResponseId } = options
+    const { onToolCallComplete, approvalDecision } = options
+
+    let initialResponseId: string | undefined = undefined
+    if (approvalDecision) {
+        initialResponseId = approvalDecision.responseId
+    }
     const deltaProjector = new AssistantDeltaProjector({ initialResponseId })
 
     for await (const event of result) {
@@ -55,10 +61,10 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
                 }
                 continue
             case "tool-result":
-                yield* yieldToolCallCompletionStream(canonicalEvent, ToolCallExecutionStatus.COMPLETED, onToolCallComplete)
+                yield* yieldToolCallCompletionStream(canonicalEvent, ToolCallExecutionStatus.COMPLETED, onToolCallComplete, approvalDecision)
                 continue
             case "tool-error":
-                yield* yieldToolCallCompletionStream(canonicalEvent, ToolCallExecutionStatus.FAILED, onToolCallComplete)
+                yield* yieldToolCallCompletionStream(canonicalEvent, ToolCallExecutionStatus.FAILED, onToolCallComplete, approvalDecision)
                 continue
             case "finish": {
                 const id = randomString(15)
@@ -81,7 +87,8 @@ type ToolCallCompletionCanonicalEvent = Extract<CanonicalModelEvent, { type: "to
 async function* yieldToolCallCompletionStream(
     canonicalEvent: ToolCallCompletionCanonicalEvent,
     executionStatus: ToolCallExecutionStatus,
-    onToolCallComplete?: ToolCallCompleteHandler
+    onToolCallComplete?: ToolCallCompleteHandler,
+    approvalDecision?: ApprovalDecision
 ): AsyncGenerator<ModelEvent, void, unknown> {
     const { id, toolName } = canonicalEvent
     const output = canonicalEvent.type === "tool-result" ? canonicalEvent.output : canonicalEvent.error
@@ -104,6 +111,9 @@ async function* yieldToolCallCompletionStream(
         snippets: parsed.snippets
     }
     const changedItems = onToolCallComplete ? await onToolCallComplete(toolCompleteData.callId, toolCompleteData.name, toolCompleteData.actions) : []
+    if (approvalDecision) {
+        yield createToolApprovalResponseEvent(toolCompleteData, approvalDecision)
+    }
     yield createToolCallCompleteEvent(toolCompleteData, changedItems)
     if (toolCompleteData.snippets?.length) {
         for (const snippet of toolCompleteData.snippets) {
@@ -115,6 +125,20 @@ async function* yieldToolCallCompletionStream(
                 snippet
             }
         }
+    }
+}
+
+function createToolApprovalResponseEvent(data: ToolCallCompleteData, approvalDecision?: ApprovalDecision): ModelEvent {
+    const approved = approvalDecision?.decision === "approve"
+    const rejectionReason = approvalDecision?.rejectionReason
+
+    return {
+        id: data.id,
+        response_id: data.response_id,
+        type: "ToolApprovalResponse",
+        timestamp: Date.now(),
+        approved,
+        rejection_reason: rejectionReason
     }
 }
 

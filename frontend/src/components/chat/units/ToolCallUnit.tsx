@@ -3,6 +3,8 @@ import FunctionCallItem, { type FunctionCallEvent } from "../FunctionCallItem"
 import type { ToolCallUnit as ToolCallUnitModel } from "../turnModel"
 
 function toFunctionCallEvent(unit: ToolCallUnitModel): FunctionCallEvent {
+    const isApproved = unit.approval && unit.approval?.approved === true
+    const isRejected = unit.approval && unit.approval?.approved === false
     return {
         id: unit.unitId,
         name: unit.name,
@@ -10,8 +12,8 @@ function toFunctionCallEvent(unit: ToolCallUnitModel): FunctionCallEvent {
         isGeneratingParams: unit.status === "generating_params",
         isRunning: unit.status === "running" || unit.status === "approved_running",
         isWaitingForApproval: unit.status === "waiting_approval",
-        isRejected: unit.status === "rejected",
-        isApproved: unit.status === "approved_running" || unit.approval?.approved,
+        isRejected,
+        isApproved,
         isFailure: unit.status === "failed",
         parameters: unit.parameters,
         result: unit.result,
@@ -37,5 +39,7 @@ export function ToolCallUnit({
 }) {
     const handleApprove = onApprove ? (stepId: string, options?: ToolApprovalResponseOptions) => onApprove(stepId, { ...options, responseId: unit.responseId }) : undefined
     const handleReject = onReject ? (stepId: string, options?: ToolApprovalResponseOptions) => onReject(stepId, { ...options, responseId: unit.responseId }) : undefined
+
+    console.log("ToolCallUnit unit", JSON.stringify(unit, null, 2))
     return <FunctionCallItem call={toFunctionCallEvent(unit)} index={index} isTurnFailure={isTurnFailure} onApprove={handleApprove} onReject={handleReject} onSendMessage={onSendMessage} />
 }

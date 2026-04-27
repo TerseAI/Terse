@@ -92,7 +92,7 @@ export class AssistantDeltaProjector {
     private currentResponseId: string | undefined
     private readonly completedResponseIds = new Set<string>()
 
-    constructor(options?: { initialResponseId?: string }) {
+    constructor(options?: { initialResponseId?: string; decision?: "approve" | "reject" }) {
         this.currentResponseId = options?.initialResponseId
     }
 
@@ -236,13 +236,7 @@ export class AssistantDeltaProjector {
                 return this.currentResponseId ? { type: "finish", responseId: this.currentResponseId } : { type: "finish" }
             case "raw":
                 return { type: "raw", rawValue: modelEvent.rawValue }
-            default:
-                return undefined
         }
-    }
-
-    getStreamedResponseIds(): string[] {
-        return Array.from(this.completedResponseIds)
     }
 
     private projectToolOutputItem(item: unknown): CanonicalModelEvent | undefined {

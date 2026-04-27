@@ -44,6 +44,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const lastTurn = filteredTurns[filteredTurns.length - 1]
     const isPendingAssistantResponse = lastTurn?.status === "generating" || lastTurn?.role === "user" || false
 
+    console.log("useChatTurns filteredTurns", filteredTurns)
     return {
         turns: filteredTurns,
         isPendingAssistantResponse,
