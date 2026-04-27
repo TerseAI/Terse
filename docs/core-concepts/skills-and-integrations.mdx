@@ -29,27 +29,31 @@ See the [Generated SDK](/core-concepts/generated-sdk) page for more detail.
 
 This is the key distinction:
 
-|                   | Skills (model access)                 | Deterministic tools (code access)    |
-| ----------------- | ------------------------------------- | ------------------------------------ |
-| **Who decides**   | The model chooses which tools to call | Your code calls tools directly       |
-| **Controlled by** | `skills` array on the job             | Always available via `agent.tools.*` |
-| **Scope**         | Only integrations declared as skills  | Any connected integration            |
-| **Token cost**    | Tokens consumed per call              | Zero LLM tokens                      |
+|                   | Skills (model access)                                | Deterministic tools (code access)    |
+| ----------------- | ---------------------------------------------------- | ------------------------------------ |
+| **Who decides**   | The model chooses which tools to call                | Your code calls tools directly       |
+| **Controlled by** | `skills` array on `TerseAgent.create()`              | Always available via `agent.tools.*` |
+| **Scope**         | Only integrations declared as skills                 | Any connected integration            |
+| **Token cost**    | Tokens consumed per call                             | Zero LLM tokens                      |
 
-Deterministic tool wrappers (`agent.tools.*`) are not gated by the skills list. If you have Slack connected and generated, you can always call `agent.tools.slack.sendMessage()` from your handler code, even if Slack isn't in your `skills` array. The `skills` array only controls what the model sees when it's reasoning.
+Deterministic tool wrappers (`agent.tools.*`) are not gated by the skills list. If you have Slack connected and generated, you can always call `agent.tools.slack.sendMessage()` from your handler code, even if Slack isn't in the agent's `skills` array. The `skills` array only controls what the model sees when it's reasoning.
 
 This means you can be precise about the model's reach while keeping full programmatic access to all your integrations:
 
 <CodeGroup>
 
 ```ts TypeScript
-await client.createJob({
+createJob({
     name: "weekly-digest",
     triggers: [Schedule.cron("0 9 * * 1")],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You summarize weekly pipeline activity for revenue leaders.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })]
+        })
+
         // Agentic: model can only use Attio (the declared skill)
-        const summary = await agent.runAndWait("Summarize this week's pipeline activity.", event)
+        const summary = await agent.runAndWait("Summarize this week's pipeline activity.")
 
         // Deterministic: code can always call Slack directly
         await agent.tools.slack.sendMessage({

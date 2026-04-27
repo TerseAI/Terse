@@ -15,10 +15,10 @@ Every job has four parts:
 <CodeGroup>
 
 ```ts TypeScript
-await client.createJob({
+createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    filter: (event) => { event.record.values.stage == "contract-sent"}
+    filter: (event) => event.record.values.stage === "contract-sent",
     onTrigger: async (event) => {
         // your logic here
     }
@@ -69,7 +69,10 @@ Most production jobs combine both. Use deterministic calls for predictable opera
 
 ```ts TypeScript
 onTrigger: async (event: Trigger) => {
-    const agent = TerseAgent.create({// .. skills + prompt })
+    const agent = TerseAgent.create({
+        prompt: "You enrich new deals with research and clear summaries.",
+        skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()]
+    })
     // Deterministic: always enrich
     const company = await agent.tools.apollo.enrichCompany({
         domain: event.record.values.company_domain
@@ -96,12 +99,15 @@ Not every event needs a full run. Use `filter` to skip events that don't match y
 <CodeGroup>
 
 ```ts TypeScript
-await client.createJob({
+createJob({
     name: "contract-alerts",
     triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
-    skills: [Slack.skill({ channel: SlackChannel.DealDesk })],
     filter: (event: Trigger) => event.record.values.stage === "contract-sent",
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You notify the deal desk when contracts are sent.",
+            skills: [Slack.skill({ channel: SlackChannel.DealDesk })]
+        })
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
             message: `Contract sent for ${event.record.values.company_name}.`

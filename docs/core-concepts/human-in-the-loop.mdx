@@ -15,17 +15,18 @@ List the tool names that require approval in `toolApprovals` (TypeScript)
 <CodeGroup>
 
 ```ts TypeScript
-await client.createJob({
+createJob({
     name: "deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
         const agent = TerseAgent.create({
+            prompt: "You enrich new deals and post summaries to the deal desk.",
             skills: [
                 Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
                 Apollo.skill(),
                 Slack.skill({ channel: SlackChannel.DealDesk })
             ],
-            toolApprovals: ["attio.updateRecord", "slack.sendMessage"],
+            toolApprovals: ["attio.updateRecord", "slack.sendMessage"]
         })
 
         // This call runs immediately (Apollo reads don't need approval)
