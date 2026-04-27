@@ -11,10 +11,9 @@ import { ThemeProvider } from "./components/theme-provider"
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
-import ActivityPage from "./pages/Activity"
 import AgentDetail from "./pages/Agents/AgentDetail"
-import AgentsList from "./pages/Agents/AgentsList"
 import ApiTokensPage from "./pages/ApiTokens"
+import HomePage from "./pages/Home"
 import IntegrationPage from "./pages/IntegrationPage"
 import NotificationsPage from "./pages/Notifications"
 import OAuthError from "./pages/OAuthError"
@@ -22,7 +21,6 @@ import OAuthSuccess from "./pages/OAuthSuccess"
 import OrganizationCreationPage from "./pages/OrganizationCreationPage"
 import ProfilePage from "./pages/ProfilePage"
 import ProjectDetail from "./pages/Projects/ProjectDetail"
-import StatsPage from "./pages/Stats"
 import { ModelContextProvider } from "./services/ModelContextProvider"
 import { RunHistoryChatDrawerProvider } from "./services/RunHistoryChatDrawerContext"
 import { AuthProvider, useAuth } from "./services/auth"
@@ -37,14 +35,12 @@ function App() {
                     <Routes>
                         <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
                         <Route path={FrontendRoutes.APP} element={<Content />}>
-                            <Route index element={<Navigate to="agents" replace />} />
-                            <Route path="agents" element={<AgentsList />} />
+                            <Route index element={<Navigate to="home" replace />} />
+                            <Route path="home" element={<HomePage />} />
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.PROJECTS.BY_ID} element={<ProjectDetail />} />
-                            <Route path="activity" element={<ActivityPage />} />
-                            <Route path="stats" element={<StatsPage />} />
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="api-tokens" element={<ApiTokensPage />} />

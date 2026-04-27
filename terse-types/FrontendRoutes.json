@@ -19,6 +19,7 @@
     "PROJECTS": {
         "BY_ID": "/app/projects/:id"
     },
+    "HOME": "/app/home",
     "INTEGRATIONS": "/app/integrations",
     "ACTIVITY": "/app/activity",
     "STATS": "/app/stats",

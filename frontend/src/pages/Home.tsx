@@ -7,17 +7,27 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAx
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { AgentActivityItem, CountByString, StatsInterval } from "terse-types/types"
+import { type RunHistoryRecordWithAgent, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
+import DateRangePicker from "@/components/RunHistory/DatePicker"
+import RunHistoryEmptyState from "@/components/RunHistory/RunHistoryEmptyState"
+import RunHistoryPagination from "@/components/RunHistory/RunHistoryPagination"
+import { RunHistoryRow } from "@/components/RunHistory/RunHistoryRow"
+import { SearchBar } from "@/components/RunHistory/SearchBar"
+import StatusFilter from "@/components/RunHistory/StatusFilter"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAllRunHistory } from "@/hooks/api/useAllRunHistory"
 import { useStats } from "@/hooks/api/useStats"
 import { cn } from "@/lib/utils"
+import { useRunHistoryChatDrawer } from "@/services/RunHistoryChatDrawerContext"
 import { formatNumber, getTrend } from "@/utility/timeUtils"
 
 // ---------------------------------------------------------------------------
-// Palette
+// Shared
 // ---------------------------------------------------------------------------
 
 const CHART_COLORS = [
@@ -42,17 +52,12 @@ const STATS_INTERVAL_OPTIONS: Array<{ value: StatsInterval; label: string; longL
     { value: "1y", label: "1Y", longLabel: "Last year" }
 ]
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function formatTimezone(tz: string): string {
     const dt = DateTime.now().setZone(tz)
     return dt.isValid && dt.offsetNameLong ? dt.offsetNameLong : tz
 }
 
 function prettifyLabel(label: string): string {
-    // Convert snake_case / camelCase to Title Case
     return label
         .replace(/_/g, " ")
         .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -71,7 +76,29 @@ function buildChartConfig(items: { label: string }[]): ChartConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Activity sub-components
+// ---------------------------------------------------------------------------
+
+function ActivityLoadingSkeleton() {
+    return (
+        <div className="divide-y divide-border/40">
+            {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-3">
+                    <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                        <Skeleton className="h-4 w-3/4 max-w-[280px]" />
+                        <Skeleton className="h-3 w-1/2 max-w-[180px]" />
+                    </div>
+                    <Skeleton className="h-5 w-16 rounded-full hidden sm:block" />
+                    <Skeleton className="h-3 w-12" />
+                </div>
+            ))}
+        </div>
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Stats sub-components
 // ---------------------------------------------------------------------------
 
 function StatCard({ label, value, change }: { label: string; value: string; change: string }) {
@@ -311,11 +338,7 @@ function HorizontalBarSection({ title, description, data }: { title: string; des
     )
 }
 
-// ---------------------------------------------------------------------------
-// Loading Skeleton
-// ---------------------------------------------------------------------------
-
-function StatsPageSkeleton() {
+function StatsLoadingSkeleton() {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -364,58 +387,187 @@ function StatsPageSkeleton() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-function StatsPage() {
-    const [selectedInterval, setSelectedInterval] = useState<StatsInterval>("1mo")
-    const { stats, isLoading } = useStats(selectedInterval)
+export default function HomePage() {
+    // Activity state
+    const [currentPage, setCurrentPage] = useState(1)
+    const [runsPerPage, setRunsPerPage] = useState(20)
+    const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
+        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.CANCELLED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
+    )
+    const [searchQuery, setSearchQuery] = useState("")
+    const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
 
+    const { runs, total, isLoading: activityLoading } = useAllRunHistory({
+        page: currentPage,
+        pageSize: runsPerPage,
+        searchQuery,
+        dateRange,
+        selectedStatuses
+    })
+    const { openDrawer } = useRunHistoryChatDrawer()
+
+    const totalPages = Math.ceil(total / runsPerPage) || 1
+
+    const toggleStatus = (status: RunHistoryStatus) => {
+        const next = new Set(selectedStatuses)
+        if (next.has(status)) {
+            next.delete(status)
+        } else {
+            next.add(status)
+        }
+        setSelectedStatuses(next)
+        setCurrentPage(1)
+    }
+
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value)
+        setCurrentPage(1)
+    }
+
+    const handleRunsPerPageChange = (value: number) => {
+        setRunsPerPage(value)
+        setCurrentPage(1)
+    }
+
+    const handleOpenChat = (run: RunHistoryRecordWithAgent) => {
+        openDrawer({
+            runs: runs,
+            initialRunIndex: runs.findIndex(r => r.id === run.id)
+        })
+    }
+
+    const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length
+    const startIndex = (currentPage - 1) * runsPerPage
+
+    // Stats state
+    const [selectedInterval, setSelectedInterval] = useState<StatsInterval>("1mo")
+    const { stats, isLoading: statsLoading } = useStats(selectedInterval)
     const dailyEvents = useMemo(() => stats?.dailyEvents ?? [], [stats])
 
     return (
         <div className="h-full overflow-y-auto">
-            <div className="mx-auto w-full w-full px-6 py-8 space-y-6">
-                {/* ── Header ──────────────────────────────────────────── */}
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Stats</h1>
+            <div className="mx-auto w-full px-6 py-8">
+                {/* ── Activity Section ──────────────────────────────── */}
+                <div className="mb-8">
+                    <h1 className="text-2xl font-semibold text-foreground tracking-tight">Activity</h1>
+                    <p className="text-muted-foreground mt-1 text-sm">A complete record of activity across your agents.</p>
                 </div>
 
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide uppercase text-muted-foreground">Time Range</p>
-                    <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
+                <div className="space-y-4 mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} placeholder="Search by event or agent name..." className="w-full sm:max-w-sm" />
+                        <div className="flex items-center gap-3 sm:ml-auto">
+                            <DateRangePicker
+                                dateRange={dateRange}
+                                onDateRangeChange={next => {
+                                    setDateRange(next)
+                                    setCurrentPage(1)
+                                }}
+                            />
+                            <StatusFilter selectedStatuses={selectedStatuses} onToggleStatus={toggleStatus} />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">{total === 0 ? "No events" : `Showing ${startIndex + 1}–${Math.min(startIndex + runsPerPage, total)} of ${total}`}</span>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Per page</span>
+                                <Select value={String(runsPerPage)} onValueChange={v => handleRunsPerPageChange(Number(v))}>
+                                    <SelectTrigger className="w-18 h-8 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="20">20</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <RunHistoryPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                        </div>
+                    </div>
                 </div>
 
-                {isLoading || !stats ? (
-                    <StatsPageSkeleton />
-                ) : (
-                    <>
-                        {/* ── Top-level KPIs ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <StatCard label="Events Processed" value={formatNumber(stats.totalEventsProcessed)} change={stats.totalEventsProcessedChange} />
-                            <StatCard label="Actions Taken" value={formatNumber(stats.actionsTaken)} change={stats.actionsTakenChange} />
-                            <StatCard label="Active Agents" value={formatNumber(stats.numberOfAgents)} change={stats.numberOfAgentsChange} />
+                <div className="rounded-2xl border border-border/60 bg-card overflow-hidden mb-6">
+                    {activityLoading ? (
+                        <ActivityLoadingSkeleton />
+                    ) : runs.length === 0 ? (
+                        <div className="py-12">
+                            <RunHistoryEmptyState
+                                hasActiveFilters={hasActiveFilters}
+                                onClearAll={() => {
+                                    setSearchQuery("")
+                                    setDateRange({ from: undefined, to: undefined })
+                                    setSelectedStatuses(
+                                        new Set([
+                                            RunHistoryStatus.SUCCESS,
+                                            RunHistoryStatus.FAILED,
+                                            RunHistoryStatus.CANCELLED,
+                                            RunHistoryStatus.SKIPPED,
+                                            RunHistoryStatus.IN_PROGRESS,
+                                            RunHistoryStatus.AWAITING_APPROVAL
+                                        ])
+                                    )
+                                    setCurrentPage(1)
+                                }}
+                            />
                         </div>
-
-                        {/* ── Daily Events Chart ──────────────────────────── */}
-                        <DailyEventsSection eventsPerDay={dailyEvents} timezone={stats.timezone} />
-
-                        {/* ── Insights Row 1 ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <AgentLeaderboard agents={stats.agentActivity ?? []} />
-                            <StatusBreakdownChart data={stats.statusBreakdown ?? []} />
+                    ) : (
+                        <div className="divide-y divide-border/40">
+                            {runs.map(run => (
+                                <RunHistoryRow key={run.id} run={run} onOpenChat={handleOpenChat} />
+                            ))}
                         </div>
+                    )}
+                </div>
 
-                        {/* ── Insights Row 2 ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <HorizontalBarSection title="Trigger Sources" description="Where your events originate from" data={stats.triggerIntegrations ?? []} />
-                            <HorizontalBarSection title="Action Integrations" description="Where your agents take action" data={stats.actionIntegrations ?? []} />
-                        </div>
-
-                        {/* ── Action Types ────────────────────────────────── */}
-                        {(stats.actionTypes?.length ?? 0) > 0 && <HorizontalBarSection title="Action Types" description="Types of actions your agents perform" data={stats.actionTypes ?? []} />}
-                    </>
+                {runs.length > 0 && totalPages > 1 && (
+                    <div className="flex justify-center mb-8">
+                        <RunHistoryPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                    </div>
                 )}
+
+                {/* ── Stats Section ─────────────────────────────────── */}
+                <div className="border-t border-border/60 pt-8 mt-4 space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <h2 className="text-2xl font-semibold tracking-tight text-foreground">Stats</h2>
+                        <div className="space-y-1">
+                            <p className="text-xs font-medium tracking-wide uppercase text-muted-foreground">Time Range</p>
+                            <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
+                        </div>
+                    </div>
+
+                    {statsLoading || !stats ? (
+                        <StatsLoadingSkeleton />
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <StatCard label="Events Processed" value={formatNumber(stats.totalEventsProcessed)} change={stats.totalEventsProcessedChange} />
+                                <StatCard label="Actions Taken" value={formatNumber(stats.actionsTaken)} change={stats.actionsTakenChange} />
+                                <StatCard label="Active Agents" value={formatNumber(stats.numberOfAgents)} change={stats.numberOfAgentsChange} />
+                            </div>
+
+                            <DailyEventsSection eventsPerDay={dailyEvents} timezone={stats.timezone} />
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <AgentLeaderboard agents={stats.agentActivity ?? []} />
+                                <StatusBreakdownChart data={stats.statusBreakdown ?? []} />
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <HorizontalBarSection title="Trigger Sources" description="Where your events originate from" data={stats.triggerIntegrations ?? []} />
+                                <HorizontalBarSection title="Action Integrations" description="Where your agents take action" data={stats.actionIntegrations ?? []} />
+                            </div>
+
+                            {(stats.actionTypes?.length ?? 0) > 0 && (
+                                <HorizontalBarSection title="Action Types" description="Types of actions your agents perform" data={stats.actionTypes ?? []} />
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     )
 }
-
-export default StatsPage
