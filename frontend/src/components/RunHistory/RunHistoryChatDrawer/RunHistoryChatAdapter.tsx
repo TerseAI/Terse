@@ -39,21 +39,12 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     // Fetch History (API)
     const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus, triggerEvent, triggerEventType, isTriggerEventTruncated } = useChatHistory(runId)
 
-    // Parse server ISO timestamps to epoch ms for chronological ordering
-    const historicalEvents = useMemo(
-        () =>
-            events.map(event => ({
-                ...event
-            })),
-        [events]
-    )
-
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = apiStatus ?? status
     const isRunPending = currentStatus === RunHistoryStatus.IN_PROGRESS || currentStatus === RunHistoryStatus.AWAITING_APPROVAL
 
     // Convert to Turns
-    const turns = useMemo(() => convertRunHistoryEventsToTurns(historicalEvents), [historicalEvents])
+    const turns = convertRunHistoryEventsToTurns(events)
 
     // Create subscription function for run history — subscribe whenever runId is valid.
     // We don't gate on isActiveRun/status because the status in the drawer is a stale

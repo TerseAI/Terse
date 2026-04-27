@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 
 import type { ModelEvent } from "terse-types"
 
@@ -40,7 +40,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         setTurns([])
     }
 
-    const filteredTurns = useMemo(() => filterOutThinkingOnlyTurns(turns), [turns])
+    const filteredTurns = filterOutThinkingOnlyTurns(turns)
     const lastTurn = filteredTurns[filteredTurns.length - 1]
     const isPendingAssistantResponse = lastTurn?.status === "generating" || lastTurn?.role === "user" || false
 
