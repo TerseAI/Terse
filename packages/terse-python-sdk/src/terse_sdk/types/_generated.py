@@ -36,12 +36,8 @@ class AttioOutputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["attio"], Field(alias="integrationType")] = (
-        "attio"
-    )
-    config_type: Annotated[Literal["attio_output"], Field(alias="configType")] = (
-        "attio_output"
-    )
+    integration_type: Annotated[Literal["attio"], Field(alias="integrationType")] = "attio"
+    config_type: Annotated[Literal["attio_output"], Field(alias="configType")] = "attio_output"
     object_slug: Annotated[str | None, Field(alias="objectSlug")]
 
 
@@ -98,9 +94,7 @@ class DatadogConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["datadog"], Field(alias="integrationType")] = (
-        "datadog"
-    )
+    integration_type: Annotated[Literal["datadog"], Field(alias="integrationType")] = "datadog"
     config_type: Annotated[Literal["DATADOG"], Field(alias="configType")] = "DATADOG"
     default_indexes: Annotated[list[str], Field(alias="defaultIndexes")]
 
@@ -126,9 +120,7 @@ class GitHubConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = (
-        "github"
-    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
     config_type: Annotated[Literal["github"], Field(alias="configType")] = "github"
     repository_ids: Annotated[list[int], Field(alias="repositoryIds")]
     event_types: Annotated[list[GitHubEventType] | None, Field(alias="eventTypes")]
@@ -139,9 +131,7 @@ class GitHubSkillConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = (
-        "github"
-    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
     config_type: Annotated[Literal["github"], Field(alias="configType")] = "github"
     repository_ids: Annotated[list[int], Field(alias="repositoryIds")]
 
@@ -229,9 +219,7 @@ class GithubPRClosedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = (
-        "github"
-    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
     username: str
     installation_id: Annotated[float, Field(alias="installationId")]
     repository_name: Annotated[str, Field(alias="repositoryName")]
@@ -240,18 +228,14 @@ class GithubPRClosedTrigger(TerseModel):
     pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
     branch: str | None = None
     commits: list[Commit]
-    event_type: Annotated[Literal["pull_request.closed"], Field(alias="eventType")] = (
-        "pull_request.closed"
-    )
+    event_type: Annotated[Literal["pull_request.closed"], Field(alias="eventType")] = "pull_request.closed"
 
 
 class GithubPRMergedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = (
-        "github"
-    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
     username: str
     installation_id: Annotated[float, Field(alias="installationId")]
     repository_name: Annotated[str, Field(alias="repositoryName")]
@@ -260,18 +244,14 @@ class GithubPRMergedTrigger(TerseModel):
     pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
     branch: str | None = None
     commits: list[Commit]
-    event_type: Annotated[Literal["pull_request.merged"], Field(alias="eventType")] = (
-        "pull_request.merged"
-    )
+    event_type: Annotated[Literal["pull_request.merged"], Field(alias="eventType")] = "pull_request.merged"
 
 
 class GithubPROpenedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = (
-        "github"
-    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
     username: str
     installation_id: Annotated[float, Field(alias="installationId")]
     repository_name: Annotated[str, Field(alias="repositoryName")]
@@ -280,18 +260,14 @@ class GithubPROpenedTrigger(TerseModel):
     pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
     branch: str | None = None
     commits: list[Commit]
-    event_type: Annotated[Literal["pull_request.opened"], Field(alias="eventType")] = (
-        "pull_request.opened"
-    )
+    event_type: Annotated[Literal["pull_request.opened"], Field(alias="eventType")] = "pull_request.opened"
 
 
 class GithubPRSynchronizedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = (
-        "github"
-    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
     username: str
     installation_id: Annotated[float, Field(alias="installationId")]
     repository_name: Annotated[str, Field(alias="repositoryName")]
@@ -300,34 +276,20 @@ class GithubPRSynchronizedTrigger(TerseModel):
     pull_request: Annotated[PullRequest, Field(alias="pullRequest")]
     branch: str | None = None
     commits: list[Commit]
-    event_type: Annotated[
-        Literal["pull_request.synchronize"], Field(alias="eventType")
-    ] = "pull_request.synchronize"
+    event_type: Annotated[Literal["pull_request.synchronize"], Field(alias="eventType")] = "pull_request.synchronize"
 
 
 class GithubPRTrigger(
-    RootModel[
-        GithubPROpenedTrigger
-        | GithubPRSynchronizedTrigger
-        | GithubPRClosedTrigger
-        | GithubPRMergedTrigger
-    ]
+    RootModel[GithubPROpenedTrigger | GithubPRSynchronizedTrigger | GithubPRClosedTrigger | GithubPRMergedTrigger]
 ):
-    root: (
-        GithubPROpenedTrigger
-        | GithubPRSynchronizedTrigger
-        | GithubPRClosedTrigger
-        | GithubPRMergedTrigger
-    )
+    root: GithubPROpenedTrigger | GithubPRSynchronizedTrigger | GithubPRClosedTrigger | GithubPRMergedTrigger
 
 
 class GithubPushTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = (
-        "github"
-    )
+    integration_type: Annotated[Literal["github"], Field(alias="integrationType")] = "github"
     username: str
     installation_id: Annotated[float, Field(alias="installationId")]
     repository_name: Annotated[str, Field(alias="repositoryName")]
@@ -370,9 +332,7 @@ class GmailConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = (
-        "gmail"
-    )
+    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = "gmail"
     config_type: Annotated[Literal["gmail"], Field(alias="configType")] = "gmail"
     event_types: Annotated[list[GmailEventType] | None, Field(alias="eventTypes")]
 
@@ -382,12 +342,8 @@ class GmailDraftOutputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = (
-        "gmail"
-    )
-    config_type: Annotated[Literal["gmail_draft_output"], Field(alias="configType")] = (
-        "gmail_draft_output"
-    )
+    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = "gmail"
+    config_type: Annotated[Literal["gmail_draft_output"], Field(alias="configType")] = "gmail_draft_output"
 
 
 class GmailIntegrationInstance(TerseModel):
@@ -403,9 +359,7 @@ class GmailIntegrationInstance(TerseModel):
         ),
     ]
     history_id: Annotated[str | None, Field(alias="historyId")] = None
-    watch_expiration: Annotated[
-        AwareDatetime | None, Field(alias="watchExpiration")
-    ] = None
+    watch_expiration: Annotated[AwareDatetime | None, Field(alias="watchExpiration")] = None
 
 
 class GmailOutputConfigInstance(TerseModel):
@@ -413,12 +367,8 @@ class GmailOutputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = (
-        "gmail"
-    )
-    config_type: Annotated[Literal["gmail_output"], Field(alias="configType")] = (
-        "gmail_output"
-    )
+    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = "gmail"
+    config_type: Annotated[Literal["gmail_output"], Field(alias="configType")] = "gmail_output"
 
 
 class GmailParsedAttachment(TerseModel):
@@ -452,12 +402,8 @@ class LaunchDarklyConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[
-        Literal["launchdarkly"], Field(alias="integrationType")
-    ] = "launchdarkly"
-    config_type: Annotated[Literal["launchdarkly"], Field(alias="configType")] = (
-        "launchdarkly"
-    )
+    integration_type: Annotated[Literal["launchdarkly"], Field(alias="integrationType")] = "launchdarkly"
+    config_type: Annotated[Literal["launchdarkly"], Field(alias="configType")] = "launchdarkly"
     project_key: Annotated[str, Field(alias="projectKey")]
     environment_keys: Annotated[list[str], Field(alias="environmentKeys")]
 
@@ -488,12 +434,8 @@ class LinearInputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = (
-        "linear"
-    )
-    config_type: Annotated[Literal["linear_input"], Field(alias="configType")] = (
-        "linear_input"
-    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    config_type: Annotated[Literal["linear_input"], Field(alias="configType")] = "linear_input"
     team_id: Annotated[str | None, Field(alias="teamId")]
     project_id: Annotated[str | None, Field(alias="projectId")]
     event_types: Annotated[list[LinearEventType] | None, Field(alias="eventTypes")]
@@ -512,12 +454,8 @@ class LinearOutputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = (
-        "linear"
-    )
-    config_type: Annotated[Literal["linear_output"], Field(alias="configType")] = (
-        "linear_output"
-    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
+    config_type: Annotated[Literal["linear_output"], Field(alias="configType")] = "linear_output"
     team_id: Annotated[str | None, Field(alias="teamId")]
     team_name: Annotated[str | None, Field(alias="teamName")]
     project_id: Annotated[str | None, Field(alias="projectId")]
@@ -607,9 +545,7 @@ class LinearWebhookData(TerseModel):
     project_id: Annotated[str | None, Field(alias="projectId")] = None
 
 
-class LinearWebhookType(
-    RootModel[Literal["Issue"] | Literal["Comment"] | Literal["Project"] | str]
-):
+class LinearWebhookType(RootModel[Literal["Issue"] | Literal["Comment"] | Literal["Project"] | str]):
     root: Literal["Issue"] | Literal["Comment"] | Literal["Project"] | str
 
 
@@ -618,9 +554,7 @@ class NotionConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["notion"], Field(alias="integrationType")] = (
-        "notion"
-    )
+    integration_type: Annotated[Literal["notion"], Field(alias="integrationType")] = "notion"
     config_type: Annotated[Literal["notion"], Field(alias="configType")] = "notion"
     database_ids: Annotated[list[str], Field(alias="databaseIds")]
     database_names: Annotated[list[str], Field(alias="databaseNames")]
@@ -642,9 +576,7 @@ class PosthogConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["posthog"], Field(alias="integrationType")] = (
-        "posthog"
-    )
+    integration_type: Annotated[Literal["posthog"], Field(alias="integrationType")] = "posthog"
     config_type: Annotated[Literal["POSTHOG"], Field(alias="configType")] = "POSTHOG"
     project_id: Annotated[str, Field(alias="projectId")]
     project_name: Annotated[str | None, Field(alias="projectName")]
@@ -676,9 +608,7 @@ class SlackConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = (
-        "slack"
-    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
     config_type: Annotated[Literal["slack"], Field(alias="configType")] = "slack"
     channel_id: Annotated[str | None, Field(alias="channelId")]
     channel_name: Annotated[str | None, Field(alias="channelName")]
@@ -702,12 +632,8 @@ class SlackOutputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = (
-        "slack"
-    )
-    config_type: Annotated[Literal["slack_output"], Field(alias="configType")] = (
-        "slack_output"
-    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    config_type: Annotated[Literal["slack_output"], Field(alias="configType")] = "slack_output"
     channel_id: Annotated[str | None, Field(alias="channelId")]
     channel_name: Annotated[str | None, Field(alias="channelName")]
     user_ids: Annotated[list[str] | None, Field(alias="userIds")]
@@ -732,24 +658,16 @@ class SnowflakeOutputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[
-        Literal["snowflake"], Field(alias="integrationType")
-    ] = "snowflake"
-    config_type: Annotated[Literal["snowflake_output"], Field(alias="configType")] = (
-        "snowflake_output"
-    )
+    integration_type: Annotated[Literal["snowflake"], Field(alias="integrationType")] = "snowflake"
+    config_type: Annotated[Literal["snowflake_output"], Field(alias="configType")] = "snowflake_output"
 
 
 class TerseConfigInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_id: Annotated[Literal["system"], Field(alias="integrationId")] = (
-        "system"
-    )
-    integration_type: Annotated[Literal["terse"], Field(alias="integrationType")] = (
-        "terse"
-    )
+    integration_id: Annotated[Literal["system"], Field(alias="integrationId")] = "system"
+    integration_type: Annotated[Literal["terse"], Field(alias="integrationType")] = "terse"
     config_type: Annotated[Literal["terse"], Field(alias="configType")] = "terse"
 
 
@@ -757,15 +675,9 @@ class TimeTriggerConfigInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_id: Annotated[Literal["system"], Field(alias="integrationId")] = (
-        "system"
-    )
-    integration_type: Annotated[Literal["cron_job"], Field(alias="integrationType")] = (
-        "cron_job"
-    )
-    config_type: Annotated[Literal["time_trigger"], Field(alias="configType")] = (
-        "time_trigger"
-    )
+    integration_id: Annotated[Literal["system"], Field(alias="integrationId")] = "system"
+    integration_type: Annotated[Literal["cron_job"], Field(alias="integrationType")] = "cron_job"
+    config_type: Annotated[Literal["time_trigger"], Field(alias="configType")] = "time_trigger"
     cron_expression: Annotated[str, Field(alias="cronExpression")]
 
 
@@ -789,9 +701,7 @@ class CronTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["cron_job"], Field(alias="integrationType")] = (
-        "cron_job"
-    )
+    integration_type: Annotated[Literal["cron_job"], Field(alias="integrationType")] = "cron_job"
     event_type: Annotated[CronTriggerType, Field(alias="eventType")]
     input_id: Annotated[str, Field(alias="inputId")]
     is_manual_trigger: Annotated[bool | None, Field(alias="isManualTrigger")] = None
@@ -806,9 +716,7 @@ class WebhookTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = (
-        "webhook"
-    )
+    integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = "webhook"
     event_type: Annotated[WebhookTriggerType, Field(alias="eventType")]
     body: Any
     headers: dict[str, str]
@@ -823,12 +731,8 @@ class WorkOSOrganizationTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    event_type: Annotated[Literal["organization.created"], Field(alias="eventType")] = (
-        "organization.created"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization.created"], Field(alias="eventType")] = "organization.created"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     organization: WorkOSTriggerOrganization
@@ -862,12 +766,8 @@ class WorkOSInvitationRevokedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    event_type: Annotated[Literal["invitation.revoked"], Field(alias="eventType")] = (
-        "invitation.revoked"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.revoked"], Field(alias="eventType")] = "invitation.revoked"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     invitation: WorkOSTriggerInvitation
@@ -878,12 +778,8 @@ class WorkOSInvitationResentTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    event_type: Annotated[Literal["invitation.resent"], Field(alias="eventType")] = (
-        "invitation.resent"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.resent"], Field(alias="eventType")] = "invitation.resent"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     invitation: WorkOSTriggerInvitation
@@ -894,12 +790,8 @@ class WorkOSInvitationAcceptedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    event_type: Annotated[Literal["invitation.accepted"], Field(alias="eventType")] = (
-        "invitation.accepted"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.accepted"], Field(alias="eventType")] = "invitation.accepted"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     invitation: WorkOSTriggerInvitation
@@ -910,12 +802,8 @@ class WorkOSInvitationCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    event_type: Annotated[Literal["invitation.created"], Field(alias="eventType")] = (
-        "invitation.created"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["invitation.created"], Field(alias="eventType")] = "invitation.created"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     invitation: WorkOSTriggerInvitation
@@ -944,12 +832,10 @@ class WorkOSOrganizationMembershipDeletedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization_membership.deleted"], Field(alias="eventType")] = (
+        "organization_membership.deleted"
     )
-    event_type: Annotated[
-        Literal["organization_membership.deleted"], Field(alias="eventType")
-    ] = "organization_membership.deleted"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     membership: WorkOSTriggerMembership
@@ -959,12 +845,10 @@ class WorkOSOrganizationMembershipUpdatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization_membership.updated"], Field(alias="eventType")] = (
+        "organization_membership.updated"
     )
-    event_type: Annotated[
-        Literal["organization_membership.updated"], Field(alias="eventType")
-    ] = "organization_membership.updated"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     membership: WorkOSTriggerMembership
@@ -974,12 +858,10 @@ class WorkOSOrganizationMembershipCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["organization_membership.created"], Field(alias="eventType")] = (
+        "organization_membership.created"
     )
-    event_type: Annotated[
-        Literal["organization_membership.created"], Field(alias="eventType")
-    ] = "organization_membership.created"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     membership: WorkOSTriggerMembership
@@ -989,12 +871,8 @@ class WorkOSUserDeletedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    event_type: Annotated[Literal["user.deleted"], Field(alias="eventType")] = (
-        "user.deleted"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.deleted"], Field(alias="eventType")] = "user.deleted"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     user: WorkOSTriggerUser
@@ -1004,12 +882,8 @@ class WorkOSUserUpdatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    event_type: Annotated[Literal["user.updated"], Field(alias="eventType")] = (
-        "user.updated"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.updated"], Field(alias="eventType")] = "user.updated"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     user: WorkOSTriggerUser
@@ -1019,12 +893,8 @@ class WorkOSUserCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    event_type: Annotated[Literal["user.created"], Field(alias="eventType")] = (
-        "user.created"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    event_type: Annotated[Literal["user.created"], Field(alias="eventType")] = "user.created"
     event_id: Annotated[str, Field(alias="eventId")]
     created_at: Annotated[str, Field(alias="createdAt")]
     user: WorkOSTriggerUser
@@ -1068,9 +938,7 @@ class LinearCommentCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = (
-        "linear"
-    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
     action: Literal["create"] = "create"
     actor: LinearWebhookActor
     created_at: Annotated[str, Field(alias="createdAt")]
@@ -1078,9 +946,7 @@ class LinearCommentCreatedTrigger(TerseModel):
     organization_id: Annotated[str, Field(alias="organizationId")]
     webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
     webhook_id: Annotated[str, Field(alias="webhookId")]
-    event_type: Annotated[Literal["comment.created"], Field(alias="eventType")] = (
-        "comment.created"
-    )
+    event_type: Annotated[Literal["comment.created"], Field(alias="eventType")] = "comment.created"
     type: Literal["Comment"] = "Comment"
     data: LinearWebhookCommentData
 
@@ -1089,9 +955,7 @@ class LinearIssueUpdatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = (
-        "linear"
-    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
     action: Literal["update"] = "update"
     actor: LinearWebhookActor
     created_at: Annotated[str, Field(alias="createdAt")]
@@ -1099,9 +963,7 @@ class LinearIssueUpdatedTrigger(TerseModel):
     organization_id: Annotated[str, Field(alias="organizationId")]
     webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
     webhook_id: Annotated[str, Field(alias="webhookId")]
-    event_type: Annotated[Literal["issue.updated"], Field(alias="eventType")] = (
-        "issue.updated"
-    )
+    event_type: Annotated[Literal["issue.updated"], Field(alias="eventType")] = "issue.updated"
     type: Literal["Issue"] = "Issue"
     data: LinearWebhookData
 
@@ -1110,9 +972,7 @@ class LinearIssueCreatedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = (
-        "linear"
-    )
+    integration_type: Annotated[Literal["linear"], Field(alias="integrationType")] = "linear"
     action: Literal["create"] = "create"
     actor: LinearWebhookActor
     created_at: Annotated[str, Field(alias="createdAt")]
@@ -1120,9 +980,7 @@ class LinearIssueCreatedTrigger(TerseModel):
     organization_id: Annotated[str, Field(alias="organizationId")]
     webhook_timestamp: Annotated[float, Field(alias="webhookTimestamp")]
     webhook_id: Annotated[str, Field(alias="webhookId")]
-    event_type: Annotated[Literal["issue.created"], Field(alias="eventType")] = (
-        "issue.created"
-    )
+    event_type: Annotated[Literal["issue.created"], Field(alias="eventType")] = "issue.created"
     type: Literal["Issue"] = "Issue"
     data: LinearWebhookData
 
@@ -1130,17 +988,13 @@ class LinearIssueCreatedTrigger(TerseModel):
 class LinearTrigger(
     RootModel[
         Annotated[
-            LinearIssueCreatedTrigger
-            | LinearIssueUpdatedTrigger
-            | LinearCommentCreatedTrigger,
+            LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger,
             Discriminator("event_type"),
         ]
     ]
 ):
     root: Annotated[
-        LinearIssueCreatedTrigger
-        | LinearIssueUpdatedTrigger
-        | LinearCommentCreatedTrigger,
+        LinearIssueCreatedTrigger | LinearIssueUpdatedTrigger | LinearCommentCreatedTrigger,
         Discriminator("event_type"),
     ]
 
@@ -1149,9 +1003,7 @@ class GmailTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = (
-        "gmail"
-    )
+    integration_type: Annotated[Literal["gmail"], Field(alias="integrationType")] = "gmail"
     event_type: Annotated[GmailEventType, Field(alias="eventType")]
     id: str
     thread_id: Annotated[str, Field(alias="threadId")]
@@ -1178,12 +1030,8 @@ class SlackReactionAddedTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = (
-        "slack"
-    )
-    event_type: Annotated[Literal["reaction_added"], Field(alias="eventType")] = (
-        "reaction_added"
-    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[Literal["reaction_added"], Field(alias="eventType")] = "reaction_added"
     channel_id: Annotated[str, Field(alias="channelId")]
     channel_name: Annotated[str | None, Field(alias="channelName")]
     user_id: Annotated[str, Field(alias="userId")]
@@ -1194,9 +1042,7 @@ class SlackReactionAddedTrigger(TerseModel):
     thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
     team_id: Annotated[str, Field(alias="teamId")]
     permalink: str | None
-    channel_type: Annotated[
-        SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")
-    ]
+    channel_type: Annotated[SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")]
     blocks: list[Any] | None
     attachments: list[Any] | None
     files: list[Any] | None
@@ -1211,12 +1057,8 @@ class SlackAppMentionTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = (
-        "slack"
-    )
-    event_type: Annotated[Literal["app_mention"], Field(alias="eventType")] = (
-        "app_mention"
-    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
+    event_type: Annotated[Literal["app_mention"], Field(alias="eventType")] = "app_mention"
     channel_id: Annotated[str, Field(alias="channelId")]
     channel_name: Annotated[str | None, Field(alias="channelName")]
     user_id: Annotated[str, Field(alias="userId")]
@@ -1227,9 +1069,7 @@ class SlackAppMentionTrigger(TerseModel):
     thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
     team_id: Annotated[str, Field(alias="teamId")]
     permalink: str | None
-    channel_type: Annotated[
-        SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")
-    ]
+    channel_type: Annotated[SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")]
     blocks: list[Any] | None
     attachments: list[Any] | None
     files: list[Any] | None
@@ -1239,9 +1079,7 @@ class SlackMessageTrigger(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = (
-        "slack"
-    )
+    integration_type: Annotated[Literal["slack"], Field(alias="integrationType")] = "slack"
     event_type: Annotated[Literal["message"], Field(alias="eventType")] = "message"
     channel_id: Annotated[str, Field(alias="channelId")]
     channel_name: Annotated[str | None, Field(alias="channelName")]
@@ -1253,9 +1091,7 @@ class SlackMessageTrigger(TerseModel):
     thread_timestamp: Annotated[str | None, Field(alias="threadTimestamp")]
     team_id: Annotated[str, Field(alias="teamId")]
     permalink: str | None
-    channel_type: Annotated[
-        SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")
-    ]
+    channel_type: Annotated[SlackReactionAddedTriggerChannelType | None, Field(alias="channelType")]
     blocks: list[Any] | None
     attachments: list[Any] | None
     files: list[Any] | None
@@ -1345,15 +1181,9 @@ class WebhookInputConfigInstance(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    integration_id: Annotated[Literal["system"], Field(alias="integrationId")] = (
-        "system"
-    )
-    integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = (
-        "webhook"
-    )
-    config_type: Annotated[Literal["webhook_input"], Field(alias="configType")] = (
-        "webhook_input"
-    )
+    integration_id: Annotated[Literal["system"], Field(alias="integrationId")] = "system"
+    integration_type: Annotated[Literal["webhook"], Field(alias="integrationType")] = "webhook"
+    config_type: Annotated[Literal["webhook_input"], Field(alias="configType")] = "webhook_input"
 
 
 class WorkOSInputConfigInstance(TerseModel):
@@ -1361,12 +1191,8 @@ class WorkOSInputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    config_type: Annotated[Literal["workos_input"], Field(alias="configType")] = (
-        "workos_input"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    config_type: Annotated[Literal["workos_input"], Field(alias="configType")] = "workos_input"
     event_types: Annotated[list[WorkOSEventType], Field(alias="eventTypes")]
 
 
@@ -1389,12 +1215,8 @@ class WorkOSOutputConfigInstance(TerseModel):
         extra="forbid",
     )
     integration_id: Annotated[str, Field(alias="integrationId")]
-    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = (
-        "workos"
-    )
-    config_type: Annotated[Literal["workos_output"], Field(alias="configType")] = (
-        "workos_output"
-    )
+    integration_type: Annotated[Literal["workos"], Field(alias="integrationType")] = "workos"
+    config_type: Annotated[Literal["workos_output"], Field(alias="configType")] = "workos_output"
 
 
 class WorkOSWebhookData(RootModel[dict[str, Any]]):
@@ -1585,9 +1407,7 @@ class AgentCreate(TerseModel):
     prompt: AgentPrompt
     triggers: list[AgentTrigger]
     outputs: list[AgentOutput]
-    notification_settings: Annotated[
-        AgentNotificationSettings | None, Field(alias="notificationSettings")
-    ]
+    notification_settings: Annotated[AgentNotificationSettings | None, Field(alias="notificationSettings")]
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")]
 
 
@@ -1601,9 +1421,7 @@ class AgentDraft(TerseModel):
     prompt: AgentPrompt
     triggers: list[AgentTrigger]
     outputs: list[AgentOutput]
-    notification_settings: Annotated[
-        AgentNotificationSettings | None, Field(alias="notificationSettings")
-    ]
+    notification_settings: Annotated[AgentNotificationSettings | None, Field(alias="notificationSettings")]
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")]
     id: str | None
     created_by_user_id: Annotated[str, Field(alias="createdByUserId")]
@@ -1691,9 +1509,7 @@ class Agent(TerseModel):
     triggers: list[AgentTrigger]
     outputs: list[AgentOutput]
     created_by_user_id: Annotated[str, Field(alias="createdByUserId")]
-    notification_settings: Annotated[
-        AgentNotificationSettings | None, Field(alias="notificationSettings")
-    ]
+    notification_settings: Annotated[AgentNotificationSettings | None, Field(alias="notificationSettings")]
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")]
     updated_at: Annotated[str | None, Field(alias="updatedAt")]
     source: AgentSource | None
@@ -1751,9 +1567,7 @@ class AgentUpdate(TerseModel):
     prompt: AgentPrompt | None = None
     is_active: Annotated[bool | None, Field(alias="isActive")] = None
     require_approval: Annotated[bool | None, Field(alias="requireApproval")] = None
-    notification_settings: Annotated[
-        AgentNotificationSettings | None, Field(alias="notificationSettings")
-    ] = None
+    notification_settings: Annotated[AgentNotificationSettings | None, Field(alias="notificationSettings")] = None
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")] = None
 
 
@@ -1781,18 +1595,12 @@ class DatadogAggregationGroupBy(TerseModel):
     )
     facet: Annotated[
         str,
-        Field(
-            description="Facet to group by (e.g., @view.name, @service, @browser.name)"
-        ),
+        Field(description="Facet to group by (e.g., @view.name, @service, @browser.name)"),
     ]
-    limit: Annotated[
-        int, Field(description="Maximum number of groups to return (default: 10)")
-    ]
+    limit: Annotated[int, Field(description="Maximum number of groups to return (default: 10)")]
     total: Annotated[
         bool,
-        Field(
-            description='Include "total" group with all events combined (default: false)'
-        ),
+        Field(description='Include "total" group with all events combined (default: false)'),
     ]
 
 
@@ -1819,21 +1627,15 @@ class DatadogAggregationCompute(TerseModel):
     )
     aggregation: Annotated[
         DatadogAggregationComputeAggregation,
-        Field(
-            description="Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"
-        ),
+        Field(description="Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality"),
     ]
     metric: Annotated[
         str,
-        Field(
-            description='Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'
-        ),
+        Field(description='Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
     ]
     type: Annotated[
         DatadogAggregationComputeType,
-        Field(
-            description='Computation type: "total" (overall) or "timeseries" (time-bucketed)'
-        ),
+        Field(description='Computation type: "total" (overall) or "timeseries" (time-bucketed)'),
     ]
 
 
@@ -1843,15 +1645,11 @@ class AggregateRumEventsToolInput(TerseModel):
     )
     query: Annotated[
         str | None,
-        Field(
-            description="Datadog RUM search query to filter events before aggregation (e.g., @type:view)"
-        ),
+        Field(description="Datadog RUM search query to filter events before aggregation (e.g., @type:view)"),
     ] = None
     from_: Annotated[
         str,
-        Field(
-            alias="from", description='Start time (ISO8601 or relative like "now-15m")'
-        ),
+        Field(alias="from", description='Start time (ISO8601 or relative like "now-15m")'),
     ]
     to: Annotated[
         str | None,
@@ -1865,9 +1663,7 @@ class AggregateRumEventsToolInput(TerseModel):
         list[DatadogAggregationGroupBy] | None,
         Field(alias="groupBy", description="Facets to group results by"),
     ]
-    timezone: Annotated[
-        str, Field(description='Timezone for time-based queries (default: "GMT")')
-    ]
+    timezone: Annotated[str, Field(description='Timezone for time-based queries (default: "GMT")')]
     page_limit: Annotated[
         int,
         Field(
@@ -2098,9 +1894,7 @@ class AttioQueryRecordsToolInput(TerseModel):
     ]
     limit: Annotated[
         int | None,
-        Field(
-            description="Maximum number of records to return. Pass null to use the default of 20."
-        ),
+        Field(description="Maximum number of records to return. Pass null to use the default of 20."),
     ]
 
 
@@ -2507,9 +2301,7 @@ class DatadogRumEvent(TerseModel):
     action: DatadogRumActionDetails | None = None
     error: DatadogRumErrorDetails | None = None
     resource: DatadogRumResourceDetails | None = None
-    long_task: Annotated[DatadogRumLongTaskDetails | None, Field(alias="longTask")] = (
-        None
-    )
+    long_task: Annotated[DatadogRumLongTaskDetails | None, Field(alias="longTask")] = None
     service: str | None = None
     version: str | None = None
     environment: str | None = None
@@ -2657,18 +2449,12 @@ class GetLaunchDarklyFlagDetailsToolInput(TerseModel):
             description="The integration ID of the LaunchDarkly skill to use.",
         ),
     ]
-    project_key: Annotated[
-        str, Field(alias="projectKey", description="The LaunchDarkly project key.")
-    ]
+    project_key: Annotated[str, Field(alias="projectKey", description="The LaunchDarkly project key.")]
     environment_keys: Annotated[
         list[str],
-        Field(
-            alias="environmentKeys", description="Array of environment keys to query."
-        ),
+        Field(alias="environmentKeys", description="Array of environment keys to query."),
     ]
-    flag_key: Annotated[
-        str, Field(alias="flagKey", description="The flag key to retrieve.")
-    ]
+    flag_key: Annotated[str, Field(alias="flagKey", description="The flag key to retrieve.")]
     environment_key: Annotated[
         str | None,
         Field(
@@ -2782,9 +2568,7 @@ class GetPosthogSessionEventsToolInput(TerseModel):
             description="The integration ID of the PostHog skill to use.",
         ),
     ]
-    project_id: Annotated[
-        str, Field(alias="projectId", description="The PostHog project ID.")
-    ]
+    project_id: Annotated[str, Field(alias="projectId", description="The PostHog project ID.")]
     session_id: Annotated[
         UUID,
         Field(
@@ -2896,9 +2680,7 @@ class GetWorkOSUserToolInput(TerseModel):
             description="The integration ID of the WorkOS skill to use.",
         ),
     ]
-    user_id: Annotated[
-        str, Field(alias="userId", description="The WorkOS user ID to look up.")
-    ]
+    user_id: Annotated[str, Field(alias="userId", description="The WorkOS user ID to look up.")]
 
 
 class GetWorkOSUserInput(RootModel[GetWorkOSUserToolInput]):
@@ -3083,9 +2865,7 @@ class GmailCreateDraftToolInput(TerseModel):
     ]
     to: Annotated[
         str,
-        Field(
-            description="Recipient email address(es). Multiple addresses can be comma-separated."
-        ),
+        Field(description="Recipient email address(es). Multiple addresses can be comma-separated."),
     ]
     subject: Annotated[str, Field(description="Email subject line")]
     body: Annotated[
@@ -3108,15 +2888,11 @@ class GmailCreateDraftToolInput(TerseModel):
     ] = None
     cc: Annotated[
         str | None,
-        Field(
-            description="CC recipient email address(es). Multiple addresses can be comma-separated."
-        ),
+        Field(description="CC recipient email address(es). Multiple addresses can be comma-separated."),
     ] = None
     bcc: Annotated[
         str | None,
-        Field(
-            description="BCC recipient email address(es). Multiple addresses can be comma-separated."
-        ),
+        Field(description="BCC recipient email address(es). Multiple addresses can be comma-separated."),
     ] = None
     image_urls: Annotated[
         list[str] | None,
@@ -3179,9 +2955,7 @@ class GmailSendEmailToolInput(TerseModel):
     ]
     to: Annotated[
         str,
-        Field(
-            description="Recipient email address(es). Multiple addresses can be comma-separated."
-        ),
+        Field(description="Recipient email address(es). Multiple addresses can be comma-separated."),
     ]
     subject: Annotated[str, Field(description="Email subject line")]
     body: Annotated[
@@ -3204,15 +2978,11 @@ class GmailSendEmailToolInput(TerseModel):
     ] = None
     cc: Annotated[
         str | None,
-        Field(
-            description="CC recipient email address(es). Multiple addresses can be comma-separated."
-        ),
+        Field(description="CC recipient email address(es). Multiple addresses can be comma-separated."),
     ] = None
     bcc: Annotated[
         str | None,
-        Field(
-            description="BCC recipient email address(es). Multiple addresses can be comma-separated."
-        ),
+        Field(description="BCC recipient email address(es). Multiple addresses can be comma-separated."),
     ] = None
     image_urls: Annotated[
         list[str] | None,
@@ -3340,15 +3110,11 @@ class ImageEditToolInput(TerseModel):
     )
     image_url: Annotated[
         str,
-        Field(
-            description="URL of the image to edit. Must be a signed URL from our internal GCS image bucket."
-        ),
+        Field(description="URL of the image to edit. Must be a signed URL from our internal GCS image bucket."),
     ]
     prompt: Annotated[
         str,
-        Field(
-            description="Natural language instruction describing how to edit the image."
-        ),
+        Field(description="Natural language instruction describing how to edit the image."),
     ]
 
 
@@ -3393,9 +3159,7 @@ class IntegrationFieldsResponse(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    installation_type: Annotated[
-        IntegrationFieldsResponseInstallationType, Field(alias="installationType")
-    ]
+    installation_type: Annotated[IntegrationFieldsResponseInstallationType, Field(alias="installationType")]
     fields: list[FormFieldDefinition] | list[ConfigurationFieldDefinition]
 
 
@@ -3913,9 +3677,7 @@ class LinearSearchTicketToolInput(TerseModel):
     ] = None
     limit: Annotated[
         int | None,
-        Field(
-            description="Maximum number of issues to return. Defaults to 10 if not provided."
-        ),
+        Field(description="Maximum number of issues to return. Defaults to 10 if not provided."),
     ] = None
     after: Annotated[
         str | None,
@@ -3945,12 +3707,8 @@ class LinearUpdateTicketUpdates(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    title: Annotated[
-        str | None, Field(description="The updated title of the ticket.")
-    ] = None
-    description: Annotated[
-        str | None, Field(description="The updated description of the ticket.")
-    ] = None
+    title: Annotated[str | None, Field(description="The updated title of the ticket.")] = None
+    description: Annotated[str | None, Field(description="The updated description of the ticket.")] = None
     state_id: Annotated[
         str | None,
         Field(
@@ -3960,9 +3718,7 @@ class LinearUpdateTicketUpdates(TerseModel):
     ] = None
     priority: Annotated[
         int | None,
-        Field(
-            description="The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."
-        ),
+        Field(description="The priority of the ticket. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low."),
     ] = None
     project_id: Annotated[
         str | None,
@@ -4071,9 +3827,7 @@ class ListGitHubCommitsToolInput(TerseModel):
     ] = None
     author: Annotated[
         str | None,
-        Field(
-            description="Filter commits by author (GitHub username or email). Use null for all authors."
-        ),
+        Field(description="Filter commits by author (GitHub username or email). Use null for all authors."),
     ] = None
     per_page: Annotated[
         int,
@@ -4222,9 +3976,7 @@ class ListGitHubPullRequestsToolOutput(TerseModel):
     time_window: Annotated[str, Field(alias="timeWindow")]
     summary: GitHubPullRequestListSummary
     pagination: GitHubPagination
-    pull_requests: Annotated[
-        list[GitHubPullRequestSummary], Field(alias="pullRequests")
-    ]
+    pull_requests: Annotated[list[GitHubPullRequestSummary], Field(alias="pullRequests")]
     message: str
 
 
@@ -4239,14 +3991,10 @@ class ListLaunchDarklyFlagsToolInput(TerseModel):
             description="The integration ID of the LaunchDarkly skill to use.",
         ),
     ]
-    project_key: Annotated[
-        str, Field(alias="projectKey", description="The LaunchDarkly project key.")
-    ]
+    project_key: Annotated[str, Field(alias="projectKey", description="The LaunchDarkly project key.")]
     environment_keys: Annotated[
         list[str],
-        Field(
-            alias="environmentKeys", description="Array of environment keys to query."
-        ),
+        Field(alias="environmentKeys", description="Array of environment keys to query."),
     ]
     summary: Annotated[
         bool,
@@ -4258,9 +4006,7 @@ class ListLaunchDarklyFlagsToolInput(TerseModel):
         str | None,
         Field(description="Optional: Filter flags by name/key containing this text."),
     ] = None
-    tags: Annotated[
-        list[str] | None, Field(description="Optional: Filter flags by tags.")
-    ] = None
+    tags: Annotated[list[str] | None, Field(description="Optional: Filter flags by tags.")] = None
 
 
 class ListLaunchDarklyFlagsInput(RootModel[ListLaunchDarklyFlagsToolInput]):
@@ -4298,9 +4044,7 @@ class ListRumEventsToolInput(TerseModel):
     ]
     query: Annotated[
         str | None,
-        Field(
-            description="Datadog RUM search query to filter events (e.g., @type:view)"
-        ),
+        Field(description="Datadog RUM search query to filter events (e.g., @type:view)"),
     ] = None
     from_: Annotated[
         str | None,
@@ -4311,27 +4055,19 @@ class ListRumEventsToolInput(TerseModel):
     ] = None
     to: Annotated[
         str | None,
-        Field(
-            description="Maximum timestamp (ISO8601 only). Defaults to now if not provided."
-        ),
+        Field(description="Maximum timestamp (ISO8601 only). Defaults to now if not provided."),
     ] = None
     limit: Annotated[
         int,
-        Field(
-            description="Maximum number of RUM events to return (default: 25, max: 1000)"
-        ),
+        Field(description="Maximum number of RUM events to return (default: 25, max: 1000)"),
     ]
     page_cursor: Annotated[
         str | None,
-        Field(
-            alias="pageCursor", description="Pagination cursor from previous response"
-        ),
+        Field(alias="pageCursor", description="Pagination cursor from previous response"),
     ] = None
     sort: Annotated[
         ListRumEventsToolInputSort,
-        Field(
-            description='Sort order: "timestamp" (ascending) or "-timestamp" (descending)'
-        ),
+        Field(description='Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     ]
 
 
@@ -4368,9 +4104,7 @@ class ListWorkOSOrganizationsToolInput(TerseModel):
     ]
     limit: Annotated[
         int,
-        Field(
-            description="Maximum number of organizations to return (default: 20, max: 100)."
-        ),
+        Field(description="Maximum number of organizations to return (default: 20, max: 100)."),
     ]
     after: Annotated[
         str | None,
@@ -4428,9 +4162,7 @@ class ListWorkOSUsersToolInput(TerseModel):
     ]
     email: Annotated[
         str | None,
-        Field(
-            description="Optional exact email address filter. Omit or pass null to list all users."
-        ),
+        Field(description="Optional exact email address filter. Omit or pass null to list all users."),
     ] = None
     organization_id: Annotated[
         str | None,
@@ -4603,9 +4335,7 @@ class ToolCallComplete(TerseModel):
     integration: str
     url: str | None = None
     result: str | None = None
-    error_context: Annotated[SharedErrorContext | None, Field(alias="errorContext")] = (
-        None
-    )
+    error_context: Annotated[SharedErrorContext | None, Field(alias="errorContext")] = None
 
 
 class ToolCall(TerseModel):
@@ -4728,9 +4458,7 @@ class NotionCreateOrUpdateDatabaseRowToolInput(TerseModel):
     ]
     database_id: Annotated[
         str,
-        Field(
-            alias="databaseId", description="The Notion database ID (data source ID)."
-        ),
+        Field(alias="databaseId", description="The Notion database ID (data source ID)."),
     ]
     page_id: Annotated[
         str | None,
@@ -4746,9 +4474,7 @@ class NotionCreateOrUpdateDatabaseRowToolInput(TerseModel):
     ]
 
 
-class NotionCreateOrUpdateDatabaseRowInput(
-    RootModel[NotionCreateOrUpdateDatabaseRowToolInput]
-):
+class NotionCreateOrUpdateDatabaseRowInput(RootModel[NotionCreateOrUpdateDatabaseRowToolInput]):
     root: NotionCreateOrUpdateDatabaseRowToolInput
 
 
@@ -4768,9 +4494,7 @@ class NotionDatabaseRowMutationResult(TerseModel):
     url: str | None = None
 
 
-class NotionCreateOrUpdateDatabaseRowToolOutput(
-    RootModel[NotionDatabaseRowMutationResult]
-):
+class NotionCreateOrUpdateDatabaseRowToolOutput(RootModel[NotionDatabaseRowMutationResult]):
     root: NotionDatabaseRowMutationResult
 
 
@@ -4787,9 +4511,7 @@ class NotionCreateOrUpdatePageToolInput(TerseModel):
     ]
     page_id: Annotated[
         str | None,
-        Field(
-            description="ID of an existing page to update. Omit or null to create a new subpage under parentPageId."
-        ),
+        Field(description="ID of an existing page to update. Omit or null to create a new subpage under parentPageId."),
     ] = None
     parent_page_id: Annotated[
         str | None,
@@ -4798,9 +4520,7 @@ class NotionCreateOrUpdatePageToolInput(TerseModel):
             description="Required for create: the allowed page ID under which to create the new subpage (from the Notion config list). Ignored when page_id is provided for update.",
         ),
     ] = None
-    title: Annotated[
-        str, Field(description="The page title (used for both create and update).")
-    ]
+    title: Annotated[str, Field(description="The page title (used for both create and update).")]
 
 
 class NotionCreateOrUpdatePageInput(RootModel[NotionCreateOrUpdatePageToolInput]):
@@ -4900,9 +4620,7 @@ class NotionFetchRelatedEventsToolInput(TerseModel):
             description="The Notion page ID (not used directly, but required for consistency).",
         ),
     ]
-    block_id: Annotated[
-        str, Field(description="The Notion block ID to fetch related events for")
-    ]
+    block_id: Annotated[str, Field(description="The Notion block ID to fetch related events for")]
 
 
 class NotionFetchRelatedEventsInput(RootModel[NotionFetchRelatedEventsToolInput]):
@@ -4979,9 +4697,7 @@ class NotionListUsersToolInput(TerseModel):
     ]
     query: Annotated[
         str | None,
-        Field(
-            description="Optional search query to filter users by name. Case-insensitive partial match."
-        ),
+        Field(description="Optional search query to filter users by name. Case-insensitive partial match."),
     ] = None
 
 
@@ -5047,17 +4763,9 @@ class NotionModifyBlocksUpdateResult(TerseModel):
 
 
 class NotionModifyBlocksOperationResult(
-    RootModel[
-        NotionModifyBlocksAppendResult
-        | NotionModifyBlocksUpdateResult
-        | NotionModifyBlocksDeleteResult
-    ]
+    RootModel[NotionModifyBlocksAppendResult | NotionModifyBlocksUpdateResult | NotionModifyBlocksDeleteResult]
 ):
-    root: (
-        NotionModifyBlocksAppendResult
-        | NotionModifyBlocksUpdateResult
-        | NotionModifyBlocksDeleteResult
-    )
+    root: NotionModifyBlocksAppendResult | NotionModifyBlocksUpdateResult | NotionModifyBlocksDeleteResult
 
 
 class NotionModifyBlocksBatchSuccess(TerseModel):
@@ -5097,9 +4805,7 @@ class NotionModifyBlocksToolInput(TerseModel):
             description="The integration ID of the Notion workspace to use.",
         ),
     ]
-    page_id: Annotated[
-        str, Field(alias="pageId", description="The Notion page ID to modify.")
-    ]
+    page_id: Annotated[str, Field(alias="pageId", description="The Notion page ID to modify.")]
     operation_json: Annotated[
         str,
         Field(
@@ -5128,22 +4834,12 @@ class NotionModifyBlocksSingleBlockSuccess(TerseModel):
 
 
 class NotionModifyBlocksSuccess(
-    RootModel[
-        NotionModifyBlocksAppendSuccess
-        | NotionModifyBlocksSingleBlockSuccess
-        | NotionModifyBlocksBatchSuccess
-    ]
+    RootModel[NotionModifyBlocksAppendSuccess | NotionModifyBlocksSingleBlockSuccess | NotionModifyBlocksBatchSuccess]
 ):
-    root: (
-        NotionModifyBlocksAppendSuccess
-        | NotionModifyBlocksSingleBlockSuccess
-        | NotionModifyBlocksBatchSuccess
-    )
+    root: NotionModifyBlocksAppendSuccess | NotionModifyBlocksSingleBlockSuccess | NotionModifyBlocksBatchSuccess
 
 
-class NotionModifyBlocksToolOutput(
-    RootModel[NotionModifyBlocksSuccess | NotionModifyBlocksFailure]
-):
+class NotionModifyBlocksToolOutput(RootModel[NotionModifyBlocksSuccess | NotionModifyBlocksFailure]):
     root: NotionModifyBlocksSuccess | NotionModifyBlocksFailure
 
 
@@ -5270,9 +4966,7 @@ class NotionQueryDatabaseToolInput(TerseModel):
     ] = None
     result_type: Annotated[
         NotionQueryDatabaseToolInputResultType | None,
-        Field(
-            description="Filter results to only pages or data sources. Only relevant for wiki databases."
-        ),
+        Field(description="Filter results to only pages or data sources. Only relevant for wiki databases."),
     ] = None
 
 
@@ -5292,9 +4986,7 @@ class NotionQueryDatabaseSuccess(TerseModel):
     next_cursor: str | None
 
 
-class NotionQueryDatabaseToolOutput(
-    RootModel[NotionQueryDatabaseSuccess | NotionQueryDatabaseFailure]
-):
+class NotionQueryDatabaseToolOutput(RootModel[NotionQueryDatabaseSuccess | NotionQueryDatabaseFailure]):
     root: NotionQueryDatabaseSuccess | NotionQueryDatabaseFailure
 
 
@@ -5309,9 +5001,7 @@ class NotionQueryPageToolInput(TerseModel):
             description="The integration ID of the Notion workspace to use.",
         ),
     ]
-    page_id: Annotated[
-        str, Field(alias="pageId", description="The Notion page ID to query.")
-    ]
+    page_id: Annotated[str, Field(alias="pageId", description="The Notion page ID to query.")]
 
 
 class NotionQueryPageInput(RootModel[NotionQueryPageToolInput]):
@@ -5446,9 +5136,7 @@ class PosthogPropertyFilter(TerseModel):
     )
     key: Annotated[str, Field(description="Property key to filter on")]
     value: Annotated[str | float | bool, Field(description="Property value to match")]
-    operator: Annotated[
-        PosthogPropertyFilterOperator, Field(description="Comparison operator")
-    ]
+    operator: Annotated[PosthogPropertyFilterOperator, Field(description="Comparison operator")]
 
 
 class PosthogSearchSessionsPagination(TerseModel):
@@ -5528,9 +5216,7 @@ class ReadGitHubFileToolInput(TerseModel):
     ]
     path: Annotated[
         str,
-        Field(
-            description='The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'
-        ),
+        Field(description='The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
     ]
     start_line: Annotated[
         int | None,
@@ -5594,9 +5280,7 @@ class RecentAgent(TerseModel):
     triggers: list[AgentTrigger]
     outputs: list[AgentOutput]
     created_by_user_id: Annotated[str, Field(alias="createdByUserId")]
-    notification_settings: Annotated[
-        AgentNotificationSettings | None, Field(alias="notificationSettings")
-    ]
+    notification_settings: Annotated[AgentNotificationSettings | None, Field(alias="notificationSettings")]
     tool_approvals: Annotated[list[str] | None, Field(alias="toolApprovals")]
     updated_at: Annotated[str, Field(alias="updatedAt")]
     source: AgentSource | None
@@ -5769,9 +5453,7 @@ class SdkAgentRunResponseContract(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    response_mode: Annotated[Literal["streaming"], Field(alias="responseMode")] = (
-        "streaming"
-    )
+    response_mode: Annotated[Literal["streaming"], Field(alias="responseMode")] = "streaming"
     supports_interruptions: Annotated[bool, Field(alias="supportsInterruptions")]
 
 
@@ -5783,9 +5465,7 @@ class SdkAgentRunResponseBody(TerseModel):
     error: str | None = None
     details: list[str] | None = None
     contract: SdkAgentRunResponseContract | None = None
-    normalized_request: Annotated[
-        SdkAgentRunNormalizedRequest | None, Field(alias="normalizedRequest")
-    ] = None
+    normalized_request: Annotated[SdkAgentRunNormalizedRequest | None, Field(alias="normalizedRequest")] = None
 
 
 class ToolApprovalRequestedPayload(TerseModel):
@@ -5802,9 +5482,7 @@ class ToolApprovalRequested(TerseModel):
         extra="forbid",
     )
     type: Literal["tool_approval_requested"] = "tool_approval_requested"
-    tool_approval_requested: Annotated[
-        ToolApprovalRequestedPayload, Field(alias="toolApprovalRequested")
-    ]
+    tool_approval_requested: Annotated[ToolApprovalRequestedPayload, Field(alias="toolApprovalRequested")]
 
 
 class ToolCallCompleted(TerseModel):
@@ -6047,37 +5725,25 @@ class SearchDatadogLogsToolInput(TerseModel):
     ] = None
     query: Annotated[
         str | None,
-        Field(
-            description="Datadog log search query (e.g., service:web AND @status:error)"
-        ),
+        Field(description="Datadog log search query (e.g., service:web AND @status:error)"),
     ] = None
     indexes: Annotated[
         list[str] | None,
-        Field(
-            description='Log indexes to search (e.g., ["main"]). Defaults to defaultIndexes if not provided.'
-        ),
+        Field(description='Log indexes to search (e.g., ["main"]). Defaults to defaultIndexes if not provided.'),
     ] = None
     from_: Annotated[
         str | None,
-        Field(
-            alias="from", description='Start time (ISO8601 or relative like "now-1h")'
-        ),
+        Field(alias="from", description='Start time (ISO8601 or relative like "now-1h")'),
     ] = None
     to: Annotated[
         str | None,
         Field(description="End time (ISO8601). Defaults to now if not provided."),
     ] = None
-    limit: Annotated[
-        int, Field(description="Maximum number of log entries to return (default: 50)")
-    ]
-    cursor: Annotated[
-        str | None, Field(description="Pagination cursor from previous response")
-    ] = None
+    limit: Annotated[int, Field(description="Maximum number of log entries to return (default: 50)")]
+    cursor: Annotated[str | None, Field(description="Pagination cursor from previous response")] = None
     sort: Annotated[
         ListRumEventsToolInputSort,
-        Field(
-            description='Sort order: "timestamp" (ascending) or "-timestamp" (descending)'
-        ),
+        Field(description='Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     ]
 
 
@@ -6181,9 +5847,7 @@ class SearchPosthogEventsCountSummary(TerseModel):
     )
     success: Literal[True] = True
     actions: list[RunHistoryActionBase] | None = None
-    count_by_event_name_only: Annotated[
-        Literal[True], Field(alias="countByEventNameOnly")
-    ] = True
+    count_by_event_name_only: Annotated[Literal[True], Field(alias="countByEventNameOnly")] = True
     custom_events_only: Annotated[bool, Field(alias="customEventsOnly")]
     event_counts: Annotated[list[PosthogEventCount], Field(alias="eventCounts")]
     total_event_types: Annotated[int, Field(alias="totalEventTypes")]
@@ -6218,9 +5882,7 @@ class SearchPosthogEventsToolInput(TerseModel):
             description="The integration ID of the PostHog skill to use.",
         ),
     ]
-    project_id: Annotated[
-        str, Field(alias="projectId", description="The PostHog project ID.")
-    ]
+    project_id: Annotated[str, Field(alias="projectId", description="The PostHog project ID.")]
     count_by_event_name_only: Annotated[
         bool,
         Field(
@@ -6295,9 +5957,7 @@ class SearchPosthogEventsInput(RootModel[SearchPosthogEventsToolInput]):
     root: SearchPosthogEventsToolInput
 
 
-class SearchPosthogEventsToolOutput(
-    RootModel[SearchPosthogEventsCountSummary | SearchPosthogEventsEventList]
-):
+class SearchPosthogEventsToolOutput(RootModel[SearchPosthogEventsCountSummary | SearchPosthogEventsEventList]):
     root: SearchPosthogEventsCountSummary | SearchPosthogEventsEventList
 
 
@@ -6312,9 +5972,7 @@ class SearchPosthogLogsToolInput(TerseModel):
             description="The integration ID of the PostHog skill to use.",
         ),
     ]
-    project_id: Annotated[
-        str, Field(alias="projectId", description="The PostHog project ID.")
-    ]
+    project_id: Annotated[str, Field(alias="projectId", description="The PostHog project ID.")]
     user_email: Annotated[
         str | None,
         Field(
@@ -6338,9 +5996,7 @@ class SearchPosthogLogsToolInput(TerseModel):
     ] = None
     limit: Annotated[
         int,
-        Field(
-            description="Maximum number of log entries to return (default: 50, max: 250)"
-        ),
+        Field(description="Maximum number of log entries to return (default: 50, max: 250)"),
     ]
     offset: Annotated[
         int,
@@ -6382,9 +6038,7 @@ class SearchPosthogLogsToolOutput(TerseModel):
     success: Literal[True] = True
     actions: list[RunHistoryActionBase] | None = None
     user_email: Annotated[str | None, Field(alias="userEmail")]
-    severity_levels: Annotated[
-        list[PosthogSeverityLevel] | None, Field(alias="severityLevels")
-    ]
+    severity_levels: Annotated[list[PosthogSeverityLevel] | None, Field(alias="severityLevels")]
     message_search: Annotated[str | None, Field(alias="messageSearch")]
     project_id: Annotated[str, Field(alias="projectId")]
     total_logs: Annotated[int, Field(alias="totalLogs")]
@@ -6405,9 +6059,7 @@ class SearchPosthogSessionsToolInput(TerseModel):
             description="The integration ID of the PostHog skill to use.",
         ),
     ]
-    project_id: Annotated[
-        str, Field(alias="projectId", description="The PostHog project ID.")
-    ]
+    project_id: Annotated[str, Field(alias="projectId", description="The PostHog project ID.")]
     user_email: Annotated[
         str,
         Field(
@@ -6417,9 +6069,7 @@ class SearchPosthogSessionsToolInput(TerseModel):
     ]
     limit: Annotated[
         int,
-        Field(
-            description="Maximum number of session recordings to return (default: 10, max: 100)"
-        ),
+        Field(description="Maximum number of session recordings to return (default: 10, max: 100)"),
     ]
     offset: Annotated[int, Field(description="Offset for pagination (default: 0)")]
     last7_days: Annotated[
@@ -6449,9 +6099,7 @@ class SearchPosthogSessionsInput(RootModel[SearchPosthogSessionsToolInput]):
     root: SearchPosthogSessionsToolInput
 
 
-class SearchPosthogSessionsToolOutput(
-    RootModel[PosthogSearchSessionsFound | PosthogSearchSessionsNotFound]
-):
+class SearchPosthogSessionsToolOutput(RootModel[PosthogSearchSessionsFound | PosthogSearchSessionsNotFound]):
     root: PosthogSearchSessionsFound | PosthogSearchSessionsNotFound
 
 
@@ -6468,15 +6116,11 @@ class SearchRumEventsToolInput(TerseModel):
     ]
     query: Annotated[
         str | None,
-        Field(
-            description="Datadog RUM search query (e.g., @type:error AND @error.source:network)"
-        ),
+        Field(description="Datadog RUM search query (e.g., @type:error AND @error.source:network)"),
     ] = None
     from_: Annotated[
         str,
-        Field(
-            alias="from", description='Start time (ISO8601 or relative like "now-15m")'
-        ),
+        Field(alias="from", description='Start time (ISO8601 or relative like "now-15m")'),
     ]
     to: Annotated[
         str | None,
@@ -6484,25 +6128,17 @@ class SearchRumEventsToolInput(TerseModel):
     ] = None
     limit: Annotated[
         int,
-        Field(
-            description="Maximum number of RUM events to return (default: 25, max: 1000)"
-        ),
+        Field(description="Maximum number of RUM events to return (default: 25, max: 1000)"),
     ]
     page_cursor: Annotated[
         str | None,
-        Field(
-            alias="pageCursor", description="Pagination cursor from previous response"
-        ),
+        Field(alias="pageCursor", description="Pagination cursor from previous response"),
     ] = None
     sort: Annotated[
         ListRumEventsToolInputSort,
-        Field(
-            description='Sort order: "timestamp" (ascending) or "-timestamp" (descending)'
-        ),
+        Field(description='Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     ]
-    timezone: Annotated[
-        str, Field(description='Timezone for time-based queries (default: "GMT")')
-    ]
+    timezone: Annotated[str, Field(description='Timezone for time-based queries (default: "GMT")')]
 
 
 class SearchRumEventsInput(RootModel[SearchRumEventsToolInput]):
@@ -6596,9 +6232,7 @@ class SlackListChannelsToolInput(TerseModel):
     ]
     cursor: Annotated[
         str | None,
-        Field(
-            description="Pagination cursor from a previous response (nextCursor). Omit on first call."
-        ),
+        Field(description="Pagination cursor from a previous response (nextCursor). Omit on first call."),
     ] = None
 
 
@@ -6631,9 +6265,7 @@ class SlackListUsersToolInput(TerseModel):
     ]
     query: Annotated[
         str | None,
-        Field(
-            description="Optional search query to filter users by name. Case-insensitive partial match."
-        ),
+        Field(description="Optional search query to filter users by name. Case-insensitive partial match."),
     ] = None
 
 
@@ -6656,9 +6288,7 @@ class SlackListUsersToolOutput(TerseModel):
 
 
 class SlackReadConversationToolInputLimit(RootModel[int]):
-    root: Annotated[
-        int, Field(description="Maximum number of messages to return.", ge=1, le=200)
-    ] = 50
+    root: Annotated[int, Field(description="Maximum number of messages to return.", ge=1, le=200)] = 50
 
 
 class SlackReadConversationToolInput(TerseModel):
@@ -6681,15 +6311,11 @@ class SlackReadConversationToolInput(TerseModel):
     ]
     limit: Annotated[
         SlackReadConversationToolInputLimit | None,
-        Field(
-            description="Maximum number of messages to return.", validate_default=True
-        ),
+        Field(description="Maximum number of messages to return.", validate_default=True),
     ]
     cursor: Annotated[
         str | None,
-        Field(
-            description="Pagination cursor from a previous response (nextCursor). Omit on first call."
-        ),
+        Field(description="Pagination cursor from a previous response (nextCursor). Omit on first call."),
     ] = None
 
 
@@ -6731,9 +6357,7 @@ class SlackSendMessageToolInput(TerseModel):
     ]
     message: Annotated[
         str,
-        Field(
-            description="Message content (mrkdwn). Used as fallback for Block Kit or main message."
-        ),
+        Field(description="Message content (mrkdwn). Used as fallback for Block Kit or main message."),
     ]
     thread_ts: Annotated[
         str | None,
@@ -6743,9 +6367,7 @@ class SlackSendMessageToolInput(TerseModel):
     ] = None
     blocks: Annotated[
         str | None,
-        Field(
-            description="Block Kit JSON array string for interactive messages with buttons, structured layouts"
-        ),
+        Field(description="Block Kit JSON array string for interactive messages with buttons, structured layouts"),
     ] = None
 
 
@@ -6773,9 +6395,7 @@ class SlackUsersResponse(TerseModel):
     users: list[SlackUserResponse]
 
 
-class SnippetVariant(
-    RootModel[Button | IntegrationPrompt | Navigate | MultipleChoice | Image]
-):
+class SnippetVariant(RootModel[Button | IntegrationPrompt | Navigate | MultipleChoice | Image]):
     root: Button | IntegrationPrompt | Navigate | MultipleChoice | Image
 
 
@@ -6792,9 +6412,7 @@ class SnowflakeExecuteQueryToolInput(TerseModel):
     ]
     query: Annotated[
         str,
-        Field(
-            description="The SQL query to execute. Should be a read-only SELECT statement."
-        ),
+        Field(description="The SQL query to execute. Should be a read-only SELECT statement."),
     ]
 
 
@@ -6860,9 +6478,7 @@ class StatsResponse(TerseModel):
         extra="forbid",
     )
     total_events_processed: Annotated[float, Field(alias="totalEventsProcessed")]
-    total_events_processed_change: Annotated[
-        str, Field(alias="totalEventsProcessedChange")
-    ]
+    total_events_processed_change: Annotated[str, Field(alias="totalEventsProcessedChange")]
     actions_taken: Annotated[float, Field(alias="actionsTaken")]
     actions_taken_change: Annotated[str, Field(alias="actionsTakenChange")]
     number_of_agents: Annotated[float, Field(alias="numberOfAgents")]
@@ -6873,12 +6489,8 @@ class StatsResponse(TerseModel):
     timezone: str
     agent_activity: Annotated[list[AgentActivityItem], Field(alias="agentActivity")]
     status_breakdown: Annotated[list[CountByString], Field(alias="statusBreakdown")]
-    trigger_integrations: Annotated[
-        list[CountByString], Field(alias="triggerIntegrations")
-    ]
-    action_integrations: Annotated[
-        list[CountByString], Field(alias="actionIntegrations")
-    ]
+    trigger_integrations: Annotated[list[CountByString], Field(alias="triggerIntegrations")]
+    action_integrations: Annotated[list[CountByString], Field(alias="actionIntegrations")]
     action_types: Annotated[list[CountByString], Field(alias="actionTypes")]
 
 
@@ -6923,9 +6535,7 @@ class SummarizeGitHubPullRequestDiffToolInput(TerseModel):
     ]
 
 
-class SummarizeGitHubPullRequestDiffInput(
-    RootModel[SummarizeGitHubPullRequestDiffToolInput]
-):
+class SummarizeGitHubPullRequestDiffInput(RootModel[SummarizeGitHubPullRequestDiffToolInput]):
     root: SummarizeGitHubPullRequestDiffToolInput
 
 
@@ -7128,9 +6738,7 @@ class WebResearchToolInput(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    input: Annotated[
-        str, Field(description="The research question or topic to investigate")
-    ]
+    input: Annotated[str, Field(description="The research question or topic to investigate")]
     model: Annotated[
         WebResearchToolInputModel | None,
         Field(
@@ -7191,9 +6799,7 @@ class WebSearchOutput(RootModel[WebSearchToolOutput]):
 
 
 class WebSearchToolInputMaxResults(RootModel[int]):
-    root: Annotated[
-        int, Field(description="Number of results to return (default 5)", ge=1, le=10)
-    ]
+    root: Annotated[int, Field(description="Number of results to return (default 5)", ge=1, le=10)]
 
 
 class WebSearchToolInputTopic(StrEnum):
@@ -7219,21 +6825,15 @@ class WebSearchToolInput(TerseModel):
     ]
     search_depth: Annotated[
         WebExtractToolInputExtractDepth | None,
-        Field(
-            description="'basic' is faster, 'advanced' is more thorough (default 'basic')"
-        ),
+        Field(description="'basic' is faster, 'advanced' is more thorough (default 'basic')"),
     ]
     include_answer: Annotated[
         bool | None,
-        Field(
-            description="Include an LLM-generated answer summarizing the results (default false)"
-        ),
+        Field(description="Include an LLM-generated answer summarizing the results (default false)"),
     ]
     topic: Annotated[
         WebSearchToolInputTopic | None,
-        Field(
-            description="'news' for recent news articles, 'general' for all web content (default 'general')"
-        ),
+        Field(description="'news' for recent news articles, 'general' for all web content (default 'general')"),
     ]
     time_range: Annotated[
         WebSearchToolInputTimeRange | None,
@@ -7311,11 +6911,7 @@ class WorkOSMembershipTrigger(
     )
 
 
-class WorkOSUserTrigger(
-    RootModel[
-        WorkOSUserCreatedTrigger | WorkOSUserUpdatedTrigger | WorkOSUserDeletedTrigger
-    ]
-):
+class WorkOSUserTrigger(RootModel[WorkOSUserCreatedTrigger | WorkOSUserUpdatedTrigger | WorkOSUserDeletedTrigger]):
     root: WorkOSUserCreatedTrigger | WorkOSUserUpdatedTrigger | WorkOSUserDeletedTrigger
 
 

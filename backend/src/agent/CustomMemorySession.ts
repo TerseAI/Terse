@@ -1,3 +1,4 @@
+import { system } from "@openai/agents"
 import type { RunStreamEvent } from "@openai/agents"
 import type { AgentInputItem, Session } from "@openai/agents-core"
 import { createHash } from "crypto"
@@ -250,7 +251,8 @@ class BaseChatMemorySession implements Session {
         const filteredEvents = filterReasoningItems(rawEvents)
         const deduplicatedEvents = deduplicateItemsById(filteredEvents)
         const filteredToolCallEvents = this.filterIncompleteToolCalls ? filterToolCallEvents(deduplicatedEvents) : deduplicatedEvents
-        return filteredToolCallEvents.map(cloneAgentItem)
+        const hoistedEvents = hoistSystemEventItems(filteredToolCallEvents)
+        return hoistedEvents.map(cloneAgentItem)
     }
 
     async addItems(items: AgentInputItem[]): Promise<void> {
@@ -579,6 +581,47 @@ const filterToolCallEvents = (events: AgentInputItem[]): AgentInputItem[] => {
     }
 
     return filteredEvents
+}
+
+// Anthropic's Messages API only allow a single system block at the very start of a request.
+// Our system events are persisted inline as role:"system" items so they replay as context,
+// which OpenAI tolerates but Anthropic rejects with "Multiple system messages that are separated by user/assistant messages".
+// Collapse them into one leading system message so the content survives for both providers.
+function hoistSystemEventItems(rawEvents: AgentInputItem[]): AgentInputItem[] {
+    const systemItems = rawEvents.filter(item => (item as { role?: unknown })?.role === "system")
+    const otherItems = rawEvents.filter(item => (item as { role?: unknown })?.role !== "system")
+    if (systemItems.length === 0) {
+        return otherItems
+    }
+    const aggregatedContent = buildAggregatedSystemEventContent(systemItems)
+    const aggregatedItem = system(aggregatedContent) as AgentInputItem
+    return [aggregatedItem, ...otherItems]
+}
+
+function buildAggregatedSystemEventContent(systemItems: AgentInputItem[]): string {
+    const lines: string[] = ["The following system events were recorded in prior turns of this conversation, in chronological order. Use them as context for the current turn."]
+    systemItems.forEach((item, index) => {
+        const itemAny = item as { id?: unknown; content?: unknown }
+        const id = typeof itemAny.id === "string" ? itemAny.id : `event-${index + 1}`
+        const content = extractSystemEventContentText(itemAny.content)
+        lines.push(`[${index + 1}] (${id}) ${content}`)
+    })
+    return lines.join("\n")
+}
+
+function extractSystemEventContentText(content: unknown): string {
+    if (typeof content === "string") return content
+    if (!Array.isArray(content)) return ""
+    return content
+        .map(part => {
+            const record = part && typeof part === "object" ? (part as Record<string, unknown>) : null
+            if (!record) return ""
+            if (typeof record.text === "string") return record.text
+            if (typeof record.input_text === "string") return record.input_text
+            return ""
+        })
+        .filter(Boolean)
+        .join("\n")
 }
 
 /**

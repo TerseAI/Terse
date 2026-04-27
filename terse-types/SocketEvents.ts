@@ -22,8 +22,7 @@ export const SocketEvents = {
     WORKOS_USER_UPDATED: "workos:user:updated",
     WORKOS_FORCE_LOGOUT: "workos:force:logout",
     WORKOS_SESSION_UPDATED: "workos:session:updated",
-    WORKOS_ORG_UPDATED: "workos:org:updated",
-
+    WORKOS_ORG_UPDATED: "workos:org:updated"
 } as const
 
 /**

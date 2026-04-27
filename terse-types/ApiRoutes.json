@@ -176,5 +176,5 @@
     "USERS": {
         "CREATE": "/users",
         "BY_ID": "/users/:id"
-    },
+    }
 }

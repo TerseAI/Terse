@@ -83,6 +83,13 @@ export class SdkJobExecutionService {
         this.emitter.emit(event, now)
     }
 
+    private emitSandboxNaturalStop(): void {
+        if (!this.emitter) return
+        const now = Date.now()
+        const responseId = `sandbox-${SandboxStage.RUNNING}`
+        this.emitter.emit({ type: "NaturalStop", id: `${responseId}-stop`, response_id: responseId, timestamp: now }, now)
+    }
+
     async execute(params: SdkJobExecutionParams): Promise<void> {
         const { gcsKey, runId, agent, orgId, userId, user, jobName } = params
         const executionStart = performance.now()
@@ -147,6 +154,7 @@ export class SdkJobExecutionService {
                 logger.error("Failed to mark run as failed after SDK execution error", { error: persistError, runId })
             }
         } finally {
+            this.emitSandboxNaturalStop()
             if (sandboxTokenId) {
                 await this.deleteSandboxApiToken(sandboxTokenId).catch(err => {
                     logger.warn("Failed to delete sandbox API token", { error: err, tokenId: sandboxTokenId })

@@ -55,7 +55,7 @@ export type CanonicalModelEvent =
       }
     | { type: "stream-start" }
     | { type: "response-metadata"; responseId: string }
-    | { type: "finish" }
+    | { type: "finish"; responseId?: string }
     | { type: "raw"; rawValue: unknown }
 
 export function extractCompletedAssistantItems(event: RunStreamEvent): AgentInputItem[] {
@@ -97,11 +97,15 @@ export class AssistantDeltaProjector {
     }
 
     ingestModelEvent(event: RunStreamEvent): CanonicalModelEvent | undefined {
+        if (event.type === "run_item_stream_event" && event.name === "tool_output") {
+            return this.projectToolOutputItem(event.item)
+        }
+
         const rawData = getRawModelData(event)
         if (rawData?.type === "response_done") {
             const responseId = normalizeResponseId(rawData.response?.id)
             if (responseId) this.completedResponseIds.add(responseId)
-            this.currentResponseId = undefined
+            // Keep currentResponseId so trailing tool_output events stamp with the call's responseId; the next response-metadata will overwrite it.
         }
 
         const modelEvent = extractModelEvent(event)
@@ -225,7 +229,7 @@ export class AssistantDeltaProjector {
                 return event
             }
             case "finish":
-                return { type: "finish" }
+                return this.currentResponseId ? { type: "finish", responseId: this.currentResponseId } : { type: "finish" }
             case "raw":
                 return { type: "raw", rawValue: modelEvent.rawValue }
             default:
@@ -235,6 +239,27 @@ export class AssistantDeltaProjector {
 
     getStreamedResponseIds(): string[] {
         return Array.from(this.completedResponseIds)
+    }
+
+    private projectToolOutputItem(item: unknown): CanonicalModelEvent | undefined {
+        if (!this.currentResponseId) return undefined
+        const record = item as MutableRecord
+        const rawItem = record?.rawItem as MutableRecord | undefined
+        if (!rawItem) return undefined
+
+        const id = readNonEmptyString(rawItem.callId)
+        if (!id) return undefined
+
+        const toolName = readNonEmptyString(rawItem.name)
+        const event: CanonicalModelEvent = {
+            type: "tool-result",
+            id,
+            responseId: this.currentResponseId
+        }
+        if (toolName) event.toolName = toolName
+        // Forward the structured {type,text} so extractToolExecutionErrorContext can detect the SDK's "Error:" shape.
+        if (rawItem.output !== undefined) event.output = rawItem.output
+        return event
     }
 }
 

@@ -8,7 +8,7 @@ import { RunHistoryAction } from "terse-types"
 import logger from "../../logger"
 import { Session as AppSession } from "../../types/session"
 import type { StreamEventIngestionSession } from "../CustomMemorySession"
-import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
+import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
 import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
@@ -179,7 +179,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         }
 
         await this.clearPendingApprovalState(this.runId)
-        await this.onModelEvent(createNaturalStopEvent(), Date.now())
 
         return {
             status: "completed",

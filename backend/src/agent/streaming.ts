@@ -1,9 +1,7 @@
-import { Agent, FunctionCallResultItem, ResponseStreamEvent, RunRawModelStreamEvent, RunStreamEvent, RunToolCallOutputItem, StreamedRunResult } from "@openai/agents"
-import { IntegrationType } from "terse-types/Integrations"
+import { Agent, StreamedRunResult } from "@openai/agents"
 import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
-import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
@@ -15,7 +13,6 @@ import { parseToolExecutionResult } from "./toolExecution"
 export async function* transformAgentStreamToModelEvents<T extends Session>(
     result: StreamedRunResult<T, Agent<T, any>>,
     options: {
-        onToolCall?: (stepId: string, toolName: string) => void
         onToolCallComplete?: ToolCallCompleteHandler
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
@@ -61,6 +58,18 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
                 continue
             case "tool-error":
                 yield* yieldToolCallCompletionStream(canonicalEvent, ToolCallExecutionStatus.FAILED, onToolCallComplete)
+                continue
+            case "finish": {
+                const id = randomString(15)
+                yield {
+                    id,
+                    response_id: canonicalEvent.responseId ?? id,
+                    timestamp: Date.now(),
+                    type: "NaturalStop"
+                }
+                continue
+            }
+            default:
                 continue
         }
     }
@@ -128,12 +137,6 @@ export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedI
     return event
 }
 
-export function createNaturalStopEvent(): ModelEvent {
-    const ts = Date.now()
-    const id = randomString(15)
-    return { type: "NaturalStop", id, response_id: id, timestamp: ts }
-}
-
 export function createCancelledEvent(reason?: string): ModelEvent {
     const ts = Date.now()
     const id = randomString(15)
@@ -142,83 +145,6 @@ export function createCancelledEvent(reason?: string): ModelEvent {
     }
     return { type: "Cancelled", id, response_id: id, timestamp: ts }
 }
-
-export enum RawModelStreamEventType {
-    OutputTextDelta = "output_text_delta",
-    Model = "model"
-}
-
-export enum ToolCallRuntimeStatus {
-    IN_PROGRESS = "in_progress",
-    COMPLETED = "completed",
-    INCOMPLETE = "incomplete"
-}
-
-export type RawModelStreamEvent = {
-    type: "raw_model_stream_event"
-    data: {
-        type: RawModelStreamEventType | "model"
-        delta?: string
-        providerData?: { item_id?: string; step_id?: string }
-        event?: {
-            type:
-                | "response.output_text.delta"
-                | "response.created"
-                | "response.in_progress"
-                | "response.output_item.added"
-                | "response.content_part.added"
-                | "response.output_text.done"
-                | "response.content_part.done"
-                | "response.output_item.done"
-                | "response.completed"
-                | string
-            delta?: string
-            item_id?: string
-            sequence_number?: number
-            output_index?: number
-            content_index?: number
-            [key: string]: any
-        }
-    }
-}
-
-export type ToolCalledEvent = {
-    type: "run_item_stream_event"
-    name: "tool_called"
-    item: {
-        type: "tool_call_item"
-        rawItem: {
-            providerData?: any
-            id?: string
-            type: "function_call" | "hosted_tool_call"
-            callId?: string
-            name: string
-            status?: ToolCallRuntimeStatus
-            arguments?: string
-        }
-        agent: any
-    }
-}
-
-export type ToolCallCompleteEvent = {
-    type: "run_item_stream_event"
-    name: "tool_output"
-    item: {
-        type: "tool_call_output_item"
-        rawItem: {
-            type: "function_call_result" | "hosted_tool_call" | "hosted_tool_call_result"
-            name: string
-            callId?: string
-            id?: string
-            status: ToolCallRuntimeStatus
-            output?: any
-        }
-        agent: any
-        output?: any
-    }
-}
-
-export type AgentStreamEvent = RawModelStreamEvent | ToolCalledEvent | ToolCallCompleteEvent
 
 export type ToolCallCompleteHandler = (callId: string, toolName: string, actions?: RunHistoryAction[]) => Promise<ChangedItem[]>
 
@@ -232,34 +158,4 @@ export type ToolCallCompleteData = {
     errorContext?: ErrorContext
     actions?: RunHistoryAction[]
     snippets?: ChatSnippet[]
-}
-
-// New stuff
-
-type ModelStreamEvent = {
-    type: string
-    id?: unknown
-    delta?: unknown
-    toolName?: unknown
-    providerMetadata?: unknown
-    [key: string]: unknown
-}
-
-function getRawModelData(event: RunStreamEvent): ResponseStreamEvent | undefined {
-    return event.type === "raw_model_stream_event" ? (event.data as ResponseStreamEvent) : undefined
-}
-
-function extractModelEvent(event: RunStreamEvent): ModelStreamEvent | undefined {
-    const data = getRawModelData(event)
-    return data ? getModelStreamEvent(data) : undefined
-}
-
-function getModelStreamEvent(data: ResponseStreamEvent): ModelStreamEvent | undefined {
-    if (data.type !== "model") return undefined
-    if (!data.event || typeof data.event !== "object") return undefined
-    return data.event as ModelStreamEvent
-}
-
-export function readNonEmptyString(value: unknown): string | undefined {
-    return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined
 }

@@ -143,6 +143,8 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     const totalChipPages = Math.ceil((ctaChips?.length ?? 0) / CHIPS_PER_PAGE)
     const visibleChips = ctaChips?.slice(ctaChipPage * CHIPS_PER_PAGE, (ctaChipPage + 1) * CHIPS_PER_PAGE) ?? []
 
+    console.log("isPendingAssistantResponse", isPendingAssistantResponse)
+
     return (
         <div className="h-full w-full bg-background rounded-lg flex flex-col relative">
             <div ref={scrollContainerRef} data-chat-scroll-container="true" className="flex-1 flex flex-col-reverse overflow-y-auto p-4 select-text">
