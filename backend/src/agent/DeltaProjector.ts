@@ -1,5 +1,4 @@
-import type { AgentInputItem, ResponseStreamEvent, RunStreamEvent } from "@openai/agents"
-import { createHash, randomUUID } from "node:crypto"
+import type { ResponseStreamEvent, RunStreamEvent } from "@openai/agents"
 
 type ModelStreamEvent = {
     type: string
@@ -57,36 +56,6 @@ export type CanonicalModelEvent =
     | { type: "response-metadata"; responseId: string }
     | { type: "finish"; responseId?: string }
     | { type: "raw"; rawValue: unknown }
-
-export function extractCompletedAssistantItems(event: RunStreamEvent): AgentInputItem[] {
-    if (event.type === "raw_model_stream_event") {
-        const data = getRawModelData(event)
-        if (data?.type !== "response_done" || !Array.isArray(data.response?.output)) return []
-        const responseId = normalizeResponseId(data.response.id)
-
-        return data.response.output
-            .filter(isAssistantMessageItem)
-            .map((item: AgentInputItem) => {
-                if (!responseId || getAssistantMessageId(item)) return item
-                return {
-                    ...(item as Record<string, any>),
-                    providerData: {
-                        ...(item as Record<string, any>).providerData,
-                        responseId
-                    }
-                } as AgentInputItem
-            })
-            .map(normalizeItemForStorage)
-    }
-
-    if (event.type === "run_item_stream_event" && event.name === "message_output_created") {
-        const rawItem = (event.item as any)?.rawItem
-        if (!isAssistantMessageItem(rawItem)) return []
-        return [normalizeItemForStorage(rawItem)]
-    }
-
-    return []
-}
 
 export class AssistantDeltaProjector {
     private currentResponseId: string | undefined
@@ -260,21 +229,6 @@ export class AssistantDeltaProjector {
     }
 }
 
-export function buildAssistantSnapshot(itemId: string, text: string, status: "in_progress" | "completed"): AgentInputItem {
-    return normalizeItemForStorage({
-        type: "message",
-        role: "assistant",
-        id: itemId,
-        status,
-        content: [{ type: "output_text", text }],
-        providerData: { responseId: itemId }
-    } as AgentInputItem)
-}
-
-export function getAssistantText(item: AgentInputItem): string {
-    return extractItemText(item)
-}
-
 function getRawModelData(event: RunStreamEvent): ResponseStreamEvent | undefined {
     return event.type === "raw_model_stream_event" ? (event.data as ResponseStreamEvent) : undefined
 }
@@ -298,139 +252,10 @@ function normalizeResponseId(value: unknown): string | undefined {
 
 type MutableRecord = Record<string, any>
 
-const FAKE_RESPONSE_ID = "FAKE_ID"
-
-export function cloneAgentItem<T extends AgentInputItem>(item: T): T {
-    return structuredClone(item)
-}
-
-export function normalizeItemForStorage(item: AgentInputItem): AgentInputItem {
-    const cloned = cloneAgentItem(item) as MutableRecord
-
-    if (isMessageItem(cloned)) {
-        cloned.type ??= "message"
-
-        if (typeof cloned.id !== "string" || cloned.id.trim().length === 0) {
-            if (cloned.role === "assistant") {
-                const assistantId = getAssistantMessageId(cloned as AgentInputItem)
-                if (!assistantId) {
-                    throw new Error("Assistant message is missing a stable AI SDK id.")
-                }
-                cloned.id = assistantId
-            } else if (cloned.role === "user") {
-                cloned.id = `user_${randomUUID()}`
-            }
-        }
-    }
-
-    return cloned as AgentInputItem
-}
-
-export function buildAgentInputItemEventKey(item: AgentInputItem): string {
-    const record = item as MutableRecord
-    const itemType = getItemType(record)
-    const itemId = readNonEmptyString(record.id)
-    const callId = readNonEmptyString(record.callId) ?? readNonEmptyString(record.call_id)
-
-    if (itemType === "message") {
-        const messageId = getMessageStableId(item)
-        if (!messageId) {
-            throw new Error("Message item is missing a stable id; refusing hash-based deduplication.")
-        }
-        return `msg:${messageId}`
-    }
-
-    if (itemType === "function_call" && callId) return `fc:${callId}`
-    if (itemType === "function_call_result" && callId) return `fcr:${callId}`
-    if (itemType === "reasoning" && itemId) return `rs:${itemId}`
-    if (callId && itemType) return `${itemType}:${callId}`
-
-    return `hash:${hashItem(item)}`
-}
-
-export function getMessageStableId(item: AgentInputItem): string | undefined {
-    const record = item as MutableRecord
-    const itemId = readNonEmptyString(record.id)
-    if (itemId) return itemId
-
-    if (isMessageItem(record) && record.role === "assistant") {
-        return getAssistantMessageId(record as AgentInputItem)
-    }
-
-    return undefined
-}
-
-export function getAssistantMessageId(item: AgentInputItem): string | undefined {
-    const record = item as MutableRecord
-    const responseId = readNonEmptyString(record.providerData?.responseId)
-    if (responseId && responseId !== FAKE_RESPONSE_ID) return responseId
-    return undefined
-}
-
-export function isAssistantMessageItem(item: unknown): item is AgentInputItem {
-    return isMessageItem(item) && (item as MutableRecord).role === "assistant"
-}
-
-export function isUserMessageItem(item: unknown): item is AgentInputItem {
-    return isMessageItem(item) && (item as MutableRecord).role === "user"
-}
-
-export function extractItemText(item: unknown): string {
-    const content = (item as MutableRecord | null | undefined)?.content
-
-    if (typeof content === "string") return content
-    if (!Array.isArray(content)) return ""
-
-    return content
-        .map(part => {
-            if (typeof part === "string") return part
-            if (!part || typeof part !== "object") return ""
-            if (typeof part.text === "string") return part.text
-            if (typeof part.refusal === "string") return part.refusal
-            if (typeof part.transcript === "string") return part.transcript
-            return ""
-        })
-        .join("")
-}
-
-export function hashItem(item: unknown): string {
-    return createHash("sha256")
-        .update(JSON.stringify(normalizeForHash(item)))
-        .digest("hex")
-}
-
-export function getItemType(item: MutableRecord): string {
-    if (typeof item.type === "string") return item.type
-    if (typeof item.role === "string") return "message"
-    return ""
-}
-
 export function readNonEmptyString(value: unknown): string | undefined {
     return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined
 }
 
 export function readNonEmptyText(value: unknown): string | undefined {
     return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
-function isMessageItem(item: unknown): item is MutableRecord {
-    if (!item || typeof item !== "object") return false
-    const record = item as MutableRecord
-    return (record.type === "message" || record.type === undefined) && (record.role === "assistant" || record.role === "user" || record.role === "system")
-}
-
-function normalizeForHash(value: unknown): unknown {
-    if (value === null || value === undefined) return value
-    if (typeof value === "bigint") return value.toString()
-    if (value instanceof Uint8Array) {
-        return { __type: "Uint8Array", data: Buffer.from(value).toString("base64") }
-    }
-    if (Array.isArray(value)) return value.map(normalizeForHash)
-    if (typeof value !== "object") return value
-
-    const out: Record<string, unknown> = {}
-    for (const key of Object.keys(value as object).sort()) {
-        out[key] = normalizeForHash((value as MutableRecord)[key])
-    }
-    return out
 }
