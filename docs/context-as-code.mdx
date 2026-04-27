@@ -33,16 +33,18 @@ This adds latency, wastes tokens, and silently breaks when someone renames a cha
 Compile your workspace into typed code once, then write workflows against it. Resource IDs become constants. Trigger builders and skills become namespaces. Tool wrappers become typed methods on `agent.tools.*`.
 
 ```ts
+import { TerseAgent, createJob } from "terse-sdk"
+
 import { Attio, AttioList, Slack, SlackChannel } from "./terse.generated"
 
-await client.createJob({
+createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [
-        Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-        Slack.skill({ channel: SlackChannel.DealDesk })
-    ],
-    onTrigger: async (event, agent) => {
+    onTrigger: async event => {
+        const agent = TerseAgent.create({
+            prompt: "You enrich new deals and alert the deal desk.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Slack.skill({ channel: SlackChannel.DealDesk })]
+        })
         /* your logic */
     }
 })

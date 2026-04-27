@@ -9,8 +9,8 @@ Most GTM teams don't have one source of leads — they have five. Product signup
 This page shows a three-workflow pipeline that pulls leads from very different sources and funnels them into Attio. Each workflow is independent — deploy one, deploy all three, or fork them.
 
 <Note>
-    Some of the integrations, triggers, and SDK features below (WorkOS, Parallel Web Services, Parallel Monitor, structured agent output) are on the roadmap. The code samples reflect what the API will
-    look like. Join the waitlist from **Integrations** in the app if you want early access.
+    Some of the integrations and SDK features below (WorkOS, Parallel Web Services) are on the roadmap. Web Monitor and structured agent output ship today. Code samples for roadmap items reflect what
+    the API will look like. Join the waitlist from **Integrations** in the app if you want early access.
 </Note>
 
 ## Start from a project scaffold
@@ -35,7 +35,7 @@ Connect WorkOS, Parallel, Slack, Attio, and an outbound email provider from **In
 
 1. **Product signups** — a daily digest of new WorkOS workspaces, enriched and emailed to GTM as a reviewable CSV.
 2. **Community Slack** — every new member of your community channel lands in Attio, enriched, in real time.
-3. **Market signals** — Parallel Monitor watches the web for fundraising announcements from ICP-fit companies and opens them as Attio records.
+3. **Market signals** — Web Monitor watches the open web for fundraising announcements from ICP-fit companies and opens them as Attio records.
 
 ## 1. Daily signups from WorkOS
 
@@ -53,7 +53,7 @@ Keeping the fetch deterministic means the batch is reproducible. Letting the age
 ### Core workflow
 
 ```ts
-import { CronTrigger, Terse, TerseAgent } from "terse-sdk"
+import { CronTrigger, TerseAgent, createJob } from "terse-sdk"
 import { z } from "zod"
 
 import { Attio, AttioList, Email, Parallel, Schedule, WorkOs } from "./terse.generated"
@@ -72,13 +72,15 @@ const DraftRow = z.object({
     notes: z.string()
 })
 
-const client = new Terse()
-
-await client.createJob({
+createJob({
     name: "workos-daily-signup-digest",
     triggers: [Schedule.cron({ expression: "0 8 * * *" })],
-    skills: [WorkOs.skill(), Parallel.skill(), Attio.skill({ lists: [AttioList.Accounts.Signups] }), Email.skill()],
-    onTrigger: async (event: CronTrigger, agent: TerseAgent) => {
+    onTrigger: async (event: CronTrigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You triage daily signups. Decide create, update, or skip against Attio and enrich via Parallel.",
+            skills: [WorkOs.skill(), Parallel.skill(), Attio.skill({ lists: [AttioList.Accounts.Signups] }), Email.skill()]
+        })
+
         const workspaces = await agent.tools.workos.listWorkspaces({
             createdAfter: event.window.startsAt,
             createdBefore: event.window.endsAt
@@ -89,19 +91,16 @@ await client.createJob({
         const rows = await Promise.all(
             workspaces.map(w =>
                 agent.runAndWait(
-                    {
-                        instructions: [
-                            `Search ${AttioList.Accounts.Signups} for an existing record matching domain "${w.domain}".`,
-                            "If a record exists, propose 'update' and fill only the fields that are missing or stale.",
-                            "If no record exists, propose 'create' with all enriched fields.",
-                            "If the domain is clearly not a business (personal email, test data), propose 'skip' and leave enrichment empty.",
-                            "Enrich via Parallel Web Services: industry, employee count, estimated revenue, ICP fit score.",
-                            "Use the notes field to flag conflicts, low-confidence enrichment, or anything a human should review.",
-                            `Workspace: ${JSON.stringify(w)}`
-                        ].join("\n"),
-                        output: DraftRow
-                    },
-                    event
+                    [
+                        `Search ${AttioList.Accounts.Signups} for an existing record matching domain "${w.domain}".`,
+                        "If a record exists, propose 'update' and fill only the fields that are missing or stale.",
+                        "If no record exists, propose 'create' with all enriched fields.",
+                        "If the domain is clearly not a business (personal email, test data), propose 'skip' and leave enrichment empty.",
+                        "Enrich via Parallel Web Services: industry, employee count, estimated revenue, ICP fit score.",
+                        "Use the notes field to flag conflicts, low-confidence enrichment, or anything a human should review.",
+                        `Workspace: ${JSON.stringify(w)}`
+                    ].join("\n"),
+                    DraftRow
                 )
             )
         )
@@ -143,17 +142,19 @@ Every new member in your community Slack channel is a warm lead. Enrich them the
 ### Core workflow
 
 ```ts
-import { Terse, TerseAgent, Trigger } from "terse-sdk"
+import { TerseAgent, Trigger, createJob } from "terse-sdk"
 
 import { Attio, AttioList, Parallel, Slack, SlackChannel } from "./terse.generated"
 
-const client = new Terse()
-
-await client.createJob({
+createJob({
     name: "community-slack-to-attio",
     triggers: [Slack.onMemberJoinedChannel({ channel: SlackChannel.Community })],
-    skills: [Slack.skill({ channel: SlackChannel.Community }), Parallel.skill(), Attio.skill({ lists: [AttioList.Contacts.Community] })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You enrich new community members and add them to Attio for AE follow-up.",
+            skills: [Slack.skill({ channel: SlackChannel.Community }), Parallel.skill(), Attio.skill({ lists: [AttioList.Contacts.Community] })]
+        })
+
         const profile = await agent.tools.slack.getUserProfile({ userId: event.userId })
 
         const domain = profile.email?.split("@")[1]
@@ -189,70 +190,63 @@ await client.createJob({
 - Route high-ICP contacts to a specific AE by tagging the Attio record with an owner.
 - Skip enrichment for personal email domains if you don't want them in the pipeline.
 
-## 3. Fundraising signals from Parallel Monitor
+## 3. Fundraising signals from Web Monitor
 
-Parallel Monitor watches the open web for signals you care about. Wire it to fundraising announcements that match your ICP and let the workflow open the Attio record before a human ever reads the news.
+Web Monitor watches the open web for signals you care about. Point it at fundraising announcements that match your ICP and let the workflow open the Attio record before a human ever reads the news.
 
 ### What it does
 
-1. Triggers on a Parallel Monitor fundraising signal.
-2. Filters to companies that match ICP (industry, region, headcount).
+1. Runs Web Monitor daily against a natural-language query about ICP-fit fundraising rounds.
+2. Returns structured payload fields (company, round, ICP fit) you can branch on.
 3. Uses the model to draft a one-paragraph account brief.
-4. Creates an Attio record in the outbound list with the brief and signal context.
+4. Creates an Attio record in the outbound list with the brief and source URLs.
 
 ### Core workflow
 
 ```ts
-import { Terse, TerseAgent, Trigger } from "terse-sdk"
+import { TerseAgent, type WebMonitorTriggerFor, createJob } from "terse-sdk"
+import * as z from "zod"
 
-import { Attio, AttioList, Parallel } from "./terse.generated"
+import { Attio, AttioList, WebMonitor } from "./terse.generated"
 
-const client = new Terse()
+const FundraisingEvent = z.object({
+    companyName: z.string(),
+    companyDomain: z.string().nullable(),
+    roundStage: z.string(),
+    roundAmountUsd: z.number().nullable(),
+    industry: z.string(),
+    icpFit: z.number().min(0).max(100)
+})
 
-await client.createJob({
+createJob({
     name: "fundraising-signals-to-attio",
     triggers: [
-        Parallel.Monitor.onSignal({
-            topic: Parallel.Signals.FundingAnnouncement,
-            match: {
-                industries: ["software", "fintech", "healthtech"],
-                regions: ["north-america", "europe"],
-                minRoundSize: 10_000_000
-            }
+        WebMonitor.onEvent({
+            query: "Series A through Series C fundraises at North American or European software, fintech, or healthtech companies above $10M.",
+            frequency: { number: 1, unit: "day" },
+            outputSchema: FundraisingEvent
         })
     ],
-    skills: [Parallel.skill(), Attio.skill({ lists: [AttioList.Accounts.Outbound] })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
-        const research = await agent.tools.parallel.research({
-            domain: event.signal.company.domain,
-            fields: ["employeeCount", "technologies", "icpFitScore"]
+    onTrigger: async (event: WebMonitorTriggerFor<typeof FundraisingEvent>) => {
+        if (event.payload.icpFit < 60) return
+
+        const agent = TerseAgent.create({
+            prompt: "You draft concise outbound briefs for AEs based on fundraising signals.",
+            skills: [Attio.skill({ lists: [AttioList.Accounts.Outbound] })]
         })
 
-        if (research.icpFitScore < 60) return
-
-        const prompt = [
-            "Write a two-sentence outbound brief for an AE.",
-            `Company: ${event.signal.company.name}`,
-            `Round: ${event.signal.round.stage} — ${event.signal.round.amountUsd} USD`,
-            `Announced: ${event.signal.publishedAt}`,
-            `Headline: ${event.signal.headline}`,
-            `Source: ${event.signal.url}`,
-            `Employees: ${research.employeeCount}`,
-            `Stack: ${research.technologies.join(", ")}`
-        ].join("\n")
-
-        const brief = await agent.runAndWait(prompt, event)
+        const brief = await agent.runAndWait(`${event.formatForAgentRunner()}\n\nWrite a two-sentence outbound brief for an AE about ${event.payload.companyName}.`)
 
         await agent.tools.attio.createRecord({
             list: AttioList.Accounts.Outbound,
             fields: {
-                company_name: event.signal.company.name,
-                company_domain: event.signal.company.domain,
+                company_name: event.payload.companyName,
+                company_domain: event.payload.companyDomain,
                 source: "fundraising-signal",
-                signal_url: event.signal.url,
-                round_stage: event.signal.round.stage,
-                round_amount_usd: event.signal.round.amountUsd,
-                icp_fit: research.icpFitScore,
+                signal_urls: event.sourceUrls.join(", "),
+                round_stage: event.payload.roundStage,
+                round_amount_usd: event.payload.roundAmountUsd,
+                icp_fit: event.payload.icpFit,
                 account_brief: brief
             }
         })
@@ -262,7 +256,7 @@ await client.createJob({
 
 ### Customize
 
-- Swap the signal topic to hiring spikes, leadership changes, or product launches.
+- Swap the query to track hiring spikes, leadership changes, or product launches.
 - Post a Slack alert to the outbound channel in addition to the Attio record.
 - Add a second filter against existing Attio records to skip accounts you're already working.
 

@@ -6,7 +6,7 @@ icon: "house"
 
 <CardGroup cols={2}>
     <Card title="Quickstart" icon="rocket" href="/quickstart">
-        Get a workflow live in under 10 minutes.
+        Get a workflow live in under 5 minutes.
     </Card>
     <Card title="Context as Code" icon="lightbulb" href="/context-as-code">
         How generated helpers make workflows more stable.
@@ -20,19 +20,27 @@ AI agents are fast to build but make mistakes. Deterministic workflows are relia
 <CodeGroup>
 
 ```ts Typescript
-const client = new Terse()
+import { GithubPRTrigger, TerseAgent, createJob } from "terse-sdk"
+import { GitHub, Repos, Slack, SlackChannel } from "../terse.generated"
+// ^^ Generated based on your workspace
 
-await client.createJob({
+createJob({
     name: "Summarize PR and send slack message",
     triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
-    skills: [
-        // Fine tune what agents have access to
-        GitHub.skill({ repos: [Repos.TerseAI.Terse] }),
-        Slack.skill({ channel: SlackChannel.AllTerseInc })
-    ],
-    onTrigger: async (event: GithubPRTrigger, Agent: TerseAgent) => {
+    onTrigger: async (event: GithubPRTrigger) => {
+        // Create durable Agents
+        const prompt = "Summarize the incoming PR and send to slack. Format the summary in Block Kit; include screenshots or diagrams from the PR as image blocks."
+        const agent = TerseAgent.create({
+            prompt,
+            skills: [
+                // Fine tune what agents have access to. Impossible to modify anything outside of this scope
+                GitHub.skill({ repos: [Repos.TerseAI.Terse] }),
+                Slack.skill({ channel: SlackChannel.AllTerseInc })
+            ]
+        })
+
         // deterministically call a tool
-        const message = await Agent.tools.slack.sendMessage({
+        const message = await agent.tools.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,
             message: "New PR from " + event.sender.login + "!"
         })
@@ -40,15 +48,11 @@ await client.createJob({
         // Outputs are strongly typed
         const parentId = message.message_ts
 
-        // Insert any prompt you want. Use helper to easily feed event as well.
-        const prompt = `
-          Summarize this PR ${event.formatForAgentRunner()}.
-          Keep it short. Reply in a thread to the Slack message (thread parent ts: ${parentId}).
-          Format the summary in Block Kit; include screenshots or diagrams from the PR as image blocks.
-        `.trim()
-
         // Trigger the Agent with Github + Slack tools auto added
-        await Agent.runAndWait(prompt)
+        await agent.runAndWait(`
+        Summarize this PR ${event.formatForAgentRunner()}.
+        Keep it short. Reply in a thread to the Slack message (thread parent ts: ${parentId}).
+        `)
     }
 })
 ```
@@ -178,7 +182,7 @@ export const AttioIcon = (
 | Concept                | What it means                                                                                                                                                                                   |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Context as Code**    | `terse generate` compiles your connected integrations into generated helpers, removing the need for runtime discovery of IDs, channels, or lists                                                |
-| **Workflow**           | A TypeScript automation with triggers, skills, and a handler, deployed via `terse deploy`                                                                                             |
+| **Workflow**           | A TypeScript automation with triggers, skills, and a handler, deployed via `terse deploy`                                                                                                       |
 | **Serverless hosting** | `terse deploy` packages your code and hosts it for you. Workflows run in isolated containers that spin up on trigger and tear down on completion. No servers to manage. [Learn more.](/hosting) |
 | **Trigger**            | The event (e.g. `Attio.onRecordCreated()`) or schedule (e.g. `Schedule.cron()`) that starts a workflow                                                                                          |
 | **Skill**              | An integration capability available to the workflow (e.g. `Apollo.skill()`, `Slack.skill()`)                                                                                                    |

@@ -1,10 +1,10 @@
 ---
 title: "Jobs"
-description: "A job is the unit of automation in Terse: a trigger, a set of skills, and a handler that runs every time the trigger fires."
+description: "A job is the unit of automation in Terse: a trigger and a handler that runs every time the trigger fires."
 icon: "boxes"
 ---
 
-A job is the core building block in Terse. It connects an event (the trigger) to the code that should run when that event happens (the handler), with a set of integrations available to use along the way (skills). When you deploy a Terse project, you're deploying one or more jobs.
+A job is the core building block in Terse. It connects an event (the trigger) to the code that should run when that event happens (the handler). When you deploy a Terse project, you're deploying one or more jobs.
 
 In the SDK, you define jobs with `createJob()` in TypeScript. In the Terse app and across these docs, we call them **workflows**. Same thing, different name.
 
@@ -15,11 +15,11 @@ Every job has four parts:
 <CodeGroup>
 
 ```ts TypeScript
-await client.createJob({
+createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    filter: (event) => event.record.values.stage === "contract-sent",
+    onTrigger: async (event) => {
         // your logic here
     }
 })
@@ -35,13 +35,13 @@ A unique string identifier. Terse uses this to match the job across deploys, so 
 
 The event that starts the job. A trigger is always tied to an integration (Attio record created, Slack message received, GitHub PR opened) or to the system (cron schedule, webhook). A job can have multiple triggers, but each execution is started by exactly one event.
 
-### Skills
+## Filter (Optional)
 
-The integrations available to the model during agentic calls (`run` and `runAndWait`). Skills don't limit what your code can do with deterministic tool calls. They only control what the LLM can reach for when it's reasoning.
+Runs a closure when the event fires and you can decide to skip this particular event.
 
 ### Handler
 
-The function that runs when the trigger fires. It receives the trigger event and a `TerseAgent` instance. Inside the handler, you can make deterministic tool calls, run the model, parse structured output, or combine all three.
+The function that runs when the trigger fires. Inside the handler, you can make deterministic tool calls, use the TerseAgent, parse structured output, or combine all three.
 
 ## What happens when a job runs
 
@@ -58,27 +58,28 @@ Trigger fires → Filter (optional) → Handler executes → Run recorded in Act
 
 Inside a handler, you have two ways to get things done:
 
-| Approach | How | When to use |
-| --- | --- | --- |
+| Approach          | How                                | When to use                                                  |
+| ----------------- | ---------------------------------- | ------------------------------------------------------------ |
 | **Deterministic** | `agent.tools.*` or `executeTool()` | You know exactly which tool to call and with what parameters |
-| **Agentic** | `run()` or `runAndWait()` | You need the model to reason, summarize, classify, or decide |
+| **Agentic**       | `run()` or `runAndWait()`          | You need the model to reason, summarize, classify, or decide |
 
 Most production jobs combine both. Use deterministic calls for predictable operations (fetch data, update a record, send a message) and agentic calls when the model adds value (scoring, summarizing, routing).
 
 <CodeGroup>
 
 ```ts TypeScript
-onTrigger: async (event: Trigger, agent: TerseAgent) => {
+onTrigger: async (event: Trigger) => {
+    const agent = TerseAgent.create({
+        prompt: "You enrich new deals with research and clear summaries.",
+        skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()]
+    })
     // Deterministic: always enrich
     const company = await agent.tools.apollo.enrichCompany({
         domain: event.record.values.company_domain
     })
 
     // Agentic: let the model reason about the data
-    const summary = await agent.runAndWait(
-        `Summarize this company for the account owner.\nIndustry: ${company.industry}\nEmployees: ${company.employeeCount}`,
-        event
-    )
+    const summary = await agent.runAndWait(`Summarize this company for the account owner.\nIndustry: ${company.industry}\nEmployees: ${company.employeeCount}`, event)
 
     // Deterministic: always write the result back
     await agent.tools.attio.updateRecord({
@@ -98,12 +99,15 @@ Not every event needs a full run. Use `filter` to skip events that don't match y
 <CodeGroup>
 
 ```ts TypeScript
-await client.createJob({
+createJob({
     name: "contract-alerts",
     triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
-    skills: [Slack.skill({ channel: SlackChannel.DealDesk })],
     filter: (event: Trigger) => event.record.values.stage === "contract-sent",
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You notify the deal desk when contracts are sent.",
+            skills: [Slack.skill({ channel: SlackChannel.DealDesk })]
+        })
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
             message: `Contract sent for ${event.record.values.company_name}.`
