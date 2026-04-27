@@ -1,55 +1,21 @@
 ---
 title: "Self-improvement"
-description: "Terse reviews your past workflow runs every week and recommends concrete changes to prompts, triggers, outputs, and code."
+description: "Terse reviews your runs every week and ships patches against your workflow code."
 icon: "sparkles"
 ---
 
-Every workflow accumulates signal over time: which runs succeed, which ones fail, and why. Terse turns that signal into action. Once a week, it reviews the last seven days of runs for each workflow, identifies patterns, and surfaces specific improvements you can apply in one click.
+Once a week, a cron sweeps each workflow with **improvements enabled**, reads the last seven days of runs alongside your deployed source, and produces patches — real `git diff`s against the prompt, trigger, skills, or code in your workflow file.
 
-You don't need to build dashboards, read logs, or remember what went wrong last Tuesday. The platform does the analysis and tells you what to fix.
-
-## How it works
-
-Once a week, a cron job sweeps every workflow with **improvements enabled**. For each one, an evaluator reads the last seven days of runs (success rate, failures, action logs, raw events) alongside your deployed TypeScript source, then produces patches against that source — a real `git diff` you can apply locally. Suggestions below 0.7 confidence are dropped, and workflows with no runs in the period or four or more pending improvements are skipped.
-
-Patches can touch anything in your workflow file: the prompt, the trigger, the skills allowlist, or the surrounding code. Once produced, they show up as `PENDING` improvements in the **Improvements** tab and you get a **Weekly Agent Review** email summarizing what changed.
-
-## Reviewing and applying improvements
-
-Open any workflow and go to the **Improvements** tab. You'll see the most recent review summary at the top, followed by one card per recommendation. Each card shows what the evaluator found, the rationale, and the full suggested patch with a syntax-highlighted diff.
-
-You apply patches from your local project with the CLI:
+Patches show up in the **Improvements** tab and in a weekly summary email. Apply them locally with the CLI:
 
 ```bash
-terse list improvements   # see every pending improvement across all workflows
-terse apply               # interactive picker
+terse list improvements
 terse apply <improvement-id>
 ```
 
-`terse apply` writes the patch to a temp file and runs `git apply` against your working tree. If your code has drifted from the deployed snapshot, it falls back to a 3-way merge, and finally offers `--reject` so successful hunks land cleanly and conflicts are written as `.rej` files for you to resolve. Once the patch is on disk, the improvement is marked **Applied** in the UI so the same suggestion won't come back next week.
+`terse apply` runs `git apply` (with 3-way and `--reject` fallbacks if your code has drifted) and marks the improvement as **Applied** in the UI. **Dismiss** a card to hide it permanently.
 
-You have three actions on each card:
-
-- **Apply** — copy the improvement id and run `terse apply <id>` locally, then redeploy.
-- **Dismiss** — hide the improvement. The evaluator won't suggest it again.
-- **Undo dismiss** — bring it back if you change your mind.
-
-## Enabling self-improvement
-
-Self-improvement is controlled per workflow. Toggle **Improvements** on in your workflow settings to opt in. When enabled, the weekly review includes that workflow. When disabled, it's skipped entirely.
-
-<Note>
-    The weekly review only runs for workflows with at least one run in the past seven days. Creating a workflow and enabling improvements won't generate a review until the workflow has actually
-    executed.
-</Note>
-
-## What the evaluator ignores
-
-The evaluator is designed to flag actionable issues, not noise. It explicitly ignores:
-
-- **Manual and test runs.** Frequent testing is normal and doesn't indicate a problem.
-- **Approval settings.** These are intentional configuration choices, not bugs.
-- **User-controlled configuration.** Trigger sources, notification toggles, and similar settings you manage directly.
+<Note>Workflows with no runs in the period, or four or more pending improvements, are skipped. Manual and test runs are ignored.</Note>
 
 ## Where to go next
 
