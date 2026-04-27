@@ -36,16 +36,6 @@
             {
                 "group": "Reference",
                 "pages": ["reference/cli", "reference/triggers", "reference/skills", "reference/typescript-sdk"]
-            },
-            {
-                "group": "Templates",
-                "root": "templates/index",
-                "pages": ["templates/new-deal-enrichment", "templates/weekly-pipeline-digest", "templates/crm-slack-alerts", "templates/contact-scoring"]
-            },
-            {
-                "group": "Compare",
-                "root": "compare/index",
-                "pages": ["reference/vs-zapier", "reference/vs-custom-scripts", "reference/vs-ai-agents"]
             }
         ]
     },
