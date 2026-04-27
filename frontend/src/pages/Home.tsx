@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { AlertTriangle, ArrowRight, Check, Copy, PauseCircle, Terminal } from "lucide-react"
@@ -7,6 +7,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { type RunHistoryRecordWithAgent, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import type { Agent } from "terse-types/types"
 
+import { useSidebar } from "@/components/ui/sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAgents } from "@/hooks/api/useAgents"
@@ -132,11 +133,7 @@ function AgentRow({ agent, health }: { agent: Agent; health: AgentHealth }) {
 
     return (
         <li className="group relative transition-colors hover:bg-muted/50 focus-within:bg-muted/50">
-            <Link
-                to={agentRoute}
-                aria-label={`Open ${agent.name}`}
-                className="absolute inset-0 z-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
-            />
+            <Link to={agentRoute} aria-label={`Open ${agent.name}`} className="absolute inset-0 z-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm" />
             <div className="relative pointer-events-none flex items-center gap-4 px-3 py-3.5">
                 <div className="flex-1 min-w-0 flex items-start gap-2.5">
                     <span className={cn("mt-1.5 h-1.5 w-1.5 rounded-full shrink-0", healthDotColor(health.status))} aria-hidden />
@@ -189,10 +186,7 @@ function RunDot({ run, agentId }: { run: RunHistoryRecordWithAgent | undefined; 
                 <Link
                     to={runRoute}
                     aria-label={`Open run from ${formatTimestamp(run.timestamp)}`}
-                    className={cn(
-                        "block h-4 w-1 rounded-sm transition-transform hover:scale-y-110 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                        runDotColor(run.status)
-                    )}
+                    className={cn("block h-4 w-1 rounded-sm transition-transform hover:scale-y-110 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring", runDotColor(run.status))}
                 />
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">
@@ -241,6 +235,12 @@ const CLI_LINES = ["npm i -g terse-cli", "terse init my-agent"]
 
 function EmptyState() {
     const [copied, setCopied] = useState(false)
+    const { setOpen } = useSidebar()
+
+    useEffect(() => {
+        setOpen(false)
+        return () => setOpen(true)
+    }, [])
 
     const handleCopy = () => {
         void navigator.clipboard.writeText(CLI_LINES.join("\n"))
@@ -251,7 +251,7 @@ function EmptyState() {
     return (
         <div className="min-h-full flex items-center justify-center px-6 py-16">
             <div className="w-full max-w-md">
-                <div className="flex items-center gap-2 mb-10">
+                <div className="flex items-center gap-2 mb-8">
                     <span className="block h-2 w-2 rounded-full bg-success" aria-hidden />
                     <span className="font-mono text-sm tracking-tight text-foreground">terse</span>
                 </div>
