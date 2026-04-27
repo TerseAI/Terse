@@ -6,7 +6,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { User } from "terse-types/types"
 
-import { MAX_IMPROVEMENTS_PER_AGENT, evaluateAgent } from "../agent/JudgeAgent/JudgeAgent"
+import { MAX_IMPROVEMENTS_PER_AGENT } from "../agent/JudgeAgent/JudgeAgent"
 import { fetchFullJudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
 import { settings } from "../config/settings"
 import logger from "../logger"
@@ -56,7 +56,8 @@ export async function reviewAllAgents(req: Request, res: Response) {
         const automations = await db().automations.findMany({
             where: {
                 is_active: true,
-                improvements_enabled: true
+                improvements_enabled: true,
+                source: AutomationSource.SDK
             },
             select: {
                 id: true,
@@ -141,19 +142,9 @@ export async function reviewAllAgents(req: Request, res: Response) {
         // Phase 2: Evaluate all eligible automations concurrently
         const results = await Promise.allSettled(
             eligible.map(async automation => {
-                let evaluation
-                if (automation.source === "SDK") {
-                    const context = await fetchFullJudgeContext(automation.id, automation.organization_id)
-                    const sdkService = new SdkImprovementService()
-                    evaluation = await sdkService.evaluate(automation.id, context)
-                } else {
-                    evaluation = await evaluateAgent({
-                        automationId: automation.id,
-                        user: automation.user,
-                        source: automation.source
-                    })
-                }
-
+                const context = await fetchFullJudgeContext(automation.id, automation.organization_id)
+                const sdkService = new SdkImprovementService()
+                const evaluation = await sdkService.evaluate(automation.id, context)
                 const improvementRecords = evaluation.improvements
 
                 await db().$transaction(async tx => {

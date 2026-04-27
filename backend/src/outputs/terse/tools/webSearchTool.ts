@@ -1,5 +1,4 @@
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { ChatAgentContext } from "../../../agent/ChatAgent/ChatAgentContext"
 import { getWebSearchService } from "../../../services/webSearch/getWebSearchService"
 import { TypedToolOptions, defineTool } from "../../../tools/toolUtils"
 import { Session } from "../../../types/session"
@@ -20,7 +19,5 @@ export const webSearchTool = defineTool({
         })
     }
 })
-
-export const chatWebSearchTool: TypedToolOptions<"web_search", ChatAgentContext> = webSearchTool
 
 export const runHistoryWebSearchTool: TypedToolOptions<"web_search", SessionWithTracking<Session>> = webSearchTool

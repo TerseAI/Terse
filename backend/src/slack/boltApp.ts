@@ -1265,7 +1265,7 @@ export async function setupSlackBolt() {
         }
 
         // Generate OAuth URL synchronously (before ack)
-        // Pass additional state payload (chatId, channel, integrationType) to enable resuming ChatAgent after OAuth
+        // Pass additional state payload (chatId, channel, integrationType)
         const additionalStatePayload: Record<string, string> | undefined =
             statePayload.chatId && statePayload.channel
                 ? {
