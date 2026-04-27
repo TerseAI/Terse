@@ -1,9 +1,8 @@
-import { useState } from "react"
-
-import { Braces, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, Maximize2, Minimize2, Terminal } from "lucide-react"
+import { Braces, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2 } from "lucide-react"
 import { RunHistoryRecord, RunHistoryStatus, RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
+import { CopyCommandButton } from "@/components/ui/copy-command-button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/pages/Agents/components/Integration"
 
@@ -39,8 +38,6 @@ export default function RunHistoryChatDrawerHeader({
     isTriggerPayloadOpen = false,
     onToggleTriggerPayload
 }: Props) {
-    const [isReplayCopied, setIsReplayCopied] = useState(false)
-
     const hasRunNavigation = runs !== undefined && currentRunIndex !== undefined
     const canGoPrevious = hasRunNavigation && currentRunIndex > 0
     const canGoNext = hasRunNavigation && currentRunIndex < runs.length - 1
@@ -51,16 +48,6 @@ export default function RunHistoryChatDrawerHeader({
 
     const handleNext = () => {
         if (canGoNext && onNavigate) onNavigate(runs[currentRunIndex + 1].id)
-    }
-
-    const handleCopyReplay = async () => {
-        try {
-            await navigator.clipboard.writeText(`terse replay ${runId}`)
-            setIsReplayCopied(true)
-            window.setTimeout(() => setIsReplayCopied(false), 2000)
-        } catch {
-            setIsReplayCopied(false)
-        }
     }
 
     return (
@@ -103,21 +90,7 @@ export default function RunHistoryChatDrawerHeader({
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                    type="button"
-                    onClick={handleCopyReplay}
-                    className={cn(
-                        "group inline-flex items-center gap-2 rounded-md border px-2.5 py-1 font-mono text-xs transition-colors",
-                        isReplayCopied
-                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                            : "border-border/70 bg-muted/40 text-foreground hover:border-border hover:bg-muted"
-                    )}
-                    title={isReplayCopied ? "Copied to clipboard" : "Click to copy CLI replay command"}
-                >
-                    {isReplayCopied ? <Check className="h-3.5 w-3.5" /> : <Terminal className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground" />}
-                    <span className="truncate">terse replay {runId}</span>
-                    {!isReplayCopied && <Copy className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />}
-                </button>
+                <CopyCommandButton command={`terse replay ${runId}`} title="Copy. Then run in your project's terminal" />
 
                 {hasTriggerPayload && onToggleTriggerPayload && (
                     <Button
