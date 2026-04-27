@@ -39,7 +39,5 @@ export function ToolCallUnit({
 }) {
     const handleApprove = onApprove ? (stepId: string, options?: ToolApprovalResponseOptions) => onApprove(stepId, { ...options, responseId: unit.responseId }) : undefined
     const handleReject = onReject ? (stepId: string, options?: ToolApprovalResponseOptions) => onReject(stepId, { ...options, responseId: unit.responseId }) : undefined
-
-    console.log("ToolCallUnit unit", JSON.stringify(unit, null, 2))
     return <FunctionCallItem call={toFunctionCallEvent(unit)} index={index} isTurnFailure={isTurnFailure} onApprove={handleApprove} onReject={handleReject} onSendMessage={onSendMessage} />
 }
