@@ -1,0 +1,122 @@
+---
+title: "TerseAgent"
+description: "A typed wrapper around the OpenAI Agents SDK that runs agentic loops, returns structured outputs, and enforces a strict allowlist of skills and resources."
+icon: "bot"
+---
+
+`TerseAgent` is the runtime your handler uses to reason and act. It wraps the [OpenAI Agents SDK](https://openai.github.io/openai-agents-js/) under the hood, so you get the same agentic loop, tool-calling, and streaming model. On top of that, it adds the things workflows actually need: typed deterministic tool wrappers, structured outputs validated with `zod`, and a strict allowlist that prevents the model from touching anything you didn't explicitly grant.
+
+You create one inside `onTrigger` with `TerseAgent.create()` and then either call tools deterministically, hand off to the model with `run()` / `runAndWait()`, or both.
+
+<CodeGroup>
+
+```ts TypeScript
+import { TerseAgent, Trigger, createJob } from "terse-sdk"
+
+import { Apollo, Attio, AttioList, Slack, SlackChannel } from "./terse.generated"
+
+createJob({
+    name: "score-new-deal",
+    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+    onTrigger: async (event: Trigger) => {
+        const agent = TerseAgent.create({
+            prompt: "You score new deals for ICP fit and notify the deal desk.",
+            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })]
+        })
+
+        const summary = await agent.runAndWait("Score this account and explain why.")
+    }
+})
+```
+
+</CodeGroup>
+
+## Agentic loop
+
+`run()` and `runAndWait()` execute a full agentic loop on top of the OpenAI Agents SDK: the model picks a tool, the SDK executes it, the result is fed back, and the loop continues until the model produces a final answer. Every step is recorded in [Activity](/core-concepts/activity-and-observability) so you can replay the conversation later.
+
+| Method                        | Returns                  | Use when                                               |
+| ----------------------------- | ------------------------ | ------------------------------------------------------ |
+| `run(message)`                | Async iterable of events | You want to stream progress (text deltas, tool calls)  |
+| `runAndWait(message)`         | Final string             | You want the final text once the loop completes        |
+| `runAndWait(message, schema)` | Validated typed object   | You want structured, schema-validated JSON (see below) |
+
+The model only sees the tools you grant through the agent's `skills`. Everything else is invisible to it: your environment variables, your other integrations, and your other workflows.
+
+## Structured outputs
+
+Pass a `zod` schema as the second argument to `runAndWait` and the SDK forwards it to the model, parses the final JSON, and validates it before returning. The result is fully typed.
+
+<CodeGroup>
+
+```ts TypeScript
+import { z } from "zod"
+
+const ScoreSchema = z.object({
+    score: z.number().min(0).max(100),
+    rationale: z.string(),
+    nextAction: z.enum(["accept", "review", "reject"])
+})
+
+const scored = await agent.runAndWait("Score this account and explain why.", ScoreSchema)
+
+// scored is typed as: { score: number; rationale: string; nextAction: "accept" | "review" | "reject" }
+if (scored.nextAction === "accept") {
+    await agent.tools.attio.updateRecord({
+        list: AttioList.Pipeline.NewDeals,
+        recordId: event.record.id,
+        fields: { fit_score: scored.score, scoring_notes: scored.rationale }
+    })
+}
+```
+
+</CodeGroup>
+
+If the model returns malformed JSON or fails schema validation, the run errors out and is recorded as **Failed** in Activity, with no half-applied side effects to your CRM.
+
+## Strict ACL on skills and resources
+
+The most important property of `TerseAgent` is what it _won't_ do. Even though the underlying OpenAI Agents SDK can call arbitrary tools, the Terse runtime enforces a strict allowlist on every model-driven tool call:
+
+- The model can only see the integrations declared in **`skills`**. If Slack isn't in `skills`, the model has no way to discover or call any Slack tool, even if your workspace has Slack connected.
+- Skill configuration further narrows the surface. `Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })` means the model can read and update records in **NewDeals** only, not your other lists or your other Attio workspaces.
+- `Slack.skill({ channel: SlackChannel.DealDesk })` pins messaging to one channel. The model can't `@here` your `#general`.
+- `GitHub.skill({ repos: [...] })` restricts code access to specific repositories.
+- Tools listed in **`toolApprovals`** are paused for [human approval](/core-concepts/human-in-the-loop) before execution.
+
+Tool calls outside this allowlist are rejected before any external API is touched. The same allowlist applies whether the model picks the tool or you call it through `agent.tools.*`, so the rules in your code are the rules in production.
+
+<CodeGroup>
+
+```ts TypeScript
+const agent = TerseAgent.create({
+    prompt: "You enrich and route inbound deals.",
+    skills: [
+        Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), // NewDeals only
+        Apollo.skill(),
+        Slack.skill({ channel: SlackChannel.DealDesk }) // DealDesk only
+    ],
+    toolApprovals: ["attio.updateRecord"] // human-in-the-loop on writes
+})
+```
+
+</CodeGroup>
+
+If you want the model to reach more, you have to grant more, explicitly and in code, where it shows up in code review and in the generated audit trail.
+
+## Where to go next
+
+<CardGroup cols={2}>
+    <Card title="Skills" icon="plug" href="/core-concepts/skills-and-integrations">
+        How `skills` controls what the model can reach.
+    </Card>
+    <Card title="Deterministic tool calls" icon="locate-fixed" href="/core-concepts/deterministic-tool-calls">
+        Call integration tools directly from code without the LLM.
+    </Card>
+    <Card title="Human-in-the-loop" icon="shield-check" href="/core-concepts/human-in-the-loop">
+        Require approval before specific tools execute.
+    </Card>
+    <Card title="TypeScript SDK reference" icon="braces" href="/reference/typescript-sdk">
+        Full reference for `TerseAgent.create`, `run`, and `runAndWait`.
+    </Card>
+</CardGroup>
