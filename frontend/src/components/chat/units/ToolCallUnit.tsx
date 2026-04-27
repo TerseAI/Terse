@@ -1,3 +1,4 @@
+import type { ToolApprovalResponseOptions } from "../../../socket"
 import FunctionCallItem, { type FunctionCallEvent } from "../FunctionCallItem"
 import type { ToolCallUnit as ToolCallUnitModel } from "../turnModel"
 
@@ -30,9 +31,11 @@ export function ToolCallUnit({
     unit: ToolCallUnitModel
     index: number
     isTurnFailure?: boolean
-    onApprove?: (stepId: string) => void
-    onReject?: (stepId: string) => void
+    onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
+    onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onSendMessage?: (message: string) => void
 }) {
-    return <FunctionCallItem call={toFunctionCallEvent(unit)} index={index} isTurnFailure={isTurnFailure} onApprove={onApprove} onReject={onReject} onSendMessage={onSendMessage} />
+    const handleApprove = onApprove ? (stepId: string, options?: ToolApprovalResponseOptions) => onApprove(stepId, { ...options, responseId: unit.responseId }) : undefined
+    const handleReject = onReject ? (stepId: string, options?: ToolApprovalResponseOptions) => onReject(stepId, { ...options, responseId: unit.responseId }) : undefined
+    return <FunctionCallItem call={toFunctionCallEvent(unit)} index={index} isTurnFailure={isTurnFailure} onApprove={handleApprove} onReject={handleReject} onSendMessage={onSendMessage} />
 }

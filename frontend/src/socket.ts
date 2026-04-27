@@ -214,6 +214,7 @@ export function sendChatMessage(runId: string | null, message: ModelRequest): vo
 
 export type ToolApprovalResponseOptions = {
     rejectionReason?: string
+    responseId?: string
 }
 
 export function sendToolApprovalResponse(runId: string, stepId: string, approved: boolean, options?: ToolApprovalResponseOptions): void {
@@ -226,7 +227,7 @@ export function sendToolApprovalResponse(runId: string, stepId: string, approved
         message: {
             type: "ToolApprovalResponse",
             id: stepId,
-            response_id: stepId,
+            response_id: options?.responseId ?? stepId,
             timestamp: Date.now(),
             approved,
             rejection_reason: options?.rejectionReason

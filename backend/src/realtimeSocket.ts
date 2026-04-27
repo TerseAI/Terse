@@ -423,13 +423,17 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return
             }
 
+            // Treat response_id as a hint only when it's distinct from the callId (legacy clients sent stepId here).
+            const incomingResponseId = message.response_id && message.response_id !== message.id ? message.response_id : undefined
+
             const result = await ApprovalService.processApproval({
                 runId,
                 stepId: message.id,
                 approved: message.approved,
                 rejectionReason: message.rejection_reason,
                 userId,
-                organizationId: organizationId ?? ""
+                organizationId: organizationId ?? "",
+                responseId: incomingResponseId
             })
 
             if (result.status === ApprovalProcessingStatus.FAILED && result.error) {

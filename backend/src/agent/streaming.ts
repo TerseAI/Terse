@@ -14,10 +14,11 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
     result: StreamedRunResult<T, Agent<T, any>>,
     options: {
         onToolCallComplete?: ToolCallCompleteHandler
+        initialResponseId?: string
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
-    const { onToolCallComplete } = options
-    const deltaProjector = new AssistantDeltaProjector()
+    const { onToolCallComplete, initialResponseId } = options
+    const deltaProjector = new AssistantDeltaProjector({ initialResponseId })
 
     for await (const event of result) {
         const canonicalEvent = deltaProjector.ingestModelEvent(event)

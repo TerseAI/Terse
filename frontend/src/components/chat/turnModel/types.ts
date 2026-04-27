@@ -22,6 +22,7 @@ export interface ToolCallUnit extends BaseUnit {
     errorContext?: SharedErrorContext
     status: ToolCallStatus
     approval?: { approved: boolean; rejectionReason?: string }
+    responseId?: string
 }
 
 export interface SnippetUnit extends BaseUnit {

@@ -92,6 +92,10 @@ export class AssistantDeltaProjector {
     private currentResponseId: string | undefined
     private readonly completedResponseIds = new Set<string>()
 
+    constructor(options?: { initialResponseId?: string }) {
+        this.currentResponseId = options?.initialResponseId
+    }
+
     private stamp<T extends object>(event: T): T & { responseId?: string } {
         return this.currentResponseId ? { ...event, responseId: this.currentResponseId } : event
     }
@@ -249,7 +253,6 @@ export class AssistantDeltaProjector {
 
         const id = readNonEmptyString(rawItem.callId)
         if (!id) return undefined
-
         const toolName = readNonEmptyString(rawItem.name)
         const event: CanonicalModelEvent = {
             type: "tool-result",

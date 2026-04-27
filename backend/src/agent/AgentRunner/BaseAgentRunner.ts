@@ -85,6 +85,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         stepId: string
         settings: RunExecutionSettings<TSession, TAgent>
         rejectionReason?: string
+        responseId?: string
         prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
     }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
         await this.initializeLoopIfNeeded()
@@ -103,6 +104,8 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         if (!interruption) {
             throw new Error(`Could not find matching interruption for step_id ${params.stepId}`)
         }
+
+        const seedResponseId = params.responseId ?? (interruption.rawItem as any)?.providerData?.responseId
 
         if (params.decision === "approve") {
             // https://github.com/openai/openai-agents-js/pull/1098 Once this gets in, we should support it
@@ -124,13 +127,14 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: params.settings.signal
         })
 
-        await this.processStream(result)
+        await this.processStream(result, { initialResponseId: seedResponseId })
         return this.buildResult(result)
     }
 
-    private async processStream(result: StreamedRunResult<TSession, TAgent>): Promise<void> {
+    private async processStream(result: StreamedRunResult<TSession, TAgent>, options: { initialResponseId?: string } = {}): Promise<void> {
         const eventStream = transformAgentStreamToModelEvents(result, {
-            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions)
+            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
+            initialResponseId: options.initialResponseId
         })
 
         for await (const event of this.trackEventStream(eventStream)) {
@@ -153,9 +157,10 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
                     })
                     continue
                 }
+                const responseId = (interruption.rawItem as any)?.providerData?.responseId ?? stepId
                 const approvalRequest: ModelEvent = {
                     id: stepId,
-                    response_id: stepId,
+                    response_id: responseId,
                     type: "ToolApprovalRequest",
                     timestamp: Date.now(),
                     name: interruption.name ?? "unknown_tool",

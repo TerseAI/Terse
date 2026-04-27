@@ -132,6 +132,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
             unit.name = event.summary
             unit.integration = event.integration
             unit.parameters = event.parameters
+            unit.responseId = event.response_id
             unit.status = event.parameters ? "running" : "generating_params"
             turn.status = "generating"
             return next
@@ -149,6 +150,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
             }))
             unit.name = event.name
             unit.parameters = event.arguments
+            unit.responseId = event.response_id
             unit.status = "waiting_approval"
             turn.status = "generating"
             return next
