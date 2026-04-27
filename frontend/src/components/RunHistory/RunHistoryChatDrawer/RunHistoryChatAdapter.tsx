@@ -11,6 +11,8 @@ import type { Turn } from "@/components/chat/turnModel"
 import { useChatHistory } from "@/hooks/api/useChatHistory"
 import { cancelAgentChatRun, sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
 
+import { Spinner } from "../../ui/spinner"
+
 import { convertRunHistoryEventsToTurns } from "./runHistoryEventsToTurns"
 
 type RunHistoryChatAdapterProps = {
@@ -45,7 +47,6 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
 
     // Convert to Turns
     const turns = convertRunHistoryEventsToTurns(events)
-
     // Create subscription function for run history — subscribe whenever runId is valid.
     // We don't gate on isActiveRun/status because the status in the drawer is a stale
     // snapshot from when the drawer was opened. The server won't send events for
@@ -73,6 +74,10 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
 
     const handleCancellation = () => {
         cancelAgentChatRun(runId)
+    }
+
+    if (isLoading) {
+        return <Spinner />
     }
 
     if (children) {
