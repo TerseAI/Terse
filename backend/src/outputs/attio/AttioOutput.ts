@@ -1,4 +1,3 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { AttioOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
