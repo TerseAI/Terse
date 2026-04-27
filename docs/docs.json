@@ -34,10 +34,6 @@
                 ]
             },
             {
-                "group": "Use Cases",
-                "pages": ["use-cases/lead-gen-pipeline"]
-            },
-            {
                 "group": "Reference",
                 "pages": ["reference/cli", "reference/triggers", "reference/skills", "reference/typescript-sdk"]
             },
