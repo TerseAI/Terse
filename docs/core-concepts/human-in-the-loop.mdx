@@ -18,9 +18,16 @@ List the tool names that require approval in `toolApprovals` (TypeScript)
 await client.createJob({
     name: "deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-    toolApprovals: ["attio.updateRecord", "slack.sendMessage"],
     onTrigger: async (event: Trigger, agent: TerseAgent) => {
+        const agent = TerseAgent.create({
+            skills: [
+                Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
+                Apollo.skill(),
+                Slack.skill({ channel: SlackChannel.DealDesk })
+            ],
+            toolApprovals: ["attio.updateRecord", "slack.sendMessage"],
+        })
+
         // This call runs immediately (Apollo reads don't need approval)
         const company = await agent.tools.apollo.enrichCompany({
             domain: event.record.values.company_domain
@@ -44,21 +51,6 @@ await client.createJob({
 </CodeGroup>
 
 An empty `toolApprovals` array means no tools require approval. Omitting the field entirely has the same effect.
-
-## How the approval flow works
-
-When a tool requiring approval is called, the run pauses:
-
-```
-Tool called → Approval required? → Yes → Run pauses → Notification sent → Human decides → Run resumes or tool is rejected
-```
-
-1. **The run pauses.** The current execution state is serialized and saved. No tokens are consumed while waiting.
-2. **You're notified.** Terse sends an approval request through your configured notification channel (Slack, email, or in-app).
-3. **You review.** The notification shows the tool name, the arguments it was called with, and the workflow context.
-4. **You decide.** Approve to let the tool execute and the run continue. Reject to skip that tool call.
-
-The run picks up exactly where it left off. If there are additional approval-gated tools later in the execution, each one pauses independently.
 
 ## Approval in development vs. production
 

@@ -1,5 +1,5 @@
 ---
-title: "Skills & integrations"
+title: "Skills"
 description: "Connect external services, generate typed code, and control what the model can reach."
 icon: "plug"
 ---
@@ -12,68 +12,29 @@ An integration is a connection to an external service. When you run `terse integ
 
 Terse supports two connection types:
 
-| Type  | Flow | Examples |
-| ----- | ---- | -------- |
-| **OAuth** | Opens your browser for authorization | GitHub, Slack, Gmail, Linear, Notion, WorkOS |
-| **Form** | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
+| Type      | Flow                                                        | Examples                                         |
+| --------- | ----------------------------------------------------------- | ------------------------------------------------ |
+| **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
+| **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
 
 After connecting, run `terse generate` to turn your active integrations into typed code.
 
 ## Code generation: from credentials to code
 
-`terse generate` reads your connected integrations and their resources (repos, channels, lists, teams, projects), then writes a typed SDK file for your project:
+`terse generate` reads your connected integrations and their resources (repos, channels, lists, teams, projects), then writes a typed SDK file for your project.
 
-- `src/terse.generated.ts` for TypeScript
-
-The generated file gives you four things:
-
-| Export | What it does | Example |
-| ------ | ------------ | ------- |
-| **Trigger builders** | Start a workflow from an integration event | `Slack.onMessage()`, `Attio.onRecordCreated()` |
-| **Skill constructors** | Declare what the model can use | `Slack.skill()`, `Apollo.skill()` |
-| **Resource constants** | Reference real workspace objects by name | `SlackChannel.DealDesk`, `AttioList.Pipeline.NewDeals` |
-| **Deterministic tool wrappers** | Call tools directly from code | `agent.tools.slack.sendMessage()` |
-
-Everything is typed against the actual resources in your workspace. Your editor autocompletes channel names, list names, and tool parameters, and your coding agent (Cursor, Claude Code, etc.) builds correct workflows without you looking up IDs.
-
-<Warning>Re-run `terse generate` when your connected integrations change. Do not hand-edit `src/terse.generated.ts` or `src/terse_generated.py`.</Warning>
-
-## Skills: controlling model access
-
-A skill tells Terse which integrations the model is allowed to use during agentic calls (`run` and `runAndWait`). When the backend receives an agentic request, it looks at the declared skills, maps each one to an integration type, and filters the available tools to only those integrations. The model never sees tools from integrations you didn't declare as skills.
-
-<CodeGroup>
-
-```ts TypeScript
-await client.createJob({
-    name: "deal-enrichment",
-    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    skills: [
-        Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-        Apollo.skill(),
-        Slack.skill({ channel: SlackChannel.DealDesk })
-    ],
-    onTrigger: async (event: Trigger, agent: TerseAgent) => {
-        // The model can use Attio, Apollo, and Slack tools
-        const summary = await agent.runAndWait("Enrich and summarize this deal.", event)
-    }
-})
-```
-
-</CodeGroup>
-
-In this example, the model can read Attio records, call Apollo for enrichment, and post to Slack because all three are declared as skills. If you removed `Apollo.skill()` from the list, the model would lose access to Apollo tools during `runAndWait`, even though Apollo is still connected as an integration.
+See the [Generated SDK](/core-concepts/generated-sdk) page for more detail.
 
 ## Skills vs. deterministic tools
 
 This is the key distinction:
 
-| | Skills (model access) | Deterministic tools (code access) |
-| --- | --- | --- |
-| **Who decides** | The model chooses which tools to call | Your code calls tools directly |
-| **Controlled by** | `skills` array on the job | Always available via `agent.tools.*` |
-| **Scope** | Only integrations declared as skills | Any connected integration |
-| **Token cost** | Tokens consumed per call | Zero LLM tokens |
+|                   | Skills (model access)                 | Deterministic tools (code access)    |
+| ----------------- | ------------------------------------- | ------------------------------------ |
+| **Who decides**   | The model chooses which tools to call | Your code calls tools directly       |
+| **Controlled by** | `skills` array on the job             | Always available via `agent.tools.*` |
+| **Scope**         | Only integrations declared as skills  | Any connected integration            |
+| **Token cost**    | Tokens consumed per call              | Zero LLM tokens                      |
 
 Deterministic tool wrappers (`agent.tools.*`) are not gated by the skills list. If you have Slack connected and generated, you can always call `agent.tools.slack.sendMessage()` from your handler code, even if Slack isn't in your `skills` array. The `skills` array only controls what the model sees when it's reasoning.
 
@@ -105,12 +66,12 @@ await client.createJob({
 
 Some skills accept configuration that scopes what the model sees or where it acts:
 
-| Skill | Configuration | Effect |
-| ----- | ------------- | ------ |
-| `Attio.skill()` | `lists` | Limits which CRM lists the model can query |
-| `Slack.skill()` | `channel` | Targets a specific channel for messaging |
-| `GitHub.skill()` | `repos` | Scopes code access to specific repositories |
-| `Snowflake.skill()` | None | Read-only SQL queries (approval required by default) |
+| Skill               | Configuration | Effect                                               |
+| ------------------- | ------------- | ---------------------------------------------------- |
+| `Attio.skill()`     | `lists`       | Limits which CRM lists the model can query           |
+| `Slack.skill()`     | `channel`     | Targets a specific channel for messaging             |
+| `GitHub.skill()`    | `repos`       | Scopes code access to specific repositories          |
+| `Snowflake.skill()` | None          | Read-only SQL queries (approval required by default) |
 
 Skills without configuration give the model access to the full integration surface.
 
