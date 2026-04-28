@@ -62,15 +62,15 @@ With Code
 npm install -g terse-cli
 terse init my-project
 cd my-project
-code . // build some workflows
+code . # build some workflows
 terse deploy
 ```
 
 With our Claude Code skill
 ```bash
-npx skills add terse-ai/terse
+npx skills add TerseAI/Terse
 
-// in claude
+# in claude
 /terse:create describe your workflow
 ```
 
