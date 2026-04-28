@@ -1,7 +1,7 @@
 <div align="center">
   <a href="https://useterse.ai">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/logo/dark.svg">
+      <source media="(prefers-color-scheme: dark)" srcset="frontend/public/terse.png">
       <img alt="Terse" src="frontend/public/terse.png" width="220">
     </picture>
   </a>
