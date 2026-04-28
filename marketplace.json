@@ -11,7 +11,7 @@
     "plugins": [
         {
             "name": "terse",
-            "source": ".",
+            "source": "./packages/terse-claude-plugin",
             "description": "Create and improve Terse SDK jobs — background AI agents that react to events and take actions across GitHub, Slack, Linear, and more",
             "version": "0.1.0",
             "author": {
