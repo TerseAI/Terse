@@ -6,6 +6,7 @@ import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { SdkAgentStreamEvent, User } from "terse-types"
+import { stripZodJsonSchemaMetadata } from "terse-types"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
@@ -57,7 +58,14 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.send = params.send
         this.isProductionRun = !!params.isProductionRun
         // Todo: think about modifying users zod schema so it's compatible with strict mode. Avoids landmine where optional() crashes unless they add nullable.
-        this.outputType = params.outputSchema ? { type: "json_schema", name: "output", strict: true, schema: params.outputSchema as JsonSchemaDefinition["schema"] } : undefined
+        this.outputType = params.outputSchema
+            ? {
+                  type: "json_schema",
+                  name: "output",
+                  strict: true,
+                  schema: parseJsonSchemaForAgentOutput(params.outputSchema)
+              }
+            : undefined
         this.memorySession = params.isProductionRun ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
         this.streamEventEmitter = new StreamEventEmitter(getSocketIO(), {
             runId: params.runId,
@@ -368,6 +376,15 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
 
         return outputs
     }
+}
+
+function parseJsonSchemaForAgentOutput(raw: unknown): JsonSchemaDefinition["schema"] {
+    const cleaned = stripZodJsonSchemaMetadata(raw)
+    if (typeof cleaned !== "object" || cleaned === null || Array.isArray(cleaned)) {
+        throw new Error("SDK output schema must be a JSON object schema with type, properties, required, and additionalProperties.")
+    }
+    const cleanedRecord = cleaned as Record<string, unknown>
+    return cleanedRecord as JsonSchemaDefinition["schema"]
 }
 
 type SdkRunnerSession = SessionWithTracking<Session>
