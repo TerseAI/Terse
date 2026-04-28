@@ -16,6 +16,7 @@
   </p>
 
   <p>
+    <a href="https://github.com/TerseAI/Terse/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/TerseAI/Terse?style=flat&logo=github&color=f5a623"></a>
     <a href="https://www.npmjs.com/package/terse-cli"><img alt="terse-cli on npm" src="https://img.shields.io/npm/v/terse-cli?label=terse-cli&logo=npm&color=cb3837"></a>
     <a href="https://www.npmjs.com/package/terse-sdk"><img alt="terse-sdk on npm" src="https://img.shields.io/npm/v/terse-sdk?label=terse-sdk&logo=npm&color=cb3837"></a>
     <a href="https://github.com/TerseAI/Terse/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/TerseAI/Terse?color=blue"></a>
