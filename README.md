@@ -2,7 +2,7 @@
   <a href="https://useterse.ai">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/logo/dark.svg">
-      <img alt="Terse" src="docs/logo/light.svg" width="220">
+      <img alt="Terse" src="frontend/public/terse.png" width="220">
     </picture>
   </a>
 
