@@ -45,22 +45,32 @@
 AI agents are fast to build but make mistakes. Deterministic workflows are reliable but slow to set up. Terse lets you mix both in the same workflow: call tools directly when you need precision, hand off to an agent when you need judgment.
 
 - **Code-first.** Workflows are TypeScript in your repo. Review them in PRs, track them in git history.
-- **Typed SDK from your workspace.** `terse pull` generates strongly-typed handles for the channels, repos, projects, and tools you actually use, so the LLM (and your IDE) only sees what's in scope.
+- **Typed SDK from your workspace.** `terse generate` generates strongly-typed handles for the channels, repos, projects, and tools you actually use, so the LLM (and your IDE) only sees what's in scope.
 - **Mix tools and agents.** Call a tool deterministically when you know what you want. Hand off to an agent when you need judgment. Same workflow, same types.
-- **Scoped skills, no surprises.** Tool access is bounded by the skills you declare. The agent can't reach outside that scope, period.
-- **Secrets and OAuth, handled.** Integration credentials live in Terse's secret manager with automatic OAuth refresh.
+- **Scoped skills, no surprises.** Tool access is bounded by the skills you declare. The agent can't reach outside that scope. No more catastrophic deletions caused by hallucinations.
+- **Secrets and OAuth, handled.** Integration credentials live in Terse's secret manager (using Google Secret Manager) with automatic OAuth refresh.
 - **Serverless deploys.** `terse deploy` ships your workflows to Terse's hosted runtime. Every run is logged with a complete action trail.
 
 ## Quickstart
 
 Get a workflow live in under 5 minutes — full guide at [docs.useterse.ai/quickstart](https://docs.useterse.ai/quickstart).
 
+With Code
+
 ```bash
 npm install -g terse-cli
-terse login
 terse init my-project
 cd my-project
+code . // build some workflows
 terse deploy
+```
+
+With our Claude Code skill
+```bash
+npx skills add terse-ai/terse
+
+// in claude
+/terse:create describe your workflow
 ```
 
 That's it. `terse deploy` ships to Terse's hosted runtime — no infra to stand up.
@@ -93,15 +103,12 @@ This is the Terse monorepo — the platform code Terse runs in production, plus 
 | [`terse-types`](https://www.npmjs.com/package/terse-types) | `terse-types` | Shared types, enums, and helpers. |
 | `terse-claude-plugin` | `packages/terse-claude-plugin` | Claude Code integration. |
 
-The platform itself lives in `backend/`, `frontend/`, `prisma/`, and `terse-probot-app/`. Most users don't need to touch these — Terse runs them for you. They're here because the project is open source and the code is the source of truth.
-
 ## Documentation
 
 - **Docs:** [docs.useterse.ai](https://docs.useterse.ai)
 - **Quickstart:** [docs.useterse.ai/quickstart](https://docs.useterse.ai/quickstart)
 - **SDK reference:** [docs.useterse.ai/reference/typescript-sdk](https://docs.useterse.ai/reference/typescript-sdk)
 - **CLI reference:** [docs.useterse.ai/reference/cli](https://docs.useterse.ai/reference/cli)
-- **Templates:** [docs.useterse.ai/templates](https://docs.useterse.ai/templates)
 
 ## Contributing
 
