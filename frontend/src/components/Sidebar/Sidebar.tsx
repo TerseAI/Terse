@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Activity, BarChart3, Bell, ChevronRight, Home, KeyRound, Plug, Plus, Terminal, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, ChevronRight, CreditCard, Home, KeyRound, Plug, Plus, Terminal, Zap } from "lucide-react"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
@@ -140,6 +140,7 @@ function SettingsNavigation() {
     const settingsItems: NavItem[] = [
         { title: "Integrations", url: FrontendRoutes.INTEGRATIONS, icon: Plug, iconColor: "text-primary" },
         { title: "Notifications", url: FrontendRoutes.NOTIFICATIONS, icon: Bell, iconColor: "text-primary" },
+        { title: "Billing", url: FrontendRoutes.BILLING, icon: CreditCard, iconColor: "text-primary" },
         ...(showSdkInterface ? [{ title: "API Tokens", url: FrontendRoutes.API_TOKENS, icon: KeyRound, iconColor: "text-primary" }] : [])
     ]
 

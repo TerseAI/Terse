@@ -16,12 +16,14 @@ import AgentDetail from "./pages/Agents/AgentDetail"
 import AgentSetup from "./pages/Agents/AgentSetup"
 import AgentsList from "./pages/Agents/AgentsList"
 import ApiTokensPage from "./pages/ApiTokens"
+import BillingPage from "./pages/BillingPage"
 import Home from "./pages/Home"
 import IntegrationPage from "./pages/IntegrationPage"
 import NotificationsPage from "./pages/Notifications"
 import OAuthError from "./pages/OAuthError"
 import OAuthSuccess from "./pages/OAuthSuccess"
 import OrganizationCreationPage from "./pages/OrganizationCreationPage"
+import PricingPage from "./pages/PricingPage"
 import ProfilePage from "./pages/ProfilePage"
 import ProjectDetail from "./pages/Projects/ProjectDetail"
 import StatsPage from "./pages/Stats"
@@ -38,6 +40,7 @@ function App() {
                 <Router>
                     <Routes>
                         <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
+                        <Route path={FrontendRoutes.PRICING} element={<PricingPage />} />
                         <Route path={FrontendRoutes.APP} element={<Content />}>
                             <Route index element={<Home />} />
                             <Route path="agents" element={<AgentsList />} />
@@ -51,6 +54,7 @@ function App() {
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="api-tokens" element={<ApiTokensPage />} />
+                            <Route path="billing" element={<BillingPage />} />
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                         <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />

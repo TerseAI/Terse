@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunStreamEvent, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
@@ -24,6 +24,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     private runId: string
     private endedWithToolFailure = false
     protected agent?: TAgent
+    protected onRawStreamEvent?: (event: RunStreamEvent) => Promise<void> | void
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
 
@@ -132,6 +133,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         const eventStream = transformAgentStreamToModelEvents(result, {
             onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
             onRawStreamEvent: async streamEvent => {
+                if (this.onRawStreamEvent) await this.onRawStreamEvent(streamEvent)
                 if (!streamIngestionSession) return
                 await streamIngestionSession.ingestStreamEvent(streamEvent)
             }

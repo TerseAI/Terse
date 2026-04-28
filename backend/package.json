@@ -84,6 +84,7 @@
         "resend": "^6.9.2",
         "snowflake-sdk": "^2.3.5",
         "socket.io": "^4.8.1",
+        "stripe": "^22.1.0",
         "terse-types": "workspace:*",
         "uuid": "^11.0.3",
         "ws": "^8.18.3",

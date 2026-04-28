@@ -93,6 +93,28 @@ export async function sendEmailRunFailure(notificationDestination: UserNotificat
     })
 }
 
+export async function sendBillingThresholdEmail(emailAddress: string, subject: string, body: string) {
+    const branding = await getEmailBranding()
+    const escapedBody = body
+        .split("\n")
+        .map(line => line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+        .join("<br />")
+
+    await resend.emails.send({
+        from: fromEmail,
+        to: emailAddress,
+        subject,
+        html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.5; color: #111827;">
+                <img src="${branding.logoSrc}" alt="Terse" style="height: 28px; margin-bottom: 24px;" />
+                <h1 style="font-size: 20px; margin: 0 0 12px;">${subject.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</h1>
+                <p style="font-size: 14px; margin: 0;">${escapedBody}</p>
+            </div>
+        `,
+        attachments: branding.attachments
+    })
+}
+
 export async function sendWeeklyReviewEmail(
     emailAddress: string,
     agents: Array<{

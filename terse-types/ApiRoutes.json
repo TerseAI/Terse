@@ -179,5 +179,16 @@
     },
     "BUILDER_CHAT": {
         "HISTORY_BY_SESSION_ID": "/builder-chat/:sessionId/history"
+    },
+    "STRIPE": {
+        "WEBHOOK": "/webhooks/stripe"
+    },
+    "BILLING": {
+        "BASE": "/billing",
+        "BALANCE": "/balance",
+        "USAGE": "/usage",
+        "CHECKOUT_SESSION": "/checkout-session",
+        "PORTAL_SESSION": "/portal-session",
+        "OVERAGE_MODE": "/overage-mode"
     }
 }

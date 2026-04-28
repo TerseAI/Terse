@@ -13,6 +13,12 @@ import type { User } from "../types/User"
 
 import { BackendProvider } from "./backend"
 
+const AUTH_OPTIONAL_PATHS = new Set(["/pricing"])
+
+function isAuthOptionalPath(): boolean {
+    return AUTH_OPTIONAL_PATHS.has(window.location.pathname)
+}
+
 interface AuthContextType {
     user: User | null
     isLoading: boolean
@@ -46,7 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Handle 401 redirect
     useEffect(() => {
-        if (error instanceof AxiosError && error.response?.status === 401) {
+        if (error instanceof AxiosError && error.response?.status === 401 && !isAuthOptionalPath()) {
             BackendProvider.loginRedirect()
         }
     }, [error])

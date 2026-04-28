@@ -5,6 +5,7 @@ import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
+import { StripeUnavailableError } from "../services/CreditService"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
@@ -27,6 +28,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
             try {
                 await onRawStreamEvent(event)
             } catch (error) {
+                if (error instanceof StripeUnavailableError) throw error
                 logger.warn("Failed to persist raw stream event", {
                     error,
                     eventType: event.type

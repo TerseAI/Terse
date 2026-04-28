@@ -1128,3 +1128,31 @@ model output_change_attributions {
 
   @@index([source_item_ref_id, output_item_id])
 }
+
+enum OverageMode {
+  soft
+  strict
+}
+
+model billing_customers {
+  id                     String      @id @default(cuid())
+  organization_id        String      @unique
+  stripe_customer_id     String?     @unique // null for free-only orgs that never upgraded
+  overage_mode           OverageMode @default(soft)
+  overage_cap_multiplier Decimal     @default(2.0)
+  created_at             DateTime    @default(now())
+  updated_at             DateTime    @updatedAt
+
+  @@index([stripe_customer_id])
+}
+
+// Real-time period consumption counter, purely because docs.stripe.com/billing/subscriptions/usage-based/recording-usage-api
+model billing_period_consumption {
+  id                  String   @id @default(cuid())
+  organization_id     String   @unique
+  period_start        DateTime
+  period_end          DateTime
+  consumed_credits    Int      @default(0)
+  notified_thresholds Int[]    @default([])
+  updated_at          DateTime @updatedAt
+}

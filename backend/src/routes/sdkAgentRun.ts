@@ -10,6 +10,7 @@ import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
+import { CreditsExhaustedError, StripeUnavailableError, creditService } from "../services/CreditService"
 import { extractErrorMessage } from "../utility/strings"
 
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
@@ -41,6 +42,16 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         return res.status(400).json(response)
     }
 
+    const gate = await creditService.checkRunGate(user.organizationId)
+    if (!gate.allow) {
+        const messages: Record<typeof gate.reason, string> = {
+            credits_exhausted: "Your organization has reached its credit limit. Upgrade your plan or buy more credits to continue.",
+            subscription_past_due: "Your subscription has a payment issue. Update your billing details to resume runs.",
+            no_subscription: "Your organization needs an active subscription to run agents."
+        }
+        return res.status(402).json({ success: false, error: messages[gate.reason], reason: gate.reason })
+    }
+
     const { data } = parsed
     const { send, sandboxRunId } = initSseStream(req, res)
     const isProductionRun = !!sandboxRunId
@@ -60,6 +71,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         })
 
         send({ type: "run_started", runId })
+        await creditService.chargeRunBase(user.organizationId, runId)
 
         if (isProductionRun) {
             void upsertSdkSkills(runId, data.skills ?? []).catch(err => {
@@ -85,6 +97,18 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
         finishSseStream(res, send, result, sdkRunner)
     } catch (error) {
+        if (error instanceof CreditsExhaustedError) {
+            send({ type: "error", message: "Credit limit reached during this run. Upgrade or buy more credits to continue." })
+            send({ type: "done" })
+            res.end()
+            return
+        }
+        if (error instanceof StripeUnavailableError) {
+            send({ type: "error", message: "Billing temporarily unavailable. Please retry shortly." })
+            send({ type: "done" })
+            res.end()
+            return
+        }
         const message = extractErrorMessage(error)
         send({ type: "error", message })
         send({ type: "done" })

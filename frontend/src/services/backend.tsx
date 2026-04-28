@@ -1,6 +1,7 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
+import { BalanceSummary, BillingPeriod, BillingStripeRedirectResponse, OverageMode, PlanKey, SetOverageModeResponse, UsageResponse } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -569,12 +570,23 @@ interface BackendService {
      * Gets the content of a file uploaded to an agent as a presigend URL
      */
     getAgentFileContent(agentId: string, fileId: string): Promise<AgentFileContentResponse>
+
+    getBalance(): Promise<BalanceSummary>
+    getUsage(params?: { start?: Date; end?: Date }): Promise<UsageResponse>
+    createCheckoutForPlan(planKey: PlanKey, period: BillingPeriod): Promise<BillingStripeRedirectResponse>
+    createCheckoutForTopup(packCredits: number): Promise<BillingStripeRedirectResponse>
+    createPortalSession(): Promise<BillingStripeRedirectResponse>
+    setOverageMode(mode: OverageMode): Promise<SetOverageModeResponse>
 }
 
 export const BackendProvider: BackendService = {
     getCurrentUser: () => {
+        const skipAuthRedirect = window.location.pathname === "/pricing"
         return axios
-            .get<User>(`${backendBaseUrl}${ApiRoutes.AUTH.ME}`, { withCredentials: true })
+            .get<User>(`${backendBaseUrl}${ApiRoutes.AUTH.ME}`, {
+                withCredentials: true,
+                ...(skipAuthRedirect ? { headers: { "x-skip-auth-redirect": "true" } } : {})
+            })
             .then(response => {
                 return response.data
             })
@@ -1690,5 +1702,24 @@ export const BackendProvider: BackendService = {
                 console.error("Error getting agent file content:", error)
                 throw error
             })
+    },
+    getBalance: () => axios.get<BalanceSummary>(`${backendBaseUrl}${ApiRoutes.BILLING.BALANCE}`, { withCredentials: true }).then(response => response.data),
+    getUsage: (params?: { start?: Date; end?: Date }) =>
+        axios.get<UsageResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.USAGE}`, { withCredentials: true, params: serializeDates(params) }).then(response => response.data),
+    createCheckoutForPlan: (planKey: PlanKey, period: BillingPeriod) =>
+        axios
+            .post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CHECKOUT_SESSION}`, { kind: "plan", planKey, period }, { withCredentials: true })
+            .then(response => response.data),
+    createCheckoutForTopup: (packCredits: number) =>
+        axios.post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CHECKOUT_SESSION}`, { kind: "topup", packCredits }, { withCredentials: true }).then(response => response.data),
+    createPortalSession: () => axios.post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.PORTAL_SESSION}`, {}, { withCredentials: true }).then(response => response.data),
+    setOverageMode: (mode: OverageMode) =>
+        axios.patch<SetOverageModeResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.OVERAGE_MODE}`, { mode }, { withCredentials: true }).then(response => response.data)
+}
+
+function serializeDates(params?: { start?: Date; end?: Date }) {
+    return {
+        ...(params?.start ? { start: params.start.toISOString() } : {}),
+        ...(params?.end ? { end: params.end.toISOString() } : {})
     }
 }

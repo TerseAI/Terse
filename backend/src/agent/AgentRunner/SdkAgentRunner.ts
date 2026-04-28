@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult, RunStreamEvent, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
 import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
@@ -13,6 +13,7 @@ import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
+import { StripeUnavailableError, creditService } from "../../services/CreditService"
 import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
@@ -39,6 +40,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly isProductionRun: boolean
     private readonly streamEventEmitter: StreamEventEmitter
     private readonly outputType: JsonSchemaDefinition | undefined
+    private llmCallIndex = 0
     private pendingApprovalState: PendingApprovalState | null = null
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
@@ -62,6 +64,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             agentId: SDK_AGENT_ID,
             user: params.user
         })
+        this.onRawStreamEvent = this.handleRawModelEvent
     }
 
     private createRunner() {
@@ -285,8 +288,46 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             name: "Terse SDK Agent",
             systemPromptDeps: deps,
             runContext: { runId: this.sdkRunId } as RunContext,
-            model: "gpt-5.2",
+            model: this.getModel(),
             tools: this.tools
+        }
+    }
+
+    private getProvider(): "openai" | "anthropic" {
+        const model = this.getModel()
+        return model.startsWith("claude") ? "anthropic" : "openai"
+    }
+
+    private getModel(): string {
+        return SDK_AGENT_MODEL
+    }
+
+    private handleRawModelEvent = async (event: RunStreamEvent): Promise<void> => {
+        if (event.type !== "raw_model_stream_event") return
+
+        const data = (event as any).data
+        const completedEvent = data?.type === "response.completed" ? data : data?.event?.type === "response.completed" ? data.event : null
+        if (!completedEvent) return
+
+        const usage = completedEvent.response?.usage
+        if (!usage) return
+
+        const stepKey = `model-${this.llmCallIndex++}`
+        try {
+            await creditService.recordLLMCall(this.user.organizationId, this.sdkRunId, stepKey, {
+                provider: this.getProvider(),
+                model: this.getModel(),
+                inputTokens: usage.input_tokens ?? usage.inputTokens ?? 0,
+                outputTokens: usage.output_tokens ?? usage.outputTokens ?? 0,
+                cachedTokens: usage.input_tokens_details?.cached_tokens ?? usage.cache_read_input_tokens ?? usage.cachedTokens ?? 0
+            })
+        } catch (error) {
+            if (error instanceof StripeUnavailableError) {
+                logger.error("SdkAgentRunner: Stripe unavailable; failing run", { runId: this.sdkRunId, error })
+            } else {
+                logger.error("SdkAgentRunner: unexpected charge failure", { runId: this.sdkRunId, error })
+            }
+            throw error
         }
     }
 
@@ -386,6 +427,7 @@ type SdkAgentRunnerResult = {
 }
 
 const SDK_AGENT_ID = "sdk-agent-run"
+const SDK_AGENT_MODEL = "gpt-5.2"
 
 class InMemoryAgentSession implements AgentMemorySession {
     private readonly sessionId: string
