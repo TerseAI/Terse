@@ -323,10 +323,6 @@ async function fireThresholdsIfAny(orgId: string, before: number, after: number,
     }
 }
 
-function resolvePlanBySubscription(subscription: Stripe.Subscription): ResolvedPlan {
-    return resolvePlanItemBySubscription(subscription).plan
-}
-
 function resolvePlanItemBySubscription(subscription: Stripe.Subscription): SubscriptionPlanItem {
     for (const item of subscription.items.data) {
         const plan = resolveBasePlanByPriceId(item.price.id)
@@ -531,6 +527,15 @@ export type CompletedEventUsage = {
     outputTokens: number
     totalTokens: number
     inputTokensDetails: { cached_tokens: number }
+}
+
+export class CreditGateDeniedError extends Error {
+    readonly reason: GateDenyReason
+    constructor(reason: GateDenyReason) {
+        super(`Credit gate denied: ${reason}`)
+        this.name = "CreditGateDeniedError"
+        this.reason = reason
+    }
 }
 
 export const creditService = new CreditService()

@@ -5,7 +5,7 @@ import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 import { ApprovalDecision } from "../agent/AgentRunner/BaseAgentRunner"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { StripeUnavailableError } from "../services/CreditService"
+import { CreditGateDeniedError, StripeUnavailableError } from "../services/CreditService"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
@@ -34,6 +34,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
                 await onRawStreamEvent(event)
             } catch (error) {
                 if (error instanceof StripeUnavailableError) throw error
+                if (error instanceof CreditGateDeniedError) throw error
                 logger.warn("Failed to persist raw stream event", {
                     error,
                     eventType: event.type

@@ -74,7 +74,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             agentId: SDK_AGENT_ID,
             user: params.user
         })
-        this.onRawStreamEvent = this.handleRawModelEvent
     }
 
     private createRunner() {
@@ -302,51 +301,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             runContext: { runId: this.sdkRunId } as RunContext,
             model: aisdk(resolved.model),
             tools: this.tools
-        }
-    }
-
-    private getModel(): ModelReference {
-        const defaultModel = settings.aisdk.default
-        if (!defaultModel) {
-            throw new Error("Default model not set")
-        }
-        const resolved = parseModelReference(defaultModel)
-        return resolved
-    }
-
-    private handleRawModelEvent = async (event: RunStreamEvent): Promise<void> => {
-        if (event.type !== "raw_model_stream_event") return
-
-        const data = (event as any).data
-        const completedEvent = data.type === "response_done" ? data : null
-        if (!completedEvent) return
-
-        const usage = completedEvent.response?.usage as CompletedEventUsage
-        if (!usage) {
-            logger.warn("SdkAgentRunner: No usage found for completed event", { event })
-            return
-        }
-
-        const responseId = completedEvent.response?.id
-        if (!responseId) {
-            logger.warn("SdkAgentRunner: No response ID found for completed event", { event })
-            return
-        }
-
-        try {
-            const payload = {
-                responseId,
-                model: this.getModel(),
-                usage
-            }
-            await creditService.recordLLMCall(this.user.organizationId, this.sdkRunId, payload)
-        } catch (error) {
-            if (error instanceof StripeUnavailableError) {
-                logger.error("SdkAgentRunner: Stripe unavailable; failing run", { runId: this.sdkRunId, error })
-            } else {
-                logger.error("SdkAgentRunner: unexpected charge failure", { runId: this.sdkRunId, error })
-            }
-            throw error
         }
     }
 

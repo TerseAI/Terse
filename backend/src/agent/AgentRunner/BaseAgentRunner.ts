@@ -5,9 +5,11 @@ import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 
+import { settings } from "../../config/settings"
 import logger from "../../logger"
+import { CompletedEventUsage, CreditGateDeniedError, StripeUnavailableError, creditService } from "../../services/CreditService"
 import { Session as AppSession } from "../../types/session"
-import type { StreamEventIngestionSession } from "../CustomMemorySession"
+import { ModelReference, parseModelReference } from "../modelRegistry"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
@@ -66,6 +68,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async runAgent(userHistory: AgentInputItem[], settings: RunExecutionSettings<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
+        await this.checkRunGate(settings)
         await this.initializeLoopIfNeeded()
         this.resetRunOutcomeTracking()
         const result = await settings.runner.run(this.requireAgent(), userHistory, {
@@ -77,7 +80,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: settings.signal
         })
 
-        await this.processStream(result)
+        await this.processStream(result, settings)
         return this.buildResult(result)
     }
 
@@ -89,6 +92,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         responseId?: string
         prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
     }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
+        await this.checkRunGate(params.settings)
         await this.initializeLoopIfNeeded()
         this.resetRunOutcomeTracking()
         const pendingState = await this.loadPendingApprovalState(this.runId)
@@ -128,14 +132,17 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: params.settings.signal
         })
 
-        await this.processStream(result, { approvalDecision: { decision: params.decision, rejectionReason: params.rejectionReason, responseId: seedResponseId } })
+        const approvalDecision: ApprovalDecision = { decision: params.decision, rejectionReason: params.rejectionReason, responseId: seedResponseId }
+
+        await this.processStream(result, params.settings, { approvalDecision })
         return this.buildResult(result)
     }
 
-    private async processStream(result: StreamedRunResult<TSession, TAgent>, options: { approvalDecision?: ApprovalDecision } = {}): Promise<void> {
+    private async processStream(result: StreamedRunResult<TSession, TAgent>, settings: RunExecutionSettings<TSession, TAgent>, options: { approvalDecision?: ApprovalDecision } = {}): Promise<void> {
         const eventStream = transformAgentStreamToModelEvents(result, {
             onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
             onRawStreamEvent: async streamEvent => {
+                await this.recordLLMUsage(settings, streamEvent)
                 if (this.onRawStreamEvent) await this.onRawStreamEvent(streamEvent)
             },
             approvalDecision: options.approvalDecision
@@ -200,7 +207,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         this.endedWithToolFailure = false
     }
 
-    private observeModelEvent(event: ModelEvent): void {
+    private trackFailedToolCalls(event: ModelEvent): void {
         if (event.type !== "ToolCallComplete") return
         const toolFailed = isFailedToolExecutionStatus(event.status) || Boolean(event.errorContext)
         this.endedWithToolFailure = toolFailed
@@ -208,7 +215,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
 
     private async *trackEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>): AsyncGenerator<ModelEvent, void, unknown> {
         for await (const event of eventStream) {
-            this.observeModelEvent(event)
+            this.trackFailedToolCalls(event)
             yield event
         }
     }
@@ -219,14 +226,60 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         }
         return this.agent
     }
-}
 
-function asStreamEventIngestionSession(memorySession: AgentMemorySession): StreamEventIngestionSession | null {
-    const candidate = memorySession as unknown as StreamEventIngestionSession
-    if (typeof candidate?.ingestStreamEvent !== "function") {
-        return null
+    async checkRunGate(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
+        const orgId = settings.context.user.organizationId
+
+        const gateDecision = await creditService.checkRunGate(orgId)
+        if (!gateDecision.allow) {
+            throw new CreditGateDeniedError(gateDecision.reason)
+        }
     }
-    return candidate
+
+    private getModel(): ModelReference {
+        const defaultModel = settings.aisdk.default
+        if (!defaultModel) {
+            throw new Error("Default model not set")
+        }
+        const resolved = parseModelReference(defaultModel)
+        return resolved
+    }
+
+    private recordLLMUsage = async (settings: RunExecutionSettings<TSession, TAgent>, event: RunStreamEvent): Promise<void> => {
+        if (event.type !== "raw_model_stream_event") return
+
+        const data = (event as any).data
+        const completedEvent = data.type === "response_done" ? data : null
+        if (!completedEvent) return
+
+        const usage = completedEvent.response?.usage as CompletedEventUsage
+        if (!usage) {
+            logger.warn("BaseAgentRunner: No usage found for completed event", { event })
+            return
+        }
+
+        const responseId = completedEvent.response?.id
+        if (!responseId) {
+            logger.warn("BaseAgentRunner: No response ID found for completed event", { event })
+            return
+        }
+
+        try {
+            const payload = {
+                responseId,
+                model: this.getModel(),
+                usage
+            }
+            await creditService.recordLLMCall(settings.context.user.organizationId, settings.context.runId, payload)
+        } catch (error) {
+            if (error instanceof StripeUnavailableError) {
+                logger.error("SdkAgentRunner: Stripe unavailable; failing run", { runId: settings.context.runId, error })
+            } else {
+                logger.error("SdkAgentRunner: unexpected charge failure", { runId: settings.context.runId, error })
+            }
+            throw error
+        }
+    }
 }
 
 type SessionInputCallback = (history: AgentInputItem[], newItems: AgentInputItem[]) => AgentInputItem[]

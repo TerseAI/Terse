@@ -1,5 +1,9 @@
-import type { BalanceSummary, Plan } from "terse-types"
+import { Link } from "react-router-dom"
 
+import { ArrowUpRight } from "lucide-react"
+import { type BalanceSummary, FrontendRoutes, type Plan, PlanKey } from "terse-types"
+
+import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatCredits, formatUsdPrecise } from "@/utility/billingFormat"
 
@@ -57,23 +61,33 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                 <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your period cap</p>
             ) : (
                 <div className="mt-3 space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-xs">
-                    <p className="font-medium text-foreground">You are past your included credits</p>
                     {softMeteredOverage ? (
                         <p className="text-muted-foreground">
                             <span className="text-foreground">{formatCredits(overageCredits)}</span> add-on credits this period (~
                             {formatUsdPrecise(overageDollars)} at {formatUsdPrecise(overageRateCents / 100)} / credit).
                         </p>
                     ) : (
-                        <p className="text-muted-foreground">
+                        <div className="space-y-2 text-muted-foreground">
                             {topUpCredits > 0 ? (
-                                <>
-                                    {" "}
+                                <p>
                                     <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> top-up credits remaining.
-                                </>
+                                </p>
                             ) : (
-                                <> Click here to buy top-ups</>
+                                <>
+                                    <p className="font-medium text-foreground">
+                                        {plan?.key === PlanKey.FREE
+                                            ? "You are past your included credits. Upgrade to Pro to add credits."
+                                            : "You are past your included credits. Purchase a credit pack to add credits."}
+                                    </p>
+                                    <Button variant="secondary" size="sm" className="group h-8 gap-1" asChild>
+                                        <Link to={FrontendRoutes.PRICING}>
+                                            {plan?.key === PlanKey.FREE ? "Plans & top-ups" : "Buy a top-up"}
+                                            <ArrowUpRight className="size-3 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                                        </Link>
+                                    </Button>
+                                </>
                             )}
-                        </p>
+                        </div>
                     )}
                     {softMeteredOverage && topUpCredits > 0 && (
                         <p className="text-muted-foreground">

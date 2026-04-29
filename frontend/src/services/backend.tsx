@@ -1,17 +1,7 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
-import {
-    BalanceSummary,
-    BillingCatalogResponse,
-    BillingChangeResponse,
-    BillingPeriod,
-    BillingStripeRedirectResponse,
-    OverageMode,
-    PlanKey,
-    SetOverageModeResponse,
-    UsageResponse
-} from "terse-types"
+import { BalanceSummary, BillingCatalogResponse, BillingChangeResponse, BillingPeriod, BillingStripeRedirectResponse, OverageMode, PlanKey, SetOverageModeResponse, UsageResponse } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -1699,8 +1689,7 @@ export const BackendProvider: BackendService = {
             })
     },
     getBalance: () => axios.get<BalanceSummary>(`${backendBaseUrl}${ApiRoutes.BILLING.BALANCE}`, { withCredentials: true }).then(response => response.data),
-    getBillingCatalog: () =>
-        axios.get<BillingCatalogResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CATALOG}`, { withCredentials: true }).then(response => response.data),
+    getBillingCatalog: () => axios.get<BillingCatalogResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CATALOG}`, { withCredentials: true }).then(response => response.data),
     getUsage: (params?: { start?: Date; end?: Date }) =>
         axios.get<UsageResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.USAGE}`, { withCredentials: true, params: serializeDates(params) }).then(response => response.data),
     createCheckoutForPlan: (planKey: PlanKey, period: BillingPeriod) =>

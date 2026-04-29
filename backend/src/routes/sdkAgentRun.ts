@@ -2,15 +2,15 @@ import { Request, Response } from "express"
 import crypto from "node:crypto"
 import { SkillConfigData } from "terse-types/Configs"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
-import { debugTrigger, formatTriggerForAgent } from "terse-types/Triggers"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
 
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
+import { settings } from "../config/settings"
 import logger from "../logger"
-import { CreditsExhaustedError, StripeUnavailableError, creditService } from "../services/CreditService"
+import { CreditGateDeniedError, CreditsExhaustedError, GateDenyReason, StripeUnavailableError, creditService } from "../services/CreditService"
 import { extractErrorMessage } from "../utility/strings"
 
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
@@ -42,22 +42,22 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         return res.status(400).json(response)
     }
 
-    const gate = await creditService.checkRunGate(user.organizationId)
-    if (!gate.allow) {
-        const messages: Record<typeof gate.reason, string> = {
-            credits_exhausted: "Your organization has reached its credit limit. Upgrade your plan or buy more credits to continue.",
-            subscription_past_due: "Your subscription has a payment issue. Update your billing details to resume runs.",
-            no_subscription: "Your organization needs an active subscription to run agents."
-        }
-        return res.status(402).json({ success: false, error: messages[gate.reason], reason: gate.reason })
-    }
-
     const { data } = parsed
     const { send, sandboxRunId } = initSseStream(req, res)
     const isProductionRun = !!sandboxRunId
 
     try {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
+        const orgId = user.organizationId
+
+        // Need to check the gate before creating the runner to
+        // avoid charging for the run if the gate is denied
+        const gateDecision = await creditService.checkRunGate(orgId)
+        if (!gateDecision.allow) {
+            throw new CreditGateDeniedError(gateDecision.reason)
+        }
+        // Charge once for the base run cost
+        await creditService.chargeRunBase(orgId, runId)
         const sdkRunner = createSdkRunner({
             runId,
             user,
@@ -71,7 +71,6 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         })
 
         send({ type: "run_started", runId })
-        await creditService.chargeRunBase(user.organizationId, runId)
 
         if (isProductionRun) {
             void upsertSdkSkills(runId, data.skills ?? []).catch(err => {
@@ -97,6 +96,12 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
         finishSseStream(res, send, result, sdkRunner)
     } catch (error) {
+        if (error instanceof CreditGateDeniedError) {
+            send({ type: "error", message: error.message })
+            send({ type: "done" })
+            res.end()
+            return
+        }
         if (error instanceof CreditsExhaustedError) {
             send({ type: "error", message: "Credit limit reached during this run. Upgrade or buy more credits to continue." })
             send({ type: "done" })

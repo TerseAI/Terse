@@ -163,7 +163,7 @@ export default function PricingPage() {
 
     const showTopups = !!balance?.canBuyTopups
 
-    const currentPlan = currentPlanKey ? plans.find(p => p.key === currentPlanKey) ?? null : null
+    const currentPlan = currentPlanKey ? (plans.find(p => p.key === currentPlanKey) ?? null) : null
     const freePlan = plans.find(p => p.key === PlanKey.FREE) ?? null
     const downgradeDate = balance?.periodEnd ? dateFormatter.format(new Date(balance.periodEnd)) : null
     const isDowngrading = loadingPlan === PlanKey.FREE
