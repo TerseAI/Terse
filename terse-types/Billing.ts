@@ -13,7 +13,7 @@ export function getPlanDetails(planKey: PlanKey): Plan {
                 overagePriceId: null,
                 priceInUsdMonthly: null,
                 priceInUsdMonthlyAnnual: null,
-                includedCreditsPerMonth: 5000,
+                includedCreditsPerMonth: 1000,
                 markupPct: 0,
                 overageCentsPerCredit: null,
                 hardCapMultiplier: 1,

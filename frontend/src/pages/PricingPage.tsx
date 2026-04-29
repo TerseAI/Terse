@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { type BalanceSummary, type BillingPeriod, FrontendRoutes, type Plan, PlanKey, getAllPlans, getAllTopups, getPlanDetails, isPurchasablePlan } from "terse-types"
 
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -33,13 +34,23 @@ function formatPriceLine(plan: Plan, period: BillingPeriod): string {
     return `${formatUsd(plan.priceInUsdMonthly)}/mo · ${credits}`
 }
 
-function formatPlanPrint(plan: Plan): string {
+function formatOveragePrint(plan: Plan): string {
     if (!plan.overageCentsPerCredit || !plan.hardCapMultiplier || plan.hardCapMultiplier <= 1) {
         return "Runs pause when you hit your monthly allowance. No overage, no surprise charges."
     }
     const dollars = (plan.overageCentsPerCredit / 100).toFixed(3)
     return `Optional soft overage at $${dollars}/credit, capped at ${plan.hardCapMultiplier}× your monthly allowance.`
 }
+
+const PRO_USAGE_EXAMPLES = [
+    { workflow: "Deterministic workflow, no AI", cost: "1" },
+    { workflow: "Deterministic workflow, little AI", cost: "1-3" },
+    { workflow: "Tiny classification or routing", cost: "6-10" },
+    { workflow: "Email or ticket triage summary", cost: "12-30" },
+    { workflow: "CRM or lead scoring with AI judgment", cost: "25-60" },
+    { workflow: "PR summary or release note draft", cost: "60-120" },
+    { workflow: "Deeper code review or test plan", cost: "150-300" }
+] as const
 
 function formatScheduledNote(balance: BalanceSummary | null, plan: Plan): string | null {
     if (!balance?.scheduledChange) return null
@@ -237,18 +248,15 @@ export default function PricingPage() {
                                     <div className="text-base font-medium tabular-nums">Top up {topup.credits.toLocaleString()} credits</div>
                                     <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">${topup.priceInUsd} · one-time · adds to your current balance</p>
                                 </div>
-                                <LoadingButton
-                                    className="shrink-0"
-                                    loading={loadingTopupCredits === topup.credits}
-                                    loadingLabel="Opening checkout"
-                                    onClick={() => void buyTopup(topup.credits)}
-                                >
+                                <LoadingButton className="shrink-0" loading={loadingTopupCredits === topup.credits} loadingLabel="Opening checkout" onClick={() => void buyTopup(topup.credits)}>
                                     Buy for ${topup.priceInUsd}
                                 </LoadingButton>
                             </article>
                         ))}
                     </section>
                 )}
+
+                <CreditsFaq />
             </main>
 
             <Dialog open={confirmDowngradeOpen} onOpenChange={setConfirmDowngradeOpen}>
@@ -269,7 +277,9 @@ export default function PricingPage() {
                     <ul className="space-y-2 text-sm text-foreground">
                         {currentPlan && (
                             <li className="flex items-baseline gap-2">
-                                <span aria-hidden className="text-muted-foreground">−</span>
+                                <span aria-hidden className="text-muted-foreground">
+                                    −
+                                </span>
                                 <span className="tabular-nums">
                                     Credits drop from {formatCredits(currentPlan.includedCreditsPerMonth)} to {formatCredits(freePlan.includedCreditsPerMonth)} per month.
                                 </span>
@@ -277,12 +287,16 @@ export default function PricingPage() {
                         )}
                         {currentPlan?.overageCentsPerCredit ? (
                             <li className="flex items-baseline gap-2">
-                                <span aria-hidden className="text-muted-foreground">−</span>
+                                <span aria-hidden className="text-muted-foreground">
+                                    −
+                                </span>
                                 <span>Soft overage stops — runs pause when credits run out.</span>
                             </li>
                         ) : null}
                         <li className="flex items-baseline gap-2">
-                            <span aria-hidden className="text-muted-foreground">−</span>
+                            <span aria-hidden className="text-muted-foreground">
+                                −
+                            </span>
                             <span>Top-ups are no longer available.</span>
                         </li>
                     </ul>
@@ -300,6 +314,51 @@ export default function PricingPage() {
                 </DialogContent>
             </Dialog>
         </div>
+    )
+}
+
+function CreditsFaq() {
+    return (
+        <section id="faq" className="space-y-3">
+            <h2 className="text-lg font-semibold tracking-tight">FAQ</h2>
+            <Accordion type="single" collapsible className="rounded-lg border border-border bg-card px-6">
+                <AccordionItem value="credits" className="border-b-0">
+                    <AccordionTrigger className="py-5 text-base font-semibold tracking-tight hover:no-underline">What are credits?</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-3 text-sm leading-6 text-muted-foreground">
+                            <p>
+                                Credits pay for workflow usage. A workflow has a fixed cost of <span className="font-medium text-foreground">1 credit</span> per run. LLM calls, including calls to an
+                                Agent, web research/search, and web monitoring, also cost credits and are billed according to usage.
+                            </p>
+                            <p>Actual usage depends on context size, output length, model choice, and how many AI steps the workflow needs.</p>
+                        </div>
+
+                        <div className="mt-5 overflow-x-auto">
+                            <table className="w-full min-w-[560px] text-left text-sm">
+                                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                                    <tr>
+                                        <th scope="col" className="py-2 pr-4 font-medium">
+                                            Workflow type
+                                        </th>
+                                        <th scope="col" className="py-2 px-4 text-right font-medium">
+                                            Credits / run
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {PRO_USAGE_EXAMPLES.map(example => (
+                                        <tr key={example.workflow}>
+                                            <td className="py-3 pr-4 text-foreground">{example.workflow}</td>
+                                            <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">{example.cost}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        </section>
     )
 }
 
@@ -417,13 +476,7 @@ function PlanCardSkeleton() {
     )
 }
 
-function LoadingButton({
-    loading,
-    loadingLabel,
-    children,
-    disabled,
-    ...props
-}: ComponentProps<typeof Button> & { loading: boolean; loadingLabel: string }) {
+function LoadingButton({ loading, loadingLabel, children, disabled, ...props }: ComponentProps<typeof Button> & { loading: boolean; loadingLabel: string }) {
     return (
         <Button {...props} disabled={loading || disabled}>
             {loading ? (
