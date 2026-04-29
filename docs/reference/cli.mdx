@@ -172,6 +172,8 @@ terse deploy --entry-file src/server.ts
 - Existing workflows are updated
 - Workflows removed from your code are removed from Terse
 
+The CLI opens a session stream before deploy progress runs. If your API key is missing, expired, or invalid, the command exits with a clear **Not authenticated** message (instead of a raw HTTP error mid-deploy).
+
 **Deployment modes:**
 
 - Hosted: the CLI zips the current project directory, uploads it, and Terse hosts the workflow for you
