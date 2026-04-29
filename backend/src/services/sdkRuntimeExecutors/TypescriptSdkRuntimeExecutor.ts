@@ -70,7 +70,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
         if (context.usesPrebuiltImage) {
-            return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --no-verbose`))
+            return runSandboxExecStage(context, () =>
+                context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --no-verbose`)
+            )
         }
 
         await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, () => context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`))
