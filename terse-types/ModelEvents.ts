@@ -1,7 +1,6 @@
 import * as z from "zod"
 
 import { EntityType } from "./Entities"
-import type { MultipleChoiceOption } from "./Survey"
 
 export const entityTypeSchema = z.enum(EntityType)
 
@@ -10,6 +9,12 @@ export enum ChangeEventType {
     UPDATED = "UPDATED",
     ACTION_EXECUTED = "ACTION_EXECUTED"
 }
+
+const modelEventBaseSchema = z.object({
+    id: z.string(),
+    timestamp: z.number(),
+    response_id: z.string()
+})
 
 export const changeEventTypeSchema = z.enum(ChangeEventType)
 
@@ -25,45 +30,29 @@ export const changedItemSchema = z.object({
 })
 export type ChangedItem = z.infer<typeof changedItemSchema>
 
-export const runErrorSchema = z.object({
+export const runErrorSchema = modelEventBaseSchema.extend({
     type: z.literal("RunError"),
-    id: z.string().optional(),
     error: z.string(),
-    code: z.string().optional(),
-    timestamp: z.number()
+    code: z.string().optional()
 })
 export type RunError = z.infer<typeof runErrorSchema>
 
-export const processOutputSchema = z.object({
+export const processOutputSchema = modelEventBaseSchema.extend({
     type: z.literal("ProcessOutput"),
-    id: z.string().optional(),
     stream: z.enum(["stdout", "stderr"]),
     content: z.string(),
-    label: z.string(),
-    timestamp: z.number()
+    label: z.string()
 })
 export type ProcessOutput = z.infer<typeof processOutputSchema>
 
-export const cancelledSchema = z.object({
+export const cancelledSchema = modelEventBaseSchema.extend({
     type: z.literal("Cancelled"),
-    id: z.string().optional(),
-    reason: z.string().optional(),
-    timestamp: z.number()
+    reason: z.string().optional()
 })
 export type Cancelled = z.infer<typeof cancelledSchema>
 
-export const functionCallSchema = z.object({
-    function_name: z.string(),
-    result: z.string(),
-    step_id: z.string()
-})
-export type FunctionCall = z.infer<typeof functionCallSchema>
-
-export const naturalStopSchema = z.object({
-    step_id: z.string(),
-    type: z.literal("NaturalStop"),
-    id: z.string().optional(),
-    timestamp: z.number()
+export const naturalStopSchema = modelEventBaseSchema.extend({
+    type: z.literal("NaturalStop")
 })
 export type NaturalStop = z.infer<typeof naturalStopSchema>
 
@@ -78,60 +67,36 @@ export const sendModelRequestSchema = z.object({
 })
 export type SendModelRequest = z.infer<typeof sendModelRequestSchema>
 
-export const toolApprovalResponseSchema = z.object({
-    step_id: z.string(),
-    type: z.literal("ToolApprovalResponse"),
-    id: z.string().optional(),
+export const toolApprovalResponseSchema = modelEventBaseSchema.extend({
     approved: z.boolean(),
     rejection_reason: z.string().optional(),
-    timestamp: z.number()
+    type: z.literal("ToolApprovalResponse")
 })
 export type ToolApprovalResponse = z.infer<typeof toolApprovalResponseSchema>
 
-export const toolApprovalRequestSchema = z.object({
-    step_id: z.string(),
-    type: z.literal("ToolApprovalRequest"),
-    id: z.string().optional(),
+export const toolApprovalRequestSchema = modelEventBaseSchema.extend({
     name: z.string(),
     arguments: z.string(),
-    timestamp: z.number()
+    type: z.literal("ToolApprovalRequest")
 })
 export type ToolApprovalRequest = z.infer<typeof toolApprovalRequestSchema>
 
-export const textDeltaSchema = z.object({
+export const textDeltaSchema = modelEventBaseSchema.extend({
     delta: z.string(),
-    step_id: z.string(),
-    type: z.literal("TextDelta"),
-    id: z.string().optional(),
-    timestamp: z.number()
+    type: z.literal("TextDelta")
 })
 export type TextDelta = z.infer<typeof textDeltaSchema>
 
-export const toolCallGeneratingSchema = z.object({
-    tool_name: z.string(),
-    step_id: z.string(),
-    type: z.literal("ToolCallGenerating"),
-    id: z.string().optional(),
-    timestamp: z.number()
-})
-export type ToolCallGenerating = z.infer<typeof toolCallGeneratingSchema>
-
-export const toolCallSchema = z.object({
+export const toolCallSchema = modelEventBaseSchema.extend({
     summary: z.string(),
-    step_id: z.string(),
-    type: z.literal("ToolCall"),
-    id: z.string().optional(),
     parameters: z.string(),
     integration: z.string(),
-    timestamp: z.number()
+    type: z.literal("ToolCall")
 })
 export type ToolCall = z.infer<typeof toolCallSchema>
 
-export const thinkingSchema = z.object({
-    step_id: z.string(),
-    type: z.literal("Thinking"),
-    id: z.string().optional(),
-    timestamp: z.number()
+export const thinkingSchema = modelEventBaseSchema.extend({
+    type: z.literal("Thinking")
 })
 export type Thinking = z.infer<typeof thinkingSchema>
 
@@ -144,13 +109,10 @@ export enum ToolCallExecutionStatus {
 
 export const toolCallExecutionStatusSchema = z.enum(ToolCallExecutionStatus)
 
-export const toolCallCompleteSchema = z.object({
+export const toolCallCompleteSchema = modelEventBaseSchema.extend({
     tool_name: z.string(),
-    timestamp: z.number(),
     status: toolCallExecutionStatusSchema,
-    step_id: z.string(),
     type: z.literal("ToolCallComplete"),
-    id: z.string().optional(),
     changed_items: z.array(changedItemSchema),
     integration: z.string(),
     url: z.string().optional(),
@@ -159,14 +121,11 @@ export const toolCallCompleteSchema = z.object({
 })
 export type ToolCallComplete = z.infer<typeof toolCallCompleteSchema>
 
-export const filterResultSchema = z.object({
+export const filterResultSchema = modelEventBaseSchema.extend({
     isRelevant: z.boolean(),
     reason: z.string(),
     confidence: z.number(),
-    step_id: z.string(),
-    type: z.literal("FilterResult"),
-    id: z.string().optional(),
-    timestamp: z.number()
+    type: z.literal("FilterResult")
 })
 export type FilterResult = z.infer<typeof filterResultSchema>
 
@@ -188,13 +147,10 @@ export const SANDBOX_STAGE_LABELS: Record<SandboxStage, string> = {
     [SandboxStage.RUNNING]: "Running agent"
 }
 
-export const userMessageSchema = z.object({
+export const userMessageSchema = modelEventBaseSchema.extend({
     type: z.literal("UserMessage"),
-    id: z.string().optional(),
     message: z.string(),
-    step_id: z.string(),
-    client_turn_id: z.string(),
-    timestamp: z.number()
+    client_turn_id: z.string()
 })
 export type UserMessage = z.infer<typeof userMessageSchema>
 
@@ -239,7 +195,6 @@ export type SnippetVariant = z.infer<typeof snippetVariantSchema>
 
 const chatSnippetMetadataSchema = {
     id: z.string().optional(),
-    step_id: z.string().optional(),
     selectedValue: z.string().optional()
 } satisfies z.ZodRawShape
 
@@ -252,17 +207,14 @@ export const chatSnippetSchema = z.discriminatedUnion("type", [
 ])
 export type ChatSnippet = z.infer<typeof chatSnippetSchema>
 
-export const modelEventChatSnippetSchema = z.object({
+export const modelEventChatSnippetSchema = modelEventBaseSchema.extend({
     type: z.literal("Snippet"),
-    id: z.string().optional(),
-    timestamp: z.number(),
     snippet: chatSnippetSchema
 })
 
 export const modelEventSchema = z.discriminatedUnion("type", [
     toolApprovalResponseSchema,
     toolApprovalRequestSchema,
-    toolCallGeneratingSchema,
     toolCallSchema,
     toolCallCompleteSchema,
     textDeltaSchema,

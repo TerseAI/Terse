@@ -4,7 +4,6 @@ import { z } from "zod"
 import { randomString } from "../../utility/strings"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
-import { appendSystemEventToBuilderSession } from "./systemEventSessions"
 
 const templatePromptSystemEventPayloadSchema = z.object({
     kind: z.literal("template_prompt"),
@@ -50,8 +49,4 @@ export function buildTemplatePromptSystemEventItem(templateId: string, promptTex
 
 export function parseTemplatePromptSystemEventItem(item: unknown): ParsedTemplatePromptSystemEvent | null {
     return templatePromptSystemEvent.parseItem(item)
-}
-
-export async function appendBuilderChatTemplatePromptSystemEvent(sessionId: string, templateId: string, promptText: string): Promise<void> {
-    await appendSystemEventToBuilderSession(sessionId, buildTemplatePromptSystemEventItem(templateId, promptText))
 }

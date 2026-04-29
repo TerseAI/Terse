@@ -11,8 +11,11 @@ export type ClassifiedError = { message: string; code?: string }
  * Build a RunError ModelEvent from a classified error. Single source of truth for the event shape.
  */
 export function buildRunErrorEvent(classified: ClassifiedError): ModelEvent {
+    const id = `run-error-${Date.now()}`
     return {
         type: "RunError",
+        id,
+        response_id: id,
         timestamp: Date.now(),
         error: classified.message,
         ...(classified.code && { code: classified.code })

@@ -53,10 +53,12 @@ export async function convertAgentInputItemsToModelEvents(items: TimestampedAgen
         const isTerminal = lastEvent.type === "NaturalStop" || lastEvent.type === "RunError" || lastEvent.type === "Cancelled"
         if (!isTerminal) {
             const timestamp = lastEvent.timestamp
+            const id = `historical-stop-${timestamp}`
             events.push({
                 type: "NaturalStop",
-                timestamp,
-                step_id: "historical-stop"
+                id,
+                response_id: lastEvent.response_id,
+                timestamp
             })
         }
     }
@@ -72,9 +74,12 @@ async function convertSingleItem(
 ): Promise<ModelEvent[] | null> {
     const cancelledSystemEvent = parseCancelledSystemEventItem(item)
     if (cancelledSystemEvent) {
+        const id = `cancelled-${eventTimestamp}-${itemIndex}`
         return [
             {
                 type: "Cancelled",
+                id,
+                response_id: id,
                 timestamp: eventTimestamp,
                 ...(cancelledSystemEvent.reason ? { reason: cancelledSystemEvent.reason } : {})
             }
@@ -83,9 +88,12 @@ async function convertSingleItem(
 
     const runErrorSystemEvent = parseRunErrorSystemEventItem(item)
     if (runErrorSystemEvent) {
+        const id = `run-error-${eventTimestamp}-${itemIndex}`
         return [
             {
                 type: "RunError",
+                id,
+                response_id: id,
                 timestamp: eventTimestamp,
                 error: runErrorSystemEvent.error,
                 ...(runErrorSystemEvent.code ? { code: runErrorSystemEvent.code } : {})
@@ -95,14 +103,16 @@ async function convertSingleItem(
 
     const filterOutcomeSystemEvent = parseFilterOutcomeSystemEventItem(item)
     if (filterOutcomeSystemEvent) {
+        const responseId = resolveResponseId(item, `filter-${eventTimestamp}-${itemIndex}`)
         return [
             {
                 type: "FilterResult",
+                id: responseId,
+                response_id: responseId,
                 timestamp: eventTimestamp,
                 isRelevant: filterOutcomeSystemEvent.isRelevant,
                 reason: filterOutcomeSystemEvent.reason,
-                confidence: filterOutcomeSystemEvent.confidence,
-                step_id: "filter-marker"
+                confidence: filterOutcomeSystemEvent.confidence
             }
         ]
     }
@@ -113,8 +123,9 @@ async function convertSingleItem(
             return [
                 {
                     type: "ToolApprovalRequest",
+                    id: toolApprovalSystemEvent.step_id,
+                    response_id: toolApprovalSystemEvent.step_id,
                     timestamp: eventTimestamp,
-                    step_id: toolApprovalSystemEvent.step_id,
                     name: toolApprovalSystemEvent.name,
                     arguments: toolApprovalSystemEvent.arguments
                 }
@@ -124,8 +135,9 @@ async function convertSingleItem(
         return [
             {
                 type: "ToolApprovalResponse",
+                id: toolApprovalSystemEvent.step_id,
+                response_id: toolApprovalSystemEvent.step_id,
                 timestamp: eventTimestamp,
-                step_id: toolApprovalSystemEvent.step_id,
                 approved: toolApprovalSystemEvent.approved,
                 rejection_reason: toolApprovalSystemEvent.rejection_reason || undefined
             }
@@ -134,9 +146,12 @@ async function convertSingleItem(
 
     const snippetSystemEvent = parseSnippetSystemEventItem(item)
     if (snippetSystemEvent) {
+        const id = `snippet-${eventTimestamp}-${itemIndex}`
         return [
             {
                 type: "Snippet",
+                id,
+                response_id: resolveResponseId(item, id),
                 timestamp: eventTimestamp,
                 snippet: snippetSystemEvent.snippet
             }
@@ -145,10 +160,12 @@ async function convertSingleItem(
 
     const processOutputSystemEvent = parseProcessOutputSystemEventItem(item)
     if (processOutputSystemEvent) {
+        const id = processOutputSystemEvent.id ?? `process-output-${eventTimestamp}-${itemIndex}`
         return [
             {
                 type: "ProcessOutput",
-                id: processOutputSystemEvent.id,
+                id,
+                response_id: resolveResponseId(item, id),
                 timestamp: eventTimestamp,
                 stream: processOutputSystemEvent.stream,
                 content: processOutputSystemEvent.content,
@@ -165,7 +182,7 @@ async function convertSingleItem(
                 return null
             }
             const stepId = resolveUserMessageStepId(item, eventTimestamp, itemIndex)
-            return [{ type: "UserMessage", timestamp: eventTimestamp, message: text, step_id: stepId, client_turn_id: stepId }]
+            return [{ type: "UserMessage", id: stepId, response_id: stepId, timestamp: eventTimestamp, message: text, client_turn_id: stepId }]
         }
         return null
     }
@@ -175,12 +192,14 @@ async function convertSingleItem(
         const text = extractTextFromMessageContent(item.content)
         if (text) {
             const stepId = item.id || "assistant-msg"
+            const responseId = resolveResponseId(item, stepId)
             return [
                 {
                     type: "TextDelta",
+                    id: stepId,
+                    response_id: responseId,
                     timestamp: eventTimestamp,
-                    delta: text,
-                    step_id: stepId
+                    delta: text
                 }
             ]
         }
@@ -190,11 +209,13 @@ async function convertSingleItem(
     // Reasoning items - convert to Thinking events
     if (isReasoningItem(item)) {
         const stepId = item.id || "reasoning"
+        const responseId = resolveResponseId(item, stepId)
         return [
             {
                 type: "Thinking",
-                timestamp: eventTimestamp,
-                step_id: stepId
+                id: stepId,
+                response_id: responseId,
+                timestamp: eventTimestamp
             }
         ]
     }
@@ -202,12 +223,14 @@ async function convertSingleItem(
     // Function call - convert to ToolCall
     if (isFunctionCallItem(item)) {
         const integration = OutputFactory.getToolIntegrationType(item.name)
+        const id = item.callId || item.id || "unknown"
         return [
             {
                 type: "ToolCall",
+                id,
+                response_id: resolveResponseId(item, id),
                 summary: item.name,
                 timestamp: eventTimestamp,
-                step_id: item.callId || item.id || "unknown",
                 parameters: item.arguments || "{}",
                 integration
             }
@@ -231,18 +254,21 @@ async function convertSingleItem(
 
         const toolCallCompleteEvent: ModelEvent = {
             type: "ToolCallComplete",
+            id: item.callId,
+            response_id: resolveResponseId(item, item.callId),
             tool_name: item.name || "unknown",
             timestamp: eventTimestamp,
             status: parsed.status,
-            step_id: item.callId,
             changed_items: [],
             integration,
             result: JSON.stringify(outputWithoutActions) || undefined,
             ...(parsed.errorContext ? { errorContext: { error: parsed.errorContext.error } } : {})
         }
 
-        const snippetEvents: ModelEvent[] = (parsed.snippets ?? []).map(snippet => ({
+        const snippetEvents: ModelEvent[] = (parsed.snippets ?? []).map((snippet, snippetIndex) => ({
             type: "Snippet",
+            id: `snippet-${item.callId}-${snippetIndex}`,
+            response_id: resolveResponseId(item, item.callId),
             timestamp: eventTimestamp,
             snippet
         }))
@@ -255,10 +281,11 @@ async function convertSingleItem(
         const integration = IntegrationType.TERSE
         const toolCallCompleteEvent: ModelEvent = {
             type: "ToolCallComplete",
+            id: item.id || `web-search-${eventTimestamp}`,
+            response_id: resolveResponseId(item, item.id || `web-search-${eventTimestamp}`),
             tool_name: hostedToolCallItem.name,
             timestamp: eventTimestamp,
             status: (hostedToolCallItem.status as ToolCallExecutionStatus) || ToolCallExecutionStatus.COMPLETED,
-            step_id: item.id || `web-search-${eventTimestamp}`,
             changed_items: [],
             integration,
             result: JSON.stringify(hostedToolCallItem.providerData?.action) || undefined
@@ -311,6 +338,15 @@ function resolveUserMessageStepId(item: UserMessageItem, eventTimestamp: number,
 
     // Backward compatibility for historical user messages persisted before IDs were guaranteed.
     return `legacy-user-msg-${eventTimestamp}-${itemIndex}`
+}
+
+function resolveResponseId(item: AgentInputItem, fallback: string): string {
+    const providerData = "providerData" in item && typeof item.providerData === "object" && item.providerData !== null ? (item.providerData as Record<string, unknown>) : undefined
+    const responseId = providerData?.responseId
+    if (typeof responseId === "string" && responseId.trim()) {
+        return responseId
+    }
+    return fallback
 }
 
 function isTextMessagePart(part: unknown): part is { type: "input_text" | "output_text"; text: string } {

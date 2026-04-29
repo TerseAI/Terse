@@ -5,7 +5,7 @@ import { randomString } from "../../utility/strings"
 import type { ClassifiedError } from "../agentErrorUtils"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
-import { appendSystemEventToBuilderSession, appendSystemEventToRunHistory } from "./systemEventSessions"
+import { appendSystemEventToRunHistory } from "./systemEventSessions"
 
 const runErrorSystemEventPayloadSchema = z.object({
     kind: z.literal("run_error"),
@@ -81,8 +81,4 @@ export function parseRunErrorSystemEventItem(item: unknown): ParsedRunErrorSyste
 
 export async function appendRunHistoryErrorSystemEvent(runId: string, classified: ClassifiedError, options?: RunErrorSystemEventOptions): Promise<void> {
     await appendSystemEventToRunHistory(runId, buildRunErrorSystemEventItem(classified, options))
-}
-
-export async function appendBuilderChatErrorSystemEvent(sessionId: string, classified: ClassifiedError, options?: RunErrorSystemEventOptions): Promise<void> {
-    await appendSystemEventToBuilderSession(sessionId, buildRunErrorSystemEventItem(classified, options))
 }

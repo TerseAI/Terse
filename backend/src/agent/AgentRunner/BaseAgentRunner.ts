@@ -1,5 +1,6 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
+import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
 import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
@@ -7,7 +8,7 @@ import { RunHistoryAction } from "terse-types"
 import logger from "../../logger"
 import { Session as AppSession } from "../../types/session"
 import type { StreamEventIngestionSession } from "../CustomMemorySession"
-import { createNaturalStopEvent, transformAgentStreamToModelEvents } from "../streaming"
+import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
 import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
@@ -75,7 +76,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: settings.signal
         })
 
-        await this.processStream(result, settings.memorySession)
+        await this.processStream(result)
         return this.buildResult(result)
     }
 
@@ -84,6 +85,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         stepId: string
         settings: RunExecutionSettings<TSession, TAgent>
         rejectionReason?: string
+        responseId?: string
         prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
     }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
         await this.initializeLoopIfNeeded()
@@ -102,6 +104,8 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         if (!interruption) {
             throw new Error(`Could not find matching interruption for step_id ${params.stepId}`)
         }
+
+        const seedResponseId = params.responseId ?? (interruption.rawItem as any)?.providerData?.responseId
 
         if (params.decision === "approve") {
             // https://github.com/openai/openai-agents-js/pull/1098 Once this gets in, we should support it
@@ -123,18 +127,14 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             signal: params.settings.signal
         })
 
-        await this.processStream(result, params.settings.memorySession)
+        await this.processStream(result, { approvalDecision: { decision: params.decision, rejectionReason: params.rejectionReason, responseId: seedResponseId } })
         return this.buildResult(result)
     }
 
-    private async processStream(result: StreamedRunResult<TSession, TAgent>, memorySession: AgentMemorySession): Promise<void> {
-        const streamIngestionSession = asStreamEventIngestionSession(memorySession)
+    private async processStream(result: StreamedRunResult<TSession, TAgent>, options: { approvalDecision?: ApprovalDecision } = {}): Promise<void> {
         const eventStream = transformAgentStreamToModelEvents(result, {
             onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
-            onRawStreamEvent: async streamEvent => {
-                if (!streamIngestionSession) return
-                await streamIngestionSession.ingestStreamEvent(streamEvent)
-            }
+            approvalDecision: options.approvalDecision
         })
 
         for await (const event of this.trackEventStream(eventStream)) {
@@ -157,10 +157,12 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
                     })
                     continue
                 }
+                const responseId = (interruption.rawItem as any)?.providerData?.responseId ?? stepId
                 const approvalRequest: ModelEvent = {
+                    id: stepId,
+                    response_id: responseId,
                     type: "ToolApprovalRequest",
                     timestamp: Date.now(),
-                    step_id: stepId,
                     name: interruption.name ?? "unknown_tool",
                     arguments: interruption.arguments ?? "{}"
                 }
@@ -182,7 +184,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         }
 
         await this.clearPendingApprovalState(this.runId)
-        await this.onModelEvent(createNaturalStopEvent(), Date.now())
 
         return {
             status: "completed",
@@ -263,7 +264,13 @@ type AgentInitializationParams<TSession extends AppSession> = {
     name: string
     systemPromptDeps: SystemPromptBuilderDependencies<TSession, ConfigData>
     runContext: RunContext
-    model: string
+    model: AiSdkModel
     tools: Tool<TSession>[]
     modelSettings?: ModelSettings
+}
+
+export type ApprovalDecision = {
+    decision: "approve" | "reject"
+    rejectionReason?: string
+    responseId: string
 }

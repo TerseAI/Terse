@@ -1,4 +1,3 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { DatadogConfig } from "terse-types"
 import { IntegrationType } from "terse-types"

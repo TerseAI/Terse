@@ -7,7 +7,7 @@ import type {
     WebhookJobChallengeResponse,
     WebhookJobTriggerResponse
 } from "terse-types"
-import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
+import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, stripZodJsonSchemaMetadata, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
@@ -364,7 +364,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             toolApprovals: this.toolApprovals,
             message: userMessage,
             skills: this.skills,
-            outputSchema: outputSchema ? (z.toJSONSchema(outputSchema) as Record<string, unknown>) : undefined
+            outputSchema: outputSchema ? (stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) as Record<string, unknown>) : undefined
         })
 
         const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {

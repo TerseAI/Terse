@@ -1,6 +1,5 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
-import { ConfigType, GitHubConfig } from "terse-types"
+import { GitHubConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"

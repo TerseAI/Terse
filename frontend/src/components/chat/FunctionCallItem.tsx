@@ -3,7 +3,7 @@ import { useState } from "react"
 import { CheckCircleIcon, CheckIcon, ClockIcon, NoSymbolIcon, PaperAirplaneIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import { Ban, Check } from "lucide-react"
 import { EntityType } from "terse-types"
-import { ChangedItem } from "terse-types"
+import { ChangedItem, SharedErrorContext } from "terse-types"
 import { RunHistoryStatus } from "terse-types"
 import { getToolDisplayFromCall } from "terse-types"
 
@@ -14,7 +14,23 @@ import ToolCallParameters from "../ToolCallParameters"
 import { Button } from "../ui/button"
 
 import ToolApprovalPreview, { hasCustomPreview } from "./ToolApprovalPreview"
-import { FunctionCallEvent } from "./Turn"
+
+export interface FunctionCallEvent {
+    id: string
+    name: string
+    timestamp?: number
+    isGeneratingParams?: boolean
+    isRunning: boolean
+    isWaitingForApproval?: boolean
+    isRejected?: boolean
+    isApproved?: boolean
+    isWaitingForUserInput?: boolean
+    isFailure?: boolean
+    parameters?: string
+    result?: string
+    changed_items?: ChangedItem[]
+    errorContext?: SharedErrorContext
+}
 
 interface FunctionCallItemProps {
     call: FunctionCallEvent
@@ -88,7 +104,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     if (parameters) {
         try {
             parsedParams = JSON.parse(parameters)
-        } catch (e) {
+        } catch (error) {
             // If parsing fails, treat as plain text
             parsedParams = parameters
         }

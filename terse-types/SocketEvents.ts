@@ -22,14 +22,7 @@ export const SocketEvents = {
     WORKOS_USER_UPDATED: "workos:user:updated",
     WORKOS_FORCE_LOGOUT: "workos:force:logout",
     WORKOS_SESSION_UPDATED: "workos:session:updated",
-    WORKOS_ORG_UPDATED: "workos:org:updated",
-
-    // Builder chat events
-    BUILDER_CHAT_EVENT: "builder:chat:event",
-    BUILDER_CHAT_MESSAGE: "builder:chat:message",
-    BUILDER_CHAT_CANCEL: "builder:chat:cancel",
-    BUILDER_CHAT_APPROVAL: "builder:chat:approval",
-    BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER: "builder:chat:multiple_choice_answer"
+    WORKOS_ORG_UPDATED: "workos:org:updated"
 } as const
 
 /**
