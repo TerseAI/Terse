@@ -116,6 +116,7 @@ Use this form when you want raw text output.
 ### `runAndWait(userMessage, outputSchema)`
 
 Pass a `zod` schema to request structured output. The SDK sends the schema with the run, parses the final JSON, and validates it before returning.
+This works across supported model providers, including OpenAI and Anthropic. The SDK also strips Zod-internal metadata before sending the schema, so provider-side schema parsing stays compatible.
 
 ```ts
 import { z } from "zod"
