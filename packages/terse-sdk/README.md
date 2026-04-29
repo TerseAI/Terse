@@ -1,61 +1,72 @@
 # terse-sdk
 
-TypeScript SDK for building jobs on the [Terse](https://terse.ai) platform.
+TypeScript SDK for building workflows on the [Terse](https://useterse.ai) platform.
 
-## Installation
+Terse is a code-first AI workflow platform. You write workflows in TypeScript, mix deterministic tool calls with agentic loops, and deploy serverlessly. Full docs at [docs.useterse.ai](https://docs.useterse.ai).
+
+> Terse is currently in private beta. [Email support@useterse.ai](mailto:support@useterse.ai) to request access.
+
+## Install
 
 ```bash
 npm install terse-sdk zod
 ```
 
-`zod` is used for structured output schemas in TypeScript workflows.
+`zod` is used for structured output schemas.
 
-## Quick Start
+The fastest way to get started is `npm install -g terse-cli && terse init my-project`. The CLI scaffolds the project, installs `terse-sdk`, and generates `src/terse.generated.ts` for you. See the [quickstart](https://docs.useterse.ai/quickstart).
 
-```typescript
-import { Terse, TerseAgent } from "terse-sdk";
-import { GitHub, Slack, Repos, SlackChannel } from "./terse.generated";
+## Example
 
-const client = new Terse();
+```ts
+import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
+import { GitHub, Repos, Slack, SlackChannel } from "./terse.generated"
 
-client.createJob({
-  name: "PR Summary Bot",
-  triggers: [GitHub.onPROpened({ repo: Repos.MyOrg.MyRepo })],
-  skills: [GitHub.skill({ repos: [Repos.MyOrg.MyRepo] }), Slack.skill({ channel: SlackChannel.General })],
-  onTrigger: async (event, Agent) => {
-    await Agent.runAndWait(`Summarize this PR: ${event.formatForAgentRunner()}`);
-  },
-});
+createJob({
+    name: "Summarize PR and post to Slack",
+    triggers: [GitHub.onPROpened({ repo: Repos.MyOrg.MyRepo })],
+    onTrigger: async (event: GithubPRTrigger) => {
+        const agent = TerseAgent.create({
+            prompt: "Summarize incoming PRs and post a Block Kit message to Slack.",
+            skills: [
+                GitHub.skill({ repos: [Repos.MyOrg.MyRepo] }),
+                Slack.skill({ channel: SlackChannel.Engineering })
+            ]
+        })
+
+        // Deterministic tool call. Strongly typed.
+        const message = await agent.tools.slack.sendMessage({
+            channelId: SlackChannel.Engineering.channelId,
+            message: `New PR from ${event.sender.login}`
+        })
+
+        // Hand off to the agent for judgment.
+        await agent.runAndWait(`
+            Summarize this PR: ${event.formatForAgentRunner()}
+            Reply in a thread to ts: ${message.message_ts}.
+        `)
+    }
+})
 ```
 
-## Core Concepts
+## Core concepts
 
-- **`Terse`** — Entry point. Use `createJob()` to register jobs.
-- **`TerseAgent`** — Passed into your `onTrigger` handler. Call `agent.run()` for streaming results or `agent.runAndWait()` to run to completion.
-- **Triggers** — Config instances (e.g. `GitHub.onPROpened()`) that define when a job fires.
-- **Skills** — Integration configs (e.g. `Slack.skill()`) that give the model access to tools during `run()` / `runAndWait()`.
-- **Deterministic wrappers** — Generated `agent.tools.*` helpers that you call directly; these can be available from trigger integrations as well as declared skills.
-- **Events** — Typed trigger events (`GithubPRTrigger`, `WorkOSUserTrigger`, etc.) with type guards like `isGithubPRTrigger()`.
-
-## API
-
-### `TerseAgent`
-
-| Method | Description |
+| Concept | What it is |
 |---|---|
-| `run(prompt, event?)` | Returns an `AsyncGenerator<TerseAgentResult>` streaming agent output |
-| `runAndWait(prompt, event?)` | Runs the agent to completion, discarding streamed output |
-| `executeTool(toolName, params?)` | Directly execute a single tool by name |
+| `createJob()` | Registers a workflow at module load time. |
+| `TerseAgent.create()` | Build an agent inside `onTrigger` with `prompt`, `skills`, and `toolApprovals`. |
+| `agent.run()` | Stream the model run as an async iterable. |
+| `agent.runAndWait()` | Run to completion. Pass a `zod` schema for structured output. |
+| `agent.tools.*` | Generated, deterministic wrappers. Call directly to bypass the LLM. |
+| Triggers | `GitHub.onPROpened()`, `Schedule.cron()`, `Webhook.onRequest<Body>()`, etc. |
+| Skills | Integration configs that scope tools available to the agent. |
 
-### Event Types
+The trigger builders, skill constructors, and `agent.tools.*` wrappers come from `src/terse.generated.ts`, which is produced by `terse generate`. Do not edit it by hand.
 
-The SDK provides typed event classes and type guards for supported integrations:
+Full reference: [docs.useterse.ai/reference/typescript-sdk](https://docs.useterse.ai/reference/typescript-sdk).
 
-- **GitHub**: `GithubTrigger`, `GithubPRTrigger`, `GithubPushTrigger`
-- **WorkOS**: `WorkOSTrigger`, `WorkOSUserTrigger`, `WorkOSMembershipTrigger`, `WorkOSInvitationTrigger`
-
-## Environment Variables
+## Environment
 
 | Variable | Description |
 |---|---|
-| `TERSE_API_KEY` | Required. API key for authenticating with the Terse platform. |
+| `TERSE_API_KEY` | Required at runtime. The CLI also stores a key per user via `terse login`. |
