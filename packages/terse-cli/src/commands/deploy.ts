@@ -54,8 +54,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     intro(`terse deploy`)
 
     const s = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
-    s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
 
+    // Open the SSE session BEFORE starting the spinner so a clean error
+    // (e.g. 401) surfaces without leaving the spinner mid-frame.
     const session = await openSessionStream(apiKey, {
         onEvent: event => {
             if (event.type === "deploy_stage") {
@@ -63,6 +64,8 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             }
         }
     })
+
+    s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
 
     try {
         const body = sdkDeployRequestBodySchema.parse({
