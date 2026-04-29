@@ -20,11 +20,7 @@ function planTagline(plan: Plan): string {
 }
 
 function planFeatures(plan: Plan): string[] {
-    const features: string[] = [
-        `${plan.includedCreditsPerMonth.toLocaleString()} credits / month`,
-        `${plan.seats ?? 1} ${plan.seats === 1 ? "seat" : "seats"}`,
-        `${plan.concurrentRuns} concurrent ${plan.concurrentRuns === 1 ? "run" : "runs"}`
-    ]
+    const features: string[] = [`${plan.includedCreditsPerMonth.toLocaleString()} credits / month`]
     return features
 }
 

@@ -18,13 +18,13 @@ import {
 import { Session } from "../types/session"
 
 const checkoutBodySchema = z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("plan"), planKey: z.nativeEnum(PlanKey), period: z.nativeEnum(TimePeriods) }),
-    z.object({ kind: z.literal("topup"), packCredits: z.nativeEnum(SupportedTopUps) })
+    z.object({ kind: z.literal("plan"), planKey: z.enum(PlanKey), period: z.enum(TimePeriods) }),
+    z.object({ kind: z.literal("topup"), packCredits: z.enum(SupportedTopUps) })
 ])
 
 const changeBodySchema = z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("cancel_to_free") }),
-    z.object({ kind: z.literal("change_period"), planKey: z.nativeEnum(PlanKey), period: z.nativeEnum(TimePeriods) })
+    z.object({ kind: z.literal("change_period"), planKey: z.enum(PlanKey), period: z.enum(TimePeriods) })
 ])
 
 export async function createBillingCheckoutSession(req: Request, res: Response) {

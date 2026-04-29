@@ -17,9 +17,7 @@ export function getPlanDetails(planKey: PlanKey): Plan {
                 markupPct: 0,
                 overageCentsPerCredit: null,
                 hardCapMultiplier: 1,
-                defaultOverageMode: "strict",
-                seats: 1,
-                concurrentRuns: 1
+                defaultOverageMode: "strict"
             }
         case PlanKey.PRO:
             return {
@@ -43,9 +41,7 @@ export function getPlanDetails(planKey: PlanKey): Plan {
                 markupPct: 0.3,
                 overageCentsPerCredit: 0.2,
                 hardCapMultiplier: 2,
-                defaultOverageMode: "soft",
-                seats: 3,
-                concurrentRuns: 5
+                defaultOverageMode: "soft"
             }
         default: {
             const _exhaustiveCheck: never = planKey
@@ -139,8 +135,6 @@ export type Plan = {
     overageCentsPerCredit: number | null
     hardCapMultiplier: number
     defaultOverageMode: OverageMode
-    seats: number | null
-    concurrentRuns: number
 }
 
 export enum SupportedTopUps {
