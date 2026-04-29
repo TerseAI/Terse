@@ -386,11 +386,6 @@ interface BackendService {
     }>
 
     /**
-     * Fetch builder chat history for a session
-     */
-    getBuilderChatHistory(sessionId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>
-
-    /**
      * Fetch run history actions by IDs
      */
     getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>
@@ -1299,18 +1294,6 @@ export const BackendProvider: BackendService = {
             .then(r => r.data)
             .catch(error => {
                 console.error("Error fetching chat history:", error)
-                throw error
-            })
-    },
-
-    getBuilderChatHistory: sessionId => {
-        const apiUrl = buildRoute(ApiRoutes.BUILDER_CHAT.HISTORY_BY_SESSION_ID, { sessionId })
-        const url = `${backendBaseUrl}${apiUrl}`
-        return axios
-            .get<{ events: Array<RunHistoryModelEvent>; startTimestamp: string | null; endTimestamp: string | null }>(url, { withCredentials: true })
-            .then(r => r.data)
-            .catch(error => {
-                console.error("Error fetching builder chat history:", error)
                 throw error
             })
     },

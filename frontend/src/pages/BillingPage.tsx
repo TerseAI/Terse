@@ -3,20 +3,37 @@ import { Link } from "react-router-dom"
 
 import { ArrowUpRight, CreditCard, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { type BalanceSummary, FrontendRoutes, type OverageMode, type Plan, type UsageBucket, getPlanDetails } from "terse-types"
+import { type BalanceSummary, FrontendRoutes, type OverageMode, type Plan, type UsageBucket, getPlanDetails, isPurchasablePlan } from "terse-types"
 
 import { CreditBalanceWidget } from "@/components/billing/CreditBalanceWidget"
 import { OverageModeToggle } from "@/components/billing/OverageModeToggle"
 import { UsageChart } from "@/components/billing/UsageChart"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { formatUsd } from "@/utility/billingFormat"
 
 import { BackendProvider } from "../services/backend"
 
 const periodFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
 
-function formatPeriod(balance: BalanceSummary): string {
-    return `${periodFormatter.format(new Date(balance.periodStart))} – ${periodFormatter.format(new Date(balance.periodEnd))}`
+function formatNextCharge(balance: BalanceSummary, plan: Plan | null): string {
+    const endDate = periodFormatter.format(new Date(balance.periodEnd))
+    if (!isPurchasablePlan(balance.planKey)) return `Resets ${endDate}`
+
+    const change = balance.scheduledChange
+    if (change?.kind === "cancel_to_free") return `Plan ends ${endDate}`
+
+    const effectivePeriod = change?.kind === "change_period" ? change.period : balance.billingPeriod
+    if (!plan || !effectivePeriod) return `Renews ${endDate}`
+
+    const amount =
+        effectivePeriod === "monthly"
+            ? plan.priceInUsdMonthly
+            : plan.priceInUsdMonthlyAnnual !== null
+              ? plan.priceInUsdMonthlyAnnual * 12
+              : null
+    if (amount === null) return `Renews ${endDate}`
+    return `Next charge: ${formatUsd(amount)} on ${endDate}`
 }
 
 function formatScheduledChange(balance: BalanceSummary): string | null {
@@ -114,7 +131,7 @@ export default function BillingPage() {
                     <>
                         <section aria-label="Current period" className="overflow-hidden rounded-lg border border-border bg-card">
                             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
-                                <div className="flex items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                     <Badge variant="secondary" className="text-xs">
                                         {plan ? plan.name : "—"} plan
                                     </Badge>
@@ -123,7 +140,7 @@ export default function BillingPage() {
                                             {balance.billingPeriod}
                                         </Badge>
                                     )}
-                                    <span className="text-xs text-muted-foreground">{balance ? formatPeriod(balance) : "Current period"}</span>
+                                    {balance && plan && <span className="text-sm tabular-nums text-foreground">{formatNextCharge(balance, plan)}</span>}
                                 </div>
                                 <Link to={FrontendRoutes.PRICING} className="inline-flex items-center gap-1 text-sm font-medium text-foreground transition-colors hover:text-foreground/70">
                                     Change plan
@@ -132,16 +149,20 @@ export default function BillingPage() {
                             </div>
 
                             <div className="px-6 py-6">
-                                {scheduledChange && <div className="mb-4 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground">{scheduledChange}</div>}
+                                {scheduledChange && (
+                                    <div
+                                        className={`mb-4 rounded-md border px-3 py-2 text-sm text-foreground ${
+                                            balance?.scheduledChange?.kind === "cancel_to_free" ? "border-warning/30 bg-warning/10" : "border-border bg-muted"
+                                        }`}
+                                    >
+                                        {scheduledChange}
+                                    </div>
+                                )}
                                 <CreditBalanceWidget balance={balance} plan={plan} />
                             </div>
 
                             {balance && plan && (
-                                <div className="border-t border-border px-6 py-5">
-                                    <div className="mb-3">
-                                        <p className="text-sm font-medium text-foreground">When you hit the included limit</p>
-                                        <p className="text-xs text-muted-foreground">Choose what happens to running agents.</p>
-                                    </div>
+                                <div className="border-t border-border px-6 py-3">
                                     <OverageModeToggle mode={balance.overageMode} plan={plan} onChange={updateMode} />
                                 </div>
                             )}

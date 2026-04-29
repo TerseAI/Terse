@@ -12,8 +12,6 @@ let socket: Socket | null = null
 
 // Callback types (defined early for pending subscription types)
 type ChatEventCallback = (payload: RunHistoryModelSocketEvent) => void
-type BuilderEventPayload = { sessionId: string; event: ModelEvent }
-type BuilderEventCallback = (payload: BuilderEventPayload) => void
 type CancelAckResponse = { accepted: boolean; reason?: string }
 
 // Pending subscriptions queue for handling race conditions
@@ -23,21 +21,13 @@ type PendingChatSubscription = {
     callback: ChatEventCallback
 }
 
-type PendingBuilderSubscription = {
-    type: "builder"
-    sessionId: string
-    callback: BuilderEventCallback
-}
-
-type PendingSubscription = PendingChatSubscription | PendingBuilderSubscription
+type PendingSubscription = PendingChatSubscription
 
 const pendingSubscriptions: PendingSubscription[] = []
 
 // Callback storage
 const chatEventCallbacks = new Map<string, Set<ChatEventCallback>>()
-const builderEventCallbacks = new Map<string, Set<BuilderEventCallback>>()
 let chatEventListenerSetUp = false
-let builderEventListenerSetUp = false
 
 function shouldInvalidateRunStatusCaches(event: ModelEvent): boolean {
     return event.type === "ToolApprovalRequest" || event.type === "ToolApprovalResponse" || event.type === "Cancelled" || event.type === "RunError" || event.type === "NaturalStop"
@@ -65,21 +55,6 @@ function setupChatEventListener() {
     chatEventListenerSetUp = true
 }
 
-function setupBuilderEventListener() {
-    if (!socket || builderEventListenerSetUp) {
-        return
-    }
-
-    socket.on(SocketEvents.BUILDER_CHAT_EVENT, (payload: BuilderEventPayload) => {
-        const callbacks = builderEventCallbacks.get(payload.sessionId)
-        if (callbacks) {
-            callbacks.forEach(cb => cb(payload))
-        }
-    })
-
-    builderEventListenerSetUp = true
-}
-
 function addChatSubscription(runId: string, callback: ChatEventCallback) {
     setupChatEventListener()
     if (!chatEventCallbacks.has(runId)) {
@@ -88,25 +63,13 @@ function addChatSubscription(runId: string, callback: ChatEventCallback) {
     chatEventCallbacks.get(runId)!.add(callback)
 }
 
-function addBuilderSubscription(sessionId: string, callback: BuilderEventCallback) {
-    setupBuilderEventListener()
-    if (!builderEventCallbacks.has(sessionId)) {
-        builderEventCallbacks.set(sessionId, new Set())
-    }
-    builderEventCallbacks.get(sessionId)!.add(callback)
-}
-
 function processPendingSubscriptions() {
     if (pendingSubscriptions.length === 0) return
 
     console.log(`Processing ${pendingSubscriptions.length} pending socket subscriptions`)
 
     for (const sub of pendingSubscriptions) {
-        if (sub.type === "chat") {
-            addChatSubscription(sub.runId, sub.callback)
-        } else if (sub.type === "builder") {
-            addBuilderSubscription(sub.sessionId, sub.callback)
-        }
+        addChatSubscription(sub.runId, sub.callback)
     }
 
     // Clear the queue
@@ -237,10 +200,8 @@ export function disconnectSocket() {
     // explicit clear of callbacks and pending subscriptions
     // avoiding a memory leak
     chatEventCallbacks.clear()
-    builderEventCallbacks.clear()
     pendingSubscriptions.length = 0
     chatEventListenerSetUp = false
-    builderEventListenerSetUp = false
 }
 
 export function sendChatMessage(runId: string | null, message: ModelRequest): void {
@@ -253,6 +214,7 @@ export function sendChatMessage(runId: string | null, message: ModelRequest): vo
 
 export type ToolApprovalResponseOptions = {
     rejectionReason?: string
+    responseId?: string
 }
 
 export function sendToolApprovalResponse(runId: string, stepId: string, approved: boolean, options?: ToolApprovalResponseOptions): void {
@@ -264,57 +226,13 @@ export function sendToolApprovalResponse(runId: string, stepId: string, approved
         runId,
         message: {
             type: "ToolApprovalResponse",
-            step_id: stepId,
+            id: stepId,
+            response_id: options?.responseId ?? stepId,
+            timestamp: Date.now(),
             approved,
             rejection_reason: options?.rejectionReason
         }
     })
-}
-
-// Builder chat subscription
-export function subscribeToBuilderChat(sessionId: string, callback: BuilderEventCallback): () => void {
-    // If socket is connected, subscribe immediately
-    if (socket?.connected) {
-        addBuilderSubscription(sessionId, callback)
-    } else {
-        // Queue for when socket connects
-        console.log("Socket not ready, queueing builder subscription for sessionId:", sessionId)
-        pendingSubscriptions.push({ type: "builder", sessionId, callback })
-    }
-
-    // Return unsubscribe function (works regardless of connection state)
-    return () => {
-        // Remove from pending queue if still there
-        const pendingIndex = pendingSubscriptions.findIndex(sub => sub.type === "builder" && sub.sessionId === sessionId && sub.callback === callback)
-        if (pendingIndex !== -1) {
-            pendingSubscriptions.splice(pendingIndex, 1)
-        }
-
-        // Remove from active callbacks
-        const callbacks = builderEventCallbacks.get(sessionId)
-        if (callbacks) {
-            callbacks.delete(callback)
-            if (callbacks.size === 0) {
-                builderEventCallbacks.delete(sessionId)
-            }
-        }
-    }
-}
-
-export function sendBuilderMessage(sessionId: string, message: ModelRequest): void {
-    if (!socket || !socket.connected) {
-        console.warn("Socket not connected, cannot send builder message")
-        return
-    }
-    socket.emit(SocketEvents.BUILDER_CHAT_MESSAGE, { sessionId, message })
-}
-
-export function sendBuilderMultipleChoiceAnswer(sessionId: string, questionId: string, value: string): void {
-    if (!socket || !socket.connected) {
-        console.warn("Socket not connected, cannot send multiple choice answer")
-        return
-    }
-    socket.emit(SocketEvents.BUILDER_CHAT_MULTIPLE_CHOICE_ANSWER, { sessionId, questionId, value })
 }
 
 export async function cancelAgentChatRun(runId: string): Promise<CancelAckResponse> {
@@ -325,23 +243,6 @@ export async function cancelAgentChatRun(runId: string): Promise<CancelAckRespon
 
     return await new Promise(resolve => {
         activeSocket.timeout(5000).emit(SocketEvents.AGENT_CHAT_CANCEL, { runId }, (err: Error | null, response?: CancelAckResponse) => {
-            if (err) {
-                resolve({ accepted: false, reason: "timeout" })
-                return
-            }
-            resolve(response ?? { accepted: false, reason: "no_response" })
-        })
-    })
-}
-
-export async function cancelBuilderChatSession(sessionId: string): Promise<CancelAckResponse> {
-    const activeSocket = socket
-    if (!activeSocket || !activeSocket.connected) {
-        return { accepted: false, reason: "socket_not_connected" }
-    }
-
-    return await new Promise(resolve => {
-        activeSocket.timeout(5000).emit(SocketEvents.BUILDER_CHAT_CANCEL, { sessionId }, (err: Error | null, response?: CancelAckResponse) => {
             if (err) {
                 resolve({ accepted: false, reason: "timeout" })
                 return

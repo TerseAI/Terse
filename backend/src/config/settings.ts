@@ -193,6 +193,9 @@ export const settings = {
         publishableKey: requireEnv("STRIPE_PUBLISHABLE_KEY"), // pk_test_... or pk_live_...
         webhookSecret: requireEnv("STRIPE_WEBHOOK_SECRET"), // whsec_...
         isTestMode: optionalEnv("STRIPE_TEST_MODE", process.env.NODE_ENV === "production" ? "false" : "true") === "true"
+    },
+    aisdk: {
+        default: optionalEnv("MODEL_DEFAULT", "anthropic:claude-opus-4-7")
     }
 } as const
 

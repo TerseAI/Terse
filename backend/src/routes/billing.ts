@@ -40,12 +40,13 @@ export async function createBillingCheckoutSession(req: Request, res: Response) 
             error: "Free plan cannot be purchased; cancel a paid subscription in the billing portal to return to Free."
         })
     }
-    if (parsed.data.kind === "plan") {
-        const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
-        const activeSubscription = customer?.stripe_customer_id ? await fetchActivePaidSubscription(customer.stripe_customer_id) : null
-        if (activeSubscription) {
-            return res.status(409).json({ error: "Use the billing change endpoint for existing subscriptions." })
-        }
+    const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
+    const activeSubscription = customer?.stripe_customer_id ? await fetchActivePaidSubscription(customer.stripe_customer_id) : null
+    if (parsed.data.kind === "plan" && activeSubscription) {
+        return res.status(409).json({ error: "Use the billing change endpoint for existing subscriptions." })
+    }
+    if (parsed.data.kind === "topup" && !activeSubscription) {
+        return res.status(403).json({ error: "Top-ups require an active paid subscription." })
     }
 
     const stripeSession =

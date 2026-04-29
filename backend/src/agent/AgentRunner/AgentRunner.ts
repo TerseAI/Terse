@@ -1,4 +1,5 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, protocol, tool } from "@openai/agents"
+import { AiSdkModel, aisdk } from "@openai/agents-extensions/ai-sdk"
 import { RunHistoryActionType } from "@prisma/client"
 import { EntityType } from "terse-types"
 import { IntegrationType } from "terse-types"
@@ -17,6 +18,7 @@ import { AgentWithRelations } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
+import { resolveLanguageModel } from "../modelRegistry"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
@@ -161,7 +163,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         streamingParams?: TrackingParams,
         rejectionReason?: string,
         hardReject?: boolean,
-        options?: { signal?: AbortSignal }
+        options?: { signal?: AbortSignal; responseId?: string }
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         logger.info("[ApprovalFlow] Resuming from pending approval", { runId: this.runContext.runId, stepId, decision })
 
@@ -179,6 +181,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             loopResult = await super.resumeAgent({
                 decision,
                 stepId,
+                responseId: options?.responseId,
                 settings: {
                     runner,
                     context: toolContext,
@@ -279,8 +282,10 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         })
     }
 
-    private chooseModel(): string {
-        return "gpt-5.2"
+    private chooseModel(): AiSdkModel {
+        const defaultModel = settings.aisdk.default
+        const resolved = resolveLanguageModel(defaultModel)
+        return aisdk(resolved.model)
     }
 
     private getModelSettings() {

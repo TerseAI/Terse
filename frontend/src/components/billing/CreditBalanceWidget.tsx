@@ -25,18 +25,27 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
     const overageDollars = (overageCredits * overageRateCents) / 100
     const softMeteredOverage = overageMode === "soft" && overageRateCents > 0
 
-    const fillClass = atPeriodCap || totalUsableRemaining <= 0 ? "bg-danger" : !withinIncluded ? "bg-warning" : capPct >= 90 ? "bg-warning" : "bg-foreground"
+    const fillClass = atPeriodCap || totalUsableRemaining <= 0 ? "bg-danger" : !withinIncluded ? "bg-warning" : capPct >= 90 ? "bg-warning" : "bg-accent-primary"
 
     const includedTickPct = hasOverageHeadroom && planCredits < hardCapCredits ? Math.round((planCredits / hardCapCredits) * 100) : null
     const showIncludedTick = !withinIncluded && includedTickPct !== null
 
     const creditsUsedTooltip = `${formatCredits(consumedCredits)} / ${formatCredits(displayCapacity)} credits used`
+    const remainingLabel = totalUsableRemaining > 0 ? `${formatCredits(totalUsableRemaining)} remaining` : "0 remaining"
 
     return (
         <div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p className="text-sm tabular-nums">
+                    <span className="font-semibold text-foreground">{formatCredits(consumedCredits)}</span>
+                    <span className="text-muted-foreground"> / {formatCredits(displayCapacity)} credits used</span>
+                </p>
+                <p className="text-sm tabular-nums text-muted-foreground">{remainingLabel}</p>
+            </div>
+
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <div className="relative mt-4 h-3 w-full cursor-default overflow-hidden rounded-full bg-muted">
+                    <div className="relative mt-3 h-3 w-full cursor-default overflow-hidden rounded-full bg-muted">
                         <div className={`h-full rounded-full transition-[width] duration-500 ${fillClass}`} style={{ width: `${capPct}%` }} />
                         {showIncludedTick && <div aria-hidden className="absolute inset-y-0 w-px bg-foreground/40" style={{ left: `${includedTickPct}%` }} />}
                     </div>
@@ -45,7 +54,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
             </Tooltip>
 
             {withinIncluded ? (
-                <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your period usage cap</p>
+                <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your period cap</p>
             ) : (
                 <div className="mt-3 space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-xs">
                     <p className="font-medium text-foreground">Past your included credits</p>

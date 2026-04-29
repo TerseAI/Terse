@@ -1,5 +1,5 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
-import { ConfigData, SerializedEvent } from "terse-types"
+import { ConfigData } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
@@ -25,7 +25,6 @@ import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEf
 import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
 import { filterEvent } from "./EventFilter"
 import { RunContext } from "./SystemPromptBuilder"
-import { formatAgentTriggersForAgent } from "./formatContext"
 import { appendRunAction, createRunRecord, evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.

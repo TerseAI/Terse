@@ -8,7 +8,8 @@ import type { ToolApprovalResponseOptions } from "../../socket"
 
 import { AwaitingResponseAnimation } from "./AwaitingResponseAnimation"
 import ChatInput, { type ChatInputHandle } from "./ChatInput"
-import { type Turn, TurnView } from "./Turn"
+import { TurnView } from "./TurnView"
+import type { Turn } from "./turnModel"
 
 export type CTAChip = { label: string; description?: string; prompt: string }
 
@@ -137,7 +138,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
             container.scrollTo({ top: 0, behavior: "smooth" })
         }
     }
-    const lastAssistantTurnIndex = turns.reduce((last, turn, i) => (turn.role === "assistant" && turn.text.length > 0 ? i : last), -1)
+    const lastAssistantTurnIndex = turns.reduce((last, turn, i) => (turn.role === "assistant" && turn.units.some(unit => unit.kind === "text" && unit.text.length > 0) ? i : last), -1)
     const showCtaChips = (ctaChips?.length ?? 0) > 0 && !ctaChipsDismissed && isLatestTextComplete && !isPendingAssistantResponse
     const totalChipPages = Math.ceil((ctaChips?.length ?? 0) / CHIPS_PER_PAGE)
     const visibleChips = ctaChips?.slice(ctaChipPage * CHIPS_PER_PAGE, (ctaChipPage + 1) * CHIPS_PER_PAGE) ?? []
@@ -149,8 +150,8 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                 <div ref={contentRef} className="space-y-1">
                     {turns.map((turn, index) => (
                         <TurnView
-                            key={index}
-                            {...turn}
+                            key={turn.id}
+                            turn={turn}
                             isLatestAssistantTurn={index === lastAssistantTurnIndex}
                             onAssistantTextDisplayComplete={() => setIsLatestTextComplete(true)}
                             onApprove={onApprove}

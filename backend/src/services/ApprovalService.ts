@@ -172,7 +172,7 @@ export class ApprovalService {
     }
 
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
-        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject } = request
+        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject, responseId } = request
 
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}, hardReject: ${hardReject}`)
 
@@ -278,7 +278,8 @@ export class ApprovalService {
                     rejectionReason,
                     hardReject,
                     {
-                        signal: cancellationController.signal
+                        signal: cancellationController.signal,
+                        responseId
                     }
                 )
             } catch (error) {
@@ -425,6 +426,8 @@ export type ApprovalRequest = {
     rejectionReason?: string
     /** When true, stops the run completely without resuming the agent */
     hardReject?: boolean
+    /** ResponseId of the original tool call (used to seed the DeltaProjector on resume so tool completions are attributed to the original turn). */
+    responseId?: string
 }
 
 export type ApprovalResult = {

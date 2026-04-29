@@ -1,5 +1,3 @@
-import { INTEGRATION_METADATA, IntegrationType } from "./Integrations"
-
 /**
  * The phases a tool call can be in for display purposes.
  */
@@ -19,24 +17,6 @@ interface ToolDisplayConfig {
     approval?: (params?: Record<string, unknown>) => string
 }
 
-enum PolledRunStatus {
-    SUCCESS = "success",
-    FAILED = "failed",
-    CANCELLED = "cancelled",
-    SKIPPED = "skipped",
-    AWAITING_APPROVAL = "awaiting_approval",
-    IN_PROGRESS = "in_progress"
-}
-
-/**
- * Helper to get a friendly integration name from params
- */
-function getIntegrationName(integrationType?: string): string {
-    if (!integrationType) return "integration"
-    const meta = INTEGRATION_METADATA[integrationType as IntegrationType]
-    return meta?.name || integrationType
-}
-
 /** Truncate a string to maxLen characters with an ellipsis */
 function truncate(text: string, maxLen = 35): string {
     return text.length > maxLen ? `${text.slice(0, maxLen)}…` : text
@@ -53,25 +33,6 @@ function safeParseResult(result?: string): Record<string, unknown> | undefined {
     }
 }
 
-function toPolledRunStatus(status: unknown): PolledRunStatus | null {
-    switch (status) {
-        case PolledRunStatus.SUCCESS:
-            return PolledRunStatus.SUCCESS
-        case PolledRunStatus.FAILED:
-            return PolledRunStatus.FAILED
-        case PolledRunStatus.CANCELLED:
-            return PolledRunStatus.CANCELLED
-        case PolledRunStatus.SKIPPED:
-            return PolledRunStatus.SKIPPED
-        case PolledRunStatus.AWAITING_APPROVAL:
-            return PolledRunStatus.AWAITING_APPROVAL
-        case PolledRunStatus.IN_PROGRESS:
-            return PolledRunStatus.IN_PROGRESS
-        default:
-            return null
-    }
-}
-
 /**
  * Display configurations for all tools.
  * Each tool defines how it should be displayed in preparing, executing, and complete phases.
@@ -82,126 +43,6 @@ function toPolledRunStatus(status: unknown): PolledRunStatus | null {
  * - complete: The tool has finished — params and result are both available
  */
 const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
-    // ===================
-    // ChatAgent Tools
-    // ===================
-    applyAgent: {
-        preparing: "Getting your workflow ready",
-        executing: params => {
-            const agent = params?.agent as Record<string, unknown> | undefined
-            const name = agent?.name as string | undefined
-            return name ? `Setting up "${truncate(name)}"` : "Setting up your workflow"
-        },
-        complete: params => {
-            const agent = params?.agent as Record<string, unknown> | undefined
-            const name = agent?.name as string | undefined
-            return name ? `You're all set: "${truncate(name)}"` : "Your workflow is ready"
-        }
-    },
-    promptForIntegration: {
-        preparing: "Getting connection ready",
-        executing: params => {
-            const integration = getIntegrationName(params?.integration as string | undefined)
-            return `Connecting ${integration}`
-        },
-        complete: params => {
-            const integration = getIntegrationName(params?.integration as string | undefined)
-            return `${integration} is connected`
-        }
-    },
-    askSurveyQuestion: {
-        preparing: "Quick question",
-        executing: params => {
-            const question = (params?.question as string) || "A quick question"
-            return question.length > 40 ? `${question.slice(0, 40)}…` : question
-        },
-        complete: (_params, result) => {
-            if (!result) return "Answered"
-            // Result may be a JSON-encoded string (e.g. "\"Option A\"") or a JSON object
-            try {
-                const parsed = JSON.parse(result)
-                if (typeof parsed === "string") return truncate(parsed, 50)
-                if (typeof parsed === "object" && parsed !== null) {
-                    const answer = (parsed as Record<string, unknown>).text
-                    if (typeof answer === "string") return truncate(answer, 50)
-                    return "Answered"
-                }
-            } catch {
-                // raw string, use as-is
-            }
-            return `Answered: ${truncate(result, 50)}`
-        }
-    },
-    fetchResourcesForIntegration: {
-        preparing: "Looking things up",
-        executing: params => {
-            const integration = getIntegrationName(params?.integrationType as string | undefined)
-            return `Checking what's available in ${integration}`
-        },
-        complete: params => {
-            const integration = getIntegrationName(params?.integrationType as string | undefined)
-            return `Found available options in ${integration}`
-        }
-    },
-    getSampleEvents: {
-        preparing: "Finding recent examples",
-        executing: params => {
-            const integration = getIntegrationName(params?.integrationType as string | undefined)
-            return `Getting recent examples from ${integration}`
-        },
-        complete: (params, result) => {
-            const parsed = safeParseResult(result)
-            const events = parsed?.events as unknown[] | undefined
-            const count = events?.length
-            const integration = getIntegrationName(params?.integrationType as string | undefined)
-            if (count !== undefined && integration) return `Found ${count} recent example${count !== 1 ? "s" : ""} from ${integration}`
-            if (count !== undefined) return `Found ${count} recent example${count !== 1 ? "s" : ""}`
-            return `Found recent examples from ${integration}`
-        }
-    },
-    triggerAgentRun: {
-        preparing: "Starting a run",
-        executing: () => "Starting a run",
-        complete: (_params, result) => {
-            const parsed = safeParseResult(result)
-            const name = parsed?.agentName as string | undefined
-            if (name) return `Started "${truncate(name)}"`
-            return "Run started"
-        },
-        approval: () => "Start this run?"
-    },
-    pollTriggeredRunStatus: {
-        preparing: "Getting the latest progress",
-        executing: () => "Checking progress",
-        complete: (_params, result) => {
-            const parsed = safeParseResult(result)
-            const status = toPolledRunStatus(parsed?.status)
-            const timedOut = parsed?.timedOut as boolean | undefined
-            const name = parsed?.agentName as string | undefined
-
-            if (timedOut) {
-                return name ? `"${truncate(name)}" is still running` : "Still running"
-            }
-
-            switch (status) {
-                case PolledRunStatus.SUCCESS:
-                    return name ? `"${truncate(name)}" finished` : "Finished"
-                case PolledRunStatus.FAILED:
-                    return name ? `"${truncate(name)}" could not finish` : "Could not finish"
-                case PolledRunStatus.CANCELLED:
-                    return name ? `"${truncate(name)}" was cancelled` : "Cancelled"
-                case PolledRunStatus.SKIPPED:
-                    return name ? `"${truncate(name)}" was skipped` : "Skipped"
-                case PolledRunStatus.AWAITING_APPROVAL:
-                    return name ? `"${truncate(name)}" needs approval` : "Needs approval"
-                case PolledRunStatus.IN_PROGRESS:
-                    return name ? `"${truncate(name)}" is still running` : "Still running"
-                default:
-                    return "Checked progress"
-            }
-        }
-    },
-
     // ===================
     // Linear Tools
     // ===================

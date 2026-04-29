@@ -49,33 +49,35 @@ export function OverageModeToggle({ mode, plan, onChange }: { mode: OverageMode 
         }
     }
 
+    const currentOption = OPTIONS.find(o => o.value === mode)
+    const currentDescription = currentOption?.description(plan)
+
     return (
-        <RadioGroup value={mode} onValueChange={handleChange} className="grid gap-2 sm:grid-cols-2">
-            {OPTIONS.map(option => {
-                const id = `${groupId}-${option.value}`
-                const disabled = (option.value === "soft" && !supportsSoft) || savingMode !== null
-                const selected = mode === option.value
-                const saving = savingMode === option.value
-                return (
-                    <label
-                        key={option.value}
-                        htmlFor={id}
-                        data-state={selected ? "selected" : "unselected"}
-                        aria-disabled={disabled}
-                        className="group flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-4 transition-colors hover:border-foreground/30 data-[state=selected]:border-foreground data-[state=selected]:bg-muted/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-                    >
-                        <RadioGroupItem id={id} value={option.value} disabled={disabled} className="mt-0.5" />
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-foreground">{option.label}</span>
+        <div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className="text-muted-foreground">When over limit:</span>
+                <RadioGroup value={mode} onValueChange={handleChange} className="flex items-center gap-4">
+                    {OPTIONS.map(option => {
+                        const id = `${groupId}-${option.value}`
+                        const disabled = (option.value === "soft" && !supportsSoft) || savingMode !== null
+                        const saving = savingMode === option.value
+                        return (
+                            <label
+                                key={option.value}
+                                htmlFor={id}
+                                aria-disabled={disabled}
+                                className="flex items-center gap-1.5 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                            >
+                                <RadioGroupItem id={id} value={option.value} disabled={disabled} />
+                                <span className="text-foreground">{option.label}</span>
                                 {saving && <Loader2 className="size-3 animate-spin text-muted-foreground" aria-label="Saving" />}
-                                {option.value === "soft" && !supportsSoft && <span className="text-xs text-muted-foreground">Pro only</span>}
-                            </div>
-                            <p className="mt-0.5 text-xs text-muted-foreground">{option.description(plan)}</p>
-                        </div>
-                    </label>
-                )
-            })}
-        </RadioGroup>
+                                {option.value === "soft" && !supportsSoft && <span className="text-xs text-muted-foreground">(Pro)</span>}
+                            </label>
+                        )
+                    })}
+                </RadioGroup>
+            </div>
+            {currentDescription && <p className="mt-1.5 text-xs text-muted-foreground">{currentDescription}</p>}
+        </div>
     )
 }

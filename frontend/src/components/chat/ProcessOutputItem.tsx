@@ -5,7 +5,13 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-import type { ProcessOutputEvent } from "./Turn"
+export interface ProcessOutputEvent {
+    id: string
+    stream: "stdout" | "stderr"
+    content: string
+    label: string
+    timestamp: number
+}
 
 interface ProcessOutputItemProps {
     events: ProcessOutputEvent[]

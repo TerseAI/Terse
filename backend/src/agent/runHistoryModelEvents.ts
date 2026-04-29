@@ -51,8 +51,8 @@ async function attachRunHistoryChangedItems(runId: string, modelEvents: ModelEve
     }
 
     return modelEvents.map((event: ModelEvent) => {
-        if (event.type === "ToolCallComplete" && event.step_id) {
-            const changedItems = changedItemsByStepId.get(event.step_id) ?? []
+        if (event.type === "ToolCallComplete" && event.id) {
+            const changedItems = changedItemsByStepId.get(event.id) ?? []
             return { ...event, changed_items: changedItems }
         }
         return event

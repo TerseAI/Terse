@@ -177,9 +177,6 @@
         "CREATE": "/users",
         "BY_ID": "/users/:id"
     },
-    "BUILDER_CHAT": {
-        "HISTORY_BY_SESSION_ID": "/builder-chat/:sessionId/history"
-    },
     "STRIPE": {
         "WEBHOOK": "/webhooks/stripe"
     },
