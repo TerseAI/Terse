@@ -18,7 +18,7 @@ const periodFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day
 
 function formatNextCharge(balance: BalanceSummary, plan: Plan | null): string {
     const endDate = periodFormatter.format(new Date(balance.periodEnd))
-    if (!isPurchasablePlan(balance.planKey)) return `Resets ${endDate}`
+    if (!isPurchasablePlan(balance.planKey)) return `Resets after ${endDate}`
 
     const change = balance.scheduledChange
     if (change?.kind === "cancel_to_free") return `Plan ends ${endDate}`
@@ -26,12 +26,7 @@ function formatNextCharge(balance: BalanceSummary, plan: Plan | null): string {
     const effectivePeriod = change?.kind === "change_period" ? change.period : balance.billingPeriod
     if (!plan || !effectivePeriod) return `Renews ${endDate}`
 
-    const amount =
-        effectivePeriod === "monthly"
-            ? plan.priceInUsdMonthly
-            : plan.priceInUsdMonthlyAnnual !== null
-              ? plan.priceInUsdMonthlyAnnual * 12
-              : null
+    const amount = effectivePeriod === "monthly" ? plan.priceInUsdMonthly : plan.priceInUsdMonthlyAnnual !== null ? plan.priceInUsdMonthlyAnnual * 12 : null
     if (amount === null) return `Renews ${endDate}`
     return `Next charge: ${formatUsd(amount)} on ${endDate}`
 }
@@ -130,22 +125,27 @@ export default function BillingPage() {
                 ) : (
                     <>
                         <section aria-label="Current period" className="overflow-hidden rounded-lg border border-border bg-card">
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                    <Badge variant="secondary" className="text-xs">
-                                        {plan ? plan.name : "—"} plan
-                                    </Badge>
-                                    {balance?.billingPeriod && (
-                                        <Badge variant="outline" className="text-xs capitalize">
-                                            {balance.billingPeriod}
-                                        </Badge>
-                                    )}
-                                    {balance && plan && <span className="text-sm tabular-nums text-foreground">{formatNextCharge(balance, plan)}</span>}
+                            <div className="border-b border-border bg-muted/30 px-6 py-5">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="min-w-0 space-y-1">
+                                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current plan</p>
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                            <span className="text-2xl font-semibold tracking-tight text-foreground">{plan ? plan.name : "—"}</span>
+                                            {balance?.billingPeriod && (
+                                                <Badge variant="outline" className="shrink-0 text-xs font-medium capitalize">
+                                                    {balance.billingPeriod}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        {balance && plan && <p className="text-sm tabular-nums text-muted-foreground">{formatNextCharge(balance, plan)}</p>}
+                                    </div>
+                                    <Button variant="secondary" className="shrink-0 sm:self-center" asChild>
+                                        <Link to={FrontendRoutes.PRICING}>
+                                            Change plan
+                                            <ArrowUpRight className="size-3.5" />
+                                        </Link>
+                                    </Button>
                                 </div>
-                                <Link to={FrontendRoutes.PRICING} className="inline-flex items-center gap-1 text-sm font-medium text-foreground transition-colors hover:text-foreground/70">
-                                    Change plan
-                                    <ArrowUpRight className="size-3.5" />
-                                </Link>
                             </div>
 
                             <div className="px-6 py-6">

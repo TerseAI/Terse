@@ -62,12 +62,7 @@ export function OverageModeToggle({ mode, plan, onChange }: { mode: OverageMode 
                         const disabled = (option.value === "soft" && !supportsSoft) || savingMode !== null
                         const saving = savingMode === option.value
                         return (
-                            <label
-                                key={option.value}
-                                htmlFor={id}
-                                aria-disabled={disabled}
-                                className="flex items-center gap-1.5 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-                            >
+                            <label key={option.value} htmlFor={id} aria-disabled={disabled} className="flex items-center gap-1.5 aria-disabled:cursor-not-allowed aria-disabled:opacity-50">
                                 <RadioGroupItem id={id} value={option.value} disabled={disabled} />
                                 <span className="text-foreground">{option.label}</span>
                                 {saving && <Loader2 className="size-3 animate-spin text-muted-foreground" aria-label="Saving" />}
