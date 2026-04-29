@@ -131,7 +131,7 @@ export class TypeScriptProvider implements LanguageProvider {
     }
 
     async executeJob(job: CreateJobParameters, runId: string | null, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
-        const isVerbose = opts?.verbose ?? false
+        const isVerbose = opts?.verbose ?? true
 
         const serializedEventRuntime = createSDKTrigger(event)
 
@@ -141,7 +141,7 @@ export class TypeScriptProvider implements LanguageProvider {
         })
 
         const session = await openSessionStream(apiKey, {
-            verbose: true,
+            verbose: isVerbose,
             isPaused: () => sessionPaused
         })
         const closeSession = session.close

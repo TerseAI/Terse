@@ -70,7 +70,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
         if (context.usesPrebuiltImage) {
-            return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)}`))
+            return runSandboxExecStage(context, () =>
+                context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --no-verbose`)
+            )
         }
 
         await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, () => context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`))
@@ -79,7 +81,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`)
         )
 
-        return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)}`))
+        return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --no-verbose`))
     }
 
     private getTemplateDir(): string {

@@ -1,43 +1,38 @@
 # terse-types
 
-Shared Terse TypeScript types, enums, constants, and helpers packaged for reuse across repositories.
+Internal shared types for the [Terse](https://useterse.ai) platform.
 
-## Install
+## You probably don't want to be here
 
-```bash
-npm install terse-types
-```
+`terse-types` is a workspace package that the Terse backend, frontend, CLI, and SDK use to share TypeScript types. It is not the public API.
+
+If you landed here while building a workflow, you almost certainly want one of these instead:
+
+- **[`terse-cli`](https://www.npmjs.com/package/terse-cli)** to scaffold, test, and deploy workflows
+- **[`terse-sdk`](https://www.npmjs.com/package/terse-sdk)** to write workflow code (`createJob`, `TerseAgent`, trigger types)
+- **[docs.useterse.ai](https://docs.useterse.ai)** for guides and reference
+
+If a doc, post, or LLM pointed you at `terse-types` directly, that was probably a mistake on our end. [Let us know](mailto:support@useterse.ai) so we can fix it. The types you actually need are re-exported from `terse-sdk`.
+
+## If you really do need it
+
+Anything in `terse-types` is internal and may change without notice. There is no stability guarantee, no migration guide, and no semver discipline beyond what the workspace happens to need.
 
 ```bash
 pnpm add terse-types
 ```
 
-## Usage
-
-Import from the root barrel when you want the common API surface:
-
 ```ts
 import { IntegrationType, type User } from "terse-types"
 ```
 
-Import by subpath when you want a specific module:
-
-```ts
-import { ApiRoutes } from "terse-types"
-import type { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-```
-
-## Local Development
-
-The `terse-types` workspace package lives in the repo's `terse-types/` directory.
-
-Build it from the repo root with:
+## Local development
 
 ```bash
 pnpm --filter terse-types run build
 ```
 
-If you are working on the local CLI and SDK at the same time, relink them from the repo root with:
+If you are working on the local CLI and SDK at the same time, relink everything from the repo root:
 
 ```bash
 pnpm run install-global
