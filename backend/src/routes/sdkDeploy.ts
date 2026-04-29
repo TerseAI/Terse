@@ -199,7 +199,13 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const removed = await removeStaleAutomations(prisma, organizationId, deployedNames, projectId)
 
         const jobsAdded = results.filter(r => !r.isUpdate).length
-        await markDeploySucceeded(prisma, deploy.id, jobs.map(j => j.jobName), jobsAdded, removed.length)
+        await markDeploySucceeded(
+            prisma,
+            deploy.id,
+            jobs.map(j => j.jobName),
+            jobsAdded,
+            removed.length
+        )
 
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
         emitCacheInvalidationWithKey(organizationId, "agents")
