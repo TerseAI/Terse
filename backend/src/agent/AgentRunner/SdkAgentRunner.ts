@@ -334,11 +334,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         }
 
         try {
-            const inputTokens = usage.inputTokens ?? 0
-            const cachedTokens = usage.inputTokensDetails.cached_tokens ?? 0
-            const outputTokens = usage.outputTokens ?? 0
-            const nonCachedInputTokens = inputTokens - cachedTokens
-
             const payload = {
                 responseId,
                 model: this.getModel(),

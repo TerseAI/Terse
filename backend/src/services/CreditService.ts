@@ -1,6 +1,7 @@
 import { OverageMode, type billing_customers } from "@prisma/client"
 import { DateTime } from "luxon"
 import type Stripe from "stripe"
+import type { BalanceSummary } from "terse-types"
 
 import { ModelReference } from "../agent/modelRegistry"
 import { dollarsToCredits } from "../config/creditEconomics"
@@ -11,6 +12,7 @@ import { db } from "../prismaClient"
 
 import { sendBillingThresholdNotification } from "./BillingNotificationDispatcher"
 import { evaluateAndRecordThresholds } from "./BillingNotifications"
+import { emitBillingCachesInvalidated } from "./CacheInvalidationService"
 import { fetchCreditBalanceSummary, fetchSubscription, postMeterEvent, stripeClient } from "./PaymentsProviderService"
 
 export class CreditService {
@@ -85,6 +87,7 @@ export class CreditService {
         const before = await currentConsumption(orgId)
         const consumption = await incrementConsumption(orgId, context.periodStart, context.periodEnd, 1)
         await fireThresholdsIfAny(orgId, before, consumption.consumed_credits, context)
+        emitBillingCachesInvalidated(orgId)
         if (await creditsExceeded(context, consumption.consumed_credits)) {
             throw new CreditsExhaustedError()
         }
@@ -157,6 +160,7 @@ export class CreditService {
         const before = await currentConsumption(orgId)
         const consumption = await incrementConsumption(orgId, context.periodStart, context.periodEnd, credits)
         await fireThresholdsIfAny(orgId, before, consumption.consumed_credits, context)
+        emitBillingCachesInvalidated(orgId)
         if (await creditsExceeded(context, consumption.consumed_credits)) {
             throw new CreditsExhaustedError()
         }
@@ -475,21 +479,6 @@ export type GateDenied = { allow: false; reason: GateDenyReason }
 export type GateDecision = GateAllowed | GateDenied
 
 export type GateDenyReason = "credits_exhausted" | "subscription_past_due" | "no_subscription"
-
-export type BalanceSummary = {
-    planKey: PlanKey
-    billingPeriod: "monthly" | "yearly" | null
-    planCredits: number
-    consumedCredits: number
-    topUpCredits: number
-    totalCreditCapacity: number
-    periodStart: Date
-    periodEnd: Date
-    overageMode: "soft" | "strict"
-    hardCap: number
-    canBuyTopups: boolean
-    scheduledChange: BillingScheduledChange | null
-}
 
 type BillingScheduledChange =
     | {

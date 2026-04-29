@@ -1,5 +1,5 @@
-import { type ComponentProps, useEffect, useMemo, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { type ComponentProps, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { motion } from "framer-motion"
 import { ArrowLeft, Loader2 } from "lucide-react"
@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { POST_LOGIN_REDIRECT_KEY } from "@/constants/storageKeys"
+import { invalidateBillingCaches } from "@/hooks/api/billingCache"
+import { useBillingBalance } from "@/hooks/api/useBillingBalance"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
 import { formatCredits, formatUsd } from "@/utility/billingFormat"
@@ -66,54 +68,19 @@ function formatScheduledNote(balance: BalanceSummary | null, plan: Plan): string
 }
 
 export default function PricingPage() {
-    const { hash } = useLocation()
     const navigate = useNavigate()
     const { user, isLoading: authLoading } = useAuth()
+    const balanceEnabled = !authLoading && !!user
+    const { balance, isLoading: balanceLoading } = useBillingBalance(balanceEnabled)
     const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null)
     const [loadingTopupCredits, setLoadingTopupCredits] = useState<number | null>(null)
-    const [balance, setBalance] = useState<BalanceSummary | null>(null)
-    const [plansReady, setPlansReady] = useState(false)
     const [period, setPeriod] = useState<BillingPeriod>("yearly")
     const [confirmDowngradeOpen, setConfirmDowngradeOpen] = useState(false)
-
-    useEffect(() => {
-        if (!hash) return
-        const id = hash.slice(1)
-        requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }))
-    }, [hash])
-
-    useEffect(() => {
-        if (authLoading) {
-            setPlansReady(false)
-            return
-        }
-        if (!user) {
-            setBalance(null)
-            setPlansReady(true)
-            return
-        }
-        setPlansReady(false)
-        let cancelled = false
-        void BackendProvider.getBalance()
-            .then(b => {
-                if (!cancelled) setBalance(b)
-            })
-            .catch(() => {
-                if (!cancelled) setBalance(null)
-            })
-            .finally(() => {
-                if (cancelled) return
-                setPlansReady(true)
-            })
-        return () => {
-            cancelled = true
-        }
-    }, [authLoading, user])
 
     const plans = useMemo(() => getAllPlans(), [])
     const currentPlanKey = balance?.planKey ?? null
     const currentPeriod = balance?.billingPeriod ?? null
-    const showSkeleton = authLoading || !plansReady
+    const showSkeleton = authLoading || (balanceEnabled && balanceLoading)
 
     const annualSavingsMonthly = useMemo(() => {
         const purchasable = plans.find(p => isPurchasablePlan(p.key) && p.priceInUsdMonthly && p.priceInUsdMonthlyAnnual)
@@ -145,6 +112,7 @@ export default function PricingPage() {
         try {
             if (currentPlanKey && currentPlanKey !== "free") {
                 await BackendProvider.changeBillingSubscription({ kind: "change_period", planKey, period })
+                invalidateBillingCaches()
                 toast.success("Plan change scheduled for the end of your billing period.")
                 navigate(FrontendRoutes.BILLING)
                 return
@@ -161,6 +129,7 @@ export default function PricingPage() {
         setLoadingPlan(PlanKey.FREE)
         try {
             await BackendProvider.changeBillingSubscription({ kind: "cancel_to_free" })
+            invalidateBillingCaches()
             toast.success("Downgrade scheduled for the end of your billing period.")
             navigate(FrontendRoutes.BILLING)
         } finally {

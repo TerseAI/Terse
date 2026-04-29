@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 
 import { ArrowUpRight, CreditCard, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { type BalanceSummary, FrontendRoutes, type OverageMode, type Plan, type UsageBucket, getPlanDetails, isPurchasablePlan } from "terse-types"
+import { type BalanceSummary, FrontendRoutes, type OverageMode, type Plan, getPlanDetails, isPurchasablePlan } from "terse-types"
 
 import { CreditBalanceWidget } from "@/components/billing/CreditBalanceWidget"
 import { OverageModeToggle } from "@/components/billing/OverageModeToggle"
 import { UsageChart } from "@/components/billing/UsageChart"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { invalidateBillingCaches } from "@/hooks/api/billingCache"
+import { useBillingBalance } from "@/hooks/api/useBillingBalance"
+import { useBillingUsage } from "@/hooks/api/useBillingUsage"
+import { BackendProvider } from "@/services/backend"
 import { formatUsd } from "@/utility/billingFormat"
-
-import { BackendProvider } from "../services/backend"
 
 const periodFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
 
@@ -41,29 +43,14 @@ function formatScheduledChange(balance: BalanceSummary): string | null {
 }
 
 export default function BillingPage() {
-    const [balance, setBalance] = useState<BalanceSummary | null>(null)
-    const [usage, setUsage] = useState<UsageBucket[] | null>(null)
-    const [loading, setLoading] = useState(false)
-    const [errored, setErrored] = useState(false)
+    const { balance, isLoading: balanceLoading, isValidating: balanceValidating, isError: balanceError, mutate: mutateBalance } = useBillingBalance(true)
+    const { buckets, isLoading: usageLoading, isValidating: usageValidating, isError: usageError } = useBillingUsage(true)
 
-    const refresh = useCallback(async () => {
-        setLoading(true)
-        try {
-            const [nextBalance, nextUsage] = await Promise.all([BackendProvider.getBalance(), BackendProvider.getUsage()])
-            setBalance(nextBalance)
-            setUsage(nextUsage.buckets)
-            setErrored(false)
-        } catch (error) {
-            setErrored(true)
-            throw error
-        } finally {
-            setLoading(false)
-        }
-    }, [])
+    const loading = balanceLoading || usageLoading || balanceValidating || usageValidating
 
-    useEffect(() => {
-        void refresh().catch(() => toast.error("Couldn't load billing. Retry?"))
-    }, [refresh])
+    const refresh = () => {
+        invalidateBillingCaches()
+    }
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search)
@@ -73,11 +60,11 @@ export default function BillingPage() {
         let attempts = 0
         const interval = window.setInterval(() => {
             attempts += 1
-            void refresh().catch(() => undefined)
+            invalidateBillingCaches()
             if (attempts >= 5) window.clearInterval(interval)
         }, 2000)
         return () => window.clearInterval(interval)
-    }, [refresh])
+    }, [])
 
     const manageBilling = async () => {
         try {
@@ -89,12 +76,12 @@ export default function BillingPage() {
     }
 
     const updateMode = (mode: OverageMode) => {
-        setBalance(current => (current ? { ...current, overageMode: mode } : current))
+        void mutateBalance(current => (current ? { ...current, overageMode: mode } : current), { revalidate: false })
     }
 
     const planKey = balance?.planKey ?? null
     const plan = useMemo<Plan | null>(() => (planKey ? getPlanDetails(planKey) : null), [planKey])
-    const showError = errored && !balance
+    const showError = balanceError && !balance && !balanceLoading
     const scheduledChange = balance ? formatScheduledChange(balance) : null
 
     return (
@@ -117,7 +104,7 @@ export default function BillingPage() {
                             <p className="text-sm font-medium text-foreground">Couldn't load billing details.</p>
                             <p className="mt-1 text-sm text-muted-foreground">Check your connection or try again in a moment.</p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => void refresh().catch(() => toast.error("Still couldn't load billing."))} disabled={loading}>
+                        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
                             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
                             Retry
                         </Button>
@@ -175,7 +162,11 @@ export default function BillingPage() {
                                 </div>
                             </div>
                             <div className="px-6 py-6">
-                                <UsageChart buckets={usage} />
+                                {usageError && !usageLoading ? (
+                                    <p className="text-sm text-muted-foreground">Couldn't load usage history.</p>
+                                ) : (
+                                    <UsageChart buckets={buckets} />
+                                )}
                             </div>
                         </section>
                     </>

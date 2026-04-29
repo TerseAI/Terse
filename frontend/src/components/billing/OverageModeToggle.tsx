@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react"
 import type { OverageMode, Plan } from "terse-types"
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { invalidateBillingCaches } from "@/hooks/api/billingCache"
 
 import { BackendProvider } from "../../services/backend"
 
@@ -43,6 +44,7 @@ export function OverageModeToggle({ mode, plan, onChange }: { mode: OverageMode 
         setSavingMode(value)
         try {
             await BackendProvider.setOverageMode(value)
+            invalidateBillingCaches()
             onChange(value)
         } finally {
             setSavingMode(null)

@@ -57,7 +57,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                 <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your period cap</p>
             ) : (
                 <div className="mt-3 space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-xs">
-                    <p className="font-medium text-foreground">Past your included credits</p>
+                    <p className="font-medium text-foreground">You are past your included credits</p>
                     {softMeteredOverage ? (
                         <p className="text-muted-foreground">
                             <span className="text-foreground">{formatCredits(overageCredits)}</span> add-on credits this period (~
@@ -65,14 +65,13 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                         </p>
                     ) : (
                         <p className="text-muted-foreground">
-                            Using prepaid top-up credits.
                             {topUpCredits > 0 ? (
                                 <>
                                     {" "}
                                     <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> top-up credits remaining.
                                 </>
                             ) : (
-                                <> No top-up balance left — runs stop if you hit the cap.</>
+                                <> Click here to buy top-ups</>
                             )}
                         </p>
                     )}

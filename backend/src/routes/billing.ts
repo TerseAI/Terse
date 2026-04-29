@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { PlanKey, SupportedTopUps, TimePeriods, getCreditConsumptionMeterId, isPurchasablePlan } from "../config/plans"
 import { db } from "../prismaClient"
+import { emitBillingCachesInvalidated } from "../services/CacheInvalidationService"
 import { creditService } from "../services/CreditService"
 import {
     createCheckoutSessionForPlan,
@@ -134,6 +135,7 @@ export async function setBillingOverageMode(req: Request, res: Response) {
         },
         update: { overage_mode: parsed.data.mode }
     })
+    emitBillingCachesInvalidated(session.user.organizationId)
     const body: SetOverageModeResponse = { ok: true }
     return res.json(body)
 }
