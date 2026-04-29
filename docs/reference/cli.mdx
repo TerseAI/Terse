@@ -316,6 +316,28 @@ Run `terse generate` again after you connect or disconnect an integration, after
 
 ## Observability
 
+## Sandbox
+
+### `terse run [job-name]`
+
+Runs a workflow against an explicit serialized event payload in non-interactive mode.
+
+```bash
+terse run my-job --event-file fixture.json
+terse run my-job --event '{"integrationType":"manual","eventType":"sample","formattedContent":"...","debugLog":"...","data":{}}' --no-verbose
+```
+
+Pass exactly one of `--event` or `--event-file`.
+
+**Options:**
+
+| Flag                  | Description                                                               | Default          |
+| --------------------- | ------------------------------------------------------------------------- | ---------------- |
+| `--event <json>`      | Inline serialized trigger event JSON                                      | -                |
+| `--event-file <path>` | Path to a JSON file containing the serialized trigger event               | -                |
+| `-v, --verbose`       | Show agent stream output (pass `--no-verbose` to silence stream output)  | Enabled          |
+| `--entry-file <path>` | Override the default workflow entry file                                  | Provider default |
+
 ### `terse replay [run-id]`
 
 Fetches the stored trigger event for one past run and re-executes the matching local workflow on your machine with verbose output.
