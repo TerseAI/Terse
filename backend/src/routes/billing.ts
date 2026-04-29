@@ -1,28 +1,52 @@
-import express from "express"
+import { Request, Response } from "express"
 import { DateTime } from "luxon"
-import type { BalanceSummary, BillingStripeRedirectResponse, SetOverageModeResponse, UsageResponse } from "terse-types"
+import type { BillingChangeResponse, BillingStripeRedirectResponse, SetOverageModeResponse, UsageResponse } from "terse-types"
 import { z } from "zod"
 
-import { PlanKey, SupportedTopUps, TimePeriods, getCreditConsumptionMeterId } from "../config/plans"
+import { PlanKey, SupportedTopUps, TimePeriods, getCreditConsumptionMeterId, isPurchasablePlan } from "../config/plans"
 import { db } from "../prismaClient"
 import { creditService } from "../services/CreditService"
-import { createCheckoutSessionForPlan, createCheckoutSessionForTopup, createPortalSession, listMeterEventSummaries } from "../services/PaymentsProviderService"
+import {
+    createCheckoutSessionForPlan,
+    createCheckoutSessionForTopup,
+    createPortalSession,
+    fetchActivePaidSubscription,
+    listMeterEventSummaries,
+    scheduleBillingPeriodChange,
+    scheduleCancelToFree
+} from "../services/PaymentsProviderService"
 import { Session } from "../types/session"
 
-export const billingRouter = express.Router()
-
 const checkoutBodySchema = z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("plan"), planKey: z.enum(PlanKey), period: z.enum(TimePeriods) }),
-    z.object({ kind: z.literal("topup"), packCredits: z.enum(SupportedTopUps) })
+    z.object({ kind: z.literal("plan"), planKey: z.nativeEnum(PlanKey), period: z.nativeEnum(TimePeriods) }),
+    z.object({ kind: z.literal("topup"), packCredits: z.nativeEnum(SupportedTopUps) })
 ])
 
-billingRouter.post("/checkout-session", async (req, res) => {
+const changeBodySchema = z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("cancel_to_free") }),
+    z.object({ kind: z.literal("change_period"), planKey: z.nativeEnum(PlanKey), period: z.nativeEnum(TimePeriods) })
+])
+
+export async function createBillingCheckoutSession(req: Request, res: Response) {
     const session = req.session as Session
     const orgId = session.user.organizationId
     const email = session.user.email
 
     const parsed = checkoutBodySchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message })
+
+    if (parsed.data.kind === "plan" && !isPurchasablePlan(parsed.data.planKey)) {
+        return res.status(400).json({
+            error: "Free plan cannot be purchased; cancel a paid subscription in the billing portal to return to Free."
+        })
+    }
+    if (parsed.data.kind === "plan") {
+        const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
+        const activeSubscription = customer?.stripe_customer_id ? await fetchActivePaidSubscription(customer.stripe_customer_id) : null
+        if (activeSubscription) {
+            return res.status(409).json({ error: "Use the billing change endpoint for existing subscriptions." })
+        }
+    }
 
     const stripeSession =
         parsed.data.kind === "plan"
@@ -34,9 +58,9 @@ billingRouter.post("/checkout-session", async (req, res) => {
     }
     const body: BillingStripeRedirectResponse = { url: stripeSession.url }
     return res.json(body)
-})
+}
 
-billingRouter.post("/portal-session", async (req, res) => {
+export async function createBillingPortalSession(req: Request, res: Response) {
     const session = req.session as Session
     const stripeSession = await createPortalSession(session.user.organizationId, session.user.email)
     if (!stripeSession.url) {
@@ -44,15 +68,28 @@ billingRouter.post("/portal-session", async (req, res) => {
     }
     const body: BillingStripeRedirectResponse = { url: stripeSession.url }
     return res.json(body)
-})
+}
 
-billingRouter.get("/balance", async (req, res) => {
+export async function changeBillingSubscription(req: Request, res: Response) {
+    const session = req.session as Session
+    const orgId = session.user.organizationId
+    const email = session.user.email
+    const parsed = changeBodySchema.safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.message })
+
+    const result = parsed.data.kind === "cancel_to_free" ? await scheduleCancelToFree(orgId, email) : await scheduleBillingPeriodChange(orgId, email, parsed.data.planKey, parsed.data.period)
+
+    const body: BillingChangeResponse = { ok: true, scheduledChange: result.scheduledChange }
+    return res.json(body)
+}
+
+export async function getBillingBalance(req: Request, res: Response) {
     const session = req.session as Session
     const summary = await creditService.getBalanceSummary(session.user.organizationId)
     return res.json(summary)
-})
+}
 
-billingRouter.get("/usage", async (req, res) => {
+export async function getBillingUsage(req: Request, res: Response) {
     const session = req.session as Session
     const orgId = session.user.organizationId
     const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
@@ -81,9 +118,9 @@ billingRouter.get("/usage", async (req, res) => {
         }))
     }
     return res.json(body)
-})
+}
 
-billingRouter.patch("/overage-mode", async (req, res) => {
+export async function setBillingOverageMode(req: Request, res: Response) {
     const session = req.session as Session
     const parsed = z.object({ mode: z.enum(["soft", "strict"]) }).safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message })
@@ -98,4 +135,4 @@ billingRouter.patch("/overage-mode", async (req, res) => {
     })
     const body: SetOverageModeResponse = { ok: true }
     return res.json(body)
-})
+}

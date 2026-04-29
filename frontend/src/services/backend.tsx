@@ -1,7 +1,7 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
-import { BalanceSummary, BillingPeriod, BillingStripeRedirectResponse, OverageMode, PlanKey, SetOverageModeResponse, UsageResponse } from "terse-types"
+import { BalanceSummary, BillingChangeResponse, BillingPeriod, BillingStripeRedirectResponse, OverageMode, PlanKey, SetOverageModeResponse, UsageResponse } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -575,6 +575,7 @@ interface BackendService {
     getUsage(params?: { start?: Date; end?: Date }): Promise<UsageResponse>
     createCheckoutForPlan(planKey: PlanKey, period: BillingPeriod): Promise<BillingStripeRedirectResponse>
     createCheckoutForTopup(packCredits: number): Promise<BillingStripeRedirectResponse>
+    changeBillingSubscription(input: { kind: "cancel_to_free" } | { kind: "change_period"; planKey: PlanKey; period: BillingPeriod }): Promise<BillingChangeResponse>
     createPortalSession(): Promise<BillingStripeRedirectResponse>
     setOverageMode(mode: OverageMode): Promise<SetOverageModeResponse>
 }
@@ -1712,6 +1713,7 @@ export const BackendProvider: BackendService = {
             .then(response => response.data),
     createCheckoutForTopup: (packCredits: number) =>
         axios.post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CHECKOUT_SESSION}`, { kind: "topup", packCredits }, { withCredentials: true }).then(response => response.data),
+    changeBillingSubscription: input => axios.post<BillingChangeResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CHANGE}`, input, { withCredentials: true }).then(response => response.data),
     createPortalSession: () => axios.post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.PORTAL_SESSION}`, {}, { withCredentials: true }).then(response => response.data),
     setOverageMode: (mode: OverageMode) =>
         axios.patch<SetOverageModeResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.OVERAGE_MODE}`, { mode }, { withCredentials: true }).then(response => response.data)

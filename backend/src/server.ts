@@ -21,7 +21,7 @@ import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
-import { billingRouter } from "./routes/billing"
+import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingBalance, getBillingUsage, setBillingOverageMode } from "./routes/billing"
 import { getBuilderChatHistory } from "./routes/builderChat"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
@@ -165,7 +165,7 @@ app.use((req, res, next) => {
     if (
         req.path === "/slack/events" ||
         req.path === "/linear/webhook" ||
-        req.path === "/api/webhooks/stripe" ||
+        req.path === ApiRoutes.STRIPE.WEBHOOK ||
         req.path === ApiRoutes.WEBHOOKS.WORKOS ||
         req.path.startsWith("/webhooks/workos-trigger/") ||
         req.path.startsWith("/webhooks/webmonitor/")
@@ -291,7 +291,31 @@ app.post(ApiRoutes.STRIPE.WEBHOOK, express.raw({ type: "application/json" }), as
 
 app.use(apiTokenAuthMiddleware)
 
-app.use(ApiRoutes.BILLING.BASE, authMiddleware, billingRouter)
+// MARK: BILLING
+
+app.post(ApiRoutes.BILLING.CHECKOUT_SESSION, authMiddleware, async (req, res) => {
+    await createBillingCheckoutSession(req, res)
+})
+
+app.post(ApiRoutes.BILLING.CHANGE, authMiddleware, async (req, res) => {
+    await changeBillingSubscription(req, res)
+})
+
+app.post(ApiRoutes.BILLING.PORTAL_SESSION, authMiddleware, async (req, res) => {
+    await createBillingPortalSession(req, res)
+})
+
+app.get(ApiRoutes.BILLING.BALANCE, authMiddleware, async (req, res) => {
+    await getBillingBalance(req, res)
+})
+
+app.get(ApiRoutes.BILLING.USAGE, authMiddleware, async (req, res) => {
+    await getBillingUsage(req, res)
+})
+
+app.patch(ApiRoutes.BILLING.OVERAGE_MODE, authMiddleware, async (req, res) => {
+    await setBillingOverageMode(req, res)
+})
 
 // MARK: AUTH
 

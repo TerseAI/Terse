@@ -4,13 +4,13 @@ import type Stripe from "stripe"
 
 import { dollarsToCredits } from "../config/creditEconomics"
 import { priceFor } from "../config/modelPrices"
-import { PlanKey, getPlanByPriceId, getPlanDetails, getPlanKeyByPriceId } from "../config/plans"
+import { PlanKey, getPlanByPriceId, getPlanDetails } from "../config/plans"
 import logger from "../logger"
 import { db } from "../prismaClient"
 
 import { sendBillingThresholdNotification } from "./BillingNotificationDispatcher"
 import { evaluateAndRecordThresholds } from "./BillingNotifications"
-import { fetchSubscription, postMeterEvent } from "./PaymentsProviderService"
+import { fetchCreditBalanceSummary, fetchSubscription, postMeterEvent, stripeClient } from "./PaymentsProviderService"
 
 export type LLMUsage = {
     provider: string
@@ -28,13 +28,29 @@ export type GateDenyReason = "credits_exhausted" | "subscription_past_due" | "no
 
 export type BalanceSummary = {
     planKey: PlanKey
-    includedCredits: number
+    billingPeriod: "monthly" | "yearly" | null
+    planCredits: number
     consumedCredits: number
+    topUpCredits: number
+    totalCreditCapacity: number
     periodStart: Date
     periodEnd: Date
     overageMode: "soft" | "strict"
     hardCap: number
+    canBuyTopups: boolean
+    scheduledChange: BillingScheduledChange | null
 }
+
+type BillingScheduledChange =
+    | {
+          kind: "cancel_to_free"
+          effectiveAt: Date
+      }
+    | {
+          kind: "change_period"
+          effectiveAt: Date
+          period: "monthly" | "yearly"
+      }
 
 export class StripeUnavailableError extends Error {
     constructor(message = "Stripe is temporarily unavailable") {
@@ -55,13 +71,20 @@ type ResolvedPlan = {
     details: ReturnType<typeof getPlanDetails>
 }
 
+type SubscriptionPlanItem = {
+    item: Stripe.SubscriptionItem
+    plan: ResolvedPlan
+}
+
 type BillingContext = {
     plan: ResolvedPlan
+    billingPeriod: "monthly" | "yearly" | null
     periodStart: Date
     periodEnd: Date
     overageMode: "soft" | "strict"
     hardCap: number
     meteredCustomerId: string | null
+    scheduledChange: BillingScheduledChange | null
 }
 
 export class CreditService {
@@ -80,18 +103,31 @@ export class CreditService {
         }
 
         const subscription = await fetchSubscription(customer.stripe_customer_id)
-        if (!subscription) {
-            return { allow: false, reason: "no_subscription" }
-        }
-        if (subscription.status === "past_due") {
-            return { allow: false, reason: "subscription_past_due" }
+
+        if (!subscription || subscription.status === "past_due") {
+            const plan = getPlanDetails(PlanKey.FREE)
+            const consumption = await ensureFreePeriodConsumption(orgId)
+            if (consumption.consumed_credits >= plan.includedCreditsPerMonth) {
+                return { allow: false, reason: "credits_exhausted" }
+            }
+            return { allow: true }
         }
 
-        const plan = resolvePlanBySubscription(subscription).details
-        const period = subscriptionPeriod(subscription)
+        const subscriptionPlanItem = resolvePlanItemBySubscription(subscription)
+        const plan = subscriptionPlanItem.plan.details
+        const period = subscriptionPeriod(subscriptionPlanItem.item, subscription.id)
         const consumption = await ensurePeriodConsumption(orgId, period.start, period.end)
         const overageMode = customer.overage_mode ?? plan.defaultOverageMode
         const hardCap = computeHardCap(plan, overageMode, customer.overage_cap_multiplier)
+
+        if (overageMode === "strict") {
+            const availability = await creditAvailability({ customerId: customer.stripe_customer_id, plan, consumedCredits: consumption.consumed_credits })
+            const planRemaining = Math.max(0, plan.includedCreditsPerMonth - consumption.consumed_credits)
+            if (planRemaining + availability.topUpCredits <= 0) {
+                return { allow: false, reason: "credits_exhausted" }
+            }
+            return { allow: true }
+        }
 
         if (consumption.consumed_credits >= hardCap) {
             return { allow: false, reason: "credits_exhausted" }
@@ -123,7 +159,7 @@ export class CreditService {
         const before = await currentConsumption(orgId)
         const consumption = await incrementConsumption(orgId, context.periodStart, context.periodEnd, 1)
         await fireThresholdsIfAny(orgId, before, consumption.consumed_credits, context)
-        if (consumption.consumed_credits > context.hardCap) {
+        if (await creditsExceeded(context, consumption.consumed_credits)) {
             throw new CreditsExhaustedError()
         }
     }
@@ -135,17 +171,43 @@ export class CreditService {
             throw new Error(`Unpriced model: ${usage.provider}/${usage.model}`)
         }
 
-        const rawCostMicros =
-            BigInt(usage.inputTokens) * microsPerToken(price.inputCentsPer1k) +
-            BigInt(usage.outputTokens) * microsPerToken(price.outputCentsPer1k) +
-            BigInt(usage.cachedTokens) * microsPerToken(price.cachedCentsPer1k)
-
+        const rawCostMicros = costMicros(usage.inputTokens, price.inputUsdPer1M) + costMicros(usage.outputTokens, price.outputUsdPer1M) + costMicros(usage.cachedTokens, price.cachedInputUsdPer1M)
         const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
         const context = await this.resolveBillingContext(orgId, customer)
         const markupBp = BigInt(Math.round(context.plan.details.markupPct * 10_000))
         const markedUpCostMicros = rawCostMicros + (rawCostMicros * markupBp) / 10_000n
         const credits = dollarsToCredits(markedUpCostMicros)
         const key = `${runId}:${stepKey}:llm`
+
+        const rawCostUsd = Number(rawCostMicros) / 1_000_000
+        const markedUpCostUsd = Number(markedUpCostMicros) / 1_000_000
+        const totalBillableTokens = usage.inputTokens + usage.outputTokens + usage.cachedTokens
+
+        logger.info(
+            `LLM usage cost: ${usage.provider}/${usage.model} — ${totalBillableTokens} billable tokens (${usage.inputTokens} non-cached in, ${usage.outputTokens} out, ${usage.cachedTokens} cached) — raw $${rawCostUsd.toFixed(6)} → after ${context.plan.details.markupPct}% markup $${markedUpCostUsd.toFixed(6)} (${credits} credits) — org ${orgId} run ${runId} [${stepKey}]`,
+            {
+                event: "llm_usage_cost",
+                organizationId: orgId,
+                runId,
+                stepKey,
+                meterIdentifier: key,
+                provider: usage.provider,
+                model: usage.model,
+                inputTokens: usage.inputTokens,
+                outputTokens: usage.outputTokens,
+                cachedTokens: usage.cachedTokens,
+                totalBillableTokens,
+                rawCostUsd,
+                markedUpCostUsd,
+                planKey: context.plan.key,
+                planMarkupPct: context.plan.details.markupPct,
+                creditsComputed: credits,
+                priceInputUsdPer1M: price.inputUsdPer1M,
+                priceOutputUsdPer1M: price.outputUsdPer1M,
+                priceCachedInputUsdPer1M: price.cachedInputUsdPer1M,
+                hasMeteredBilling: !!context.meteredCustomerId
+            }
+        )
 
         if (credits === 0) {
             return { creditsCharged: 0, rawCostMicros }
@@ -168,7 +230,7 @@ export class CreditService {
         const before = await currentConsumption(orgId)
         const consumption = await incrementConsumption(orgId, context.periodStart, context.periodEnd, credits)
         await fireThresholdsIfAny(orgId, before, consumption.consumed_credits, context)
-        if (consumption.consumed_credits > context.hardCap) {
+        if (await creditsExceeded(context, consumption.consumed_credits)) {
             throw new CreditsExhaustedError()
         }
 
@@ -181,15 +243,25 @@ export class CreditService {
         const customer = await prisma.billing_customers.findUnique({ where: { organization_id: orgId } })
         const context = await this.resolveBillingContext(orgId, customer)
         const consumption = await ensurePeriodConsumption(orgId, context.periodStart, context.periodEnd)
+        const availability = await creditAvailability({
+            customerId: context.meteredCustomerId,
+            plan: context.plan.details,
+            consumedCredits: consumption.consumed_credits
+        })
 
         return {
             planKey: context.plan.key,
-            includedCredits: context.plan.details.includedCreditsPerMonth,
+            billingPeriod: context.billingPeriod,
+            planCredits: context.plan.details.includedCreditsPerMonth,
             consumedCredits: consumption.consumed_credits,
+            topUpCredits: availability.topUpCredits,
+            totalCreditCapacity: availability.totalCreditCapacity,
             periodStart: consumption.period_start,
             periodEnd: consumption.period_end,
             overageMode: context.overageMode,
-            hardCap: context.hardCap
+            hardCap: context.hardCap,
+            canBuyTopups: !!context.meteredCustomerId && !!context.plan.details.overageCentsPerCredit,
+            scheduledChange: context.scheduledChange
         }
     }
 
@@ -199,11 +271,13 @@ export class CreditService {
             const consumption = await ensureFreePeriodConsumption(orgId)
             return {
                 plan,
+                billingPeriod: null,
                 periodStart: consumption.period_start,
                 periodEnd: consumption.period_end,
                 overageMode: plan.details.defaultOverageMode,
                 hardCap: computeHardCap(plan.details, plan.details.defaultOverageMode),
-                meteredCustomerId: null
+                meteredCustomerId: null,
+                scheduledChange: null
             }
         }
 
@@ -213,32 +287,37 @@ export class CreditService {
             const period = currentFreePeriod()
             return {
                 plan,
+                billingPeriod: null,
                 periodStart: period.start,
                 periodEnd: period.end,
                 overageMode: plan.details.defaultOverageMode,
                 hardCap: computeHardCap(plan.details, plan.details.defaultOverageMode),
-                meteredCustomerId: null
+                meteredCustomerId: null,
+                scheduledChange: null
             }
         }
 
-        const plan = resolvePlanBySubscription(subscription)
-        const period = subscriptionPeriod(subscription)
+        const subscriptionPlanItem = resolvePlanItemBySubscription(subscription)
+        const plan = subscriptionPlanItem.plan
+        const period = subscriptionPeriod(subscriptionPlanItem.item, subscription.id)
         await ensurePeriodConsumption(orgId, period.start, period.end)
         const overageMode = customer.overage_mode ?? plan.details.defaultOverageMode
 
         return {
             plan,
+            billingPeriod: billingPeriodForPriceId(subscriptionPlanItem.item.price.id),
             periodStart: period.start,
             periodEnd: period.end,
             overageMode,
             hardCap: computeHardCap(plan.details, overageMode, customer.overage_cap_multiplier),
-            meteredCustomerId: customer.stripe_customer_id
+            meteredCustomerId: customer.stripe_customer_id,
+            scheduledChange: await scheduledChangeForSubscription(subscription, subscriptionPlanItem.item)
         }
     }
 }
 
-function microsPerToken(cents: number): bigint {
-    return BigInt(Math.round((cents * 10_000) / 1_000))
+function costMicros(tokens: number, usdPer1M: number): bigint {
+    return BigInt(Math.round(tokens * usdPer1M))
 }
 
 function currentFreePeriod(): { start: Date; end: Date } {
@@ -314,22 +393,68 @@ async function fireThresholdsIfAny(orgId: string, before: number, after: number,
 }
 
 function resolvePlanBySubscription(subscription: Stripe.Subscription): ResolvedPlan {
-    const priceId = subscription.items.data[0]?.price.id
-    if (!priceId) {
-        throw new Error("Subscription has no price item")
-    }
-
-    const details = getPlanByPriceId(priceId)
-    const key = getPlanKeyByPriceId(priceId)
-    return { key, details }
+    return resolvePlanItemBySubscription(subscription).plan
 }
 
-function subscriptionPeriod(subscription: Stripe.Subscription): { start: Date; end: Date } {
-    const sub = subscription as Stripe.Subscription & { current_period_start: number; current_period_end: number }
-    return {
-        start: new Date(sub.current_period_start * 1000),
-        end: new Date(sub.current_period_end * 1000)
+function resolvePlanItemBySubscription(subscription: Stripe.Subscription): SubscriptionPlanItem {
+    for (const item of subscription.items.data) {
+        const plan = resolveBasePlanByPriceId(item.price.id)
+        if (plan) return { item, plan }
     }
+
+    throw new Error(`Subscription ${subscription.id} has no Terse base plan price item`)
+}
+
+function resolveBasePlanByPriceId(priceId: string): ResolvedPlan | null {
+    let details: ReturnType<typeof getPlanDetails>
+    try {
+        details = getPlanByPriceId(priceId)
+    } catch {
+        return null
+    }
+
+    if (!isBasePlanPrice(details, priceId)) return null
+    return { key: details.key, details }
+}
+
+function billingPeriodForPriceId(priceId: string): "monthly" | "yearly" {
+    for (const planKey of Object.values(PlanKey)) {
+        const plan = getPlanDetails(planKey)
+        if (priceMatches(plan.monthlyBasePriceId, priceId)) return "monthly"
+        if (priceMatches(plan.annualBasePriceId, priceId)) return "yearly"
+    }
+    throw new Error(`No billing period found for Stripe price ID: ${priceId}`)
+}
+
+function isBasePlanPrice(plan: ReturnType<typeof getPlanDetails>, priceId: string): boolean {
+    return priceMatches(plan.monthlyBasePriceId, priceId) || priceMatches(plan.annualBasePriceId, priceId)
+}
+
+function priceMatches(pair: { live: string; test: string } | null, priceId: string): boolean {
+    return !!pair && (pair.live === priceId || pair.test === priceId)
+}
+
+function subscriptionPeriod(item: Stripe.SubscriptionItem, subscriptionId: string): { start: Date; end: Date } {
+    const start = subscriptionItemDate(item.current_period_start, "current_period_start", subscriptionId, item.id)
+    const end = subscriptionItemDate(item.current_period_end, "current_period_end", subscriptionId, item.id)
+    if (start >= end) {
+        throw new Error(`Subscription ${subscriptionId} plan item ${item.id} has an invalid billing period`)
+    }
+
+    return { start, end }
+}
+
+function subscriptionItemDate(value: number, field: "current_period_start" | "current_period_end", subscriptionId: string, itemId: string): Date {
+    if (!Number.isFinite(value)) {
+        throw new Error(`Subscription ${subscriptionId} plan item ${itemId} has invalid ${field}`)
+    }
+
+    const date = new Date(value * 1000)
+    if (Number.isNaN(date.getTime())) {
+        throw new Error(`Subscription ${subscriptionId} plan item ${itemId} has invalid ${field}`)
+    }
+
+    return date
 }
 
 function computeHardCap(plan: ReturnType<typeof getPlanDetails>, overageMode: OverageMode | "soft" | "strict", multiplier?: { toString(): string } | number | null): number {
@@ -337,6 +462,73 @@ function computeHardCap(plan: ReturnType<typeof getPlanDetails>, overageMode: Ov
         return plan.includedCreditsPerMonth
     }
     return Math.floor(plan.includedCreditsPerMonth * Number(multiplier ?? plan.hardCapMultiplier))
+}
+
+async function creditAvailability(input: {
+    customerId: string | null
+    plan: ReturnType<typeof getPlanDetails>
+    consumedCredits: number
+}): Promise<{ topUpCredits: number; totalCreditCapacity: number }> {
+    const planCredits = input.plan.includedCreditsPerMonth
+    if (!input.customerId || !input.plan.overageCentsPerCredit) {
+        return { topUpCredits: 0, totalCreditCapacity: planCredits }
+    }
+
+    const summary = await fetchCreditBalanceSummary(input.customerId, {
+        type: "applicability_scope",
+        applicability_scope: { price_type: "metered" }
+    })
+    const availableValueCents = summary.balances.reduce((sum, balance) => {
+        const monetary = balance.available_balance.monetary
+        if (!monetary || monetary.currency !== "usd") return sum
+        return sum + monetary.value
+    }, 0)
+    const topUpCreditCapacity = Math.floor(availableValueCents / input.plan.overageCentsPerCredit)
+    const consumedFromTopUp = Math.max(0, input.consumedCredits - planCredits)
+    return {
+        topUpCredits: Math.max(0, topUpCreditCapacity - consumedFromTopUp),
+        totalCreditCapacity: planCredits + topUpCreditCapacity
+    }
+}
+
+async function creditsExceeded(context: BillingContext, consumedCredits: number): Promise<boolean> {
+    if (context.overageMode !== "strict") {
+        return consumedCredits > context.hardCap
+    }
+    const availability = await creditAvailability({
+        customerId: context.meteredCustomerId,
+        plan: context.plan.details,
+        consumedCredits
+    })
+    return consumedCredits > availability.totalCreditCapacity
+}
+
+async function scheduledChangeForSubscription(subscription: Stripe.Subscription, planItem: Stripe.SubscriptionItem): Promise<BillingScheduledChange | null> {
+    if (subscription.cancel_at_period_end) {
+        const effectiveAt = subscription.cancel_at ? new Date(subscription.cancel_at * 1000) : subscriptionPeriod(planItem, subscription.id).end
+        return { kind: "cancel_to_free", effectiveAt }
+    }
+
+    const scheduleId = subscriptionScheduleId(subscription)
+    if (!scheduleId) return null
+
+    const schedule = await stripeClient.subscriptionSchedules.retrieve(scheduleId)
+    const currentPhaseEnd = schedule.current_phase?.end_date
+    const futurePhase = schedule.phases.find(phase => currentPhaseEnd && phase.start_date === currentPhaseEnd)
+    const nextBasePrice = futurePhase?.items.map(item => (typeof item.price === "string" ? item.price : item.price.id)).find(priceId => resolveBasePlanByPriceId(priceId))
+    if (!currentPhaseEnd || !nextBasePrice) return null
+
+    return {
+        kind: "change_period",
+        effectiveAt: new Date(currentPhaseEnd * 1000),
+        period: billingPeriodForPriceId(nextBasePrice)
+    }
+}
+
+function subscriptionScheduleId(subscription: Stripe.Subscription): string | null {
+    const schedule = subscription.schedule
+    if (!schedule) return null
+    return typeof schedule === "string" ? schedule : schedule.id
 }
 
 function toStripeUnavailableError(error: unknown): StripeUnavailableError {

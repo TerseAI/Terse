@@ -1,48 +1,80 @@
-import type { BalanceSummary } from "terse-types"
+import type { BalanceSummary, Plan } from "terse-types"
 
-function formatCredits(value: number) {
-    return value.toLocaleString()
-}
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { formatCredits, formatUsdPrecise } from "@/utility/billingFormat"
 
-export function CreditBalanceWidget({ balance }: { balance: BalanceSummary | null }) {
+export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary | null; plan: Plan | null }) {
     if (!balance) {
-        return <div className="h-32 rounded-lg border bg-card p-5 text-sm text-muted-foreground">Loading credit balance...</div>
+        return <div className="h-32 text-sm text-muted-foreground">Loading credit balance...</div>
     }
 
-    const includedPct = Math.min(100, Math.round((balance.consumedCredits / Math.max(balance.includedCredits, 1)) * 100))
-    const hardCapPct = Math.round((balance.hardCap / Math.max(balance.includedCredits, 1)) * 100)
-    const capPct = Math.min(100, Math.round((balance.consumedCredits / Math.max(balance.hardCap, 1)) * 100))
-    const overIncluded = balance.consumedCredits > balance.includedCredits
+    const { topUpCredits, consumedCredits, planCredits, totalCreditCapacity, overageMode } = balance
+    const planRemaining = Math.max(0, planCredits - consumedCredits)
+    const totalUsableRemaining = planRemaining + topUpCredits
+    const displayCapacity = totalCreditCapacity
+    const hardCapCredits = Math.max(balance.hardCap, displayCapacity)
+    const withinIncluded = consumedCredits <= planCredits
+    const hasOverageHeadroom = hardCapCredits > planCredits
+    const overHardCap = consumedCredits >= hardCapCredits && hasOverageHeadroom
+    const atPeriodCap = consumedCredits >= hardCapCredits && hardCapCredits > 0
+
+    const capPct = Math.min(100, Math.round((consumedCredits / Math.max(hardCapCredits, 1)) * 100))
+
+    const overageCredits = Math.max(0, consumedCredits - planCredits)
+    const overageRateCents = plan?.overageCentsPerCredit ?? 0
+    const overageDollars = (overageCredits * overageRateCents) / 100
+    const softMeteredOverage = overageMode === "soft" && overageRateCents > 0
+
+    const fillClass = atPeriodCap || totalUsableRemaining <= 0 ? "bg-danger" : !withinIncluded ? "bg-warning" : capPct >= 90 ? "bg-warning" : "bg-foreground"
+
+    const includedTickPct = hasOverageHeadroom && planCredits < hardCapCredits ? Math.round((planCredits / hardCapCredits) * 100) : null
+    const showIncludedTick = !withinIncluded && includedTickPct !== null
+
+    const creditsUsedTooltip = `${formatCredits(consumedCredits)} / ${formatCredits(displayCapacity)} credits used`
 
     return (
-        <div className="rounded-lg border bg-card p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <p className="text-sm text-muted-foreground">Credits used this period</p>
-                    <div className="mt-1 flex items-baseline gap-2">
-                        <span className="text-3xl font-semibold tracking-tight text-foreground">{formatCredits(balance.consumedCredits)}</span>
-                        <span className="text-sm text-muted-foreground">of {formatCredits(balance.includedCredits)} included</span>
+        <div>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="relative mt-4 h-3 w-full cursor-default overflow-hidden rounded-full bg-muted">
+                        <div className={`h-full rounded-full transition-[width] duration-500 ${fillClass}`} style={{ width: `${capPct}%` }} />
+                        {showIncludedTick && <div aria-hidden className="absolute inset-y-0 w-px bg-foreground/40" style={{ left: `${includedTickPct}%` }} />}
                     </div>
-                </div>
-                <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-                    Hard cap: <span className="font-medium text-foreground">{formatCredits(balance.hardCap)}</span>
-                </div>
-            </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">{creditsUsedTooltip}</TooltipContent>
+            </Tooltip>
 
-            <div className="mt-5 space-y-2">
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div className={`h-full rounded-full ${overIncluded ? "bg-amber-500" : "bg-primary"}`} style={{ width: `${includedPct}%` }} />
+            {withinIncluded ? (
+                <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your period usage cap</p>
+            ) : (
+                <div className="mt-3 space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-xs">
+                    <p className="font-medium text-foreground">Past your included credits</p>
+                    {softMeteredOverage ? (
+                        <p className="text-muted-foreground">
+                            <span className="text-foreground">{formatCredits(overageCredits)}</span> add-on credits this period (~
+                            {formatUsdPrecise(overageDollars)} at {formatUsdPrecise(overageRateCents / 100)} / credit).
+                        </p>
+                    ) : (
+                        <p className="text-muted-foreground">
+                            Using prepaid top-up credits.
+                            {topUpCredits > 0 ? (
+                                <>
+                                    {" "}
+                                    <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> top-up credits remaining.
+                                </>
+                            ) : (
+                                <> No top-up balance left — runs stop if you hit the cap.</>
+                            )}
+                        </p>
+                    )}
+                    {softMeteredOverage && topUpCredits > 0 && (
+                        <p className="text-muted-foreground">
+                            <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> prepaid top-up credits also available.
+                        </p>
+                    )}
+                    {overHardCap && <p className="font-medium text-danger">Usage cap reached — new runs are blocked until usage resets or you adjust your plan.</p>}
                 </div>
-                <div className="h-1 w-full overflow-hidden rounded-full bg-muted/70">
-                    <div className="h-full rounded-full bg-foreground/35" style={{ width: `${capPct}%` }} />
-                </div>
-            </div>
-
-            <p className="mt-3 text-xs text-muted-foreground">
-                {balance.overageMode === "soft"
-                    ? `Overage billing starts above your included allowance. Automations pause at ${hardCapPct}% of included credits.`
-                    : "Strict mode is on. Automations pause at your included credit limit and no overage is billed."}
-            </p>
+            )}
         </div>
     )
 }

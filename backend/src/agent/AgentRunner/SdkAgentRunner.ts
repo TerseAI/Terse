@@ -314,13 +314,19 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
 
         const stepKey = `model-${this.llmCallIndex++}`
         try {
-            await creditService.recordLLMCall(this.user.organizationId, this.sdkRunId, stepKey, {
+            const inputTokens = usage.input_tokens ?? 0
+            const cachedTokens = usage.input_tokens_details?.cached_tokens ?? 0
+            const outputTokens = usage.output_tokens ?? 0
+            const nonCachedInputTokens = inputTokens - cachedTokens
+
+            const payload = {
                 provider: this.getProvider(),
                 model: this.getModel(),
-                inputTokens: usage.input_tokens ?? usage.inputTokens ?? 0,
-                outputTokens: usage.output_tokens ?? usage.outputTokens ?? 0,
-                cachedTokens: usage.input_tokens_details?.cached_tokens ?? usage.cache_read_input_tokens ?? usage.cachedTokens ?? 0
-            })
+                inputTokens: nonCachedInputTokens,
+                outputTokens: outputTokens,
+                cachedTokens: cachedTokens
+            }
+            await creditService.recordLLMCall(this.user.organizationId, this.sdkRunId, stepKey, payload)
         } catch (error) {
             if (error instanceof StripeUnavailableError) {
                 logger.error("SdkAgentRunner: Stripe unavailable; failing run", { runId: this.sdkRunId, error })

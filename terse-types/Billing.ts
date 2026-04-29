@@ -41,7 +41,7 @@ export function getPlanDetails(planKey: PlanKey): Plan {
                 priceInUsdMonthlyAnnual: 30,
                 includedCreditsPerMonth: 20000,
                 markupPct: 0.3,
-                overageCentsPerCredit: 0.7,
+                overageCentsPerCredit: 0.2,
                 hardCapMultiplier: 2,
                 defaultOverageMode: "soft",
                 seats: 3,
@@ -52,6 +52,11 @@ export function getPlanDetails(planKey: PlanKey): Plan {
             throw new Error(`Unhandled plan key: ${planKey}`)
         }
     }
+}
+
+export function isPurchasablePlan(planKey: PlanKey): boolean {
+    const plan = getPlanDetails(planKey)
+    return !!(plan.monthlyBasePriceId || plan.annualBasePriceId)
 }
 
 export function getPlanByPriceId(priceId: string): Plan {
@@ -71,12 +76,17 @@ export type EnvId = { live: string; test: string }
 
 export type BalanceSummary = {
     planKey: PlanKey
-    includedCredits: number
+    billingPeriod: BillingPeriod | null
+    planCredits: number
     consumedCredits: number
+    topUpCredits: number
+    totalCreditCapacity: number
     periodStart: Date
     periodEnd: Date
     overageMode: OverageMode
     hardCap: number
+    canBuyTopups: boolean
+    scheduledChange: BillingScheduledChange | null
 }
 
 export type UsageBucket = {
@@ -96,6 +106,17 @@ export type BillingStripeRedirectResponse = {
 export type SetOverageModeResponse = {
     ok: true
 }
+
+export type BillingScheduledChange =
+    | {
+          kind: "cancel_to_free"
+          effectiveAt: Date
+      }
+    | {
+          kind: "change_period"
+          effectiveAt: Date
+          period: BillingPeriod
+      }
 
 // Unique identifiers for referring to plans within Terse.
 export enum PlanKey {
@@ -137,7 +158,7 @@ export function getTopUpDetails(credits: SupportedTopUps): TopUp {
         case SupportedTopUps.TOPUP_10K:
             return {
                 credits: SupportedTopUps.TOPUP_10K,
-                priceInUsd: 10,
+                priceInUsd: 18,
                 priceId: TOPUP_PRICES[SupportedTopUps.TOPUP_10K]
             }
         default: {
@@ -157,7 +178,7 @@ export function getAllTopups(): TopUp[] {
 export const TOPUP_PRICES: Record<SupportedTopUps, EnvId> = {
     [SupportedTopUps.TOPUP_10K]: {
         live: "price_live_REPLACE",
-        test: "price_1TRDezPux7qhH7I9x55DQ3IH"
+        test: "price_1TROAOPux7qhH7I9x0W3gCMW"
     }
 }
 
@@ -186,4 +207,19 @@ export type BillingCheckoutRequestBody = BillingCheckoutPlanBody | BillingChecko
 
 export type BillingOverageModePatchBody = {
     mode: OverageMode
+}
+
+export type BillingChangeRequestBody =
+    | {
+          kind: "cancel_to_free"
+      }
+    | {
+          kind: "change_period"
+          planKey: PlanKey
+          period: TimePeriods
+      }
+
+export type BillingChangeResponse = {
+    ok: true
+    scheduledChange: BillingScheduledChange | null
 }

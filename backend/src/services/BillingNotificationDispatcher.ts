@@ -1,4 +1,5 @@
 import { NotificationDestinationType } from "@prisma/client"
+import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
@@ -73,6 +74,6 @@ function subjectFor(event: ThresholdEvent): string {
 
 function bodyFor(event: ThresholdEvent): string {
     const pct = event.threshold === 200 ? "200%" : `${event.threshold}%`
-    const billingUrl = `${settings.urls.frontend ?? ""}/billing`
+    const billingUrl = `${settings.urls.frontend ?? ""}${FrontendRoutes.BILLING}`
     return `${pct} of your monthly credit allowance has been consumed (${event.consumedCredits.toLocaleString()} of ${event.includedCredits.toLocaleString()} credits).\nUpgrade or buy a top-up at ${billingUrl}.`
 }

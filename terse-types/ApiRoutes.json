@@ -184,11 +184,11 @@
         "WEBHOOK": "/webhooks/stripe"
     },
     "BILLING": {
-        "BASE": "/billing",
-        "BALANCE": "/balance",
-        "USAGE": "/usage",
-        "CHECKOUT_SESSION": "/checkout-session",
-        "PORTAL_SESSION": "/portal-session",
-        "OVERAGE_MODE": "/overage-mode"
+        "BALANCE": "/billing/balance",
+        "USAGE": "/billing/usage",
+        "CHECKOUT_SESSION": "/billing/checkout-session",
+        "CHANGE": "/billing/change",
+        "PORTAL_SESSION": "/billing/portal-session",
+        "OVERAGE_MODE": "/billing/overage-mode"
     }
 }

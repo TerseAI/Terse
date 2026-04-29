@@ -1,31 +1,56 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 
-import { CreditCard, PackagePlus, RefreshCcw } from "lucide-react"
+import { ArrowUpRight, CreditCard, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { type BalanceSummary, type OverageMode, type UsageBucket } from "terse-types"
+import { type BalanceSummary, FrontendRoutes, type OverageMode, type Plan, type UsageBucket, getPlanDetails } from "terse-types"
 
-import { TopupDialog, UpgradeDialog } from "@/components/billing/BillingDialogs"
 import { CreditBalanceWidget } from "@/components/billing/CreditBalanceWidget"
 import { OverageModeToggle } from "@/components/billing/OverageModeToggle"
 import { UsageChart } from "@/components/billing/UsageChart"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 import { BackendProvider } from "../services/backend"
 
+const periodFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
+
+function formatPeriod(balance: BalanceSummary): string {
+    return `${periodFormatter.format(new Date(balance.periodStart))} – ${periodFormatter.format(new Date(balance.periodEnd))}`
+}
+
+function formatScheduledChange(balance: BalanceSummary): string | null {
+    if (!balance.scheduledChange) return null
+    const effectiveAt = periodFormatter.format(new Date(balance.scheduledChange.effectiveAt))
+    if (balance.scheduledChange.kind === "cancel_to_free") {
+        return `Downgrade to Free scheduled for ${effectiveAt}.`
+    }
+    return `Switch to ${balance.scheduledChange.period === "yearly" ? "annual" : "monthly"} billing scheduled for ${effectiveAt}.`
+}
+
 export default function BillingPage() {
     const [balance, setBalance] = useState<BalanceSummary | null>(null)
     const [usage, setUsage] = useState<UsageBucket[] | null>(null)
-    const [showUpgrade, setShowUpgrade] = useState(false)
-    const [showTopup, setShowTopup] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [errored, setErrored] = useState(false)
 
     const refresh = useCallback(async () => {
-        const [nextBalance, nextUsage] = await Promise.all([BackendProvider.getBalance(), BackendProvider.getUsage()])
-        setBalance(nextBalance)
-        setUsage(nextUsage.buckets)
+        setLoading(true)
+        try {
+            const [nextBalance, nextUsage] = await Promise.all([BackendProvider.getBalance(), BackendProvider.getUsage()])
+            setBalance(nextBalance)
+            setUsage(nextUsage.buckets)
+            setErrored(false)
+        } catch (error) {
+            setErrored(true)
+            throw error
+        } finally {
+            setLoading(false)
+        }
     }, [])
 
     useEffect(() => {
-        void refresh().catch(() => toast.error("Failed to load billing details"))
+        void refresh().catch(() => toast.error("Couldn't load billing. Retry?"))
     }, [refresh])
 
     useEffect(() => {
@@ -36,84 +61,105 @@ export default function BillingPage() {
         let attempts = 0
         const interval = window.setInterval(() => {
             attempts += 1
-            void refresh()
+            void refresh().catch(() => undefined)
             if (attempts >= 5) window.clearInterval(interval)
         }, 2000)
         return () => window.clearInterval(interval)
     }, [refresh])
 
     const manageBilling = async () => {
-        const { url } = await BackendProvider.createPortalSession()
-        window.location.href = url
+        try {
+            const { url } = await BackendProvider.createPortalSession()
+            window.location.href = url
+        } catch {
+            toast.error("Couldn't open Stripe portal. Try again.")
+        }
     }
 
     const updateMode = (mode: OverageMode) => {
         setBalance(current => (current ? { ...current, overageMode: mode } : current))
     }
 
+    const planKey = balance?.planKey ?? null
+    const plan = useMemo<Plan | null>(() => (planKey ? getPlanDetails(planKey) : null), [planKey])
+    const showError = errored && !balance
+    const scheduledChange = balance ? formatScheduledChange(balance) : null
+
     return (
-        <div className="flex h-full min-h-0 flex-col overflow-auto p-4 md:p-6">
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex h-full min-h-0 flex-col overflow-auto bg-background p-4 md:p-6">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+                <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Billing</h1>
-                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Monitor credit usage, change plans, and control overage behavior for this organization.</p>
+                        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Billing</h1>
+                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Track your credit usage, change plans, and manage payment details.</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" onClick={() => void refresh()}>
-                            <RefreshCcw className="size-4" />
-                            Refresh
-                        </Button>
-                        <Button variant="outline" onClick={manageBilling}>
-                            <CreditCard className="size-4" />
-                            Manage billing
-                        </Button>
-                    </div>
-                </div>
+                    <Button variant="outline" onClick={manageBilling}>
+                        <CreditCard className="size-4" />
+                        Manage billing
+                    </Button>
+                </header>
 
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-                    <section className="space-y-3">
+                {showError ? (
+                    <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border bg-card p-6">
                         <div>
-                            <h2 className="text-sm font-medium text-foreground">Credit usage</h2>
-                            <p className="text-sm text-muted-foreground">Current billing period: {formatPeriod(balance)}</p>
+                            <p className="text-sm font-medium text-foreground">Couldn't load billing details.</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Check your connection or try again in a moment.</p>
                         </div>
-                        <CreditBalanceWidget balance={balance} />
-                    </section>
-
-                    <section className="space-y-3">
-                        <h2 className="text-sm font-medium text-foreground">Actions</h2>
-                        <div className="grid gap-3">
-                            <Button className="justify-start" onClick={() => setShowTopup(true)}>
-                                <PackagePlus className="size-4" />
-                                Buy more credits
-                            </Button>
-                            <Button variant="outline" className="justify-start" onClick={() => setShowUpgrade(true)}>
-                                <CreditCard className="size-4" />
-                                Change plan
-                            </Button>
-                        </div>
-                        <OverageModeToggle mode={balance?.overageMode ?? null} onChange={updateMode} />
-                    </section>
-                </div>
-
-                <section className="space-y-3">
-                    <div>
-                        <h2 className="text-sm font-medium text-foreground">Daily usage</h2>
-                        <p className="text-sm text-muted-foreground">Metered credit consumption from Stripe for the last 30 days.</p>
+                        <Button variant="outline" size="sm" onClick={() => void refresh().catch(() => toast.error("Still couldn't load billing."))} disabled={loading}>
+                            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+                            Retry
+                        </Button>
                     </div>
-                    <UsageChart buckets={usage} />
-                </section>
-            </div>
+                ) : (
+                    <>
+                        <section aria-label="Current period" className="overflow-hidden rounded-lg border border-border bg-card">
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                    <Badge variant="secondary" className="text-xs">
+                                        {plan ? plan.name : "—"} plan
+                                    </Badge>
+                                    {balance?.billingPeriod && (
+                                        <Badge variant="outline" className="text-xs capitalize">
+                                            {balance.billingPeriod}
+                                        </Badge>
+                                    )}
+                                    <span className="text-xs text-muted-foreground">{balance ? formatPeriod(balance) : "Current period"}</span>
+                                </div>
+                                <Link to={FrontendRoutes.PRICING} className="inline-flex items-center gap-1 text-sm font-medium text-foreground transition-colors hover:text-foreground/70">
+                                    Change plan
+                                    <ArrowUpRight className="size-3.5" />
+                                </Link>
+                            </div>
 
-            <UpgradeDialog open={showUpgrade} onOpenChange={setShowUpgrade} />
-            <TopupDialog open={showTopup} onOpenChange={setShowTopup} />
+                            <div className="px-6 py-6">
+                                {scheduledChange && <div className="mb-4 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground">{scheduledChange}</div>}
+                                <CreditBalanceWidget balance={balance} plan={plan} />
+                            </div>
+
+                            {balance && plan && (
+                                <div className="border-t border-border px-6 py-5">
+                                    <div className="mb-3">
+                                        <p className="text-sm font-medium text-foreground">When you hit the included limit</p>
+                                        <p className="text-xs text-muted-foreground">Choose what happens to running agents.</p>
+                                    </div>
+                                    <OverageModeToggle mode={balance.overageMode} plan={plan} onChange={updateMode} />
+                                </div>
+                            )}
+                        </section>
+
+                        <section aria-label="Usage history" className="rounded-lg border border-border bg-card">
+                            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                                <div>
+                                    <h2 className="text-sm font-medium text-foreground">Last 30 days</h2>
+                                </div>
+                            </div>
+                            <div className="px-6 py-6">
+                                <UsageChart buckets={usage} />
+                            </div>
+                        </section>
+                    </>
+                )}
+            </div>
         </div>
     )
-}
-
-function formatPeriod(balance: BalanceSummary | null): string {
-    if (!balance) return "loading"
-    const start = new Date(balance.periodStart).toLocaleDateString()
-    const end = new Date(balance.periodEnd).toLocaleDateString()
-    return `${start} to ${end}`
 }

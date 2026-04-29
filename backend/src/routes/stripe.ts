@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
 import type Stripe from "stripe"
 
-import { getPlanByPriceId } from "../config/plans"
+import { PlanKey, getPlanByPriceId, getPlanDetails, resolveEnvId } from "../config/plans"
 import { stripe as stripeSettings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -46,15 +46,20 @@ async function dispatch(event: Stripe.Event) {
 }
 
 async function onSubscriptionUpsert(subscription: Stripe.Subscription) {
-    const typedSubscription = subscription as Stripe.Subscription & { current_period_start: number; current_period_end: number }
     const orgId = subscription.metadata?.org_id ?? (await orgIdForCustomer(subscription.customer as string))
     if (!orgId) {
         logger.warn("Subscription with no org mapping", { subscriptionId: subscription.id })
         return
     }
 
-    const periodStart = new Date(typedSubscription.current_period_start * 1000)
-    const periodEnd = new Date(typedSubscription.current_period_end * 1000)
+    const planItem = resolveBasePlanItem(subscription)
+    if (!planItem) {
+        logger.warn("Subscription with no Terse base plan item", { subscriptionId: subscription.id })
+        return
+    }
+
+    const periodStart = subscriptionItemDate(planItem.current_period_start, "current_period_start", subscription.id, planItem.id)
+    const periodEnd = subscriptionItemDate(planItem.current_period_end, "current_period_end", subscription.id, planItem.id)
     const existingPeriod = await db().billing_period_consumption.findUnique({ where: { organization_id: orgId } })
     const isNewPeriod = !existingPeriod || existingPeriod.period_start.getTime() !== periodStart.getTime() || existingPeriod.period_end.getTime() !== periodEnd.getTime()
 
@@ -81,8 +86,7 @@ async function onSubscriptionUpsert(subscription: Stripe.Subscription) {
         }
     })
 
-    const priceId = subscription.items.data[0]?.price.id
-    if (!priceId) return
+    const priceId = planItem.price.id
     const plan = getPlanByPriceId(priceId)
     if (!plan.overageCentsPerCredit) return
 
@@ -98,7 +102,8 @@ async function onSubscriptionUpsert(subscription: Stripe.Subscription) {
             org_id: orgId,
             plan_price_id: priceId,
             period_start: periodStart.toISOString()
-        }
+        },
+        idempotencyKey: `plan-grant:${subscription.id}:${periodStart.toISOString()}`
     })
 }
 
@@ -114,7 +119,30 @@ async function onInvoicePaymentFailed(invoice: Stripe.Invoice) {
     logger.warn("Invoice payment failed", { invoiceId: invoice.id, customer: invoice.customer })
 }
 
+/** Plan checkouts only include the base price; metered overage is added here for every period. */
+async function ensureSubscriptionHasMeteredOverage(session: Stripe.Checkout.Session) {
+    const subscriptionId = session.subscription
+    const planKeyRaw = session.metadata?.plan_key
+    if (typeof subscriptionId !== "string" || !planKeyRaw || !(Object.values(PlanKey) as string[]).includes(planKeyRaw)) return
+
+    const plan = getPlanDetails(planKeyRaw as PlanKey)
+    const overagePriceId = resolveEnvId(plan.overagePriceId)
+    if (!overagePriceId) return
+
+    const sub = await stripeClient.subscriptions.retrieve(subscriptionId)
+    const hasOverage = sub.items.data.some(item => item.price.id === overagePriceId)
+    if (hasOverage) return
+
+    await stripeClient.subscriptions.update(subscriptionId, {
+        items: [{ price: overagePriceId }]
+    })
+}
+
 async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
+    if (session.mode === "subscription" && typeof session.subscription === "string" && session.metadata?.plan_key) {
+        await ensureSubscriptionHasMeteredOverage(session)
+    }
+
     if (session.metadata?.type !== "credit_topup") return
 
     const orgId = session.metadata.org_id
@@ -125,8 +153,9 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
         return
     }
 
-    const subscriptions = await stripeClient.subscriptions.list({ customer: customerId, status: "active", limit: 1 })
-    const priceId = subscriptions.data[0]?.items.data[0]?.price.id
+    const subscriptions = await stripeClient.subscriptions.list({ customer: customerId, status: "active", limit: 10 })
+    const planItem = subscriptions.data.map(resolveBasePlanItem).find((item): item is Stripe.SubscriptionItem => !!item)
+    const priceId = planItem?.price.id
     const plan = priceId ? getPlanByPriceId(priceId) : null
     if (!plan?.overageCentsPerCredit) {
         logger.warn("Top-up purchased on plan with no overage rate", { orgId })
@@ -141,11 +170,41 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
         name: `Top-up: ${credits.toLocaleString()} credits`,
         expiresAt: null,
         priority: 75,
-        metadata: { org_id: orgId, type: "topup", session_id: session.id }
+        metadata: { org_id: orgId, type: "topup", session_id: session.id },
+        idempotencyKey: `topup-grant:${session.id}`
     })
 }
 
 async function orgIdForCustomer(customerId: string): Promise<string | null> {
     const row = await db().billing_customers.findUnique({ where: { stripe_customer_id: customerId } })
     return row?.organization_id ?? null
+}
+
+function resolveBasePlanItem(subscription: Stripe.Subscription): Stripe.SubscriptionItem | null {
+    for (const item of subscription.items.data) {
+        try {
+            const plan = getPlanByPriceId(item.price.id)
+            if (priceMatches(plan.monthlyBasePriceId, item.price.id) || priceMatches(plan.annualBasePriceId, item.price.id)) {
+                return item
+            }
+        } catch {
+            continue
+        }
+    }
+    return null
+}
+
+function priceMatches(pair: { live: string; test: string } | null, priceId: string): boolean {
+    return !!pair && (pair.live === priceId || pair.test === priceId)
+}
+
+function subscriptionItemDate(value: number, field: "current_period_start" | "current_period_end", subscriptionId: string, itemId: string): Date {
+    if (!Number.isFinite(value)) {
+        throw new Error(`Subscription ${subscriptionId} plan item ${itemId} has invalid ${field}`)
+    }
+    const date = new Date(value * 1000)
+    if (Number.isNaN(date.getTime())) {
+        throw new Error(`Subscription ${subscriptionId} plan item ${itemId} has invalid ${field}`)
+    }
+    return date
 }

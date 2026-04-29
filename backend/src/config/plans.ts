@@ -6,12 +6,13 @@ import {
     TimePeriods,
     getPlanByPriceId,
     getPlanDetails,
+    isPurchasablePlan,
     type EnvId
 } from "terse-types"
 
 import { stripe } from "./settings"
 
-export { PlanKey, SupportedTopUps, TimePeriods, getPlanByPriceId, getPlanDetails }
+export { PlanKey, SupportedTopUps, TimePeriods, getPlanByPriceId, getPlanDetails, isPurchasablePlan }
 
 export function getPlanKeyByPriceId(priceId: string): PlanKey {
     return getPlanByPriceId(priceId).key
