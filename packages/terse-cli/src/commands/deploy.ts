@@ -54,8 +54,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     intro(`terse deploy`)
 
     const s = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
-    s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
 
+    // Open the SSE session BEFORE starting the spinner so a clean error
+    // (e.g. 401) surfaces without leaving the spinner mid-frame.
     const session = await openSessionStream(apiKey, {
         onEvent: event => {
             if (event.type === "deploy_stage") {
@@ -63,6 +64,8 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             }
         }
     })
+
+    s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
 
     try {
         const body = sdkDeployRequestBodySchema.parse({
@@ -121,7 +124,8 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
         outro("Done")
     } catch (error) {
-        s.stop(`Deploy failed: ${(error as Error).message}`)
+        const reason = extractDeployFailureReason(error)
+        s.stop("Deploy failed")
         if (await tryRecoverStaleProject(error, { apiKey, config, hasRetried })) {
             return deploy(provider, entryFile, true)
         }
@@ -135,9 +139,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             throw error
         }
 
-        throw new CliError("deploy_failed", "Deploy failed.", {
-            detail: error instanceof Error ? error.message : String(error)
-        })
+        throw new CliError("deploy_failed", "Deploy failed.", { detail: reason })
     } finally {
         session.close()
     }
@@ -145,6 +147,13 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
 function isProjectGoneError(error: unknown): error is ApiError {
     return error instanceof ApiError && error.status === 404 && error.body.errorCode === "PROJECT_NOT_FOUND"
+}
+
+function extractDeployFailureReason(error: unknown): string {
+    if (error instanceof ApiError && typeof error.body.details === "string") {
+        return error.body.details
+    }
+    return error instanceof Error ? error.message : String(error)
 }
 
 async function tryRecoverStaleProject(error: unknown, args: { apiKey: string; config: TerseProjectConfig; hasRetried: boolean }): Promise<boolean> {

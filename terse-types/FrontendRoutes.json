@@ -17,7 +17,8 @@
         "RUN_HISTORY": "/app/agents/:id?tab=history&runId=:runId"
     },
     "PROJECTS": {
-        "BY_ID": "/app/projects/:id"
+        "BY_ID": "/app/projects/:id",
+        "DEPLOYS": "/app/projects/:id/deploys"
     },
     "HOME": "/app/home",
     "INTEGRATIONS": "/app/integrations",
