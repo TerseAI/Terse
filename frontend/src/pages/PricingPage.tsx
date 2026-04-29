@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { type BalanceSummary, type BillingPeriod, FrontendRoutes, type Plan, PlanKey, getAllPlans, getAllTopups, getPlanDetails, isPurchasablePlan } from "terse-types"
+import { type BalanceSummary, type BillingPeriod, FrontendRoutes, type Plan, PlanKey, isPurchasablePlan } from "terse-types"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { POST_LOGIN_REDIRECT_KEY } from "@/constants/storageKeys"
 import { invalidateBillingCaches } from "@/hooks/api/billingCache"
 import { useBillingBalance } from "@/hooks/api/useBillingBalance"
+import { useBillingCatalog } from "@/hooks/api/useBillingCatalog"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
 import { formatCredits, formatUsd } from "@/utility/billingFormat"
@@ -25,7 +26,7 @@ function periodLabel(period: BillingPeriod): string {
 
 function formatPriceLine(plan: Plan, period: BillingPeriod): string {
     const credits = `${formatCredits(plan.includedCreditsPerMonth)} credits / mo`
-    if (!isPurchasablePlan(plan.key) || !plan.priceInUsdMonthly) {
+    if (!isPurchasablePlan(plan) || !plan.priceInUsdMonthly) {
         return `$0 · ${credits}`
     }
     if (period === "yearly" && plan.priceInUsdMonthlyAnnual) {
@@ -61,7 +62,7 @@ function formatScheduledNote(balance: BalanceSummary | null, plan: Plan): string
     if (change.kind === "cancel_to_free" && plan.key === "free") {
         return `Downgrading to Free on ${date}.`
     }
-    if (change.kind === "change_period" && isPurchasablePlan(plan.key)) {
+    if (change.kind === "change_period" && isPurchasablePlan(plan)) {
         return `Switching to ${periodLabel(change.period)} billing on ${date}.`
     }
     return null
@@ -72,18 +73,18 @@ export default function PricingPage() {
     const { user, isLoading: authLoading } = useAuth()
     const balanceEnabled = !authLoading && !!user
     const { balance, isLoading: balanceLoading } = useBillingBalance(balanceEnabled)
+    const { plans, topUps, isLoading: catalogLoading } = useBillingCatalog()
     const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null)
     const [loadingTopupCredits, setLoadingTopupCredits] = useState<number | null>(null)
     const [period, setPeriod] = useState<BillingPeriod>("yearly")
     const [confirmDowngradeOpen, setConfirmDowngradeOpen] = useState(false)
 
-    const plans = useMemo(() => getAllPlans(), [])
     const currentPlanKey = balance?.planKey ?? null
     const currentPeriod = balance?.billingPeriod ?? null
-    const showSkeleton = authLoading || (balanceEnabled && balanceLoading)
+    const showPlanGridSkeleton = authLoading || catalogLoading || (balanceEnabled && balanceLoading)
 
     const annualSavingsMonthly = useMemo(() => {
-        const purchasable = plans.find(p => isPurchasablePlan(p.key) && p.priceInUsdMonthly && p.priceInUsdMonthlyAnnual)
+        const purchasable = plans.find(p => isPurchasablePlan(p) && p.priceInUsdMonthly && p.priceInUsdMonthlyAnnual)
         if (!purchasable) return null
         const diff = purchasable.priceInUsdMonthly! - purchasable.priceInUsdMonthlyAnnual!
         return diff > 0 ? diff : null
@@ -162,8 +163,8 @@ export default function PricingPage() {
 
     const showTopups = !!balance?.canBuyTopups
 
-    const currentPlan = currentPlanKey ? getPlanDetails(currentPlanKey) : null
-    const freePlan = getPlanDetails(PlanKey.FREE)
+    const currentPlan = currentPlanKey ? plans.find(p => p.key === currentPlanKey) ?? null : null
+    const freePlan = plans.find(p => p.key === PlanKey.FREE) ?? null
     const downgradeDate = balance?.periodEnd ? dateFormatter.format(new Date(balance.periodEnd)) : null
     const isDowngrading = loadingPlan === PlanKey.FREE
 
@@ -182,7 +183,7 @@ export default function PricingPage() {
                 <section id="plans" className="space-y-5">
                     <PeriodToggle period={period} onChange={setPeriod} annualSavingsMonthly={annualSavingsMonthly} />
 
-                    {showSkeleton ? (
+                    {showPlanGridSkeleton ? (
                         <div className="grid gap-4 md:grid-cols-2" aria-busy="true" aria-label="Loading plans">
                             <PlanCardSkeleton />
                             <PlanCardSkeleton />
@@ -211,17 +212,24 @@ export default function PricingPage() {
                             <h2 className="text-lg font-semibold tracking-tight">Need more this month?</h2>
                             <p className="mt-1 text-sm text-muted-foreground">Top-ups stack on top of your plan and never expire.</p>
                         </div>
-                        {getAllTopups().map(topup => (
-                            <article key={topup.credits} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-5">
-                                <div className="min-w-0">
-                                    <div className="text-base font-medium tabular-nums">Top up {topup.credits.toLocaleString()} credits</div>
-                                    <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">${topup.priceInUsd} · one-time · adds to your current balance</p>
-                                </div>
-                                <LoadingButton className="shrink-0" loading={loadingTopupCredits === topup.credits} loadingLabel="Opening checkout" onClick={() => void buyTopup(topup.credits)}>
-                                    Buy for ${topup.priceInUsd}
-                                </LoadingButton>
-                            </article>
-                        ))}
+                        {catalogLoading ? (
+                            <div className="space-y-3" aria-busy="true" aria-label="Loading top-ups">
+                                <TopupRowSkeleton />
+                                <TopupRowSkeleton />
+                            </div>
+                        ) : (
+                            topUps.map(topup => (
+                                <article key={topup.credits} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-5">
+                                    <div className="min-w-0">
+                                        <div className="text-base font-medium tabular-nums">Top up {topup.credits.toLocaleString()} credits</div>
+                                        <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">${topup.priceInUsd} · one-time · adds to your current balance</p>
+                                    </div>
+                                    <LoadingButton className="shrink-0" loading={loadingTopupCredits === topup.credits} loadingLabel="Opening checkout" onClick={() => void buyTopup(topup.credits)}>
+                                        Buy for ${topup.priceInUsd}
+                                    </LoadingButton>
+                                </article>
+                            ))
+                        )}
                     </section>
                 )}
 
@@ -244,7 +252,7 @@ export default function PricingPage() {
                     </DialogHeader>
 
                     <ul className="space-y-2 text-sm text-foreground">
-                        {currentPlan && (
+                        {currentPlan && freePlan && (
                             <li className="flex items-baseline gap-2">
                                 <span aria-hidden className="text-muted-foreground">
                                     −
@@ -382,7 +390,7 @@ function PlanCard({
     loading: boolean
     onSelect: () => void
 }) {
-    const purchasable = isPurchasablePlan(plan.key)
+    const purchasable = isPurchasablePlan(plan)
     const isCurrentPlan = currentPlanKey === plan.key
     const isExactCurrent = isCurrentPlan && (!purchasable || currentPeriod === period)
     const monthlyPrice = plan.priceInUsdMonthly ?? 0
@@ -441,6 +449,18 @@ function PlanCardSkeleton() {
             <Skeleton className="mt-2 h-4 w-56" />
             <Skeleton className="mt-2 h-3 w-3/4" />
             <Skeleton className="mt-auto h-10 w-full" />
+        </div>
+    )
+}
+
+function TopupRowSkeleton() {
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-5">
+            <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-3 w-64 max-w-full" />
+            </div>
+            <Skeleton className="h-9 w-28 shrink-0" />
         </div>
     )
 }

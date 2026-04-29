@@ -1,17 +1,19 @@
-import { useEffect, useMemo } from "react"
+import { useEffect } from "react"
 import { Link } from "react-router-dom"
 
 import { ArrowUpRight, CreditCard, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { type BalanceSummary, FrontendRoutes, type OverageMode, type Plan, getPlanDetails, isPurchasablePlan } from "terse-types"
+import { type BalanceSummary, FrontendRoutes, type OverageMode, type Plan, isPurchasablePlan } from "terse-types"
 
 import { CreditBalanceWidget } from "@/components/billing/CreditBalanceWidget"
 import { OverageModeToggle } from "@/components/billing/OverageModeToggle"
 import { UsageChart } from "@/components/billing/UsageChart"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { invalidateBillingCaches } from "@/hooks/api/billingCache"
 import { useBillingBalance } from "@/hooks/api/useBillingBalance"
+import { useBillingCatalog } from "@/hooks/api/useBillingCatalog"
 import { useBillingUsage } from "@/hooks/api/useBillingUsage"
 import { BackendProvider } from "@/services/backend"
 import { formatUsd } from "@/utility/billingFormat"
@@ -20,7 +22,7 @@ const periodFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day
 
 function formatNextCharge(balance: BalanceSummary, plan: Plan | null): string {
     const endDate = periodFormatter.format(new Date(balance.periodEnd))
-    if (!isPurchasablePlan(balance.planKey)) return `Resets after ${endDate}`
+    if (!plan || !isPurchasablePlan(plan)) return `Resets after ${endDate}`
 
     const change = balance.scheduledChange
     if (change?.kind === "cancel_to_free") return `Plan ends ${endDate}`
@@ -44,6 +46,7 @@ function formatScheduledChange(balance: BalanceSummary): string | null {
 
 export default function BillingPage() {
     const { balance, isLoading: balanceLoading, isValidating: balanceValidating, isError: balanceError, mutate: mutateBalance } = useBillingBalance(true)
+    const { plans, isLoading: catalogLoading } = useBillingCatalog()
     const { buckets, isLoading: usageLoading, isValidating: usageValidating, isError: usageError } = useBillingUsage(true)
 
     const loading = balanceLoading || usageLoading || balanceValidating || usageValidating
@@ -80,7 +83,8 @@ export default function BillingPage() {
     }
 
     const planKey = balance?.planKey ?? null
-    const plan = useMemo<Plan | null>(() => (planKey ? getPlanDetails(planKey) : null), [planKey])
+    const plan = planKey ? (plans.find(p => p.key === planKey) ?? null) : null
+    const showPlanHeaderSkeleton = balanceLoading || (Boolean(balance) && catalogLoading)
     const showError = balanceError && !balance && !balanceLoading
     const scheduledChange = balance ? formatScheduledChange(balance) : null
 
@@ -116,15 +120,24 @@ export default function BillingPage() {
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="min-w-0 space-y-1">
                                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current plan</p>
-                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                            <span className="text-2xl font-semibold tracking-tight text-foreground">{plan ? plan.name : "—"}</span>
-                                            {balance?.billingPeriod && (
-                                                <Badge variant="outline" className="shrink-0 text-xs font-medium capitalize">
-                                                    {balance.billingPeriod}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        {balance && plan && <p className="text-sm tabular-nums text-muted-foreground">{formatNextCharge(balance, plan)}</p>}
+                                        {showPlanHeaderSkeleton ? (
+                                            <div className="space-y-2" aria-busy="true" aria-label="Loading plan details">
+                                                <Skeleton className="h-8 w-36" />
+                                                <Skeleton className="h-4 w-64 max-w-full" />
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                    <span className="text-2xl font-semibold tracking-tight text-foreground">{plan ? plan.name : "—"}</span>
+                                                    {balance?.billingPeriod && (
+                                                        <Badge variant="outline" className="shrink-0 text-xs font-medium capitalize">
+                                                            {balance.billingPeriod}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                {balance && plan && <p className="text-sm tabular-nums text-muted-foreground">{formatNextCharge(balance, plan)}</p>}
+                                            </>
+                                        )}
                                     </div>
                                     <Button variant="secondary" className="shrink-0 sm:self-center" asChild>
                                         <Link to={FrontendRoutes.PRICING}>
@@ -136,7 +149,7 @@ export default function BillingPage() {
                             </div>
 
                             <div className="px-6 py-6">
-                                {scheduledChange && (
+                                {scheduledChange && !showPlanHeaderSkeleton && (
                                     <div
                                         className={`mb-4 rounded-md border px-3 py-2 text-sm text-foreground ${
                                             balance?.scheduledChange?.kind === "cancel_to_free" ? "border-warning/30 bg-warning/10" : "border-border bg-muted"
@@ -145,10 +158,18 @@ export default function BillingPage() {
                                         {scheduledChange}
                                     </div>
                                 )}
-                                <CreditBalanceWidget balance={balance} plan={plan} />
+                                {showPlanHeaderSkeleton ? (
+                                    <div className="space-y-3 py-1" aria-busy="true" aria-label="Loading usage summary">
+                                        <Skeleton className="h-4 w-full max-w-md" />
+                                        <Skeleton className="h-3 w-full rounded-full" />
+                                        <Skeleton className="h-3 w-2/3" />
+                                    </div>
+                                ) : (
+                                    <CreditBalanceWidget balance={balance} plan={plan} />
+                                )}
                             </div>
 
-                            {balance && plan && (
+                            {balance && plan && !showPlanHeaderSkeleton && (
                                 <div className="border-t border-border px-6 py-3">
                                     <OverageModeToggle mode={balance.overageMode} plan={plan} onChange={updateMode} />
                                 </div>
@@ -162,11 +183,7 @@ export default function BillingPage() {
                                 </div>
                             </div>
                             <div className="px-6 py-6">
-                                {usageError && !usageLoading ? (
-                                    <p className="text-sm text-muted-foreground">Couldn't load usage history.</p>
-                                ) : (
-                                    <UsageChart buckets={buckets} />
-                                )}
+                                {usageError && !usageLoading ? <p className="text-sm text-muted-foreground">Couldn't load usage history.</p> : <UsageChart buckets={buckets} />}
                             </div>
                         </section>
                     </>

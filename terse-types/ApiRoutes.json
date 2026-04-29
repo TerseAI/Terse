@@ -181,6 +181,7 @@
         "WEBHOOK": "/webhooks/stripe"
     },
     "BILLING": {
+        "CATALOG": "/billing/catalog",
         "BALANCE": "/billing/balance",
         "USAGE": "/billing/usage",
         "CHECKOUT_SESSION": "/billing/checkout-session",

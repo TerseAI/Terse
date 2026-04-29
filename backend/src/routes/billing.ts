@@ -1,9 +1,10 @@
 import { Request, Response } from "express"
 import { DateTime } from "luxon"
-import type { BillingChangeResponse, BillingStripeRedirectResponse, SetOverageModeResponse, UsageResponse } from "terse-types"
+import type { BillingChangeResponse, BillingCatalogResponse, BillingStripeRedirectResponse, SetOverageModeResponse, UsageResponse } from "terse-types"
+import { isPurchasablePlan } from "terse-types"
 import { z } from "zod"
 
-import { PlanKey, SupportedTopUps, TimePeriods, getCreditConsumptionMeterId, isPurchasablePlan } from "../config/plans"
+import { PlanKey, SupportedTopUps, TimePeriods, getAllPlans, getAllTopups, getCreditConsumptionMeterId, getPlanDetails } from "../config/plans"
 import { db } from "../prismaClient"
 import { emitBillingCachesInvalidated } from "../services/CacheInvalidationService"
 import { creditService } from "../services/CreditService"
@@ -36,7 +37,7 @@ export async function createBillingCheckoutSession(req: Request, res: Response) 
     const parsed = checkoutBodySchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message })
 
-    if (parsed.data.kind === "plan" && !isPurchasablePlan(parsed.data.planKey)) {
+    if (parsed.data.kind === "plan" && !isPurchasablePlan(getPlanDetails(parsed.data.planKey))) {
         return res.status(400).json({
             error: "Free plan cannot be purchased; cancel a paid subscription in the billing portal to return to Free."
         })
@@ -82,6 +83,11 @@ export async function changeBillingSubscription(req: Request, res: Response) {
     const result = parsed.data.kind === "cancel_to_free" ? await scheduleCancelToFree(orgId, email) : await scheduleBillingPeriodChange(orgId, email, parsed.data.planKey, parsed.data.period)
 
     const body: BillingChangeResponse = { ok: true, scheduledChange: result.scheduledChange }
+    return res.json(body)
+}
+
+export async function getBillingCatalog(_req: Request, res: Response) {
+    const body: BillingCatalogResponse = { plans: getAllPlans(), topUps: getAllTopups() }
     return res.json(body)
 }
 

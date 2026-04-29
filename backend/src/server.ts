@@ -21,7 +21,7 @@ import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
-import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingBalance, getBillingUsage, setBillingOverageMode } from "./routes/billing"
+import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingBalance, getBillingCatalog, getBillingUsage, setBillingOverageMode } from "./routes/billing"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
@@ -286,6 +286,10 @@ app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
 // MARK: Stripe route, before apiTokenAuthMiddleware since it uses Stripe signature verification, not bearer token auth
 app.post(ApiRoutes.STRIPE.WEBHOOK, express.raw({ type: "application/json" }), async (req, res) => {
     await handleStripeWebhook(req, res)
+})
+
+app.get(ApiRoutes.BILLING.CATALOG, async (req, res) => {
+    await getBillingCatalog(req, res)
 })
 
 app.use(apiTokenAuthMiddleware)

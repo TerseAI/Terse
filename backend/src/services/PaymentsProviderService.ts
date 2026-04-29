@@ -1,8 +1,8 @@
 import { DateTime } from "luxon"
 import Stripe from "stripe"
-import { type BillingPeriod, FrontendRoutes } from "terse-types"
+import { type BillingPeriod, FrontendRoutes, isPurchasablePlan } from "terse-types"
 
-import { PlanKey, SupportedTopUps, TimePeriods, getPlanByPriceId, getPlanDetails, getTopUpPriceId, isPurchasablePlan, resolveEnvId } from "../config/plans"
+import { PlanKey, SupportedTopUps, TimePeriods, getPlanByPriceId, getPlanDetails, getTopUpPriceId, resolveEnvId } from "../config/plans"
 import { stripe, urls } from "../config/settings"
 import { db } from "../prismaClient"
 
@@ -29,7 +29,7 @@ const TOPUP_REQUIRES_PAID_PLAN_MESSAGE = "Top-ups require an active paid subscri
 
 // Checkout Sessions are for purchasing something new
 export async function createCheckoutSessionForPlan(orgId: string, email: string, planKey: PlanKey, timePeriod: TimePeriods): Promise<Stripe.Checkout.Session> {
-    if (!isPurchasablePlan(planKey)) {
+    if (!isPurchasablePlan(getPlanDetails(planKey))) {
         throw new Error(NON_PURCHASABLE_PLAN_MESSAGE)
     }
     const plan = getPlanDetails(planKey)
@@ -175,7 +175,7 @@ export async function scheduleCancelToFree(orgId: string, email: string): Promis
 }
 
 export async function scheduleBillingPeriodChange(orgId: string, email: string, planKey: PlanKey, timePeriod: TimePeriods): Promise<BillingChangeResult> {
-    if (!isPurchasablePlan(planKey)) {
+    if (!isPurchasablePlan(getPlanDetails(planKey))) {
         throw new Error(NON_PURCHASABLE_PLAN_MESSAGE)
     }
 
