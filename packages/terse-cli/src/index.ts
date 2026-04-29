@@ -72,6 +72,7 @@ const testCommand = program
     .description("Fetch sample events and run a job interactively")
     .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
     .option("-v, --verbose", "Show agent stream output", true)
+    .option("--no-verbose", "Hide agent stream output")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -120,6 +121,7 @@ testCommand
     .option("--event <json>", "Inline serialized event JSON string")
     .option("--event-file <path>", "Path to a JSON file containing the serialized event")
     .option("-v, --verbose", "Show agent stream output", true)
+    .option("--no-verbose", "Hide agent stream output")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -254,6 +256,7 @@ if (isCliRunCommandEnabled()) {
         .option("--event <json>", "Serialized event JSON string")
         .option("--event-file <path>", "Path to a JSON file containing the serialized event")
         .option("-v, --verbose", "Show agent stream output (use --no-verbose to silence)", true)
+        .option("--no-verbose", "Hide agent stream output")
         .option(...ENTRY_FILE_OPTION)
         .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
             await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile, opts?.verbose)
