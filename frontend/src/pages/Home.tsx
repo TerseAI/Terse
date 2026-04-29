@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowRight, Check, Copy, Terminal } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { Agent } from "terse-types/types"
 
-import { AgentRow, AgentRowsSkeleton, ALL_RUN_STATUSES, AgentHealth, computeHealth, groupRunsByAgent, HEALTH_RANK } from "@/components/Agents/AgentHealthRow"
+import { ALL_RUN_STATUSES, AgentHealth, AgentRow, AgentRowsSkeleton, HEALTH_RANK, computeHealth, groupRunsByAgent } from "@/components/Agents/AgentHealthRow"
 import { useSidebar } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAgents } from "@/hooks/api/useAgents"

@@ -206,7 +206,7 @@ function healthDotColor(status: HealthStatus) {
         case "paused":
             return "bg-muted-foreground/50"
         case "no_runs":
-            return "bg-border"
+            return "bg-success"
     }
 }
 

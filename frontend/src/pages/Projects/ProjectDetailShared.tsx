@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import type { ProjectDeploy, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
 
-import { AgentRow, ALL_RUN_STATUSES, computeHealth, groupRunsByAgent, HEALTH_RANK } from "../../components/Agents/AgentHealthRow"
+import { ALL_RUN_STATUSES, AgentRow, HEALTH_RANK, computeHealth, groupRunsByAgent } from "../../components/Agents/AgentHealthRow"
 import BreadCrumb from "../../components/BreadCrumb"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Badge } from "../../components/ui/badge"
@@ -111,7 +111,8 @@ export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
                 <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
                     <p className="text-foreground text-sm">No jobs yet.</p>
                     <p className="text-muted-foreground mt-1 text-xs">
-                        Define jobs in your SDK project and run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse deploy</code> to ship them.
+                        Define jobs in your SDK project and run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse deploy</code>{" "}
+                        to ship them.
                     </p>
                 </div>
             </section>
