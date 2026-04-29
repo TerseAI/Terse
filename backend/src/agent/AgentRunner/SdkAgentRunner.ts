@@ -20,7 +20,7 @@ import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { resolveLanguageModel } from "../modelRegistry"
+import { ModelReference, parseModelReference, resolveLanguageModel } from "../modelRegistry"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage } from "../userMessage"
@@ -46,6 +46,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private llmCallIndex = 0
     private pendingApprovalState: PendingApprovalState | null = null
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
+    private distinctEvents: Set<string> = new Set<string>()
 
     constructor(params: SdkAgentRunnerParams) {
         super({ runId: params.runId })
@@ -75,6 +76,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             user: params.user
         })
         this.onRawStreamEvent = this.handleRawModelEvent
+        this.distinctEvents = new Set<string>()
     }
 
     private createRunner() {
@@ -305,34 +307,33 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         }
     }
 
-    private getProvider(): "openai" | "anthropic" {
-        const model = this.getModel()
-        return model.startsWith("claude") ? "anthropic" : "openai"
-    }
-
-    private getModel(): string {
-        return SDK_AGENT_MODEL
+    private getModel(): ModelReference {
+        const defaultModel = settings.aisdk.default
+        if (!defaultModel) {
+            throw new Error("Default model not set")
+        }
+        const resolved = parseModelReference(defaultModel)
+        return resolved
     }
 
     private handleRawModelEvent = async (event: RunStreamEvent): Promise<void> => {
         if (event.type !== "raw_model_stream_event") return
 
         const data = (event as any).data
-        const completedEvent = data?.type === "response.completed" ? data : data?.event?.type === "response.completed" ? data.event : null
+        const completedEvent = data.type === "response_done" ? data : null
         if (!completedEvent) return
 
-        const usage = completedEvent.response?.usage
+        const usage = completedEvent.response?.usage as CompletedEventUsage
         if (!usage) return
 
         const stepKey = `model-${this.llmCallIndex++}`
         try {
-            const inputTokens = usage.input_tokens ?? 0
-            const cachedTokens = usage.input_tokens_details?.cached_tokens ?? 0
-            const outputTokens = usage.output_tokens ?? 0
+            const inputTokens = usage.inputTokens ?? 0
+            const cachedTokens = usage.inputTokensDetails.cached_tokens ?? 0
+            const outputTokens = usage.outputTokens ?? 0
             const nonCachedInputTokens = inputTokens - cachedTokens
 
             const payload = {
-                provider: this.getProvider(),
                 model: this.getModel(),
                 inputTokens: nonCachedInputTokens,
                 outputTokens: outputTokens,
@@ -487,4 +488,11 @@ class InMemoryAgentSession implements AgentMemorySession {
     async clearSession(): Promise<void> {
         this.items = []
     }
+}
+
+type CompletedEventUsage = {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    inputTokensDetails: { cached_tokens: number }
 }

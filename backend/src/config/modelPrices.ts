@@ -1,5 +1,9 @@
+import { ModelReference } from "../agent/modelRegistry"
+
+export type SupportedProvider = "openai" | "anthropic"
+
 export type ModelPrice = {
-    provider: "openai" | "anthropic"
+    provider: SupportedProvider
     modelId: string
     inputUsdPer1M: number
     outputUsdPer1M: number
@@ -41,6 +45,6 @@ export const MODEL_PRICES: ModelPrice[] = [
     }
 ]
 
-export function priceFor(provider: string, modelId: string): ModelPrice | null {
-    return MODEL_PRICES.find(p => p.provider === provider && p.modelId === modelId) ?? null
+export function priceFor(model: ModelReference): ModelPrice | null {
+    return MODEL_PRICES.find(p => p.provider === model.providerId && p.modelId === model.modelId) ?? null
 }

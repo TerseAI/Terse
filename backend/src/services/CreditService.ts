@@ -2,6 +2,7 @@ import { OverageMode, type billing_customers } from "@prisma/client"
 import { DateTime } from "luxon"
 import type Stripe from "stripe"
 
+import { ModelReference } from "../agent/modelRegistry"
 import { dollarsToCredits } from "../config/creditEconomics"
 import { priceFor } from "../config/modelPrices"
 import { PlanKey, getPlanByPriceId, getPlanDetails } from "../config/plans"
@@ -11,81 +12,6 @@ import { db } from "../prismaClient"
 import { sendBillingThresholdNotification } from "./BillingNotificationDispatcher"
 import { evaluateAndRecordThresholds } from "./BillingNotifications"
 import { fetchCreditBalanceSummary, fetchSubscription, postMeterEvent, stripeClient } from "./PaymentsProviderService"
-
-export type LLMUsage = {
-    provider: string
-    model: string
-    inputTokens: number
-    outputTokens: number
-    cachedTokens: number
-}
-
-export type GateAllowed = { allow: true }
-export type GateDenied = { allow: false; reason: GateDenyReason }
-export type GateDecision = GateAllowed | GateDenied
-
-export type GateDenyReason = "credits_exhausted" | "subscription_past_due" | "no_subscription"
-
-export type BalanceSummary = {
-    planKey: PlanKey
-    billingPeriod: "monthly" | "yearly" | null
-    planCredits: number
-    consumedCredits: number
-    topUpCredits: number
-    totalCreditCapacity: number
-    periodStart: Date
-    periodEnd: Date
-    overageMode: "soft" | "strict"
-    hardCap: number
-    canBuyTopups: boolean
-    scheduledChange: BillingScheduledChange | null
-}
-
-type BillingScheduledChange =
-    | {
-          kind: "cancel_to_free"
-          effectiveAt: Date
-      }
-    | {
-          kind: "change_period"
-          effectiveAt: Date
-          period: "monthly" | "yearly"
-      }
-
-export class StripeUnavailableError extends Error {
-    constructor(message = "Stripe is temporarily unavailable") {
-        super(message)
-        this.name = "StripeUnavailableError"
-    }
-}
-
-export class CreditsExhaustedError extends Error {
-    constructor(message = "Credits exhausted") {
-        super(message)
-        this.name = "CreditsExhaustedError"
-    }
-}
-
-type ResolvedPlan = {
-    key: PlanKey
-    details: ReturnType<typeof getPlanDetails>
-}
-
-type SubscriptionPlanItem = {
-    item: Stripe.SubscriptionItem
-    plan: ResolvedPlan
-}
-
-type BillingContext = {
-    plan: ResolvedPlan
-    billingPeriod: "monthly" | "yearly" | null
-    periodStart: Date
-    periodEnd: Date
-    overageMode: "soft" | "strict"
-    hardCap: number
-    meteredCustomerId: string | null
-    scheduledChange: BillingScheduledChange | null
-}
 
 export class CreditService {
     // Pre-run gate check to see if the run should be allowed to proceed based on subscription and credit status
@@ -166,9 +92,9 @@ export class CreditService {
 
     // Charge for LLM usage when the step finishes, based on the input/output tokens and model used
     async recordLLMCall(orgId: string, runId: string, stepKey: string, usage: LLMUsage): Promise<{ creditsCharged: number; rawCostMicros: bigint }> {
-        const price = priceFor(usage.provider, usage.model)
+        const price = priceFor(usage.model)
         if (!price) {
-            throw new Error(`Unpriced model: ${usage.provider}/${usage.model}`)
+            throw new Error(`Unpriced model: ${usage.model.providerId}/${usage.model.modelId}`)
         }
 
         const rawCostMicros = costMicros(usage.inputTokens, price.inputUsdPer1M) + costMicros(usage.outputTokens, price.outputUsdPer1M) + costMicros(usage.cachedTokens, price.cachedInputUsdPer1M)
@@ -184,15 +110,15 @@ export class CreditService {
         const totalBillableTokens = usage.inputTokens + usage.outputTokens + usage.cachedTokens
 
         logger.info(
-            `LLM usage cost: ${usage.provider}/${usage.model} — ${totalBillableTokens} billable tokens (${usage.inputTokens} non-cached in, ${usage.outputTokens} out, ${usage.cachedTokens} cached) — raw $${rawCostUsd.toFixed(6)} → after ${context.plan.details.markupPct}% markup $${markedUpCostUsd.toFixed(6)} (${credits} credits) — org ${orgId} run ${runId} [${stepKey}]`,
+            `LLM usage cost: ${usage.model.providerId}/${usage.model.modelId} — ${totalBillableTokens} billable tokens (${usage.inputTokens} non-cached in, ${usage.outputTokens} out, ${usage.cachedTokens} cached) — raw $${rawCostUsd.toFixed(6)} → after ${context.plan.details.markupPct}% markup $${markedUpCostUsd.toFixed(6)} (${credits} credits) — org ${orgId} run ${runId} [${stepKey}]`,
             {
                 event: "llm_usage_cost",
                 organizationId: orgId,
                 runId,
                 stepKey,
                 meterIdentifier: key,
-                provider: usage.provider,
-                model: usage.model,
+                provider: usage.model.providerId,
+                model: usage.model.modelId,
                 inputTokens: usage.inputTokens,
                 outputTokens: usage.outputTokens,
                 cachedTokens: usage.cachedTokens,
@@ -535,6 +461,80 @@ function toStripeUnavailableError(error: unknown): StripeUnavailableError {
     if (error instanceof StripeUnavailableError) return error
     const message = error instanceof Error ? error.message : "Stripe is temporarily unavailable"
     return new StripeUnavailableError(message)
+}
+
+export type LLMUsage = {
+    model: ModelReference
+    inputTokens: number
+    outputTokens: number
+    cachedTokens: number
+}
+
+export type GateAllowed = { allow: true }
+export type GateDenied = { allow: false; reason: GateDenyReason }
+export type GateDecision = GateAllowed | GateDenied
+
+export type GateDenyReason = "credits_exhausted" | "subscription_past_due" | "no_subscription"
+
+export type BalanceSummary = {
+    planKey: PlanKey
+    billingPeriod: "monthly" | "yearly" | null
+    planCredits: number
+    consumedCredits: number
+    topUpCredits: number
+    totalCreditCapacity: number
+    periodStart: Date
+    periodEnd: Date
+    overageMode: "soft" | "strict"
+    hardCap: number
+    canBuyTopups: boolean
+    scheduledChange: BillingScheduledChange | null
+}
+
+type BillingScheduledChange =
+    | {
+          kind: "cancel_to_free"
+          effectiveAt: Date
+      }
+    | {
+          kind: "change_period"
+          effectiveAt: Date
+          period: "monthly" | "yearly"
+      }
+
+export class StripeUnavailableError extends Error {
+    constructor(message = "Stripe is temporarily unavailable") {
+        super(message)
+        this.name = "StripeUnavailableError"
+    }
+}
+
+export class CreditsExhaustedError extends Error {
+    constructor(message = "Credits exhausted") {
+        super(message)
+        this.name = "CreditsExhaustedError"
+    }
+}
+
+type ResolvedPlan = {
+    key: PlanKey
+    details: ReturnType<typeof getPlanDetails>
+}
+
+type SubscriptionPlanItem = {
+    item: Stripe.SubscriptionItem
+    plan: ResolvedPlan
+}
+
+type BillingContext = {
+    plan: ResolvedPlan
+    billingPeriod: "monthly" | "yearly" | null
+    periodStart: Date
+    periodEnd: Date
+    overageMode: "soft" | "strict"
+    hardCap: number
+    meteredCustomerId: string | null
+    scheduledChange: BillingScheduledChange | null
 }
 
 export const creditService = new CreditService()
