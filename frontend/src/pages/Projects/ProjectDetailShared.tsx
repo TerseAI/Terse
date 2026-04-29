@@ -7,13 +7,17 @@ import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import type { ProjectDeploy, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
 
+import { AgentRow, ALL_RUN_STATUSES, computeHealth, groupRunsByAgent, HEALTH_RANK } from "../../components/Agents/AgentHealthRow"
 import BreadCrumb from "../../components/BreadCrumb"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
 import { SidebarTrigger } from "../../components/ui/sidebar"
+import { Skeleton } from "../../components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip"
+import { useAgents } from "../../hooks/api/useAgents"
+import { useAllRunHistory } from "../../hooks/api/useAllRunHistory"
 import { useProjectMutations } from "../../hooks/api/useProject"
 import { cn } from "../../lib/utils"
 import { formatTimestamp } from "../../utility/timeUtils"
@@ -39,11 +43,10 @@ export function Heading({
     activeDeploy,
     latestDeploy
 }: {
-    project: Pick<ProjectDetailResponse, "name" | "isSelfHosted" | "createdAt">
+    project: Pick<ProjectDetailResponse, "name" | "isSelfHosted">
     activeDeploy: ProjectDeploy | null
     latestDeploy: ProjectDeploy | null
 }) {
-    const createdLabel = DateTime.fromISO(project.createdAt).toFormat("LLL d, yyyy")
     const isDeploying = latestDeploy?.status === "IN_PROGRESS"
 
     return (
@@ -56,8 +59,9 @@ export function Heading({
             </div>
 
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                {isDeploying ? <DeployingBadge /> : null}
-                {activeDeploy ? (
+                {isDeploying ? (
+                    <DeployingBadge />
+                ) : activeDeploy ? (
                     <>
                         <LiveBadge />
                         <span className="tabular-nums">{formatTimestamp(activeDeploy.createdAt)}</span>
@@ -70,14 +74,12 @@ export function Heading({
                             </>
                         ) : null}
                     </>
-                ) : !isDeploying ? (
+                ) : (
                     <Badge variant="secondary" className="text-foreground">
                         <CircleDot className="text-muted-foreground" />
                         No active deploy
                     </Badge>
-                ) : null}
-                <Dot />
-                <span>Created {createdLabel}</span>
+                )}
             </div>
         </header>
     )
@@ -89,6 +91,74 @@ function DeployingBadge() {
             <Loader2 className="text-warning animate-spin" />
             Deploying
         </Badge>
+    )
+}
+
+export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
+    const jobIds = new Set(jobs.map(j => j.id))
+    const { agents: allAgents, isLoading: agentsLoading } = useAgents({ limit: 100 })
+    const { runs, isLoading: runsLoading } = useAllRunHistory({
+        page: 1,
+        pageSize: 200,
+        selectedStatuses: ALL_RUN_STATUSES
+    })
+    const isLoading = agentsLoading || runsLoading
+
+    if (jobs.length === 0) {
+        return (
+            <section className="mt-8">
+                <SectionLabel>Jobs</SectionLabel>
+                <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
+                    <p className="text-foreground text-sm">No jobs yet.</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                        Define jobs in your SDK project and run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse deploy</code> to ship them.
+                    </p>
+                </div>
+            </section>
+        )
+    }
+
+    const agents = allAgents.filter(a => jobIds.has(a.id))
+    const runsByAgent = groupRunsByAgent(runs)
+    const agentsWithHealth = agents
+        .map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) }))
+        .sort((a, b) => {
+            const rank = HEALTH_RANK[a.health.status] - HEALTH_RANK[b.health.status]
+            if (rank !== 0) return rank
+            return a.agent.name.localeCompare(b.agent.name)
+        })
+
+    return (
+        <section className="mt-8">
+            <SectionLabel>Jobs</SectionLabel>
+            <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+                {isLoading ? (
+                    <JobsSkeleton count={Math.min(jobs.length, 3)} />
+                ) : (
+                    <ul className="divide-border/60 divide-y">
+                        {agentsWithHealth.map(({ agent, health }) => (
+                            <AgentRow key={agent.id} agent={agent} health={health} />
+                        ))}
+                    </ul>
+                )}
+            </div>
+        </section>
+    )
+}
+
+function JobsSkeleton({ count }: { count: number }) {
+    return (
+        <div className="divide-border/60 divide-y">
+            {Array.from({ length: count }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-3 py-3.5">
+                    <Skeleton className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                        <Skeleton className="h-3.5 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                    </div>
+                </div>
+            ))}
+        </div>
     )
 }
 
@@ -211,9 +281,9 @@ export function DeploysSkeleton() {
         <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
             {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-4 px-4 py-3">
-                    <div className="bg-muted/60 h-5 w-20 animate-pulse rounded-full" />
-                    <div className="bg-muted/60 h-3 w-20 animate-pulse rounded-sm" />
-                    <div className="bg-muted/40 ml-auto h-3 w-24 animate-pulse rounded-sm" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="ml-auto h-3 w-24" />
                 </div>
             ))}
         </div>

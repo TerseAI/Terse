@@ -1,9 +1,10 @@
 import { useState } from "react"
 
-import { Check, Copy, Loader2, Server } from "lucide-react"
+import { Check, CheckCircle2, Circle, Copy, Loader2, Server } from "lucide-react"
 import { toast } from "sonner"
 import type { ProjectDetailResponse, SdkJobServerCheckResponse } from "terse-types/types"
 
+import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { TooltipProvider } from "../../components/ui/tooltip"
 import { useProjectDeploys } from "../../hooks/api/useProjectDeploys"
@@ -11,7 +12,7 @@ import { cn } from "../../lib/utils"
 import { BackendProvider } from "../../services/backend"
 import { SdkJobServerCheckDialog } from "../Agents/components/SdkJobServerCheckDialog"
 
-import { DeleteProjectAction, DeploymentsSection, Heading, PageFrame, SectionLabel } from "./ProjectDetailShared"
+import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, PageFrame, SectionLabel } from "./ProjectDetailShared"
 
 export default function ProjectDetailSelfHosted({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
@@ -43,6 +44,8 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
         <TooltipProvider delayDuration={200}>
             <PageFrame>
                 <Heading project={project} activeDeploy={activeDeploy} latestDeploy={latestDeploy} />
+
+                <JobsSection jobs={project.jobs} />
 
                 <EnvironmentSection
                     remoteServerUrl={project.remoteServerUrl}
@@ -113,7 +116,7 @@ function EnvRow({ label, children, className }: { label: string; children: React
 
 function RemoteServerValue({ url }: { url: string | null }) {
     const [copied, setCopied] = useState(false)
-    if (!url) return <span className="text-muted-foreground">—</span>
+    if (!url) return <span className="text-muted-foreground">Not set</span>
 
     const handleCopy = async () => {
         try {
@@ -137,9 +140,9 @@ function RemoteServerValue({ url }: { url: string | null }) {
 
 function ConfigStatus({ configured }: { configured: boolean }) {
     return (
-        <div className="flex items-center gap-2">
-            <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", configured ? "bg-success" : "bg-muted-foreground/40")} />
-            <span className={configured ? "text-foreground" : "text-muted-foreground"}>{configured ? "Configured" : "Not set"}</span>
-        </div>
+        <Badge variant="secondary" className="text-foreground">
+            {configured ? <CheckCircle2 className="text-success" /> : <Circle className="text-muted-foreground" />}
+            {configured ? "Configured" : "Not set"}
+        </Badge>
     )
 }
