@@ -91,49 +91,50 @@ export class CreditService {
     }
 
     // Charge for LLM usage when the step finishes, based on the input/output tokens and model used
-    async recordLLMCall(orgId: string, runId: string, stepKey: string, usage: LLMUsage): Promise<{ creditsCharged: number; rawCostMicros: bigint }> {
-        const price = priceFor(usage.model)
+    async recordLLMCall(orgId: string, runId: string, response: LLMResponseWithUsage): Promise<{ creditsCharged: number; rawCostMicros: bigint }> {
+        const price = priceFor(response.model)
         if (!price) {
-            throw new Error(`Unpriced model: ${usage.model.providerId}/${usage.model.modelId}`)
+            throw new Error(`Unpriced model: ${response.model.providerId}/${response.model.modelId}`)
         }
 
-        const rawCostMicros = costMicros(usage.inputTokens, price.inputUsdPer1M) + costMicros(usage.outputTokens, price.outputUsdPer1M) + costMicros(usage.cachedTokens, price.cachedInputUsdPer1M)
+        const rawCostMicros =
+            costMicros(response.usage.inputTokens, price.inputUsdPer1M) +
+            costMicros(response.usage.outputTokens, price.outputUsdPer1M) +
+            costMicros(response.usage.inputTokensDetails.cached_tokens, price.cachedInputUsdPer1M)
         const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
         const context = await this.resolveBillingContext(orgId, customer)
         const markupBp = BigInt(Math.round(context.plan.details.markupPct * 10_000))
         const markedUpCostMicros = rawCostMicros + (rawCostMicros * markupBp) / 10_000n
         const credits = dollarsToCredits(markedUpCostMicros)
-        const key = `${runId}:${stepKey}:llm`
+        const key = `${runId}:${response.responseId}:llm`
 
         const rawCostUsd = Number(rawCostMicros) / 1_000_000
         const markedUpCostUsd = Number(markedUpCostMicros) / 1_000_000
-        const totalBillableTokens = usage.inputTokens + usage.outputTokens + usage.cachedTokens
+        const totalBillableTokens = response.usage.inputTokens + response.usage.outputTokens + response.usage.inputTokensDetails.cached_tokens
 
-        logger.info(
-            `LLM usage cost: ${usage.model.providerId}/${usage.model.modelId} — ${totalBillableTokens} billable tokens (${usage.inputTokens} non-cached in, ${usage.outputTokens} out, ${usage.cachedTokens} cached) — raw $${rawCostUsd.toFixed(6)} → after ${context.plan.details.markupPct}% markup $${markedUpCostUsd.toFixed(6)} (${credits} credits) — org ${orgId} run ${runId} [${stepKey}]`,
-            {
-                event: "llm_usage_cost",
-                organizationId: orgId,
-                runId,
-                stepKey,
-                meterIdentifier: key,
-                provider: usage.model.providerId,
-                model: usage.model.modelId,
-                inputTokens: usage.inputTokens,
-                outputTokens: usage.outputTokens,
-                cachedTokens: usage.cachedTokens,
-                totalBillableTokens,
-                rawCostUsd,
-                markedUpCostUsd,
-                planKey: context.plan.key,
-                planMarkupPct: context.plan.details.markupPct,
-                creditsComputed: credits,
-                priceInputUsdPer1M: price.inputUsdPer1M,
-                priceOutputUsdPer1M: price.outputUsdPer1M,
-                priceCachedInputUsdPer1M: price.cachedInputUsdPer1M,
-                hasMeteredBilling: !!context.meteredCustomerId
-            }
-        )
+        logger.info(`LLM usage cost: ${key} — ${totalBillableTokens} billable tokens`, {
+            event: "llm_usage_cost",
+            organizationId: orgId,
+            runId,
+            key,
+            meterIdentifier: key,
+            provider: response.model.providerId,
+            model: response.model.modelId,
+            responseId: response.responseId,
+            inputTokens: response.usage.inputTokens,
+            outputTokens: response.usage.outputTokens,
+            cachedTokens: response.usage.inputTokensDetails.cached_tokens,
+            totalBillableTokens,
+            rawCostUsd,
+            markedUpCostUsd,
+            planKey: context.plan.key,
+            planMarkupPct: context.plan.details.markupPct,
+            creditsComputed: credits,
+            priceInputUsdPer1M: price.inputUsdPer1M,
+            priceOutputUsdPer1M: price.outputUsdPer1M,
+            priceCachedInputUsdPer1M: price.cachedInputUsdPer1M,
+            hasMeteredBilling: !!context.meteredCustomerId
+        })
 
         if (credits === 0) {
             return { creditsCharged: 0, rawCostMicros }
@@ -463,11 +464,10 @@ function toStripeUnavailableError(error: unknown): StripeUnavailableError {
     return new StripeUnavailableError(message)
 }
 
-export type LLMUsage = {
+export type LLMResponseWithUsage = {
+    responseId: string
     model: ModelReference
-    inputTokens: number
-    outputTokens: number
-    cachedTokens: number
+    usage: CompletedEventUsage
 }
 
 export type GateAllowed = { allow: true }
@@ -535,6 +535,13 @@ type BillingContext = {
     hardCap: number
     meteredCustomerId: string | null
     scheduledChange: BillingScheduledChange | null
+}
+
+export type CompletedEventUsage = {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    inputTokensDetails: { cached_tokens: number }
 }
 
 export const creditService = new CreditService()

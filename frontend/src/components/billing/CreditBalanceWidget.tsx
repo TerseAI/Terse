@@ -25,7 +25,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
     const overageDollars = (overageCredits * overageRateCents) / 100
     const softMeteredOverage = overageMode === "soft" && overageRateCents > 0
 
-    const fillClass = atPeriodCap || totalUsableRemaining <= 0 ? "bg-danger" : !withinIncluded ? "bg-warning" : capPct >= 90 ? "bg-warning" : "bg-accent-primary"
+    const fillClass = atPeriodCap || totalUsableRemaining <= 0 ? "bg-danger" : !withinIncluded ? "bg-warning" : capPct >= 90 ? "bg-warning" : "bg-accent-secondary"
 
     const includedTickPct = hasOverageHeadroom && planCredits < hardCapCredits ? Math.round((planCredits / hardCapCredits) * 100) : null
     const showIncludedTick = !withinIncluded && includedTickPct !== null

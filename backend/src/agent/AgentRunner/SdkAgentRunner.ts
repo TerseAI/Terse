@@ -16,6 +16,7 @@ import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { StripeUnavailableError, creditService } from "../../services/CreditService"
+import { CompletedEventUsage } from "../../services/CreditService"
 import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
@@ -43,10 +44,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly isProductionRun: boolean
     private readonly streamEventEmitter: StreamEventEmitter
     private readonly outputType: JsonSchemaDefinition | undefined
-    private llmCallIndex = 0
     private pendingApprovalState: PendingApprovalState | null = null
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
-    private distinctEvents: Set<string> = new Set<string>()
 
     constructor(params: SdkAgentRunnerParams) {
         super({ runId: params.runId })
@@ -76,7 +75,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             user: params.user
         })
         this.onRawStreamEvent = this.handleRawModelEvent
-        this.distinctEvents = new Set<string>()
     }
 
     private createRunner() {
@@ -324,9 +322,17 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         if (!completedEvent) return
 
         const usage = completedEvent.response?.usage as CompletedEventUsage
-        if (!usage) return
+        if (!usage) {
+            logger.warn("SdkAgentRunner: No usage found for completed event", { event })
+            return
+        }
 
-        const stepKey = `model-${this.llmCallIndex++}`
+        const responseId = completedEvent.response?.id
+        if (!responseId) {
+            logger.warn("SdkAgentRunner: No response ID found for completed event", { event })
+            return
+        }
+
         try {
             const inputTokens = usage.inputTokens ?? 0
             const cachedTokens = usage.inputTokensDetails.cached_tokens ?? 0
@@ -334,12 +340,11 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             const nonCachedInputTokens = inputTokens - cachedTokens
 
             const payload = {
+                responseId,
                 model: this.getModel(),
-                inputTokens: nonCachedInputTokens,
-                outputTokens: outputTokens,
-                cachedTokens: cachedTokens
+                usage
             }
-            await creditService.recordLLMCall(this.user.organizationId, this.sdkRunId, stepKey, payload)
+            await creditService.recordLLMCall(this.user.organizationId, this.sdkRunId, payload)
         } catch (error) {
             if (error instanceof StripeUnavailableError) {
                 logger.error("SdkAgentRunner: Stripe unavailable; failing run", { runId: this.sdkRunId, error })
@@ -488,11 +493,4 @@ class InMemoryAgentSession implements AgentMemorySession {
     async clearSession(): Promise<void> {
         this.items = []
     }
-}
-
-type CompletedEventUsage = {
-    inputTokens: number
-    outputTokens: number
-    totalTokens: number
-    inputTokensDetails: { cached_tokens: number }
 }
