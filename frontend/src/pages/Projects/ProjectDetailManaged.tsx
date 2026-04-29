@@ -21,7 +21,7 @@ export default function ProjectDetailManaged({ project }: { project: ProjectDeta
             <PageFrame>
                 <Heading project={project} activeDeploy={activeDeploy} latestDeploy={latestDeploy} />
 
-                <DeploymentsSection deploys={deploys} isLoading={isLoadingDeploys} />
+                <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
 
                 <SourceSection projectId={project.id} activeDeploy={activeDeploy} />
 

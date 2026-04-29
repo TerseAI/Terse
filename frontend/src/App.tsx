@@ -21,6 +21,7 @@ import OAuthError from "./pages/OAuthError"
 import OAuthSuccess from "./pages/OAuthSuccess"
 import OrganizationCreationPage from "./pages/OrganizationCreationPage"
 import ProfilePage from "./pages/ProfilePage"
+import ProjectDeploysPage from "./pages/Projects/ProjectDeploysPage"
 import ProjectDetail from "./pages/Projects/ProjectDetail"
 import StatsPage from "./pages/Stats"
 import { RunHistoryChatDrawerProvider } from "./services/RunHistoryChatDrawerContext"
@@ -42,6 +43,7 @@ function App() {
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.PROJECTS.BY_ID} element={<ProjectDetail />} />
+                            <Route path={FrontendRoutes.PROJECTS.DEPLOYS} element={<ProjectDeploysPage />} />
                             <Route path="activity" element={<ActivityPage />} />
                             <Route path="stats" element={<StatsPage />} />
                             <Route path="integrations" element={<IntegrationPage />} />

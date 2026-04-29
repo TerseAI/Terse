@@ -53,7 +53,7 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
                     canVerify={!!firstJobId}
                 />
 
-                <DeploymentsSection deploys={deploys} isLoading={isLoadingDeploys} />
+                <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
 
                 <DeleteProjectAction project={project} />
             </PageFrame>

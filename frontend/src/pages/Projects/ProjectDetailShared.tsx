@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 
-import { AlertTriangle, CheckCircle2, CircleDot, Loader2, RotateCcw, XCircle } from "lucide-react"
+import { AlertTriangle, ArrowRight, CheckCircle2, CircleDot, Loader2, RotateCcw, XCircle } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
-import { FrontendRoutes } from "terse-types"
+import { FrontendRoutes, buildRoute } from "terse-types"
 import type { ProjectDeploy, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
 
 import BreadCrumb from "../../components/BreadCrumb"
@@ -17,6 +17,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import { useProjectMutations } from "../../hooks/api/useProject"
 import { cn } from "../../lib/utils"
 import { formatTimestamp } from "../../utility/timeUtils"
+
+export const DEPLOYS_PREVIEW_LIMIT = 5
 
 export function PageFrame({ children }: { children: React.ReactNode }) {
     return (
@@ -41,7 +43,7 @@ export function Heading({
     activeDeploy: ProjectDeploy | null
     latestDeploy: ProjectDeploy | null
 }) {
-    const createdLabel = useMemo(() => DateTime.fromISO(project.createdAt).toFormat("LLL d, yyyy"), [project.createdAt])
+    const createdLabel = DateTime.fromISO(project.createdAt).toFormat("LLL d, yyyy")
     const isDeploying = latestDeploy?.status === "IN_PROGRESS"
 
     return (
@@ -90,13 +92,15 @@ function DeployingBadge() {
     )
 }
 
-export function DeploymentsSection({ deploys, isLoading }: { deploys: ProjectDeploy[] | undefined; isLoading: boolean }) {
+export function DeploymentsSection({ projectId, deploys, isLoading }: { projectId: string; deploys: ProjectDeploy[] | undefined; isLoading: boolean }) {
+    const total = deploys?.length ?? 0
+    const visible = deploys?.slice(0, DEPLOYS_PREVIEW_LIMIT) ?? []
+    const hasMore = total > DEPLOYS_PREVIEW_LIMIT
+    const allDeploysHref = buildRoute(FrontendRoutes.PROJECTS.DEPLOYS, { id: projectId })
+
     return (
         <section className="mt-8">
-            <div className="flex items-baseline justify-between gap-4">
-                <SectionLabel>Deployments</SectionLabel>
-                {deploys && deploys.length > 0 ? <span className="text-muted-foreground text-[11px] tabular-nums">Last {deploys.length} · newest first</span> : null}
-            </div>
+            <SectionLabel>Deployments</SectionLabel>
 
             {isLoading ? (
                 <DeploysSkeleton />
@@ -104,22 +108,33 @@ export function DeploymentsSection({ deploys, isLoading }: { deploys: ProjectDep
                 <DeploysEmpty />
             ) : (
                 <ol className="divide-border/60 border-border/60 divide-y overflow-hidden rounded-lg border">
-                    {deploys.map(d => (
+                    {visible.map(d => (
                         <DeployRow key={d.id} deploy={d} />
                     ))}
+                    {hasMore ? (
+                        <li>
+                            <Link
+                                to={allDeploysHref}
+                                className="text-muted-foreground hover:bg-muted/30 hover:text-foreground group flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs transition-colors"
+                            >
+                                See all {total} deployments
+                                <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                            </Link>
+                        </li>
+                    ) : null}
                 </ol>
             )}
         </section>
     )
 }
 
-function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
+export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
     const relative = formatTimestamp(deploy.createdAt)
     const absolute = DateTime.fromISO(deploy.createdAt).toFormat("LLL d, yyyy · h:mm:ss a")
     const shortId = deploy.id.slice(-7)
 
     return (
-        <li className="hover:bg-muted/30 grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors sm:grid-cols-[140px_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <li className="hover:bg-muted/30 grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors sm:grid-cols-[140px_auto_1fr_auto]">
             <DeployStatusBadge status={deploy.status} />
 
             <div className="flex min-w-0 items-center gap-2">
@@ -161,7 +176,7 @@ function DeployStatusBadge({ status }: { status: ProjectDeployStatus }) {
     )
 }
 
-function deployStatusPresentation(status: ProjectDeployStatus): { Icon: typeof CheckCircle2; iconClass: string; label: string } {
+export function deployStatusPresentation(status: ProjectDeployStatus): { Icon: typeof CheckCircle2; iconClass: string; label: string } {
     if (status === "SUCCEEDED") return { Icon: CheckCircle2, iconClass: "text-success", label: "Succeeded" }
     if (status === "FAILED") return { Icon: XCircle, iconClass: "text-destructive", label: "Failed" }
     if (status === "IN_PROGRESS") return { Icon: Loader2, iconClass: "text-warning", label: "In progress" }
@@ -179,7 +194,7 @@ function LiveBadge() {
     )
 }
 
-function DeploysEmpty() {
+export function DeploysEmpty() {
     return (
         <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
             <p className="text-foreground text-sm">No deployments yet.</p>
@@ -191,7 +206,7 @@ function DeploysEmpty() {
     )
 }
 
-function DeploysSkeleton() {
+export function DeploysSkeleton() {
     return (
         <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
             {Array.from({ length: 3 }).map((_, i) => (
