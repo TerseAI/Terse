@@ -49,7 +49,7 @@ const HEALTH_RANK: Record<HealthStatus, number> = {
 }
 
 export default function HomePage() {
-    const { agents, isLoading: agentsLoading } = useAgents({ limit: 100 })
+    const { agents: allAgents, isLoading: agentsLoading } = useAgents({ limit: 100 })
     const { runs, isLoading: runsLoading } = useAllRunHistory({
         page: 1,
         pageSize: RUN_FETCH_PAGE_SIZE,
@@ -57,6 +57,7 @@ export default function HomePage() {
     })
     const { approvals, isLoading: approvalsLoading } = usePendingApprovals({ status: "pending" })
 
+    const agents = allAgents.filter(a => a.source === "SDK")
     const runsByAgent = groupRunsByAgent(runs)
     const agentsWithHealth = agents
         .map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) }))
