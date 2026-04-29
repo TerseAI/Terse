@@ -1007,12 +1007,21 @@ export const projectDeployUserSchema = z.object({
 })
 export type ProjectDeployUser = z.infer<typeof projectDeployUserSchema>
 
+export const projectDeployJobsDeltaSchema = z.object({
+    added: z.number().int().nonnegative(),
+    removed: z.number().int().nonnegative()
+})
+export type ProjectDeployJobsDelta = z.infer<typeof projectDeployJobsDeltaSchema>
+
 export const projectDeploySchema = z.object({
     id: z.string(),
     status: projectDeployStatusSchema,
     createdAt: z.string(),
     isActive: z.boolean(),
-    deployedBy: projectDeployUserSchema.nullable()
+    deployedBy: projectDeployUserSchema.nullable(),
+    durationMs: z.number().int().nonnegative().nullable(),
+    failureReason: z.string().nullable(),
+    jobsDelta: projectDeployJobsDeltaSchema.nullable()
 })
 export type ProjectDeploy = z.infer<typeof projectDeploySchema>
 

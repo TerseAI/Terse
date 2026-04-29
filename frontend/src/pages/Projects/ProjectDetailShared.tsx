@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, CircleDot, Loader2, RotateCcw,
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
-import type { ProjectDeploy, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
+import type { ProjectDeploy, ProjectDeployJobsDelta, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
 
 import { ALL_RUN_STATUSES, AgentRow, HEALTH_RANK, computeHealth, groupRunsByAgent } from "../../components/Agents/AgentHealthRow"
 import BreadCrumb from "../../components/BreadCrumb"
@@ -20,7 +20,7 @@ import { useAgents } from "../../hooks/api/useAgents"
 import { useAllRunHistory } from "../../hooks/api/useAllRunHistory"
 import { useProjectMutations } from "../../hooks/api/useProject"
 import { cn } from "../../lib/utils"
-import { formatTimestamp } from "../../utility/timeUtils"
+import { formatDuration, formatTimestamp } from "../../utility/timeUtils"
 
 export const DEPLOYS_PREVIEW_LIMIT = 5
 
@@ -203,6 +203,8 @@ export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
     const relative = formatTimestamp(deploy.createdAt)
     const absolute = DateTime.fromISO(deploy.createdAt).toFormat("LLL d, yyyy · h:mm:ss a")
     const shortId = deploy.id.slice(-7)
+    const durationLabel = deploy.durationMs !== null ? formatDuration(deploy.durationMs) : null
+    const showFailureReason = deploy.status === "FAILED" && !!deploy.failureReason
 
     return (
         <li className="hover:bg-muted/30 grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors sm:grid-cols-[140px_auto_1fr_auto]">
@@ -211,11 +213,15 @@ export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
             <div className="flex min-w-0 items-center gap-2">
                 <code className="text-muted-foreground font-mono text-[12px] tabular-nums">{shortId}</code>
                 {deploy.isActive ? <LiveBadge /> : null}
+                {deploy.jobsDelta ? <JobsDeltaSummary delta={deploy.jobsDelta} /> : null}
             </div>
 
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <span className="text-muted-foreground cursor-default text-xs tabular-nums">{relative}</span>
+                    <span className="text-muted-foreground cursor-default text-xs tabular-nums">
+                        {relative}
+                        {durationLabel ? <span className="text-muted-foreground/60"> · in {durationLabel}</span> : null}
+                    </span>
                 </TooltipTrigger>
                 <TooltipContent>{absolute}</TooltipContent>
             </Tooltip>
@@ -233,7 +239,28 @@ export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
                     <span className="text-muted-foreground text-xs">Unknown deployer</span>
                 )}
             </div>
+
+            {showFailureReason ? (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <p className="text-muted-foreground col-span-full mt-1 line-clamp-2 cursor-default text-xs sm:col-span-3 sm:col-start-2">{deploy.failureReason}</p>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md whitespace-pre-wrap">{deploy.failureReason}</TooltipContent>
+                </Tooltip>
+            ) : null}
         </li>
+    )
+}
+
+function JobsDeltaSummary({ delta }: { delta: ProjectDeployJobsDelta }) {
+    if (delta.added === 0 && delta.removed === 0) return null
+    const totalChanges = delta.added + delta.removed
+    return (
+        <span className="flex items-center gap-1 text-xs tabular-nums">
+            {delta.added > 0 ? <span className="text-success">+{delta.added}</span> : null}
+            {delta.removed > 0 ? <span className="text-destructive">-{delta.removed}</span> : null}
+            <span className="text-muted-foreground">{totalChanges === 1 ? "job" : "jobs"}</span>
+        </span>
     )
 }
 

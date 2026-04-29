@@ -180,12 +180,18 @@ export async function handleGetProjectDeploys(req: Request, res: Response) {
               }
             : null
 
+        const durationMs = d.completed_at ? d.completed_at.getTime() - d.created_at.getTime() : null
+        const jobsDelta = d.jobs_added !== null && d.jobs_removed !== null ? { added: d.jobs_added, removed: d.jobs_removed } : null
+
         return {
             id: d.id,
             status: d.status,
             createdAt: d.created_at.toISOString(),
             isActive: activeDeploy?.id === d.id,
-            deployedBy
+            deployedBy,
+            durationMs,
+            failureReason: d.failure_reason,
+            jobsDelta
         }
     })
 
