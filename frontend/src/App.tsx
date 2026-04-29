@@ -13,10 +13,8 @@ import { Toaster } from "./components/ui/sonner"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
 import ActivityPage from "./pages/Activity"
 import AgentDetail from "./pages/Agents/AgentDetail"
-import AgentSetup from "./pages/Agents/AgentSetup"
-import AgentsList from "./pages/Agents/AgentsList"
 import ApiTokensPage from "./pages/ApiTokens"
-import Home from "./pages/Home"
+import HomePage from "./pages/Home"
 import IntegrationPage from "./pages/IntegrationPage"
 import NotificationsPage from "./pages/Notifications"
 import OAuthError from "./pages/OAuthError"
@@ -25,7 +23,6 @@ import OrganizationCreationPage from "./pages/OrganizationCreationPage"
 import ProfilePage from "./pages/ProfilePage"
 import ProjectDetail from "./pages/Projects/ProjectDetail"
 import StatsPage from "./pages/Stats"
-import { ModelContextProvider } from "./services/ModelContextProvider"
 import { RunHistoryChatDrawerProvider } from "./services/RunHistoryChatDrawerContext"
 import { AuthProvider, useAuth } from "./services/auth"
 import { disconnectSocket, initializeSocket } from "./socket"
@@ -39,9 +36,8 @@ function App() {
                     <Routes>
                         <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
                         <Route path={FrontendRoutes.APP} element={<Content />}>
-                            <Route index element={<Home />} />
-                            <Route path="agents" element={<AgentsList />} />
-                            <Route path="agents/setup" element={<AgentSetup />} />
+                            <Route index element={<Navigate to="home" replace />} />
+                            <Route path="home" element={<HomePage />} />
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
@@ -128,11 +124,9 @@ function AppLayout() {
             <main className="flex-1 flex flex-col h-full min-w-0 bg-background">
                 <BreadCrumb />
                 <div className="flex-1 min-h-0">
-                    <ModelContextProvider>
-                        <RunHistoryChatDrawerProvider>
-                            <Outlet />
-                        </RunHistoryChatDrawerProvider>
-                    </ModelContextProvider>
+                    <RunHistoryChatDrawerProvider>
+                        <Outlet />
+                    </RunHistoryChatDrawerProvider>
                 </div>
             </main>
         </SidebarProvider>

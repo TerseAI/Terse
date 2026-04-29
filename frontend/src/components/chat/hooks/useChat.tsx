@@ -1,6 +1,6 @@
-import { type ModelRequest, type ToolCall, type ToolCallComplete } from "terse-types"
+import { type ModelEvent, type ModelRequest, type ToolApprovalResponse, type ToolCall, type ToolCallComplete } from "terse-types"
 
-import { Turn } from "../Turn"
+import type { Turn } from "../turnModel"
 
 import { useChatInput } from "./useChatInput"
 import { useChatTurns } from "./useChatTurns"
@@ -27,48 +27,20 @@ export function useChat({
     onMultipleChoiceAnswer,
     addUserTurnsLocally = false
 }: UseChatOptions) {
-    const {
-        turns,
-        isPendingAssistantResponse,
-        handleDelta,
-        handleToolCallGenerating,
-        handleToolCall,
-        handleToolCallComplete,
-        handleRunError,
-        handleCancel,
-        handleNaturalStop,
-        handleFilterResult,
-        handleThinking,
-        handleToolApprovalRequest,
-        handleToolApprovalResponse,
-        addUserTurn,
-        handleSnippet,
-        handleProcessOutput,
-        handleMultipleChoiceAnswered
-    } = useChatTurns({ initialTurns })
+    const { turns, isPendingAssistantResponse, onEvent, addUserTurn, handleMultipleChoiceAnswered } = useChatTurns({ initialTurns })
 
     const { sendMessage: sendSocketMessage } = useCompletionSocket({
         subscribeToEvents,
         sendMessage: sendModelRequest,
-        onDelta: handleDelta,
-        onToolCallGenerating: handleToolCallGenerating,
-        onToolCall: (req: ToolCall) => {
-            handleToolCall(req)
-            onToolCall?.(req)
-        },
-        onToolCallComplete: (req: ToolCallComplete) => {
-            handleToolCallComplete(req)
-            onToolCallComplete?.(req)
-        },
-        onRunError: handleRunError,
-        onNaturalStop: handleNaturalStop,
-        onFilterResult: handleFilterResult,
-        onThinking: handleThinking,
-        onToolApprovalRequest: handleToolApprovalRequest,
-        onToolApprovalResponse: handleToolApprovalResponse,
-        onSnippet: handleSnippet,
-        onProcessOutput: handleProcessOutput,
-        onCancelled: handleCancel
+        onEvent: (event: ModelEvent) => {
+            onEvent(event)
+            if (event.type === "ToolCall") {
+                onToolCall?.(event)
+            }
+            if (event.type === "ToolCallComplete") {
+                onToolCallComplete?.(event)
+            }
+        }
     })
 
     const { input, setInput, sendMessage } = useChatInput({
@@ -93,7 +65,7 @@ export function useChat({
         setInput,
         sendMessage,
         sendModelRequest: sendSocketMessage,
-        handleToolApprovalResponse,
+        handleToolApprovalResponse: (response: ToolApprovalResponse) => onEvent(response),
         handleMultipleChoiceAnswer
     }
 }

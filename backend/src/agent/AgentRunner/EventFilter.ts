@@ -241,17 +241,18 @@ export async function filterEvent(event: TriggerRuntime, agentWithRelations: Age
             })
             await seedEventContextForFilteredRunIfNeeded(trackingParams.runId, eventContextText, parsed.isRelevant)
 
+            const filterResultId = `filter-result-live-${randomString(15)}`
             const filterResultEvent = {
                 type: "FilterResult" as const,
+                id: filterResultId,
+                response_id: result.lastResponseId ?? filterResultId,
                 isRelevant: parsed.isRelevant,
                 reason: parsed.reason,
-                confidence: parsed.confidence,
-                step_id: randomString(15)
+                confidence: parsed.confidence
             }
             if (io) {
                 const runHistoryModelEvent: RunHistoryModelEvent = {
                     ...filterResultEvent,
-                    id: `filter-result-live-${randomString(15)}`,
                     timestamp: Date.now()
                 }
                 const payload: RunHistoryModelSocketEvent = {

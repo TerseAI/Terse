@@ -1,13 +1,12 @@
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Activity, BarChart3, Bell, ChevronRight, Home, KeyRound, Plug, Plus, Terminal, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, BookOpen, ChevronRight, ExternalLink, Home, KeyRound, Plug, Terminal, Zap } from "lucide-react"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
 
-import { Button } from "@/components/ui/button"
 import {
     Sidebar,
     SidebarContent,
@@ -32,7 +31,6 @@ import { AppSidebarHeader } from "./SidebarHeader"
 
 export function AppSidebar() {
     const { agents, isLoading } = useAgents({ limit: 100 })
-    const navigate = useNavigate()
 
     const webUiAgents = agents.filter(a => a.source !== "SDK")
     const sdkJobs = agents.filter(a => a.source === "SDK")
@@ -41,12 +39,6 @@ export function AppSidebar() {
         <Sidebar>
             <AppSidebarHeader />
             <SidebarContent>
-                <div className="px-3 py-4">
-                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
-                        <Plus className="size-4" />
-                        Add Agent
-                    </Button>
-                </div>
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
@@ -89,7 +81,17 @@ function PlainNavItem({ title, url, icon: Icon, iconColor }: NavItem) {
 function ApplicationNavigation({ agents, sdkJobs, loading }: ApplicationNavigationProps) {
     return (
         <SidebarMenu>
-            <PlainNavItem title="Home" url={FrontendRoutes.APP} icon={Home} iconColor="text-primary" />
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                    <a href="https://docs.useterse.ai" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                        <BookOpen className="text-primary" />
+                        <span>Docs</span>
+                        <ExternalLink className="ml-auto size-3 text-muted-foreground" />
+                    </a>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <PlainNavItem title="Home" url={FrontendRoutes.HOME} icon={Home} iconColor="text-primary" />
 
             {agents.length > 0 && (
                 <Collapsible defaultOpen className="group/collapsible">
@@ -177,8 +179,6 @@ interface AgentsListProps {
     loading: boolean
 }
 function AgentsList({ agents, loading }: AgentsListProps) {
-    const navigate = useNavigate()
-
     if (loading) {
         return (
             <SidebarMenuSub>
@@ -200,14 +200,6 @@ function AgentsList({ agents, loading }: AgentsListProps) {
             {agents.map(agent => (
                 <AgentListItem key={agent.id} agent={agent} />
             ))}
-            <SidebarMenuSubItem>
-                <SidebarMenuSubButton asChild>
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground" onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}>
-                        <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor" />
-                        Add Agent
-                    </Button>
-                </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
         </SidebarMenuSub>
     )
 }

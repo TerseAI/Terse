@@ -61,8 +61,7 @@ export class SdkJobExecutionService {
         const label = SANDBOX_STAGE_LABELS[stage]
 
         if (status === "started") {
-            this.emitter.emit({ type: "ToolCallGenerating", tool_name: label, step_id: stepId, timestamp: now }, now)
-            this.emitter.emit({ type: "ToolCall", summary: label, step_id: stepId, parameters: "", integration: "sandbox", timestamp: now }, now)
+            this.emitter.emit({ type: "ToolCall", id: stepId, response_id: stepId, summary: label, parameters: "", integration: "sandbox", timestamp: now }, now)
             return
         }
 
@@ -71,8 +70,9 @@ export class SdkJobExecutionService {
 
         const event: ModelEvent = {
             type: "ToolCallComplete",
+            id: stepId,
+            response_id: stepId,
             tool_name: label,
-            step_id: stepId,
             status: status === "completed" ? ToolCallExecutionStatus.COMPLETED : ToolCallExecutionStatus.FAILED,
             changed_items: [],
             integration: "sandbox",
@@ -81,6 +81,13 @@ export class SdkJobExecutionService {
             ...(status === "failed" && opts?.detail ? { errorContext: { error: opts.detail } } : {})
         }
         this.emitter.emit(event, now)
+    }
+
+    private emitSandboxNaturalStop(): void {
+        if (!this.emitter) return
+        const now = Date.now()
+        const responseId = `sandbox-${SandboxStage.RUNNING}`
+        this.emitter.emit({ type: "NaturalStop", id: `${responseId}-stop`, response_id: responseId, timestamp: now }, now)
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
@@ -147,6 +154,7 @@ export class SdkJobExecutionService {
                 logger.error("Failed to mark run as failed after SDK execution error", { error: persistError, runId })
             }
         } finally {
+            this.emitSandboxNaturalStop()
             if (sandboxTokenId) {
                 await this.deleteSandboxApiToken(sandboxTokenId).catch(err => {
                     logger.warn("Failed to delete sandbox API token", { error: err, tokenId: sandboxTokenId })
@@ -511,6 +519,7 @@ export class SdkJobExecutionService {
             {
                 type: "ProcessOutput",
                 id,
+                response_id: id,
                 label: input.label,
                 stream: input.stream,
                 content: input.content,

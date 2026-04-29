@@ -7,7 +7,14 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, ConfigDict, Discriminator, EmailStr, Field, RootModel
+from pydantic import (
+    AwareDatetime,
+    ConfigDict,
+    Discriminator,
+    EmailStr,
+    Field,
+    RootModel,
+)
 
 from terse_sdk.types._base import TerseModel
 
@@ -4344,17 +4351,6 @@ class ToolCall(TerseModel):
     timestamp: float
 
 
-class ToolCallGenerating(TerseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    tool_name: str
-    step_id: str
-    type: Literal["ToolCallGenerating"] = "ToolCallGenerating"
-    id: str | None = None
-    timestamp: float
-
-
 class ToolApprovalRequest(TerseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -4383,7 +4379,6 @@ class ModelEvent(
     RootModel[
         ToolApprovalResponse
         | ToolApprovalRequest
-        | ToolCallGenerating
         | ToolCall
         | ToolCallComplete
         | TextDelta
@@ -4400,7 +4395,6 @@ class ModelEvent(
     root: (
         ToolApprovalResponse
         | ToolApprovalRequest
-        | ToolCallGenerating
         | ToolCall
         | ToolCallComplete
         | TextDelta

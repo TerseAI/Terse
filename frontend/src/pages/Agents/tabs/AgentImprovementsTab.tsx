@@ -1,11 +1,10 @@
-import { RefObject, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import { Agent, AgentImprovement } from "terse-types/types"
 
-import { BuilderChatHandle } from "@/components/chat/BuilderChat"
 import { Button } from "@/components/ui/button"
 import { CopyCommandButton } from "@/components/ui/copy-command-button"
 import { DiffViewer } from "@/components/ui/diff-viewer"
@@ -15,14 +14,9 @@ import { useAgentImprovements } from "@/hooks/api/useAgentImprovements"
 import { BackendProvider } from "@/services/backend"
 import { formatRelativeTime } from "@/utility/timeUtils"
 
-const CHAT_OPEN_DELAY_MS = 300
-
 type AgentImprovementsTabProps = {
     agentId: string | null
     source?: Agent["source"]
-    builderChatRef?: RefObject<BuilderChatHandle | null>
-    setBuilderChatOpen?: (open: boolean) => void
-    builderChatOpen?: boolean
 }
 
 /** Lightweight hook for the tab badge — reuses the same SWR cache as the full hook. */
@@ -34,7 +28,7 @@ export function useAgentPendingCount(agentId: string | null): number {
     }, [improvements, improvementsEnabled])
 }
 
-export default function AgentImprovementsTab({ agentId, source, builderChatRef, setBuilderChatOpen, builderChatOpen }: AgentImprovementsTabProps) {
+export default function AgentImprovementsTab({ agentId, source }: AgentImprovementsTabProps) {
     const isSdk = source === "SDK"
     const { review, improvements, improvementsEnabled, isLoading, mutate } = useAgentImprovements(agentId)
     const [isToggling, setIsToggling] = useState(false)
@@ -63,21 +57,9 @@ export default function AgentImprovementsTab({ agentId, source, builderChatRef, 
     const handleApply = async (improvement: AgentImprovement) => {
         setIsApplyingId(improvement.id)
         try {
-            const response = await BackendProvider.applyImprovement(agentId, improvement.id)
+            await BackendProvider.applyImprovement(agentId, improvement.id)
             await mutate()
-
-            if (isSdk) {
-                toast.success("Improvement acknowledged")
-            } else {
-                setBuilderChatOpen?.(true)
-                setTimeout(
-                    () => {
-                        builderChatRef?.current?.sendMessage(response.appliedPrompt!)
-                    },
-                    builderChatOpen ? 0 : CHAT_OPEN_DELAY_MS
-                )
-                toast.success("Applying improvement via builder chat...")
-            }
+            toast.success(isSdk ? "Improvement acknowledged" : "Improvement applied")
         } catch (error) {
             console.error("Failed to apply improvement", error)
             toast.error("Failed to apply improvement")
@@ -116,28 +98,11 @@ export default function AgentImprovementsTab({ agentId, source, builderChatRef, 
     const handleApplyAll = async () => {
         setIsApplyingAll(true)
         try {
-            const prompts: string[] = []
             for (const improvement of pendingImprovements) {
-                const response = await BackendProvider.applyImprovement(agentId, improvement.id)
-                if (response.appliedPrompt) {
-                    prompts.push(response.appliedPrompt)
-                }
+                await BackendProvider.applyImprovement(agentId, improvement.id)
             }
             await mutate()
-
-            if (isSdk) {
-                toast.success(`${pendingImprovements.length} improvements acknowledged`)
-            } else if (prompts.length > 0) {
-                const combined = prompts.join("\n\n---\n\n")
-                setBuilderChatOpen?.(true)
-                setTimeout(
-                    () => {
-                        builderChatRef?.current?.sendMessage(combined)
-                    },
-                    builderChatOpen ? 0 : CHAT_OPEN_DELAY_MS
-                )
-                toast.success(`Applying ${prompts.length} improvements via builder chat...`)
-            }
+            toast.success(isSdk ? `${pendingImprovements.length} improvements acknowledged` : `${pendingImprovements.length} improvements applied`)
         } catch (error) {
             console.error("Failed to apply all improvements", error)
             toast.error("Failed to apply all improvements")

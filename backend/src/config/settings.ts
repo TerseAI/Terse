@@ -184,6 +184,10 @@ export const settings = {
     parallel: {
         apiKey: requireEnv("PARALLEL_API_KEY"),
         webhookSecret: requireEnv("PARALLEL_WEBHOOK_SECRET")
+    },
+
+    aisdk: {
+        default: optionalEnv("MODEL_DEFAULT", "anthropic:claude-opus-4-7")
     }
 } as const
 

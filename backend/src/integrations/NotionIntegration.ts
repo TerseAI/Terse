@@ -121,7 +121,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         additionalStatePayload?: AdditionalStateParams
     ): Promise<OAuthInstallationDetails> {
         // Note: options parameter is required by interface but NotionIntegration uses NoInstallationOptions
-        // additionalStatePayload allows passing extra state variables (e.g., chat metadata for ChatAgent resumption)
+        // additionalStatePayload allows passing extra state variables
         // Generate state token for security (prevents CSRF)
         const state = createOAuthStateToken({
             userId,

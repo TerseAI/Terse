@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { AnimatePresence, motion } from "framer-motion"
@@ -6,7 +6,6 @@ import { Bell, Check, ChevronRight, Copy, FileText, MoreVertical, Pause, Play, P
 import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
 import { CONFIG_DETAILS, ConfigData, ConfigType, buildRoute, isConfigComplete } from "terse-types"
-import { FROM_SETUP_CHAT_PARAM } from "terse-types/FrontendRoutesBuilder"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentOutput, TransientAgentTrigger } from "terse-types/types"
 import { Agent, AgentOutput, AgentPrompt, AgentTrigger } from "terse-types/types"
@@ -17,7 +16,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useAgentCount } from "@/hooks/api/useAgentCount"
 import { useAgentMutations } from "@/hooks/api/useAgents"
 import { useUser } from "@/hooks/api/useUser"
-import { useBuilderSession } from "@/hooks/useBuilderSession"
 import { getDefaultAgentName, toAgentOutput, toAgentTrigger } from "@/utility/AgentUtils"
 
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector"
@@ -25,8 +23,6 @@ import EditableTextField from "../../../components/ui/EditableTextField"
 import { Badge } from "../../../components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
 import { cn } from "../../../lib/utils"
-import { useModelContext } from "../../../services/ModelContextProvider"
-import { AgentSetUpPageContext } from "../../../utility/AgentModelDonation"
 import AgentApprovalSettings from "../AgentApprovalSettings"
 import AgentNotificationSettings from "../AgentNotificationSettings"
 import { AddOutputModal } from "../components/AddOutputModal"
@@ -360,21 +356,10 @@ export default function AgentSetupTab({
     mutate
 }: AgentSetupTabProps) {
     const { totalCount } = useAgentCount()
-    const { clearSessionId } = useBuilderSession()
-    const [searchParams, setSearchParams] = useSearchParams()
+    const [searchParams] = useSearchParams()
     const { user: agentCreatorUser } = useUser(agentCreator)
     const defaultName = getDefaultAgentName(totalCount)
     void _setRequireApproval
-
-    // Clear setup session when landing on agent page
-    useEffect(() => {
-        if (searchParams.has(FROM_SETUP_CHAT_PARAM)) {
-            searchParams.delete(FROM_SETUP_CHAT_PARAM)
-            setSearchParams(searchParams, { replace: true })
-            clearSessionId()
-        }
-    }, [searchParams, setSearchParams, clearSessionId])
-    const { donate } = useModelContext()
 
     const agentInputs = inputs.map(toAgentTrigger).filter((i): i is AgentTrigger => i != null)
     const agentOutputs = outputs.map(toAgentOutput).filter((o): o is AgentOutput => o != null)
@@ -413,8 +398,6 @@ export default function AgentSetupTab({
     const [activeSection, setActiveSection] = useState<SetupSection>(
         sectionFromQuery && ["triggers", "prompt", "skills", "alerts"].includes(sectionFromQuery) ? (sectionFromQuery as SetupSection) : "triggers"
     )
-
-    donate("Agent Set Up Page Context", new AgentSetUpPageContext(activeSection))
 
     return (
         <div className="grid grid-cols-20 @container/agent-setup">

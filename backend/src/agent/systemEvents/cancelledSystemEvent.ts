@@ -4,7 +4,7 @@ import { z } from "zod"
 import { randomString } from "../../utility/strings"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
-import { appendSystemEventToBuilderSession, appendSystemEventToRunHistory } from "./systemEventSessions"
+import { appendSystemEventToRunHistory } from "./systemEventSessions"
 
 const cancelledSystemEventPayloadSchema = z.object({
     kind: z.literal("cancelled"),
@@ -70,8 +70,4 @@ export function parseCancelledSystemEventItem(item: unknown): ParsedCancelledSys
 
 export async function appendRunHistoryCancelledSystemEvent(runId: string, reason?: string, options?: CancelledSystemEventOptions): Promise<void> {
     await appendSystemEventToRunHistory(runId, buildCancelledSystemEventItem(reason, options))
-}
-
-export async function appendBuilderChatCancelledSystemEvent(sessionId: string, reason?: string, options?: CancelledSystemEventOptions): Promise<void> {
-    await appendSystemEventToBuilderSession(sessionId, buildCancelledSystemEventItem(reason, options))
 }

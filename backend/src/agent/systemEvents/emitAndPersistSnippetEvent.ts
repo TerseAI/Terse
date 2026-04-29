@@ -75,6 +75,7 @@ export async function emitAndPersistSnippetEvent(input: EmitAndPersistSnippetEve
             type: "Snippet",
             snippet: normalizedSnippet,
             id: eventId,
+            response_id: eventId,
             timestamp: timestamp
         }
         const payload: RunHistoryModelSocketEvent = {

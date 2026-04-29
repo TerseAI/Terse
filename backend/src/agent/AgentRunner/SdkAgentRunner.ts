@@ -1,10 +1,12 @@
 import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
+import { AiSdkModel, aisdk } from "@openai/agents-extensions/ai-sdk"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
 import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { SdkAgentStreamEvent, User } from "terse-types"
+import { stripZodJsonSchemaMetadata } from "terse-types"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
@@ -17,6 +19,7 @@ import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
+import { resolveLanguageModel } from "../modelRegistry"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage } from "../userMessage"
@@ -55,7 +58,14 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.send = params.send
         this.isProductionRun = !!params.isProductionRun
         // Todo: think about modifying users zod schema so it's compatible with strict mode. Avoids landmine where optional() crashes unless they add nullable.
-        this.outputType = params.outputSchema ? { type: "json_schema", name: "output", strict: true, schema: params.outputSchema as JsonSchemaDefinition["schema"] } : undefined
+        this.outputType = params.outputSchema
+            ? {
+                  type: "json_schema",
+                  name: "output",
+                  strict: true,
+                  schema: parseJsonSchemaForAgentOutput(params.outputSchema)
+              }
+            : undefined
         this.memorySession = params.isProductionRun ? new RunHistoryChatMemorySession({ sessionId: params.runId }) : new InMemoryAgentSession(params.runId)
         this.streamEventEmitter = new StreamEventEmitter(getSocketIO(), {
             runId: params.runId,
@@ -156,7 +166,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             this.send({
                 type: "tool_approval_requested",
                 toolApprovalRequested: {
-                    stepId: event.step_id,
+                    stepId: event.id,
                     toolName: event.name,
                     arguments: event.arguments
                 }
@@ -248,7 +258,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         name: string
         systemPromptDeps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData>
         runContext: RunContext
-        model: string
+        model: AiSdkModel
         tools: Tool<SdkRunnerSession>[]
         modelSettings?: ModelSettings
     }): Promise<Agent<SdkRunnerSession, AgentOutputType>> {
@@ -280,12 +290,14 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             },
             outputs: this.outputs
         }
+        const defaultModel = settings.aisdk.default
+        const resolved = resolveLanguageModel(defaultModel)
 
         return {
             name: "Terse SDK Agent",
             systemPromptDeps: deps,
             runContext: { runId: this.sdkRunId } as RunContext,
-            model: "gpt-5.2",
+            model: aisdk(resolved.model),
             tools: this.tools
         }
     }
@@ -364,6 +376,15 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
 
         return outputs
     }
+}
+
+function parseJsonSchemaForAgentOutput(raw: unknown): JsonSchemaDefinition["schema"] {
+    const cleaned = stripZodJsonSchemaMetadata(raw)
+    if (typeof cleaned !== "object" || cleaned === null || Array.isArray(cleaned)) {
+        throw new Error("SDK output schema must be a JSON object schema with type, properties, required, and additionalProperties.")
+    }
+    const cleanedRecord = cleaned as Record<string, unknown>
+    return cleanedRecord as JsonSchemaDefinition["schema"]
 }
 
 type SdkRunnerSession = SessionWithTracking<Session>

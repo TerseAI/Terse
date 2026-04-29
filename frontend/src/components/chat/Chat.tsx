@@ -5,9 +5,9 @@ import { type ModelRequest } from "terse-types"
 import type { ToolApprovalResponseOptions } from "../../socket"
 
 import { type CTAChip, ChatLayout, type ChatLayoutHandle } from "./ChatLayout"
-import { Turn } from "./Turn"
 import { useChat } from "./hooks/useChat"
 import { type ChatEventSubscription } from "./hooks/useCompletionSocket"
+import type { Turn } from "./turnModel"
 
 type ChatProps = {
     initialTurns?: Turn[]
