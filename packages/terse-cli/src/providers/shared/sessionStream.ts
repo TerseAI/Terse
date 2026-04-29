@@ -1,9 +1,10 @@
 import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
-import { type SessionStreamEvent, type SessionStreamHandle, openSessionStream as connectTerseSessionStream } from "terse-sdk"
+import { SessionStreamError, type SessionStreamEvent, type SessionStreamHandle, openSessionStream as connectTerseSessionStream } from "terse-sdk"
 import { ApiRoutes } from "terse-types"
 import type { SdkApprovalDecisionRequestBody } from "terse-types"
 
+import { CliError, ErrorCode } from "../../cliError.js"
 import { BACKEND_URL } from "../../config.js"
 
 export type SessionHandle = SessionStreamHandle
@@ -17,18 +18,22 @@ type SessionStreamOptions = {
 }
 
 export async function openSessionStream(apiKey: string, options: SessionStreamOptions = {}): Promise<SessionHandle> {
-    return connectTerseSessionStream(BACKEND_URL, apiKey, {
-        onEvent: async (event: SessionStreamEvent) => {
-            if (options.onEvent) {
-                try {
-                    await options.onEvent(event)
-                } catch (error) {
-                    console.error(chalk.red(`  Session event handler failed: ${(error as Error).message}`))
+    try {
+        return await connectTerseSessionStream(BACKEND_URL, apiKey, {
+            onEvent: async (event: SessionStreamEvent) => {
+                if (options.onEvent) {
+                    try {
+                        await options.onEvent(event)
+                    } catch (error) {
+                        console.error(chalk.red(`  Session event handler failed: ${(error as Error).message}`))
+                    }
                 }
+                logSessionEvent(event, options)
             }
-            logSessionEvent(event, options)
-        }
-    })
+        })
+    } catch (error) {
+        throw mapSessionStreamError(error)
+    }
 }
 
 export async function submitApprovalDecision(apiKey: string, params: SdkApprovalDecisionRequestBody): Promise<void> {
@@ -109,10 +114,27 @@ export async function promptForToolApproval(toolName: string, rawArguments: stri
     return approved
 }
 
+// Helper functions
 function safeParseJson(value: string): { tool?: string; status?: string } | null {
     try {
         return JSON.parse(value) as { tool?: string; status?: string }
     } catch {
         return null
     }
+}
+
+function mapSessionStreamError(error: unknown): unknown {
+    if (error instanceof SessionStreamError) {
+        if (error.status === 401 || error.status === 403) {
+            return new CliError("not_authenticated", "Not authenticated.", {
+                detail: "Your TERSE_API_KEY is missing, expired, or invalid. Run `terse login` to re-authenticate, or set a valid TERSE_API_KEY in your environment.",
+                actionRequired: true,
+                exitCode: ErrorCode.BAD_ARGUMENTS
+            })
+        }
+        return new CliError("session_stream_failed", "Could not start a Terse session.", {
+            detail: `${error.message}\n  Backend: ${BACKEND_URL}`
+        })
+    }
+    return error
 }

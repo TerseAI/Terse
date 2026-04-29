@@ -19,8 +19,25 @@ export type OpenSessionStreamOptions = {
 }
 
 /**
+ * Thrown when {@link openSessionStream} cannot establish the SSE connection.
+ * Exposes the HTTP `status` so callers can distinguish auth failures (401/403)
+ * from other transport errors.
+ */
+export class SessionStreamError extends Error {
+    readonly status: number
+
+    constructor(status: number, message?: string) {
+        super(message ?? `Failed to open session event stream (HTTP ${status})`)
+        this.name = "SessionStreamError"
+        this.status = status
+    }
+}
+
+/**
  * Opens the Terse SSE session used for live run/tool events (same endpoint as the `terse` CLI).
  * Keeps the stream draining until `close()` is called.
+ *
+ * Throws {@link SessionStreamError} if the server responds with a non-2xx status.
  */
 export async function openSessionStream(apiBaseUrl: string, apiKey: string, options: OpenSessionStreamOptions = {}): Promise<SessionStreamHandle> {
     const base = apiBaseUrl.replace(/\/$/, "")
@@ -29,7 +46,7 @@ export async function openSessionStream(apiBaseUrl: string, apiKey: string, opti
     })
 
     if (!response.ok || !response.body) {
-        throw new Error(`Failed to open session event stream (HTTP ${response.status})`)
+        throw new SessionStreamError(response.status)
     }
 
     const reader = response.body.getReader()

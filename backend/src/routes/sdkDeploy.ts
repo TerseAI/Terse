@@ -13,6 +13,7 @@ import { SdkSandboxImageService } from "../services/SdkSandboxImageService"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { createProjectScopedToken } from "../utility/apiTokens"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
+import { markDeployFailed, markDeploySucceeded } from "../utility/projectDeploys"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 import { UrlValidationError, validateRemoteServerUrl } from "../utility/urlValidation"
@@ -169,10 +170,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, projectId)
             } catch (error) {
                 logger.error("Failed to create or update automation", { error })
-                await prisma.project_deploys.update({
-                    where: { id: deploy.id },
-                    data: { status: "FAILED" }
-                })
+                await markDeployFailed(prisma, deploy.id, error)
                 emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
                 return res.status(500).json({ success: false, error: "Failed to create or update automation" })
             }
@@ -196,14 +194,18 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             })
         }
 
-        await prisma.project_deploys.update({
-            where: { id: deploy.id },
-            data: { status: "SUCCEEDED" }
-        })
-
         // Delete any SDK automations not in this deploy
         const deployedNames = new Set(jobs.map(j => j.jobName))
         const removed = await removeStaleAutomations(prisma, organizationId, deployedNames, projectId)
+
+        const jobsAdded = results.filter(r => !r.isUpdate).length
+        await markDeploySucceeded(
+            prisma,
+            deploy.id,
+            jobs.map(j => j.jobName),
+            jobsAdded,
+            removed.length
+        )
 
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
         emitCacheInvalidationWithKey(organizationId, "agents")
@@ -222,10 +224,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         return res.status(200).json(response)
     } catch (error) {
         logger.error("SDK deploy failed", { error })
-        await prisma.project_deploys.update({
-            where: { id: deploy.id },
-            data: { status: "FAILED" }
-        })
+        await markDeployFailed(prisma, deploy.id, error)
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
         return res.status(500).json({
             success: false,
