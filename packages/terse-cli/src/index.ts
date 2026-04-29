@@ -253,9 +253,10 @@ if (isCliRunCommandEnabled()) {
         .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
         .option("--event <json>", "Serialized event JSON string")
         .option("--event-file <path>", "Path to a JSON file containing the serialized event")
+        .option("-v, --verbose", "Show agent stream output (use --no-verbose to silence)", true)
         .option(...ENTRY_FILE_OPTION)
-        .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; entryFile?: string }) => {
-            await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile)
+        .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
+            await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile, opts?.verbose)
         })
 }
 

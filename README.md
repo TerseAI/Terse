@@ -1,384 +1,142 @@
-# Terse - The best Agent Builder For Software Teams
+<div align="center">
+  <a href="https://useterse.ai">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="frontend/public/terse.png">
+      <img alt="Terse" src="frontend/public/terse.png" width="220">
+    </picture>
+  </a>
 
-# Introduction
+  <h1>Terse</h1>
 
-Terse is an Agent Builder build for the modern Software team. With the power of AI, writing code is no longer the bottleneck, it's all of the stuff around it. Code reviews, release notes, project statuses, tracking feedback etc...
+  <p><strong>AI Workflows as Code.</strong></p>
 
-Terse is a flexible platform that deeply integrates (can analyze video photo and text) with Linear Github Slack Notion PostHog Datadog etc... In minutes, you can build an background agent perfectly tailored to your workflow to help relieve these bottlenecks as they come up in your team.
+  <p>
+    A code-first AI workflow platform for developers and coding agents.<br/>
+    Connect your tools, generate a typed SDK from your workspace, and deploy serverless workflows that mix deterministic tool calls with agentic loops.
+  </p>
 
-## Package Manager
+  <p>
+    <a href="https://github.com/TerseAI/Terse/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/TerseAI/Terse?style=flat&logo=github&color=f5a623"></a>
+    <a href="https://www.npmjs.com/package/terse-cli"><img alt="terse-cli on npm" src="https://img.shields.io/npm/v/terse-cli?label=terse-cli&logo=npm&color=cb3837"></a>
+    <a href="https://www.npmjs.com/package/terse-sdk"><img alt="terse-sdk on npm" src="https://img.shields.io/npm/v/terse-sdk?label=terse-sdk&logo=npm&color=cb3837"></a>
+    <a href="https://github.com/TerseAI/Terse/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/TerseAI/Terse?color=blue"></a>
+    <img alt="Built with TypeScript" src="https://img.shields.io/badge/built%20with-TypeScript-3178c6?logo=typescript&logoColor=white">
+  </p>
 
-This project uses **pnpm** (not npm or yarn). Install it if you haven't:
+  <p>
+    <a href="https://docs.useterse.ai/quickstart"><img alt="Quickstart" src="https://img.shields.io/badge/quickstart-5%20min-22c55e?logo=rocket&logoColor=white"></a>
+    <a href="https://docs.useterse.ai"><img alt="Docs" src="https://img.shields.io/badge/docs-useterse.ai-2563eb?logo=readthedocs&logoColor=white"></a>
+    <a href="https://useterse.ai"><img alt="Website" src="https://img.shields.io/badge/website-useterse.ai-000000"></a>
+    <a href="https://www.linkedin.com/company/terse-inc"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Terse-0a66c2?logo=linkedin&logoColor=white"></a>
+  </p>
 
-```bash
-npm install -g pnpm
-```
+  <p>
+    <a href="https://skills.sh/terseai/terse"><img alt="Listed on skills.sh" src="https://img.shields.io/badge/skills.sh-TerseAI%2FTerse-000000?style=flat&labelColor=000000"></a>
+    <a href="https://skillsplayground.com/skills/by/TerseAI/"><img alt="Skills Playground" src="https://skillsplayground.com/badges/author/TerseAI.svg"></a>
+    <a href="https://github.com/TerseAI/Terse/tree/main/packages/terse-claude-plugin"><img alt="Claude Code skill" src="https://img.shields.io/badge/Claude%20Code-skill-d97757?logo=anthropic&logoColor=white"></a>
+  </p>
 
-Then install dependencies:
+  <p>
+    <a href="https://docs.useterse.ai/quickstart">Quickstart</a> ·
+    <a href="https://docs.useterse.ai/reference/typescript-sdk">SDK</a> ·
+    <a href="https://docs.useterse.ai/reference/cli">CLI</a> ·
+    <a href="https://docs.useterse.ai/templates">Templates</a> ·
+    <a href="https://useterse.ai">Sign up</a>
+  </p>
+</div>
 
-```bash
-# In /frontend
-pnpm install
+---
 
-# In /backend
-pnpm install
-```
+## Why Terse
 
-## Python SDK Development
+AI agents are fast to build but make mistakes. Deterministic workflows are reliable but slow to set up. Terse lets you mix both in the same workflow: call tools directly when you need precision, hand off to an agent when you need judgment.
 
-The repo contains a Python workspace for the runtime SDK:
+- **Code-first.** Workflows are TypeScript in your repo. Review them in PRs, track them in git history.
+- **Typed SDK from your workspace.** `terse generate` generates strongly-typed handles for the channels, repos, projects, and tools you actually use, so the LLM (and your IDE) only sees what's in scope.
+- **Mix tools and agents.** Call a tool deterministically when you know what you want. Hand off to an agent when you need judgment. Same workflow, same types.
+- **Scoped skills, no surprises.** Tool access is bounded by the skills you declare. The agent can't reach outside that scope. No more catastrophic deletions caused by hallucinations.
+- **Secrets and OAuth, handled.** Integration credentials live in Terse's secret manager (using Google Secret Manager) with automatic OAuth refresh.
+- **Serverless deploys.** `terse deploy` ships your workflows to Terse's hosted runtime. Every run is logged with a complete action trail.
 
-- `packages/terse-python-sdk`
+## Quickstart
 
-CLI development lives in the TypeScript package at `packages/terse-cli`. Python tooling in this repo is for the SDK package.
+Get a workflow live in under 5 minutes — full guide at [docs.useterse.ai/quickstart](https://docs.useterse.ai/quickstart).
 
-### Prerequisites
-
-Install uv if you do not already have it:
-
-```bash
-brew install uv
-```
-
-Make sure you have a Python interpreter that satisfies `>=3.11`. If you want uv to install one for you:
-
-```bash
-uv python install 3.11
-```
-
-### One-Time Python Workspace Setup
-
-From the repo root:
-
-```bash
-npm run python:setup
-```
-
-This will:
-
-- create `.venv/` at the repo root
-- install the workspace packages in editable mode
-- install shared dev tools like `ruff` and `ty`
-- generate/update `uv.lock` when dependencies change
-
-### CLI Development
-
-For CLI work, use the TypeScript package directly:
-
-- `packages/terse-cli` for the CLI implementation
-- `packages/terse-sdk` for the runtime SDK used by the CLI
-- `pnpm install` from the repo root to install workspace dependencies
-- `pnpm run install-global` from the repo root to build and globally link `terse-sdk` and `terse-cli`
-- `pnpm run dev` from the repo root to start the full workspace watch mode for `terse-types`, `terse-sdk`, `terse-cli`, `frontend`, and `backend`
-
-### Astral Tooling
-
-Run all Python tooling from the repo root.
-
-Recommended wrapper scripts:
+With Code
 
 ```bash
-npm run python:setup
-npm run python:check
-pnpm run python:test
-npm run python:dist:check
-npm run python:build
+npm install -g terse-cli
+terse init my-project
+cd my-project
+code . # build some workflows
+terse deploy
 ```
 
-Sync / install dependencies:
-
+With our Claude Code skill
 ```bash
-uv sync --all-packages
+npx skills add TerseAI/Terse
+
+# in claude
+/terse:create describe your workflow
 ```
 
-Refresh the lockfile after dependency changes:
-
-```bash
-uv lock
-uv sync --all-packages
-```
-
-Lint:
-
-```bash
-uv run ruff check packages/terse-python-sdk/src
-uv run ruff check --fix packages/terse-python-sdk/src
-```
-
-Format:
-
-```bash
-uv run ruff format packages/terse-python-sdk/src
-uv run ruff format --check packages/terse-python-sdk/src
-```
-
-Type check:
-
-```bash
-uv run ty check packages/terse-python-sdk/src
-```
-
-Run Python tests:
-
-```bash
-uv run pytest packages/terse-python-sdk/tests
-```
-
-Build packages:
-
-```bash
-npm run python:build
-npm run python:dist:check
-```
-
-Inspect resolved dependencies:
-
-```bash
-uv tree
-uv tree --package terse-sdk
-```
-
-
-### Recommended Python Dev Loop
-
-For day-to-day Python development:
-
-1. Run `npm run python:setup` the first time.
-2. Make changes in `packages/terse-python-sdk`.
-3. Run `npm run python:check`.
-4. Build the package artifacts with `npm run python:build` before publishing or release work.
-
-### Publishing the Python SDK
-
-Start from a clean working tree:
-
-```bash
-git status --short
-```
-
-The release-prep configs allow dirty trees so the second bump can run after the first one edits files, but you should still verify the tree is clean before starting the sequence.
-
-Prepare the next SDK release version from the repo root:
-
-```bash
-npm run python:release:prep:sdk -- patch
-```
-
-You can also choose a different bump type or set an explicit version:
-
-```bash
-npm run python:release:prep:sdk -- minor
-npm run python:release:prep:sdk -- --new-version 0.2.0
-```
-
-After the bump, refresh the workspace lockfile:
-
-```bash
-uv lock
-```
-
-Before publishing, build and validate the distributions from the repo root:
-
-```bash
-npm run python:dist:check
-```
-
-If you want to publish locally with a PyPI API token:
-
-```bash
-export TWINE_USERNAME=__token__
-export TWINE_PASSWORD=pypi-...
-npm run python:publish
-```
-
-The `python:publish` script first runs `npm run python:dist:check` and then uploads `dist/terse_sdk-*` with `twine`.
-
-### Publishing the npm Packages
-
-The repo includes a publish script that handles version bumping, building, and publishing for `terse-types`, `terse-sdk`, and `terse-cli`.
-
-Preview what will be published (no changes made):
-
-```bash
-pnpm run publish:npm -- --dry-run
-```
-
-Publish with npm 2FA:
-
-```bash
-pnpm run publish:npm -- --otp <code>
-```
-
-Publish without 2FA (if using an automation token):
-
-```bash
-pnpm run publish:npm
-```
-
-The script will:
-
-1. Verify you are logged into npm
-2. Prompt you to select a version bump for each package (`skip` / `patch` / `minor` / `major`)
-3. Build all packages in dependency order (`terse-types` -> `terse-sdk` -> `terse-cli`)
-4. Publish only the bumped packages
-5. Commit the version changes to git
-
-## Code Formatting
-
-We use **Prettier** for consistent code formatting across the team.
-
-### Setup (One-time)
-
-1. **Install the Prettier VS Code extension**
-   - Search for "Prettier - Code formatter" in VS Code/Cursor extensions
-   - Or install from: https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode
-
-2. **Install dependencies** (if you haven't already)
-   ```bash
-   # In /frontend
-   pnpm install
-
-   # In /backend
-   pnpm install
-   ```
-
-That's it! The repo includes:
-- `.prettierrc` - Formatting rules (picked up automatically by the extension)
-- `.vscode/settings.json` - Enables format-on-save for the whole team
-
-### How It Works
-
-- **Format on save**: Files auto-format when you save (Cmd+S / Ctrl+S)
-- **Manual format**: Right-click → "Format Document" or use Shift+Alt+F (Windows) / Shift+Option+F (Mac)
-- **Format entire codebase**:
-  ```bash
-  cd backend && pnpm run format
-  cd frontend && pnpm run format
-  ```
-- **Check formatting (CI)**:
-  ```bash
-  pnpm run format:check
-  ```
-## Local Dev
-
-If you want webhook-compatible local dev, make an ngrok account and set these env variables in `backend/.env`:
-
-DEV_TUNNEL=1
-NGROK_AUTH_TOKEN=38Zg3QagX6X9AnYc6WKqwedwefdGCY21_2nVjhcyeynHFNmnr7ijBw
-NGROK_DOMAIN=abbie-smoking-yetta.ngrok-free.dev
-
-Then, install ngrok with brew
-
-```
-brew install ngrok
-```
-
-After that, run `pnpm run dev` from the repo root. The backend dev script will detect the tunnel config, start ngrok automatically, update `BACKEND_URL`, and then start the backend watcher.
-
-Make sure to set your test apps (Slack github etc...) to the ngrok url.
-
-## Database Migrations
-
-We use Prisma with migrations.
-
-1. Update the schema file. When you are happy, run the following **in the /backend folder**
-
-```bash
-pnpm exec prisma migrate dev --name <some_name>
-```
-
-When you are happy with local changes, you can push to prod. 
-
-Production URL can be found on Render.com dashboard. (Or you can ask me)
-
-```bash
-DATABASE_URL="your_production_url" pnpm exec prisma migrate deploy
-```
-
-## The NPM Packages
-
-To work with terse-cli locally, you need to point backend URL to localhost with:
-
-```bash
-export TERSE_BACKEND_URL="http://localhost:3001"
-```
-
-then run the terse commands right after
-
-## Testing with Local SDK/CLI
-
-When you run `terse init` to scaffold a test project, it installs `terse-sdk` from the npm registry. To test against your local changes instead, you need to link the local packages into the test environment.
-
-### 1. Start the watchers
-
-From the repo root, run the TypeScript watchers so changes to source files rebuild `dist/` immediately:
-
-```bash
-pnpm run dev
-```
-
-### 2. Scaffold a test environment
-
-```bash
-export TERSE_BACKEND_URL="http://localhost:3001"
-terse init my-test-env
-cd my-test-env
-```
-
-### 3. Link local packages
-
-The test env needs both `terse-sdk` and its transitive dependency `terse-types` linked locally. From the test env directory, run:
-
-```bash
-npm install <path-to-repo>/packages/terse-sdk <path-to-repo>/terse-types
-```
-
-For example:
-
-```bash
-npm install ../../projects/Terse/packages/terse-sdk ../../projects/Terse/terse-types
-```
-
-This uses the `file:` protocol to symlink both packages into `node_modules/`. Since the watchers are running, any source changes in `terse-sdk`, `terse-types`, or `terse-cli` will be reflected immediately.
-
-> **Note:** Use `npm install` (not `pnpm add`) from the test env. If you previously used pnpm to link, the `package.json` will contain `link:` protocol entries that npm cannot resolve. In that case, re-run the `npm install` command above to fix it.
-
-#### Python
-
-For Python test projects, install the local SDK in editable mode using `uv` from the test project directory:
-
-```bash
-uv pip install -e <path-to-repo>/packages/terse-python-sdk
-```
-
-For example:
-
-```bash
-uv pip install -e ../../projects/Terse/packages/terse-python-sdk
-```
-
-This installs the local SDK in editable mode, so any changes you make to the SDK source are reflected immediately without reinstalling.
-
-> **Note:** Running `uv sync` will revert to the PyPI version of `terse-sdk`. Re-run the `uv pip install -e` command above after any `uv sync`.
-
-### 4. Point CLI to local backend
-
-Make sure each shell session that runs terse commands has the backend URL set:
-
-```bash
-export TERSE_BACKEND_URL="http://localhost:3001"
-```
-
-### 5. Authenticate against local WorkOS
-
-If the CLI fails with a JWKS/key error during `terse login`, the CLI's WorkOS client ID may not match your backend. Set it to match `WORKOS_CLIENT_ID` in `backend/.env`:
-
-```bash
-export TERSE_WORKOS_CLIENT_ID="<client_id from backend/.env>"
-```
+That's it. `terse deploy` ships to Terse's hosted runtime — no infra to stand up.
+
+## Integrations
+
+First-class, typed integrations for the tools you already use:
+
+<p>
+  <img alt="GitHub" src="https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white">
+  <img alt="Slack" src="https://img.shields.io/badge/Slack-4a154b?logo=slack&logoColor=white">
+  <img alt="Linear" src="https://img.shields.io/badge/Linear-5e6ad2?logo=linear&logoColor=white">
+  <img alt="Notion" src="https://img.shields.io/badge/Notion-000000?logo=notion&logoColor=white">
+  <img alt="Attio" src="https://img.shields.io/badge/Attio-000000">
+  <img alt="Snowflake" src="https://img.shields.io/badge/Snowflake-29b5e8?logo=snowflake&logoColor=white">
+  <img alt="Gmail" src="https://img.shields.io/badge/Gmail-ea4335?logo=gmail&logoColor=white">
+  <img alt="PostHog" src="https://img.shields.io/badge/PostHog-000000?logo=posthog&logoColor=white">
+  <img alt="Datadog" src="https://img.shields.io/badge/Datadog-632ca6?logo=datadog&logoColor=white">
+  <img alt="LaunchDarkly" src="https://img.shields.io/badge/LaunchDarkly-405bff?logo=launchdarkly&logoColor=white">
+</p>
+
+## What's in this repo
+
+This is the Terse monorepo — the platform code Terse runs in production, plus the public packages used to author workflows.
+
+| Package | Path | Description |
+| --- | --- | --- |
+| [`terse-cli`](https://www.npmjs.com/package/terse-cli) | `packages/terse-cli` | The `terse` command. Init projects, generate the typed SDK, deploy. |
+| [`terse-sdk`](https://www.npmjs.com/package/terse-sdk) | `packages/terse-sdk` | TypeScript runtime SDK for authoring workflows. |
+| [`terse-types`](https://www.npmjs.com/package/terse-types) | `terse-types` | Shared types, enums, and helpers. |
+| `terse-claude-plugin` | `packages/terse-claude-plugin` | Claude Code integration. |
 
 ## Documentation
 
-We use Mintlify. Look at Mintlify docs for usage instructions.
+- **Docs:** [docs.useterse.ai](https://docs.useterse.ai)
+- **Quickstart:** [docs.useterse.ai/quickstart](https://docs.useterse.ai/quickstart)
+- **SDK reference:** [docs.useterse.ai/reference/typescript-sdk](https://docs.useterse.ai/reference/typescript-sdk)
+- **CLI reference:** [docs.useterse.ai/reference/cli](https://docs.useterse.ai/reference/cli)
 
-To install mintlify, just run `pnpm i -g mint`
+## Contributing
+
+Issues and PRs welcome. If you're picking up something non-trivial, open an issue first so we can sanity-check the approach.
+
+Working on the SDK or CLI locally? Clone the repo and:
+
+```bash
+pnpm install
+pnpm run dev             # watches terse-types, terse-sdk, terse-cli, frontend, backend
+pnpm run install-global  # links your local terse-cli as `terse`
+```
+
+Self-hosting is possible but not the default path — see [docs.useterse.ai/self-hosting](https://docs.useterse.ai/self-hosting) if that's what you're after.
+
+## License
+
+See [LICENSE](LICENSE).
+
+## Links
+
+- **Website:** [useterse.ai](https://useterse.ai)
+- **Docs:** [docs.useterse.ai](https://docs.useterse.ai)
+- **LinkedIn:** [linkedin.com/company/terse-inc](https://www.linkedin.com/company/terse-inc)

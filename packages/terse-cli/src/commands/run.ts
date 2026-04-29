@@ -8,7 +8,7 @@ import { loadJob } from "../loadJob.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
-export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
+export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string, verbose?: boolean): Promise<void> {
     if (eventFile && !eventJson) {
         try {
             eventJson = fs.readFileSync(eventFile, "utf-8")
@@ -59,5 +59,5 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         parsedEvent = resolvedEvent.event
     }
 
-    await provider.executeJob(job, runId, parsedEvent, { entryFile })
+    await provider.executeJob(job, runId, parsedEvent, { entryFile, verbose })
 }
