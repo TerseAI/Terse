@@ -18,6 +18,7 @@ import {
     GetOrCreateCustomerResponse,
     RunGateDecision,
     SetOverageModeResponse,
+    StripeError,
     type TerseBillingJwtClaims,
     parseBillingForbiddenJson
 } from "terse-types"
@@ -64,7 +65,8 @@ export function billingServiceProxyForRequest(req: Request): BillingService {
 
 export function billingServiceProxyForOrganization(organizationId: string): BillingService | undefined {
     const url = settings.billing.url?.trim()
-    if (!url) return undefined
+    const secret = settings.billing.jwtSecret?.trim()
+    if (!url || !secret) return undefined
     return new BillingServiceProxy(url, { organizationId })
 }
 
@@ -92,7 +94,7 @@ export class BillingServiceProxy implements BillingService {
 
     private async jsonRequest<T>(path: string, options?: { method?: string; body?: string }): Promise<T> {
         const trimmed = this.backendUrl?.trim()
-        if (!trimmed) {
+        if (!trimmed || !settings.billing.jwtSecret?.trim()) {
             throw new BillingNoBackendError()
         }
         const base = trimmed.replace(/\/$/, "")
@@ -135,7 +137,11 @@ export class BillingServiceProxy implements BillingService {
             return undefined as T
         }
 
-        return JSON.parse(text) as T
+        try {
+            return JSON.parse(text) as T
+        } catch {
+            throw new StripeError("Billing service returned invalid JSON")
+        }
     }
 
     async createCheckoutSession(body: BillingCheckoutRequestBody): Promise<BillingStripeRedirectResponse> {
@@ -145,10 +151,10 @@ export class BillingServiceProxy implements BillingService {
         })
     }
 
-    createBillingPortalSession(_body?: BillingPortalSessionRequestBody): Promise<BillingStripeRedirectResponse> {
+    createBillingPortalSession(body?: BillingPortalSessionRequestBody): Promise<BillingStripeRedirectResponse> {
         return this.jsonRequest<BillingStripeRedirectResponse>(BillingRoutes.PORTAL_SESSION, {
             method: "POST",
-            body: JSON.stringify({} satisfies BillingPortalSessionRequestBody)
+            body: JSON.stringify(body ?? ({} satisfies BillingPortalSessionRequestBody))
         })
     }
 
@@ -181,7 +187,7 @@ export class BillingServiceProxy implements BillingService {
     async getOrCreateCustomer(body?: GetOrCreateCustomerRequestBody): Promise<GetOrCreateCustomerResponse> {
         return this.jsonRequest<GetOrCreateCustomerResponse>(BillingRoutes.CUSTOMER, {
             method: "POST",
-            body: JSON.stringify(body)
+            body: JSON.stringify(body ?? {})
         })
     }
 

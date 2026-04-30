@@ -58,7 +58,7 @@ function formatScheduledNote(balance: BalanceSummary | null, plan: Plan): string
     if (!balance?.scheduledChange) return null
     const change = balance.scheduledChange
     const date = dateFormatter.format(new Date(change.effectiveAt))
-    if (change.kind === "cancel_to_free" && plan.key === "free") {
+    if (change.kind === "cancel_to_free" && (plan.key === "free" || plan.key === balance.planKey)) {
         return `Downgrading to Free on ${date}.`
     }
     if (change.kind === "change_period" && isPurchasablePlan(plan)) {
@@ -72,7 +72,7 @@ export default function PricingPage() {
     const { user, isLoading: authLoading } = useAuth()
     const balanceEnabled = !authLoading && !!user
     const { balance, isLoading: balanceLoading } = useBillingContext(balanceEnabled)
-    const { plans, topUps, isLoading: catalogLoading } = useBillingCatalog()
+    const { plans, topUps, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog()
     const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null)
     const [loadingTopupCredits, setLoadingTopupCredits] = useState<number | null>(null)
     const [period, setPeriod] = useState<TimePeriods>(TimePeriods.YEARLY)
@@ -119,6 +119,8 @@ export default function PricingPage() {
             }
             const { url } = await BackendProvider.createCheckoutForPlan(planKey, period)
             window.location.href = url
+        } catch {
+            toast.error("Couldn't update your plan. Try again.")
         } finally {
             setLoadingPlan(null)
         }
@@ -132,6 +134,8 @@ export default function PricingPage() {
             invalidateBillingCaches()
             toast.success("Downgrade scheduled for the end of your billing period.")
             navigate(FrontendRoutes.BILLING)
+        } catch {
+            toast.error("Couldn't schedule the downgrade. Try again.")
         } finally {
             setLoadingPlan(null)
         }
@@ -143,6 +147,8 @@ export default function PricingPage() {
         try {
             const { url } = await BackendProvider.createCheckoutForTopup(packCredits)
             window.location.href = url
+        } catch {
+            toast.error("Couldn't open top-up checkout. Try again.")
         } finally {
             setLoadingTopupCredits(null)
         }
@@ -156,7 +162,7 @@ export default function PricingPage() {
         navigate(FrontendRoutes.APP)
     }
 
-    const showTopups = !authLoading && !catalogLoading && topUps.length > 0
+    const showTopups = !authLoading && !catalogLoading && !catalogError && topUps.length > 0
 
     const currentPlan = currentPlanKey ? (plans.find(p => p.key === currentPlanKey) ?? null) : null
     const freePlan = plans.find(p => p.key === PlanKey.FREE) ?? null
@@ -183,6 +189,8 @@ export default function PricingPage() {
                             <PlanCardSkeleton />
                             <PlanCardSkeleton />
                         </div>
+                    ) : catalogError ? (
+                        <CatalogErrorCard onRetry={() => void retryCatalog()} />
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2">
                             {plans.map(plan => (
@@ -207,24 +215,17 @@ export default function PricingPage() {
                             <h2 className="text-lg font-semibold tracking-tight">Need more this month?</h2>
                             <p className="mt-1 text-sm text-muted-foreground">Top-ups add credits to any plan and never expire.</p>
                         </div>
-                        {catalogLoading ? (
-                            <div className="space-y-3" aria-busy="true" aria-label="Loading top-ups">
-                                <TopupRowSkeleton />
-                                <TopupRowSkeleton />
-                            </div>
-                        ) : (
-                            topUps.map(topup => (
-                                <article key={topup.credits} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-5">
-                                    <div className="min-w-0">
-                                        <div className="text-base font-medium tabular-nums">Top up {topup.credits.toLocaleString()} credits</div>
-                                        <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">${topup.priceInUsd} · one-time · available on Free and Pro</p>
-                                    </div>
-                                    <LoadingButton className="shrink-0" loading={loadingTopupCredits === topup.credits} loadingLabel="Opening checkout" onClick={() => void buyTopup(topup.credits)}>
-                                        Buy for ${topup.priceInUsd}
-                                    </LoadingButton>
-                                </article>
-                            ))
-                        )}
+                        {topUps.map(topup => (
+                            <article key={topup.credits} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-5">
+                                <div className="min-w-0">
+                                    <div className="text-base font-medium tabular-nums">Top up {topup.credits.toLocaleString()} credits</div>
+                                    <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">${topup.priceInUsd} · one-time · available on Free and Pro</p>
+                                </div>
+                                <LoadingButton className="shrink-0" loading={loadingTopupCredits === topup.credits} loadingLabel="Opening checkout" onClick={() => void buyTopup(topup.credits)}>
+                                    Buy for ${topup.priceInUsd}
+                                </LoadingButton>
+                            </article>
+                        ))}
                     </section>
                 )}
 
@@ -285,6 +286,20 @@ export default function PricingPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+        </div>
+    )
+}
+
+function CatalogErrorCard({ onRetry }: { onRetry: () => void }) {
+    return (
+        <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border bg-card p-6">
+            <div>
+                <p className="text-sm font-medium text-foreground">Couldn't load pricing.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Check your connection or try again in a moment.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+                Retry
+            </Button>
         </div>
     )
 }
@@ -444,18 +459,6 @@ function PlanCardSkeleton() {
             <Skeleton className="mt-2 h-4 w-56" />
             <Skeleton className="mt-2 h-3 w-3/4" />
             <Skeleton className="mt-auto h-10 w-full" />
-        </div>
-    )
-}
-
-function TopupRowSkeleton() {
-    return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-5">
-            <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-3 w-64 max-w-full" />
-            </div>
-            <Skeleton className="h-9 w-28 shrink-0" />
         </div>
     )
 }

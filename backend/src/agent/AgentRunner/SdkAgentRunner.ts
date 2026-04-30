@@ -111,7 +111,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             memorySession: this.memorySession,
             sessionInputCallback: recentHistoryCallback,
             maxTurns: this.maxTurns,
-            signal: options?.signal
+            signal: options?.signal,
+            chargeBaseRun: false
         })
         return { loopResult }
     }

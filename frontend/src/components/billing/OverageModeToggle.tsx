@@ -1,13 +1,13 @@
 import { useId, useState } from "react"
 
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import type { OverageMode, Plan } from "terse-types"
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { invalidateBillingCaches } from "@/hooks/api/billingCache"
+import { BackendProvider } from "@/services/backend"
 import { formatUsdPerThousandCredits } from "@/utility/billingFormat"
-
-import { BackendProvider } from "../../services/backend"
 
 const OPTIONS = [
     {
@@ -43,6 +43,8 @@ export function OverageModeToggle({ mode, plan, onChange }: { mode: OverageMode 
             await BackendProvider.setOverageMode(value)
             invalidateBillingCaches()
             onChange(value)
+        } catch {
+            toast.error("Couldn't update overage mode. Try again.")
         } finally {
             setSavingMode(null)
         }

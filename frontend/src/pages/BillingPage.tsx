@@ -31,7 +31,8 @@ function formatNextCharge(balance: BalanceSummary, plan: Plan | null): string {
 
     const amount = effectivePeriod === "monthly" ? plan.priceInUsdMonthly : plan.priceInUsdMonthlyAnnual !== null ? plan.priceInUsdMonthlyAnnual * 12 : null
     if (amount === null) return `Renews ${endDate}`
-    return `Next charge: ${formatUsd(amount)} on ${endDate}`
+    const label = effectivePeriod === "yearly" ? "Annual renewal" : "Next charge"
+    return `${label}: ${formatUsd(amount)} on ${endDate}`
 }
 
 function formatScheduledChange(balance: BalanceSummary): string | null {
@@ -44,13 +45,14 @@ function formatScheduledChange(balance: BalanceSummary): string | null {
 }
 
 export default function BillingPage() {
-    const { balance, buckets, isLoading: balanceLoading, isValidating: balanceValidating, isError: balanceError, mutate: mutateBalance } = useBillingContext(true)
-    const { plans, isLoading: catalogLoading } = useBillingCatalog()
+    const { balance, buckets, isLoading: balanceLoading, isError: balanceError, mutate: mutateBalance } = useBillingContext(true)
+    const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog()
 
-    const loading = balanceLoading || balanceValidating
+    const loading = balanceLoading
 
     const refresh = () => {
         invalidateBillingCaches()
+        void retryCatalog()
     }
 
     useEffect(() => {
@@ -58,6 +60,7 @@ export default function BillingPage() {
         if (!params.get("upgraded") && !params.get("topup")) return
 
         toast.success(params.get("topup") ? "Top-up complete" : "Plan updated")
+        window.history.replaceState({}, "", window.location.pathname)
         let attempts = 0
         const interval = window.setInterval(() => {
             attempts += 1
@@ -83,7 +86,7 @@ export default function BillingPage() {
     const planKey = balance?.planKey ?? null
     const plan = planKey ? (plans.find(p => p.key === planKey) ?? null) : null
     const showPlanHeaderSkeleton = balanceLoading || (Boolean(balance) && catalogLoading)
-    const showError = balanceError && !balance && !balanceLoading
+    const showError = ((balanceError && !balance) || (catalogError && plans.length === 0)) && !balanceLoading
     const scheduledChange = balance ? formatScheduledChange(balance) : null
 
     return (

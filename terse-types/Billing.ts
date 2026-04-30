@@ -39,11 +39,11 @@ export const DEFAULT_OVERAGE_MODE: OverageMode = "strict"
 export const billingScheduledChangeSchema = z.discriminatedUnion("kind", [
     z.object({
         kind: z.literal("cancel_to_free"),
-        effectiveAt: z.date()
+        effectiveAt: z.coerce.date()
     }),
     z.object({
         kind: z.literal("change_period"),
-        effectiveAt: z.date(),
+        effectiveAt: z.coerce.date(),
         period: billingPeriodSchema
     })
 ])
@@ -56,8 +56,8 @@ export const balanceSummarySchema = z.object({
     consumedCredits: z.number(),
     topUpCredits: z.number(),
     totalCreditCapacity: z.number(),
-    periodStart: z.date(),
-    periodEnd: z.date(),
+    periodStart: z.coerce.date(),
+    periodEnd: z.coerce.date(),
     overageMode: overageModeSchema,
     hardCap: z.number(),
     canBuyTopups: z.boolean(),
@@ -245,7 +245,7 @@ export const BILLING_SERVICE_CALLBACK_JWT_ISSUER = "terse-billing" as const
 export const BILLING_SERVICE_CALLBACK_JWT_AUDIENCE = "terse-api" as const
 
 export const terseBillingJwtClaimsSchema = z.object({
-    organizationId: z.string()
+    organizationId: z.string().min(1)
 })
 export type TerseBillingJwtClaims = z.infer<typeof terseBillingJwtClaimsSchema>
 

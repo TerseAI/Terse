@@ -1,4 +1,5 @@
 import useSWR from "swr"
+import type { KeyedMutator } from "swr"
 import type { BillingCatalogResponse } from "terse-types"
 import { billingCatalogKey } from "terse-types/InvalidationKeys"
 
@@ -9,13 +10,15 @@ export function useBillingCatalog(): {
     topUps: BillingCatalogResponse["topUps"]
     isLoading: boolean
     isError: boolean
+    mutate: KeyedMutator<BillingCatalogResponse>
 } {
-    const { data, error, isLoading } = useSWR<BillingCatalogResponse>(billingCatalogKey(), () => BackendProvider.getBillingCatalog())
+    const { data, error, isLoading, mutate } = useSWR<BillingCatalogResponse>(billingCatalogKey(), () => BackendProvider.getBillingCatalog())
 
     return {
         plans: data?.plans ?? [],
         topUps: data?.topUps ?? [],
         isLoading,
-        isError: Boolean(error)
+        isError: Boolean(error),
+        mutate
     }
 }

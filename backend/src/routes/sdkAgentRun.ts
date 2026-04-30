@@ -10,7 +10,7 @@ import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
-import { BillingNoBackendError, type BillingService, billingServiceProxyForRequest } from "../services/BillingService"
+import { type BillingService, billingServiceProxyForOrganization } from "../services/BillingService"
 import { extractErrorMessage } from "../utility/strings"
 
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
@@ -50,23 +50,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
         const orgId = user.organizationId
 
-        const billingProxy = billingServiceProxyForRequest(req)
-        let billingForRunner: BillingService | undefined
-
-        try {
-            const gateDecision = await billingProxy.checkRunGate({ organizationId: orgId, email: user.email })
-            if (!gateDecision.allow) {
-                throw new CreditGateDeniedError(gateDecision.reason)
-            }
-            await billingProxy.chargeRunBase({ organizationId: orgId, email: user.email, runId })
-            billingForRunner = billingProxy
-        } catch (err) {
-            if (err instanceof BillingNoBackendError) {
-                billingForRunner = undefined
-            } else {
-                throw err
-            }
-        }
+        const billingForRunner = billingServiceProxyForOrganization(orgId)
 
         const sdkRunner = createSdkRunner({
             runId,

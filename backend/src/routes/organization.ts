@@ -37,7 +37,10 @@ export async function createOrganization(req: Request, res: Response) {
 
         try {
             const billing = billingServiceProxyForOrganization(organization.id)
-            if (billing) await billing.getOrCreateCustomer()
+            if (billing) {
+                const { customerId } = await billing.getOrCreateCustomer()
+                await setDefaultOrganizationMetadata(organization.id, customerId)
+            }
         } catch (e) {
             if (!(e instanceof BillingNoBackendError)) throw e
         }

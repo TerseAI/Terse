@@ -32,6 +32,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
     private readonly billing?: BillingService
+    private baseRunCharged = false
 
     constructor(params: { runId: string; billing?: BillingService }) {
         this.runId = params.runId
@@ -71,7 +72,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async runAgent(userHistory: AgentInputItem[], settings: RunExecutionSettings<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
-        await this.checkRunGate(settings)
+        await this.meterRunStart(settings)
         await this.initializeLoopIfNeeded()
         this.resetRunOutcomeTracking()
         const result = await settings.runner.run(this.requireAgent(), userHistory, {
@@ -230,6 +231,22 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         return this.agent
     }
 
+    async meterRunStart(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
+        if (!this.billing) return
+
+        await this.checkRunGate(settings)
+        if (settings.chargeBaseRun === false) return
+        if (this.baseRunCharged) return
+
+        const user = settings.context.user
+        await this.billing.chargeRunBase({
+            organizationId: user.organizationId,
+            email: user.email,
+            runId: settings.context.runId
+        })
+        this.baseRunCharged = true
+    }
+
     async checkRunGate(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
         if (!this.billing) return
 
@@ -256,7 +273,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         const completedEvent = data.type === "response_done" ? data : null
         if (!completedEvent) return
 
-        const usage = completedEvent.response?.usage as CompletedEventUsage
+        const usage = normalizeCompletedEventUsage(completedEvent.response?.usage)
         if (!usage) {
             logger.warn("BaseAgentRunner: No usage found for completed event", { event })
             return
@@ -280,13 +297,38 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             })
         } catch (error) {
             if (error instanceof StripeError) {
-                logger.error("SdkAgentRunner: billing provider error; failing run", { runId: settings.context.runId, error })
+                logger.error("BaseAgentRunner: billing provider error; failing run", { runId: settings.context.runId, error })
             } else {
-                logger.error("SdkAgentRunner: unexpected charge failure", { runId: settings.context.runId, error })
+                logger.error("BaseAgentRunner: unexpected charge failure", { runId: settings.context.runId, error })
             }
             throw error
         }
     }
+}
+
+function normalizeCompletedEventUsage(raw: unknown): CompletedEventUsage | null {
+    if (!raw || typeof raw !== "object") return null
+    const usage = raw as Record<string, unknown>
+    const inputTokens = numberValue(usage.inputTokens ?? usage.input_tokens)
+    const outputTokens = numberValue(usage.outputTokens ?? usage.output_tokens)
+    const totalTokens = numberValue(usage.totalTokens ?? usage.total_tokens)
+    if (inputTokens == null || outputTokens == null || totalTokens == null) return null
+
+    const inputDetails = (usage.inputTokensDetails ?? usage.input_tokens_details) as Record<string, unknown> | undefined
+    const cachedTokens = numberValue(inputDetails?.cached_tokens ?? inputDetails?.cachedTokens) ?? 0
+
+    return {
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        inputTokensDetails: {
+            cached_tokens: cachedTokens
+        }
+    }
+}
+
+function numberValue(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null
 }
 
 type SessionInputCallback = (history: AgentInputItem[], newItems: AgentInputItem[]) => AgentInputItem[]
@@ -322,6 +364,7 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
     sessionInputCallback?: SessionInputCallback
     maxTurns: number
     signal?: AbortSignal
+    chargeBaseRun?: boolean
 }
 
 type AgentInitializationParams<TSession extends AppSession> = {
