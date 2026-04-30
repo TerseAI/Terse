@@ -1,10 +1,10 @@
 import { DateTime } from "luxon"
+import { dollarsToCredits } from "src/config/modelPrices"
 import type Stripe from "stripe"
 import { OverageMode } from "terse-types"
 import type { BalanceSummary, BillingContextResponse } from "terse-types"
 
 import { ModelReference } from "../agent/modelRegistry"
-import { dollarsToCredits } from "../config/creditEconomics"
 import { priceFor } from "../config/modelPrices"
 import { PlanKey, getCreditConsumptionMeterId, getPlanByPriceId, getPlanDetails } from "../config/plans"
 import logger from "../logger"

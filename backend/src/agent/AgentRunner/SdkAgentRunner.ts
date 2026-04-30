@@ -409,7 +409,6 @@ type SdkAgentRunnerResult = {
 }
 
 const SDK_AGENT_ID = "sdk-agent-run"
-const SDK_AGENT_MODEL = "gpt-5.2"
 
 class InMemoryAgentSession implements AgentMemorySession {
     private readonly sessionId: string
