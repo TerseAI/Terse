@@ -1,5 +1,5 @@
 import { Server } from "socket.io"
-import { billingBalanceKey, billingUsageKey } from "terse-types/InvalidationKeys"
+import { billingContextKey } from "terse-types/InvalidationKeys"
 import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
 import logger from "../logger"
@@ -43,6 +43,5 @@ export function invalidateRunAndChatHistory(organizationId: string, agentId: str
 
 /** Frontend SWR tags — emitted after meter/consumption changes so billing UI refreshes for the org. */
 export function emitBillingCachesInvalidated(organizationId: string): void {
-    emitCacheInvalidationWithKey(organizationId, billingBalanceKey()[0])
-    emitCacheInvalidationWithKey(organizationId, billingUsageKey()[0])
+    emitCacheInvalidationWithKey(organizationId, billingContextKey()[0])
 }

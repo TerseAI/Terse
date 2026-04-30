@@ -21,7 +21,7 @@ import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { adminOnly, authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
-import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingBalance, getBillingCatalog, getBillingUsage, setBillingOverageMode } from "./routes/billing"
+import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingCatalog, getBillingContext, setBillingOverageMode } from "./routes/billing"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
@@ -308,12 +308,8 @@ app.post(ApiRoutes.BILLING.PORTAL_SESSION, authMiddleware, adminOnly, async (req
     await createBillingPortalSession(req, res)
 })
 
-app.get(ApiRoutes.BILLING.BALANCE, authMiddleware, adminOnly, async (req, res) => {
-    await getBillingBalance(req, res)
-})
-
-app.get(ApiRoutes.BILLING.USAGE, authMiddleware, adminOnly, async (req, res) => {
-    await getBillingUsage(req, res)
+app.get(ApiRoutes.BILLING.CONTEXT, authMiddleware, adminOnly, async (req, res) => {
+    await getBillingContext(req, res)
 })
 
 app.patch(ApiRoutes.BILLING.OVERAGE_MODE, authMiddleware, adminOnly, async (req, res) => {

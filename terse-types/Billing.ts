@@ -26,6 +26,11 @@ export type UsageResponse = {
     buckets: UsageBucket[]
 }
 
+export type BillingContextResponse = {
+    balance: BalanceSummary
+    usage: UsageResponse
+}
+
 export type BillingStripeRedirectResponse = {
     url: string
 }
@@ -52,6 +57,8 @@ export enum PlanKey {
 }
 
 export type OverageMode = "soft" | "strict"
+export const DEFAULT_OVERAGE_CAP_MULTIPLIER = 2
+export const DEFAULT_OVERAGE_MODE: OverageMode = "strict"
 
 export type Plan = {
     key: PlanKey

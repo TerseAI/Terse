@@ -182,8 +182,7 @@
     },
     "BILLING": {
         "CATALOG": "/billing/catalog",
-        "BALANCE": "/billing/balance",
-        "USAGE": "/billing/usage",
+        "CONTEXT": "/billing/context",
         "CHECKOUT_SESSION": "/billing/checkout-session",
         "CHANGE": "/billing/change",
         "PORTAL_SESSION": "/billing/portal-session",

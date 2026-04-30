@@ -4,9 +4,10 @@ import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSc
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../services/FileStorageService"
+import { getOrCreateCustomer } from "../services/PaymentsProviderService"
 import { workos } from "../utility/workos"
 
-import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "./auth"
+import { WORKOS_SESSION_COOKIE_NAME, setDefaultOrganizationMetadata, setSessionCookie } from "./auth"
 
 export async function createOrganization(req: Request, res: Response) {
     const user = req.session?.user
@@ -33,6 +34,9 @@ export async function createOrganization(req: Request, res: Response) {
             userId: user.workosId,
             roleSlug: "admin"
         })
+
+        // Create a Stripe customer for the organization
+        await getOrCreateCustomer(organization.id)
 
         const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
         if (!sealedSessionData) {

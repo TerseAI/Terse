@@ -4,9 +4,15 @@ import type Stripe from "stripe"
 import { PlanKey, getPlanByPriceId, getPlanDetails, resolveEnvId } from "../config/plans"
 import { stripe as stripeSettings } from "../config/settings"
 import logger from "../logger"
-import { db } from "../prismaClient"
 import { emitBillingCachesInvalidated } from "../services/CacheInvalidationService"
-import { createCreditGrant, resolveSubscriptionBasePlanItem, resolveSubscriptionCreditPeriod, stripeClient } from "../services/PaymentsProviderService"
+import {
+    StripeCustomerMetadata,
+    createCreditGrant,
+    getStripeCustomerWithMetadata,
+    resolveSubscriptionBasePlanItem,
+    resolveSubscriptionCreditPeriod,
+    stripeClient
+} from "../services/PaymentsProviderService"
 
 export async function handleStripeWebhook(req: Request, res: Response) {
     const sig = req.headers["stripe-signature"] as string
@@ -52,7 +58,7 @@ async function dispatch(event: Stripe.Event) {
 }
 
 async function onSubscriptionUpsert(subscription: Stripe.Subscription) {
-    const orgId = subscription.metadata?.org_id ?? (await orgIdForCustomer(subscription.customer as string))
+    const orgId = await orgIdForCustomer(subscription.customer as string)
     if (!orgId) {
         logger.warn("Subscription with no org mapping", { subscriptionId: subscription.id })
         return
@@ -136,7 +142,7 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     if (session.metadata?.type !== "credit_topup") return
 
-    const orgId = session.metadata.org_id
+    const orgId = await orgIdForCustomer(session.customer as string)
     const credits = Number(session.metadata.credits)
     const customerId = session.customer as string | null
     if (!orgId || !credits || !customerId) {
@@ -209,6 +215,10 @@ function creditGrantCentsPerCredit(plan: ReturnType<typeof getPlanDetails>): num
 }
 
 async function orgIdForCustomer(customerId: string): Promise<string | null> {
-    const row = await db().billing_customers.findUnique({ where: { stripe_customer_id: customerId } })
-    return row?.organization_id ?? null
+    const customer = await getStripeCustomerWithMetadata(customerId)
+    if (!customer) {
+        logger.warn("Stripe customer not found", { customerId })
+        return null
+    }
+    return customer.metadata.organizationId
 }

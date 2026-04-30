@@ -93,7 +93,6 @@ export async function sendEmailRunFailure(notificationDestination: UserNotificat
     })
 }
 
-
 export async function sendWeeklyReviewEmail(
     emailAddress: string,
     agents: Array<{

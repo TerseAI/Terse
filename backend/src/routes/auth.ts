@@ -1,9 +1,10 @@
 import { users as PrismaUser } from "@prisma/client"
-import { AuthenticateWithSessionCookieSuccessResponse, AuthenticationResponse } from "@workos-inc/node"
+import { Organization } from "@workos-inc/node"
 import { User as WorkOSUser } from "@workos-inc/node"
 import { NextFunction, Request, Response } from "express"
-import { ApiRoutes } from "terse-types"
+import { ApiRoutes, DEFAULT_OVERAGE_CAP_MULTIPLIER, DEFAULT_OVERAGE_MODE, OverageMode } from "terse-types"
 import { Role, User } from "terse-types/types"
+import z from "zod"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
@@ -567,11 +568,54 @@ export async function resolveWorkOSAdminUser(orgId: string): Promise<WorkOSUser>
     return await workos.userManagement.getUser(adminUserMembership.userId)
 }
 
-// Library doesn't export this type properly, so we need to define it ourselves
-type RefreshSessionSuccessResponse = Omit<AuthenticateWithSessionCookieSuccessResponse, "accessToken"> & {
-    authenticated: true
-    session?: AuthenticationResponse
-    sealedSession?: string
+export async function updateOrganizationMetadata(orgId: string, metadata: Partial<OrganizationMetadata>): Promise<WorkOsOrganizationWithMetadata> {
+    const currentOrg = await workos.organizations.getOrganization(orgId)
+    const currentMetadata = parseOrganizationMetadata(currentOrg).metadata
+    const newMetadata = { ...currentMetadata, ...metadata }
+    const updatedOrg = await workos.organizations.updateOrganization({
+        organization: orgId,
+        metadata: {
+            ...Object.fromEntries(Object.entries(newMetadata).map(([key, value]) => [key, value.toString()]))
+        }
+    })
+    return parseOrganizationMetadata(updatedOrg)
+}
+
+export async function setDefaultOrganizationMetadata(orgId: string, stripeCustomerId: string) {
+    const organization = await workos.organizations.updateOrganization({
+        organization: orgId,
+        metadata: {
+            stripeCustomerId: stripeCustomerId,
+            overageMode: DEFAULT_OVERAGE_MODE,
+            overageCapMultiplier: DEFAULT_OVERAGE_CAP_MULTIPLIER.toString()
+        }
+    })
+    return parseOrganizationMetadata(organization)
+}
+
+export async function getOrganization(orgId: string): Promise<Organization> {
+    return await workos.organizations.getOrganization(orgId)
+}
+
+export async function getOrganizationWithMetadata(organizationId: string): Promise<WorkOsOrganizationWithMetadata> {
+    const organization = await getOrganization(organizationId)
+    return parseOrganizationMetadata(organization)
+}
+
+function parseOrganizationMetadata(organization: Organization): WorkOsOrganizationWithMetadata {
+    const parsed = organizationMetadataSchema.parse(organization.metadata)
+    return { ...organization, metadata: parsed }
+}
+
+const organizationMetadataSchema = z.object({
+    stripeCustomerId: z.string(),
+    overageMode: z.enum(["soft", "strict"]),
+    overageCapMultiplier: z.string().transform(val => Number(val))
+})
+export type OrganizationMetadata = z.infer<typeof organizationMetadataSchema>
+
+export type WorkOsOrganizationWithMetadata = Omit<Organization, "metadata"> & {
+    metadata: OrganizationMetadata
 }
 
 // By default, every user must be in an organization for most routes

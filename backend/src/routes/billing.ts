@@ -1,11 +1,10 @@
 import { Request, Response } from "express"
 import { DateTime } from "luxon"
-import type { BillingCatalogResponse, BillingChangeResponse, BillingStripeRedirectResponse, SetOverageModeResponse, UsageResponse } from "terse-types"
+import type { BillingCatalogResponse, BillingChangeResponse, BillingContextResponse, BillingStripeRedirectResponse, SetOverageModeResponse } from "terse-types"
 import { isPurchasablePlan } from "terse-types"
 import { z } from "zod"
 
-import { PlanKey, SupportedTopUps, TimePeriods, getAllPlans, getAllTopups, getCreditConsumptionMeterId, getPlanDetails } from "../config/plans"
-import { db } from "../prismaClient"
+import { PlanKey, SupportedTopUps, TimePeriods, getAllPlans, getAllTopups, getPlanDetails } from "../config/plans"
 import { emitBillingCachesInvalidated } from "../services/CacheInvalidationService"
 import { creditService } from "../services/CreditService"
 import {
@@ -14,11 +13,12 @@ import {
     createPortalSession,
     fetchActivePaidSubscription,
     getOrCreateCustomer,
-    listMeterEventSummaries,
     scheduleBillingPeriodChange,
     scheduleCancelToFree
 } from "../services/PaymentsProviderService"
 import { Session } from "../types/session"
+
+import { updateOrganizationMetadata } from "./auth"
 
 const checkoutBodySchema = z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("plan"), planKey: z.enum(PlanKey), period: z.enum(TimePeriods) }),
@@ -33,7 +33,6 @@ const changeBodySchema = z.discriminatedUnion("kind", [
 export async function createBillingCheckoutSession(req: Request, res: Response) {
     const session = req.session as Session
     const orgId = session.user.organizationId
-    const email = session.user.email
 
     const parsed = checkoutBodySchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message })
@@ -43,8 +42,8 @@ export async function createBillingCheckoutSession(req: Request, res: Response) 
             error: "Free plan cannot be purchased; cancel a paid subscription in the billing portal to return to Free."
         })
     }
-    const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
-    const activeSubscription = customer?.stripe_customer_id ? await fetchActivePaidSubscription(customer.stripe_customer_id) : null
+    const stripeCustomerId = await getOrCreateCustomer(orgId)
+    const activeSubscription = stripeCustomerId ? await fetchActivePaidSubscription(stripeCustomerId) : null
     if (parsed.data.kind === "plan" && activeSubscription) {
         return res.status(409).json({ error: "Use the billing change endpoint for existing subscriptions." })
     }
@@ -72,7 +71,6 @@ export async function createBillingPortalSession(req: Request, res: Response) {
 export async function changeBillingSubscription(req: Request, res: Response) {
     const session = req.session as Session
     const orgId = session.user.organizationId
-    const email = session.user.email
     const parsed = changeBodySchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message })
 
@@ -87,35 +85,14 @@ export async function getBillingCatalog(_req: Request, res: Response) {
     return res.json(body)
 }
 
-export async function getBillingBalance(req: Request, res: Response) {
-    const session = req.session as Session
-    const summary = await creditService.getBalanceSummary(session.user.organizationId, session.user.email)
-    return res.json(summary)
-}
-
-export async function getBillingUsage(req: Request, res: Response) {
+export async function getBillingContext(req: Request, res: Response) {
     const session = req.session as Session
     const orgId = session.user.organizationId
-    const customerId = await getOrCreateCustomer(orgId)
 
     const end = req.query.end ? new Date(String(req.query.end)) : new Date()
     const start = req.query.start ? new Date(String(req.query.start)) : DateTime.fromJSDate(end).minus({ days: 30 }).toJSDate()
 
-    const summaries = await listMeterEventSummaries({
-        meterId: getCreditConsumptionMeterId(),
-        customerId,
-        start,
-        end,
-        valueGroupingWindow: "day"
-    })
-
-    const body: UsageResponse = {
-        buckets: summaries.map(summary => ({
-            startTimestamp: summary.start_time * 1000,
-            endTimestamp: summary.end_time * 1000,
-            credits: Number(summary.aggregated_value)
-        }))
-    }
+    const body: BillingContextResponse = await creditService.getBillingContext(orgId, { start, end })
     return res.json(body)
 }
 
@@ -124,14 +101,8 @@ export async function setBillingOverageMode(req: Request, res: Response) {
     const parsed = z.object({ mode: z.enum(["soft", "strict"]) }).safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message })
 
-    await db().billing_customers.upsert({
-        where: { organization_id: session.user.organizationId },
-        create: {
-            organization_id: session.user.organizationId,
-            overage_mode: parsed.data.mode
-        },
-        update: { overage_mode: parsed.data.mode }
-    })
+    const orgId = session.user.organizationId
+    await updateOrganizationMetadata(orgId, { overageMode: parsed.data.mode })
     emitBillingCachesInvalidated(session.user.organizationId)
     const body: SetOverageModeResponse = { ok: true }
     return res.json(body)

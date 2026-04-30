@@ -1,7 +1,17 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
-import { BalanceSummary, BillingCatalogResponse, BillingChangeResponse, BillingPeriod, BillingStripeRedirectResponse, OverageMode, PlanKey, SetOverageModeResponse, UsageResponse } from "terse-types"
+import {
+    BalanceSummary,
+    BillingCatalogResponse,
+    BillingChangeResponse,
+    BillingContextResponse,
+    BillingPeriod,
+    BillingStripeRedirectResponse,
+    OverageMode,
+    PlanKey,
+    SetOverageModeResponse
+} from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -566,9 +576,8 @@ interface BackendService {
      */
     getAgentFileContent(agentId: string, fileId: string): Promise<AgentFileContentResponse>
 
-    getBalance(): Promise<BalanceSummary>
+    getBillingContext(params?: { start?: Date; end?: Date }): Promise<BillingContextResponse>
     getBillingCatalog(): Promise<BillingCatalogResponse>
-    getUsage(params?: { start?: Date; end?: Date }): Promise<UsageResponse>
     createCheckoutForPlan(planKey: PlanKey, period: BillingPeriod): Promise<BillingStripeRedirectResponse>
     createCheckoutForTopup(packCredits: number): Promise<BillingStripeRedirectResponse>
     changeBillingSubscription(input: { kind: "cancel_to_free" } | { kind: "change_period"; planKey: PlanKey; period: BillingPeriod }): Promise<BillingChangeResponse>
@@ -1688,10 +1697,11 @@ export const BackendProvider: BackendService = {
                 throw error
             })
     },
-    getBalance: () => axios.get<BalanceSummary>(`${backendBaseUrl}${ApiRoutes.BILLING.BALANCE}`, { withCredentials: true }).then(response => response.data),
+    getBillingContext: (params?: { start?: Date; end?: Date }) =>
+        axios
+            .get<BillingContextResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CONTEXT}`, { withCredentials: true, params: serializeDates(params) })
+            .then(response => response.data),
     getBillingCatalog: () => axios.get<BillingCatalogResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CATALOG}`, { withCredentials: true }).then(response => response.data),
-    getUsage: (params?: { start?: Date; end?: Date }) =>
-        axios.get<UsageResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.USAGE}`, { withCredentials: true, params: serializeDates(params) }).then(response => response.data),
     createCheckoutForPlan: (planKey: PlanKey, period: BillingPeriod) =>
         axios
             .post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CHECKOUT_SESSION}`, { kind: "plan", planKey, period }, { withCredentials: true })

@@ -1,7 +1,7 @@
-import { OverageMode } from "@prisma/client"
 import { DateTime } from "luxon"
 import type Stripe from "stripe"
-import type { BalanceSummary } from "terse-types"
+import { OverageMode } from "terse-types"
+import type { BalanceSummary, BillingContextResponse } from "terse-types"
 
 import { ModelReference } from "../agent/modelRegistry"
 import { dollarsToCredits } from "../config/creditEconomics"
@@ -9,6 +9,7 @@ import { priceFor } from "../config/modelPrices"
 import { PlanKey, getCreditConsumptionMeterId, getPlanByPriceId, getPlanDetails } from "../config/plans"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { getOrganizationWithMetadata } from "../routes/auth"
 
 import { emitBillingCachesInvalidated } from "./CacheInvalidationService"
 import {
@@ -130,9 +131,9 @@ export class CreditService {
         return { creditsCharged: credits, rawCostMicros }
     }
 
-    // Get the current credit balance for the org.
-    async getBalanceSummary(orgId: string, email: string): Promise<BalanceSummary> {
-        const context = await this.resolveBillingContext(orgId)
+    async getBillingContext(orgId: string, usageRange: { start: Date; end: Date }): Promise<BillingContextResponse> {
+        const customerId = await getOrCreateCustomer(orgId)
+        const context = await this.resolveBillingContextWithCustomer(orgId, customerId)
         const consumedCredits = await consumedCreditsForPeriod(context)
         const availability = await creditAvailability({
             customerId: context.creditBalanceCustomerId,
@@ -140,7 +141,7 @@ export class CreditService {
             consumedCredits
         })
 
-        return {
+        const balance: BalanceSummary = {
             planKey: context.plan.key,
             billingPeriod: context.billingPeriod,
             planCredits: context.plan.details.includedCreditsPerMonth,
@@ -154,12 +155,34 @@ export class CreditService {
             canBuyTopups: !!context.creditBalanceCustomerId,
             scheduledChange: context.scheduledChange
         }
+
+        const chartSummaries = await listMeterEventSummaries({
+            meterId: getCreditConsumptionMeterId(),
+            customerId,
+            start: usageRange.start,
+            end: usageRange.end,
+            valueGroupingWindow: "day"
+        })
+
+        return {
+            balance,
+            usage: {
+                buckets: chartSummaries.map(summary => ({
+                    startTimestamp: summary.start_time * 1000,
+                    endTimestamp: summary.end_time * 1000,
+                    credits: Number(summary.aggregated_value)
+                }))
+            }
+        }
     }
 
     private async resolveBillingContext(orgId: string): Promise<BillingContext> {
         const customerId = await getOrCreateCustomer(orgId)
-        const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
+        return this.resolveBillingContextWithCustomer(orgId, customerId)
+    }
 
+    private async resolveBillingContextWithCustomer(orgId: string, customerId: string): Promise<BillingContext> {
+        const organizationWithMetadata = await getOrganizationWithMetadata(orgId)
         const subscription = await fetchSubscription(customerId)
         if (!subscription || subscription.status === "past_due") {
             const plan = { key: PlanKey.FREE, details: getPlanDetails(PlanKey.FREE) }
@@ -180,15 +203,14 @@ export class CreditService {
         const subscriptionPlanItem = resolveRequiredSubscriptionBasePlanItem(subscription)
         const plan = subscriptionPlanItem.plan
         const period = resolveRequiredSubscriptionCreditPeriod(subscription, subscriptionPlanItem.item)
-        const overageMode = customer?.overage_mode ?? plan.details.defaultOverageMode
-
+        const overageMode = organizationWithMetadata.metadata.overageMode ?? plan.details.defaultOverageMode
         return {
             plan,
             billingPeriod: billingPeriodForPriceId(subscriptionPlanItem.item.price.id),
             periodStart: period.start,
             periodEnd: period.end,
-            overageMode,
-            hardCap: computeHardCap(plan.details, overageMode, customer?.overage_cap_multiplier),
+            overageMode: organizationWithMetadata.metadata.overageMode,
+            hardCap: computeHardCap(plan.details, overageMode, organizationWithMetadata.metadata.overageCapMultiplier),
             creditBalanceCustomerId: customerId,
             meteredCustomerId: customerId,
             scheduledChange: await scheduledChangeForSubscription(subscription, subscriptionPlanItem.item)

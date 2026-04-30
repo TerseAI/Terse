@@ -198,8 +198,6 @@ export const projectSourceFilesKey = (projectId: string): readonly [string, stri
 
 export const projectSourceFileContentKey = (projectId: string, fileId: string): readonly [string, string, string] => ["projectSourceFileContent", projectId, fileId]
 
-export const billingBalanceKey = (): readonly [string] => ["billingBalance"]
+export const billingContextKey = (): readonly [string] => ["billingContext"]
 
 export const billingCatalogKey = (): readonly [string] => ["billingCatalog"]
-
-export const billingUsageKey = (): readonly [string] => ["billingUsage"]

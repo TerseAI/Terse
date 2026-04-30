@@ -12,8 +12,8 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Skeleton } from "@/components/ui/skeleton"
 import { POST_LOGIN_REDIRECT_KEY } from "@/constants/storageKeys"
 import { invalidateBillingCaches } from "@/hooks/api/billingCache"
-import { useBillingBalance } from "@/hooks/api/useBillingBalance"
 import { useBillingCatalog } from "@/hooks/api/useBillingCatalog"
+import { useBillingContext } from "@/hooks/api/useBillingContext"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
 import { formatCredits, formatUsd, formatUsdPerThousandCredits } from "@/utility/billingFormat"
@@ -71,7 +71,7 @@ export default function PricingPage() {
     const navigate = useNavigate()
     const { user, isLoading: authLoading } = useAuth()
     const balanceEnabled = !authLoading && !!user
-    const { balance, isLoading: balanceLoading } = useBillingBalance(balanceEnabled)
+    const { balance, isLoading: balanceLoading } = useBillingContext(balanceEnabled)
     const { plans, topUps, isLoading: catalogLoading } = useBillingCatalog()
     const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null)
     const [loadingTopupCredits, setLoadingTopupCredits] = useState<number | null>(null)

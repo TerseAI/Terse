@@ -12,9 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { invalidateBillingCaches } from "@/hooks/api/billingCache"
-import { useBillingBalance } from "@/hooks/api/useBillingBalance"
 import { useBillingCatalog } from "@/hooks/api/useBillingCatalog"
-import { useBillingUsage } from "@/hooks/api/useBillingUsage"
+import { useBillingContext } from "@/hooks/api/useBillingContext"
 import { BackendProvider } from "@/services/backend"
 import { formatUsd } from "@/utility/billingFormat"
 
@@ -45,11 +44,10 @@ function formatScheduledChange(balance: BalanceSummary): string | null {
 }
 
 export default function BillingPage() {
-    const { balance, isLoading: balanceLoading, isValidating: balanceValidating, isError: balanceError, mutate: mutateBalance } = useBillingBalance(true)
+    const { balance, buckets, isLoading: balanceLoading, isValidating: balanceValidating, isError: balanceError, mutate: mutateBalance } = useBillingContext(true)
     const { plans, isLoading: catalogLoading } = useBillingCatalog()
-    const { buckets, isLoading: usageLoading, isValidating: usageValidating, isError: usageError } = useBillingUsage(true)
 
-    const loading = balanceLoading || usageLoading || balanceValidating || usageValidating
+    const loading = balanceLoading || balanceValidating
 
     const refresh = () => {
         invalidateBillingCaches()
@@ -79,7 +77,7 @@ export default function BillingPage() {
     }
 
     const updateMode = (mode: OverageMode) => {
-        void mutateBalance(current => (current ? { ...current, overageMode: mode } : current), { revalidate: false })
+        void mutateBalance(current => (current ? { ...current, balance: { ...current.balance, overageMode: mode } } : current), { revalidate: false })
     }
 
     const planKey = balance?.planKey ?? null
@@ -183,7 +181,7 @@ export default function BillingPage() {
                                 </div>
                             </div>
                             <div className="px-6 py-6">
-                                {usageError && !usageLoading ? <p className="text-sm text-muted-foreground">Couldn't load usage history.</p> : <UsageChart buckets={buckets} />}
+                                <UsageChart buckets={buckets} />
                             </div>
                         </section>
                     </>

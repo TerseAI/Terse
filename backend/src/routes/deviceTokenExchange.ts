@@ -4,12 +4,13 @@ import { DeviceTokenExchangeResponse } from "terse-types/types"
 import { deviceTokenExchangeRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
+import { getOrCreateCustomer } from "../services/PaymentsProviderService"
 import { decodeAccessTokenClaims } from "../utility/accessTokenClaims"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { workos } from "../utility/workos"
 
-import { getOrCreateDbUserFromWorkOS } from "./auth"
+import { getOrCreateDbUserFromWorkOS, setDefaultOrganizationMetadata } from "./auth"
 
 const featureFlagService = FeatureFlagService.getInstance()
 
@@ -68,6 +69,10 @@ export async function deviceTokenExchange(req: Request, res: Response) {
             })
             organizationId = organization.id
             roles = ["admin"]
+
+            // Create a Stripe customer for the organization
+            const stripeCustomerId = await getOrCreateCustomer(organizationId)
+            await setDefaultOrganizationMetadata(organizationId, stripeCustomerId)
         } else {
             const membership = memberships.data.find(m => m.organizationId === organizationId)
             roles = membership?.roles?.map(role => role.slug) ?? []

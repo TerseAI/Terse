@@ -1,11 +1,12 @@
 import { DateTime } from "luxon"
 import Stripe from "stripe"
 import { type BillingPeriod, FrontendRoutes, isPurchasablePlan } from "terse-types"
+import { z } from "zod"
 
 import { PlanKey, SupportedTopUps, TimePeriods, getPlanByPriceId, getPlanDetails, getTopUpPriceId, resolveEnvId } from "../config/plans"
 import { stripe, urls } from "../config/settings"
-import { db } from "../prismaClient"
-import { resolveWorkOSAdminUser } from "../routes/auth"
+import logger from "../logger"
+import { getOrganization, resolveWorkOSAdminUser, setDefaultOrganizationMetadata } from "../routes/auth"
 
 export const stripeClient = new Stripe(stripe.secretKey, {
     apiVersion: "2026-04-22.dahlia",
@@ -13,18 +14,14 @@ export const stripeClient = new Stripe(stripe.secretKey, {
 })
 
 export async function getOrCreateCustomer(orgId: string): Promise<string> {
-    const prisma = db()
-    const row = await prisma.billing_customers.findUnique({ where: { organization_id: orgId } })
-    if (row?.stripe_customer_id) return row.stripe_customer_id
-
+    const organization = await getOrganization(orgId)
+    const stripeCustomerId = organization.metadata.stripeCustomerId
+    if (stripeCustomerId) return stripeCustomerId
+    logger.info("No Stripe customer found for organization, creating one", { orgId })
     const adminUser = await resolveWorkOSAdminUser(orgId)
-
-    const customer = await stripeClient.customers.create({ email: adminUser.email, metadata: { org_id: orgId } })
-    await prisma.billing_customers.upsert({
-        where: { organization_id: orgId },
-        create: { organization_id: orgId, stripe_customer_id: customer.id },
-        update: { stripe_customer_id: customer.id }
-    })
+    const metadata = stripeCustomerMetadataSchema.parse({ organizationId: orgId })
+    const customer = await stripeClient.customers.create({ email: adminUser.email, metadata })
+    await setDefaultOrganizationMetadata(orgId, customer.id)
     return customer.id
 }
 
@@ -448,4 +445,23 @@ export function resolveSubscriptionMeteredOverageItem(subscription: Stripe.Subsc
     const overagePriceId = resolveEnvId(plan.overagePriceId)
     if (!overagePriceId) return null
     return subscription.items.data.find(item => item.price.id === overagePriceId) ?? null
+}
+
+const stripeCustomerMetadataSchema = z.object({
+    organizationId: z.string()
+})
+export type StripeCustomerMetadata = z.infer<typeof stripeCustomerMetadataSchema>
+
+export type StripeCustomerWithMetadata = Omit<Stripe.Customer, "metadata"> & {
+    metadata: StripeCustomerMetadata
+}
+
+export async function getStripeCustomerWithMetadata(customerId: string): Promise<StripeCustomerWithMetadata | null> {
+    const customer = await stripeClient.customers.retrieve(customerId)
+    if (!customer || customer.deleted) {
+        logger.warn("Stripe customer not found", { customerId })
+        return null
+    }
+    const parsed = stripeCustomerMetadataSchema.parse(customer.metadata)
+    return { ...customer, metadata: parsed }
 }
