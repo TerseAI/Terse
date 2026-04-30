@@ -82,7 +82,7 @@ export function EditableDataTable({ columns, rows, onCellChange, className, view
                                             onClick={() => onRemoveRow(rowIndex)}
                                             aria-label={`Remove row ${rowLabel?.(rowIndex) ?? String(rowIndex + 1)}`}
                                         >
-                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                            <Trash2 className="h-4 w-4 text-danger" />
                                         </Button>
                                     </TableCell>
                                 )}

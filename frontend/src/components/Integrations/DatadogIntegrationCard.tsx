@@ -256,7 +256,7 @@ function DatadogForm({
                 </div>
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-danger">{error}</p>}
 
             <div className="flex gap-2">
                 <Button type="submit" disabled={isSubmitting || !apiKey || !appKey || !region}>

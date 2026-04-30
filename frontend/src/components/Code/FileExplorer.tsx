@@ -321,7 +321,7 @@ export function FileExplorer({ files, selectedFile, onSelectFile, editorValue, e
                         </div>
                     )}
                     {editorStatus === "error" && (
-                        <div className="text-destructive flex h-full min-h-0 flex-col items-center justify-center gap-3 px-6 text-center text-sm" role="alert">
+                        <div className="text-danger flex h-full min-h-0 flex-col items-center justify-center gap-3 px-6 text-center text-sm" role="alert">
                             <AlertCircle className="h-5 w-5 shrink-0" strokeWidth={1.5} aria-hidden />
                             <div className="flex flex-col gap-1">
                                 <span className="font-medium">Could not show this file</span>

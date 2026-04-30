@@ -8,7 +8,7 @@ export function UserProfileWidget() {
     const { token, isLoading, isError } = useWidgetToken()
 
     if (isError) {
-        return <p className="text-destructive text-sm">Failed to load profile.</p>
+        return <p className="text-danger text-sm">Failed to load profile.</p>
     }
     if (isLoading || !token) {
         return <p className="text-muted-foreground text-sm">Loading…</p>

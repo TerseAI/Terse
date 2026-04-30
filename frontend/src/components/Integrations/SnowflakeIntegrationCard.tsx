@@ -130,7 +130,7 @@ function SnowflakeIntegrationCard({ className, isActive = true, stateToken, comp
                         <Input id="warehouse" type="text" value={warehouse} onChange={e => setWarehouse(e.target.value)} placeholder="COMPUTE_WH" disabled={isSubmitting} required autoComplete="off" />
                     </div>
 
-                    {error && <p className="text-sm text-destructive">{error}</p>}
+                    {error && <p className="text-sm text-danger">{error}</p>}
 
                     <div className="flex gap-2">
                         <Button type="submit" disabled={isSubmitting || !accountIdentifier || !username || !privateKey || !warehouse}>

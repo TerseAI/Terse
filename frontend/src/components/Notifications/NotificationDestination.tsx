@@ -44,7 +44,7 @@ export function NotificationDestinationItem({ destination }: { destination: Noti
                     <Button variant="ghost" size="icon" onClick={() => setIsEditDialogOpen(true)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
                         <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={deleteDestination} className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                    <Button variant="ghost" size="icon" onClick={deleteDestination} className="h-8 w-8 text-muted-foreground hover:text-danger">
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </ItemActions>

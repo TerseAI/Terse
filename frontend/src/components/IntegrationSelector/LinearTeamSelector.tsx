@@ -39,7 +39,7 @@ export function LinearTeamSelector({ integrationId, selectedTeamId, onSelect }: 
     if (isError && error) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-destructive">{error instanceof Error ? error.message : typeof error === "string" ? error : "Failed to load teams"}</div>
+                <div className="text-sm text-danger">{error instanceof Error ? error.message : typeof error === "string" ? error : "Failed to load teams"}</div>
                 <Button onClick={handleRefresh} variant="link" size="sm" className="text-xs h-auto p-0">
                     Try again
                 </Button>
