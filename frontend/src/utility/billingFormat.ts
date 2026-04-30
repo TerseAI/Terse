@@ -23,3 +23,9 @@ export function formatUsd(value: number): string {
 export function formatUsdPrecise(value: number): string {
     return preciseUsdFormatter.format(value)
 }
+
+/** Dollars billed per 1,000 credits from backend `overageCentsPerCredit` (cents per credit, may be fractional). */
+export function formatUsdPerThousandCredits(centsPerCredit: number): string {
+    const dollarsPerThousand = (centsPerCredit / 100) * 1000
+    return preciseUsdFormatter.format(dollarsPerThousand)
+}

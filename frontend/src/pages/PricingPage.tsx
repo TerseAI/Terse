@@ -16,7 +16,7 @@ import { useBillingBalance } from "@/hooks/api/useBillingBalance"
 import { useBillingCatalog } from "@/hooks/api/useBillingCatalog"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
-import { formatCredits, formatUsd } from "@/utility/billingFormat"
+import { formatCredits, formatUsd, formatUsdPerThousandCredits } from "@/utility/billingFormat"
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
 
@@ -39,10 +39,9 @@ function formatPriceLine(plan: Plan, period: BillingPeriod): string {
 
 function formatOveragePrint(plan: Plan): string {
     if (!plan.overageCentsPerCredit || !plan.hardCapMultiplier || plan.hardCapMultiplier <= 1) {
-        return "Runs pause when you hit your monthly allowance. No overage, no surprise charges."
+        return "Runs pause when your monthly allowance and additional credits are exhausted. No automatic overage charges."
     }
-    const dollars = (plan.overageCentsPerCredit / 100).toFixed(3)
-    return `Optional soft overage at $${dollars}/credit, capped at ${plan.hardCapMultiplier}× your monthly allowance.`
+    return `Optional soft overage at ${formatUsdPerThousandCredits(plan.overageCentsPerCredit)} per 1,000 credits, capped at ${plan.hardCapMultiplier}× your monthly allowance.`
 }
 
 const PRO_USAGE_EXAMPLES = [
@@ -140,10 +139,6 @@ export default function PricingPage() {
 
     const buyTopup = async (packCredits: number) => {
         if (!requireUser()) return
-        if (balance && !balance.canBuyTopups) {
-            toast.error("Top-ups require an active paid plan.")
-            return
-        }
         setLoadingTopupCredits(packCredits)
         try {
             const { url } = await BackendProvider.createCheckoutForTopup(packCredits)
@@ -161,7 +156,7 @@ export default function PricingPage() {
         navigate(FrontendRoutes.APP)
     }
 
-    const showTopups = !!balance?.canBuyTopups
+    const showTopups = !authLoading && !catalogLoading && topUps.length > 0
 
     const currentPlan = currentPlanKey ? (plans.find(p => p.key === currentPlanKey) ?? null) : null
     const freePlan = plans.find(p => p.key === PlanKey.FREE) ?? null
@@ -177,7 +172,7 @@ export default function PricingPage() {
                         Back
                     </Button>
                     <h1 className="text-4xl font-semibold tracking-tight">Pricing</h1>
-                    <p className="mt-2 max-w-xl text-sm text-muted-foreground">Upgrade to Pro for more credits and soft overages.</p>
+                    <p className="mt-2 max-w-xl text-sm text-muted-foreground">Choose a plan, add credits when you need them, or keep using Free.</p>
                 </header>
 
                 <section id="plans" className="space-y-5">
@@ -210,7 +205,7 @@ export default function PricingPage() {
                     <section id="topups" className="space-y-3">
                         <div>
                             <h2 className="text-lg font-semibold tracking-tight">Need more this month?</h2>
-                            <p className="mt-1 text-sm text-muted-foreground">Top-ups stack on top of your plan and never expire.</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Top-ups add credits to any plan and never expire.</p>
                         </div>
                         {catalogLoading ? (
                             <div className="space-y-3" aria-busy="true" aria-label="Loading top-ups">
@@ -222,7 +217,7 @@ export default function PricingPage() {
                                 <article key={topup.credits} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-5">
                                     <div className="min-w-0">
                                         <div className="text-base font-medium tabular-nums">Top up {topup.credits.toLocaleString()} credits</div>
-                                        <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">${topup.priceInUsd} · one-time · adds to your current balance</p>
+                                        <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">${topup.priceInUsd} · one-time · available on Free and Pro</p>
                                     </div>
                                     <LoadingButton className="shrink-0" loading={loadingTopupCredits === topup.credits} loadingLabel="Opening checkout" onClick={() => void buyTopup(topup.credits)}>
                                         Buy for ${topup.priceInUsd}
@@ -274,7 +269,7 @@ export default function PricingPage() {
                             <span aria-hidden className="text-muted-foreground">
                                 −
                             </span>
-                            <span>Top-ups are no longer available.</span>
+                            <span>Purchased and promotional credits remain available.</span>
                         </li>
                     </ul>
 

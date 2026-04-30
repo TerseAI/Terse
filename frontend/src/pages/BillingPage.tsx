@@ -169,7 +169,7 @@ export default function BillingPage() {
                                 )}
                             </div>
 
-                            {balance && plan && !showPlanHeaderSkeleton && (
+                            {balance && plan?.overagePriceId && !showPlanHeaderSkeleton && (
                                 <div className="border-t border-border px-6 py-3">
                                     <OverageModeToggle mode={balance.overageMode} plan={plan} onChange={updateMode} />
                                 </div>

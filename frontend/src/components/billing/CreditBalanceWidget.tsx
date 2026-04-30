@@ -5,7 +5,7 @@ import { type BalanceSummary, FrontendRoutes, type Plan, PlanKey } from "terse-t
 
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { formatCredits, formatUsdPrecise } from "@/utility/billingFormat"
+import { formatCredits, formatUsdPerThousandCredits, formatUsdPrecise } from "@/utility/billingFormat"
 
 export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary | null; plan: Plan | null }) {
     if (!balance) {
@@ -64,19 +64,19 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                     {softMeteredOverage ? (
                         <p className="text-muted-foreground">
                             <span className="text-foreground">{formatCredits(overageCredits)}</span> add-on credits this period (~
-                            {formatUsdPrecise(overageDollars)} at {formatUsdPrecise(overageRateCents / 100)} / credit).
+                            {formatUsdPrecise(overageDollars)} at {formatUsdPerThousandCredits(overageRateCents)} per 1,000 credits).
                         </p>
                     ) : (
                         <div className="space-y-2 text-muted-foreground">
                             {topUpCredits > 0 ? (
                                 <p>
-                                    <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> top-up credits remaining.
+                                    <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> additional credits remaining.
                                 </p>
                             ) : (
                                 <>
                                     <p className="font-medium text-foreground">
                                         {plan?.key === PlanKey.FREE
-                                            ? "You are past your included credits. Upgrade to Pro to add credits."
+                                            ? "You are past your included credits. Buy a top-up or upgrade to Pro for soft overages."
                                             : "You are past your included credits. Purchase a credit pack to add credits."}
                                     </p>
                                     <Button variant="secondary" size="sm" className="group h-8 gap-1" asChild>
@@ -91,7 +91,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                     )}
                     {softMeteredOverage && topUpCredits > 0 && (
                         <p className="text-muted-foreground">
-                            <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> prepaid top-up credits also available.
+                            <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> additional credits also available.
                         </p>
                     )}
                     {overHardCap && <p className="font-medium text-danger">Usage cap reached — new runs are blocked until usage resets or you adjust your plan.</p>}

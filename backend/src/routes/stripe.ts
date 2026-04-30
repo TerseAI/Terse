@@ -5,6 +5,7 @@ import { PlanKey, getPlanByPriceId, getPlanDetails, resolveEnvId } from "../conf
 import { stripe as stripeSettings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { emitBillingCachesInvalidated } from "../services/CacheInvalidationService"
 import { createCreditGrant, stripeClient } from "../services/PaymentsProviderService"
 
 export async function handleStripeWebhook(req: Request, res: Response) {
@@ -40,6 +41,11 @@ async function dispatch(event: Stripe.Event) {
             return onInvoicePaymentFailed(event.data.object as Stripe.Invoice)
         case "checkout.session.completed":
             return onCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
+        case "billing.credit_grant.created":
+        case "billing.credit_grant.updated":
+            return onCreditGrantChanged(event.data.object as Stripe.Billing.CreditGrant)
+        case "billing.credit_balance_transaction.created":
+            return onCreditBalanceTransactionCreated(event.data.object as Stripe.Billing.CreditBalanceTransaction)
         default:
             logger.debug("Unhandled stripe event", { type: event.type })
     }
@@ -156,16 +162,17 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
     const subscriptions = await stripeClient.subscriptions.list({ customer: customerId, status: "active", limit: 10 })
     const planItem = subscriptions.data.map(resolveBasePlanItem).find((item): item is Stripe.SubscriptionItem => !!item)
     const priceId = planItem?.price.id
-    const plan = priceId ? getPlanByPriceId(priceId) : null
-    if (!plan?.overageCentsPerCredit) {
-        logger.warn("Top-up purchased on plan with no overage rate", { orgId })
+    const plan = priceId ? getPlanByPriceId(priceId) : getPlanDetails(PlanKey.FREE)
+    const centsPerCredit = creditGrantCentsPerCredit(plan)
+    if (!centsPerCredit) {
+        logger.warn("Top-up purchased but no credit grant conversion rate is configured", { orgId })
         return
     }
 
     await createCreditGrant({
         customerId,
         credits,
-        overageCentsPerCredit: plan.overageCentsPerCredit,
+        overageCentsPerCredit: centsPerCredit,
         category: "paid",
         name: `Top-up: ${credits.toLocaleString()} credits`,
         expiresAt: null,
@@ -173,6 +180,47 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
         metadata: { org_id: orgId, type: "topup", session_id: session.id },
         idempotencyKey: `topup-grant:${session.id}`
     })
+}
+
+async function onCreditGrantChanged(creditGrant: Stripe.Billing.CreditGrant) {
+    await invalidateBillingForStripeCustomer(customerIdFromCreditGrant(creditGrant), "credit grant", creditGrant.id)
+}
+
+async function onCreditBalanceTransactionCreated(transaction: Stripe.Billing.CreditBalanceTransaction) {
+    await invalidateBillingForStripeCustomer(await customerIdForCreditBalanceTransaction(transaction), "credit balance transaction", transaction.id)
+}
+
+async function invalidateBillingForStripeCustomer(customerId: string | null, source: string, sourceId: string) {
+    if (!customerId) {
+        logger.warn(`Stripe ${source} missing customer`, { sourceId })
+        return
+    }
+
+    const orgId = await orgIdForCustomer(customerId)
+    if (!orgId) {
+        logger.warn(`Stripe ${source} with no org mapping`, { customerId, sourceId })
+        return
+    }
+
+    emitBillingCachesInvalidated(orgId)
+}
+
+async function customerIdForCreditBalanceTransaction(transaction: Stripe.Billing.CreditBalanceTransaction): Promise<string | null> {
+    if (typeof transaction.credit_grant !== "string") {
+        return customerIdFromCreditGrant(transaction.credit_grant)
+    }
+
+    const creditGrant = await stripeClient.billing.creditGrants.retrieve(transaction.credit_grant)
+    return customerIdFromCreditGrant(creditGrant)
+}
+
+function customerIdFromCreditGrant(creditGrant: Stripe.Billing.CreditGrant): string | null {
+    if (typeof creditGrant.customer === "string") return creditGrant.customer
+    return creditGrant.customer?.id ?? null
+}
+
+function creditGrantCentsPerCredit(plan: ReturnType<typeof getPlanDetails>): number | null {
+    return plan.overageCentsPerCredit ?? getPlanDetails(PlanKey.PRO).overageCentsPerCredit
 }
 
 async function orgIdForCustomer(customerId: string): Promise<string | null> {

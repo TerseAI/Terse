@@ -35,7 +35,12 @@ export class CreditService {
         if (!subscription || subscription.status === "past_due") {
             const plan = getPlanDetails(PlanKey.FREE)
             const consumption = await ensureFreePeriodConsumption(orgId)
-            if (consumption.consumed_credits >= plan.includedCreditsPerMonth) {
+            const availability = await creditAvailability({
+                customerId: customer.stripe_customer_id,
+                plan,
+                consumedCredits: consumption.consumed_credits
+            })
+            if (consumption.consumed_credits >= availability.totalCreditCapacity) {
                 return { allow: false, reason: "credits_exhausted" }
             }
             return { allow: true }
@@ -175,7 +180,7 @@ export class CreditService {
         const context = await this.resolveBillingContext(orgId, customer)
         const consumption = await ensurePeriodConsumption(orgId, context.periodStart, context.periodEnd)
         const availability = await creditAvailability({
-            customerId: context.meteredCustomerId,
+            customerId: context.creditBalanceCustomerId,
             plan: context.plan.details,
             consumedCredits: consumption.consumed_credits
         })
@@ -191,7 +196,7 @@ export class CreditService {
             periodEnd: consumption.period_end,
             overageMode: context.overageMode,
             hardCap: context.hardCap,
-            canBuyTopups: !!context.meteredCustomerId && !!context.plan.details.overageCentsPerCredit,
+            canBuyTopups: !!context.creditBalanceCustomerId,
             scheduledChange: context.scheduledChange
         }
     }
@@ -207,6 +212,7 @@ export class CreditService {
                 periodEnd: consumption.period_end,
                 overageMode: plan.details.defaultOverageMode,
                 hardCap: computeHardCap(plan.details, plan.details.defaultOverageMode),
+                creditBalanceCustomerId: null,
                 meteredCustomerId: null,
                 scheduledChange: null
             }
@@ -223,6 +229,7 @@ export class CreditService {
                 periodEnd: period.end,
                 overageMode: plan.details.defaultOverageMode,
                 hardCap: computeHardCap(plan.details, plan.details.defaultOverageMode),
+                creditBalanceCustomerId: customer.stripe_customer_id,
                 meteredCustomerId: null,
                 scheduledChange: null
             }
@@ -241,6 +248,7 @@ export class CreditService {
             periodEnd: period.end,
             overageMode,
             hardCap: computeHardCap(plan.details, overageMode, customer.overage_cap_multiplier),
+            creditBalanceCustomerId: customer.stripe_customer_id,
             meteredCustomerId: customer.stripe_customer_id,
             scheduledChange: await scheduledChangeForSubscription(subscription, subscriptionPlanItem.item)
         }
@@ -397,7 +405,8 @@ async function creditAvailability(input: {
     consumedCredits: number
 }): Promise<{ topUpCredits: number; totalCreditCapacity: number }> {
     const planCredits = input.plan.includedCreditsPerMonth
-    if (!input.customerId || !input.plan.overageCentsPerCredit) {
+    const centsPerCredit = creditGrantCentsPerCredit(input.plan)
+    if (!input.customerId || !centsPerCredit) {
         return { topUpCredits: 0, totalCreditCapacity: planCredits }
     }
 
@@ -410,7 +419,7 @@ async function creditAvailability(input: {
         if (!monetary || monetary.currency !== "usd") return sum
         return sum + monetary.value
     }, 0)
-    const topUpCreditCapacity = Math.floor(availableValueCents / input.plan.overageCentsPerCredit)
+    const topUpCreditCapacity = Math.floor(availableValueCents / centsPerCredit)
     const consumedFromTopUp = Math.max(0, input.consumedCredits - planCredits)
     return {
         topUpCredits: Math.max(0, topUpCreditCapacity - consumedFromTopUp),
@@ -423,11 +432,15 @@ async function creditsExceeded(context: BillingContext, consumedCredits: number)
         return consumedCredits > context.hardCap
     }
     const availability = await creditAvailability({
-        customerId: context.meteredCustomerId,
+        customerId: context.creditBalanceCustomerId,
         plan: context.plan.details,
         consumedCredits
     })
     return consumedCredits > availability.totalCreditCapacity
+}
+
+function creditGrantCentsPerCredit(plan: ReturnType<typeof getPlanDetails>): number | null {
+    return plan.overageCentsPerCredit ?? getPlanDetails(PlanKey.PRO).overageCentsPerCredit
 }
 
 async function scheduledChangeForSubscription(subscription: Stripe.Subscription, planItem: Stripe.SubscriptionItem): Promise<BillingScheduledChange | null> {
@@ -518,6 +531,7 @@ type BillingContext = {
     periodEnd: Date
     overageMode: "soft" | "strict"
     hardCap: number
+    creditBalanceCustomerId: string | null
     meteredCustomerId: string | null
     scheduledChange: BillingScheduledChange | null
 }

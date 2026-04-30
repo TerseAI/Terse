@@ -13,6 +13,7 @@ import {
     createCheckoutSessionForTopup,
     createPortalSession,
     fetchActivePaidSubscription,
+    getOrCreateCustomer,
     listMeterEventSummaries,
     scheduleBillingPeriodChange,
     scheduleCancelToFree
@@ -46,9 +47,6 @@ export async function createBillingCheckoutSession(req: Request, res: Response) 
     const activeSubscription = customer?.stripe_customer_id ? await fetchActivePaidSubscription(customer.stripe_customer_id) : null
     if (parsed.data.kind === "plan" && activeSubscription) {
         return res.status(409).json({ error: "Use the billing change endpoint for existing subscriptions." })
-    }
-    if (parsed.data.kind === "topup" && !activeSubscription) {
-        return res.status(403).json({ error: "Top-ups require an active paid subscription." })
     }
 
     const stripeSession =
@@ -93,6 +91,7 @@ export async function getBillingCatalog(_req: Request, res: Response) {
 
 export async function getBillingBalance(req: Request, res: Response) {
     const session = req.session as Session
+    await getOrCreateCustomer(session.user.organizationId, session.user.email)
     const summary = await creditService.getBalanceSummary(session.user.organizationId)
     return res.json(summary)
 }

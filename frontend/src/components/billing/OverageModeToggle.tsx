@@ -5,27 +5,24 @@ import type { OverageMode, Plan } from "terse-types"
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { invalidateBillingCaches } from "@/hooks/api/billingCache"
+import { formatUsdPerThousandCredits } from "@/utility/billingFormat"
 
 import { BackendProvider } from "../../services/backend"
-
-function formatOverageRate(centsPerCredit: number | null | undefined): string {
-    if (centsPerCredit == null) return ""
-    const dollars = centsPerCredit / 100
-    return `$${dollars.toFixed(3)}`
-}
 
 const OPTIONS = [
     {
         value: "strict" as const,
         label: "Strict",
-        description: (_: Plan | null) => "Pause runs when prepaid credits are exhausted. No overage charges."
+        description: () => "Pause runs when plan and additional credits are exhausted. No overage charges."
     },
     {
         value: "soft" as const,
         label: "Soft",
         description: (plan: Plan | null) => {
-            const rate = formatOverageRate(plan?.overageCentsPerCredit)
-            return rate ? `Allow overages, billed at ${rate} per credit up to ${plan?.hardCapMultiplier}x plan credits.` : "Allow overages, billed per credit."
+            const c = plan?.overageCentsPerCredit
+            return c != null && c > 0
+                ? `Allow overages, billed at ${formatUsdPerThousandCredits(c)} per 1,000 credits up to ${plan?.hardCapMultiplier}x plan credits.`
+                : "Allow overages at metered rates."
         }
     }
 ]

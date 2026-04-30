@@ -25,8 +25,6 @@ export async function getOrCreateCustomer(orgId: string, email: string): Promise
 }
 
 const NON_PURCHASABLE_PLAN_MESSAGE = "Free plan cannot be purchased; cancel a paid subscription in the billing portal to return to Free."
-const TOPUP_REQUIRES_PAID_PLAN_MESSAGE = "Top-ups require an active paid subscription with metered credits."
-
 // Checkout Sessions are for purchasing something new
 export async function createCheckoutSessionForPlan(orgId: string, email: string, planKey: PlanKey, timePeriod: TimePeriods): Promise<Stripe.Checkout.Session> {
     if (!isPurchasablePlan(getPlanDetails(planKey))) {
@@ -63,11 +61,6 @@ export async function createCheckoutSessionForPlan(orgId: string, email: string,
 
 export async function createCheckoutSessionForTopup(orgId: string, email: string, packCredits: SupportedTopUps): Promise<Stripe.Checkout.Session> {
     const customerId = await getOrCreateCustomer(orgId, email)
-    const activeSubscription = await fetchActivePaidSubscription(customerId)
-    if (!activeSubscription?.plan.details.overageCentsPerCredit) {
-        throw new Error(TOPUP_REQUIRES_PAID_PLAN_MESSAGE)
-    }
-
     const topupPriceId = getTopUpPriceId(packCredits)
 
     return stripeClient.checkout.sessions.create({
