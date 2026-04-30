@@ -14,18 +14,6 @@ CREATE TABLE "billing_customers" (
     CONSTRAINT "billing_customers_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "billing_period_consumption" (
-    "id" TEXT NOT NULL,
-    "organization_id" TEXT NOT NULL,
-    "period_start" TIMESTAMP(3) NOT NULL,
-    "period_end" TIMESTAMP(3) NOT NULL,
-    "consumed_credits" INTEGER NOT NULL DEFAULT 0,
-    "updated_at" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "billing_period_consumption_pkey" PRIMARY KEY ("id")
-);
-
 -- CreateIndex
 CREATE UNIQUE INDEX "billing_customers_organization_id_key" ON "billing_customers"("organization_id");
 
@@ -34,6 +22,3 @@ CREATE UNIQUE INDEX "billing_customers_stripe_customer_id_key" ON "billing_custo
 
 -- CreateIndex
 CREATE INDEX "billing_customers_stripe_customer_id_idx" ON "billing_customers"("stripe_customer_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "billing_period_consumption_organization_id_key" ON "billing_period_consumption"("organization_id");

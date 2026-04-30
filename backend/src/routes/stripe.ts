@@ -72,31 +72,6 @@ async function onSubscriptionUpsert(subscription: Stripe.Subscription) {
 
     const periodStart = creditPeriod.start
     const periodEnd = creditPeriod.end
-    const existingPeriod = await db().billing_period_consumption.findUnique({ where: { organization_id: orgId } })
-    const isNewPeriod = !existingPeriod || existingPeriod.period_start.getTime() !== periodStart.getTime() || existingPeriod.period_end.getTime() !== periodEnd.getTime()
-
-    if (isNewPeriod) {
-        // This resets consumed_credits to 0 unconditionally. For free-to-paid upgrades,
-        // that is intentional: prior free-plan consumption is forgiven when the org upgrades.
-        // If product later wants to carry free consumption forward, gate this reset on
-        // subscription metadata or a previous-period lookup.
-        await db().billing_period_consumption.upsert({
-            where: { organization_id: orgId },
-            create: {
-                organization_id: orgId,
-                period_start: periodStart,
-                period_end: periodEnd,
-                consumed_credits: 0,
-                notified_thresholds: []
-            },
-            update: {
-                period_start: periodStart,
-                period_end: periodEnd,
-                consumed_credits: 0,
-                notified_thresholds: []
-            }
-        })
-    }
 
     const priceId = planItem.item.price.id
     const plan = planItem.plan.details

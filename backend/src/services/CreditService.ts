@@ -1,4 +1,4 @@
-import { OverageMode, type billing_customers } from "@prisma/client"
+import { OverageMode } from "@prisma/client"
 import { DateTime } from "luxon"
 import type Stripe from "stripe"
 import type { BalanceSummary } from "terse-types"
@@ -6,100 +6,66 @@ import type { BalanceSummary } from "terse-types"
 import { ModelReference } from "../agent/modelRegistry"
 import { dollarsToCredits } from "../config/creditEconomics"
 import { priceFor } from "../config/modelPrices"
-import { PlanKey, getPlanByPriceId, getPlanDetails } from "../config/plans"
+import { PlanKey, getCreditConsumptionMeterId, getPlanByPriceId, getPlanDetails } from "../config/plans"
 import logger from "../logger"
 import { db } from "../prismaClient"
 
-import { sendBillingThresholdNotification } from "./BillingNotificationDispatcher"
-import { evaluateAndRecordThresholds } from "./BillingNotifications"
 import { emitBillingCachesInvalidated } from "./CacheInvalidationService"
-import { fetchCreditBalanceSummary, fetchSubscription, postMeterEvent, resolveSubscriptionBasePlanItem, resolveSubscriptionCreditPeriod, stripeClient } from "./PaymentsProviderService"
+import {
+    fetchCreditBalanceSummary,
+    fetchSubscription,
+    getOrCreateCustomer,
+    listMeterEventSummaries,
+    postMeterEvent,
+    resolveSubscriptionBasePlanItem,
+    resolveSubscriptionCreditPeriod,
+    stripeClient
+} from "./PaymentsProviderService"
 
 export class CreditService {
     // Pre-run gate check to see if the run should be allowed to proceed based on subscription and credit status
-    async checkRunGate(orgId: string): Promise<GateDecision> {
-        const prisma = db()
-        const customer = await prisma.billing_customers.findUnique({ where: { organization_id: orgId } })
+    async checkRunGate(orgId: string, email: string): Promise<GateDecision> {
+        const context = await this.resolveBillingContext(orgId)
+        const plan = context.plan.details
+        const consumedCredits = await consumedCreditsForPeriod(context)
 
-        if (!customer?.stripe_customer_id) {
-            const plan = getPlanDetails(PlanKey.FREE)
-            const consumption = await ensureFreePeriodConsumption(orgId)
-            if (consumption.consumed_credits >= plan.includedCreditsPerMonth) {
-                return { allow: false, reason: "credits_exhausted" }
-            }
-            return { allow: true }
-        }
-
-        const subscription = await fetchSubscription(customer.stripe_customer_id)
-
-        if (!subscription || subscription.status === "past_due") {
-            const plan = getPlanDetails(PlanKey.FREE)
-            const consumption = await ensureFreePeriodConsumption(orgId)
-            const availability = await creditAvailability({
-                customerId: customer.stripe_customer_id,
-                plan,
-                consumedCredits: consumption.consumed_credits
-            })
-            if (consumption.consumed_credits >= availability.totalCreditCapacity) {
-                return { allow: false, reason: "credits_exhausted" }
-            }
-            return { allow: true }
-        }
-
-        const subscriptionPlanItem = resolveRequiredSubscriptionBasePlanItem(subscription)
-        const plan = subscriptionPlanItem.plan.details
-        const period = resolveRequiredSubscriptionCreditPeriod(subscription, subscriptionPlanItem.item)
-        const consumption = await ensurePeriodConsumption(orgId, period.start, period.end)
-        const overageMode = customer.overage_mode ?? plan.defaultOverageMode
-        const hardCap = computeHardCap(plan, overageMode, customer.overage_cap_multiplier)
-
-        if (overageMode === "strict") {
-            const availability = await creditAvailability({ customerId: customer.stripe_customer_id, plan, consumedCredits: consumption.consumed_credits })
-            const planRemaining = Math.max(0, plan.includedCreditsPerMonth - consumption.consumed_credits)
+        if (context.overageMode === "strict") {
+            const availability = await creditAvailability({ customerId: context.creditBalanceCustomerId, plan, consumedCredits })
+            const planRemaining = Math.max(0, plan.includedCreditsPerMonth - consumedCredits)
             if (planRemaining + availability.topUpCredits <= 0) {
                 return { allow: false, reason: "credits_exhausted" }
             }
             return { allow: true }
         }
 
-        if (consumption.consumed_credits >= hardCap) {
+        if (consumedCredits >= context.hardCap) {
             return { allow: false, reason: "credits_exhausted" }
         }
         return { allow: true }
     }
 
     // Charge for the base run cost (1 credit) when the run starts
-    async chargeRunBase(orgId: string, runId: string): Promise<void> {
+    async chargeRunBase(orgId: string, email: string, runId: string): Promise<void> {
         const key = `${runId}:run_base`
+        const context = await this.resolveBillingContext(orgId)
 
-        const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
-        const context = await this.resolveBillingContext(orgId, customer)
-
-        if (context.meteredCustomerId) {
-            try {
-                await postMeterEvent({
-                    eventName: "credit_consumption",
-                    customerId: context.meteredCustomerId,
-                    value: 1,
-                    identifier: key,
-                    timestamp: new Date()
-                })
-            } catch (error) {
-                throw toStripeUnavailableError(error)
-            }
+        try {
+            await postMeterEvent({
+                eventName: "credit_consumption",
+                customerId: context.meteredCustomerId,
+                value: 1,
+                identifier: key,
+                timestamp: new Date()
+            })
+        } catch (error) {
+            throw toStripeUnavailableError(error)
         }
 
-        const before = await currentConsumption(orgId)
-        const consumption = await incrementConsumption(orgId, context.periodStart, context.periodEnd, 1)
-        await fireThresholdsIfAny(orgId, before, consumption.consumed_credits, context)
         emitBillingCachesInvalidated(orgId)
-        if (await creditsExceeded(context, consumption.consumed_credits)) {
-            throw new CreditsExhaustedError()
-        }
     }
 
     // Charge for LLM usage when the step finishes, based on the input/output tokens and model used
-    async recordLLMCall(orgId: string, runId: string, response: LLMResponseWithUsage): Promise<{ creditsCharged: number; rawCostMicros: bigint }> {
+    async recordLLMCall(orgId: string, email: string, runId: string, response: LLMResponseWithUsage): Promise<{ creditsCharged: number; rawCostMicros: bigint }> {
         const price = priceFor(response.model)
         if (!price) {
             throw new Error(`Unpriced model: ${response.model.providerId}/${response.model.modelId}`)
@@ -109,8 +75,7 @@ export class CreditService {
             costMicros(response.usage.inputTokens, price.inputUsdPer1M) +
             costMicros(response.usage.outputTokens, price.outputUsdPer1M) +
             costMicros(response.usage.inputTokensDetails.cached_tokens, price.cachedInputUsdPer1M)
-        const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
-        const context = await this.resolveBillingContext(orgId, customer)
+        const context = await this.resolveBillingContext(orgId)
         const markupBp = BigInt(Math.round(context.plan.details.markupPct * 10_000))
         const markedUpCostMicros = rawCostMicros + (rawCostMicros * markupBp) / 10_000n
         const credits = dollarsToCredits(markedUpCostMicros)
@@ -148,52 +113,42 @@ export class CreditService {
             return { creditsCharged: 0, rawCostMicros }
         }
 
-        if (context.meteredCustomerId) {
-            try {
-                await postMeterEvent({
-                    eventName: "credit_consumption",
-                    customerId: context.meteredCustomerId,
-                    value: credits,
-                    identifier: key,
-                    timestamp: new Date()
-                })
-            } catch (error) {
-                throw toStripeUnavailableError(error)
-            }
+        try {
+            await postMeterEvent({
+                eventName: "credit_consumption",
+                customerId: context.meteredCustomerId,
+                value: credits,
+                identifier: key,
+                timestamp: new Date()
+            })
+        } catch (error) {
+            throw toStripeUnavailableError(error)
         }
 
-        const before = await currentConsumption(orgId)
-        const consumption = await incrementConsumption(orgId, context.periodStart, context.periodEnd, credits)
-        await fireThresholdsIfAny(orgId, before, consumption.consumed_credits, context)
         emitBillingCachesInvalidated(orgId)
-        if (await creditsExceeded(context, consumption.consumed_credits)) {
-            throw new CreditsExhaustedError()
-        }
 
         return { creditsCharged: credits, rawCostMicros }
     }
 
     // Get the current credit balance for the org.
-    async getBalanceSummary(orgId: string): Promise<BalanceSummary> {
-        const prisma = db()
-        const customer = await prisma.billing_customers.findUnique({ where: { organization_id: orgId } })
-        const context = await this.resolveBillingContext(orgId, customer)
-        const consumption = await ensurePeriodConsumption(orgId, context.periodStart, context.periodEnd)
+    async getBalanceSummary(orgId: string, email: string): Promise<BalanceSummary> {
+        const context = await this.resolveBillingContext(orgId)
+        const consumedCredits = await consumedCreditsForPeriod(context)
         const availability = await creditAvailability({
             customerId: context.creditBalanceCustomerId,
             plan: context.plan.details,
-            consumedCredits: consumption.consumed_credits
+            consumedCredits
         })
 
         return {
             planKey: context.plan.key,
             billingPeriod: context.billingPeriod,
             planCredits: context.plan.details.includedCreditsPerMonth,
-            consumedCredits: consumption.consumed_credits,
+            consumedCredits,
             topUpCredits: availability.topUpCredits,
             totalCreditCapacity: availability.totalCreditCapacity,
-            periodStart: consumption.period_start,
-            periodEnd: consumption.period_end,
+            periodStart: context.periodStart,
+            periodEnd: context.periodEnd,
             overageMode: context.overageMode,
             hardCap: context.hardCap,
             canBuyTopups: !!context.creditBalanceCustomerId,
@@ -201,24 +156,11 @@ export class CreditService {
         }
     }
 
-    private async resolveBillingContext(orgId: string, customer: billing_customers | null): Promise<BillingContext> {
-        if (!customer?.stripe_customer_id) {
-            const plan = { key: PlanKey.FREE, details: getPlanDetails(PlanKey.FREE) }
-            const consumption = await ensureFreePeriodConsumption(orgId)
-            return {
-                plan,
-                billingPeriod: null,
-                periodStart: consumption.period_start,
-                periodEnd: consumption.period_end,
-                overageMode: plan.details.defaultOverageMode,
-                hardCap: computeHardCap(plan.details, plan.details.defaultOverageMode),
-                creditBalanceCustomerId: null,
-                meteredCustomerId: null,
-                scheduledChange: null
-            }
-        }
+    private async resolveBillingContext(orgId: string): Promise<BillingContext> {
+        const customerId = await getOrCreateCustomer(orgId)
+        const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
 
-        const subscription = await fetchSubscription(customer.stripe_customer_id)
+        const subscription = await fetchSubscription(customerId)
         if (!subscription || subscription.status === "past_due") {
             const plan = { key: PlanKey.FREE, details: getPlanDetails(PlanKey.FREE) }
             const period = currentFreePeriod()
@@ -229,8 +171,8 @@ export class CreditService {
                 periodEnd: period.end,
                 overageMode: plan.details.defaultOverageMode,
                 hardCap: computeHardCap(plan.details, plan.details.defaultOverageMode),
-                creditBalanceCustomerId: customer.stripe_customer_id,
-                meteredCustomerId: null,
+                creditBalanceCustomerId: customerId,
+                meteredCustomerId: customerId,
                 scheduledChange: null
             }
         }
@@ -238,8 +180,7 @@ export class CreditService {
         const subscriptionPlanItem = resolveRequiredSubscriptionBasePlanItem(subscription)
         const plan = subscriptionPlanItem.plan
         const period = resolveRequiredSubscriptionCreditPeriod(subscription, subscriptionPlanItem.item)
-        await ensurePeriodConsumption(orgId, period.start, period.end)
-        const overageMode = customer.overage_mode ?? plan.details.defaultOverageMode
+        const overageMode = customer?.overage_mode ?? plan.details.defaultOverageMode
 
         return {
             plan,
@@ -247,9 +188,9 @@ export class CreditService {
             periodStart: period.start,
             periodEnd: period.end,
             overageMode,
-            hardCap: computeHardCap(plan.details, overageMode, customer.overage_cap_multiplier),
-            creditBalanceCustomerId: customer.stripe_customer_id,
-            meteredCustomerId: customer.stripe_customer_id,
+            hardCap: computeHardCap(plan.details, overageMode, customer?.overage_cap_multiplier),
+            creditBalanceCustomerId: customerId,
+            meteredCustomerId: customerId,
             scheduledChange: await scheduledChangeForSubscription(subscription, subscriptionPlanItem.item)
         }
     }
@@ -266,69 +207,15 @@ function currentFreePeriod(): { start: Date; end: Date } {
     return { start, end }
 }
 
-async function ensureFreePeriodConsumption(orgId: string) {
-    const period = currentFreePeriod()
-    return ensurePeriodConsumption(orgId, period.start, period.end, true)
-}
-
-async function ensurePeriodConsumption(orgId: string, periodStart: Date, periodEnd: Date, resetExpired = false) {
-    const prisma = db()
-    const existing = await prisma.billing_period_consumption.findUnique({ where: { organization_id: orgId } })
-    const now = new Date()
-
-    if (!existing) {
-        return prisma.billing_period_consumption.create({
-            data: {
-                organization_id: orgId,
-                period_start: periodStart,
-                period_end: periodEnd,
-                consumed_credits: 0,
-                notified_thresholds: []
-            }
-        })
-    }
-
-    const periodMismatch = existing.period_start.getTime() !== periodStart.getTime() || existing.period_end.getTime() !== periodEnd.getTime()
-    if (periodMismatch || (resetExpired && existing.period_end <= now)) {
-        return prisma.billing_period_consumption.update({
-            where: { organization_id: orgId },
-            data: {
-                period_start: periodStart,
-                period_end: periodEnd,
-                consumed_credits: 0,
-                notified_thresholds: []
-            }
-        })
-    }
-
-    return existing
-}
-
-async function incrementConsumption(orgId: string, periodStart: Date, periodEnd: Date, credits: number) {
-    await ensurePeriodConsumption(orgId, periodStart, periodEnd)
-    return db().billing_period_consumption.update({
-        where: { organization_id: orgId },
-        data: { consumed_credits: { increment: credits } }
+async function consumedCreditsForPeriod(context: BillingContext): Promise<number> {
+    const summaries = await listMeterEventSummaries({
+        meterId: getCreditConsumptionMeterId(),
+        customerId: context.meteredCustomerId,
+        start: context.periodStart,
+        end: context.periodEnd,
+        valueGroupingWindow: "day"
     })
-}
-
-async function currentConsumption(orgId: string): Promise<number> {
-    const row = await db().billing_period_consumption.findUnique({ where: { organization_id: orgId } })
-    return row?.consumed_credits ?? 0
-}
-
-async function fireThresholdsIfAny(orgId: string, before: number, after: number, context: BillingContext): Promise<void> {
-    const fresh = await evaluateAndRecordThresholds(orgId, before, after, {
-        includedCredits: context.plan.details.includedCreditsPerMonth,
-        hardCap: context.hardCap,
-        overageMode: context.overageMode
-    })
-
-    for (const event of fresh) {
-        void sendBillingThresholdNotification(orgId, event).catch(error => {
-            logger.error("Failed to send billing threshold notification", { error, orgId, threshold: event.threshold })
-        })
-    }
+    return summaries.reduce((sum, summary) => sum + Number(summary.aggregated_value), 0)
 }
 
 function resolveRequiredSubscriptionBasePlanItem(subscription: Stripe.Subscription): SubscriptionPlanItem {
@@ -434,18 +321,6 @@ async function creditAvailability(input: {
     }
 }
 
-async function creditsExceeded(context: BillingContext, consumedCredits: number): Promise<boolean> {
-    if (context.overageMode !== "strict") {
-        return consumedCredits > context.hardCap
-    }
-    const availability = await creditAvailability({
-        customerId: context.creditBalanceCustomerId,
-        plan: context.plan.details,
-        consumedCredits
-    })
-    return consumedCredits > availability.totalCreditCapacity
-}
-
 function creditGrantCentsPerCredit(plan: ReturnType<typeof getPlanDetails>): number | null {
     return plan.overageCentsPerCredit ?? getPlanDetails(PlanKey.PRO).overageCentsPerCredit
 }
@@ -514,13 +389,6 @@ export class StripeUnavailableError extends Error {
     }
 }
 
-export class CreditsExhaustedError extends Error {
-    constructor(message = "Credits exhausted") {
-        super(message)
-        this.name = "CreditsExhaustedError"
-    }
-}
-
 type ResolvedPlan = {
     key: PlanKey
     details: ReturnType<typeof getPlanDetails>
@@ -538,8 +406,8 @@ type BillingContext = {
     periodEnd: Date
     overageMode: "soft" | "strict"
     hardCap: number
-    creditBalanceCustomerId: string | null
-    meteredCustomerId: string | null
+    creditBalanceCustomerId: string
+    meteredCustomerId: string
     scheduledChange: BillingScheduledChange | null
 }
 

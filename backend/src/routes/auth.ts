@@ -1,5 +1,6 @@
 import { users as PrismaUser } from "@prisma/client"
 import { AuthenticateWithSessionCookieSuccessResponse, AuthenticationResponse } from "@workos-inc/node"
+import { User as WorkOSUser } from "@workos-inc/node"
 import { NextFunction, Request, Response } from "express"
 import { ApiRoutes } from "terse-types"
 import { Role, User } from "terse-types/types"
@@ -551,6 +552,19 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     }
 
     return { user }
+}
+
+// WorkOS stores org ids, we need to lookup users on their side
+export async function resolveWorkOSAdminUser(orgId: string): Promise<WorkOSUser> {
+    const memberships = await workos.userManagement.listOrganizationMemberships({
+        organizationId: orgId,
+        statuses: ["active"]
+    })
+    const adminUserMembership = memberships.data?.find(m => m.roles?.some(r => r.slug === "admin"))
+    if (!adminUserMembership) {
+        throw new Error("Admin user not found in organization")
+    }
+    return await workos.userManagement.getUser(adminUserMembership.userId)
 }
 
 // Library doesn't export this type properly, so we need to define it ourselves

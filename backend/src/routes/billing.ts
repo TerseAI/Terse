@@ -50,9 +50,7 @@ export async function createBillingCheckoutSession(req: Request, res: Response) 
     }
 
     const stripeSession =
-        parsed.data.kind === "plan"
-            ? await createCheckoutSessionForPlan(orgId, email, parsed.data.planKey, parsed.data.period)
-            : await createCheckoutSessionForTopup(orgId, email, parsed.data.packCredits)
+        parsed.data.kind === "plan" ? await createCheckoutSessionForPlan(orgId, parsed.data.planKey, parsed.data.period) : await createCheckoutSessionForTopup(orgId, parsed.data.packCredits)
 
     if (!stripeSession.url) {
         return res.status(500).json({ error: "Stripe did not return a checkout URL" })
@@ -63,7 +61,7 @@ export async function createBillingCheckoutSession(req: Request, res: Response) 
 
 export async function createBillingPortalSession(req: Request, res: Response) {
     const session = req.session as Session
-    const stripeSession = await createPortalSession(session.user.organizationId, session.user.email)
+    const stripeSession = await createPortalSession(session.user.organizationId)
     if (!stripeSession.url) {
         return res.status(500).json({ error: "Stripe did not return a portal URL" })
     }
@@ -78,7 +76,7 @@ export async function changeBillingSubscription(req: Request, res: Response) {
     const parsed = changeBodySchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message })
 
-    const result = parsed.data.kind === "cancel_to_free" ? await scheduleCancelToFree(orgId, email) : await scheduleBillingPeriodChange(orgId, email, parsed.data.planKey, parsed.data.period)
+    const result = parsed.data.kind === "cancel_to_free" ? await scheduleCancelToFree(orgId) : await scheduleBillingPeriodChange(orgId, parsed.data.planKey, parsed.data.period)
 
     const body: BillingChangeResponse = { ok: true, scheduledChange: result.scheduledChange }
     return res.json(body)
@@ -91,27 +89,21 @@ export async function getBillingCatalog(_req: Request, res: Response) {
 
 export async function getBillingBalance(req: Request, res: Response) {
     const session = req.session as Session
-    await getOrCreateCustomer(session.user.organizationId, session.user.email)
-    const summary = await creditService.getBalanceSummary(session.user.organizationId)
+    const summary = await creditService.getBalanceSummary(session.user.organizationId, session.user.email)
     return res.json(summary)
 }
 
 export async function getBillingUsage(req: Request, res: Response) {
     const session = req.session as Session
     const orgId = session.user.organizationId
-    const customer = await db().billing_customers.findUnique({ where: { organization_id: orgId } })
-
-    if (!customer?.stripe_customer_id) {
-        const empty: UsageResponse = { buckets: [] }
-        return res.json(empty)
-    }
+    const customerId = await getOrCreateCustomer(orgId)
 
     const end = req.query.end ? new Date(String(req.query.end)) : new Date()
     const start = req.query.start ? new Date(String(req.query.start)) : DateTime.fromJSDate(end).minus({ days: 30 }).toJSDate()
 
     const summaries = await listMeterEventSummaries({
         meterId: getCreditConsumptionMeterId(),
-        customerId: customer.stripe_customer_id,
+        customerId,
         start,
         end,
         valueGroupingWindow: "day"

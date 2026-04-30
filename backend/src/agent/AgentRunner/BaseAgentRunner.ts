@@ -230,7 +230,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     async checkRunGate(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
         const orgId = settings.context.user.organizationId
 
-        const gateDecision = await creditService.checkRunGate(orgId)
+        const gateDecision = await creditService.checkRunGate(orgId, settings.context.user.email)
         if (!gateDecision.allow) {
             throw new CreditGateDeniedError(gateDecision.reason)
         }
@@ -270,7 +270,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
                 model: this.getModel(),
                 usage
             }
-            await creditService.recordLLMCall(settings.context.user.organizationId, settings.context.runId, payload)
+            await creditService.recordLLMCall(settings.context.user.organizationId, settings.context.user.email, settings.context.runId, payload)
         } catch (error) {
             if (error instanceof StripeUnavailableError) {
                 logger.error("SdkAgentRunner: Stripe unavailable; failing run", { runId: settings.context.runId, error })

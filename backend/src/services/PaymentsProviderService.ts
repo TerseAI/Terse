@@ -5,17 +5,21 @@ import { type BillingPeriod, FrontendRoutes, isPurchasablePlan } from "terse-typ
 import { PlanKey, SupportedTopUps, TimePeriods, getPlanByPriceId, getPlanDetails, getTopUpPriceId, resolveEnvId } from "../config/plans"
 import { stripe, urls } from "../config/settings"
 import { db } from "../prismaClient"
+import { resolveWorkOSAdminUser } from "../routes/auth"
 
 export const stripeClient = new Stripe(stripe.secretKey, {
     apiVersion: "2026-04-22.dahlia",
     typescript: true
 })
 
-export async function getOrCreateCustomer(orgId: string, email: string): Promise<string> {
+export async function getOrCreateCustomer(orgId: string): Promise<string> {
     const prisma = db()
     const row = await prisma.billing_customers.findUnique({ where: { organization_id: orgId } })
     if (row?.stripe_customer_id) return row.stripe_customer_id
-    const customer = await stripeClient.customers.create({ email, metadata: { org_id: orgId } })
+
+    const adminUser = await resolveWorkOSAdminUser(orgId)
+
+    const customer = await stripeClient.customers.create({ email: adminUser.email, metadata: { org_id: orgId } })
     await prisma.billing_customers.upsert({
         where: { organization_id: orgId },
         create: { organization_id: orgId, stripe_customer_id: customer.id },
@@ -26,7 +30,7 @@ export async function getOrCreateCustomer(orgId: string, email: string): Promise
 
 const NON_PURCHASABLE_PLAN_MESSAGE = "Free plan cannot be purchased; cancel a paid subscription in the billing portal to return to Free."
 // Checkout Sessions are for purchasing something new
-export async function createCheckoutSessionForPlan(orgId: string, email: string, planKey: PlanKey, timePeriod: TimePeriods): Promise<Stripe.Checkout.Session> {
+export async function createCheckoutSessionForPlan(orgId: string, planKey: PlanKey, timePeriod: TimePeriods): Promise<Stripe.Checkout.Session> {
     if (!isPurchasablePlan(getPlanDetails(planKey))) {
         throw new Error(NON_PURCHASABLE_PLAN_MESSAGE)
     }
@@ -35,7 +39,7 @@ export async function createCheckoutSessionForPlan(orgId: string, email: string,
     if (!basePair) throw new Error(`Plan ${planKey} is not subscribable for period ${timePeriod}`)
 
     const basePriceId = resolveEnvId(basePair)
-    const customerId = await getOrCreateCustomer(orgId, email)
+    const customerId = await getOrCreateCustomer(orgId)
 
     // Only the licensed base price goes through Checkout. Metered overage is always attached
     // after payment (checkout.session.completed → ensureSubscriptionHasMeteredOverage) so
@@ -59,8 +63,8 @@ export async function createCheckoutSessionForPlan(orgId: string, email: string,
     })
 }
 
-export async function createCheckoutSessionForTopup(orgId: string, email: string, packCredits: SupportedTopUps): Promise<Stripe.Checkout.Session> {
-    const customerId = await getOrCreateCustomer(orgId, email)
+export async function createCheckoutSessionForTopup(orgId: string, packCredits: SupportedTopUps): Promise<Stripe.Checkout.Session> {
+    const customerId = await getOrCreateCustomer(orgId)
     const topupPriceId = getTopUpPriceId(packCredits)
 
     return stripeClient.checkout.sessions.create({
@@ -83,8 +87,8 @@ export async function createCheckoutSessionForTopup(orgId: string, email: string
 }
 
 // Portal Sessions are for managing existing products
-export async function createPortalSession(orgId: string, email: string): Promise<Stripe.BillingPortal.Session> {
-    const customerId = await getOrCreateCustomer(orgId, email)
+export async function createPortalSession(orgId: string): Promise<Stripe.BillingPortal.Session> {
+    const customerId = await getOrCreateCustomer(orgId)
     return stripeClient.billingPortal.sessions.create({
         customer: customerId,
         return_url: `${urls.frontend}${FrontendRoutes.BILLING}`
@@ -144,8 +148,8 @@ export async function fetchActivePaidSubscription(customerId: string): Promise<A
     }
 }
 
-export async function scheduleCancelToFree(orgId: string, email: string): Promise<BillingChangeResult> {
-    const customerId = await getOrCreateCustomer(orgId, email)
+export async function scheduleCancelToFree(orgId: string): Promise<BillingChangeResult> {
+    const customerId = await getOrCreateCustomer(orgId)
     const active = await fetchActivePaidSubscription(customerId)
     if (!active) return { scheduledChange: null }
 
@@ -167,12 +171,12 @@ export async function scheduleCancelToFree(orgId: string, email: string): Promis
     }
 }
 
-export async function scheduleBillingPeriodChange(orgId: string, email: string, planKey: PlanKey, timePeriod: TimePeriods): Promise<BillingChangeResult> {
+export async function scheduleBillingPeriodChange(orgId: string, planKey: PlanKey, timePeriod: TimePeriods): Promise<BillingChangeResult> {
     if (!isPurchasablePlan(getPlanDetails(planKey))) {
         throw new Error(NON_PURCHASABLE_PLAN_MESSAGE)
     }
 
-    const customerId = await getOrCreateCustomer(orgId, email)
+    const customerId = await getOrCreateCustomer(orgId)
     const active = await fetchActivePaidSubscription(customerId)
     if (!active) {
         throw new Error("No active paid subscription to change.")

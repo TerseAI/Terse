@@ -10,7 +10,7 @@ import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistor
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import { settings } from "../config/settings"
 import logger from "../logger"
-import { CreditGateDeniedError, CreditsExhaustedError, GateDenyReason, StripeUnavailableError, creditService } from "../services/CreditService"
+import { CreditGateDeniedError, GateDenyReason, StripeUnavailableError, creditService } from "../services/CreditService"
 import { extractErrorMessage } from "../utility/strings"
 
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
@@ -52,12 +52,12 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
         // Need to check the gate before creating the runner to
         // avoid charging for the run if the gate is denied
-        const gateDecision = await creditService.checkRunGate(orgId)
+        const gateDecision = await creditService.checkRunGate(orgId, user.email)
         if (!gateDecision.allow) {
             throw new CreditGateDeniedError(gateDecision.reason)
         }
         // Charge once for the base run cost
-        await creditService.chargeRunBase(orgId, runId)
+        await creditService.chargeRunBase(orgId, user.email, runId)
         const sdkRunner = createSdkRunner({
             runId,
             user,
@@ -98,12 +98,6 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     } catch (error) {
         if (error instanceof CreditGateDeniedError) {
             send({ type: "error", message: error.message })
-            send({ type: "done" })
-            res.end()
-            return
-        }
-        if (error instanceof CreditsExhaustedError) {
-            send({ type: "error", message: "Credit limit reached during this run. Upgrade or buy more credits to continue." })
             send({ type: "done" })
             res.end()
             return
