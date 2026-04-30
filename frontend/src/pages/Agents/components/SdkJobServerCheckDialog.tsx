@@ -38,7 +38,7 @@ export function SdkJobServerCheckDialog({ open, result, onClose }: { open: boole
                     <div className="space-y-4">
                         <div className="flex items-start gap-3 rounded-lg border border-border bg-card/60 p-4">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
-                                {result.success ? <CheckCircle2 className="h-4 w-4 text-success" /> : <AlertCircle className="h-4 w-4 text-destructive" />}
+                                {result.success ? <CheckCircle2 className="h-4 w-4 text-success" /> : <AlertCircle className="h-4 w-4 text-danger" />}
                             </div>
                             <div className="min-w-0 space-y-1">
                                 <p className="text-sm font-medium">{result.success ? "Ready to receive jobs" : "Verification did not complete"}</p>

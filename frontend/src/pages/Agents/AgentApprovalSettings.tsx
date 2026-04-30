@@ -56,7 +56,7 @@ function AgentApprovalSettings({ outputs, toolApprovals, onToolApprovalsChange }
         }
 
         if (isError) {
-            return <p className="text-sm text-destructive">Failed to load tools that require approvals</p>
+            return <p className="text-sm text-danger">Failed to load tools that require approvals</p>
         }
 
         if (toolsThatRequireApprovals.length === 0) {

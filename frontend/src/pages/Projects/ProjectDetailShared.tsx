@@ -1,22 +1,28 @@
-import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 
-import { AlertTriangle, CheckCircle2, CircleDot, Loader2, RotateCcw, XCircle } from "lucide-react"
+import { AlertTriangle, ArrowRight, CheckCircle2, CircleDot, Loader2, RotateCcw, XCircle } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
-import { FrontendRoutes } from "terse-types"
-import type { ProjectDeploy, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
+import { FrontendRoutes, buildRoute } from "terse-types"
+import type { ProjectDeploy, ProjectDeployJobsDelta, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
 
+import { ALL_RUN_STATUSES, AgentRow, HEALTH_RANK, computeHealth, groupRunsByAgent } from "../../components/Agents/AgentHealthRow"
 import BreadCrumb from "../../components/BreadCrumb"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
 import { SidebarTrigger } from "../../components/ui/sidebar"
+import { Skeleton } from "../../components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip"
+import { useAgents } from "../../hooks/api/useAgents"
+import { useAllRunHistory } from "../../hooks/api/useAllRunHistory"
 import { useProjectMutations } from "../../hooks/api/useProject"
 import { cn } from "../../lib/utils"
-import { formatTimestamp } from "../../utility/timeUtils"
+import { formatDuration, formatTimestamp } from "../../utility/timeUtils"
+
+export const DEPLOYS_PREVIEW_LIMIT = 5
 
 export function PageFrame({ children }: { children: React.ReactNode }) {
     return (
@@ -37,11 +43,10 @@ export function Heading({
     activeDeploy,
     latestDeploy
 }: {
-    project: Pick<ProjectDetailResponse, "name" | "isSelfHosted" | "createdAt">
+    project: Pick<ProjectDetailResponse, "name" | "isSelfHosted">
     activeDeploy: ProjectDeploy | null
     latestDeploy: ProjectDeploy | null
 }) {
-    const createdLabel = useMemo(() => DateTime.fromISO(project.createdAt).toFormat("LLL d, yyyy"), [project.createdAt])
     const isDeploying = latestDeploy?.status === "IN_PROGRESS"
 
     return (
@@ -54,8 +59,9 @@ export function Heading({
             </div>
 
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                {isDeploying ? <DeployingBadge /> : null}
-                {activeDeploy ? (
+                {isDeploying ? (
+                    <DeployingBadge />
+                ) : activeDeploy ? (
                     <>
                         <LiveBadge />
                         <span className="tabular-nums">{formatTimestamp(activeDeploy.createdAt)}</span>
@@ -68,14 +74,12 @@ export function Heading({
                             </>
                         ) : null}
                     </>
-                ) : !isDeploying ? (
+                ) : (
                     <Badge variant="secondary" className="text-foreground">
                         <CircleDot className="text-muted-foreground" />
                         No active deploy
                     </Badge>
-                ) : null}
-                <Dot />
-                <span>Created {createdLabel}</span>
+                )}
             </div>
         </header>
     )
@@ -90,13 +94,84 @@ function DeployingBadge() {
     )
 }
 
-export function DeploymentsSection({ deploys, isLoading }: { deploys: ProjectDeploy[] | undefined; isLoading: boolean }) {
+export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
+    const jobIds = new Set(jobs.map(j => j.id))
+    const { agents: allAgents, isLoading: agentsLoading } = useAgents({ limit: 100 })
+    const { runs, isLoading: runsLoading } = useAllRunHistory({
+        page: 1,
+        pageSize: 200,
+        selectedStatuses: ALL_RUN_STATUSES
+    })
+    const isLoading = agentsLoading || runsLoading
+
+    if (jobs.length === 0) {
+        return (
+            <section className="mt-8">
+                <SectionLabel>Jobs</SectionLabel>
+                <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
+                    <p className="text-foreground text-sm">No jobs yet.</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                        Define jobs in your SDK project and run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse deploy</code>{" "}
+                        to ship them.
+                    </p>
+                </div>
+            </section>
+        )
+    }
+
+    const agents = allAgents.filter(a => jobIds.has(a.id))
+    const runsByAgent = groupRunsByAgent(runs)
+    const agentsWithHealth = agents
+        .map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) }))
+        .sort((a, b) => {
+            const rank = HEALTH_RANK[a.health.status] - HEALTH_RANK[b.health.status]
+            if (rank !== 0) return rank
+            return a.agent.name.localeCompare(b.agent.name)
+        })
+
     return (
         <section className="mt-8">
-            <div className="flex items-baseline justify-between gap-4">
-                <SectionLabel>Deployments</SectionLabel>
-                {deploys && deploys.length > 0 ? <span className="text-muted-foreground text-[11px] tabular-nums">Last {deploys.length} · newest first</span> : null}
+            <SectionLabel>Jobs</SectionLabel>
+            <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+                {isLoading ? (
+                    <JobsSkeleton count={Math.min(jobs.length, 3)} />
+                ) : (
+                    <ul className="divide-border/60 divide-y">
+                        {agentsWithHealth.map(({ agent, health }) => (
+                            <AgentRow key={agent.id} agent={agent} health={health} />
+                        ))}
+                    </ul>
+                )}
             </div>
+        </section>
+    )
+}
+
+function JobsSkeleton({ count }: { count: number }) {
+    return (
+        <div className="divide-border/60 divide-y">
+            {Array.from({ length: count }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-3 py-3.5">
+                    <Skeleton className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                        <Skeleton className="h-3.5 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
+}
+
+export function DeploymentsSection({ projectId, deploys, isLoading }: { projectId: string; deploys: ProjectDeploy[] | undefined; isLoading: boolean }) {
+    const total = deploys?.length ?? 0
+    const visible = deploys?.slice(0, DEPLOYS_PREVIEW_LIMIT) ?? []
+    const hasMore = total > DEPLOYS_PREVIEW_LIMIT
+    const allDeploysHref = buildRoute(FrontendRoutes.PROJECTS.DEPLOYS, { id: projectId })
+
+    return (
+        <section className="mt-8">
+            <SectionLabel>Deployments</SectionLabel>
 
             {isLoading ? (
                 <DeploysSkeleton />
@@ -104,32 +179,49 @@ export function DeploymentsSection({ deploys, isLoading }: { deploys: ProjectDep
                 <DeploysEmpty />
             ) : (
                 <ol className="divide-border/60 border-border/60 divide-y overflow-hidden rounded-lg border">
-                    {deploys.map(d => (
+                    {visible.map(d => (
                         <DeployRow key={d.id} deploy={d} />
                     ))}
+                    {hasMore ? (
+                        <li>
+                            <Link
+                                to={allDeploysHref}
+                                className="text-muted-foreground hover:bg-muted/30 hover:text-foreground group flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs transition-colors"
+                            >
+                                See all {total} deployments
+                                <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                            </Link>
+                        </li>
+                    ) : null}
                 </ol>
             )}
         </section>
     )
 }
 
-function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
+export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
     const relative = formatTimestamp(deploy.createdAt)
     const absolute = DateTime.fromISO(deploy.createdAt).toFormat("LLL d, yyyy · h:mm:ss a")
     const shortId = deploy.id.slice(-7)
+    const durationLabel = deploy.durationMs !== null ? formatDuration(deploy.durationMs) : null
+    const showFailureReason = deploy.status === "FAILED" && !!deploy.failureReason
 
     return (
-        <li className="hover:bg-muted/30 grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors sm:grid-cols-[140px_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <li className="hover:bg-muted/30 grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors sm:grid-cols-[140px_auto_1fr_auto]">
             <DeployStatusBadge status={deploy.status} />
 
             <div className="flex min-w-0 items-center gap-2">
                 <code className="text-muted-foreground font-mono text-[12px] tabular-nums">{shortId}</code>
                 {deploy.isActive ? <LiveBadge /> : null}
+                {deploy.jobsDelta ? <JobsDeltaSummary delta={deploy.jobsDelta} /> : null}
             </div>
 
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <span className="text-muted-foreground cursor-default text-xs tabular-nums">{relative}</span>
+                    <span className="text-muted-foreground cursor-default text-xs tabular-nums">
+                        {relative}
+                        {durationLabel ? <span className="text-muted-foreground/60"> · in {durationLabel}</span> : null}
+                    </span>
                 </TooltipTrigger>
                 <TooltipContent>{absolute}</TooltipContent>
             </Tooltip>
@@ -147,7 +239,28 @@ function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
                     <span className="text-muted-foreground text-xs">Unknown deployer</span>
                 )}
             </div>
+
+            {showFailureReason ? (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <p className="text-muted-foreground col-span-full mt-1 line-clamp-2 cursor-default text-xs sm:col-span-3 sm:col-start-2">{deploy.failureReason}</p>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md whitespace-pre-wrap">{deploy.failureReason}</TooltipContent>
+                </Tooltip>
+            ) : null}
         </li>
+    )
+}
+
+function JobsDeltaSummary({ delta }: { delta: ProjectDeployJobsDelta }) {
+    if (delta.added === 0 && delta.removed === 0) return null
+    const totalChanges = delta.added + delta.removed
+    return (
+        <span className="flex items-center gap-1 text-xs tabular-nums">
+            {delta.added > 0 ? <span className="text-success">+{delta.added}</span> : null}
+            {delta.removed > 0 ? <span className="text-danger">-{delta.removed}</span> : null}
+            <span className="text-muted-foreground">{totalChanges === 1 ? "job" : "jobs"}</span>
+        </span>
     )
 }
 
@@ -161,9 +274,9 @@ function DeployStatusBadge({ status }: { status: ProjectDeployStatus }) {
     )
 }
 
-function deployStatusPresentation(status: ProjectDeployStatus): { Icon: typeof CheckCircle2; iconClass: string; label: string } {
+export function deployStatusPresentation(status: ProjectDeployStatus): { Icon: typeof CheckCircle2; iconClass: string; label: string } {
     if (status === "SUCCEEDED") return { Icon: CheckCircle2, iconClass: "text-success", label: "Succeeded" }
-    if (status === "FAILED") return { Icon: XCircle, iconClass: "text-destructive", label: "Failed" }
+    if (status === "FAILED") return { Icon: XCircle, iconClass: "text-danger", label: "Failed" }
     if (status === "IN_PROGRESS") return { Icon: Loader2, iconClass: "text-warning", label: "In progress" }
     return { Icon: RotateCcw, iconClass: "text-muted-foreground", label: "Rolled back" }
 }
@@ -179,7 +292,7 @@ function LiveBadge() {
     )
 }
 
-function DeploysEmpty() {
+export function DeploysEmpty() {
     return (
         <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
             <p className="text-foreground text-sm">No deployments yet.</p>
@@ -191,14 +304,14 @@ function DeploysEmpty() {
     )
 }
 
-function DeploysSkeleton() {
+export function DeploysSkeleton() {
     return (
         <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
             {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-4 px-4 py-3">
-                    <div className="bg-muted/60 h-5 w-20 animate-pulse rounded-full" />
-                    <div className="bg-muted/60 h-3 w-20 animate-pulse rounded-sm" />
-                    <div className="bg-muted/40 ml-auto h-3 w-24 animate-pulse rounded-sm" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="ml-auto h-3 w-24" />
                 </div>
             ))}
         </div>
@@ -235,7 +348,7 @@ export function DeleteProjectAction({ project }: { project: Pick<ProjectDetailRe
     return (
         <>
             <section className="mt-10">
-                <h2 className="text-destructive mb-3 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase">
+                <h2 className="text-danger mb-3 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase">
                     <AlertTriangle className="h-3 w-3" />
                     Danger zone
                 </h2>

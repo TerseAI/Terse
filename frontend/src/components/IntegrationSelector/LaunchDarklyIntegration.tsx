@@ -152,7 +152,7 @@ export function LaunchDarklyIntegration({ input, variant, setConfig }: InputConf
                                 {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                         </div>
-                        {error && <p className="text-sm text-destructive">{error}</p>}
+                        {error && <p className="text-sm text-danger">{error}</p>}
                     </div>
                     <div className="flex gap-2">
                         <Button type="submit" disabled={isSubmitting || !apiKey}>
@@ -198,7 +198,7 @@ export function LaunchDarklyIntegration({ input, variant, setConfig }: InputConf
                 <>
                     <div className="space-y-2">
                         <Label>
-                            Project <span className="text-destructive">*</span>
+                            Project <span className="text-danger">*</span>
                         </Label>
                         {isLoadingProjects ? (
                             <Skeleton className="h-10 w-full" />
@@ -222,7 +222,7 @@ export function LaunchDarklyIntegration({ input, variant, setConfig }: InputConf
                     {projectKey && (
                         <div className="space-y-2">
                             <Label>
-                                Environments <span className="text-destructive">*</span>
+                                Environments <span className="text-danger">*</span>
                             </Label>
                             {isLoadingEnvironments ? (
                                 <Skeleton className="h-10 w-full" />
@@ -253,7 +253,7 @@ export function LaunchDarklyIntegration({ input, variant, setConfig }: InputConf
                                     })}
                                 </div>
                             )}
-                            {environmentKeys.length === 0 && !isLoadingEnvironments && <p className="text-sm text-destructive">Please select at least one environment</p>}
+                            {environmentKeys.length === 0 && !isLoadingEnvironments && <p className="text-sm text-danger">Please select at least one environment</p>}
                         </div>
                     )}
                 </>

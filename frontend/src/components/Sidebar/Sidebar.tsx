@@ -42,7 +42,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation agents={webUiAgents} sdkJobs={sdkJobs} loading={isLoading} />
+                        <ApplicationNavigation sdkJobs={sdkJobs} loading={isLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
@@ -52,6 +52,15 @@ export function AppSidebar() {
                         <SettingsNavigation />
                     </SidebarGroupContent>
                 </SidebarGroup>
+
+                {webUiAgents.length > 0 && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Deprecated</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <DeprecatedAgentsNavigation agents={webUiAgents} loading={isLoading} />
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
             </SidebarContent>
             <AppSidebarFooter />
         </Sidebar>
@@ -59,7 +68,6 @@ export function AppSidebar() {
 }
 
 interface ApplicationNavigationProps {
-    agents: Agent[]
     sdkJobs: Agent[]
     loading: boolean
 }
@@ -78,7 +86,7 @@ function PlainNavItem({ title, url, icon: Icon, iconColor }: NavItem) {
     )
 }
 
-function ApplicationNavigation({ agents, sdkJobs, loading }: ApplicationNavigationProps) {
+function ApplicationNavigation({ sdkJobs, loading }: ApplicationNavigationProps) {
     return (
         <SidebarMenu>
             <SidebarMenuItem>
@@ -92,23 +100,6 @@ function ApplicationNavigation({ agents, sdkJobs, loading }: ApplicationNavigati
             </SidebarMenuItem>
 
             <PlainNavItem title="Home" url={FrontendRoutes.HOME} icon={Home} iconColor="text-primary" />
-
-            {agents.length > 0 && (
-                <Collapsible defaultOpen className="group/collapsible">
-                    <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                            <SidebarMenuButton>
-                                <Zap className="text-primary" />
-                                <span>Agents</span>
-                                <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                            </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                            <AgentsList agents={agents} loading={loading} />
-                        </CollapsibleContent>
-                    </SidebarMenuItem>
-                </Collapsible>
-            )}
 
             {(sdkJobs.length > 0 || loading) && (
                 <Collapsible defaultOpen asChild>
@@ -129,6 +120,32 @@ function ApplicationNavigation({ agents, sdkJobs, loading }: ApplicationNavigati
 
             <PlainNavItem title="Activity" url={FrontendRoutes.ACTIVITY} icon={Activity} iconColor="text-primary" />
             <PlainNavItem title="Stats" url={FrontendRoutes.STATS} icon={BarChart3} iconColor="text-primary" />
+        </SidebarMenu>
+    )
+}
+
+interface DeprecatedAgentsNavigationProps {
+    agents: Agent[]
+    loading: boolean
+}
+
+function DeprecatedAgentsNavigation({ agents, loading }: DeprecatedAgentsNavigationProps) {
+    return (
+        <SidebarMenu>
+            <Collapsible className="group/collapsible">
+                <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                        <SidebarMenuButton>
+                            <Zap className="text-muted-foreground" />
+                            <span className="text-muted-foreground">Agents</span>
+                            <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                        <AgentsList agents={agents} loading={loading} />
+                    </CollapsibleContent>
+                </SidebarMenuItem>
+            </Collapsible>
         </SidebarMenu>
     )
 }

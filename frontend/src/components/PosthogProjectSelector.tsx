@@ -76,9 +76,7 @@ export function PosthogProjectSelector({ integrationId, selectedProjectId, selec
                                     <p>Searching...</p>
                                 </div>
                             )}
-                            {!isLoading && !isSearching && isError && (
-                                <div className="py-6 text-center text-sm text-destructive">{error instanceof Error ? error.message : "Failed to load projects"}</div>
-                            )}
+                            {!isLoading && !isSearching && isError && <div className="py-6 text-center text-sm text-danger">{error instanceof Error ? error.message : "Failed to load projects"}</div>}
                             {!isLoading && !isSearching && !isError && projects.length === 0 && (
                                 <CommandEmpty>{debouncedSearch ? `No projects found for "${debouncedSearch}"` : "No projects available"}</CommandEmpty>
                             )}

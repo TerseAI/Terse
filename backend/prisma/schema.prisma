@@ -375,15 +375,30 @@ model project_deploys {
   status              DeployStatus
   created_at          DateTime     @default(now())
   updated_at          DateTime     @updatedAt
+  completed_at        DateTime?
+  failure_reason      String?      @db.VarChar(500)
+  jobs_added          Int?
+  jobs_removed        Int?
 
   project          projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
   sdk_source_image sdk_source_images?    @relation(fields: [sdk_source_image_id], references: [id], onDelete: Cascade)
   deployed_by      users                 @relation(fields: [deployed_by_user_id], references: [id], onDelete: SetNull)
   runs             run_history_records[]
+  jobs             project_deploy_jobs[]
 
   @@index([project_id, created_at(sort: Desc)])
   @@index([sdk_source_image_id])
   @@index([deployed_by_user_id])
+}
+
+model project_deploy_jobs {
+  deploy_id String
+  job_name  String
+
+  deploy project_deploys @relation(fields: [deploy_id], references: [id], onDelete: Cascade)
+
+  @@id([deploy_id, job_name])
+  @@index([deploy_id])
 }
 
 enum DeployStatus {

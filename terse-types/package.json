@@ -1,6 +1,6 @@
 {
     "name": "terse-types",
-    "version": "0.0.22",
+    "version": "0.0.24",
     "type": "module",
     "description": "Shared Terse TypeScript types, enums, constants, and helpers.",
     "main": "./dist/index.js",
