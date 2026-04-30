@@ -132,7 +132,7 @@ export async function fetchActivePaidSubscription(customerId: string): Promise<A
     const subscription = await fetchSubscription(customerId)
     if (!subscription || (subscription.status !== "active" && subscription.status !== "trialing")) return null
 
-    const planItem = resolvePlanItemBySubscription(subscription)
+    const planItem = resolveSubscriptionBasePlanItem(subscription)
     if (!planItem) return null
 
     return {
@@ -354,14 +354,6 @@ export type PostMeterEventInput = {
     timestamp: Date
 }
 
-function resolvePlanItemBySubscription(subscription: Stripe.Subscription): { item: Stripe.SubscriptionItem; plan: ActivePaidSubscription["plan"] } | null {
-    for (const item of subscription.items.data) {
-        const plan = resolveBasePlanByPriceId(item.price.id)
-        if (plan) return { item, plan }
-    }
-    return null
-}
-
 function resolveBasePlanByPriceId(priceId: string): ActivePaidSubscription["plan"] | null {
     let details: ReturnType<typeof getPlanDetails>
     try {
@@ -423,4 +415,33 @@ function subscriptionScheduleId(subscription: Stripe.Subscription): string | nul
 
 function timePeriodToBillingPeriod(period: TimePeriods): BillingPeriod {
     return period === TimePeriods.YEARLY ? "yearly" : "monthly"
+}
+
+export function resolveSubscriptionBasePlanItem(subscription: Stripe.Subscription): { item: Stripe.SubscriptionItem; plan: ActivePaidSubscription["plan"] } | null {
+    for (const item of subscription.items.data) {
+        const plan = resolveBasePlanByPriceId(item.price.id)
+        if (plan) return { item, plan }
+    }
+    return null
+}
+
+export function resolveSubscriptionCreditPeriod(subscription: Stripe.Subscription, basePlanItem: Stripe.SubscriptionItem): { start: Date; end: Date; item: Stripe.SubscriptionItem } | null {
+    const billingPeriod = billingPeriodForPriceId(basePlanItem.price.id)
+    if (billingPeriod === "monthly") {
+        const period = subscriptionItemPeriod(basePlanItem, subscription.id)
+        return { ...period, item: basePlanItem }
+    }
+
+    const overageItem = resolveSubscriptionMeteredOverageItem(subscription, basePlanItem.price.id)
+    if (!overageItem) return null
+
+    const period = subscriptionItemPeriod(overageItem, subscription.id)
+    return { ...period, item: overageItem }
+}
+
+export function resolveSubscriptionMeteredOverageItem(subscription: Stripe.Subscription, basePriceId: string): Stripe.SubscriptionItem | null {
+    const plan = getPlanByPriceId(basePriceId)
+    const overagePriceId = resolveEnvId(plan.overagePriceId)
+    if (!overagePriceId) return null
+    return subscription.items.data.find(item => item.price.id === overagePriceId) ?? null
 }

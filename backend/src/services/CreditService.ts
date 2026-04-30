@@ -13,7 +13,7 @@ import { db } from "../prismaClient"
 import { sendBillingThresholdNotification } from "./BillingNotificationDispatcher"
 import { evaluateAndRecordThresholds } from "./BillingNotifications"
 import { emitBillingCachesInvalidated } from "./CacheInvalidationService"
-import { fetchCreditBalanceSummary, fetchSubscription, postMeterEvent, stripeClient } from "./PaymentsProviderService"
+import { fetchCreditBalanceSummary, fetchSubscription, postMeterEvent, resolveSubscriptionBasePlanItem, resolveSubscriptionCreditPeriod, stripeClient } from "./PaymentsProviderService"
 
 export class CreditService {
     // Pre-run gate check to see if the run should be allowed to proceed based on subscription and credit status
@@ -46,9 +46,9 @@ export class CreditService {
             return { allow: true }
         }
 
-        const subscriptionPlanItem = resolvePlanItemBySubscription(subscription)
+        const subscriptionPlanItem = resolveRequiredSubscriptionBasePlanItem(subscription)
         const plan = subscriptionPlanItem.plan.details
-        const period = subscriptionPeriod(subscriptionPlanItem.item, subscription.id)
+        const period = resolveRequiredSubscriptionCreditPeriod(subscription, subscriptionPlanItem.item)
         const consumption = await ensurePeriodConsumption(orgId, period.start, period.end)
         const overageMode = customer.overage_mode ?? plan.defaultOverageMode
         const hardCap = computeHardCap(plan, overageMode, customer.overage_cap_multiplier)
@@ -235,9 +235,9 @@ export class CreditService {
             }
         }
 
-        const subscriptionPlanItem = resolvePlanItemBySubscription(subscription)
+        const subscriptionPlanItem = resolveRequiredSubscriptionBasePlanItem(subscription)
         const plan = subscriptionPlanItem.plan
-        const period = subscriptionPeriod(subscriptionPlanItem.item, subscription.id)
+        const period = resolveRequiredSubscriptionCreditPeriod(subscription, subscriptionPlanItem.item)
         await ensurePeriodConsumption(orgId, period.start, period.end)
         const overageMode = customer.overage_mode ?? plan.details.defaultOverageMode
 
@@ -331,13 +331,20 @@ async function fireThresholdsIfAny(orgId: string, before: number, after: number,
     }
 }
 
-function resolvePlanItemBySubscription(subscription: Stripe.Subscription): SubscriptionPlanItem {
-    for (const item of subscription.items.data) {
-        const plan = resolveBasePlanByPriceId(item.price.id)
-        if (plan) return { item, plan }
+function resolveRequiredSubscriptionBasePlanItem(subscription: Stripe.Subscription): SubscriptionPlanItem {
+    const planItem = resolveSubscriptionBasePlanItem(subscription)
+    if (!planItem) {
+        throw new Error(`Subscription ${subscription.id} has no Terse base plan price item`)
     }
+    return planItem
+}
 
-    throw new Error(`Subscription ${subscription.id} has no Terse base plan price item`)
+function resolveRequiredSubscriptionCreditPeriod(subscription: Stripe.Subscription, basePlanItem: Stripe.SubscriptionItem): { start: Date; end: Date; item: Stripe.SubscriptionItem } {
+    const creditPeriod = resolveSubscriptionCreditPeriod(subscription, basePlanItem)
+    if (!creditPeriod) {
+        throw new Error(`Subscription ${subscription.id} has no metered overage item for annual credit period`)
+    }
+    return creditPeriod
 }
 
 function resolveBasePlanByPriceId(priceId: string): ResolvedPlan | null {

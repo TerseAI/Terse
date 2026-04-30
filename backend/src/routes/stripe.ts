@@ -6,7 +6,7 @@ import { stripe as stripeSettings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitBillingCachesInvalidated } from "../services/CacheInvalidationService"
-import { createCreditGrant, stripeClient } from "../services/PaymentsProviderService"
+import { createCreditGrant, resolveSubscriptionBasePlanItem, resolveSubscriptionCreditPeriod, stripeClient } from "../services/PaymentsProviderService"
 
 export async function handleStripeWebhook(req: Request, res: Response) {
     const sig = req.headers["stripe-signature"] as string
@@ -19,12 +19,12 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         return res.status(400).send(`Webhook Error: ${(err as Error).message}`)
     }
 
-    res.json({ received: true })
-
     try {
         await dispatch(event)
+        return res.json({ received: true })
     } catch (err) {
         logger.error("Stripe webhook handler failure", { eventId: event.id, eventType: event.type, error: err })
+        return res.status(500).json({ error: "Stripe webhook handler failed" })
     }
 }
 
@@ -58,42 +58,48 @@ async function onSubscriptionUpsert(subscription: Stripe.Subscription) {
         return
     }
 
-    const planItem = resolveBasePlanItem(subscription)
+    const planItem = resolveSubscriptionBasePlanItem(subscription)
     if (!planItem) {
         logger.warn("Subscription with no Terse base plan item", { subscriptionId: subscription.id })
         return
     }
 
-    const periodStart = subscriptionItemDate(planItem.current_period_start, "current_period_start", subscription.id, planItem.id)
-    const periodEnd = subscriptionItemDate(planItem.current_period_end, "current_period_end", subscription.id, planItem.id)
+    const creditPeriod = resolveSubscriptionCreditPeriod(subscription, planItem.item)
+    if (!creditPeriod) {
+        logger.warn("Subscription has no monthly credit period item yet", { subscriptionId: subscription.id, basePriceId: planItem.item.price.id })
+        return
+    }
+
+    const periodStart = creditPeriod.start
+    const periodEnd = creditPeriod.end
     const existingPeriod = await db().billing_period_consumption.findUnique({ where: { organization_id: orgId } })
     const isNewPeriod = !existingPeriod || existingPeriod.period_start.getTime() !== periodStart.getTime() || existingPeriod.period_end.getTime() !== periodEnd.getTime()
 
-    if (!isNewPeriod) return
+    if (isNewPeriod) {
+        // This resets consumed_credits to 0 unconditionally. For free-to-paid upgrades,
+        // that is intentional: prior free-plan consumption is forgiven when the org upgrades.
+        // If product later wants to carry free consumption forward, gate this reset on
+        // subscription metadata or a previous-period lookup.
+        await db().billing_period_consumption.upsert({
+            where: { organization_id: orgId },
+            create: {
+                organization_id: orgId,
+                period_start: periodStart,
+                period_end: periodEnd,
+                consumed_credits: 0,
+                notified_thresholds: []
+            },
+            update: {
+                period_start: periodStart,
+                period_end: periodEnd,
+                consumed_credits: 0,
+                notified_thresholds: []
+            }
+        })
+    }
 
-    // This resets consumed_credits to 0 unconditionally. For free-to-paid upgrades,
-    // that is intentional: prior free-plan consumption is forgiven when the org upgrades.
-    // If product later wants to carry free consumption forward, gate this reset on
-    // subscription metadata or a previous-period lookup.
-    await db().billing_period_consumption.upsert({
-        where: { organization_id: orgId },
-        create: {
-            organization_id: orgId,
-            period_start: periodStart,
-            period_end: periodEnd,
-            consumed_credits: 0,
-            notified_thresholds: []
-        },
-        update: {
-            period_start: periodStart,
-            period_end: periodEnd,
-            consumed_credits: 0,
-            notified_thresholds: []
-        }
-    })
-
-    const priceId = planItem.price.id
-    const plan = getPlanByPriceId(priceId)
+    const priceId = planItem.item.price.id
+    const plan = planItem.plan.details
     if (!plan.overageCentsPerCredit) return
 
     await createCreditGrant({
@@ -107,7 +113,8 @@ async function onSubscriptionUpsert(subscription: Stripe.Subscription) {
         metadata: {
             org_id: orgId,
             plan_price_id: priceId,
-            period_start: periodStart.toISOString()
+            period_start: periodStart.toISOString(),
+            credit_period_item_id: creditPeriod.item.id
         },
         idempotencyKey: `plan-grant:${subscription.id}:${periodStart.toISOString()}`
     })
@@ -126,27 +133,30 @@ async function onInvoicePaymentFailed(invoice: Stripe.Invoice) {
 }
 
 /** Plan checkouts only include the base price; metered overage is added here for every period. */
-async function ensureSubscriptionHasMeteredOverage(session: Stripe.Checkout.Session) {
+async function ensureSubscriptionHasMeteredOverage(session: Stripe.Checkout.Session): Promise<Stripe.Subscription | null> {
     const subscriptionId = session.subscription
     const planKeyRaw = session.metadata?.plan_key
-    if (typeof subscriptionId !== "string" || !planKeyRaw || !(Object.values(PlanKey) as string[]).includes(planKeyRaw)) return
+    if (typeof subscriptionId !== "string" || !planKeyRaw || !(Object.values(PlanKey) as string[]).includes(planKeyRaw)) return null
 
     const plan = getPlanDetails(planKeyRaw as PlanKey)
     const overagePriceId = resolveEnvId(plan.overagePriceId)
-    if (!overagePriceId) return
+    if (!overagePriceId) return null
 
     const sub = await stripeClient.subscriptions.retrieve(subscriptionId)
     const hasOverage = sub.items.data.some(item => item.price.id === overagePriceId)
-    if (hasOverage) return
+    if (hasOverage) return sub
 
-    await stripeClient.subscriptions.update(subscriptionId, {
+    return stripeClient.subscriptions.update(subscriptionId, {
         items: [{ price: overagePriceId }]
     })
 }
 
 async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
     if (session.mode === "subscription" && typeof session.subscription === "string" && session.metadata?.plan_key) {
-        await ensureSubscriptionHasMeteredOverage(session)
+        const subscription = await ensureSubscriptionHasMeteredOverage(session)
+        if (subscription) {
+            await onSubscriptionUpsert(subscription)
+        }
     }
 
     if (session.metadata?.type !== "credit_topup") return
@@ -160,8 +170,8 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
 
     const subscriptions = await stripeClient.subscriptions.list({ customer: customerId, status: "active", limit: 10 })
-    const planItem = subscriptions.data.map(resolveBasePlanItem).find((item): item is Stripe.SubscriptionItem => !!item)
-    const priceId = planItem?.price.id
+    const planItem = subscriptions.data.map(resolveSubscriptionBasePlanItem).find((item): item is NonNullable<ReturnType<typeof resolveSubscriptionBasePlanItem>> => !!item)
+    const priceId = planItem?.item.price.id
     const plan = priceId ? getPlanByPriceId(priceId) : getPlanDetails(PlanKey.FREE)
     const centsPerCredit = creditGrantCentsPerCredit(plan)
     if (!centsPerCredit) {
@@ -226,33 +236,4 @@ function creditGrantCentsPerCredit(plan: ReturnType<typeof getPlanDetails>): num
 async function orgIdForCustomer(customerId: string): Promise<string | null> {
     const row = await db().billing_customers.findUnique({ where: { stripe_customer_id: customerId } })
     return row?.organization_id ?? null
-}
-
-function resolveBasePlanItem(subscription: Stripe.Subscription): Stripe.SubscriptionItem | null {
-    for (const item of subscription.items.data) {
-        try {
-            const plan = getPlanByPriceId(item.price.id)
-            if (priceMatches(plan.monthlyBasePriceId, item.price.id) || priceMatches(plan.annualBasePriceId, item.price.id)) {
-                return item
-            }
-        } catch {
-            continue
-        }
-    }
-    return null
-}
-
-function priceMatches(pair: { live: string; test: string } | null, priceId: string): boolean {
-    return !!pair && (pair.live === priceId || pair.test === priceId)
-}
-
-function subscriptionItemDate(value: number, field: "current_period_start" | "current_period_end", subscriptionId: string, itemId: string): Date {
-    if (!Number.isFinite(value)) {
-        throw new Error(`Subscription ${subscriptionId} plan item ${itemId} has invalid ${field}`)
-    }
-    const date = new Date(value * 1000)
-    if (Number.isNaN(date.getTime())) {
-        throw new Error(`Subscription ${subscriptionId} plan item ${itemId} has invalid ${field}`)
-    }
-    return date
 }
