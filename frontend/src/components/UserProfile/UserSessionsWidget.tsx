@@ -11,7 +11,7 @@ export function UserSessionsWidget() {
     const getAccessToken = () => BackendProvider.getWidgetToken().then(d => d.token)
 
     if (isError) {
-        return <p className="text-destructive text-sm">Failed to load sessions.</p>
+        return <p className="text-danger text-sm">Failed to load sessions.</p>
     }
     if (isLoading || !token) {
         return <p className="text-muted-foreground text-sm">Loading…</p>

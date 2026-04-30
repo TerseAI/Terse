@@ -708,7 +708,7 @@ function InputCard({
                         e.stopPropagation()
                         handleRemove(input.id)
                     }}
-                    className="shrink-0 hover:text-destructive"
+                    className="shrink-0 hover:text-danger"
                 >
                     <XIcon className="w-4 h-4" />
                 </Button>
@@ -848,7 +848,7 @@ function SkillCard({
                         e.stopPropagation()
                         handleRemove(output.id)
                     }}
-                    className="shrink-0 hover:text-destructive"
+                    className="shrink-0 hover:text-danger"
                 >
                     <XIcon className="w-4 h-4" />
                 </Button>

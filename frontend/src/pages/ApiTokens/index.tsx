@@ -152,13 +152,7 @@ function TokensTable({ tokens, onRename, onDelete }: TokensTableProps) {
                                         </Tooltip>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-sm"
-                                                    className="text-destructive hover:text-destructive"
-                                                    onClick={() => onDelete(token)}
-                                                    aria-label={`Revoke ${token.name}`}
-                                                >
+                                                <Button variant="ghost" size="icon-sm" className="text-danger hover:text-danger" onClick={() => onDelete(token)} aria-label={`Revoke ${token.name}`}>
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </TooltipTrigger>
@@ -242,7 +236,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 function ErrorState({ onRetry }: { onRetry: () => void }) {
     return (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4">
-            <p className="text-sm text-destructive">Unable to load API tokens right now.</p>
+            <p className="text-sm text-danger">Unable to load API tokens right now.</p>
             <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
                 Retry
             </Button>
@@ -327,7 +321,7 @@ function CreateTokenDialog({ open, createdRawToken, onOpenChange, onCreated }: C
                 ) : (
                     <div className="flex flex-col gap-2">
                         <Input placeholder="e.g. CI/CD pipeline" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCreate()} autoFocus />
-                        {error && <p className="text-xs text-destructive">{error}</p>}
+                        {error && <p className="text-xs text-danger">{error}</p>}
                     </div>
                 )}
 
@@ -397,7 +391,7 @@ function RenameTokenDialog({ token, onOpenChange, onUpdated }: RenameTokenDialog
                 </DialogHeader>
                 <div className="flex flex-col gap-2">
                     <Input placeholder="New token name" value={name || token?.name || ""} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSave()} autoFocus />
-                    {error && <p className="text-xs text-destructive">{error}</p>}
+                    {error && <p className="text-xs text-danger">{error}</p>}
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
@@ -451,7 +445,7 @@ function RevokeTokenDialog({ token, onOpenChange, onRevoked }: RevokeTokenDialog
                     <DialogTitle>Revoke token</DialogTitle>
                     <DialogDescription>Revoke "{token?.name}"? Any SDK job or script using this token will stop working immediately. This cannot be undone.</DialogDescription>
                 </DialogHeader>
-                {error && <p className="text-xs text-destructive">{error}</p>}
+                {error && <p className="text-xs text-danger">{error}</p>}
                 <DialogFooter>
                     <DialogClose asChild>
                         <Button variant="outline">Cancel</Button>

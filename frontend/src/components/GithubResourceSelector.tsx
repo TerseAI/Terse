@@ -41,7 +41,7 @@ export function GithubResourceSelector({ installationId, selectedRepositoryIds =
     if (isError) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-destructive">{errorMessage}</div>
+                <div className="text-sm text-danger">{errorMessage}</div>
                 <Button onClick={handleRefresh} variant="link" size="sm" className="text-xs h-auto p-0">
                     Try again
                 </Button>

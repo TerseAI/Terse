@@ -11,10 +11,10 @@ export function UserTable() {
     const { token, isLoading, isError } = useWidgetToken()
 
     if (user && !user.organizationId) {
-        return <p className="text-destructive text-sm">Create an organization to manage users.</p>
+        return <p className="text-danger text-sm">Create an organization to manage users.</p>
     }
     if (isError) {
-        return <p className="text-destructive text-sm">Failed to load user management.</p>
+        return <p className="text-danger text-sm">Failed to load user management.</p>
     }
     if (isLoading || !token) {
         return <p className="text-muted-foreground text-sm">Loading…</p>

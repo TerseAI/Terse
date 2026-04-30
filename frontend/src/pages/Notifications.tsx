@@ -356,7 +356,7 @@ function ErrorNotificationChannelList({ onRetry }: { onRetry: () => void }) {
     return (
         <div className="flex flex-col gap-4">
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
-                <p className="text-sm text-destructive">Unable to load destinations right now.</p>
+                <p className="text-sm text-danger">Unable to load destinations right now.</p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
                     Retry
                 </Button>
@@ -378,7 +378,7 @@ function LoadingApprovalsList() {
 function ErrorApprovalsList({ onRetry }: { onRetry: () => void }) {
     return (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
-            <p className="text-sm text-destructive">Unable to load pending approvals.</p>
+            <p className="text-sm text-danger">Unable to load pending approvals.</p>
             <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
                 Retry
             </Button>
@@ -496,7 +496,7 @@ function LoadingSentNotificationsRows() {
 function ErrorSentNotificationsRow() {
     return (
         <TableRow>
-            <TableCell className="px-4 py-6 text-sm text-destructive" colSpan={3}>
+            <TableCell className="px-4 py-6 text-sm text-danger" colSpan={3}>
                 Unable to load sent notifications.
             </TableCell>
         </TableRow>
@@ -693,7 +693,7 @@ function NotificationSettingsForm({ notificationSettings, mutateSettings }: Noti
                         )}
                     />
 
-                    {error && <p className="text-sm text-destructive">{error}</p>}
+                    {error && <p className="text-sm text-danger">{error}</p>}
 
                     <div className="flex justify-end">
                         <Button type="submit" size="sm" disabled={isLoading}>
@@ -753,7 +753,7 @@ function LoadingNotificationSettings() {
 function ErrorNotificationSettings({ onRetry }: { onRetry: () => void }) {
     return (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
-            <p className="text-sm text-destructive">Unable to load notification types right now.</p>
+            <p className="text-sm text-danger">Unable to load notification types right now.</p>
             <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
                 Retry
             </Button>

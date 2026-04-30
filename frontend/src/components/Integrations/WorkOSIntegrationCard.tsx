@@ -169,7 +169,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                             </p>
                         </div>
 
-                        {error && <p className="text-sm text-destructive">{error}</p>}
+                        {error && <p className="text-sm text-danger">{error}</p>}
 
                         <div className="flex gap-2">
                             <Button type="submit" disabled={isSubmitting || !apiKey}>
@@ -254,7 +254,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                 <p className="text-xs text-muted-foreground">WorkOS shows the signing secret after creating the webhook endpoint.</p>
                             </div>
 
-                            {error && <p className="text-sm text-destructive">{error}</p>}
+                            {error && <p className="text-sm text-danger">{error}</p>}
 
                             <div className="flex gap-2">
                                 <Button type="submit" disabled={isSubmitting || !webhookSecret}>

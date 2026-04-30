@@ -161,7 +161,7 @@ export default function OrganizationCreationForm() {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>
-                                                First name <span className="text-destructive">*</span>
+                                                First name <span className="text-danger">*</span>
                                             </FormLabel>
                                             <FormControl>
                                                 <Input type="text" placeholder="e.g. Jane" disabled={isLoading} {...field} />
@@ -176,7 +176,7 @@ export default function OrganizationCreationForm() {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>
-                                                Last name <span className="text-destructive">*</span>
+                                                Last name <span className="text-danger">*</span>
                                             </FormLabel>
                                             <FormControl>
                                                 <Input type="text" placeholder="e.g. Smith" disabled={isLoading} {...field} />
@@ -193,7 +193,7 @@ export default function OrganizationCreationForm() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>
-                                        Organization name <span className="text-destructive">*</span>
+                                        Organization name <span className="text-danger">*</span>
                                     </FormLabel>
                                     <FormControl>
                                         <Input type="text" placeholder="e.g. Acme Inc" disabled={isLoading} {...field} />
@@ -223,7 +223,7 @@ export default function OrganizationCreationForm() {
                                 </div>
                             </FormControl>
                         </FormItem>
-                        {error && <p className="text-sm text-destructive">{error}</p>}
+                        {error && <p className="text-sm text-danger">{error}</p>}
                     </CardContent>
                     <CardFooter className="flex justify-end pt-6">
                         <Button type="submit" disabled={isLoading} className="w-1/2 max-w-32">

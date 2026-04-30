@@ -65,7 +65,7 @@ export function ManualTriggerDialog({ isOpen, onClose, inputId, onTriggered }: M
                         <p className="text-xs text-muted-foreground">Add context about why you're running this manually. This will be passed to the automation.</p>
                     </div>
 
-                    {error && <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{error}</div>}
+                    {error && <div className="text-sm text-danger bg-destructive/10 px-3 py-2 rounded-md">{error}</div>}
                 </div>
 
                 <DialogFooter>

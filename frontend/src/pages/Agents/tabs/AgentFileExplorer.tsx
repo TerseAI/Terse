@@ -28,7 +28,7 @@ export function AgentFileExplorer({ agentId }: AgentFileExplorerProps) {
 
     if (isError) {
         return (
-            <div className="text-destructive flex h-full items-center justify-center px-4 text-center text-sm" role="alert">
+            <div className="text-danger flex h-full items-center justify-center px-4 text-center text-sm" role="alert">
                 Could not load source files for this job.
             </div>
         )
