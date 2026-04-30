@@ -19,7 +19,7 @@ import { createAgent, deleteAgent, getAgentFileContent, getAgentFiles, getRecent
 import { apiTokenAuthMiddleware } from "./routes/apiTokenAuth"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
-import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
+import { adminOnly, authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingBalance, getBillingCatalog, getBillingUsage, setBillingOverageMode } from "./routes/billing"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
@@ -296,27 +296,27 @@ app.use(apiTokenAuthMiddleware)
 
 // MARK: BILLING
 
-app.post(ApiRoutes.BILLING.CHECKOUT_SESSION, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.BILLING.CHECKOUT_SESSION, authMiddleware, adminOnly, async (req, res) => {
     await createBillingCheckoutSession(req, res)
 })
 
-app.post(ApiRoutes.BILLING.CHANGE, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.BILLING.CHANGE, authMiddleware, adminOnly, async (req, res) => {
     await changeBillingSubscription(req, res)
 })
 
-app.post(ApiRoutes.BILLING.PORTAL_SESSION, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.BILLING.PORTAL_SESSION, authMiddleware, adminOnly, async (req, res) => {
     await createBillingPortalSession(req, res)
 })
 
-app.get(ApiRoutes.BILLING.BALANCE, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.BILLING.BALANCE, authMiddleware, adminOnly, async (req, res) => {
     await getBillingBalance(req, res)
 })
 
-app.get(ApiRoutes.BILLING.USAGE, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.BILLING.USAGE, authMiddleware, adminOnly, async (req, res) => {
     await getBillingUsage(req, res)
 })
 
-app.patch(ApiRoutes.BILLING.OVERAGE_MODE, authMiddleware, async (req, res) => {
+app.patch(ApiRoutes.BILLING.OVERAGE_MODE, authMiddleware, adminOnly, async (req, res) => {
     await setBillingOverageMode(req, res)
 })
 

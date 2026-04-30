@@ -52,7 +52,7 @@ function App() {
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="api-tokens" element={<ApiTokensPage />} />
-                            <Route path="billing" element={<BillingPage />} />
+                            <Route path="billing" element={<AdminRoute element={<BillingPage />} />} />
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                         <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
@@ -137,6 +137,20 @@ function AppLayout() {
             </main>
         </SidebarProvider>
     )
+}
+
+function AdminRoute({ element }: { element: React.ReactElement }) {
+    const { user, isLoading } = useAuth()
+
+    if (isLoading) {
+        return <AppBootScreen />
+    }
+
+    if (!user?.roles.includes("admin")) {
+        return <Navigate to={FrontendRoutes.HOME} replace />
+    }
+
+    return element
 }
 
 export default App

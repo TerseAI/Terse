@@ -566,4 +566,11 @@ export const authMiddleware = createAuthMiddleware(true)
 // Some routes have an exception to this rule
 export const authMiddlewareAllowNoOrg = createAuthMiddleware(false)
 
+export function adminOnly(req: Request, res: Response, next: NextFunction) {
+    if (!req.session?.user?.roles?.includes("admin")) {
+        return res.status(403).json({ error: "Only admins can access this resource" })
+    }
+    next()
+}
+
 export default { me, login, loginUrl, logout, logoutUrl, getWorkOSWidgetToken, callback }
