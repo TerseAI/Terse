@@ -90,10 +90,7 @@ export class BillingServiceProxy implements BillingService {
         }
     }
 
-    private async jsonRequest<T>(
-        path: string,
-        options?: { method?: string; body?: string }
-    ): Promise<T> {
+    private async jsonRequest<T>(path: string, options?: { method?: string; body?: string }): Promise<T> {
         const trimmed = this.backendUrl?.trim()
         if (!trimmed) {
             throw new BillingNoBackendError()
@@ -121,7 +118,7 @@ export class BillingServiceProxy implements BillingService {
             timeout: BILLING_REQUEST_TIMEOUT_MS,
             validateStatus: () => true,
             responseType: "text",
-            transformResponse: [(data) => data]
+            transformResponse: [data => data]
         })
 
         const text = response.data ?? ""

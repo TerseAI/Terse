@@ -1,11 +1,11 @@
 import { Agent, RunStreamEvent, StreamedRunResult } from "@openai/agents"
+import { CreditGateDeniedError, StripeError } from "terse-types"
 import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import { ApprovalDecision } from "../agent/AgentRunner/BaseAgentRunner"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { CreditGateDeniedError, StripeError } from "terse-types"
 import { ErrorContext } from "../tools/toolUtils"
 import { Session } from "../types/session"
 import { randomString } from "../utility/strings"

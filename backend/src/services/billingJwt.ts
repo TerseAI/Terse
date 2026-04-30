@@ -4,8 +4,8 @@ import {
     BILLING_SERVICE_CALLBACK_JWT_ISSUER,
     BILLING_SERVICE_JWT_AUDIENCE,
     BILLING_SERVICE_JWT_ISSUER,
-    terseBillingJwtClaimsSchema,
-    type TerseBillingJwtClaims
+    type TerseBillingJwtClaims,
+    terseBillingJwtClaimsSchema
 } from "terse-types"
 
 import { settings } from "../config/settings"

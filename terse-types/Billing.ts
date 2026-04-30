@@ -184,11 +184,7 @@ export const billingChangeResponseSchema = z.object({
 })
 export type BillingChangeResponse = z.infer<typeof billingChangeResponseSchema>
 
-export const runGateDenyReasonSchema = z.enum([
-    "credits_exhausted",
-    "subscription_past_due",
-    "no_subscription"
-])
+export const runGateDenyReasonSchema = z.enum(["credits_exhausted", "subscription_past_due", "no_subscription"])
 export type RunGateDenyReason = z.infer<typeof runGateDenyReasonSchema>
 
 export const runGateAllowSchema = z.object({ allow: z.literal(true) })
@@ -197,10 +193,7 @@ export const runGateDenySchema = z.object({
     reason: runGateDenyReasonSchema
 })
 
-export const runGateDecisionSchema = z.discriminatedUnion("allow", [
-    runGateAllowSchema,
-    runGateDenySchema
-])
+export const runGateDecisionSchema = z.discriminatedUnion("allow", [runGateAllowSchema, runGateDenySchema])
 export type RunGateDecision = z.infer<typeof runGateDecisionSchema>
 
 export function parseRunGateDenyReason(raw: unknown): RunGateDenyReason {
