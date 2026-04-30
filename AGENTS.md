@@ -28,8 +28,9 @@ See `CURSOR.md` for full code style, architecture, and contribution guidelines.
 
 - `pnpm run dev` (the full dev script) tries to use ngrok for tunnel mode. For local dev without tunnels, use `pnpm run dev:server` directly.
 - The backend binds to port 3001 (`PORT=3001` in `.env`). The `.env.example` defaults to 8080 — update it.
-- WorkOS, OpenAI, Anthropic, and other external API keys are required for full functionality but NOT for starting the server. The server boots without them.
+- WorkOS, OpenAI, Anthropic, and other external API keys are required for full functionality but NOT for starting the server. The server boots without them (settings are loaded lazily).
 - Redis is optional; Socket.IO falls back to in-memory adapter when `REDIS_URL` is unset.
+- **Environment variable precedence**: `dotenv` does NOT override existing shell env vars. If secrets like `WORKOS_COOKIE_PASSWORD` or `DATABASE_URL` are injected via environment, the `.env` file values are ignored. Always use the env var values when generating tokens or sealed sessions programmatically.
 
 ### Frontend
 
