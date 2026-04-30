@@ -186,21 +186,18 @@ export const settings = {
         webhookSecret: requireEnv("PARALLEL_WEBHOOK_SECRET")
     },
 
-    // Stripe
-
-    stripe: {
-        secretKey: requireEnv("STRIPE_SECRET_KEY"), // sk_test_... or sk_live_...
-        publishableKey: requireEnv("STRIPE_PUBLISHABLE_KEY"), // pk_test_... or pk_live_...
-        webhookSecret: requireEnv("STRIPE_WEBHOOK_SECRET"), // whsec_...
-        isTestMode: optionalEnv("STRIPE_TEST_MODE", process.env.NODE_ENV === "production" ? "false" : "true") === "true"
-    },
     aisdk: {
         default: optionalEnv("MODEL_DEFAULT", "anthropic:claude-opus-4-7")
+    },
+
+    billing: {
+        url: optionalEnv("BILLING_SERVICE_URL"),
+        jwtSecret: optionalEnv("BILLING_JWT_SECRET")
     }
 } as const
 
 // Export individual settings for convenience
-export const { jwt, database, openai, tavily, gemini, urls, nodeEnv, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional, stripe } = settings
+export const { jwt, database, openai, tavily, gemini, urls, nodeEnv, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
 
 // Type exports
 export type Settings = typeof settings

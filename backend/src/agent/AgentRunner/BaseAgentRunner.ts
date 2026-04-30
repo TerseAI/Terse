@@ -4,12 +4,13 @@ import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
 import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
+import { CompletedEventUsage, CreditGateDeniedError, ModelReference, StripeError } from "terse-types"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
-import { CompletedEventUsage, CreditGateDeniedError, StripeUnavailableError, creditService } from "../../services/CreditService"
+import type { BillingService } from "../../services/BillingService"
 import { Session as AppSession } from "../../types/session"
-import { ModelReference, parseModelReference } from "../modelRegistry"
+import { parseModelReference } from "../modelRegistry"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
@@ -30,9 +31,11 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     protected onRawStreamEvent?: (event: RunStreamEvent) => Promise<void> | void
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
+    private readonly billing?: BillingService
 
-    constructor(params: { runId: string }) {
+    constructor(params: { runId: string; billing?: BillingService }) {
         this.runId = params.runId
+        this.billing = params.billing
     }
 
     protected abstract onModelEvent(event: ModelEvent, timestamp: number): Promise<void>
@@ -228,9 +231,10 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async checkRunGate(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
-        const orgId = settings.context.user.organizationId
+        if (!this.billing) return
 
-        const gateDecision = await creditService.checkRunGate(orgId, settings.context.user.email)
+        const orgId = settings.context.user.organizationId
+        const gateDecision = await this.billing.checkRunGate({ organizationId: orgId })
         if (!gateDecision.allow) {
             throw new CreditGateDeniedError(gateDecision.reason)
         }
@@ -264,16 +268,19 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             return
         }
 
+        if (!this.billing) return
+
         try {
-            const payload = {
+            await this.billing.recordLLMCall({
+                organizationId: settings.context.user.organizationId,
+                runId: settings.context.runId,
                 responseId,
                 model: this.getModel(),
                 usage
-            }
-            await creditService.recordLLMCall(settings.context.user.organizationId, settings.context.user.email, settings.context.runId, payload)
+            })
         } catch (error) {
-            if (error instanceof StripeUnavailableError) {
-                logger.error("SdkAgentRunner: Stripe unavailable; failing run", { runId: settings.context.runId, error })
+            if (error instanceof StripeError) {
+                logger.error("SdkAgentRunner: billing provider error; failing run", { runId: settings.context.runId, error })
             } else {
                 logger.error("SdkAgentRunner: unexpected charge failure", { runId: settings.context.runId, error })
             }

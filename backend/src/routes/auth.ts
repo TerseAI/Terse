@@ -2,9 +2,8 @@ import { users as PrismaUser } from "@prisma/client"
 import { Organization } from "@workos-inc/node"
 import { User as WorkOSUser } from "@workos-inc/node"
 import { NextFunction, Request, Response } from "express"
-import { ApiRoutes, DEFAULT_OVERAGE_CAP_MULTIPLIER, DEFAULT_OVERAGE_MODE, OverageMode } from "terse-types"
+import { ApiRoutes, DEFAULT_OVERAGE_CAP_MULTIPLIER, DEFAULT_OVERAGE_MODE, OrganizationMetadata, OverageMode, organizationMetadataSchema } from "terse-types"
 import { Role, User } from "terse-types/types"
-import z from "zod"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
@@ -606,13 +605,6 @@ function parseOrganizationMetadata(organization: Organization): WorkOsOrganizati
     const parsed = organizationMetadataSchema.parse(organization.metadata)
     return { ...organization, metadata: parsed }
 }
-
-const organizationMetadataSchema = z.object({
-    stripeCustomerId: z.string(),
-    overageMode: z.enum(["soft", "strict"]),
-    overageCapMultiplier: z.string().transform(val => Number(val))
-})
-export type OrganizationMetadata = z.infer<typeof organizationMetadataSchema>
 
 export type WorkOsOrganizationWithMetadata = Omit<Organization, "metadata"> & {
     metadata: OrganizationMetadata

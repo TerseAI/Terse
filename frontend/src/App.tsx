@@ -38,10 +38,11 @@ function App() {
                 <Router>
                     <Routes>
                         <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
-                        <Route path={FrontendRoutes.PRICING} element={<PricingPage />} />
+                        <Route path="/pricing" element={<Navigate to={FrontendRoutes.PRICING} replace />} />
                         <Route path={FrontendRoutes.APP} element={<Content />}>
                             <Route index element={<Navigate to="home" replace />} />
                             <Route path="home" element={<HomePage />} />
+                            <Route path="pricing" element={<PricingPage />} />
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { type BalanceSummary, type BillingPeriod, FrontendRoutes, type Plan, PlanKey, isPurchasablePlan } from "terse-types"
+import { type BalanceSummary, type BillingPeriod, FrontendRoutes, type Plan, PlanKey, TimePeriods, isPurchasablePlan } from "terse-types"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
@@ -75,7 +75,7 @@ export default function PricingPage() {
     const { plans, topUps, isLoading: catalogLoading } = useBillingCatalog()
     const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null)
     const [loadingTopupCredits, setLoadingTopupCredits] = useState<number | null>(null)
-    const [period, setPeriod] = useState<BillingPeriod>("yearly")
+    const [period, setPeriod] = useState<TimePeriods>(TimePeriods.YEARLY)
     const [confirmDowngradeOpen, setConfirmDowngradeOpen] = useState(false)
 
     const currentPlanKey = balance?.planKey ?? null
@@ -337,8 +337,8 @@ function CreditsFaq() {
 function PeriodToggle({ period, onChange, annualSavingsMonthly }: { period: BillingPeriod; onChange: (next: BillingPeriod) => void; annualSavingsMonthly: number | null }) {
     const annualLabel = annualSavingsMonthly ? `Annual · save ${formatUsd(annualSavingsMonthly)}/mo` : "Annual"
     const options: { value: BillingPeriod; label: string }[] = [
-        { value: "monthly", label: "Monthly" },
-        { value: "yearly", label: annualLabel }
+        { value: TimePeriods.MONTHLY, label: "Monthly" },
+        { value: TimePeriods.YEARLY, label: annualLabel }
     ]
     return (
         <div role="radiogroup" aria-label="Billing period" className="relative inline-flex rounded-full border border-border bg-muted p-1 text-sm">

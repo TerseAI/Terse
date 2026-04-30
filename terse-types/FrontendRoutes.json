@@ -1,6 +1,6 @@
 {
     "APP": "/app",
-    "PRICING": "/pricing",
+    "PRICING": "/app/pricing",
     "OAUTH": {
         "SUCCESS": "/oauth/success",
         "ERROR": "/oauth/error"

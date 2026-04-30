@@ -577,11 +577,9 @@ interface BackendService {
 
 export const BackendProvider: BackendService = {
     getCurrentUser: () => {
-        const skipAuthRedirect = window.location.pathname === "/pricing"
         return axios
             .get<User>(`${backendBaseUrl}${ApiRoutes.AUTH.ME}`, {
-                withCredentials: true,
-                ...(skipAuthRedirect ? { headers: { "x-skip-auth-redirect": "true" } } : {})
+                withCredentials: true
             })
             .then(response => {
                 return response.data

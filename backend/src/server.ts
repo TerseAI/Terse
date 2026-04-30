@@ -21,7 +21,15 @@ import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { adminOnly, authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
-import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingCatalog, getBillingContext, setBillingOverageMode } from "./routes/billing"
+import {
+    changeBillingSubscription,
+    createBillingCheckoutSession,
+    createBillingPortalSession,
+    getBillingCatalog,
+    getBillingContext,
+    setBillingOverageMode
+} from "./routes/billing"
+import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
@@ -56,7 +64,6 @@ import { getSentNotifications } from "./routes/sentNotifications"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { createOrUpdateSnowflakeIntegration, getSnowflakeIntegrations } from "./routes/snowflake"
 import { getStats } from "./routes/stats"
-import { handleStripeWebhook } from "./routes/stripe"
 import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
 import { getUserById } from "./routes/users"
@@ -164,7 +171,6 @@ app.use((req, res, next) => {
     if (
         req.path === "/slack/events" ||
         req.path === "/linear/webhook" ||
-        req.path === ApiRoutes.STRIPE.WEBHOOK ||
         req.path === ApiRoutes.WEBHOOKS.WORKOS ||
         req.path.startsWith("/webhooks/workos-trigger/") ||
         req.path.startsWith("/webhooks/webmonitor/")
@@ -283,13 +289,9 @@ app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
     deviceTokenExchange(req, res)
 })
 
-// MARK: Stripe route, before apiTokenAuthMiddleware since it uses Stripe signature verification, not bearer token auth
-app.post(ApiRoutes.STRIPE.WEBHOOK, express.raw({ type: "application/json" }), async (req, res) => {
-    await handleStripeWebhook(req, res)
-})
-
-app.get(ApiRoutes.BILLING.CATALOG, async (req, res) => {
-    await getBillingCatalog(req, res)
+// Billing service callback: uses a service JWT, not bearer API token auth.
+app.post(ApiRoutes.BILLING.CACHE_INVALIDATION, async (req, res) => {
+    await invalidateBillingCachesFromService(req, res)
 })
 
 app.use(apiTokenAuthMiddleware)
@@ -314,6 +316,10 @@ app.get(ApiRoutes.BILLING.CONTEXT, authMiddleware, adminOnly, async (req, res) =
 
 app.patch(ApiRoutes.BILLING.OVERAGE_MODE, authMiddleware, adminOnly, async (req, res) => {
     await setBillingOverageMode(req, res)
+})
+
+app.get(ApiRoutes.BILLING.CATALOG, authMiddleware, adminOnly, async (req, res) => {
+    await getBillingCatalog(req, res)
 })
 
 // MARK: AUTH

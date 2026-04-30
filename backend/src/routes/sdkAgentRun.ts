@@ -5,12 +5,13 @@ import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
 
+import { CreditGateDeniedError, StripeError } from "terse-types"
+
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
-import { settings } from "../config/settings"
 import logger from "../logger"
-import { CreditGateDeniedError, GateDenyReason, StripeUnavailableError, creditService } from "../services/CreditService"
+import { BillingNoBackendError, billingServiceProxyForRequest, type BillingService } from "../services/BillingService"
 import { extractErrorMessage } from "../utility/strings"
 
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
@@ -50,14 +51,24 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
         const orgId = user.organizationId
 
-        // Need to check the gate before creating the runner to
-        // avoid charging for the run if the gate is denied
-        const gateDecision = await creditService.checkRunGate(orgId, user.email)
-        if (!gateDecision.allow) {
-            throw new CreditGateDeniedError(gateDecision.reason)
+        const billingProxy = billingServiceProxyForRequest(req)
+        let billingForRunner: BillingService | undefined
+
+        try {
+            const gateDecision = await billingProxy.checkRunGate({ organizationId: orgId, email: user.email })
+            if (!gateDecision.allow) {
+                throw new CreditGateDeniedError(gateDecision.reason)
+            }
+            await billingProxy.chargeRunBase({ organizationId: orgId, email: user.email, runId })
+            billingForRunner = billingProxy
+        } catch (err) {
+            if (err instanceof BillingNoBackendError) {
+                billingForRunner = undefined
+            } else {
+                throw err
+            }
         }
-        // Charge once for the base run cost
-        await creditService.chargeRunBase(orgId, user.email, runId)
+
         const sdkRunner = createSdkRunner({
             runId,
             user,
@@ -67,7 +78,8 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             send,
             isProductionRun,
             options: data.options,
-            outputSchema: data.outputSchema
+            outputSchema: data.outputSchema,
+            billing: billingForRunner
         })
 
         send({ type: "run_started", runId })
@@ -102,7 +114,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             res.end()
             return
         }
-        if (error instanceof StripeUnavailableError) {
+        if (error instanceof StripeError) {
             send({ type: "error", message: "Billing temporarily unavailable. Please retry shortly." })
             send({ type: "done" })
             res.end()
@@ -197,6 +209,7 @@ function createSdkRunner(params: {
     isProductionRun: boolean
     options?: { maxTurns?: number; requireApproval?: boolean }
     outputSchema?: Record<string, unknown>
+    billing?: BillingService
 }): SdkAgentRunner {
     return new SdkAgentRunner({
         runId: params.runId,
@@ -208,6 +221,7 @@ function createSdkRunner(params: {
         requireApproval: params.options?.requireApproval ?? true,
         send: params.send,
         isProductionRun: params.isProductionRun,
-        outputSchema: params.outputSchema
+        outputSchema: params.outputSchema,
+        billing: params.billing
     })
 }

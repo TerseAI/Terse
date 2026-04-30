@@ -11,6 +11,7 @@ import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
+import { BillingService, billingServiceProxyForOrganization } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { FileCategory, StoredFile } from "../../services/FileStorageService"
 import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
@@ -52,8 +53,12 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
     private activeStreamingParams?: TrackingParams
     private activeStreamEventEmitter?: StreamEventEmitter
 
-    constructor(session: T, outputs: Output<TConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50) {
-        super({ runId: runContext.runId })
+    constructor(session: T, outputs: Output<TConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50, billing?: BillingService) {
+        const resolvedBilling = billing ?? billingServiceProxyForOrganization(session.user.organizationId)
+        super({
+            runId: runContext.runId,
+            billing: resolvedBilling
+        })
         this.session = session
         this.outputs = outputs
         this.agentConfig = agent

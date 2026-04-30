@@ -1,8 +1,8 @@
-import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult, RunStreamEvent, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { AiSdkModel, aisdk } from "@openai/agents-extensions/ai-sdk"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
-import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
+import { CONFIG_DETAILS, ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { SdkAgentStreamEvent, User } from "terse-types"
@@ -11,17 +11,16 @@ import { stripZodJsonSchemaMetadata } from "terse-types"
 import { settings } from "../../config/settings"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
+import type { BillingService } from "../../services/BillingService"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
-import { StripeUnavailableError, creditService } from "../../services/CreditService"
-import { CompletedEventUsage } from "../../services/CreditService"
 import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { ModelReference, parseModelReference, resolveLanguageModel } from "../modelRegistry"
+import { resolveLanguageModel } from "../modelRegistry"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage } from "../userMessage"
@@ -48,7 +47,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
     constructor(params: SdkAgentRunnerParams) {
-        super({ runId: params.runId })
+        super({ runId: params.runId, billing: params.billing })
         this.sdkRunId = params.runId
         this.user = params.user
         this.prompt = params.prompt
@@ -402,6 +401,7 @@ type SdkAgentRunnerParams = {
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun?: boolean
     outputSchema?: Record<string, unknown>
+    billing?: BillingService
 }
 
 type SdkAgentRunnerResult = {

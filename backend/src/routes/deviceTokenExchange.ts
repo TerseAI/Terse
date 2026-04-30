@@ -4,7 +4,7 @@ import { DeviceTokenExchangeResponse } from "terse-types/types"
 import { deviceTokenExchangeRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
-import { getOrCreateCustomer } from "../services/PaymentsProviderService"
+import { BillingNoBackendError, billingServiceProxyForOrganization } from "../services/BillingService"
 import { decodeAccessTokenClaims } from "../utility/accessTokenClaims"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
@@ -70,9 +70,15 @@ export async function deviceTokenExchange(req: Request, res: Response) {
             organizationId = organization.id
             roles = ["admin"]
 
-            // Create a Stripe customer for the organization
-            const stripeCustomerId = await getOrCreateCustomer(organizationId)
-            await setDefaultOrganizationMetadata(organizationId, stripeCustomerId)
+            const billing = billingServiceProxyForOrganization(organizationId)
+            if (billing) {
+                try {
+                    const { customerId } = await billing.getOrCreateCustomer()
+                    await setDefaultOrganizationMetadata(organizationId, customerId)
+                } catch (e) {
+                    if (!(e instanceof BillingNoBackendError)) throw e
+                }
+            }
         } else {
             const membership = memberships.data.find(m => m.organizationId === organizationId)
             roles = membership?.roles?.map(role => role.slug) ?? []

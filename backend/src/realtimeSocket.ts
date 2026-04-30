@@ -24,6 +24,7 @@ import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
 import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
+import { billingServiceProxyForOrganization } from "./services/BillingService"
 import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
 import { CancelAckResponse, USER_CANCELLED_REASON } from "./socketHandlers/activeExecution"
 import { AgentWithRelations } from "./types/prisma"
@@ -286,6 +287,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             let endedWithToolFailure = false
             let finalOutput: unknown = undefined
 
+            const billing = billingServiceProxyForOrganization(user.organizationId)
+
             try {
                 if (isSdkAgent) {
                     const skills = readSdkSkillsFromJson(runRecord.sdk_skills)
@@ -300,7 +303,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         maxTurns: 50,
                         requireApproval: true,
                         send: () => {},
-                        isProductionRun: true
+                        isProductionRun: true,
+                        billing
                     })
 
                     const sdkResult = await sdkRunner.userMessageRun(userMessage, {
@@ -323,7 +327,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
                     const session: Session = { user, isUserInitiated: true }
                     const runContext: RunContext = { runId }
-                    const agentRunner = new AgentRunner(session, outputs, agent, runContext)
+                    const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
 
                     const result = await agentRunner.userMessageRun(
                         userMessage,
