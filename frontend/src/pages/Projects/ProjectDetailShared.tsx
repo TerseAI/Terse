@@ -258,7 +258,7 @@ function JobsDeltaSummary({ delta }: { delta: ProjectDeployJobsDelta }) {
     return (
         <span className="flex items-center gap-1 text-xs tabular-nums">
             {delta.added > 0 ? <span className="text-success">+{delta.added}</span> : null}
-            {delta.removed > 0 ? <span className="text-destructive">-{delta.removed}</span> : null}
+            {delta.removed > 0 ? <span className="text-danger">-{delta.removed}</span> : null}
             <span className="text-muted-foreground">{totalChanges === 1 ? "job" : "jobs"}</span>
         </span>
     )
@@ -276,7 +276,7 @@ function DeployStatusBadge({ status }: { status: ProjectDeployStatus }) {
 
 export function deployStatusPresentation(status: ProjectDeployStatus): { Icon: typeof CheckCircle2; iconClass: string; label: string } {
     if (status === "SUCCEEDED") return { Icon: CheckCircle2, iconClass: "text-success", label: "Succeeded" }
-    if (status === "FAILED") return { Icon: XCircle, iconClass: "text-destructive", label: "Failed" }
+    if (status === "FAILED") return { Icon: XCircle, iconClass: "text-danger", label: "Failed" }
     if (status === "IN_PROGRESS") return { Icon: Loader2, iconClass: "text-warning", label: "In progress" }
     return { Icon: RotateCcw, iconClass: "text-muted-foreground", label: "Rolled back" }
 }
@@ -348,7 +348,7 @@ export function DeleteProjectAction({ project }: { project: Pick<ProjectDetailRe
     return (
         <>
             <section className="mt-10">
-                <h2 className="text-destructive mb-3 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase">
+                <h2 className="text-danger mb-3 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase">
                     <AlertTriangle className="h-3 w-3" />
                     Danger zone
                 </h2>

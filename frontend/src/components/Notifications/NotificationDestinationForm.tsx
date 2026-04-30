@@ -218,7 +218,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                 />
             )}
 
-            {validationError && <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{validationError}</div>}
+            {validationError && <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-danger">{validationError}</div>}
 
             <div className="flex justify-end gap-2 pt-2">
                 {onCancel && (

@@ -129,7 +129,7 @@ export function PosthogIntegration({ input, variant, setConfig }: InputConfigSel
                                 {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                         </div>
-                        {error && <p className="text-sm text-destructive">{error}</p>}
+                        {error && <p className="text-sm text-danger">{error}</p>}
                     </div>
                     <div className="flex gap-2">
                         <Button type="submit" disabled={isSubmitting || !apiKey}>
@@ -178,7 +178,7 @@ export function PosthogIntegration({ input, variant, setConfig }: InputConfigSel
             {selectedIntegrationId && (
                 <div className="space-y-2">
                     <Label>
-                        Project <span className="text-destructive">*</span>
+                        Project <span className="text-danger">*</span>
                     </Label>
                     <PosthogProjectSelector
                         integrationId={selectedIntegrationId}

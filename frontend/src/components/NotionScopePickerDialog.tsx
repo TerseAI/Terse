@@ -110,7 +110,7 @@ export function NotionScopePicker({ integrationId, selectedDatabaseIds, selected
                         Searching...
                     </div>
                 )}
-                {!isLoading && !isSearching && isError && <div className="py-4 text-center text-sm text-destructive">{error instanceof Error ? error.message : "Failed to load resources"}</div>}
+                {!isLoading && !isSearching && isError && <div className="py-4 text-center text-sm text-danger">{error instanceof Error ? error.message : "Failed to load resources"}</div>}
                 {!isLoading && !isSearching && !isError && resources.length === 0 && (
                     <div className="py-6 text-center text-sm text-muted-foreground">{debouncedSearch ? `No pages or databases match "${debouncedSearch}"` : "No pages or databases available"}</div>
                 )}

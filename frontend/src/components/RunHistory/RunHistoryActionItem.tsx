@@ -50,7 +50,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                         </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                        <div className={cn("p-2", runStatus === RunHistoryStatus.FAILED ? "text-destructive" : "text-muted-foreground")}>{action.details}</div>
+                        <div className={cn("p-2", runStatus === RunHistoryStatus.FAILED ? "text-danger" : "text-muted-foreground")}>{action.details}</div>
                     </AccordionContent>
                 </AccordionItem>
             </div>

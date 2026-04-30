@@ -19,7 +19,7 @@ export default function RunHistoryItemError({ errorMessage, isExpanded, onToggle
                             <AccordionTrigger className="py-2 px-2 hover:no-underline hover:bg-accent/50">
                                 <div className="flex items-center gap-2 w-full mr-2">
                                     <div>
-                                        <XCircle className="w-4 h-4 text-destructive" />
+                                        <XCircle className="w-4 h-4 text-danger" />
                                     </div>
                                     <div className="flex-1">
                                         <span className="text-foreground">Error</span>
