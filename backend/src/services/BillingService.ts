@@ -14,6 +14,7 @@ import {
     BillingRoutes,
     BillingRunGateRequestBody,
     BillingStripeRedirectResponse,
+    CreditGateDeniedError,
     GetOrCreateCustomerRequestBody,
     GetOrCreateCustomerResponse,
     RunGateDecision,
@@ -211,4 +212,28 @@ export class BillingServiceProxy implements BillingService {
             body: JSON.stringify(body)
         })
     }
+}
+
+/**
+ * Explicit run-start boundary: gate first, then optional base charge.
+ * No-op when billing is not configured. Use `chargeBaseRun: false` for
+ * resume paths where the base fee was already taken at initial start.
+ */
+export async function startBillingRun(
+    billing: BillingService | undefined,
+    params: { organizationId: string; runId: string; chargeBaseRun?: boolean }
+): Promise<void> {
+    if (!billing) return
+
+    const gate = await billing.checkRunGate({ organizationId: params.organizationId })
+    if (!gate.allow) {
+        throw new CreditGateDeniedError(gate.reason)
+    }
+
+    if (params.chargeBaseRun === false) return
+
+    await billing.chargeRunBase({
+        organizationId: params.organizationId,
+        runId: params.runId
+    })
 }

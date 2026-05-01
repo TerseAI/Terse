@@ -81,7 +81,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                                             ? "You are past your included credits. Buy a top-up or upgrade to Pro for soft overages."
                                             : "You are past your included credits. Purchase a credit pack to add credits."}
                                     </p>
-                                    <Button variant="secondary" size="sm" className="group h-8 gap-1" asChild>
+                                    <Button variant="default" size="sm" className="group h-8 gap-1" asChild>
                                         <Link to={FrontendRoutes.PRICING}>
                                             {plan?.key === PlanKey.FREE ? "Plans & top-ups" : "Buy a top-up"}
                                             <ArrowUpRight className="size-3 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

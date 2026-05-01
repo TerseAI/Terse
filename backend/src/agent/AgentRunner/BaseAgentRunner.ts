@@ -32,7 +32,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
     private readonly billing?: BillingService
-    private baseRunCharged = false
 
     constructor(params: { runId: string; billing?: BillingService }) {
         this.runId = params.runId
@@ -72,7 +71,9 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async runAgent(userHistory: AgentInputItem[], settings: RunExecutionSettings<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
-        await this.meterRunStart(settings)
+        // Base run charges happen at explicit run-start call sites (SDK route, EventProcessor).
+        // Still gate every loop entry so unpaid orgs cannot continue on a new turn.
+        await this.checkRunGate(settings)
         await this.initializeLoopIfNeeded()
         this.resetRunOutcomeTracking()
         const result = await settings.runner.run(this.requireAgent(), userHistory, {
@@ -231,21 +232,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         return this.agent
     }
 
-    async meterRunStart(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
-        if (!this.billing) return
-
-        await this.checkRunGate(settings)
-        if (settings.chargeBaseRun === false) return
-        if (this.baseRunCharged) return
-
-        const user = settings.context.user
-        await this.billing.chargeRunBase({
-            organizationId: user.organizationId,
-            runId: settings.context.runId
-        })
-        this.baseRunCharged = true
-    }
-
     async checkRunGate(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
         if (!this.billing) return
 
@@ -363,7 +349,6 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
     sessionInputCallback?: SessionInputCallback
     maxTurns: number
     signal?: AbortSignal
-    chargeBaseRun?: boolean
 }
 
 type AgentInitializationParams<TSession extends AppSession> = {

@@ -118,8 +118,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
                 memorySession: this.memorySession,
                 sessionInputCallback: recentHistoryCallback,
                 maxTurns: this.maxTurns,
-                signal: options?.signal,
-                chargeBaseRun: false
+                signal: options?.signal
             })
         } finally {
             this.clearActiveStreamingParams()

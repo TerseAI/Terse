@@ -1,4 +1,4 @@
-import { type ComponentProps, useMemo, useState } from "react"
+import { type ComponentProps, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { motion } from "framer-motion"
@@ -67,6 +67,13 @@ function formatScheduledNote(balance: BalanceSummary | null, plan: Plan): string
     return null
 }
 
+const getAnnualSavingsMonthly = (plans: Plan[]) => {
+    const purchasable = plans.find(p => isPurchasablePlan(p) && p.priceInUsdMonthly && p.priceInUsdMonthlyAnnual)
+    if (!purchasable) return null
+    const diff = purchasable.priceInUsdMonthly! - purchasable.priceInUsdMonthlyAnnual!
+    return diff > 0 ? diff : null
+}
+
 export default function PricingPage() {
     const navigate = useNavigate()
     const { user, isLoading: authLoading } = useAuth()
@@ -82,12 +89,7 @@ export default function PricingPage() {
     const currentPeriod = balance?.billingPeriod ?? null
     const showPlanGridSkeleton = authLoading || catalogLoading || (balanceEnabled && balanceLoading)
 
-    const annualSavingsMonthly = useMemo(() => {
-        const purchasable = plans.find(p => isPurchasablePlan(p) && p.priceInUsdMonthly && p.priceInUsdMonthlyAnnual)
-        if (!purchasable) return null
-        const diff = purchasable.priceInUsdMonthly! - purchasable.priceInUsdMonthlyAnnual!
-        return diff > 0 ? diff : null
-    }, [plans])
+    const annualSavingsMonthly = getAnnualSavingsMonthly(plans)
 
     const requireUser = () => {
         if (user) return true

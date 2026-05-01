@@ -55,19 +55,15 @@ export default function BillingPage() {
         void retryCatalog()
     }
 
+    // Show the toast once when the page is loaded with a query param,
+    // then clear the query param so on page reload we don't see it.
     useEffect(() => {
         const params = new URLSearchParams(window.location.search)
         if (!params.get("upgraded") && !params.get("topup")) return
 
         toast.success(params.get("topup") ? "Top-up complete" : "Plan updated")
         window.history.replaceState({}, "", window.location.pathname)
-        let attempts = 0
-        const interval = window.setInterval(() => {
-            attempts += 1
-            invalidateBillingCaches()
-            if (attempts >= 5) window.clearInterval(interval)
-        }, 2000)
-        return () => window.clearInterval(interval)
+        invalidateBillingCaches()
     }, [])
 
     const manageBilling = async () => {
