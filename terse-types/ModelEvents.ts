@@ -1,6 +1,7 @@
 import * as z from "zod"
 
 import { EntityType } from "./Entities"
+import { sdkJobServerCheckStepSchema } from "./types"
 
 export const entityTypeSchema = z.enum(EntityType)
 
@@ -190,7 +191,25 @@ export const imageSchema = z.object({
     url: z.string()
 })
 
-export const snippetVariantSchema = z.discriminatedUnion("type", [buttonSchema, integrationPromptSchema, navigateSchema, multipleChoiceSchema, imageSchema])
+export const webhookFailureStageSchema = z.enum(["handshake", "delivery"])
+export type WebhookFailureStage = z.infer<typeof webhookFailureStageSchema>
+
+/**
+ * Surfaced in the run history drawer when a self-hosted SDK job fails to reach (or be accepted by)
+ * the customer's webhook server. Persisted as a snippet so the failure is visible in the timeline
+ * alongside other run events; the run row itself is still marked FAILED.
+ */
+export const webhookFailureSchema = z.object({
+    type: z.literal("webhook_failure"),
+    stage: webhookFailureStageSchema,
+    message: z.string(),
+    triggerUrl: z.string(),
+    step: sdkJobServerCheckStepSchema.optional(),
+    httpStatus: z.number().optional(),
+    bodySnippet: z.string().optional()
+})
+
+export const snippetVariantSchema = z.discriminatedUnion("type", [buttonSchema, integrationPromptSchema, navigateSchema, multipleChoiceSchema, imageSchema, webhookFailureSchema])
 export type SnippetVariant = z.infer<typeof snippetVariantSchema>
 
 const chatSnippetMetadataSchema = {
@@ -203,7 +222,8 @@ export const chatSnippetSchema = z.discriminatedUnion("type", [
     integrationPromptSchema.extend(chatSnippetMetadataSchema),
     navigateSchema.extend(chatSnippetMetadataSchema),
     multipleChoiceSchema.extend(chatSnippetMetadataSchema),
-    imageSchema.extend(chatSnippetMetadataSchema)
+    imageSchema.extend(chatSnippetMetadataSchema),
+    webhookFailureSchema.extend(chatSnippetMetadataSchema)
 ])
 export type ChatSnippet = z.infer<typeof chatSnippetSchema>
 

@@ -1,4 +1,5 @@
 import type { AgentInputItem } from "@openai/agents-core"
+import { sdkJobServerCheckStepSchema } from "terse-types"
 import type { ChatSnippet } from "terse-types"
 import { z } from "zod"
 
@@ -42,6 +43,15 @@ export const chatSnippetPayloadSchema = z.union([
     snippetBaseSchema.extend({
         type: z.literal("image"),
         url: z.string()
+    }),
+    snippetBaseSchema.extend({
+        type: z.literal("webhook_failure"),
+        stage: z.enum(["handshake", "delivery"]),
+        message: z.string(),
+        triggerUrl: z.string(),
+        step: sdkJobServerCheckStepSchema.optional(),
+        httpStatus: z.number().optional(),
+        bodySnippet: z.string().optional()
     })
 ])
 
