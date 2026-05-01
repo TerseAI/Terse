@@ -1,6 +1,7 @@
 import { WebMonitorTriggerRuntime, getEventGroup, getMonitor } from "../../integrations/WebMonitorIntegration"
 import logger from "../../logger"
-import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
+import { db } from "../../prismaClient"
+import { HydrationContext, HydrationError, Hydrator, Identifiable } from "../Hydrator"
 
 export class WebMonitorEventHydrator extends Hydrator<WebMonitorTriggerRuntime> {
     readonly entityType = "webmonitor_event"
@@ -30,11 +31,12 @@ export class WebMonitorEventHydrator extends Hydrator<WebMonitorTriggerRuntime> 
     private async fetchFromWebMonitor(entityId: string): Promise<WebMonitorTriggerRuntime | null> {
         const parts = entityId.split(":")
         if (parts.length < 3) {
-            logger.error(`Invalid WebMonitor entityId format: ${entityId}`)
-            return null
+            throw new HydrationError(400, "Invalid web monitor entity id")
         }
         const [monitorId, eventGroupId, encodedEventDate] = parts
         const eventDate = decodeURIComponent(encodedEventDate)
+
+        await this.assertOrganizationAccess(monitorId)
 
         try {
             const [monitorConfig, events] = await Promise.all([getMonitor(monitorId), getEventGroup(monitorId, eventGroupId)])
@@ -55,8 +57,34 @@ export class WebMonitorEventHydrator extends Hydrator<WebMonitorTriggerRuntime> 
                 event
             })
         } catch (error) {
+            if (error instanceof HydrationError) {
+                throw error
+            }
             logger.error(`Failed to hydrate WebMonitor entityId: ${entityId}`, { error })
             return null
+        }
+    }
+
+    private async assertOrganizationAccess(monitorId: string): Promise<void> {
+        const organizationId = this.ctx.organizationId
+        if (!organizationId) {
+            throw new HydrationError(403, "Forbidden")
+        }
+
+        const hasAccess = await db().automation_webmonitor_configs.findFirst({
+            where: {
+                provider_monitor_id: monitorId,
+                automation_input: {
+                    automation: {
+                        organization_id: organizationId
+                    }
+                }
+            },
+            select: { id: true }
+        })
+
+        if (!hasAccess) {
+            throw new HydrationError(403, "Forbidden")
         }
     }
 }

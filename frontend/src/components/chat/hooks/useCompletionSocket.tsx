@@ -26,7 +26,6 @@ export function useCompletionSocket({ subscribeToEvents, sendMessage, onEvent }:
         if (!subscribeToEvents) return
 
         const unsubscribe = subscribeToEvents(payload => {
-            console.log("useCompletionSocket onEvent", JSON.stringify(payload, null, 2))
             const message = payload.runHistoryModelEvent
             switch (message.type) {
                 case "TextDelta":
