@@ -54,7 +54,7 @@ export const balanceSummarySchema = z.object({
     billingPeriod: billingPeriodSchema.nullable(),
     planCredits: z.number(),
     consumedCredits: z.number(),
-    topUpCredits: z.number(),
+    remainingCredits: z.number(),
     totalCreditCapacity: z.number(),
     periodStart: z.coerce.date(),
     periodEnd: z.coerce.date(),

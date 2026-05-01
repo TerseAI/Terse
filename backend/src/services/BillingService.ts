@@ -125,7 +125,7 @@ export class BillingNoOpService implements BillingService {
                 billingPeriod: null,
                 planCredits: 0,
                 consumedCredits: 0,
-                topUpCredits: 0,
+                remainingCredits: 0,
                 totalCreditCapacity: 0,
                 periodStart: start,
                 periodEnd: end,

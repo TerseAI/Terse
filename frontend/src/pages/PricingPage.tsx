@@ -16,7 +16,7 @@ import { useBillingCatalog } from "@/hooks/api/useBillingCatalog"
 import { useBillingContext } from "@/hooks/api/useBillingContext"
 import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
-import { formatCredits, formatUsd, formatUsdPerThousandCredits } from "@/utility/billingFormat"
+import { formatCredits, formatUsd } from "@/utility/billingFormat"
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
 
@@ -24,24 +24,8 @@ function periodLabel(period: BillingPeriod): string {
     return period === "yearly" ? "annual" : "monthly"
 }
 
-function formatPriceLine(plan: Plan, period: BillingPeriod): string {
-    const credits = `${formatCredits(plan.includedCreditsPerMonth)} credits / mo`
-    if (!isPurchasablePlan(plan) || !plan.priceInUsdMonthly) {
-        return `$0 · ${credits}`
-    }
-    if (period === "yearly" && plan.priceInUsdMonthlyAnnual) {
-        const yearlySavings = (plan.priceInUsdMonthly - plan.priceInUsdMonthlyAnnual) * 12
-        const savings = yearlySavings > 0 ? ` · save ${formatUsd(yearlySavings)}/yr` : ""
-        return `${formatUsd(plan.priceInUsdMonthlyAnnual)}/mo billed yearly · ${credits}${savings}`
-    }
-    return `${formatUsd(plan.priceInUsdMonthly)}/mo · ${credits}`
-}
-
-function formatOveragePrint(plan: Plan): string {
-    if (!plan.overageCentsPerCredit || !plan.hardCapMultiplier || plan.hardCapMultiplier <= 1) {
-        return "Runs pause when your monthly allowance and additional credits are exhausted. No automatic overage charges."
-    }
-    return `Optional soft overage at ${formatUsdPerThousandCredits(plan.overageCentsPerCredit)} per 1,000 credits, capped at ${plan.hardCapMultiplier}× your monthly allowance.`
+function formatPriceLine(plan: Plan): string {
+    return `${formatCredits(plan.includedCreditsPerMonth)} credits / mo`
 }
 
 const PRO_USAGE_EXAMPLES = [
@@ -67,10 +51,10 @@ function formatScheduledNote(balance: BalanceSummary | null, plan: Plan): string
     return null
 }
 
-const getAnnualSavingsMonthly = (plans: Plan[]) => {
+const getAnnualSavingsYearly = (plans: Plan[]) => {
     const purchasable = plans.find(p => isPurchasablePlan(p) && p.priceInUsdMonthly && p.priceInUsdMonthlyAnnual)
     if (!purchasable) return null
-    const diff = purchasable.priceInUsdMonthly! - purchasable.priceInUsdMonthlyAnnual!
+    const diff = (purchasable.priceInUsdMonthly! - purchasable.priceInUsdMonthlyAnnual!) * 12
     return diff > 0 ? diff : null
 }
 
@@ -89,7 +73,7 @@ export default function PricingPage() {
     const currentPeriod = balance?.billingPeriod ?? null
     const showPlanGridSkeleton = authLoading || catalogLoading || (balanceEnabled && balanceLoading)
 
-    const annualSavingsMonthly = getAnnualSavingsMonthly(plans)
+    const annualSavingsYearly = getAnnualSavingsYearly(plans)
 
     const requireUser = () => {
         if (user) return true
@@ -184,7 +168,7 @@ export default function PricingPage() {
                 </header>
 
                 <section id="plans" className="space-y-5">
-                    <PeriodToggle period={period} onChange={setPeriod} annualSavingsMonthly={annualSavingsMonthly} />
+                    <PeriodToggle period={period} onChange={setPeriod} annualSavingsYearly={annualSavingsYearly} />
 
                     {showPlanGridSkeleton ? (
                         <div className="grid gap-4 md:grid-cols-2" aria-busy="true" aria-label="Loading plans">
@@ -351,8 +335,8 @@ function CreditsFaq() {
     )
 }
 
-function PeriodToggle({ period, onChange, annualSavingsMonthly }: { period: BillingPeriod; onChange: (next: BillingPeriod) => void; annualSavingsMonthly: number | null }) {
-    const annualLabel = annualSavingsMonthly ? `Annual · save ${formatUsd(annualSavingsMonthly)}/mo` : "Annual"
+function PeriodToggle({ period, onChange, annualSavingsYearly }: { period: BillingPeriod; onChange: (next: BillingPeriod) => void; annualSavingsYearly: number | null }) {
+    const annualLabel = annualSavingsYearly ? `Annual · save ${formatUsd(annualSavingsYearly)}/yr` : "Annual"
     const options: { value: BillingPeriod; label: string }[] = [
         { value: TimePeriods.MONTHLY, label: "Monthly" },
         { value: TimePeriods.YEARLY, label: annualLabel }
@@ -408,8 +392,7 @@ function PlanCard({
     const monthlyPrice = plan.priceInUsdMonthly ?? 0
     const annualPrice = plan.priceInUsdMonthlyAnnual ?? 0
     const displayPrice = period === "yearly" && annualPrice > 0 ? annualPrice : monthlyPrice
-    const overagePrint = formatOveragePrint(plan)
-    const priceLine = formatPriceLine(plan, period)
+    const priceLine = formatPriceLine(plan)
 
     const ctaLabel = isExactCurrent
         ? null
@@ -435,8 +418,6 @@ function PlanCard({
                 <span className="text-sm text-muted-foreground">/ mo</span>
             </div>
             <p className="mt-2 text-sm text-muted-foreground tabular-nums">{priceLine}</p>
-
-            {overagePrint && <p className="mt-2 text-xs text-muted-foreground">{overagePrint}</p>}
 
             {scheduledNote && <p className="mt-4 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-foreground">{scheduledNote}</p>}
 
