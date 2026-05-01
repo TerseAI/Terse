@@ -1,19 +1,26 @@
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import type { UsageBucket } from "terse-types"
 
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Skeleton } from "@/components/ui/skeleton"
 import { formatCredits } from "@/utility/billingFormat"
 
 const dayFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" })
+const fullDayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" })
 
-function formatDay(timestamp: number) {
-    return dayFormatter.format(new Date(timestamp))
+const chartConfig = {
+    credits: { label: "Credits used", color: "var(--chart-1)" }
+} satisfies ChartConfig
+
+type Row = {
+    startTimestamp: number
+    label: string
+    credits: number
 }
 
 export function UsageChart({ buckets }: { buckets: UsageBucket[] | null }) {
-    if (!buckets) {
-        return <div className="h-44 text-sm text-muted-foreground">Loading usage...</div>
-    }
+    if (!buckets) return <UsageChartSkeleton />
 
     if (buckets.length === 0) {
         return (
@@ -25,51 +32,44 @@ export function UsageChart({ buckets }: { buckets: UsageBucket[] | null }) {
         )
     }
 
-    const total = buckets.reduce((sum, bucket) => sum + bucket.credits, 0)
-    const dailyAverage = total / buckets.length
-    const peak = buckets.reduce((best, bucket) => (bucket.credits > best.credits ? bucket : best), buckets[0])
-    const max = Math.max(...buckets.map(bucket => bucket.credits), 1)
+    const rows: Row[] = buckets.map(bucket => ({
+        startTimestamp: bucket.startTimestamp,
+        label: dayFormatter.format(new Date(bucket.startTimestamp)),
+        credits: bucket.credits
+    }))
 
-    const labelStartIdx = 0
-    const labelMidIdx = Math.floor(buckets.length / 2)
-    const labelEndIdx = buckets.length - 1
+    const total = rows.reduce((sum, row) => sum + row.credits, 0)
+    const dailyAverage = total / rows.length
+    const peak = rows.reduce((best, row) => (row.credits > best.credits ? row : best), rows[0])
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-6">
             <div className="grid grid-cols-3 divide-x divide-border">
                 <Stat label="Total credits" value={formatCredits(total)} />
                 <Stat label="Daily average" value={formatCredits(dailyAverage)} />
-                <Stat label="Busiest day" value={peak.credits > 0 ? `${formatCredits(peak.credits)}` : "—"} hint={peak.credits > 0 ? formatDay(peak.startTimestamp) : undefined} />
+                <Stat label="Busiest day" value={formatCredits(peak.credits)} hint={peak.credits > 0 ? dayFormatter.format(new Date(peak.startTimestamp)) : undefined} />
             </div>
 
-            <div>
-                <div className="flex h-36 items-end gap-1">
-                    {buckets.map(bucket => {
-                        const height = bucket.credits === 0 ? 4 : Math.max(6, (bucket.credits / max) * 100)
-                        return (
-                            <Tooltip key={bucket.startTimestamp} delayDuration={80}>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        type="button"
-                                        aria-label={`${formatDay(bucket.startTimestamp)}: ${formatCredits(bucket.credits)} credits`}
-                                        className="min-w-1 flex-1 rounded-t-sm bg-foreground/15 transition-colors hover:bg-foreground focus-visible:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
-                                        style={{ height: `${height}%` }}
-                                    />
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                    <div className="font-medium">{formatDay(bucket.startTimestamp)}</div>
-                                    <div className="text-muted-foreground">{formatCredits(bucket.credits)} credits</div>
-                                </TooltipContent>
-                            </Tooltip>
-                        )
-                    })}
-                </div>
-                <div className="mt-2 flex justify-between text-xs text-muted-foreground tabular-nums">
-                    <span>{formatDay(buckets[labelStartIdx].startTimestamp)}</span>
-                    {buckets.length > 4 && <span>{formatDay(buckets[labelMidIdx].startTimestamp)}</span>}
-                    <span>{formatDay(buckets[labelEndIdx].startTimestamp)}</span>
-                </div>
-            </div>
+            <ChartContainer config={chartConfig} className="aspect-auto h-44 w-full">
+                <BarChart data={rows} margin={{ left: 0, right: 0, top: 4, bottom: 0 }} barCategoryGap={3}>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" minTickGap={48} />
+                    <YAxis hide domain={[0, "dataMax"]} />
+                    <ChartTooltip
+                        cursor={{ fill: "var(--muted)", opacity: 0.5 }}
+                        content={
+                            <ChartTooltipContent
+                                indicator="dot"
+                                labelFormatter={(_, payload) => {
+                                    const row = payload?.[0]?.payload as Row | undefined
+                                    return row ? fullDayFormatter.format(new Date(row.startTimestamp)) : ""
+                                }}
+                            />
+                        }
+                    />
+                    <Bar dataKey="credits" name="credits" fill="var(--color-credits)" radius={[3, 3, 0, 0]} />
+                </BarChart>
+            </ChartContainer>
         </div>
     )
 }
@@ -80,6 +80,22 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
             <div className="text-xs text-muted-foreground">{label}</div>
             <div className="mt-1 text-xl font-semibold tracking-tight text-foreground tabular-nums">{value}</div>
             {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
+        </div>
+    )
+}
+
+function UsageChartSkeleton() {
+    return (
+        <div className="space-y-6" aria-busy="true" aria-label="Loading usage">
+            <div className="grid grid-cols-3 divide-x divide-border">
+                {[0, 1, 2].map(i => (
+                    <div key={i} className="space-y-2 px-4 first:pl-0 last:pr-0">
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-7 w-24" />
+                    </div>
+                ))}
+            </div>
+            <Skeleton className="h-44 w-full" />
         </div>
     )
 }

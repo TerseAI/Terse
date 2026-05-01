@@ -140,7 +140,7 @@ export default function BillingPage() {
                                             </>
                                         )}
                                     </div>
-                                    <Button variant="secondary" className="shrink-0 sm:self-center" asChild>
+                                    <Button variant="default" className="shrink-0 sm:self-center" asChild>
                                         <Link to={FrontendRoutes.PRICING}>
                                             Change plan
                                             <ArrowUpRight className="size-3.5" />
