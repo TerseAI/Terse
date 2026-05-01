@@ -215,7 +215,7 @@ export const planSchema = z.object({
     priceInUsdMonthlyAnnual: z.number().nullable(),
     includedCreditsPerMonth: z.number(),
     markupPct: z.number(),
-    overageCentsPerCredit: z.number().nullable(),
+    overageCentsPerCredit: z.number(),
     hardCapMultiplier: z.number(),
     defaultOverageMode: overageModeSchema
 })
