@@ -38,7 +38,7 @@ export function UsageChart({ buckets }: { buckets: UsageBucket[] | null }) {
         <div className="space-y-5">
             <div className="grid grid-cols-3 divide-x divide-border">
                 <Stat label="Total credits" value={formatCredits(total)} />
-                <Stat label="Daily average" value={formatCredits(Math.round(dailyAverage))} />
+                <Stat label="Daily average" value={formatCredits(dailyAverage)} />
                 <Stat label="Busiest day" value={peak.credits > 0 ? `${formatCredits(peak.credits)}` : "—"} hint={peak.credits > 0 ? formatDay(peak.startTimestamp) : undefined} />
             </div>
 

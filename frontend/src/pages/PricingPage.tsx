@@ -412,14 +412,14 @@ function PlanCard({
     const ctaLabel = isExactCurrent
         ? null
         : isCurrentPlan && purchasable
-          ? `Switch to ${periodLabel(period)} billing`
-          : plan.key === "free" && currentPlanKey && currentPlanKey !== "free"
-            ? "Downgrade to Free"
-            : purchasable
-              ? currentPlanKey === "free"
-                  ? `Upgrade to ${plan.name}`
-                  : `Choose ${plan.name}`
-              : "Get started"
+            ? `Switch to ${periodLabel(period)} billing`
+            : plan.key === "free" && currentPlanKey && currentPlanKey !== "free"
+                ? "Downgrade to Free"
+                : purchasable
+                    ? currentPlanKey === "free"
+                        ? `Upgrade to ${plan.name}`
+                        : `Choose ${plan.name}`
+                    : "Get started"
     const ctaVariant: "default" | "outline" = purchasable && currentPlanKey !== plan.key ? "default" : "outline"
 
     return (

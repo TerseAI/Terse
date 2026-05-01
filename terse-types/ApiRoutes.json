@@ -177,9 +177,6 @@
         "CREATE": "/users",
         "BY_ID": "/users/:id"
     },
-    "STRIPE": {
-        "WEBHOOK": "/webhooks/stripe"
-    },
     "BILLING": {
         "CATALOG": "/billing/catalog",
         "CONTEXT": "/billing/context",

@@ -13,7 +13,7 @@ const preciseUsdFormatter = new Intl.NumberFormat(undefined, {
 })
 
 export function formatCredits(value: number): string {
-    return value.toLocaleString()
+    return Math.floor(value).toLocaleString()
 }
 
 export function formatUsd(value: number): string {

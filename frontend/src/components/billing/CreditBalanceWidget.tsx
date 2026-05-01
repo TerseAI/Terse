@@ -13,35 +13,37 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
     }
 
     const { topUpCredits, consumedCredits, planCredits, totalCreditCapacity, overageMode } = balance
-    const planRemaining = Math.max(0, planCredits - consumedCredits)
-    const totalUsableRemaining = planRemaining + topUpCredits
-    const displayCapacity = totalCreditCapacity
-    const hardCapCredits = Math.max(balance.hardCap, displayCapacity)
+    const displayCapacity = Math.max(Math.floor(balance.hardCap), Math.floor(totalCreditCapacity))
+    const displayedConsumedCredits = Math.min(Math.floor(consumedCredits), displayCapacity)
+    const displayedPlanCredits = Math.floor(planCredits)
+    const displayedTopUpCredits = Math.floor(topUpCredits)
+    const totalUsableRemaining = Math.max(0, displayCapacity - displayedConsumedCredits)
+    const hardCapCredits = displayCapacity
     const withinIncluded = consumedCredits <= planCredits
     const hasOverageHeadroom = hardCapCredits > planCredits
     const overHardCap = consumedCredits >= hardCapCredits && hasOverageHeadroom
-    const atPeriodCap = consumedCredits >= hardCapCredits && hardCapCredits > 0
+    const atPeriodCap = displayedConsumedCredits >= hardCapCredits && hardCapCredits > 0
 
-    const capPct = Math.min(100, Math.round((consumedCredits / Math.max(hardCapCredits, 1)) * 100))
+    const capPct = Math.min(100, Math.floor((displayedConsumedCredits / Math.max(hardCapCredits, 1)) * 100))
 
-    const overageCredits = Math.max(0, consumedCredits - planCredits)
+    const overageCredits = Math.max(0, displayedConsumedCredits - displayedPlanCredits)
     const overageRateCents = plan?.overageCentsPerCredit ?? 0
     const overageDollars = (overageCredits * overageRateCents) / 100
     const softMeteredOverage = overageMode === "soft" && overageRateCents > 0
 
     const fillClass = atPeriodCap || totalUsableRemaining <= 0 ? "bg-danger" : !withinIncluded ? "bg-warning" : capPct >= 90 ? "bg-warning" : "bg-accent-secondary"
 
-    const includedTickPct = hasOverageHeadroom && planCredits < hardCapCredits ? Math.round((planCredits / hardCapCredits) * 100) : null
+    const includedTickPct = hasOverageHeadroom && displayedPlanCredits < hardCapCredits ? Math.floor((displayedPlanCredits / hardCapCredits) * 100) : null
     const showIncludedTick = !withinIncluded && includedTickPct !== null
 
-    const creditsUsedTooltip = `${formatCredits(consumedCredits)} / ${formatCredits(displayCapacity)} credits used`
+    const creditsUsedTooltip = `${formatCredits(displayedConsumedCredits)} / ${formatCredits(displayCapacity)} credits used`
     const remainingLabel = totalUsableRemaining > 0 ? `${formatCredits(totalUsableRemaining)} remaining` : "0 remaining"
 
     return (
         <div>
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <p className="text-sm tabular-nums">
-                    <span className="font-semibold text-foreground">{formatCredits(consumedCredits)}</span>
+                    <span className="font-semibold text-foreground">{formatCredits(displayedConsumedCredits)}</span>
                     <span className="text-muted-foreground"> / {formatCredits(displayCapacity)} credits used</span>
                 </p>
                 <p className="text-sm tabular-nums text-muted-foreground">{remainingLabel}</p>
@@ -70,7 +72,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                         <div className="space-y-2 text-muted-foreground">
                             {topUpCredits > 0 ? (
                                 <p>
-                                    <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> additional credits remaining.
+                                    <span className="tabular-nums text-foreground">{formatCredits(displayedTopUpCredits)}</span> additional credits remaining.
                                 </p>
                             ) : (
                                 <>
@@ -91,7 +93,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                     )}
                     {softMeteredOverage && topUpCredits > 0 && (
                         <p className="text-muted-foreground">
-                            <span className="tabular-nums text-foreground">{formatCredits(topUpCredits)}</span> additional credits also available.
+                            <span className="tabular-nums text-foreground">{formatCredits(displayedTopUpCredits)}</span> additional credits also available.
                         </p>
                     )}
                     {overHardCap && <p className="font-medium text-danger">Usage cap reached — new runs are blocked until usage resets or you adjust your plan.</p>}

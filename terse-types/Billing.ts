@@ -94,8 +94,7 @@ export const completedEventUsageSchema = z.object({
 export type CompletedEventUsage = z.infer<typeof completedEventUsageSchema>
 
 export const billingRunGateRequestBodySchema = z.object({
-    organizationId: z.string().min(1),
-    email: z.email().optional()
+    organizationId: z.string().min(1)
 })
 export type BillingRunGateRequestBody = z.infer<typeof billingRunGateRequestBodySchema>
 
