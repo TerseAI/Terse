@@ -6,7 +6,6 @@ import {
     BillingChangeResponse,
     BillingChargeRunBaseBody,
     BillingChargeRunBaseResponse,
-    billingChargeRunBaseResponseSchema,
     BillingCheckoutRequestBody,
     BillingContextQuery,
     BillingContextResponse,
@@ -14,7 +13,6 @@ import {
     BillingPortalSessionRequestBody,
     BillingRecordLlmBody,
     BillingRecordLlmResponse,
-    billingRecordLlmResponseSchema,
     BillingRoutes,
     BillingRunGateRequestBody,
     BillingStripeRedirectResponse,
@@ -28,6 +26,8 @@ import {
     SetOverageModeResponse,
     StripeError,
     type TerseBillingJwtClaims,
+    billingChargeRunBaseResponseSchema,
+    billingRecordLlmResponseSchema,
     parseBillingForbiddenJson
 } from "terse-types"
 import type { User } from "terse-types/types"

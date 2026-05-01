@@ -1,12 +1,9 @@
-import { useId, useState } from "react"
+import { useId } from "react"
 
 import { Loader2 } from "lucide-react"
-import { toast } from "sonner"
 import type { OverageMode, Plan } from "terse-types"
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { invalidateBillingCaches } from "@/hooks/api/billingCache"
-import { BackendProvider } from "@/services/backend"
 import { formatUsdPerThousandCredits } from "@/utility/billingFormat"
 
 const OPTIONS = [
@@ -27,27 +24,28 @@ const OPTIONS = [
     }
 ]
 
-export function OverageModeToggle({ mode, plan, onChange }: { mode: OverageMode | null; plan: Plan | null; onChange: (mode: OverageMode) => void }) {
-    const [savingMode, setSavingMode] = useState<OverageMode | null>(null)
+export function OverageModeToggle({
+    mode,
+    plan,
+    savingMode = null,
+    onChange
+}: {
+    mode: OverageMode | null
+    plan: Plan | null
+    savingMode?: OverageMode | null
+    onChange: (mode: OverageMode) => void
+}) {
     const groupId = useId()
 
     if (!mode) return null
 
     const supportsSoft = !!plan?.overagePriceId
-    const handleChange = async (next: string) => {
+    const handleChange = (next: string) => {
         const value = next as OverageMode
         if (value === mode) return
         if (value === "soft" && !supportsSoft) return
-        setSavingMode(value)
-        try {
-            await BackendProvider.setOverageMode(value)
-            invalidateBillingCaches()
-            onChange(value)
-        } catch {
-            toast.error("Couldn't update overage mode. Try again.")
-        } finally {
-            setSavingMode(null)
-        }
+        if (savingMode) return
+        onChange(value)
     }
 
     const currentOption = OPTIONS.find(o => o.value === mode)

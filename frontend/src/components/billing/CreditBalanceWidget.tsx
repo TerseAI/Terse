@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom"
 
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight, Loader2 } from "lucide-react"
 import { type BalanceSummary, FrontendRoutes, type Plan, PlanKey } from "terse-types"
 
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatCredits, formatUsdPerThousandCredits, formatUsdPrecise } from "@/utility/billingFormat"
 
-export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary | null; plan: Plan | null }) {
+export function CreditBalanceWidget({ balance, plan, isRefreshing = false }: { balance: BalanceSummary | null; plan: Plan | null; isRefreshing?: boolean }) {
     if (!balance) {
         return <div className="h-32 text-sm text-muted-foreground">Loading credit balance...</div>
     }
@@ -40,13 +40,21 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
     const remainingLabel = totalUsableRemaining > 0 ? `${formatCredits(totalUsableRemaining)} remaining` : "0 remaining"
 
     return (
-        <div>
+        <div aria-busy={isRefreshing}>
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <p className="text-sm tabular-nums">
                     <span className="font-semibold text-foreground">{formatCredits(displayedConsumedCredits)}</span>
                     <span className="text-muted-foreground"> / {formatCredits(displayCapacity)} credits used</span>
                 </p>
-                <p className="text-sm tabular-nums text-muted-foreground">{remainingLabel}</p>
+                <div className="flex items-center gap-2">
+                    {isRefreshing && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground" role="status" aria-live="polite">
+                            <Loader2 className="size-3 animate-spin" aria-hidden />
+                            Updating
+                        </span>
+                    )}
+                    <p className="text-sm tabular-nums text-muted-foreground">{remainingLabel}</p>
+                </div>
             </div>
 
             <Tooltip>

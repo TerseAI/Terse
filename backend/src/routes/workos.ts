@@ -1,3 +1,4 @@
+import type { Event as WorkOSEvent } from "@workos-inc/node"
 import { Request, Response } from "express"
 import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
@@ -5,21 +6,8 @@ import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { getRealtimeSocket } from "../realtimeSocket"
+import { emitBillingCachesInvalidated } from "../services/CacheInvalidationService"
 import { workos } from "../utility/workos"
-
-/**
- * WorkOS webhook event payload structure.
- * See https://workos.com/docs/events/data-syncing/webhooks
- */
-interface WorkOSWebhookEvent {
-    id: string
-    event: string
-    data: {
-        object: string
-        id: string
-        [key: string]: unknown
-    }
-}
 
 /**
  * Map WorkOS user ID to local database user ID.
@@ -36,7 +24,7 @@ async function getLocalUserIdFromWorkOS(workosUserId: string): Promise<string | 
 /**
  * Process a validated WorkOS webhook event and emit socket events.
  */
-async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
+async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
     const io = getRealtimeSocket()
     if (!io) {
         logger.warn("Socket.IO not initialized, cannot emit WorkOS webhook events")
@@ -48,7 +36,7 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
     switch (eventType) {
         case "user.updated": {
             // WorkOS User Management puts user at top level: data.id, data.email, etc.
-            const workosUserId = (data as { user?: { id: string } }).user?.id ?? (data as { id?: string }).id
+            const workosUserId = data.id
             if (!workosUserId) {
                 logger.warn("[WorkOS webhook] user.updated: no user id in payload", {
                     data: JSON.stringify(data)
@@ -68,7 +56,7 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
         }
 
         case "user.deleted": {
-            const workosUserId = (data as { user?: { id: string } }).user?.id
+            const workosUserId = data.id
             if (!workosUserId) break
             const localUserId = await getLocalUserIdFromWorkOS(workosUserId)
             if (localUserId) {
@@ -83,7 +71,7 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
             // WorkOS puts session fields at top level: data.id (session id), data.userId, etc.
             // Emit ONLY to the session room - so only the device with that session gets logged out.
             // Revoking "Chrome on Mac" should not log out "Safari on iPhone".
-            const revokedSessionId = (data as { id?: string }).id
+            const revokedSessionId = data.id
             if (!revokedSessionId) {
                 logger.warn("[WorkOS webhook] session.revoked: no session id in payload", { data: JSON.stringify(data) })
                 break
@@ -96,7 +84,7 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
         }
 
         case "session.created": {
-            const workosUserId = (data as { userId?: string }).userId ?? (data as { session?: { user_id: string } }).session?.user_id
+            const workosUserId = data.userId
             if (!workosUserId) break
             const localUserId = await getLocalUserIdFromWorkOS(workosUserId)
             if (localUserId) {
@@ -111,11 +99,16 @@ async function processWorkOSEvent(event: WorkOSWebhookEvent): Promise<void> {
         case "organization_membership.created":
         case "organization_membership.deleted":
         case "organization_membership.updated": {
-            const orgId = (data as { organization?: { id: string }; organization_id?: string }).organization?.id ?? (data as { organization_id?: string }).organization_id
+            const orgId = eventType === "organization.updated" ? data.id : data.organizationId
             if (orgId) {
                 io.to(SocketRooms.organization(orgId)).emit(SocketEvents.WORKOS_ORG_UPDATED, {
                     organizationId: orgId
                 })
+
+                // workos metadata changes affect billing view
+                if (eventType === "organization.updated") {
+                    emitBillingCachesInvalidated(orgId)
+                }
             }
             const workosUserId = (data as { user?: { id: string }; user_id?: string }).user?.id ?? (data as { user_id?: string }).user_id
             if (workosUserId) {
@@ -167,7 +160,7 @@ export async function handleWorkOSWebhook(req: Request, res: Response): Promise<
             secret: webhookSecret
         })
 
-        const webhookEvent = event as WorkOSWebhookEvent
+        const webhookEvent = event
 
         // Respond immediately per WorkOS best practices
         res.status(200).send("OK")
