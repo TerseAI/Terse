@@ -87,10 +87,12 @@ If you only have one workflow, the CLI selects it automatically. If you have mor
 **How it works:**
 
 1. Loads your local workflow registry from the entry file
-2. Fetches sample events from Terse for integration triggers such as GitHub, Slack, or Attio
+2. Fetches sample events from Terse for integration triggers such as GitHub, Slack, Attio, or Web Monitor
 3. Synthesizes local sample events for cron and webhook triggers
 4. Prompts you to choose one sample event
 5. Executes the workflow locally
+
+Sample events for integration-backed triggers use your Terse account and organization. Web Monitor samples can only be loaded when the monitor is configured in that same organization.
 
 #### `terse test list [job-name]`
 

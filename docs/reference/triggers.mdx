@@ -145,6 +145,8 @@ triggers: [WorkOS.onEvent({ eventTypes: ["user.created"] })]
 
 Track web changes continuously and get notified when there are updates.
 
+When you run `terse test` (or list cached samples), Terse only hydrates Web Monitor sample events for monitors that belong to your organization.
+
 You can add multiple `WebMonitor.onEvent(...)` triggers to the same workflow. Terse runs each monitor independently and calls the same `onTrigger` handler for every matching event.
 
 | Trigger                | Event type          | Description                                                  |
