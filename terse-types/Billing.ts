@@ -103,6 +103,13 @@ export const billingChargeRunBaseBodySchema = billingRunGateRequestBodySchema.ex
 })
 export type BillingChargeRunBaseBody = z.infer<typeof billingChargeRunBaseBodySchema>
 
+/** Acknowledgement from POST /billing/charge-run-base (credits debited for starting a run). */
+export const billingChargeRunBaseResponseSchema = z.object({
+    runId: z.string().min(1),
+    creditsCharged: z.number().nonnegative()
+})
+export type BillingChargeRunBaseResponse = z.infer<typeof billingChargeRunBaseResponseSchema>
+
 export const billingRecordLlmBodySchema = z.object({
     organizationId: z.string().min(1),
     runId: z.string().min(1),
@@ -111,6 +118,13 @@ export const billingRecordLlmBodySchema = z.object({
     usage: completedEventUsageSchema
 })
 export type BillingRecordLlmBody = z.infer<typeof billingRecordLlmBodySchema>
+
+/** Acknowledgement from POST /billing/record-llm (credits debited for model usage). */
+export const billingRecordLlmResponseSchema = z.object({
+    responseId: z.string().min(1),
+    creditsCharged: z.number().nonnegative()
+})
+export type BillingRecordLlmResponse = z.infer<typeof billingRecordLlmResponseSchema>
 
 export const billingRecordLlmPayloadSchema = billingRecordLlmBodySchema.pick({
     responseId: true,

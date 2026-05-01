@@ -194,7 +194,7 @@ function createSdkRunner(params: {
     isProductionRun: boolean
     options?: { maxTurns?: number; requireApproval?: boolean }
     outputSchema?: Record<string, unknown>
-    billing?: BillingService
+    billing: BillingService
 }): SdkAgentRunner {
     return new SdkAgentRunner({
         runId: params.runId,

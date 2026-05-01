@@ -31,9 +31,9 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     protected onRawStreamEvent?: (event: RunStreamEvent) => Promise<void> | void
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
-    private readonly billing?: BillingService
+    private readonly billing: BillingService
 
-    constructor(params: { runId: string; billing?: BillingService }) {
+    constructor(params: { runId: string; billing: BillingService }) {
         this.runId = params.runId
         this.billing = params.billing
     }
@@ -233,8 +233,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async checkRunGate(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
-        if (!this.billing) return
-
         const orgId = settings.context.user.organizationId
         const gateDecision = await this.billing.checkRunGate({ organizationId: orgId })
         if (!gateDecision.allow) {
@@ -269,8 +267,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             logger.warn("BaseAgentRunner: No response ID found for completed event", { event })
             return
         }
-
-        if (!this.billing) return
 
         try {
             await this.billing.recordLLMCall({

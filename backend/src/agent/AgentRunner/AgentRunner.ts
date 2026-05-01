@@ -53,11 +53,17 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
     private activeStreamingParams?: TrackingParams
     private activeStreamEventEmitter?: StreamEventEmitter
 
-    constructor(session: T, outputs: Output<TConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50, billing?: BillingService) {
-        const resolvedBilling = billing ?? billingServiceProxyForOrganization(session.user.organizationId)
+    constructor(
+        session: T,
+        outputs: Output<TConfig>[],
+        agent: AgentWithRelations,
+        runContext: RunContext,
+        maxTurns: number = 50,
+        billing: BillingService = billingServiceProxyForOrganization(session.user.organizationId)
+    ) {
         super({
             runId: runContext.runId,
-            billing: resolvedBilling
+            billing
         })
         this.session = session
         this.outputs = outputs

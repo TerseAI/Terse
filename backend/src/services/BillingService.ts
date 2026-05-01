@@ -5,18 +5,25 @@ import {
     BillingChangeRequestBody,
     BillingChangeResponse,
     BillingChargeRunBaseBody,
+    BillingChargeRunBaseResponse,
+    billingChargeRunBaseResponseSchema,
     BillingCheckoutRequestBody,
     BillingContextQuery,
     BillingContextResponse,
     BillingOverageModePatchBody,
     BillingPortalSessionRequestBody,
     BillingRecordLlmBody,
+    BillingRecordLlmResponse,
+    billingRecordLlmResponseSchema,
     BillingRoutes,
     BillingRunGateRequestBody,
     BillingStripeRedirectResponse,
     CreditGateDeniedError,
+    DEFAULT_OVERAGE_CAP_MULTIPLIER,
+    DEFAULT_OVERAGE_MODE,
     GetOrCreateCustomerRequestBody,
     GetOrCreateCustomerResponse,
+    PlanKey,
     RunGateDecision,
     SetOverageModeResponse,
     StripeError,
@@ -49,8 +56,8 @@ export interface BillingService {
     setBillingOverageMode(body: BillingOverageModePatchBody): Promise<SetOverageModeResponse>
     getOrCreateCustomer(body?: GetOrCreateCustomerRequestBody): Promise<GetOrCreateCustomerResponse>
     checkRunGate(body: BillingRunGateRequestBody): Promise<RunGateDecision>
-    chargeRunBase(body: BillingChargeRunBaseBody): Promise<void>
-    recordLLMCall(body: BillingRecordLlmBody): Promise<void>
+    chargeRunBase(body: BillingChargeRunBaseBody): Promise<BillingChargeRunBaseResponse>
+    recordLLMCall(body: BillingRecordLlmBody): Promise<BillingRecordLlmResponse>
 }
 
 /** Authenticated browser/API routes: JWT derives from the session user. */
@@ -59,16 +66,99 @@ export function billingServiceProxyForRequest(req: Request): BillingService {
     if (!user?.organizationId) {
         throw new Error("Billing requires an authenticated session with organizationId")
     }
-    return new BillingServiceProxy(settings.billing.url, {
+    return billingServiceForOrganizationAuth({
         organizationId: user.organizationId
     })
 }
 
-export function billingServiceProxyForOrganization(organizationId: string): BillingService | undefined {
+export function billingServiceProxyForOrganization(organizationId: string): BillingService {
+    return billingServiceForOrganizationAuth({ organizationId })
+}
+
+function billingServiceForOrganizationAuth(auth: BillingProxyAuth): BillingService {
     const url = settings.billing.url?.trim()
     const secret = settings.billing.jwtSecret?.trim()
-    if (!url || !secret) return undefined
-    return new BillingServiceProxy(url, { organizationId })
+    if (!url || !secret) return new BillingNoOpService()
+    return new BillingServiceProxy(url, auth)
+}
+
+export class BillingNoOpService implements BillingService {
+    async createCheckoutSession(): Promise<BillingStripeRedirectResponse> {
+        return { url: settings.urls.frontend }
+    }
+
+    async createBillingPortalSession(): Promise<BillingStripeRedirectResponse> {
+        return { url: settings.urls.frontend }
+    }
+
+    async changeBillingSubscription(): Promise<BillingChangeResponse> {
+        return { ok: true, scheduledChange: null }
+    }
+
+    async getBillingCatalog(): Promise<BillingCatalogResponse> {
+        return {
+            plans: [
+                {
+                    key: PlanKey.FREE,
+                    name: "Free",
+                    monthlyBasePriceId: null,
+                    annualBasePriceId: null,
+                    overagePriceId: null,
+                    priceInUsdMonthly: null,
+                    priceInUsdMonthlyAnnual: null,
+                    includedCreditsPerMonth: 0,
+                    markupPct: 0,
+                    overageCentsPerCredit: 0,
+                    hardCapMultiplier: DEFAULT_OVERAGE_CAP_MULTIPLIER,
+                    defaultOverageMode: DEFAULT_OVERAGE_MODE
+                }
+            ],
+            topUps: []
+        }
+    }
+
+    async getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
+        const { start, end } = noOpBillingWindow(query)
+        return {
+            balance: {
+                planKey: PlanKey.FREE,
+                billingPeriod: null,
+                planCredits: 0,
+                consumedCredits: 0,
+                topUpCredits: 0,
+                totalCreditCapacity: 0,
+                periodStart: start,
+                periodEnd: end,
+                overageMode: DEFAULT_OVERAGE_MODE,
+                hardCap: 0,
+                canBuyTopups: false,
+                scheduledChange: null
+            },
+            usage: {
+                buckets: []
+            }
+        }
+    }
+
+    async setBillingOverageMode(): Promise<SetOverageModeResponse> {
+        return { ok: true }
+    }
+
+    async getOrCreateCustomer(): Promise<GetOrCreateCustomerResponse> {
+        return { customerId: "" }
+    }
+
+    async checkRunGate(): Promise<RunGateDecision> {
+        return { allow: true }
+    }
+
+    async chargeRunBase(body: BillingChargeRunBaseBody): Promise<BillingChargeRunBaseResponse> {
+        return { runId: body.runId, creditsCharged: 0 }
+    }
+
+    async recordLLMCall(body: BillingRecordLlmBody): Promise<BillingRecordLlmResponse> {
+        return { responseId: body.responseId, creditsCharged: 0 }
+    }
 }
 
 export class BillingServiceProxy implements BillingService {
@@ -199,18 +289,34 @@ export class BillingServiceProxy implements BillingService {
         })
     }
 
-    async chargeRunBase(body: BillingChargeRunBaseBody): Promise<void> {
-        await this.jsonRequest<void>(BillingRoutes.CHARGE_RUN_BASE, {
+    async chargeRunBase(body: BillingChargeRunBaseBody): Promise<BillingChargeRunBaseResponse> {
+        const raw = await this.jsonRequest<unknown>(BillingRoutes.CHARGE_RUN_BASE, {
             method: "POST",
             body: JSON.stringify(body)
         })
+        if (raw === undefined) {
+            throw new StripeError("Billing service returned an empty charge-run-base response")
+        }
+        const parsed = billingChargeRunBaseResponseSchema.safeParse(raw)
+        if (!parsed.success) {
+            throw new StripeError("Billing service returned an invalid charge-run-base response")
+        }
+        return parsed.data
     }
 
-    async recordLLMCall(body: BillingRecordLlmBody): Promise<void> {
-        await this.jsonRequest<void>(BillingRoutes.RECORD_LLM, {
+    async recordLLMCall(body: BillingRecordLlmBody): Promise<BillingRecordLlmResponse> {
+        const raw = await this.jsonRequest<unknown>(BillingRoutes.RECORD_LLM, {
             method: "POST",
             body: JSON.stringify(body)
         })
+        if (raw === undefined) {
+            throw new StripeError("Billing service returned an empty record-llm response")
+        }
+        const parsed = billingRecordLlmResponseSchema.safeParse(raw)
+        if (!parsed.success) {
+            throw new StripeError("Billing service returned an invalid record-llm response")
+        }
+        return parsed.data
     }
 }
 
@@ -219,12 +325,7 @@ export class BillingServiceProxy implements BillingService {
  * No-op when billing is not configured. Use `chargeBaseRun: false` for
  * resume paths where the base fee was already taken at initial start.
  */
-export async function startBillingRun(
-    billing: BillingService | undefined,
-    params: { organizationId: string; runId: string; chargeBaseRun?: boolean }
-): Promise<void> {
-    if (!billing) return
-
+export async function startBillingRun(billing: BillingService, params: { organizationId: string; runId: string; chargeBaseRun?: boolean }): Promise<void> {
     const gate = await billing.checkRunGate({ organizationId: params.organizationId })
     if (!gate.allow) {
         throw new CreditGateDeniedError(gate.reason)
@@ -236,4 +337,20 @@ export async function startBillingRun(
         organizationId: params.organizationId,
         runId: params.runId
     })
+}
+
+function noOpBillingWindow(query: BillingContextQuery): { start: Date; end: Date } {
+    const now = new Date()
+    const fallbackStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    const fallbackEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+    return {
+        start: parseBillingDate(query.start) ?? fallbackStart,
+        end: parseBillingDate(query.end) ?? fallbackEnd
+    }
+}
+
+function parseBillingDate(raw: string | undefined): Date | null {
+    if (!raw) return null
+    const date = new Date(raw)
+    return Number.isNaN(date.getTime()) ? null : date
 }

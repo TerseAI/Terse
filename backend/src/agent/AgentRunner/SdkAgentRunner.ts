@@ -401,7 +401,7 @@ type SdkAgentRunnerParams = {
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun?: boolean
     outputSchema?: Record<string, unknown>
-    billing?: BillingService
+    billing: BillingService
 }
 
 type SdkAgentRunnerResult = {

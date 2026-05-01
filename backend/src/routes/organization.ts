@@ -3,7 +3,7 @@ import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSc
 
 import { settings } from "../config/settings"
 import logger from "../logger"
-import { BillingNoBackendError, billingServiceProxyForOrganization } from "../services/BillingService"
+import { billingServiceProxyForOrganization } from "../services/BillingService"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../services/FileStorageService"
 import { workos } from "../utility/workos"
 
@@ -35,14 +35,10 @@ export async function createOrganization(req: Request, res: Response) {
             roleSlug: "admin"
         })
 
-        try {
-            const billing = billingServiceProxyForOrganization(organization.id)
-            if (billing) {
-                const { customerId } = await billing.getOrCreateCustomer()
-                await setDefaultOrganizationMetadata(organization.id, customerId)
-            }
-        } catch (e) {
-            if (!(e instanceof BillingNoBackendError)) throw e
+        const billing = billingServiceProxyForOrganization(organization.id)
+        const { customerId } = await billing.getOrCreateCustomer()
+        if (customerId) {
+            await setDefaultOrganizationMetadata(organization.id, customerId)
         }
 
         const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
