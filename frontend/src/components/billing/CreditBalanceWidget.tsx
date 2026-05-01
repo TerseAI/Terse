@@ -1,15 +1,33 @@
 import { Link } from "react-router-dom"
 
-import { ArrowUpRight, Loader2 } from "lucide-react"
+import { ArrowUpRight } from "lucide-react"
 import { type BalanceSummary, FrontendRoutes, type Plan, PlanKey } from "terse-types"
 
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatCredits, formatUsdPerThousandCredits, formatUsdPrecise } from "@/utility/billingFormat"
 
-export function CreditBalanceWidget({ balance, plan, isRefreshing = false }: { balance: BalanceSummary | null; plan: Plan | null; isRefreshing?: boolean }) {
-    if (!balance) {
-        return <div className="h-32 text-sm text-muted-foreground">Loading credit balance...</div>
+export function CreditBalanceWidget({
+    balance,
+    plan,
+    isLoading = false
+}: {
+    balance: BalanceSummary | null
+    plan: Plan | null
+    isLoading?: boolean
+}) {
+    if (!balance || isLoading) {
+        return (
+            <div aria-busy="true" aria-live="polite" role="status">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <Skeleton className="h-5 w-48 max-w-full" />
+                    <span className="text-xs text-muted-foreground">{balance ? "Updating credit balance..." : "Loading credit balance..."}</span>
+                </div>
+                <Skeleton className="mt-3 h-3 w-full rounded-full" />
+                <Skeleton className="mt-2 h-4 w-36" />
+            </div>
+        )
     }
 
     const { topUpCredits, consumedCredits, planCredits, totalCreditCapacity, overageMode } = balance
@@ -40,27 +58,19 @@ export function CreditBalanceWidget({ balance, plan, isRefreshing = false }: { b
     const remainingLabel = totalUsableRemaining > 0 ? `${formatCredits(totalUsableRemaining)} remaining` : "0 remaining"
 
     return (
-        <div aria-busy={isRefreshing}>
+        <div>
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <p className="text-sm tabular-nums">
                     <span className="font-semibold text-foreground">{formatCredits(displayedConsumedCredits)}</span>
                     <span className="text-muted-foreground"> / {formatCredits(displayCapacity)} credits used</span>
                 </p>
-                <div className="flex items-center gap-2">
-                    {isRefreshing && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground" role="status" aria-live="polite">
-                            <Loader2 className="size-3 animate-spin" aria-hidden />
-                            Updating
-                        </span>
-                    )}
-                    <p className="text-sm tabular-nums text-muted-foreground">{remainingLabel}</p>
-                </div>
+                <p className="text-sm tabular-nums text-muted-foreground">{remainingLabel}</p>
             </div>
 
             <Tooltip>
                 <TooltipTrigger asChild>
                     <div className="relative mt-3 h-3 w-full cursor-default overflow-hidden rounded-full bg-muted">
-                        <div className={`h-full rounded-full transition-[width] duration-500 ${fillClass}`} style={{ width: `${capPct}%` }} />
+                        <div className={`h-full rounded-full motion-safe:transition-[width] motion-safe:duration-500 ${fillClass}`} style={{ width: `${capPct}%` }} />
                         {showIncludedTick && <div aria-hidden className="absolute inset-y-0 w-px bg-foreground/40" style={{ left: `${includedTickPct}%` }} />}
                     </div>
                 </TooltipTrigger>
