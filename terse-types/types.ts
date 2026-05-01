@@ -919,7 +919,7 @@ export const sdkSampleEventsResponseSchema = z.object({
 export type SdkSampleEventsResponse = z.infer<typeof sdkSampleEventsResponseSchema>
 
 export const sdkHydrateSampleEventRequestSchema = z.object({
-    entityType: z.string(),
+    entityType: hydratorTypeEnum,
     entityId: z.string()
 })
 export type SdkHydrateSampleEventRequest = z.infer<typeof sdkHydrateSampleEventRequestSchema>

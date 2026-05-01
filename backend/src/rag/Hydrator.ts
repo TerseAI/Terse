@@ -16,6 +16,16 @@ export interface HydrationContext {
     organizationId?: string
 }
 
+export class HydrationError extends Error {
+    readonly status: number
+
+    constructor(status: number, message: string) {
+        super(message)
+        this.name = "HydrationError"
+        this.status = status
+    }
+}
+
 // Abstract base class that enforces constructor signature
 export abstract class Hydrator<T extends Identifiable> {
     abstract readonly entityType: HydratorType
