@@ -37,7 +37,16 @@ import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { getPendingApprovals } from "./routes/pendingApprovals"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
-import { handleGetProjectById, handleGetProjectDeploys, handleGetProjectSourceFileContent, handleGetProjectSourceFiles, handleProjectCreate, handleProjectDelete } from "./routes/project"
+import {
+    handleGetProjectById,
+    handleGetProjectDeploys,
+    handleGetProjectSourceFileContent,
+    handleGetProjectSourceFiles,
+    handleProjectCreate,
+    handleProjectDelete,
+    handleRotateProjectApiKey,
+    handleRotateProjectSigningSecret
+} from "./routes/project"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
@@ -770,6 +779,14 @@ app.get(ApiRoutes.PROJECTS.SOURCE_FILES, authMiddleware, async (req, res) => {
 
 app.get(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, authMiddleware, async (req, res) => {
     handleGetProjectSourceFileContent(req, res)
+})
+
+app.post(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, authMiddleware, async (req, res) => {
+    handleRotateProjectSigningSecret(req, res)
+})
+
+app.post(ApiRoutes.PROJECTS.ROTATE_API_KEY, authMiddleware, async (req, res) => {
+    handleRotateProjectApiKey(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

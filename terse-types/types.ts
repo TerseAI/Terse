@@ -717,6 +717,21 @@ export const projectDetailResponseSchema = z.object({
 })
 export type ProjectDetailResponse = z.infer<typeof projectDetailResponseSchema>
 
+/**
+ * Rotation responses for self-hosted project credentials. Both endpoints
+ * regenerate the underlying secret immediately (replacing the old value) and
+ * return the freshly generated material exactly once.
+ */
+export const projectRotateSigningSecretResponseSchema = z.object({
+    signingSecret: z.string()
+})
+export type ProjectRotateSigningSecretResponse = z.infer<typeof projectRotateSigningSecretResponseSchema>
+
+export const projectRotateApiKeyResponseSchema = z.object({
+    projectApiKey: z.string()
+})
+export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
+
 export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
     name: z.string().min(1),

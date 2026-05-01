@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Activity, BarChart3, Bell, BookOpen, ChevronRight, ExternalLink, Home, KeyRound, Plug, Terminal, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, BookOpen, ChevronRight, ExternalLink, Home, KeyRound, Plug, Zap } from "lucide-react"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
@@ -101,22 +101,7 @@ function ApplicationNavigation({ sdkJobs, loading }: ApplicationNavigationProps)
 
             <PlainNavItem title="Home" url={FrontendRoutes.HOME} icon={Home} iconColor="text-primary" />
 
-            {(sdkJobs.length > 0 || loading) && (
-                <Collapsible defaultOpen asChild>
-                    <SidebarMenuItem className="group/collapsible">
-                        <CollapsibleTrigger asChild>
-                            <SidebarMenuButton className="cursor-pointer">
-                                <Terminal className="text-primary" />
-                                <span>Jobs</span>
-                                <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                            </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="overflow-hidden">
-                            <SdkJobsList agents={sdkJobs} loading={loading} />
-                        </CollapsibleContent>
-                    </SidebarMenuItem>
-                </Collapsible>
-            )}
+            {(sdkJobs.length > 0 || loading) && <SdkJobsList agents={sdkJobs} loading={loading} />}
 
             <PlainNavItem title="Activity" url={FrontendRoutes.ACTIVITY} icon={Activity} iconColor="text-primary" />
             <PlainNavItem title="Stats" url={FrontendRoutes.STATS} icon={BarChart3} iconColor="text-primary" />
