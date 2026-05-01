@@ -241,7 +241,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         const user = settings.context.user
         await this.billing.chargeRunBase({
             organizationId: user.organizationId,
-            email: user.email,
             runId: settings.context.runId
         })
         this.baseRunCharged = true
