@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { ArrowUpRight, CreditCard, RefreshCw } from "lucide-react"
@@ -45,8 +45,9 @@ function formatScheduledChange(balance: BalanceSummary): string | null {
 }
 
 export default function BillingPage() {
-    const { balance, buckets, isLoading: balanceLoading, isError: balanceError, mutate: mutateBalance } = useBillingContext(true)
+    const { balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext(true)
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog()
+    const [pendingOverageMode, setPendingOverageMode] = useState<OverageMode | null>(null)
 
     const loading = balanceLoading
 
@@ -55,20 +56,23 @@ export default function BillingPage() {
         void retryCatalog()
     }
 
+    // Show the toast once when the page is loaded with a query param,
+    // then clear the query param so on page reload we don't see it.
     useEffect(() => {
         const params = new URLSearchParams(window.location.search)
         if (!params.get("upgraded") && !params.get("topup")) return
 
         toast.success(params.get("topup") ? "Top-up complete" : "Plan updated")
         window.history.replaceState({}, "", window.location.pathname)
-        let attempts = 0
-        const interval = window.setInterval(() => {
-            attempts += 1
-            invalidateBillingCaches()
-            if (attempts >= 5) window.clearInterval(interval)
-        }, 2000)
-        return () => window.clearInterval(interval)
+        invalidateBillingCaches()
     }, [])
+
+    // We need to wait for a workos webhook to update the overage mode, there is lag
+    useEffect(() => {
+        if (pendingOverageMode && balance?.overageMode === pendingOverageMode) {
+            setPendingOverageMode(null)
+        }
+    }, [balance?.overageMode, pendingOverageMode])
 
     const manageBilling = async () => {
         try {
@@ -79,8 +83,16 @@ export default function BillingPage() {
         }
     }
 
-    const updateMode = (mode: OverageMode) => {
-        void mutateBalance(current => (current ? { ...current, balance: { ...current.balance, overageMode: mode } } : current), { revalidate: false })
+    const updateMode = async (mode: OverageMode) => {
+        setPendingOverageMode(mode)
+        try {
+            await BackendProvider.setOverageMode(mode)
+            // WorkOS organization metadata can lag after the PATCH; the webhook
+            // invalidation will refresh billing once WorkOS has caught up.
+        } catch {
+            setPendingOverageMode(null)
+            toast.error("Couldn't update overage mode. Try again.")
+        }
     }
 
     const planKey = balance?.planKey ?? null
@@ -88,6 +100,7 @@ export default function BillingPage() {
     const showPlanHeaderSkeleton = balanceLoading || (Boolean(balance) && catalogLoading)
     const showError = ((balanceError && !balance) || (catalogError && plans.length === 0)) && !balanceLoading
     const scheduledChange = balance ? formatScheduledChange(balance) : null
+    const balanceUpdating = pendingOverageMode !== null
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-auto bg-background p-4 md:p-6">
@@ -166,13 +179,13 @@ export default function BillingPage() {
                                         <Skeleton className="h-3 w-2/3" />
                                     </div>
                                 ) : (
-                                    <CreditBalanceWidget balance={balance} plan={plan} />
+                                    <CreditBalanceWidget balance={balance} plan={plan} isLoading={balanceUpdating} />
                                 )}
                             </div>
 
                             {balance && plan?.overagePriceId && !showPlanHeaderSkeleton && (
                                 <div className="border-t border-border px-6 py-3">
-                                    <OverageModeToggle mode={balance.overageMode} plan={plan} onChange={updateMode} />
+                                    <OverageModeToggle mode={balance.overageMode} plan={plan} savingMode={pendingOverageMode} onChange={mode => void updateMode(mode)} />
                                 </div>
                             )}
                         </section>

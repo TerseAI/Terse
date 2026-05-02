@@ -111,8 +111,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             memorySession: this.memorySession,
             sessionInputCallback: recentHistoryCallback,
             maxTurns: this.maxTurns,
-            signal: options?.signal,
-            chargeBaseRun: false
+            signal: options?.signal
         })
         return { loopResult }
     }
@@ -402,7 +401,7 @@ type SdkAgentRunnerParams = {
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun?: boolean
     outputSchema?: Record<string, unknown>
-    billing?: BillingService
+    billing: BillingService
 }
 
 type SdkAgentRunnerResult = {

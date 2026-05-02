@@ -10,6 +10,7 @@ import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRunFailedAndInvalidate } from "../../realtimeSocket"
+import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
@@ -356,9 +357,11 @@ export class EventProcessor {
             runId
         })
 
+        const billing = billingServiceProxyForOrganization(this.user.organizationId)
+
         // Create agent runner with the session and outputs
         const runContext: RunContext = { runId }
-        const agentRunner = new AgentRunner(session, outputs, agent, runContext)
+        const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
         agentRunner.setInputEvent(this.inputEvent)
         const cancellationController = new AbortController()
         const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
@@ -366,6 +369,8 @@ export class EventProcessor {
         // Run the agent runner with streaming parameters
         let result: ApprovalResult<SessionWithTracking<Session>, OpenAIAgent<SessionWithTracking<Session>, AgentOutputType>>
         try {
+            await startBillingRun(billing, { organizationId: this.user.organizationId, runId })
+
             result = await agentRunner.run(
                 {
                     runId,

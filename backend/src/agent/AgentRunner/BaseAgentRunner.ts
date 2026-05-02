@@ -31,10 +31,9 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     protected onRawStreamEvent?: (event: RunStreamEvent) => Promise<void> | void
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
-    private readonly billing?: BillingService
-    private baseRunCharged = false
+    private readonly billing: BillingService
 
-    constructor(params: { runId: string; billing?: BillingService }) {
+    constructor(params: { runId: string; billing: BillingService }) {
         this.runId = params.runId
         this.billing = params.billing
     }
@@ -72,7 +71,9 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async runAgent(userHistory: AgentInputItem[], settings: RunExecutionSettings<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
-        await this.meterRunStart(settings)
+        // Base run charges happen at explicit run-start call sites (SDK route, EventProcessor).
+        // Still gate every loop entry so unpaid orgs cannot continue on a new turn.
+        await this.checkRunGate(settings)
         await this.initializeLoopIfNeeded()
         this.resetRunOutcomeTracking()
         const result = await settings.runner.run(this.requireAgent(), userHistory, {
@@ -231,24 +232,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         return this.agent
     }
 
-    async meterRunStart(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
-        if (!this.billing) return
-
-        await this.checkRunGate(settings)
-        if (settings.chargeBaseRun === false) return
-        if (this.baseRunCharged) return
-
-        const user = settings.context.user
-        await this.billing.chargeRunBase({
-            organizationId: user.organizationId,
-            runId: settings.context.runId
-        })
-        this.baseRunCharged = true
-    }
-
     async checkRunGate(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
-        if (!this.billing) return
-
         const orgId = settings.context.user.organizationId
         const gateDecision = await this.billing.checkRunGate({ organizationId: orgId })
         if (!gateDecision.allow) {
@@ -283,8 +267,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             logger.warn("BaseAgentRunner: No response ID found for completed event", { event })
             return
         }
-
-        if (!this.billing) return
 
         try {
             await this.billing.recordLLMCall({
@@ -363,7 +345,6 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
     sessionInputCallback?: SessionInputCallback
     maxTurns: number
     signal?: AbortSignal
-    chargeBaseRun?: boolean
 }
 
 type AgentInitializationParams<TSession extends AppSession> = {

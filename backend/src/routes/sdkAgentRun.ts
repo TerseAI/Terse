@@ -10,7 +10,7 @@ import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
-import { type BillingService, billingServiceProxyForOrganization } from "../services/BillingService"
+import { type BillingService, billingServiceProxyForOrganization, startBillingRun } from "../services/BillingService"
 import { extractErrorMessage } from "../utility/strings"
 
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
@@ -64,6 +64,8 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             outputSchema: data.outputSchema,
             billing: billingForRunner
         })
+
+        await startBillingRun(billingForRunner, { organizationId: orgId, runId })
 
         send({ type: "run_started", runId })
 
@@ -192,7 +194,7 @@ function createSdkRunner(params: {
     isProductionRun: boolean
     options?: { maxTurns?: number; requireApproval?: boolean }
     outputSchema?: Record<string, unknown>
-    billing?: BillingService
+    billing: BillingService
 }): SdkAgentRunner {
     return new SdkAgentRunner({
         runId: params.runId,

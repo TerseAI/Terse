@@ -54,7 +54,7 @@ export const balanceSummarySchema = z.object({
     billingPeriod: billingPeriodSchema.nullable(),
     planCredits: z.number(),
     consumedCredits: z.number(),
-    topUpCredits: z.number(),
+    remainingCredits: z.number(),
     totalCreditCapacity: z.number(),
     periodStart: z.coerce.date(),
     periodEnd: z.coerce.date(),
@@ -103,6 +103,13 @@ export const billingChargeRunBaseBodySchema = billingRunGateRequestBodySchema.ex
 })
 export type BillingChargeRunBaseBody = z.infer<typeof billingChargeRunBaseBodySchema>
 
+/** Acknowledgement from POST /billing/charge-run-base (credits debited for starting a run). */
+export const billingChargeRunBaseResponseSchema = z.object({
+    runId: z.string().min(1),
+    creditsCharged: z.number().nonnegative()
+})
+export type BillingChargeRunBaseResponse = z.infer<typeof billingChargeRunBaseResponseSchema>
+
 export const billingRecordLlmBodySchema = z.object({
     organizationId: z.string().min(1),
     runId: z.string().min(1),
@@ -111,6 +118,13 @@ export const billingRecordLlmBodySchema = z.object({
     usage: completedEventUsageSchema
 })
 export type BillingRecordLlmBody = z.infer<typeof billingRecordLlmBodySchema>
+
+/** Acknowledgement from POST /billing/record-llm (credits debited for model usage). */
+export const billingRecordLlmResponseSchema = z.object({
+    responseId: z.string().min(1),
+    creditsCharged: z.number().nonnegative()
+})
+export type BillingRecordLlmResponse = z.infer<typeof billingRecordLlmResponseSchema>
 
 export const billingRecordLlmPayloadSchema = billingRecordLlmBodySchema.pick({
     responseId: true,
@@ -215,7 +229,7 @@ export const planSchema = z.object({
     priceInUsdMonthlyAnnual: z.number().nullable(),
     includedCreditsPerMonth: z.number(),
     markupPct: z.number(),
-    overageCentsPerCredit: z.number().nullable(),
+    overageCentsPerCredit: z.number(),
     hardCapMultiplier: z.number(),
     defaultOverageMode: overageModeSchema
 })
