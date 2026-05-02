@@ -8,7 +8,6 @@ import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip"
-import { useProject } from "../../hooks/api/useProject"
 import { useProjectDeploys } from "../../hooks/api/useProjectDeploys"
 import { cn } from "../../lib/utils"
 import { BackendProvider } from "../../services/backend"
@@ -18,19 +17,42 @@ import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, PageFram
 
 type RotateKind = "signing_secret" | "api_key"
 
-interface RotateRevealState {
-    kind: RotateKind
-    value: string
+type RotateConfig = {
+    label: string
+    envVar: string
+    icon: React.ReactNode
+    rotate: (projectId: string) => Promise<string>
+    confirmDescription: string
+    revealDescription: string
+}
+
+const ROTATE: Record<RotateKind, RotateConfig> = {
+    signing_secret: {
+        label: "signing secret",
+        envVar: "TERSE_SIGNING_SECRET",
+        icon: <ShieldCheck className="text-primary h-4 w-4" />,
+        rotate: async id => (await BackendProvider.rotateProjectSigningSecret(id)).signingSecret,
+        confirmDescription:
+            "Generates a new signing secret for this project. The current secret stops working immediately, so any trigger from Terse will fail until you update your self-hosted server with the new value.",
+        revealDescription: "Copy this secret now. For security, we won't show it again. Update your self-hosted server before triggering any jobs."
+    },
+    api_key: {
+        label: "project API key",
+        envVar: "TERSE_API_KEY",
+        icon: <KeyRound className="text-primary h-4 w-4" />,
+        rotate: async id => (await BackendProvider.rotateProjectApiKey(id)).projectApiKey,
+        confirmDescription:
+            "Generates a new project-scoped API key. The current key is revoked immediately, so any callback from your self-hosted server into Terse will be rejected until you update the key on your server.",
+        revealDescription: "Copy this key now. For security, we won't show it again. Update your self-hosted server before its next callback into Terse."
+    }
 }
 
 export default function ProjectDetailSelfHosted({ project }: { project: ProjectDetailResponse }) {
-    const { mutate: refreshProject } = useProject(project.id)
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
     const [isVerifying, setIsVerifying] = useState(false)
-    const [result, setResult] = useState<SdkJobServerCheckResponse | null>(null)
-    const [showDialog, setShowDialog] = useState(false)
+    const [verifyResult, setVerifyResult] = useState<SdkJobServerCheckResponse | null>(null)
     const [pendingRotate, setPendingRotate] = useState<RotateKind | null>(null)
-    const [reveal, setReveal] = useState<RotateRevealState | null>(null)
+    const [reveal, setReveal] = useState<{ kind: RotateKind; value: string } | null>(null)
 
     const activeDeploy = deploys?.find(d => d.isActive) ?? null
     const latestDeploy = deploys?.[0] ?? null
@@ -43,8 +65,7 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
         }
         setIsVerifying(true)
         try {
-            setResult(await BackendProvider.verifySdkJobServer(firstJobId))
-            setShowDialog(true)
+            setVerifyResult(await BackendProvider.verifySdkJobServer(firstJobId))
         } catch {
             toast.error("Failed to verify server")
         } finally {
@@ -66,8 +87,7 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
                     onVerifyServer={handleVerifyServer}
                     isVerifyingServer={isVerifying}
                     canVerify={!!firstJobId}
-                    onRotateSigningSecret={() => setPendingRotate("signing_secret")}
-                    onRotateApiKey={() => setPendingRotate("api_key")}
+                    onRotate={setPendingRotate}
                 />
 
                 <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
@@ -75,16 +95,15 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
                 <DeleteProjectAction project={project} />
             </PageFrame>
 
-            <SdkJobServerCheckDialog open={showDialog} result={result} onClose={() => setShowDialog(false)} />
+            <SdkJobServerCheckDialog open={!!verifyResult} result={verifyResult} onClose={() => setVerifyResult(null)} />
 
             <RotateCredentialDialog
                 kind={pendingRotate}
                 projectId={project.id}
                 onClose={() => setPendingRotate(null)}
-                onRotated={revealed => {
+                onRotated={(kind, value) => {
                     setPendingRotate(null)
-                    setReveal(revealed)
-                    void refreshProject()
+                    setReveal({ kind, value })
                 }}
             />
 
@@ -100,8 +119,7 @@ function EnvironmentSection({
     onVerifyServer,
     isVerifyingServer,
     canVerify,
-    onRotateSigningSecret,
-    onRotateApiKey
+    onRotate
 }: {
     remoteServerUrl: string | null
     hasSigningSecret: boolean
@@ -109,8 +127,7 @@ function EnvironmentSection({
     onVerifyServer: () => void
     isVerifyingServer: boolean
     canVerify: boolean
-    onRotateSigningSecret: () => void
-    onRotateApiKey: () => void
+    onRotate: (kind: RotateKind) => void
 }) {
     return (
         <section className="mt-6">
@@ -125,18 +142,10 @@ function EnvironmentSection({
                 <EnvRow className="min-w-0 flex-[2]" label="Remote server">
                     <RemoteServerValue url={remoteServerUrl} />
                 </EnvRow>
-                <EnvRow
-                    className="flex-1"
-                    label="Project API key"
-                    action={hasProjectApiKey ? <RotateButton label="Rotate project API key" onClick={onRotateApiKey} /> : null}
-                >
+                <EnvRow className="flex-1" label="Project API key" rotate={hasProjectApiKey ? () => onRotate("api_key") : undefined}>
                     <ConfigStatus configured={hasProjectApiKey} />
                 </EnvRow>
-                <EnvRow
-                    className="flex-1"
-                    label="Signing secret"
-                    action={hasSigningSecret ? <RotateButton label="Rotate signing secret" onClick={onRotateSigningSecret} /> : null}
-                >
+                <EnvRow className="flex-1" label="Signing secret" rotate={hasSigningSecret ? () => onRotate("signing_secret") : undefined}>
                     <ConfigStatus configured={hasSigningSecret} />
                 </EnvRow>
             </div>
@@ -144,33 +153,29 @@ function EnvironmentSection({
     )
 }
 
-function EnvRow({ label, children, className, action }: { label: string; children: React.ReactNode; className?: string; action?: React.ReactNode }) {
+function EnvRow({ label, children, className, rotate }: { label: string; children: React.ReactNode; className?: string; rotate?: () => void }) {
     return (
         <div className={cn("px-4 py-3", className)}>
             <div className="text-muted-foreground flex items-center justify-between gap-2 text-[10px] font-medium tracking-[0.14em] uppercase">
                 <span>{label}</span>
-                {action}
+                {rotate && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={rotate}
+                                aria-label={`Rotate ${label.toLowerCase()}`}
+                                className="text-muted-foreground hover:text-foreground hover:bg-muted/60 -mr-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md transition-colors"
+                            >
+                                <RotateCw className="h-3.5 w-3.5" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Rotate {label.toLowerCase()}</TooltipContent>
+                    </Tooltip>
+                )}
             </div>
             <div className="mt-1.5 text-sm">{children}</div>
         </div>
-    )
-}
-
-function RotateButton({ label, onClick }: { label: string; onClick: () => void }) {
-    return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <button
-                    type="button"
-                    onClick={onClick}
-                    aria-label={label}
-                    className="text-muted-foreground hover:text-foreground hover:bg-muted/60 -mr-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md transition-colors"
-                >
-                    <RotateCw className="h-3.5 w-3.5" />
-                </button>
-            </TooltipTrigger>
-            <TooltipContent>{label}</TooltipContent>
-        </Tooltip>
     )
 }
 
@@ -207,31 +212,17 @@ function ConfigStatus({ configured }: { configured: boolean }) {
     )
 }
 
-const ROTATE_COPY: Record<RotateKind, { title: string; description: string; envVar: string; confirmLabel: string }> = {
-    signing_secret: {
-        title: "Rotate signing secret",
-        description:
-            "Generates a new signing secret for this project. The current secret stops working immediately, so any trigger from Terse will fail until you update your self-hosted server with the new value.",
-        envVar: "TERSE_SIGNING_SECRET",
-        confirmLabel: "Rotate signing secret"
-    },
-    api_key: {
-        title: "Rotate project API key",
-        description:
-            "Generates a new project-scoped API key. The current key is revoked immediately, so any callback from your self-hosted server into Terse will be rejected until you update the key on your server.",
-        envVar: "TERSE_API_KEY",
-        confirmLabel: "Rotate API key"
-    }
-}
-
-interface RotateCredentialDialogProps {
+function RotateCredentialDialog({
+    kind,
+    projectId,
+    onClose,
+    onRotated
+}: {
     kind: RotateKind | null
     projectId: string
     onClose: () => void
-    onRotated: (reveal: RotateRevealState) => void
-}
-
-function RotateCredentialDialog({ kind, projectId, onClose, onRotated }: RotateCredentialDialogProps) {
+    onRotated: (kind: RotateKind, value: string) => void
+}) {
     const [isRotating, setIsRotating] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -247,14 +238,8 @@ function RotateCredentialDialog({ kind, projectId, onClose, onRotated }: RotateC
         setIsRotating(true)
         setError(null)
         try {
-            if (kind === "signing_secret") {
-                const { signingSecret } = await BackendProvider.rotateProjectSigningSecret(projectId)
-                onRotated({ kind, value: signingSecret })
-            } else {
-                const { projectApiKey } = await BackendProvider.rotateProjectApiKey(projectId)
-                onRotated({ kind, value: projectApiKey })
-            }
-            setError(null)
+            const value = await ROTATE[kind].rotate(projectId)
+            onRotated(kind, value)
         } catch {
             setError("Rotation failed. Please try again.")
         } finally {
@@ -262,14 +247,14 @@ function RotateCredentialDialog({ kind, projectId, onClose, onRotated }: RotateC
         }
     }
 
-    const copy = kind ? ROTATE_COPY[kind] : null
+    const config = kind ? ROTATE[kind] : null
 
     return (
         <Dialog open={!!kind} onOpenChange={handleOpen}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{copy?.title}</DialogTitle>
-                    <DialogDescription>{copy?.description}</DialogDescription>
+                    <DialogTitle>Rotate {config?.label}</DialogTitle>
+                    <DialogDescription>{config?.confirmDescription}</DialogDescription>
                 </DialogHeader>
 
                 <div className="border-warning/30 bg-warning/5 flex items-start gap-3 rounded-lg border p-3">
@@ -277,7 +262,7 @@ function RotateCredentialDialog({ kind, projectId, onClose, onRotated }: RotateC
                     <div className="space-y-1 text-sm">
                         <p className="font-medium">Make sure you can update your server</p>
                         <p className="text-muted-foreground">
-                            After rotating, paste the new value into <code className="bg-muted/60 rounded px-1 py-0.5 text-xs">{copy?.envVar}</code> on your self-hosted server and restart it.
+                            After rotating, paste the new value into <code className="bg-muted/60 rounded px-1 py-0.5 text-xs">{config?.envVar}</code> on your self-hosted server and restart it.
                         </p>
                     </div>
                 </div>
@@ -291,17 +276,7 @@ function RotateCredentialDialog({ kind, projectId, onClose, onRotated }: RotateC
                         </Button>
                     </DialogClose>
                     <Button variant="destructive" onClick={handleRotate} disabled={isRotating}>
-                        {isRotating ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Rotating...
-                            </>
-                        ) : (
-                            <>
-                                <RotateCw className="h-4 w-4" />
-                                {copy?.confirmLabel}
-                            </>
-                        )}
+                        {isRotating ? "Rotating..." : `Rotate ${config?.label}`}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -309,20 +284,7 @@ function RotateCredentialDialog({ kind, projectId, onClose, onRotated }: RotateC
     )
 }
 
-const REVEAL_COPY: Record<RotateKind, { title: string; description: string; icon: React.ReactNode }> = {
-    signing_secret: {
-        title: "Your new signing secret",
-        description: "Copy this secret now. For security, we won't show it again. Update your self-hosted server before triggering any jobs.",
-        icon: <ShieldCheck className="text-primary h-4 w-4" />
-    },
-    api_key: {
-        title: "Your new project API key",
-        description: "Copy this key now. For security, we won't show it again. Update your self-hosted server before its next callback into Terse.",
-        icon: <KeyRound className="text-primary h-4 w-4" />
-    }
-}
-
-function RevealCredentialDialog({ reveal, onClose }: { reveal: RotateRevealState | null; onClose: () => void }) {
+function RevealCredentialDialog({ reveal, onClose }: { reveal: { kind: RotateKind; value: string } | null; onClose: () => void }) {
     const [copied, setCopied] = useState(false)
 
     const handleOpen = (open: boolean) => {
@@ -343,17 +305,17 @@ function RevealCredentialDialog({ reveal, onClose }: { reveal: RotateRevealState
         }
     }
 
-    const copy = reveal ? REVEAL_COPY[reveal.kind] : null
+    const config = reveal ? ROTATE[reveal.kind] : null
 
     return (
         <Dialog open={!!reveal} onOpenChange={handleOpen}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        {copy?.icon}
-                        {copy?.title}
+                        {config?.icon}
+                        Your new {config?.label}
                     </DialogTitle>
-                    <DialogDescription>{copy?.description}</DialogDescription>
+                    <DialogDescription>{config?.revealDescription}</DialogDescription>
                 </DialogHeader>
 
                 {reveal && (

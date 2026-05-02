@@ -310,43 +310,26 @@ export async function handleGetProjectSourceFileContent(req: Request, res: Respo
 /**
  * POST /projects/:id/rotate-signing-secret
  *
- * Self-hosted only. Generates a fresh signing secret, replaces the value on the
- * project, and returns the new secret exactly once. The previous secret stops
- * working immediately — the caller must update the env var on their self-hosted
- * server to resume receiving triggers.
+ * Self-hosted only. Generates a fresh signing secret and replaces the value on
+ * the project. The previous secret stops working immediately — the caller must
+ * update the env var on their self-hosted server to resume receiving triggers.
  */
 export async function handleRotateProjectSigningSecret(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
-    if (!user) {
-        return res.status(401).json({ success: false, error: "Unauthorized" })
-    }
+    if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
 
     const { id } = req.params
-    if (!id) {
-        return res.status(400).json({ error: "Project id is required" })
-    }
-
     const project = await db().projects.findFirst({
         where: { id, organization_id: user.organizationId },
-        select: { id: true, remote_server_url: true }
+        select: { remote_server_url: true }
     })
-
-    if (!project) {
-        return res.status(404).json({ error: "Project not found" })
-    }
-
-    if (!project.remote_server_url) {
-        return res.status(400).json({ error: "Signing secrets are only used by self-hosted projects." })
-    }
+    if (!project) return res.status(404).json({ error: "Project not found" })
+    if (!project.remote_server_url) return res.status(400).json({ error: "Signing secrets are only used by self-hosted projects." })
 
     const signingSecret = generateWebhookSecret()
-    await db().projects.update({
-        where: { id },
-        data: { signing_secret: signingSecret }
-    })
+    await db().projects.update({ where: { id }, data: { signing_secret: signingSecret } })
 
     emitCacheInvalidationWithWildcard(user.organizationId, "project", id)
-
     logger.info("Project signing secret rotated", { projectId: id, organizationId: user.organizationId, userId: user.id })
 
     const response: ProjectRotateSigningSecretResponse = { signingSecret }
@@ -356,54 +339,33 @@ export async function handleRotateProjectSigningSecret(req: Request, res: Respon
 /**
  * POST /projects/:id/rotate-api-key
  *
- * Self-hosted only. Deletes any existing project-scoped api_token rows for the
- * project and mints a new one. The previous key stops working immediately, so
- * the self-hosted server must be updated with the new value before its next
- * callback into Terse.
+ * Self-hosted only. Replaces the project-scoped api_token. The previous key
+ * stops working immediately, so the self-hosted server must be updated with
+ * the new value before its next callback into Terse. Not wrapped in a
+ * transaction: a failure between the delete and create simply leaves the
+ * project without a key, which the user can recover by re-rotating.
  */
 export async function handleRotateProjectApiKey(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
-    if (!user) {
-        return res.status(401).json({ success: false, error: "Unauthorized" })
-    }
+    if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
 
     const { id } = req.params
-    if (!id) {
-        return res.status(400).json({ error: "Project id is required" })
-    }
-
     const project = await db().projects.findFirst({
         where: { id, organization_id: user.organizationId },
-        select: { id: true, name: true, remote_server_url: true }
+        select: { name: true, remote_server_url: true }
     })
+    if (!project) return res.status(404).json({ error: "Project not found" })
+    if (!project.remote_server_url) return res.status(400).json({ error: "Project API keys are only used by self-hosted projects." })
 
-    if (!project) {
-        return res.status(404).json({ error: "Project not found" })
-    }
-
-    if (!project.remote_server_url) {
-        return res.status(400).json({ error: "Project API keys are only used by self-hosted projects." })
-    }
-
-    const { rawToken } = await db().$transaction(async tx => {
-        await tx.api_tokens.deleteMany({
-            where: { project_id: id, organization_id: user.organizationId }
-        })
-
-        // createProjectScopedToken talks to the global db() client so it isn't part of the
-        // transaction, but the surrounding delete + create pair is short and idempotent
-        // enough that a partial failure leaves the project simply without an API key —
-        // recoverable by re-running rotate.
-        return createProjectScopedToken({
-            projectId: id,
-            projectName: project.name,
-            organizationId: user.organizationId,
-            createdByUserId: user.id
-        })
+    await db().api_tokens.deleteMany({ where: { project_id: id, organization_id: user.organizationId } })
+    const { rawToken } = await createProjectScopedToken({
+        projectId: id,
+        projectName: project.name,
+        organizationId: user.organizationId,
+        createdByUserId: user.id
     })
 
     emitCacheInvalidationWithWildcard(user.organizationId, "project", id)
-
     logger.info("Project API key rotated", { projectId: id, organizationId: user.organizationId, userId: user.id })
 
     const response: ProjectRotateApiKeyResponse = { projectApiKey: rawToken }
