@@ -212,17 +212,7 @@ function ConfigStatus({ configured }: { configured: boolean }) {
     )
 }
 
-function RotateCredentialDialog({
-    kind,
-    projectId,
-    onClose,
-    onRotated
-}: {
-    kind: RotateKind | null
-    projectId: string
-    onClose: () => void
-    onRotated: (kind: RotateKind, value: string) => void
-}) {
+function RotateCredentialDialog({ kind, projectId, onClose, onRotated }: { kind: RotateKind | null; projectId: string; onClose: () => void; onRotated: (kind: RotateKind, value: string) => void }) {
     const [isRotating, setIsRotating] = useState(false)
     const [error, setError] = useState<string | null>(null)
 

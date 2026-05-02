@@ -307,13 +307,6 @@ export async function handleGetProjectSourceFileContent(req: Request, res: Respo
     }
 }
 
-/**
- * POST /projects/:id/rotate-signing-secret
- *
- * Self-hosted only. Generates a fresh signing secret and replaces the value on
- * the project. The previous secret stops working immediately — the caller must
- * update the env var on their self-hosted server to resume receiving triggers.
- */
 export async function handleRotateProjectSigningSecret(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
@@ -336,15 +329,6 @@ export async function handleRotateProjectSigningSecret(req: Request, res: Respon
     return res.status(200).json(response)
 }
 
-/**
- * POST /projects/:id/rotate-api-key
- *
- * Self-hosted only. Replaces the project-scoped api_token. The previous key
- * stops working immediately, so the self-hosted server must be updated with
- * the new value before its next callback into Terse. Not wrapped in a
- * transaction: a failure between the delete and create simply leaves the
- * project without a key, which the user can recover by re-rotating.
- */
 export async function handleRotateProjectApiKey(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
