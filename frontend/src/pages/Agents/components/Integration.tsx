@@ -42,8 +42,6 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <CalendarClockIcon />
         case ConfigType.DATADOG:
             return <DatadogIcon />
-        case ConfigType.TERSE:
-            return <TerseIcon />
         case ConfigType.WORKOS_INPUT:
         case ConfigType.WORKOS_OUTPUT:
             return <WorkOSIcon />
@@ -55,6 +53,11 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <WebhookIcon />
         case ConfigType.WEBMONITOR:
             return <RadarIcon />
+        case ConfigType.WEB_EXTRACT:
+        case ConfigType.WEB_RESEARCH:
+        case ConfigType.WEB_SEARCH:
+        case ConfigType.IMAGE_EDIT:
+            return <TerseIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never

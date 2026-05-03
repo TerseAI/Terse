@@ -196,7 +196,6 @@ export const ImageEditConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
-
 export const WorkOSInputConfigMetadata = {
     configType: ConfigType.WORKOS_INPUT,
     name: "WorkOS",
