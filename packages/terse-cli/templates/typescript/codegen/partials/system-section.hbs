@@ -30,24 +30,10 @@ export const WebMonitor = {
 
 {{sectionHeader "Web tools"}}
 
-export const WebSearch = {
-    /** Use in `skills[]` — built-in web search tool */
-    skill(): TypedSkill<"web_search"> {
-        return new WebSearchConfig() as TypedSkill<"web_search">
-    },
-}
-
-export const WebExtract = {
-    /** Use in `skills[]` — fetch and extract a single page */
-    skill(): TypedSkill<"web_extract"> {
-        return new WebExtractConfig() as TypedSkill<"web_extract">
-    },
-}
-
-export const WebResearch = {
-    /** Use in `skills[]` — multi-source web research */
-    skill(): TypedSkill<"web_research"> {
-        return new WebResearchConfig() as TypedSkill<"web_research">
+export const Web = {
+    /** Use in `skills[]` — built-in web search, page extraction, and multi-source research */
+    skill(): TypedSkill<"web_search" | "web_extract" | "web_research"> {
+        return new WebConfig() as TypedSkill<"web_search" | "web_extract" | "web_research">
     },
 }
 

@@ -53,9 +53,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <WebhookIcon />
         case ConfigType.WEBMONITOR:
             return <RadarIcon />
-        case ConfigType.WEB_EXTRACT:
-        case ConfigType.WEB_RESEARCH:
-        case ConfigType.WEB_SEARCH:
+        case ConfigType.WEB:
         case ConfigType.IMAGE_EDIT:
             return <TerseIcon />
         default:

@@ -1006,9 +1006,7 @@ function prepareSystemSection(_tools: ToolDefinition[]): SectionContext<SystemSe
     return sectionData(
         [
             "TimeTriggerConfig",
-            "WebSearchConfig",
-            "WebExtractConfig",
-            "WebResearchConfig",
+            "WebConfig",
             "ImageEditConfig",
             "TypedSkill",
             "WebhookInputConfig",

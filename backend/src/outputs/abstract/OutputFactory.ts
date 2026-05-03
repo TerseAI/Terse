@@ -13,9 +13,7 @@ import {
     PosthogConfig,
     SlackOutputConfig,
     SnowflakeOutputConfig,
-    WebExtractConfig,
-    WebResearchConfig,
-    WebSearchConfig,
+    WebConfig,
     WorkOSOutputConfig
 } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
@@ -34,9 +32,7 @@ import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { SnowflakeSkillOutput } from "../snowflake/SnowflakeSkillOutput"
 import { ImageEditOutput } from "../terse/ImageEditOutput"
-import { WebExtractOutput } from "../terse/WebExtractOutput"
-import { WebResearchOutput } from "../terse/WebResearchOutput"
-import { WebSearchOutput } from "../terse/WebSearchOutput"
+import { WebOutput } from "../terse/WebOutput"
 import { WorkOSOutput } from "../workos/WorkOSOutput"
 
 import { Output } from "./Output"
@@ -55,9 +51,7 @@ export class OutputFactory {
         [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
         [OutputConfigType.GMAIL, () => new GmailOutput()],
         [OutputConfigType.GMAIL_DRAFT, () => new GmailDraftOutput()],
-        [OutputConfigType.WEB_SEARCH, () => new WebSearchOutput()],
-        [OutputConfigType.WEB_EXTRACT, () => new WebExtractOutput()],
-        [OutputConfigType.WEB_RESEARCH, () => new WebResearchOutput()],
+        [OutputConfigType.WEB, () => new WebOutput()],
         [OutputConfigType.IMAGE_EDIT, () => new ImageEditOutput()],
         [OutputConfigType.ATTIO, () => new AttioOutput()],
         [OutputConfigType.GITHUB, () => new GithubSkillOutput()],
@@ -115,14 +109,8 @@ export class OutputFactory {
             case OutputConfigType.WORKOS:
                 ;(output as Output<WorkOSOutputConfig>).configs = configs as WorkOSOutputConfig[]
                 break
-            case OutputConfigType.WEB_SEARCH:
-                ;(output as Output<WebSearchConfig>).configs = configs as WebSearchConfig[]
-                break
-            case OutputConfigType.WEB_EXTRACT:
-                ;(output as Output<WebExtractConfig>).configs = configs as WebExtractConfig[]
-                break
-            case OutputConfigType.WEB_RESEARCH:
-                ;(output as Output<WebResearchConfig>).configs = configs as WebResearchConfig[]
+            case OutputConfigType.WEB:
+                ;(output as Output<WebConfig>).configs = configs as WebConfig[]
                 break
             case OutputConfigType.IMAGE_EDIT:
                 ;(output as Output<ImageEditConfig>).configs = configs as ImageEditConfig[]

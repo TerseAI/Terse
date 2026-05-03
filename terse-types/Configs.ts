@@ -16,9 +16,7 @@ export enum ConfigType {
     DATADOG = "DATADOG",
     TIME_TRIGGER = "time_trigger",
     LAUNCHDARKLY = "launchdarkly",
-    WEB_SEARCH = "web_search",
-    WEB_EXTRACT = "web_extract",
-    WEB_RESEARCH = "web_research",
+    WEB = "web",
     IMAGE_EDIT = "image_edit",
     WORKOS_INPUT = "workos_input",
     WORKOS_OUTPUT = "workos_output",
@@ -160,28 +158,10 @@ export const LaunchDarklyConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
-export const WebSearchConfigMetadata = {
-    configType: ConfigType.WEB_SEARCH,
-    name: "Web Search",
-    description: "Built-in web search capability",
-    integrationType: IntegrationType.TERSE,
-    isInput: false,
-    isOutput: true
-} as const satisfies ConfigDetails
-
-export const WebExtractConfigMetadata = {
-    configType: ConfigType.WEB_EXTRACT,
-    name: "Web Extract",
-    description: "Built-in web page extraction capability",
-    integrationType: IntegrationType.TERSE,
-    isInput: false,
-    isOutput: true
-} as const satisfies ConfigDetails
-
-export const WebResearchConfigMetadata = {
-    configType: ConfigType.WEB_RESEARCH,
-    name: "Web Research",
-    description: "Built-in multi-source web research capability",
+export const WebConfigMetadata = {
+    configType: ConfigType.WEB,
+    name: "Web",
+    description: "Built-in web search, page extraction, and multi-source research",
     integrationType: IntegrationType.TERSE,
     isInput: false,
     isOutput: true
@@ -266,9 +246,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
-    [ConfigType.WEB_SEARCH]: WebSearchConfigMetadata,
-    [ConfigType.WEB_EXTRACT]: WebExtractConfigMetadata,
-    [ConfigType.WEB_RESEARCH]: WebResearchConfigMetadata,
+    [ConfigType.WEB]: WebConfigMetadata,
     [ConfigType.IMAGE_EDIT]: ImageEditConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
@@ -806,17 +784,17 @@ export class LaunchDarklyConfig extends BaseConfigInstance<IntegrationType.LAUNC
     }
 }
 
-export const WebSearchConfigSchema = ConfigInstanceSchema.extend({
+export const WebConfigSchema = ConfigInstanceSchema.extend({
     integrationId: z.literal("system"),
     integrationType: z.literal(IntegrationType.TERSE),
-    configType: z.literal(ConfigType.WEB_SEARCH)
+    configType: z.literal(ConfigType.WEB)
 })
-export type WebSearchConfigData = z.infer<typeof WebSearchConfigSchema>
-export type WebSearchConfigInstance = WebSearchConfigData & ConfigBehavior
+export type WebConfigData = z.infer<typeof WebConfigSchema>
+export type WebConfigInstance = WebConfigData & ConfigBehavior
 
-export class WebSearchConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB_SEARCH, "system"> implements WebSearchConfigInstance {
+export class WebConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB, "system"> implements WebConfigInstance {
     constructor() {
-        super("system", IntegrationType.TERSE, ConfigType.WEB_SEARCH)
+        super("system", IntegrationType.TERSE, ConfigType.WEB)
     }
 
     isComplete(): boolean {
@@ -824,51 +802,7 @@ export class WebSearchConfig extends BaseConfigInstance<IntegrationType.TERSE, C
     }
 
     formatForAgent(): string {
-        return "Type: Web Search"
-    }
-}
-
-export const WebExtractConfigSchema = ConfigInstanceSchema.extend({
-    integrationId: z.literal("system"),
-    integrationType: z.literal(IntegrationType.TERSE),
-    configType: z.literal(ConfigType.WEB_EXTRACT)
-})
-export type WebExtractConfigData = z.infer<typeof WebExtractConfigSchema>
-export type WebExtractConfigInstance = WebExtractConfigData & ConfigBehavior
-
-export class WebExtractConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB_EXTRACT, "system"> implements WebExtractConfigInstance {
-    constructor() {
-        super("system", IntegrationType.TERSE, ConfigType.WEB_EXTRACT)
-    }
-
-    isComplete(): boolean {
-        return true
-    }
-
-    formatForAgent(): string {
-        return "Type: Web Extract"
-    }
-}
-
-export const WebResearchConfigSchema = ConfigInstanceSchema.extend({
-    integrationId: z.literal("system"),
-    integrationType: z.literal(IntegrationType.TERSE),
-    configType: z.literal(ConfigType.WEB_RESEARCH)
-})
-export type WebResearchConfigData = z.infer<typeof WebResearchConfigSchema>
-export type WebResearchConfigInstance = WebResearchConfigData & ConfigBehavior
-
-export class WebResearchConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB_RESEARCH, "system"> implements WebResearchConfigInstance {
-    constructor() {
-        super("system", IntegrationType.TERSE, ConfigType.WEB_RESEARCH)
-    }
-
-    isComplete(): boolean {
-        return true
-    }
-
-    formatForAgent(): string {
-        return "Type: Web Research"
+        return "Type: Web (search, extract, research)"
     }
 }
 
@@ -1119,9 +1053,7 @@ export const configDataSchema = z.union([
     DatadogConfigSchema,
     TimeTriggerConfigSchema,
     LaunchDarklyConfigSchema,
-    WebSearchConfigSchema,
-    WebExtractConfigSchema,
-    WebResearchConfigSchema,
+    WebConfigSchema,
     ImageEditConfigSchema,
     WorkOSInputConfigSchema,
     WorkOSOutputConfigSchema,
@@ -1156,9 +1088,7 @@ export const skillConfigDataSchema = z.union([
     PosthogConfigSchema,
     DatadogConfigSchema,
     LaunchDarklyConfigSchema,
-    WebSearchConfigSchema,
-    WebExtractConfigSchema,
-    WebResearchConfigSchema,
+    WebConfigSchema,
     ImageEditConfigSchema,
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
@@ -1177,9 +1107,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.GMAIL_DRAFT_OUTPUT:
             return true
         case ConfigType.LINEAR_INPUT:
-        case ConfigType.WEB_SEARCH:
-        case ConfigType.WEB_EXTRACT:
-        case ConfigType.WEB_RESEARCH:
+        case ConfigType.WEB:
         case ConfigType.IMAGE_EDIT:
         case ConfigType.WEBHOOK_INPUT:
             return true
@@ -1306,12 +1234,8 @@ export function formatConfigForAgent(config: ConfigData): string {
             if (config.environmentKeys.length > 0) parts.push(`Environments: ${config.environmentKeys.join(", ")}`)
             return parts.join("\n")
         }
-        case ConfigType.WEB_SEARCH:
-            return "Type: Web Search"
-        case ConfigType.WEB_EXTRACT:
-            return "Type: Web Extract"
-        case ConfigType.WEB_RESEARCH:
-            return "Type: Web Research"
+        case ConfigType.WEB:
+            return "Type: Web (search, extract, research)"
         case ConfigType.IMAGE_EDIT:
             return "Type: Image Edit"
         case ConfigType.WORKOS_INPUT:
@@ -1357,9 +1281,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.DATADOG]: typeof DatadogConfig
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
-    [ConfigType.WEB_SEARCH]: typeof WebSearchConfig
-    [ConfigType.WEB_EXTRACT]: typeof WebExtractConfig
-    [ConfigType.WEB_RESEARCH]: typeof WebResearchConfig
+    [ConfigType.WEB]: typeof WebConfig
     [ConfigType.IMAGE_EDIT]: typeof ImageEditConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
     [ConfigType.WORKOS_OUTPUT]: typeof WorkOSOutputConfig
@@ -1383,9 +1305,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
-    [ConfigType.WEB_SEARCH]: WebSearchConfig,
-    [ConfigType.WEB_EXTRACT]: WebExtractConfig,
-    [ConfigType.WEB_RESEARCH]: WebResearchConfig,
+    [ConfigType.WEB]: WebConfig,
     [ConfigType.IMAGE_EDIT]: ImageEditConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,

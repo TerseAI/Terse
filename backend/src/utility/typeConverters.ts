@@ -21,10 +21,8 @@ import {
     SlackOutputConfig,
     SnowflakeOutputConfig,
     TimeTriggerConfig,
-    WebExtractConfig,
+    WebConfig,
     WebMonitorConfig,
-    WebResearchConfig,
-    WebSearchConfig,
     WebhookInputConfig,
     WorkOSEventType,
     WorkOSInputConfig,
@@ -287,12 +285,8 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
     const integrationId = channelOutput.integration_id
 
     switch (channelOutput.config_type) {
-        case OutputConfigType.WEB_SEARCH:
-            return new WebSearchConfig()
-        case OutputConfigType.WEB_EXTRACT:
-            return new WebExtractConfig()
-        case OutputConfigType.WEB_RESEARCH:
-            return new WebResearchConfig()
+        case OutputConfigType.WEB:
+            return new WebConfig()
         case OutputConfigType.IMAGE_EDIT:
             return new ImageEditConfig()
     }
@@ -415,12 +409,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("DATADOG is not an input config type")
         case ConfigType.LAUNCHDARKLY:
             throw new Error("LAUNCHDARKLY is not an input config type")
-        case ConfigType.WEB_SEARCH:
-            throw new Error("WEB_SEARCH is an output type, not an input type")
-        case ConfigType.WEB_EXTRACT:
-            throw new Error("WEB_EXTRACT is an output type, not an input type")
-        case ConfigType.WEB_RESEARCH:
-            throw new Error("WEB_RESEARCH is an output type, not an input type")
+        case ConfigType.WEB:
+            throw new Error("WEB is an output type, not an input type")
         case ConfigType.IMAGE_EDIT:
             throw new Error("IMAGE_EDIT is an output type, not an input type")
         case ConfigType.WORKOS_OUTPUT:
@@ -485,12 +475,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.GMAIL
         case ConfigType.GMAIL_DRAFT_OUTPUT:
             return OutputConfigType.GMAIL_DRAFT
-        case ConfigType.WEB_SEARCH:
-            return OutputConfigType.WEB_SEARCH
-        case ConfigType.WEB_EXTRACT:
-            return OutputConfigType.WEB_EXTRACT
-        case ConfigType.WEB_RESEARCH:
-            return OutputConfigType.WEB_RESEARCH
+        case ConfigType.WEB:
+            return OutputConfigType.WEB
         case ConfigType.IMAGE_EDIT:
             return OutputConfigType.IMAGE_EDIT
         case ConfigType.ATTIO_OUTPUT:
