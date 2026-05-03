@@ -1053,3 +1053,22 @@ export const projectSourceFilesResponseSchema = z.object({
     files: z.array(fileSchema)
 })
 export type ProjectSourceFilesResponse = z.infer<typeof projectSourceFilesResponseSchema>
+
+export const sdkListenStartedSchema = z.object({
+    type: z.literal("listen_started"),
+    listenerId: z.string(),
+    organizationId: z.string(),
+    jobName: z.string()
+})
+
+export const sdkListenForwardedEventSchema = z.object({
+    type: z.literal("forwarded_event"),
+    agentId: z.string(),
+    agentName: z.string(),
+    event: serializedEventSchema
+})
+
+export const sdkListenStreamEventSchema = z.discriminatedUnion("type", [sdkListenStartedSchema, sdkListenForwardedEventSchema])
+export type SdkListenStreamEvent = z.infer<typeof sdkListenStreamEventSchema>
+export type SdkListenStartedEvent = z.infer<typeof sdkListenStartedSchema>
+export type SdkListenForwardedEvent = z.infer<typeof sdkListenForwardedEventSchema>

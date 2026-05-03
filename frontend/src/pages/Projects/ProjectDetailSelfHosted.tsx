@@ -15,38 +15,6 @@ import { SdkJobServerCheckDialog } from "../Agents/components/SdkJobServerCheckD
 
 import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, PageFrame, SectionLabel } from "./ProjectDetailShared"
 
-type RotateKind = "signing_secret" | "api_key"
-
-type RotateConfig = {
-    label: string
-    envVar: string
-    icon: React.ReactNode
-    rotate: (projectId: string) => Promise<string>
-    confirmDescription: string
-    revealDescription: string
-}
-
-const ROTATE: Record<RotateKind, RotateConfig> = {
-    signing_secret: {
-        label: "signing secret",
-        envVar: "TERSE_SIGNING_SECRET",
-        icon: <ShieldCheck className="text-primary h-4 w-4" />,
-        rotate: async id => (await BackendProvider.rotateProjectSigningSecret(id)).signingSecret,
-        confirmDescription:
-            "Generates a new signing secret for this project. The current secret stops working immediately, so any trigger from Terse will fail until you update your self-hosted server with the new value.",
-        revealDescription: "Copy this secret now. For security, we won't show it again. Update your self-hosted server before triggering any jobs."
-    },
-    api_key: {
-        label: "project API key",
-        envVar: "TERSE_API_KEY",
-        icon: <KeyRound className="text-primary h-4 w-4" />,
-        rotate: async id => (await BackendProvider.rotateProjectApiKey(id)).projectApiKey,
-        confirmDescription:
-            "Generates a new project-scoped API key. The current key is revoked immediately, so any callback from your self-hosted server into Terse will be rejected until you update the key on your server.",
-        revealDescription: "Copy this key now. For security, we won't show it again. Update your self-hosted server before its next callback into Terse."
-    }
-}
-
 export default function ProjectDetailSelfHosted({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
     const [isVerifying, setIsVerifying] = useState(false)
@@ -337,4 +305,36 @@ function RevealCredentialDialog({ reveal, onClose }: { reveal: { kind: RotateKin
             </DialogContent>
         </Dialog>
     )
+}
+
+type RotateKind = "signing_secret" | "api_key"
+
+type RotateConfig = {
+    label: string
+    envVar: string
+    icon: React.ReactNode
+    rotate: (projectId: string) => Promise<string>
+    confirmDescription: string
+    revealDescription: string
+}
+
+const ROTATE: Record<RotateKind, RotateConfig> = {
+    signing_secret: {
+        label: "signing secret",
+        envVar: "TERSE_SIGNING_SECRET",
+        icon: <ShieldCheck className="text-primary h-4 w-4" />,
+        rotate: async id => (await BackendProvider.rotateProjectSigningSecret(id)).signingSecret,
+        confirmDescription:
+            "Generates a new signing secret for this project. The current secret stops working immediately, so any trigger from Terse will fail until you update your self-hosted server with the new value.",
+        revealDescription: "Copy this secret now. For security, we won't show it again. Update your self-hosted server before triggering any jobs."
+    },
+    api_key: {
+        label: "project API key",
+        envVar: "TERSE_API_KEY",
+        icon: <KeyRound className="text-primary h-4 w-4" />,
+        rotate: async id => (await BackendProvider.rotateProjectApiKey(id)).projectApiKey,
+        confirmDescription:
+            "Generates a new project-scoped API key. The current key is revoked immediately, so any callback from your self-hosted server into Terse will be rejected until you update the key on your server.",
+        revealDescription: "Copy this key now. For security, we won't show it again. Update your self-hosted server before its next callback into Terse."
+    }
 }

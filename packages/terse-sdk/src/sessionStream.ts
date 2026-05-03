@@ -1,5 +1,5 @@
 import { ApiRoutes } from "terse-types"
-import type { SdkAgentStreamEvent } from "terse-types"
+import type { SdkAgentStreamEvent, SdkListenStreamEvent } from "terse-types"
 
 export type SessionStartedEvent = { type: "session_started"; sessionId: string }
 
@@ -18,16 +18,33 @@ export type OpenSessionStreamOptions = {
     onEvent?: (event: SessionStreamEvent) => void | Promise<void>
 }
 
+export type ListenStreamHandle = {
+    listenerId: string
+    organizationId: string
+    jobName: string
+    close: () => void
+}
+
+export type OpenListenStreamOptions = {
+    /** Name of the deployed SDK job to listen for. The backend filters events server-side. */
+    jobName: string
+    /**
+     * Invoked for each SSE `data:` JSON event after the initial `listen_started`
+     * (that event is consumed internally to obtain `listenerId`/`organizationId`).
+     */
+    onEvent?: (event: SdkListenStreamEvent) => void | Promise<void>
+}
+
 /**
- * Thrown when {@link openSessionStream} cannot establish the SSE connection.
- * Exposes the HTTP `status` so callers can distinguish auth failures (401/403)
- * from other transport errors.
+ * Thrown when {@link openSessionStream} or {@link openListenStream} cannot
+ * establish the SSE connection. Exposes the HTTP `status` so callers can
+ * distinguish auth failures (401/403) from other transport errors.
  */
 export class SessionStreamError extends Error {
     readonly status: number
 
     constructor(status: number, message?: string) {
-        super(message ?? `Failed to open session event stream (HTTP ${status})`)
+        super(message ?? `Failed to open SSE stream (HTTP ${status})`)
         this.name = "SessionStreamError"
         this.status = status
     }
@@ -40,8 +57,61 @@ export class SessionStreamError extends Error {
  * Throws {@link SessionStreamError} if the server responds with a non-2xx status.
  */
 export async function openSessionStream(apiBaseUrl: string, apiKey: string, options: OpenSessionStreamOptions = {}): Promise<SessionStreamHandle> {
+    const reader = await openSseReader(apiBaseUrl, ApiRoutes.SDK.SESSION_EVENTS, apiKey)
+    const decoder = new TextDecoder()
+
+    const handshake = await readUntilEvent<SessionStreamEvent>(reader, decoder, "", event => event.type === "session_started")
+    const startedEvent = handshake.event as SessionStartedEvent
+    if (typeof startedEvent.sessionId !== "string") {
+        throw new SessionStreamError(0, "Session stream did not return a sessionId")
+    }
+
+    consumeSseEvents<SessionStreamEvent>(reader, decoder, handshake.remainingBuffer, options.onEvent)
+
+    return {
+        sessionId: startedEvent.sessionId,
+        close: () => {
+            reader.cancel().catch(() => {})
+        }
+    }
+}
+
+/**
+ * Opens the SSE stream that backs `terse listen`. The backend mirrors every
+ * trigger event it dispatches to a deployed agent in the caller's
+ * organization onto this stream.
+ *
+ * The first event is always `listen_started` (consumed here to surface
+ * `listenerId`/`organizationId`); subsequent events flow to `onEvent`.
+ *
+ * Throws {@link SessionStreamError} if the server responds with a non-2xx status.
+ */
+export async function openListenStream(apiBaseUrl: string, apiKey: string, options: OpenListenStreamOptions): Promise<ListenStreamHandle> {
+    const route = `${ApiRoutes.SDK.LISTEN}?jobName=${encodeURIComponent(options.jobName)}`
+    const reader = await openSseReader(apiBaseUrl, route, apiKey)
+    const decoder = new TextDecoder()
+
+    const handshake = await readUntilEvent<SdkListenStreamEvent>(reader, decoder, "", event => event.type === "listen_started")
+    if (handshake.event.type !== "listen_started") {
+        throw new SessionStreamError(0, "Listen stream did not return a listen_started event")
+    }
+    const { listenerId, organizationId, jobName } = handshake.event
+
+    consumeSseEvents<SdkListenStreamEvent>(reader, decoder, handshake.remainingBuffer, options.onEvent)
+
+    return {
+        listenerId,
+        organizationId,
+        jobName,
+        close: () => {
+            reader.cancel().catch(() => {})
+        }
+    }
+}
+
+async function openSseReader(apiBaseUrl: string, route: string, apiKey: string): Promise<ReadableStreamDefaultReader<Uint8Array>> {
     const base = apiBaseUrl.replace(/\/$/, "")
-    const response = await fetch(`${base}${ApiRoutes.SDK.SESSION_EVENTS}`, {
+    const response = await fetch(`${base}${route}`, {
         headers: { Authorization: `Bearer ${apiKey}`, Accept: "text/event-stream" }
     })
 
@@ -49,26 +119,20 @@ export async function openSessionStream(apiBaseUrl: string, apiKey: string, opti
         throw new SessionStreamError(response.status)
     }
 
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ""
-
-    const { value, remainingBuffer } = await readSessionId(reader, decoder, buffer)
-    consumeSseSessionEvents(reader, decoder, remainingBuffer, options.onEvent)
-
-    return {
-        sessionId: value,
-        close: () => {
-            reader.cancel().catch(() => {})
-        }
-    }
+    return response.body.getReader()
 }
 
-async function readSessionId(reader: ReadableStreamDefaultReader<Uint8Array>, decoder: TextDecoder, buffer: string): Promise<{ value: string; remainingBuffer: string }> {
+async function readUntilEvent<TEvent extends { type: string }>(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    decoder: TextDecoder,
+    initialBuffer: string,
+    predicate: (event: TEvent) => boolean
+): Promise<{ event: TEvent; remainingBuffer: string }> {
+    let buffer = initialBuffer
     while (true) {
         const { done, value } = await reader.read()
         if (done) {
-            throw new Error("Session stream ended before sending sessionId")
+            throw new SessionStreamError(0, "SSE stream ended before handshake completed")
         }
 
         buffer += decoder.decode(value, { stream: true })
@@ -77,15 +141,20 @@ async function readSessionId(reader: ReadableStreamDefaultReader<Uint8Array>, de
 
         for (const line of lines) {
             if (!line.startsWith("data: ")) continue
-            const event = safeParseJson(line.slice(6))
-            if (event?.type === "session_started" && typeof event.sessionId === "string") {
-                return { value: event.sessionId, remainingBuffer: buffer }
+            const event = parseSseEvent<TEvent>(line.slice(6))
+            if (event && predicate(event)) {
+                return { event, remainingBuffer: buffer }
             }
         }
     }
 }
 
-function consumeSseSessionEvents(reader: ReadableStreamDefaultReader<Uint8Array>, decoder: TextDecoder, initialBuffer: string, onEvent?: (event: SessionStreamEvent) => void | Promise<void>): void {
+function consumeSseEvents<TEvent extends { type: string }>(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    decoder: TextDecoder,
+    initialBuffer: string,
+    onEvent?: (event: TEvent) => void | Promise<void>
+): void {
     let buffer = initialBuffer
     void (async () => {
         try {
@@ -99,7 +168,7 @@ function consumeSseSessionEvents(reader: ReadableStreamDefaultReader<Uint8Array>
 
                 for (const line of lines) {
                     if (!line.startsWith("data: ")) continue
-                    const event = parseSessionStreamEvent(line.slice(6))
+                    const event = parseSseEvent<TEvent>(line.slice(6))
                     if (!event) continue
                     if (onEvent) {
                         await onEvent(event)
@@ -112,10 +181,10 @@ function consumeSseSessionEvents(reader: ReadableStreamDefaultReader<Uint8Array>
     })()
 }
 
-function parseSessionStreamEvent(raw: string): SessionStreamEvent | null {
+function parseSseEvent<TEvent extends { type: string }>(raw: string): TEvent | null {
     const parsed = safeParseJson(raw)
     if (!parsed || typeof parsed.type !== "string") return null
-    return parsed as SessionStreamEvent
+    return parsed as TEvent
 }
 
 function safeParseJson(value: string): Record<string, unknown> | null {

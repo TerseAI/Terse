@@ -71,8 +71,8 @@ export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
 export { getJobContext, runWithJobContext } from "./context.js"
 export type { TerseJobContext } from "./context.js"
 
-export { SessionStreamError, openSessionStream } from "./sessionStream.js"
-export type { OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
+export { SessionStreamError, openListenStream, openSessionStream } from "./sessionStream.js"
+export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
 
 // Re-export SDK-specific types
 export { createSDKTrigger } from "./types.js"
