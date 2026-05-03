@@ -28,11 +28,32 @@ export const WebMonitor = {
     },
 }
 
-{{sectionHeader "Terse"}}
+{{sectionHeader "Web tools"}}
 
-export const Terse = {
-    /** Use in `skills[]` — built-in web search */
-    skill(): TypedSkill<{{{skillToolType}}}> {
-        return new TerseConfig() as TypedSkill<{{{skillToolType}}}>
+export const WebSearch = {
+    /** Use in `skills[]` — built-in web search tool */
+    skill(): TypedSkill<"web_search"> {
+        return new WebSearchConfig() as TypedSkill<"web_search">
+    },
+}
+
+export const WebExtract = {
+    /** Use in `skills[]` — fetch and extract a single page */
+    skill(): TypedSkill<"web_extract"> {
+        return new WebExtractConfig() as TypedSkill<"web_extract">
+    },
+}
+
+export const WebResearch = {
+    /** Use in `skills[]` — multi-source web research */
+    skill(): TypedSkill<"web_research"> {
+        return new WebResearchConfig() as TypedSkill<"web_research">
+    },
+}
+
+export const ImageEdit = {
+    /** Use in `skills[]` — edit/generate images */
+    skill(): TypedSkill<"image_edit"> {
+        return new ImageEditConfig() as TypedSkill<"image_edit">
     },
 }

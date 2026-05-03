@@ -144,9 +144,7 @@ export interface ToolsSectionContext {
     groups: ToolGroupContext[]
 }
 
-export interface SystemSectionContext {
-    skillToolType: string
-}
+export interface SystemSectionContext {}
 
 export interface TemplateContext {
     imports: string[]
@@ -1004,11 +1002,14 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     }
 }
 
-function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSectionContext> {
+function prepareSystemSection(_tools: ToolDefinition[]): SectionContext<SystemSectionContext> {
     return sectionData(
         [
             "TimeTriggerConfig",
-            "TerseConfig",
+            "WebSearchConfig",
+            "WebExtractConfig",
+            "WebResearchConfig",
+            "ImageEditConfig",
             "TypedSkill",
             "WebhookInputConfig",
             "WebhookTrigger",
@@ -1019,9 +1020,7 @@ function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSec
             "FrequencyUnit",
             "InferStructuredOutput"
         ],
-        {
-            skillToolType: buildSkillToolTypeForIntegration(tools, "terse")
-        }
+        {}
     )
 }
 
@@ -1040,7 +1039,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const attio = prepareAttioSection(input.attio, input.tools)
     const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
     const tools = prepareToolsSection(input.tools, input)
-    const system = prepareSystemSection(input.tools)
+    const system = prepareSystemSection([])
 
     const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
 

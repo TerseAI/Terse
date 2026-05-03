@@ -16,7 +16,10 @@ export enum ConfigType {
     DATADOG = "DATADOG",
     TIME_TRIGGER = "time_trigger",
     LAUNCHDARKLY = "launchdarkly",
-    TERSE = "terse",
+    WEB_SEARCH = "web_search",
+    WEB_EXTRACT = "web_extract",
+    WEB_RESEARCH = "web_research",
+    IMAGE_EDIT = "image_edit",
     WORKOS_INPUT = "workos_input",
     WORKOS_OUTPUT = "workos_output",
     ATTIO_OUTPUT = "attio_output",
@@ -157,14 +160,42 @@ export const LaunchDarklyConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
-export const TerseConfigMetadata = {
-    configType: ConfigType.TERSE,
-    name: "Terse Skills",
-    description: "Built-in capabilities like web search (always available to agents)",
+export const WebSearchConfigMetadata = {
+    configType: ConfigType.WEB_SEARCH,
+    name: "Web Search",
+    description: "Built-in web search capability",
     integrationType: IntegrationType.TERSE,
     isInput: false,
     isOutput: true
 } as const satisfies ConfigDetails
+
+export const WebExtractConfigMetadata = {
+    configType: ConfigType.WEB_EXTRACT,
+    name: "Web Extract",
+    description: "Built-in web page extraction capability",
+    integrationType: IntegrationType.TERSE,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
+export const WebResearchConfigMetadata = {
+    configType: ConfigType.WEB_RESEARCH,
+    name: "Web Research",
+    description: "Built-in multi-source web research capability",
+    integrationType: IntegrationType.TERSE,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
+export const ImageEditConfigMetadata = {
+    configType: ConfigType.IMAGE_EDIT,
+    name: "Image Edit",
+    description: "Built-in image editing and generation capability",
+    integrationType: IntegrationType.TERSE,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 
 export const WorkOSInputConfigMetadata = {
     configType: ConfigType.WORKOS_INPUT,
@@ -236,7 +267,10 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
-    [ConfigType.TERSE]: TerseConfigMetadata,
+    [ConfigType.WEB_SEARCH]: WebSearchConfigMetadata,
+    [ConfigType.WEB_EXTRACT]: WebExtractConfigMetadata,
+    [ConfigType.WEB_RESEARCH]: WebResearchConfigMetadata,
+    [ConfigType.IMAGE_EDIT]: ImageEditConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
@@ -773,17 +807,17 @@ export class LaunchDarklyConfig extends BaseConfigInstance<IntegrationType.LAUNC
     }
 }
 
-export const TerseConfigSchema = ConfigInstanceSchema.extend({
+export const WebSearchConfigSchema = ConfigInstanceSchema.extend({
     integrationId: z.literal("system"),
     integrationType: z.literal(IntegrationType.TERSE),
-    configType: z.literal(ConfigType.TERSE)
+    configType: z.literal(ConfigType.WEB_SEARCH)
 })
-export type TerseConfigData = z.infer<typeof TerseConfigSchema>
-export type TerseConfigInstance = TerseConfigData & ConfigBehavior
+export type WebSearchConfigData = z.infer<typeof WebSearchConfigSchema>
+export type WebSearchConfigInstance = WebSearchConfigData & ConfigBehavior
 
-export class TerseConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.TERSE, "system"> implements TerseConfigInstance {
+export class WebSearchConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB_SEARCH, "system"> implements WebSearchConfigInstance {
     constructor() {
-        super("system", IntegrationType.TERSE, ConfigType.TERSE)
+        super("system", IntegrationType.TERSE, ConfigType.WEB_SEARCH)
     }
 
     isComplete(): boolean {
@@ -791,7 +825,73 @@ export class TerseConfig extends BaseConfigInstance<IntegrationType.TERSE, Confi
     }
 
     formatForAgent(): string {
-        return "Type: Terse Skills"
+        return "Type: Web Search"
+    }
+}
+
+export const WebExtractConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.TERSE),
+    configType: z.literal(ConfigType.WEB_EXTRACT)
+})
+export type WebExtractConfigData = z.infer<typeof WebExtractConfigSchema>
+export type WebExtractConfigInstance = WebExtractConfigData & ConfigBehavior
+
+export class WebExtractConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB_EXTRACT, "system"> implements WebExtractConfigInstance {
+    constructor() {
+        super("system", IntegrationType.TERSE, ConfigType.WEB_EXTRACT)
+    }
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return "Type: Web Extract"
+    }
+}
+
+export const WebResearchConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.TERSE),
+    configType: z.literal(ConfigType.WEB_RESEARCH)
+})
+export type WebResearchConfigData = z.infer<typeof WebResearchConfigSchema>
+export type WebResearchConfigInstance = WebResearchConfigData & ConfigBehavior
+
+export class WebResearchConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB_RESEARCH, "system"> implements WebResearchConfigInstance {
+    constructor() {
+        super("system", IntegrationType.TERSE, ConfigType.WEB_RESEARCH)
+    }
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return "Type: Web Research"
+    }
+}
+
+export const ImageEditConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.TERSE),
+    configType: z.literal(ConfigType.IMAGE_EDIT)
+})
+export type ImageEditConfigData = z.infer<typeof ImageEditConfigSchema>
+export type ImageEditConfigInstance = ImageEditConfigData & ConfigBehavior
+
+export class ImageEditConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.IMAGE_EDIT, "system"> implements ImageEditConfigInstance {
+    constructor() {
+        super("system", IntegrationType.TERSE, ConfigType.IMAGE_EDIT)
+    }
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return "Type: Image Edit"
     }
 }
 
@@ -1020,7 +1120,10 @@ export const configDataSchema = z.union([
     DatadogConfigSchema,
     TimeTriggerConfigSchema,
     LaunchDarklyConfigSchema,
-    TerseConfigSchema,
+    WebSearchConfigSchema,
+    WebExtractConfigSchema,
+    WebResearchConfigSchema,
+    ImageEditConfigSchema,
     WorkOSInputConfigSchema,
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
@@ -1054,7 +1157,10 @@ export const skillConfigDataSchema = z.union([
     PosthogConfigSchema,
     DatadogConfigSchema,
     LaunchDarklyConfigSchema,
-    TerseConfigSchema,
+    WebSearchConfigSchema,
+    WebExtractConfigSchema,
+    WebResearchConfigSchema,
+    ImageEditConfigSchema,
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema
@@ -1072,7 +1178,10 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.GMAIL_DRAFT_OUTPUT:
             return true
         case ConfigType.LINEAR_INPUT:
-        case ConfigType.TERSE:
+        case ConfigType.WEB_SEARCH:
+        case ConfigType.WEB_EXTRACT:
+        case ConfigType.WEB_RESEARCH:
+        case ConfigType.IMAGE_EDIT:
         case ConfigType.WEBHOOK_INPUT:
             return true
         case ConfigType.SLACK:
@@ -1198,8 +1307,14 @@ export function formatConfigForAgent(config: ConfigData): string {
             if (config.environmentKeys.length > 0) parts.push(`Environments: ${config.environmentKeys.join(", ")}`)
             return parts.join("\n")
         }
-        case ConfigType.TERSE:
-            return "Type: Terse Skills"
+        case ConfigType.WEB_SEARCH:
+            return "Type: Web Search"
+        case ConfigType.WEB_EXTRACT:
+            return "Type: Web Extract"
+        case ConfigType.WEB_RESEARCH:
+            return "Type: Web Research"
+        case ConfigType.IMAGE_EDIT:
+            return "Type: Image Edit"
         case ConfigType.WORKOS_INPUT:
             return `Type: WorkOS Events\nListening for: ${config.eventTypes.join(", ")}`
         case ConfigType.WORKOS_OUTPUT:
@@ -1243,7 +1358,10 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.DATADOG]: typeof DatadogConfig
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
-    [ConfigType.TERSE]: typeof TerseConfig
+    [ConfigType.WEB_SEARCH]: typeof WebSearchConfig
+    [ConfigType.WEB_EXTRACT]: typeof WebExtractConfig
+    [ConfigType.WEB_RESEARCH]: typeof WebResearchConfig
+    [ConfigType.IMAGE_EDIT]: typeof ImageEditConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
     [ConfigType.WORKOS_OUTPUT]: typeof WorkOSOutputConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
@@ -1266,7 +1384,10 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
-    [ConfigType.TERSE]: TerseConfig,
+    [ConfigType.WEB_SEARCH]: WebSearchConfig,
+    [ConfigType.WEB_EXTRACT]: WebExtractConfig,
+    [ConfigType.WEB_RESEARCH]: WebResearchConfig,
+    [ConfigType.IMAGE_EDIT]: ImageEditConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
