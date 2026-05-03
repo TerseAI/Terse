@@ -11,10 +11,6 @@ export type SessionStreamHandle = {
 }
 
 export type OpenSessionStreamOptions = {
-    /**
-     * Invoked for each SSE `data:` JSON event after the initial `session_started`
-     * (that event is consumed internally to obtain `sessionId`).
-     */
     onEvent?: (event: SessionStreamEvent) => void | Promise<void>
 }
 
@@ -26,20 +22,10 @@ export type ListenStreamHandle = {
 }
 
 export type OpenListenStreamOptions = {
-    /** Name of the deployed SDK job to listen for. The backend filters events server-side. */
     jobName: string
-    /**
-     * Invoked for each SSE `data:` JSON event after the initial `listen_started`
-     * (that event is consumed internally to obtain `listenerId`/`organizationId`).
-     */
     onEvent?: (event: SdkListenStreamEvent) => void | Promise<void>
 }
 
-/**
- * Thrown when {@link openSessionStream} or {@link openListenStream} cannot
- * establish the SSE connection. Exposes the HTTP `status` so callers can
- * distinguish auth failures (401/403) from other transport errors.
- */
 export class SessionStreamError extends Error {
     readonly status: number
 
@@ -50,12 +36,6 @@ export class SessionStreamError extends Error {
     }
 }
 
-/**
- * Opens the Terse SSE session used for live run/tool events (same endpoint as the `terse` CLI).
- * Keeps the stream draining until `close()` is called.
- *
- * Throws {@link SessionStreamError} if the server responds with a non-2xx status.
- */
 export async function openSessionStream(apiBaseUrl: string, apiKey: string, options: OpenSessionStreamOptions = {}): Promise<SessionStreamHandle> {
     const reader = await openSseReader(apiBaseUrl, ApiRoutes.SDK.SESSION_EVENTS, apiKey)
     const decoder = new TextDecoder()
@@ -76,16 +56,6 @@ export async function openSessionStream(apiBaseUrl: string, apiKey: string, opti
     }
 }
 
-/**
- * Opens the SSE stream that backs `terse listen`. The backend mirrors every
- * trigger event it dispatches to a deployed agent in the caller's
- * organization onto this stream.
- *
- * The first event is always `listen_started` (consumed here to surface
- * `listenerId`/`organizationId`); subsequent events flow to `onEvent`.
- *
- * Throws {@link SessionStreamError} if the server responds with a non-2xx status.
- */
 export async function openListenStream(apiBaseUrl: string, apiKey: string, options: OpenListenStreamOptions): Promise<ListenStreamHandle> {
     const route = `${ApiRoutes.SDK.LISTEN}?jobName=${encodeURIComponent(options.jobName)}`
     const reader = await openSseReader(apiBaseUrl, route, apiKey)
