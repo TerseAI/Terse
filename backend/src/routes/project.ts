@@ -341,12 +341,17 @@ export async function handleRotateProjectApiKey(req: Request, res: Response) {
     if (!project) return res.status(404).json({ error: "Project not found" })
     if (!project.remote_server_url) return res.status(400).json({ error: "Project API keys are only used by self-hosted projects." })
 
-    await db().api_tokens.deleteMany({ where: { project_id: id, organization_id: user.organizationId } })
-    const { rawToken } = await createProjectScopedToken({
-        projectId: id,
-        projectName: project.name,
-        organizationId: user.organizationId,
-        createdByUserId: user.id
+    const { rawToken } = await db().$transaction(async tx => {
+        await tx.api_tokens.deleteMany({ where: { project_id: id, organization_id: user.organizationId } })
+        return createProjectScopedToken(
+            {
+                projectId: id,
+                projectName: project.name,
+                organizationId: user.organizationId,
+                createdByUserId: user.id
+            },
+            tx
+        )
     })
 
     emitCacheInvalidationWithWildcard(user.organizationId, "project", id)
