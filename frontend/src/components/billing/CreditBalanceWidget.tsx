@@ -22,12 +22,11 @@ export function CreditBalanceWidget({ balance, plan, isLoading = false }: { bala
         )
     }
 
-    const { consumedCredits, totalCreditCapacity, hardCap } = balance
+    const { consumedCredits, totalCreditCapacity, hardCap, overageMode } = balance
     const withinIncluded = consumedCredits <= totalCreditCapacity
     const capPct = Math.floor((consumedCredits / hardCap) * 100)
     const overHardCap = consumedCredits >= hardCap
 
-    // How we fill this shit
     const fillClass = setFillClass(balance)
 
     // Where should we show the tick?
@@ -65,7 +64,7 @@ export function CreditBalanceWidget({ balance, plan, isLoading = false }: { bala
                                 className="absolute inset-y-0 w-2 -translate-x-1/2 cursor-help"
                                 style={{ left: `${includedTickPct}%` }}
                             >
-                                <div aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-foreground/40" />
+                                <div aria-hidden className="absolute inset-y-0 left-1/2 w-1 -translate-x-1/2 bg-foreground" />
                             </div>
                         </TooltipTrigger>
                         <TooltipContent side="top">Soft limit: {formatCredits(balance.totalCreditCapacity)} credits</TooltipContent>
@@ -73,32 +72,25 @@ export function CreditBalanceWidget({ balance, plan, isLoading = false }: { bala
                 )}
             </div>
 
-            {withinIncluded ? (
-                <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your hard limit</p>
-            ) : (
+            {withinIncluded && <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your hard limit</p>}
+
+            {overHardCap && (
                 <div className="mt-3 space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-xs">
                     <div className="space-y-2 text-muted-foreground">
-                        {consumedCredits > 0 ? (
-                            <p>
-                                <span className="tabular-nums text-foreground">{formatCredits(consumedCredits)}</span> additional credits remaining.
-                            </p>
-                        ) : (
-                            <>
-                                <p className="font-medium text-foreground">
-                                    {plan?.key === PlanKey.FREE
-                                        ? "You are past your included credits. Buy a top-up or upgrade to Pro for soft overages."
-                                        : "You are past your included credits. Purchase a credit pack to add credits."}
-                                </p>
-                                <Button variant="default" size="sm" className="group h-8 gap-1" asChild>
-                                    <Link to={FrontendRoutes.PRICING}>
-                                        {plan?.key === PlanKey.FREE ? "Plans & top-ups" : "Buy a top-up"}
-                                        <ArrowUpRight className="size-3 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                                    </Link>
-                                </Button>
-                            </>
-                        )}
+                        <p className="font-medium text-danger">
+                            {plan?.key === PlanKey.FREE
+                                ? "You are past your included credits. To get your jobs running again, upgrade to a paid plan or purchase a credit pack."
+                                : overageMode === "soft"
+                                  ? "You are past your included credits. Purchase a credit pack to get your jobs running again."
+                                  : "You are past your included credits. Purchase a credit pack or enable soft overages to get your jobs running again."}
+                        </p>
+                        <Button variant="default" size="sm" className="group h-8 gap-1" asChild>
+                            <Link to={FrontendRoutes.PRICING}>
+                                {plan?.key === PlanKey.FREE ? "Plans & top-ups" : "Buy a top-up"}
+                                <ArrowUpRight className="size-3 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                            </Link>
+                        </Button>
                     </div>
-                    {overHardCap && <p className="font-medium text-danger">Usage cap reached — new runs are blocked until usage resets or you adjust your plan.</p>}
                 </div>
             )}
         </div>
