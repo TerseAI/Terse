@@ -32,11 +32,13 @@ export function UsageChart({ buckets }: { buckets: UsageBucket[] | null }) {
         )
     }
 
-    const rows: Row[] = buckets.map(bucket => ({
-        startTimestamp: bucket.startTimestamp,
-        label: dayFormatter.format(new Date(bucket.startTimestamp)),
-        credits: bucket.credits
-    }))
+    const rows: Row[] = buckets
+        .map(bucket => ({
+            startTimestamp: bucket.startTimestamp,
+            label: dayFormatter.format(new Date(bucket.startTimestamp)),
+            credits: bucket.credits
+        }))
+        .sort((a, b) => a.startTimestamp - b.startTimestamp)
 
     const total = rows.reduce((sum, row) => sum + row.credits, 0)
     const dailyAverage = total / rows.length
