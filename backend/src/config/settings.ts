@@ -191,6 +191,7 @@ export const settings = {
     },
 
     billing: {
+        enabled: optionalEnv("BILLING_ENABLED", "false") === "true",
         url: optionalEnv("BILLING_SERVICE_URL"),
         jwtSecret: optionalEnv("BILLING_JWT_SECRET")
     }

@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
 import { billingChangeRequestBodySchema, billingCheckoutRequestBodySchema, billingContextQuerySchema, billingOverageModePatchBodySchema, billingPortalSessionRequestBodySchema } from "terse-types"
 
+import { settings } from "../config/settings"
 import { BillingServiceProxy, billingServiceProxyForRequest } from "../services/BillingService"
 
 export async function createBillingCheckoutSession(req: Request, res: Response) {
@@ -27,12 +28,16 @@ export async function getBillingCatalog(req: Request, res: Response) {
 }
 
 export async function getBillingContext(req: Request, res: Response) {
-    const query = billingContextQuerySchema.parse({
+    const parsed = billingContextQuerySchema.safeParse({
         start: typeof req.query.start === "string" ? req.query.start : undefined,
         end: typeof req.query.end === "string" ? req.query.end : undefined
     })
+    if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.message })
+    }
     const billingService = billingServiceProxyForRequest(req)
-    await BillingServiceProxy.respondJson(res, billingService.getBillingContext(query))
+    const withAvailability = billingService.getBillingContext(parsed.data)
+    await BillingServiceProxy.respondJson(res, withAvailability)
 }
 
 export async function setBillingOverageMode(req: Request, res: Response) {

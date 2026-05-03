@@ -22,6 +22,7 @@ import {
     SidebarMenuSubItem
 } from "@/components/ui/sidebar"
 import { useAgents } from "@/hooks/api/useAgents"
+import { useBillingContext } from "@/hooks/api/useBillingContext"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
 import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
 import { useAuth } from "@/services/auth"
@@ -158,11 +159,12 @@ function SettingsNavigation() {
     const showSdkInterface = useFeatureFlag(FeatureFlags.SDK_INTERFACE)
     const { user } = useAuth()
     const isAdmin = user?.roles.includes("admin") ?? false
+    const { billingEnabled } = useBillingContext(Boolean(user?.organizationId))
 
     const settingsItems: NavItem[] = [
         { title: "Integrations", url: FrontendRoutes.INTEGRATIONS, icon: Plug, iconColor: "text-primary" },
         { title: "Notifications", url: FrontendRoutes.NOTIFICATIONS, icon: Bell, iconColor: "text-primary" },
-        ...(isAdmin ? [{ title: "Billing", url: FrontendRoutes.BILLING, icon: CreditCard, iconColor: "text-primary" }] : []),
+        ...(isAdmin && billingEnabled === true ? [{ title: "Billing", url: FrontendRoutes.BILLING, icon: CreditCard, iconColor: "text-primary" }] : []),
         ...(showSdkInterface ? [{ title: "API Tokens", url: FrontendRoutes.API_TOKENS, icon: KeyRound, iconColor: "text-primary" }] : [])
     ]
 

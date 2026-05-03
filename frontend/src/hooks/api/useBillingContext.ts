@@ -8,6 +8,7 @@ export function useBillingContext(
     enabled: boolean,
     params?: { start?: Date; end?: Date }
 ): {
+    billingEnabled: boolean | null
     balance: BalanceSummary | null
     buckets: UsageBucket[] | null
     isLoading: boolean
@@ -18,6 +19,7 @@ export function useBillingContext(
     const { data, error, isLoading, isValidating, mutate } = useSWR(enabled ? billingContextKey() : null, () => BackendProvider.getBillingContext(params))
 
     return {
+        billingEnabled: data?.billingEnabled ?? null,
         balance: data?.balance ?? null,
         buckets: data?.usage.buckets ?? null,
         isLoading,

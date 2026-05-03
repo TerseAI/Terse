@@ -11,6 +11,7 @@ import { ThemeProvider } from "./components/theme-provider"
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
+import { useBillingContext } from "./hooks/api/useBillingContext"
 import ActivityPage from "./pages/Activity"
 import AgentDetail from "./pages/Agents/AgentDetail"
 import ApiTokensPage from "./pages/ApiTokens"
@@ -42,7 +43,7 @@ function App() {
                         <Route path={FrontendRoutes.APP} element={<Content />}>
                             <Route index element={<Navigate to="home" replace />} />
                             <Route path="home" element={<HomePage />} />
-                            <Route path="pricing" element={<PricingPage />} />
+                            <Route path="pricing" element={<BillingAvailabilityRoute element={<PricingPage />} />} />
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
@@ -53,7 +54,7 @@ function App() {
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="api-tokens" element={<ApiTokensPage />} />
-                            <Route path="billing" element={<AdminRoute element={<BillingPage />} />} />
+                            <Route path="billing" element={<BillingAvailabilityRoute element={<AdminRoute element={<BillingPage />} />} />} />
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                         <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
@@ -148,6 +149,21 @@ function AdminRoute({ element }: { element: React.ReactElement }) {
     }
 
     if (!user?.roles.includes("admin")) {
+        return <Navigate to={FrontendRoutes.HOME} replace />
+    }
+
+    return element
+}
+
+function BillingAvailabilityRoute({ element }: { element: React.ReactElement }) {
+    const { user, isLoading: authLoading } = useAuth()
+    const { billingEnabled, isLoading: billingLoading } = useBillingContext(!authLoading && Boolean(user?.organizationId))
+
+    if (authLoading || (user?.organizationId && billingLoading)) {
+        return <AppBootScreen />
+    }
+
+    if (!user?.organizationId || billingEnabled !== true) {
         return <Navigate to={FrontendRoutes.HOME} replace />
     }
 

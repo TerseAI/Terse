@@ -76,6 +76,7 @@ export function billingServiceProxyForOrganization(organizationId: string): Bill
 }
 
 function billingServiceForOrganizationAuth(auth: BillingProxyAuth): BillingService {
+    if (!settings.billing.enabled) return new BillingNoOpService()
     const url = settings.billing.url?.trim()
     const secret = settings.billing.jwtSecret?.trim()
     if (!url || !secret) return new BillingNoOpService()
@@ -118,8 +119,9 @@ export class BillingNoOpService implements BillingService {
     }
 
     async getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
-        const { start, end } = noOpBillingWindow(query)
+        const { start, end } = resolveBillingUsageRangeForNoop(query)
         return {
+            billingEnabled: settings.billing.enabled,
             balance: {
                 planKey: PlanKey.FREE,
                 billingPeriod: null,
@@ -185,7 +187,7 @@ export class BillingServiceProxy implements BillingService {
 
     private async jsonRequest<T>(path: string, options?: { method?: string; body?: string }): Promise<T> {
         const trimmed = this.backendUrl?.trim()
-        if (!trimmed || !settings.billing.jwtSecret?.trim()) {
+        if (!settings.billing.enabled || !trimmed || !settings.billing.jwtSecret?.trim()) {
             throw new BillingNoBackendError()
         }
         const base = trimmed.replace(/\/$/, "")
@@ -262,8 +264,8 @@ export class BillingServiceProxy implements BillingService {
 
     getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
         const params = new URLSearchParams()
-        if (query.start) params.set("start", query.start)
-        if (query.end) params.set("end", query.end)
+        if (query.start != null) params.set("start", query.start.toISOString())
+        if (query.end != null) params.set("end", query.end.toISOString())
         const qs = params.toString()
         return this.jsonRequest<BillingContextResponse>(`${BillingRoutes.CONTEXT}${qs ? `?${qs}` : ""}`, { method: "GET" })
     }
@@ -339,18 +341,8 @@ export async function startBillingRun(billing: BillingService, params: { organiz
     })
 }
 
-function noOpBillingWindow(query: BillingContextQuery): { start: Date; end: Date } {
-    const now = new Date()
-    const fallbackStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    const fallbackEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
-    return {
-        start: parseBillingDate(query.start) ?? fallbackStart,
-        end: parseBillingDate(query.end) ?? fallbackEnd
-    }
-}
-
-function parseBillingDate(raw: string | undefined): Date | null {
-    if (!raw) return null
-    const date = new Date(raw)
-    return Number.isNaN(date.getTime()) ? null : date
+function resolveBillingUsageRangeForNoop(bounds: BillingContextQuery): { start: Date; end: Date } {
+    const end = bounds.end ?? new Date()
+    const start = bounds.start ?? new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000)
+    return { start, end }
 }

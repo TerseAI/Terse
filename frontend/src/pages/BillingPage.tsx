@@ -46,7 +46,7 @@ function formatScheduledChange(balance: BalanceSummary): string | null {
 
 export default function BillingPage() {
     const { balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext(true)
-    const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog()
+    const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(true)
     const [pendingOverageMode, setPendingOverageMode] = useState<OverageMode | null>(null)
 
     const loading = balanceLoading

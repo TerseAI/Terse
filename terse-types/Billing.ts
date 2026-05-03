@@ -78,6 +78,7 @@ export const usageResponseSchema = z.object({
 export type UsageResponse = z.infer<typeof usageResponseSchema>
 
 export const billingContextResponseSchema = z.object({
+    billingEnabled: z.boolean(),
     balance: balanceSummarySchema,
     usage: usageResponseSchema
 })
@@ -173,8 +174,8 @@ export const billingPortalSessionRequestBodySchema = z.object({}).strict()
 export type BillingPortalSessionRequestBody = z.infer<typeof billingPortalSessionRequestBodySchema>
 
 export const billingContextQuerySchema = z.object({
-    start: z.string().min(1).optional(),
-    end: z.string().min(1).optional()
+    start: z.coerce.date().optional(),
+    end: z.coerce.date().optional()
 })
 export type BillingContextQuery = z.infer<typeof billingContextQuerySchema>
 

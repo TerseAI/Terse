@@ -22,6 +22,10 @@ export function CreditBalanceWidget({ balance, plan, isLoading = false }: { bala
         )
     }
 
+    if (balance.hardCap <= 0) {
+        return null
+    }
+
     const { consumedCredits, totalCreditCapacity, hardCap, overageMode } = balance
     const withinIncluded = consumedCredits <= totalCreditCapacity
     const capPct = Math.floor((consumedCredits / hardCap) * 100)
