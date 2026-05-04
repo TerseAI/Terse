@@ -1,16 +1,15 @@
 import { OutputConfigType } from "@prisma/client"
-import { ConfigData, TerseConfig } from "terse-types"
+import { WebConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
-import { imageEditTool } from "./tools/editImage"
 import { webExtractTool } from "./tools/webExtractTool"
 import { webResearchTool } from "./tools/webResearchTool"
 import { runHistoryWebSearchTool } from "./tools/webSearchTool"
 
-export class TerseSkillsOutput extends Output<ConfigData> {
+export class WebOutput extends Output<WebConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
@@ -30,30 +29,20 @@ export class TerseSkillsOutput extends Output<ConfigData> {
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Research"
-            },
-            {
-                tool: imageEditTool,
-                isReadOnly: true,
-                integration: IntegrationType.TERSE,
-                displayName: "Edit Image"
             }
         ]
-        super(OutputConfigType.TERSE, toolbox)
+        super(OutputConfigType.WEB, toolbox)
     }
 
-    async validateConfig(_output: ConfigData, _userId: string): Promise<void> {
-        // No validation needed - this output has no config
+    async validateConfig(_output: WebConfig, _userId: string): Promise<void> {}
+
+    async addOutputToAgent(_tx: PrismaTransaction, _agentOutputId: string, _output: WebConfig): Promise<void> {}
+
+    protected getDummyConfigForCapability(): WebConfig {
+        return new WebConfig()
     }
 
-    async addOutputToAgent(_tx: PrismaTransaction, _agentOutputId: string, _output: ConfigData): Promise<void> {
-        // No database records needed - this is always available
-    }
-
-    protected getDummyConfigForCapability(): ConfigData {
-        return new TerseConfig()
-    }
-
-    protected getSystemInstructionsForConfigs(_configs: ConfigData[]): string {
+    protected getSystemInstructionsForConfigs(_configs: WebConfig[]): string {
         return ""
     }
 }
