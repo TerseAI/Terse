@@ -5,6 +5,7 @@ import { ApiError, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
 import { BACKEND_URL } from "../config.js"
 import { loadJob } from "../loadJob.js"
+import { readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
@@ -17,14 +18,15 @@ export async function listen(jobName?: string, opts?: ListenOpts): Promise<void>
         detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
     })
 
-    // `loadJob` auto-selects when there's exactly one local job and prompts otherwise,
-    // so the CLI inherits the same UX as `terse test` for picking a job.
+    const projectConfig = readProjectConfigOrBail()
+
     const { job: localJob } = await loadJob(provider, jobName, opts?.entryFile)
 
     let handle
     try {
         handle = await openListenStream(BACKEND_URL, apiKey, {
             jobName: localJob.name,
+            projectId: projectConfig.projectId,
             onEvent: async event => {
                 if (event.type !== "forwarded_event") return
                 const eventLabel = event.event.display?.title || `${event.event.integrationType} / ${event.event.eventType}`
@@ -68,7 +70,7 @@ function mapListenStreamError(error: unknown, jobName: string): unknown {
             })
         }
         if (error.status === 404) {
-            return new CliError("listen_local_job_not_deployed", `Job "${jobName}" is not deployed in this org.`, {
+            return new CliError("listen_local_job_not_deployed", `Job "${jobName}" is not deployed in this project.`, {
                 detail: "Run `terse deploy` to deploy it, then re-run `terse listen`. Without a deployed agent, no events will be forwarded for this job."
             })
         }

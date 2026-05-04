@@ -1054,10 +1054,17 @@ export const projectSourceFilesResponseSchema = z.object({
 })
 export type ProjectSourceFilesResponse = z.infer<typeof projectSourceFilesResponseSchema>
 
+export const sdkListenQuerySchema = z.object({
+    jobName: z.string().min(1),
+    projectId: z.string().min(1)
+})
+export type SdkListenQuery = z.infer<typeof sdkListenQuerySchema>
+
 export const sdkListenStartedSchema = z.object({
     type: z.literal("listen_started"),
     listenerId: z.string(),
     organizationId: z.string(),
+    projectId: z.string(),
     jobName: z.string()
 })
 
@@ -1065,6 +1072,7 @@ export const sdkListenForwardedEventSchema = z.object({
     type: z.literal("forwarded_event"),
     agentId: z.string(),
     agentName: z.string(),
+    projectId: z.string().nullable(),
     event: serializedEventSchema
 })
 

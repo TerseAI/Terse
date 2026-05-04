@@ -241,6 +241,7 @@ export class EventProcessor {
                 type: "forwarded_event",
                 agentId: agent.id,
                 agentName: agent.name,
+                projectId: agent.project?.id ?? null,
                 event: this.inputEvent.getSerializedEvent()
             })
         } catch (error) {

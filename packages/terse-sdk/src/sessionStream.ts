@@ -17,12 +17,14 @@ export type OpenSessionStreamOptions = {
 export type ListenStreamHandle = {
     listenerId: string
     organizationId: string
+    projectId: string
     jobName: string
     close: () => void
 }
 
 export type OpenListenStreamOptions = {
     jobName: string
+    projectId: string
     onEvent?: (event: SdkListenStreamEvent) => void | Promise<void>
 }
 
@@ -57,7 +59,8 @@ export async function openSessionStream(apiBaseUrl: string, apiKey: string, opti
 }
 
 export async function openListenStream(apiBaseUrl: string, apiKey: string, options: OpenListenStreamOptions): Promise<ListenStreamHandle> {
-    const route = `${ApiRoutes.SDK.LISTEN}?jobName=${encodeURIComponent(options.jobName)}`
+    const params = new URLSearchParams({ jobName: options.jobName, projectId: options.projectId })
+    const route = `${ApiRoutes.SDK.LISTEN}?${params.toString()}`
     const reader = await openSseReader(apiBaseUrl, route, apiKey)
     const decoder = new TextDecoder()
 
@@ -65,13 +68,14 @@ export async function openListenStream(apiBaseUrl: string, apiKey: string, optio
     if (handshake.event.type !== "listen_started") {
         throw new SessionStreamError(0, "Listen stream did not return a listen_started event")
     }
-    const { listenerId, organizationId, jobName } = handshake.event
+    const { listenerId, organizationId, projectId, jobName } = handshake.event
 
     consumeSseEvents<SdkListenStreamEvent>(reader, decoder, handshake.remainingBuffer, options.onEvent)
 
     return {
         listenerId,
         organizationId,
+        projectId,
         jobName,
         close: () => {
             reader.cancel().catch(() => {})

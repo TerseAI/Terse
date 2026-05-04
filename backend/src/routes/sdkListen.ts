@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { SdkListenStreamEvent, User } from "terse-types"
+import { SdkListenStreamEvent, User, sdkListenQuerySchema } from "terse-types"
 
 import { onListenForwardedEvent } from "../agent/ListenBus"
 import logger from "../logger"
@@ -14,17 +14,18 @@ export async function handleSdkListen(req: Request, res: Response) {
         return res.status(401).json({ success: false, error: "Unauthorized" })
     }
 
-    const jobName = typeof req.query.jobName === "string" ? req.query.jobName.trim() : ""
-    if (!jobName) {
-        return res.status(400).json({ error: "jobName query param is required" })
+    const parsed = sdkListenQuerySchema.safeParse(req.query)
+    if (!parsed.success) {
+        return res.status(400).json({ error: "jobName and projectId query params are required" })
     }
+    const { jobName, projectId } = parsed.data
 
     const automation = await db().automations.findFirst({
-        where: { organization_id: user.organizationId, source: "SDK", name: jobName },
+        where: { organization_id: user.organizationId, project_id: projectId, source: "SDK", name: jobName },
         select: { id: true }
     })
     if (!automation) {
-        return res.status(404).json({ error: `Job "${jobName}" is not deployed in this org.` })
+        return res.status(404).json({ error: `Job "${jobName}" is not deployed in this project.` })
     }
 
     const listenerId = crypto.randomUUID()
@@ -39,10 +40,11 @@ export async function handleSdkListen(req: Request, res: Response) {
         res.write(`data: ${JSON.stringify(event)}\n\n`)
     }
 
-    send({ type: "listen_started", listenerId, organizationId, jobName })
+    send({ type: "listen_started", listenerId, organizationId, projectId, jobName })
 
     const unsubscribe = onListenForwardedEvent(organizationId, forwarded => {
         if (forwarded.agentName !== jobName) return
+        if (forwarded.projectId !== projectId) return
         try {
             send(forwarded)
         } catch (error) {
