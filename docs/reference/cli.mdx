@@ -306,7 +306,7 @@ terse generate
 | Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Pipeline.NewDeals`                |
 | Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`, `Webhook.onRequest<BodyType>()` |
 | Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                                             |
-| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()`                          |
+| Deterministic tool wrappers | `toolbox.slack.sendMessage()` (no `TerseAgent`, not limited by **skills**), `agent.tools.slack.sendMessage()` (same tools, limited by **skills**) |
 
 Each integration generates typed helpers from real workspace data such as repositories, channels, lists, projects, and tool definitions, so your workflows reference actual resources instead of raw ids.
 
