@@ -16,7 +16,7 @@ export const Skills = {
 {{#if github}}
     /** GitHub — read code and pull requests from the given repositories */
     github(opts: { repos: Repos[] }): TypedSkill<{{{github.skillToolType}}}> {
-        return new GitHubConfig("{{escape github.id}}", opts.repos.map(r => r.repositoryId)) as TypedSkill<{{{github.skillToolType}}}>
+        return new GitHubConfig("{{escape github.id}}", opts.repos.map(r => r.repositoryId))
     },
 {{/if}}
 {{#if linear}}
@@ -27,17 +27,17 @@ export const Skills = {
             opts?.team?.teamId ?? null,
             opts?.team?.name ?? null,
             opts?.project?.projectId ?? null
-        ) as TypedSkill<{{{linear.skillToolType}}}>
+        )
     },
 {{/if}}
 {{#if gmail}}
     /** Gmail — send emails */
     gmail(): TypedSkill<{{{gmail.skillToolType}}}> {
-        return new GmailOutputConfig("{{escape gmail.id}}") as TypedSkill<{{{gmail.skillToolType}}}>
+        return new GmailOutputConfig("{{escape gmail.id}}")
     },
     /** Gmail — create draft emails (no auto-send) */
     gmailDraft(): TypedSkill<{{{gmail.skillToolType}}}> {
-        return new GmailDraftOutputConfig("{{escape gmail.id}}") as TypedSkill<{{{gmail.skillToolType}}}>
+        return new GmailDraftOutputConfig("{{escape gmail.id}}")
     },
 {{/if}}
 {{#if notion}}
@@ -45,51 +45,51 @@ export const Skills = {
     notion(opts?: { databases?: NotionDatabase[]; pages?: NotionPage[] }): TypedSkill<{{{notion.skillToolType}}}> {
         return new NotionConfig("{{escape notion.id}}",
             opts?.databases?.map(d => d.databaseId), opts?.databases?.map(d => d.title),
-            opts?.pages?.map(p => p.pageId), opts?.pages?.map(p => p.title)) as TypedSkill<{{{notion.skillToolType}}}>
+            opts?.pages?.map(p => p.pageId), opts?.pages?.map(p => p.title))
     },
 {{/if}}
 {{#if posthog}}
     /** PostHog — query analytics for a specific project */
     posthog(opts: { project: PosthogProject }): TypedSkill<{{{posthog.skillToolType}}}> {
-        return new PosthogConfig("{{escape posthog.id}}", opts.project.projectId, opts.project.name) as TypedSkill<{{{posthog.skillToolType}}}>
+        return new PosthogConfig("{{escape posthog.id}}", opts.project.projectId, opts.project.name)
     },
 {{/if}}
 {{#if datadog}}
     /** Datadog — search and analyze logs, optionally scoped to specific indexes */
     datadog(opts?: { indexes?: DatadogIndex[] }): TypedSkill<{{{datadog.skillToolType}}}> {
-        return new DatadogConfig("{{escape datadog.id}}", opts?.indexes?.map(i => i.name)) as TypedSkill<{{{datadog.skillToolType}}}>
+        return new DatadogConfig("{{escape datadog.id}}", opts?.indexes?.map(i => i.name))
     },
 {{/if}}
 {{#if launchdarkly}}
     /** LaunchDarkly — read and toggle feature flags in a project + environments */
     launchDarkly(opts: { project: LaunchDarklyProject; environmentKeys: string[] }): TypedSkill<{{{launchdarkly.skillToolType}}}> {
-        return new LaunchDarklyConfig("{{escape launchdarkly.id}}", opts.project.projectKey, opts.environmentKeys) as TypedSkill<{{{launchdarkly.skillToolType}}}>
+        return new LaunchDarklyConfig("{{escape launchdarkly.id}}", opts.project.projectKey, opts.environmentKeys)
     },
 {{/if}}
 {{#if workos}}
     /** WorkOS — manage users, organizations and invitations */
     workOS(): TypedSkill<{{{workos.skillToolType}}}> {
-        return new WorkOSOutputConfig("{{escape workos.id}}") as TypedSkill<{{{workos.skillToolType}}}>
+        return new WorkOSOutputConfig("{{escape workos.id}}")
     },
 {{/if}}
 {{#if attio}}
     /** Attio — query and upsert records on a CRM object */
     attio(opts: { object: AttioObject<any> }): TypedSkill<{{{attio.skillToolType}}}> {
-        return new AttioOutputConfig("{{escape attio.id}}", opts.object.apiSlug) as TypedSkill<{{{attio.skillToolType}}}>
+        return new AttioOutputConfig("{{escape attio.id}}", opts.object.apiSlug)
     },
 {{/if}}
 {{#if snowflake}}
     /** Snowflake — run SQL queries against your warehouse */
     snowflake(): TypedSkill<{{{snowflake.skillToolType}}}> {
-        return new SnowflakeOutputConfig("{{escape snowflake.id}}") as TypedSkill<{{{snowflake.skillToolType}}}>
+        return new SnowflakeOutputConfig("{{escape snowflake.id}}")
     },
 {{/if}}
     /** Web — built-in web search, page extraction, and multi-source research */
     web(): TypedSkill<"web_search" | "web_extract" | "web_research"> {
-        return new WebConfig() as TypedSkill<"web_search" | "web_extract" | "web_research">
+        return new WebConfig()
     },
     /** ImageEdit — edit and generate images */
     imageEdit(): TypedSkill<"image_edit"> {
-        return new ImageEditConfig() as TypedSkill<"image_edit">
+        return new ImageEditConfig()
     },
 }

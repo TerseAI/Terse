@@ -1,15 +1,13 @@
 {{> header}}
 
 {{#if github}}{{> github-section github}}{{/if~}}
-{{#if gmail}}{{> gmail-section gmail}}{{/if~}}
 {{#if slack}}{{> slack-section slack}}{{/if~}}
 {{#if linear}}{{> linear-section linear}}{{/if~}}
 {{#if notion}}{{> notion-section notion}}{{/if~}}
 {{#if posthog}}{{> posthog-section posthog}}{{/if~}}
 {{#if datadog}}{{> datadog-section datadog}}{{/if~}}
 {{#if launchdarkly}}{{> launchdarkly-section launchdarkly}}{{/if~}}
-{{#if workos}}{{> workos-section workos}}{{/if~}}
 {{#if attio}}{{> attio-section attio}}{{/if~}}
+{{> triggers-section}}
 {{> skills-section}}
 {{#if tools}}{{> tools-section tools}}{{/if}}
-{{> system-section system}}
