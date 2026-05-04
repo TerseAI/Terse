@@ -22,6 +22,7 @@ Import these from `terse-sdk`:
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), and other per-integration exports (see `terse-sdk` package entry)
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
+- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -50,7 +51,7 @@ Duplicate **`name`** values throw an error when the second job registers. At mos
 | `triggers`       | typed trigger array                             | One or more triggers that start the workflow.                                                     |
 | `filter`         | `(event) => boolean \| Promise<boolean>`        | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger`      | `(event) => Promise<void>`                      | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or the default).      |
+| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or `https://app.useterse.ai/api`).      |
 
 Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
 
@@ -85,7 +86,7 @@ const terse = new Terse()
 
 ## `TerseAgent`
 
-Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI.
+Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI. The same context applies to **`TerseAgent.executeTool`** and to generated **`toolbox`** calls.
 
 ### `run(userMessage)`
 
@@ -129,19 +130,23 @@ const scored = await agent.runAndWait("Score this account and explain why.", Sco
 // scored is typed as: { score: number; rationale: string }
 ```
 
-### `executeTool(toolName, params)`
+### `TerseAgent.executeTool(toolName, params?)`
 
-Calls a named tool directly, bypassing the LLM.
+Static method. Calls a named tool directly, bypassing the LLM. Generated **`toolbox`** and **`agent.tools.*`** helpers use this path, so string-based and typed deterministic calls behave the same.
 
 ```ts
-await agent.executeTool("attio.updateRecord", {
+await TerseAgent.executeTool("attio.updateRecord", {
     list: AttioList.Pipeline.NewDeals,
     recordId: "rec_123",
     fields: { fit_score: 92 }
 })
 ```
 
-Use `executeTool` when you want guaranteed execution of a specific tool.
+Use `TerseAgent.executeTool` when you want guaranteed execution of a specific tool by name (for example when the name is only known at runtime).
+
+## `toolbox.*` (generated)
+
+`terse generate` writes a **`toolbox`** export in `src/terse.generated.ts` with the same typed namespaces as `agent.tools.*`. Import **`toolbox`** to call integration tools deterministically **without** constructing a `TerseAgent` and without listing integrations in **`skills`**.
 
 ## `agent.tools.*`
 
@@ -158,7 +163,7 @@ await agent.tools.slack.sendMessage({
 })
 ```
 
-Use `agent.tools.*` for guaranteed side effects. These wrappers are available when the integration appears in the workflow's triggers or in the **`skills`** array you pass to **`TerseAgent.create()`**.
+Use `agent.tools.*` for guaranteed side effects when you already pass **`skills`** to **`TerseAgent.create()`** (or when the integration is implied by a trigger). For the same calls **without** listing **`skills`**, use generated **`toolbox`** instead.
 
 ## Structured output
 
@@ -250,7 +255,8 @@ It exports:
 - `Schedule`: cron and interval trigger builders
 - Integration namespaces: `Attio`, `Apollo`, `Slack`, `Http`
 - Workspace resource constants: `AttioList`, `SlackChannel`, `AttioOwner`
-- Deterministic tool wrappers exposed through `agent.tools.*`
+- **`toolbox`**: deterministic tool wrappers without an agent or **`skills`** filter
+- Deterministic tool wrappers on **`TerseAgent`** via `agent.tools.*` (filtered by **`skills`**)
 
 <Warning>Re-run `terse generate` when your integration context changes. Do not edit `src/terse.generated.ts` by hand.</Warning>
 
