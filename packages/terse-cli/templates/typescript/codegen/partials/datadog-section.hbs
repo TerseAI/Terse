@@ -1,11 +1,3 @@
 {{sectionHeader "Datadog"}}
 
 {{> resource-class indexClass}}
-
-export const Datadog = {
-    /** Use in `skills[]` */
-    skill(opts?: { indexes?: DatadogIndex[] }): TypedSkill<{{{skillToolType}}}> {
-        return new DatadogConfig("{{escape id}}", opts?.indexes?.map(i => i.name)) as TypedSkill<{{{skillToolType}}}>
-    },
-}
-

@@ -58,9 +58,5 @@ export const GitHub = {
     trigger(opts: { repos: Repos[]; eventTypes?: GitHubEventType[] }): TypedTrigger<GithubTrigger> {
         return new GitHubConfig("{{escape id}}", opts.repos.map(r => r.repositoryId), opts.eventTypes) 
     },
-    /** Use in `skills[]` */
-    skill(opts: { repos: Repos[] }): TypedSkill<{{{skillToolType}}}> {
-        return new GitHubConfig("{{escape id}}", opts.repos.map(r => r.repositoryId)) as TypedSkill<{{{skillToolType}}}>
-    },
 }
 

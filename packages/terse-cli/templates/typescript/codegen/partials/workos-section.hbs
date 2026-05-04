@@ -57,9 +57,5 @@ export const WorkOS = {
     trigger(opts?: { eventTypes?: WorkOSEventType[] }): TypedTrigger<WorkOSTrigger | WorkOSUserTrigger | WorkOSMembershipTrigger | WorkOSInvitationTrigger | WorkOSOrganizationTrigger> {
         return new WorkOSInputConfig("{{escape id}}", opts?.eventTypes) 
     },
-    /** Use in `skills[]` */
-    skill(): TypedSkill<{{{skillToolType}}}> {
-        return new WorkOSOutputConfig("{{escape id}}") as TypedSkill<{{{skillToolType}}}>
-    },
 }
 

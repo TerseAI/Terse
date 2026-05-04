@@ -21,13 +21,4 @@ export const Linear = {
     trigger(opts?: { team?: LinearTeam; project?: LinearProject; eventTypes?: LinearEventType[] }): TypedTrigger<LinearTrigger> {
         return new LinearInputConfig("{{escape id}}", opts?.project?.projectId ?? null, opts?.eventTypes, opts?.team?.teamId ?? null)
     },
-    /** Use in `skills[]`. Pass `LinearTeam` / `LinearProject` like `Slack.skill` uses `SlackChannel`. */
-    skill(opts?: { team?: LinearTeam; project?: LinearProject }): TypedSkill<{{{skillToolType}}}> {
-        return new LinearOutputConfig(
-            "{{escape id}}",
-            opts?.team?.teamId ?? null,
-            opts?.team?.name ?? null,
-            opts?.project?.projectId ?? null
-        ) as TypedSkill<{{{skillToolType}}}>
-    },
 }

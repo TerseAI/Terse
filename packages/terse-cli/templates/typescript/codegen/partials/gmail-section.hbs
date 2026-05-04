@@ -9,13 +9,5 @@ export const Gmail = {
     trigger(opts?: { eventTypes?: GmailEventType[] }): TypedTrigger<GmailTrigger> {
         return new GmailConfig("{{escape id}}", opts?.eventTypes)
     },
-    /** Use in `skills[]` */
-    skill(): TypedSkill<{{{skillToolType}}}> {
-        return new GmailOutputConfig("{{escape id}}") as TypedSkill<{{{skillToolType}}}>
-    },
-    /** Use in `skills[]` — creates draft emails */
-    draftSkill(): TypedSkill<{{{skillToolType}}}> {
-        return new GmailDraftOutputConfig("{{escape id}}") as TypedSkill<{{{skillToolType}}}>
-    },
 }
 

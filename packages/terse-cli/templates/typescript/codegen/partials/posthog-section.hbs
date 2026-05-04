@@ -1,11 +1,3 @@
 {{sectionHeader "PostHog"}}
 
 {{> resource-class projectClass}}
-
-export const Posthog = {
-    /** Use in `skills[]` */
-    skill(opts: { project: PosthogProject }): TypedSkill<{{{skillToolType}}}> {
-        return new PosthogConfig("{{escape id}}", opts.project.projectId, opts.project.name) as TypedSkill<{{{skillToolType}}}>
-    },
-}
-

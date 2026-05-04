@@ -27,19 +27,3 @@ export const WebMonitor = {
         return new WebMonitorConfig(opts.query, opts.frequency, opts.outputSchema)
     },
 }
-
-{{sectionHeader "Web tools"}}
-
-export const Web = {
-    /** Use in `skills[]` — built-in web search, page extraction, and multi-source research */
-    skill(): TypedSkill<"web_search" | "web_extract" | "web_research"> {
-        return new WebConfig() as TypedSkill<"web_search" | "web_extract" | "web_research">
-    },
-}
-
-export const ImageEdit = {
-    /** Use in `skills[]` — edit/generate images */
-    skill(): TypedSkill<"image_edit"> {
-        return new ImageEditConfig() as TypedSkill<"image_edit">
-    },
-}
