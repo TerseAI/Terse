@@ -22,7 +22,7 @@ Import these from `terse-sdk`:
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), and other per-integration exports (see `terse-sdk` package entry)
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
-- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async context for the current run (session id, run id, API base URL). `TerseAgent` runs and **`TerseAgent.executeTool`** read this so requests are attributed to the right session and run when your handler runs on the platform or via the CLI.
+- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -132,7 +132,7 @@ const scored = await agent.runAndWait("Score this account and explain why.", Sco
 
 ### `TerseAgent.executeTool(toolName, params?)`
 
-Static method. Calls a named tool directly, bypassing the LLM. Uses the same backend route as generated wrappers.
+Static method. Calls a named tool directly, bypassing the LLM. Generated **`toolbox`** and **`agent.tools.*`** helpers use this path, so string-based and typed deterministic calls behave the same.
 
 ```ts
 await TerseAgent.executeTool("attio.updateRecord", {
