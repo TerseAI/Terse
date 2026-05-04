@@ -3,23 +3,7 @@ import type { SdkJobServerCheckResponse } from "terse-types"
 
 import { Button } from "../../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
-
-function formatServerCheckStep(step: NonNullable<SdkJobServerCheckResponse["step"]>) {
-    switch (step) {
-        case "http":
-            return "Connecting to the trigger endpoint"
-        case "json":
-            return "Reading the server response"
-        case "response_schema":
-            return "Validating the handshake payload"
-        case "challenge_echo":
-            return "Verifying the challenge response"
-        case "challenge_signature":
-            return "Verifying the signing secret"
-        default:
-            return step
-    }
-}
+import { formatServerCheckStep } from "../../../lib/sdkJobServerCheck"
 
 export function SdkJobServerCheckDialog({ open, result, onClose }: { open: boolean; result: SdkJobServerCheckResponse | null; onClose: () => void }) {
     return (

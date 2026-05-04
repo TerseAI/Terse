@@ -16,6 +16,7 @@ import { history } from "./commands/history.js"
 import { applyImprovement, listImprovements } from "./commands/improvements.js"
 import { init } from "./commands/init.js"
 import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateWait } from "./commands/integrate.js"
+import { listen } from "./commands/listen.js"
 import { replay } from "./commands/replay.js"
 import { run } from "./commands/run.js"
 import { test, testList, testRun, testShow } from "./commands/test.js"
@@ -140,6 +141,30 @@ Examples:
             verbose: opts?.verbose,
             entryFile: opts?.entryFile
         })
+    })
+
+program
+    .command("listen")
+    .description("Stream live trigger events from a deployed Terse job to your local code (great for self-hosted webhook iteration)")
+    .argument("[job-name]", "Name of the job to listen on (auto-selects if only one local job exists)")
+    .option("-v, --verbose", "Show agent stream output", true)
+    .option("--no-verbose", "Hide agent stream output")
+    .option(...ENTRY_FILE_OPTION)
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse listen                            # auto-selects if you have a single local job
+  $ terse listen my-webhook-job             # listen for events on a specific job
+
+Notes:
+  - Each event the live backend dispatches to the deployed agent is mirrored to this stream.
+  - Production processing is unchanged — \`terse listen\` is a tap, not a redirect.
+  - The job must already be deployed; if it isn't, the command exits with a clear error.
+`
+    )
+    .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean }) => {
+        await listen(jobName, { verbose: opts?.verbose, entryFile: opts?.entryFile, provider: resolveProvider() })
     })
 
 program

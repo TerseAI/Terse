@@ -18,6 +18,7 @@ import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getActiveDeployForProject } from "../../utility/projectHelper"
+import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
@@ -233,6 +234,23 @@ export class EventProcessor {
 
     private async processAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         logger.info(`Processing agent: ${agent.name} (${agent.id})`)
+
+        // Send event to terse listen listeners
+        try {
+            emitListenForwardedEvent(this.user.organizationId, {
+                type: "forwarded_event",
+                agentId: agent.id,
+                agentName: agent.name,
+                projectId: agent.project?.id ?? null,
+                event: this.inputEvent.getSerializedEvent()
+            })
+        } catch (error) {
+            logger.warn("Failed to emit listen-forwarded event", {
+                error,
+                agentId: agent.id,
+                agentName: agent.name
+            })
+        }
 
         if (!agent.prompt) {
             if (existingRunId) {
