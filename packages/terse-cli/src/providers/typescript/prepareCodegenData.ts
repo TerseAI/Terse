@@ -697,10 +697,10 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             case "listGitHubDirectory":
             case "listGitHubCommits":
             case "summarizeGitHubPullRequestDiff":
-                return "{ ...params, repository: __normalizeGitHubRepos((params as any).repository) }"
+                return "{ ...params, repository: __normalizeGitHubRepos((params).repository) }"
             case "searchGitHubCode":
             case "grepGitHubCode":
-                return "{ ...params, repositoryNames: __normalizeGitHubReposNames((params as any).repositoryNames) }"
+                return "{ ...params, repositoryNames: __normalizeGitHubReposNames((params).repositoryNames) }"
             default:
                 return "params"
         }
@@ -959,27 +959,27 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             if (group.integration === "attio" && tool.name === "attio_query_records" && group.integrationId) {
                 runtimeLines = [
                     `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioQueryResult(params.object, result)),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioQueryResult(params.object, result)),`
                 ]
             } else if (group.integration === "attio" && tool.name === "attio_upsert_record" && group.integrationId) {
                 runtimeLines = [
                     `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
                 ]
             } else if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
                 runtimeLines = [
                     `${methodName}: (params: AttioListObjectsParams = {}) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
                 ]
             } else if (group.integrationId && hasAutoFillId(tool)) {
                 runtimeLines = [
                     `${methodName}: (params: ${paramsType}) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
                 ]
             } else {
                 runtimeLines = [
                     `${methodName}: (params: ${paramsType}) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", ${normalizedParamsExpr}),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", ${normalizedParamsExpr}),`
                 ]
             }
 
