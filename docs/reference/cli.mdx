@@ -304,13 +304,13 @@ terse generate
 | Category                    | Examples                                                                                       |
 | --------------------------- | ---------------------------------------------------------------------------------------------- |
 | Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Pipeline.NewDeals`                |
-| Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`, `Webhook.onRequest<BodyType>()` |
-| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                                             |
+| Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.slack.onMessage()`, `Triggers.schedule.cron()`, `Triggers.webhook.onRequest<BodyType>()` |
+| Skill constructors          | `Skills.github()`, `Skills.slack()`, `Skills.attio()`                                       |
 | Deterministic tool wrappers | `toolbox.slack.sendMessage()` (no `TerseAgent`, not limited by **skills**), `agent.tools.slack.sendMessage()` (same tools, limited by **skills**) |
 
 Each integration generates typed helpers from real workspace data such as repositories, channels, lists, projects, and tool definitions, so your workflows reference actual resources instead of raw ids.
 
-TypeScript projects also get `Webhook` from `src/terse.generated.ts`. Pass a type argument to `Webhook.onRequest<YourBodyType>()` so `onTrigger` and `filter` infer `WebhookTrigger<YourBodyType>` for `event.body`. See [Webhook trigger](/reference/triggers#webhook).
+TypeScript projects also get **`Triggers.webhook`** from `src/terse.generated.ts`. Pass a type argument to `Triggers.webhook.onRequest<YourBodyType>()` so `onTrigger` and `filter` infer `WebhookTrigger<YourBodyType>` for `event.body`. See [Webhook trigger](/reference/triggers#webhook).
 
 Run `terse generate` again after you connect or disconnect an integration, after resources change inside a connected workspace, or after you upgrade `terse-cli`.
 
