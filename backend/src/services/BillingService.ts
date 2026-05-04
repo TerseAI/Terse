@@ -121,7 +121,7 @@ export class BillingNoOpService implements BillingService {
     async getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
         const { start, end } = resolveBillingUsageRangeForNoop(query)
         return {
-            billingEnabled: settings.billing.enabled,
+            billingEnabled: false,
             balance: {
                 planKey: PlanKey.FREE,
                 billingPeriod: null,
