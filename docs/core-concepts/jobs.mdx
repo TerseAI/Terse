@@ -60,7 +60,7 @@ Inside a handler, you have two ways to get things done:
 
 | Approach          | How                                | When to use                                                  |
 | ----------------- | ---------------------------------- | ------------------------------------------------------------ |
-| **Deterministic** | `agent.tools.*` or `executeTool()` | You know exactly which tool to call and with what parameters |
+| **Deterministic** | `toolbox.*`, `agent.tools.*`, or `TerseAgent.executeTool()` | You know exactly which tool to call and with what parameters |
 | **Agentic**       | `run()` or `runAndWait()`          | You need the model to reason, summarize, classify, or decide |
 
 Most production jobs combine both. Use deterministic calls for predictable operations (fetch data, update a record, send a message) and agentic calls when the model adds value (scoring, summarizing, routing).

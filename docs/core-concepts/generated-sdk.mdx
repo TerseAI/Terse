@@ -108,6 +108,8 @@ export const GitHub = {
 
 Every connected integration also generates typed wrappers on `agent.tools.*`, with the exact parameter and return types of each tool. These are the calls you make when you know what to do and don't want to burn tokens letting a model decide.
 
+The same file exports **`toolbox`**: identical typed namespaces, but callable **without** a `TerseAgent` and **not** limited to integrations listed in **`skills`**. Prefer **`toolbox`** for workflows that are purely deterministic.
+
 ```ts src/terse.generated.ts
 export type GeneratedTools = {
     slack: {
@@ -208,7 +210,7 @@ Because the file is committed to your repo, git history gives you a full audit t
         How the generated skills and triggers fit into a workflow.
     </Card>
     <Card title="Deterministic tool calls" icon="locate-fixed" href="/core-concepts/deterministic-tool-calls">
-        Use `agent.tools.*` to call integrations directly, no LLM in the loop.
+        Use `toolbox` or `agent.tools.*` to call integrations directly, no LLM in the loop.
     </Card>
     <Card title="TypeScript SDK reference" icon="braces" href="/reference/typescript-sdk">
         Full reference for the runtime types the generated file imports from.
