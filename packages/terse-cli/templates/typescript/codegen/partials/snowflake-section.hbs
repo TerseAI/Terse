@@ -1,9 +1,0 @@
-{{sectionHeader "Snowflake"}}
-
-export const Snowflake = {
-    /** Use in `skills[]` */
-    skill(): TypedSkill<{{{skillToolType}}}> {
-        return new SnowflakeOutputConfig("{{escape id}}") as TypedSkill<{{{skillToolType}}}>
-    },
-}
-

@@ -1,11 +1,3 @@
 {{sectionHeader "LaunchDarkly"}}
 
 {{> resource-class projectClass}}
-
-export const LaunchDarkly = {
-    /** Use in `skills[]` */
-    skill(opts: { project: LaunchDarklyProject; environmentKeys: string[] }): TypedSkill<{{{skillToolType}}}> {
-        return new LaunchDarklyConfig("{{escape id}}", opts.project.projectKey, opts.environmentKeys) as TypedSkill<{{{skillToolType}}}>
-    },
-}
-
