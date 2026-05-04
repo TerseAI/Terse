@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { ArrowUpRight, CreditCard, RefreshCw } from "lucide-react"
+import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { type BalanceSummary, FrontendRoutes, type OverageMode, type Plan, isPurchasablePlan } from "terse-types"
 
@@ -16,36 +17,12 @@ import { useBillingCatalog } from "@/hooks/api/useBillingCatalog"
 import { useBillingContext } from "@/hooks/api/useBillingContext"
 import { BackendProvider } from "@/services/backend"
 import { formatUsd } from "@/utility/billingFormat"
-
-const periodFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
-
-function formatNextCharge(balance: BalanceSummary, plan: Plan | null): string {
-    const endDate = periodFormatter.format(new Date(balance.periodEnd))
-    if (!plan || !isPurchasablePlan(plan)) return `Resets after ${endDate}`
-
-    const change = balance.scheduledChange
-    if (change?.kind === "cancel_to_free") return `Plan ends ${endDate}`
-
-    const effectivePeriod = change?.kind === "change_period" ? change.period : balance.billingPeriod
-    if (!plan || !effectivePeriod) return `Renews ${endDate}`
-
-    const amount = effectivePeriod === "monthly" ? plan.priceInUsdMonthly : plan.priceInUsdMonthlyAnnual !== null ? plan.priceInUsdMonthlyAnnual * 12 : null
-    if (amount === null) return `Renews ${endDate}`
-    const label = effectivePeriod === "yearly" ? "Annual renewal" : "Next charge"
-    return `${label}: ${formatUsd(amount)} on ${endDate}`
-}
-
-function formatScheduledChange(balance: BalanceSummary): string | null {
-    if (!balance.scheduledChange) return null
-    const effectiveAt = periodFormatter.format(new Date(balance.scheduledChange.effectiveAt))
-    if (balance.scheduledChange.kind === "cancel_to_free") {
-        return `Downgrade to Free scheduled for ${effectiveAt}.`
-    }
-    return `Switch to ${balance.scheduledChange.period === "yearly" ? "annual" : "monthly"} billing scheduled for ${effectiveAt}.`
-}
+import { getUserTimezone } from "@/utility/timezone"
 
 export default function BillingPage() {
-    const { balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext(true)
+    const timezone = getUserTimezone()
+    const usageRangeLabel = formatUsageRangeLabel(timezone)
+    const { balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext(true, { timezone })
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(true)
     const [pendingOverageMode, setPendingOverageMode] = useState<OverageMode | null>(null)
 
@@ -191,13 +168,14 @@ export default function BillingPage() {
                         </section>
 
                         <section aria-label="Usage history" className="rounded-lg border border-border bg-card">
-                            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                            <div className="flex flex-col gap-1 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h2 className="text-sm font-medium text-foreground">Last 30 days</h2>
                                 </div>
+                                <div className="text-xs text-muted-foreground sm:text-right">{usageRangeLabel}</div>
                             </div>
                             <div className="px-6 py-6">
-                                <UsageChart buckets={buckets} />
+                                <UsageChart buckets={buckets} timezone={timezone} />
                             </div>
                         </section>
                     </>
@@ -205,4 +183,38 @@ export default function BillingPage() {
             </div>
         </div>
     )
+}
+
+const periodFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
+
+function formatNextCharge(balance: BalanceSummary, plan: Plan | null): string {
+    const endDate = periodFormatter.format(new Date(balance.periodEnd))
+    if (!plan || !isPurchasablePlan(plan)) return `Resets after ${endDate}`
+
+    const change = balance.scheduledChange
+    if (change?.kind === "cancel_to_free") return `Plan ends ${endDate}`
+
+    const effectivePeriod = change?.kind === "change_period" ? change.period : balance.billingPeriod
+    if (!plan || !effectivePeriod) return `Renews ${endDate}`
+
+    const amount = effectivePeriod === "monthly" ? plan.priceInUsdMonthly : plan.priceInUsdMonthlyAnnual !== null ? plan.priceInUsdMonthlyAnnual * 12 : null
+    if (amount === null) return `Renews ${endDate}`
+    const label = effectivePeriod === "yearly" ? "Annual renewal" : "Next charge"
+    return `${label}: ${formatUsd(amount)} on ${endDate}`
+}
+
+function formatScheduledChange(balance: BalanceSummary): string | null {
+    if (!balance.scheduledChange) return null
+    const effectiveAt = periodFormatter.format(new Date(balance.scheduledChange.effectiveAt))
+    if (balance.scheduledChange.kind === "cancel_to_free") {
+        return `Downgrade to Free scheduled for ${effectiveAt}.`
+    }
+    return `Switch to ${balance.scheduledChange.period === "yearly" ? "annual" : "monthly"} billing scheduled for ${effectiveAt}.`
+}
+
+function formatUsageRangeLabel(timezone: string): string {
+    const today = DateTime.now().setZone(timezone).startOf("day")
+    const start = today.minus({ days: 29 })
+    const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: timezone })
+    return `${formatter.format(start.toJSDate())} - ${formatter.format(today.toJSDate())}, ${timezone}`
 }

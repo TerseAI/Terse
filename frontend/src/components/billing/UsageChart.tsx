@@ -6,9 +6,6 @@ import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatCredits } from "@/utility/billingFormat"
 
-const dayFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" })
-const fullDayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" })
-
 const chartConfig = {
     credits: { label: "Credits used", color: "var(--chart-1)" }
 } satisfies ChartConfig
@@ -19,7 +16,7 @@ type Row = {
     credits: number
 }
 
-export function UsageChart({ buckets }: { buckets: UsageBucket[] | null }) {
+export function UsageChart({ buckets, timezone }: { buckets: UsageBucket[] | null; timezone: string }) {
     if (!buckets) return <UsageChartSkeleton />
 
     if (buckets.length === 0) {
@@ -32,6 +29,8 @@ export function UsageChart({ buckets }: { buckets: UsageBucket[] | null }) {
         )
     }
 
+    const dayFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: timezone })
+    const fullDayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: timezone })
     const rows: Row[] = buckets
         .map(bucket => ({
             startTimestamp: bucket.startTimestamp,

@@ -29,8 +29,9 @@ export async function getBillingCatalog(req: Request, res: Response) {
 
 export async function getBillingContext(req: Request, res: Response) {
     const parsed = billingContextQuerySchema.safeParse({
-        start: typeof req.query.start === "string" ? req.query.start : undefined,
-        end: typeof req.query.end === "string" ? req.query.end : undefined
+        start: req.query.start,
+        end: req.query.end,
+        timezone: req.query.timezone
     })
     if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.message })

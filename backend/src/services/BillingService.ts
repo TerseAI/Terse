@@ -1,5 +1,6 @@
 import axios from "axios"
 import type { Request, Response } from "express"
+import { DateTime } from "luxon"
 import {
     BillingCatalogResponse,
     BillingChangeRequestBody,
@@ -266,6 +267,7 @@ export class BillingServiceProxy implements BillingService {
         const params = new URLSearchParams()
         if (query.start != null) params.set("start", query.start.toISOString())
         if (query.end != null) params.set("end", query.end.toISOString())
+        params.set("timezone", query.timezone)
         const qs = params.toString()
         return this.jsonRequest<BillingContextResponse>(`${BillingRoutes.CONTEXT}${qs ? `?${qs}` : ""}`, { method: "GET" })
     }
@@ -342,7 +344,7 @@ export async function startBillingRun(billing: BillingService, params: { organiz
 }
 
 function resolveBillingUsageRangeForNoop(bounds: BillingContextQuery): { start: Date; end: Date } {
-    const end = bounds.end ?? new Date()
-    const start = bounds.start ?? new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const end = bounds.end ?? DateTime.now().setZone(bounds.timezone).plus({ days: 1 }).startOf("day").toJSDate()
+    const start = bounds.start ?? DateTime.fromJSDate(end).setZone(bounds.timezone).minus({ days: 30 }).toJSDate()
     return { start, end }
 }

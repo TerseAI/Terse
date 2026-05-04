@@ -1,12 +1,13 @@
 import useSWR, { type KeyedMutator } from "swr"
-import type { BalanceSummary, BillingContextResponse, UsageBucket } from "terse-types"
+import type { BalanceSummary, BillingContextQuery, BillingContextResponse, UsageBucket } from "terse-types"
 import { billingContextKey } from "terse-types/InvalidationKeys"
 
 import { BackendProvider } from "@/services/backend"
+import { getUserTimezone } from "@/utility/timezone"
 
 export function useBillingContext(
     enabled: boolean,
-    params?: { start?: Date; end?: Date }
+    params?: Partial<BillingContextQuery>
 ): {
     billingEnabled: boolean | null
     balance: BalanceSummary | null
@@ -16,7 +17,9 @@ export function useBillingContext(
     isError: boolean
     mutate: KeyedMutator<BillingContextResponse>
 } {
-    const { data, error, isLoading, isValidating, mutate } = useSWR(enabled ? billingContextKey() : null, () => BackendProvider.getBillingContext(params))
+    const timezone = params?.timezone ?? getUserTimezone()
+    const requestParams = { ...params, timezone }
+    const { data, error, isLoading, isValidating, mutate } = useSWR(enabled ? billingContextKey(requestParams) : null, () => BackendProvider.getBillingContext(requestParams))
 
     return {
         billingEnabled: data?.billingEnabled ?? null,

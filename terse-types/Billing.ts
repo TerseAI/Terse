@@ -173,9 +173,26 @@ export type BillingOverageModePatchBody = z.infer<typeof billingOverageModePatch
 export const billingPortalSessionRequestBodySchema = z.object({}).strict()
 export type BillingPortalSessionRequestBody = z.infer<typeof billingPortalSessionRequestBodySchema>
 
+export const DEFAULT_BILLING_CONTEXT_TIMEZONE = "UTC"
+
+function isValidTimezone(timezone: string): boolean {
+    try {
+        new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format()
+        return true
+    } catch {
+        return false
+    }
+}
+
 export const billingContextQuerySchema = z.object({
     start: z.coerce.date().optional(),
-    end: z.coerce.date().optional()
+    end: z.coerce.date().optional(),
+    timezone: z
+        .string()
+        .trim()
+        .optional()
+        .transform(timezone => timezone || DEFAULT_BILLING_CONTEXT_TIMEZONE)
+        .refine(isValidTimezone, { message: "Invalid timezone" })
 })
 export type BillingContextQuery = z.infer<typeof billingContextQuerySchema>
 
