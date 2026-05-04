@@ -66,3 +66,29 @@ function createTools(agent: TerseAgent): GeneratedTools {
 }
 
 ;(globalThis as any).__terse_createTools = createTools
+
+/**
+ * Deterministic tool calls without an agent.
+ *
+ * `toolbox` exposes every connected integration tool as a typed function. Unlike
+ * `agent.tools`, it does not require constructing a `TerseAgent` and is not
+ * filtered by `skills`. Use it when you know exactly which tool to call and
+ * don't need an LLM in the loop.
+ *
+ * @example
+ * ```ts
+ * import { toolbox } from "./terse.generated"
+ * await toolbox.slack.sendMessage({ channelId: "...", message: "hi" })
+ * ```
+ */
+export const toolbox: GeneratedTools = {
+{{#each groups}}
+    {{key}}: {
+{{#each methods}}
+{{#each runtimeLines}}
+        {{{this}}}
+{{/each}}
+{{/each}}
+    },
+{{/each}}
+}

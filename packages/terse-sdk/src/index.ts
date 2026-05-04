@@ -57,15 +57,14 @@ import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type 
 
 declare const process: { env: Record<string, string | undefined> }
 
-/** Aligns with `terse` CLI (`packages/terse-cli/src/config.ts`) when `TERSE_BACKEND_URL` is unset. */
 function resolveTerseBackendUrl(): string {
-    return process.env.TERSE_BACKEND_URL || "https://useterse.ai/api"
+    return process.env.TERSE_BACKEND_URL || "https://app.useterse.ai/api"
 }
 
-/**
- * Path relative to `TERSE_REMOTE_SERVER_URL` where the Terse backend POSTs webhook job triggers.
- * Mount your handler at this path (e.g. `app.post(TERSE_JOB_WEBHOOK_TRIGGER_PATH, ...)`).
- */
+function resolveApiBaseUrl(): string {
+    return getJobContext()?.apiBaseUrl ?? resolveTerseBackendUrl()
+}
+
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
 
 export { getJobContext, runWithJobContext } from "./context.js"
@@ -313,10 +312,6 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     readonly skills: TSkills
     readonly toolApprovals: InferToolApprovals<TSkills>[]
 
-    private readonly apiBaseUrl: string
-    private readonly sessionId?: string
-    private readonly runId: string | null
-
     /**
      * Optional callback invoked when the agent requires tool approval.
      * Return `true` to approve, `false` to reject.
@@ -325,37 +320,21 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[]; apiBaseUrl: string; sessionId?: string; runId: string | null }) {
+    private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[] }) {
         this.prompt = params.prompt
         this.skills = params.skills
         this.toolApprovals = params.toolApprovals
-        this.apiBaseUrl = params.apiBaseUrl
-        this.sessionId = params.sessionId
-        this.runId = params.runId
 
         const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
         ;(this as any).tools = createTools ? createTools(this) : {}
     }
 
-    /**
-     * Create a TerseAgent. When called inside a job's `onTrigger` callback,
-     * sessionId, runId, and apiBaseUrl are picked up automatically from the
-     * job context (AsyncLocalStorage) — no manual wiring needed.
-     */
     static create<TSkills extends readonly TypedSkill<string>[]>(params: { prompt: string; skills: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills>
     static create(params: { prompt: string }): TerseAgent<readonly []>
     static create<TSkills extends readonly TypedSkill<string>[] = readonly []>(params: { prompt: string; skills?: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills> {
-        const ctx = getJobContext()
         const skills = (params.skills ?? []) as TSkills
         const toolApprovals = (params.toolApprovals ?? []) as InferToolApprovals<TSkills>[]
-        return new TerseAgent<TSkills>({
-            prompt: params.prompt,
-            skills,
-            toolApprovals,
-            apiBaseUrl: ctx?.apiBaseUrl ?? resolveTerseBackendUrl(),
-            sessionId: ctx?.sessionId,
-            runId: ctx?.runId ?? null
-        })
+        return new TerseAgent<TSkills>({ prompt: params.prompt, skills, toolApprovals })
     }
 
     async *run(userMessage: string, outputSchema?: z.ZodType): AsyncGenerator<TerseAgentResult> {
@@ -367,9 +346,9 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             outputSchema: outputSchema ? (stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) as Record<string, unknown>) : undefined
         })
 
-        const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.AGENT_RUN}`, {
+        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
             method: "POST",
-            headers: this.buildHeaders(),
+            headers: TerseAgent.buildHeaders(),
             body: JSON.stringify(requestBody)
         })
 
@@ -389,9 +368,9 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     async submitApprovalDecision(params: { runId: string; stepId: string; approved: boolean }): Promise<void> {
-        const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
+        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
             method: "POST",
-            headers: this.buildHeaders(),
+            headers: TerseAgent.buildHeaders(),
             body: JSON.stringify(params satisfies SdkApprovalDecisionRequestBody)
         })
 
@@ -401,12 +380,6 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         }
     }
 
-    /**
-     * Runs the agent to completion and returns the final output.
-     * When an `outputSchema` is provided, the final output is JSON-parsed and
-     * validated against the schema; the resolved value is the inferred type.
-     * Without a schema, returns the raw final output string.
-     */
     async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema: OutputSchema): Promise<z.infer<OutputSchema>>
     async runAndWait(userMessage: string): Promise<string>
     async runAndWait(userMessage: string, outputSchema?: z.ZodType): Promise<unknown> {
@@ -421,10 +394,10 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         throw new Error("Run completed without final output")
     }
 
-    async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
-        const res = await fetch(`${this.apiBaseUrl}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
+    static async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
+        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
-            headers: this.buildHeaders(),
+            headers: TerseAgent.buildHeaders(),
             body: JSON.stringify({ toolName, params })
         })
         const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
@@ -434,7 +407,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         return data.result as TOutput
     }
 
-    private buildHeaders(): Record<string, string> {
+    private static buildHeaders(): Record<string, string> {
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set.")
@@ -444,8 +417,9 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             "Content-Type": "application/json",
             Accept: "text/event-stream"
         }
-        if (this.sessionId) headers["X-Terse-Session-Id"] = this.sessionId
-        const runIdHeader = this.runId ?? process.env.TERSE_RUN_ID
+        const ctx = getJobContext()
+        if (ctx?.sessionId) headers["X-Terse-Session-Id"] = ctx.sessionId
+        const runIdHeader = ctx?.runId ?? process.env.TERSE_RUN_ID
         if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
         return headers
     }
