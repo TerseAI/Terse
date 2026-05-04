@@ -315,6 +315,40 @@ TypeScript projects also get `Webhook` from `src/terse.generated.ts`. Pass a typ
 Run `terse generate` again after you connect or disconnect an integration, after resources change inside a connected workspace, or after you upgrade `terse-cli`.
 
 ## Observability
+### `terse listen [job-name]`
+
+Streams live trigger events for a deployed workflow and executes the matching local workflow on your machine.
+
+```bash
+terse listen
+terse listen my-workflow
+```
+
+What it does:
+
+- Opens an authenticated SSE stream to the backend for your project/workflow
+- Prints each forwarded event as it arrives
+- Runs your current local workflow code against that serialized trigger
+
+Requirements:
+
+- You’re authenticated (`terse login`) or `TERSE_API_KEY` is set
+- The workflow is deployed in this project (`terse deploy`)
+- `terse.config.json` exists with a valid `projectId`
+
+Options:
+
+| Flag                  | Description                              | Default          |
+| --------------------- | ---------------------------------------- | ---------------- |
+| `-v, --verbose`       | Show agent stream output during the run  | Enabled          |
+| `--entry-file <path>` | Override the default workflow entry file | Provider default |
+
+Common errors:
+
+- 401/403 Not authenticated: run `terse login`
+- 404 Workflow not deployed: run `terse deploy` first
+
+Press Ctrl-C to stop listening.
 
 ### `terse replay [run-id]`
 
@@ -364,6 +398,8 @@ terse dashboard
 ```
 
 If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
+
+ 
 
 ## Authentication
 
