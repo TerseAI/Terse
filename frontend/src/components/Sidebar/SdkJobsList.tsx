@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
-import { ChevronRight, Folder } from "lucide-react"
+import { Boxes, ChevronRight } from "lucide-react"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import { Agent } from "terse-types/types"
 
-import { SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar"
+import { SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub } from "@/components/ui/sidebar"
 
 import { SdkJobListItem } from "./SdkJobListItem"
 
@@ -19,25 +19,25 @@ interface SdkJobsListProps {
 export function SdkJobsList({ agents, loading }: SdkJobsListProps) {
     if (loading) {
         return (
-            <SidebarMenuSub>
-                <SidebarMenuSubItem>
+            <>
+                <SidebarMenuItem>
                     <SidebarMenuSkeleton />
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
                     <SidebarMenuSkeleton />
-                </SidebarMenuSubItem>
-            </SidebarMenuSub>
+                </SidebarMenuItem>
+            </>
         )
     }
 
     const groups = groupAgentsByProject(agents)
 
     return (
-        <SidebarMenuSub>
+        <>
             {groups.map(group => (
                 <ProjectFolder key={group.projectId} projectId={group.projectId} name={group.projectName} agents={group.agents} />
             ))}
-        </SidebarMenuSub>
+        </>
     )
 }
 
@@ -52,30 +52,30 @@ function ProjectFolder({ projectId, name, agents }: ProjectFolderProps) {
 
     return (
         <Collapsible defaultOpen asChild>
-            <SidebarMenuSubItem className="group/project">
-                <SidebarMenuSubButton asChild className="cursor-pointer pr-1">
+            <SidebarMenuItem className="group/project">
+                <SidebarMenuButton asChild className="cursor-pointer pr-1">
                     {isUnassigned ? (
-                        <CollapsibleTrigger className="flex w-full items-center gap-2">
-                            <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                        <CollapsibleTrigger className="flex w-full items-center gap-2.5">
+                            <Boxes className="size-4 shrink-0 text-primary" />
                             <span className="truncate">{name}</span>
-                            <ChevronRight className="ml-auto size-3.5 transition-transform duration-200 group-data-[state=open]/project:rotate-90" />
+                            <ChevronRight className="ml-auto size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/project:rotate-90" />
                         </CollapsibleTrigger>
                     ) : (
-                        <div className="flex w-full items-center gap-2">
-                            <Link to={buildRoute(FrontendRoutes.PROJECTS.BY_ID, { id: projectId })} className="flex min-w-0 flex-1 items-center gap-2">
-                                <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                        <div className="flex w-full items-center gap-2.5">
+                            <Link to={buildRoute(FrontendRoutes.PROJECTS.BY_ID, { id: projectId })} className="flex min-w-0 flex-1 items-center gap-2.5">
+                                <Boxes className="size-4 shrink-0 text-primary" />
                                 <span className="truncate">{name}</span>
                             </Link>
                             <CollapsibleTrigger
                                 aria-label={`Toggle ${name}`}
-                                className="ml-auto flex size-5 items-center justify-center rounded hover:bg-sidebar-accent"
+                                className="ml-auto flex size-5 shrink-0 items-center justify-center rounded hover:bg-sidebar-accent"
                                 onClick={e => e.stopPropagation()}
                             >
-                                <ChevronRight className="size-3.5 transition-transform duration-200 group-data-[state=open]/project:rotate-90" />
+                                <ChevronRight className="size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/project:rotate-90" />
                             </CollapsibleTrigger>
                         </div>
                     )}
-                </SidebarMenuSubButton>
+                </SidebarMenuButton>
                 <CollapsibleContent className="overflow-hidden">
                     <SidebarMenuSub>
                         {agents.map(agent => (
@@ -83,7 +83,7 @@ function ProjectFolder({ projectId, name, agents }: ProjectFolderProps) {
                         ))}
                     </SidebarMenuSub>
                 </CollapsibleContent>
-            </SidebarMenuSubItem>
+            </SidebarMenuItem>
         </Collapsible>
     )
 }

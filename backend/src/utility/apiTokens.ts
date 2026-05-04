@@ -2,6 +2,7 @@ import crypto from "crypto"
 import { ApiToken, ApiTokenCreateResponse } from "terse-types/types"
 
 import { db } from "../prismaClient"
+import { PrismaTransaction } from "../types/prisma"
 
 export function hashToken(rawToken: string): string {
     return crypto.createHash("sha256").update(rawToken).digest("hex")
@@ -38,12 +39,16 @@ export async function createApiToken(userId: string, organizationId: string, nam
     }
 }
 
-export async function createProjectScopedToken(params: { projectId: string; projectName: string; organizationId: string; createdByUserId: string }): Promise<{ rawToken: string; tokenId: string }> {
+export async function createProjectScopedToken(
+    params: { projectId: string; projectName: string; organizationId: string; createdByUserId: string },
+    tx?: PrismaTransaction
+): Promise<{ rawToken: string; tokenId: string }> {
     const rawToken = generateRawToken()
     const tokenHash = hashToken(rawToken)
     const tokenPrefix = rawToken.slice(0, 14)
 
-    const token = await db().api_tokens.create({
+    const client = tx ?? db()
+    const token = await client.api_tokens.create({
         data: {
             user_id: params.createdByUserId,
             organization_id: params.organizationId,

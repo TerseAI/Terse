@@ -717,6 +717,21 @@ export const projectDetailResponseSchema = z.object({
 })
 export type ProjectDetailResponse = z.infer<typeof projectDetailResponseSchema>
 
+/**
+ * Rotation responses for self-hosted project credentials. Both endpoints
+ * regenerate the underlying secret immediately (replacing the old value) and
+ * return the freshly generated material exactly once.
+ */
+export const projectRotateSigningSecretResponseSchema = z.object({
+    signingSecret: z.string()
+})
+export type ProjectRotateSigningSecretResponse = z.infer<typeof projectRotateSigningSecretResponseSchema>
+
+export const projectRotateApiKeyResponseSchema = z.object({
+    projectApiKey: z.string()
+})
+export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
+
 export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
     name: z.string().min(1),
@@ -1038,3 +1053,30 @@ export const projectSourceFilesResponseSchema = z.object({
     files: z.array(fileSchema)
 })
 export type ProjectSourceFilesResponse = z.infer<typeof projectSourceFilesResponseSchema>
+
+export const sdkListenQuerySchema = z.object({
+    jobName: z.string().min(1),
+    projectId: z.string().min(1)
+})
+export type SdkListenQuery = z.infer<typeof sdkListenQuerySchema>
+
+export const sdkListenStartedSchema = z.object({
+    type: z.literal("listen_started"),
+    listenerId: z.string(),
+    organizationId: z.string(),
+    projectId: z.string(),
+    jobName: z.string()
+})
+
+export const sdkListenForwardedEventSchema = z.object({
+    type: z.literal("forwarded_event"),
+    agentId: z.string(),
+    agentName: z.string(),
+    projectId: z.string().nullable(),
+    event: serializedEventSchema
+})
+
+export const sdkListenStreamEventSchema = z.discriminatedUnion("type", [sdkListenStartedSchema, sdkListenForwardedEventSchema])
+export type SdkListenStreamEvent = z.infer<typeof sdkListenStreamEventSchema>
+export type SdkListenStartedEvent = z.infer<typeof sdkListenStartedSchema>
+export type SdkListenForwardedEvent = z.infer<typeof sdkListenForwardedEventSchema>

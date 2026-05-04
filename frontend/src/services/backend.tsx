@@ -47,6 +47,8 @@ import {
     PosthogProjectsResponse,
     ProjectDeploysResponse,
     ProjectDetailResponse,
+    ProjectRotateApiKeyResponse,
+    ProjectRotateSigningSecretResponse,
     ProjectSourceFilesResponse,
     RecentAgent,
     SdkJobServerCheckResponse,
@@ -320,6 +322,18 @@ interface BackendService {
      * Verifies that a self-hosted SDK job server is reachable and correctly configured
      */
     verifySdkJobServer(agentId: string): Promise<SdkJobServerCheckResponse>
+
+    /**
+     * Rotates the signing secret for a self-hosted project. The previous secret stops
+     * working immediately and the new value is returned exactly once.
+     */
+    rotateProjectSigningSecret(projectId: string): Promise<ProjectRotateSigningSecretResponse>
+
+    /**
+     * Rotates the project-scoped API key for a self-hosted project. The previous key
+     * is revoked and the new value is returned exactly once.
+     */
+    rotateProjectApiKey(projectId: string): Promise<ProjectRotateApiKeyResponse>
 
     /**
      * Gets the latest review and improvements for an agent
@@ -1135,6 +1149,28 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error verifying SDK job server:", error)
+                throw error
+            })
+    },
+
+    rotateProjectSigningSecret: (projectId: string) => {
+        const url = buildRoute(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, { id: projectId })
+        return axios
+            .post<ProjectRotateSigningSecretResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error rotating project signing secret:", error)
+                throw error
+            })
+    },
+
+    rotateProjectApiKey: (projectId: string) => {
+        const url = buildRoute(ApiRoutes.PROJECTS.ROTATE_API_KEY, { id: projectId })
+        return axios
+            .post<ProjectRotateApiKeyResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error rotating project API key:", error)
                 throw error
             })
     },

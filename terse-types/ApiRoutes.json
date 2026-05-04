@@ -129,7 +129,9 @@
         "BY_ID": "/projects/:id",
         "DEPLOYS": "/projects/:id/deploys",
         "SOURCE_FILES": "/projects/:id/source/files",
-        "SOURCE_FILE_CONTENT": "/projects/:id/source/files/:fileId"
+        "SOURCE_FILE_CONTENT": "/projects/:id/source/files/:fileId",
+        "ROTATE_SIGNING_SECRET": "/projects/:id/rotate-signing-secret",
+        "ROTATE_API_KEY": "/projects/:id/rotate-api-key"
     },
     "SDK": {
         "ME": "/sdk/me",
@@ -142,6 +144,7 @@
         "AGENT_RUN": "/sdk/agent-run",
         "APPROVAL_DECISION": "/sdk/approval-decision",
         "SESSION_EVENTS": "/sdk/session-events",
+        "LISTEN": "/sdk/listen",
         "CREATE_PROJECT": "/sdk/projects",
         "DEPLOY": "/sdk/deploy",
         "DEVICE_TOKEN_EXCHANGE": "/sdk/auth/device-token-exchange",
