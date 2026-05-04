@@ -29,6 +29,38 @@ For TypeScript workflows that use structured output schemas, also install and im
 npm install terse-sdk zod
 ```
 
+### Live listen stream (SSE)
+
+The SDK exposes a live, authenticated SSE stream you can use directly, which powers `terse listen` in the CLI.
+
+- `openListenStream(apiBaseUrl, apiKey, { projectId, jobName, onEvent })`
+- `SessionStreamError` for HTTP/handshake failures
+- Types: `OpenListenStreamOptions`, `ListenStreamHandle`
+
+```ts
+import { openListenStream, SessionStreamError } from "terse-sdk"
+
+const handle = await openListenStream(
+    "https://useterse.ai/api",
+    process.env.TERSE_API_KEY!,
+    {
+        projectId: "proj_123",
+        jobName: "my-workflow",
+        onEvent: async (event) => {
+            if (event.type === "forwarded_event") {
+                // event.event is the serialized trigger payload
+                console.log("Forwarded:", event.event.display?.title ?? `${event.event.integrationType} / ${event.event.eventType}`)
+            }
+        }
+    }
+)
+
+// Later:
+handle.close()
+```
+
+If authentication fails, `openListenStream` throws `SessionStreamError` with `status` 401/403. A 404 indicates the workflow is not deployed for this project.
+
 ## Trigger payloads
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
