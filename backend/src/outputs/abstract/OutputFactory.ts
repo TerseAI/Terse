@@ -6,13 +6,14 @@ import {
     GitHubConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
+    ImageEditConfig,
     LaunchDarklyConfig,
     LinearOutputConfig,
     NotionConfig,
     PosthogConfig,
     SlackOutputConfig,
     SnowflakeOutputConfig,
-    TerseConfig,
+    WebConfig,
     WorkOSOutputConfig
 } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
@@ -30,7 +31,8 @@ import { NotionOutput } from "../notion/NotionOutput"
 import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { SnowflakeSkillOutput } from "../snowflake/SnowflakeSkillOutput"
-import { TerseSkillsOutput } from "../terse/TerseSkillsOutput"
+import { ImageEditOutput } from "../terse/ImageEditOutput"
+import { WebOutput } from "../terse/WebOutput"
 import { WorkOSOutput } from "../workos/WorkOSOutput"
 
 import { Output } from "./Output"
@@ -49,7 +51,8 @@ export class OutputFactory {
         [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
         [OutputConfigType.GMAIL, () => new GmailOutput()],
         [OutputConfigType.GMAIL_DRAFT, () => new GmailDraftOutput()],
-        [OutputConfigType.TERSE, () => new TerseSkillsOutput()],
+        [OutputConfigType.WEB, () => new WebOutput()],
+        [OutputConfigType.IMAGE_EDIT, () => new ImageEditOutput()],
         [OutputConfigType.ATTIO, () => new AttioOutput()],
         [OutputConfigType.GITHUB, () => new GithubSkillOutput()],
         [OutputConfigType.POSTHOG, () => new PosthogSkillOutput()],
@@ -106,8 +109,11 @@ export class OutputFactory {
             case OutputConfigType.WORKOS:
                 ;(output as Output<WorkOSOutputConfig>).configs = configs as WorkOSOutputConfig[]
                 break
-            case OutputConfigType.TERSE:
-                ;(output as Output<TerseConfig>).configs = configs as TerseConfig[]
+            case OutputConfigType.WEB:
+                ;(output as Output<WebConfig>).configs = configs as WebConfig[]
+                break
+            case OutputConfigType.IMAGE_EDIT:
+                ;(output as Output<ImageEditConfig>).configs = configs as ImageEditConfig[]
                 break
             case OutputConfigType.SNOWFLAKE:
                 ;(output as Output<SnowflakeOutputConfig>).configs = configs as SnowflakeOutputConfig[]
@@ -136,10 +142,6 @@ export class OutputFactory {
         const configsByType = new Map<OutputConfigType, ConfigData[]>()
         for (const outputIntegration of agent.outputs) {
             const configType = outputIntegration.config_type as OutputConfigType
-            // Skip TERSE - it's always included automatically
-            if (configType === OutputConfigType.TERSE) {
-                continue
-            }
             if (!configsByType.has(configType)) {
                 configsByType.set(configType, [])
             }
@@ -154,12 +156,6 @@ export class OutputFactory {
                 throw new Error(`Output type ${configType} is not supported`)
             }
             outputs.push(output)
-        }
-
-        // Always include TerseSkillsOutput (no config needed)
-        const terseSkills = this.createOutput(OutputConfigType.TERSE)
-        if (terseSkills) {
-            outputs.push(terseSkills)
         }
 
         return outputs

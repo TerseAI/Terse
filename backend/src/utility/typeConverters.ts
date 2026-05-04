@@ -9,6 +9,7 @@ import {
     GmailConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
+    ImageEditConfig,
     LaunchDarklyConfig,
     LinearEventType,
     LinearInputConfig,
@@ -19,8 +20,8 @@ import {
     SlackEventType,
     SlackOutputConfig,
     SnowflakeOutputConfig,
-    TerseConfig,
     TimeTriggerConfig,
+    WebConfig,
     WebMonitorConfig,
     WebhookInputConfig,
     WorkOSEventType,
@@ -283,6 +284,13 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
 export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutputWithConfigs): ConfigData => {
     const integrationId = channelOutput.integration_id
 
+    switch (channelOutput.config_type) {
+        case OutputConfigType.WEB:
+            return new WebConfig()
+        case OutputConfigType.IMAGE_EDIT:
+            return new ImageEditConfig()
+    }
+
     // Determine which config is present and create the appropriate ConfigData
     if (channelOutput.notion_config) {
         const nc = channelOutput.notion_config
@@ -355,7 +363,6 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
         case OutputConfigType.DATADOG:
         case OutputConfigType.LAUNCHDARKLY:
         case OutputConfigType.GMAIL_DRAFT:
-        case OutputConfigType.TERSE:
         case OutputConfigType.ATTIO:
             break
         default:
@@ -402,8 +409,10 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("DATADOG is not an input config type")
         case ConfigType.LAUNCHDARKLY:
             throw new Error("LAUNCHDARKLY is not an input config type")
-        case ConfigType.TERSE:
-            throw new Error("TERSE is an output type, not an input type")
+        case ConfigType.WEB:
+            throw new Error("WEB is an output type, not an input type")
+        case ConfigType.IMAGE_EDIT:
+            throw new Error("IMAGE_EDIT is an output type, not an input type")
         case ConfigType.WORKOS_OUTPUT:
             throw new Error("WORKOS_OUTPUT is an output type, not an input type")
         case ConfigType.ATTIO_OUTPUT:
@@ -466,8 +475,10 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.GMAIL
         case ConfigType.GMAIL_DRAFT_OUTPUT:
             return OutputConfigType.GMAIL_DRAFT
-        case ConfigType.TERSE:
-            return OutputConfigType.TERSE
+        case ConfigType.WEB:
+            return OutputConfigType.WEB
+        case ConfigType.IMAGE_EDIT:
+            return OutputConfigType.IMAGE_EDIT
         case ConfigType.ATTIO_OUTPUT:
             return OutputConfigType.ATTIO
         case ConfigType.WORKOS_OUTPUT:

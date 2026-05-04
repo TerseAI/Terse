@@ -19,8 +19,7 @@ export function AddOutputModal({ isOpen, onClose, onSelectOutput }: AddOutputMod
     const [searchQuery, setSearchQuery] = useState("")
 
     // Get all output config types, excluding TERSE (always available, hidden from UI)
-    const allConfigTypes = Object.values(ConfigType)
-    const outputConfigTypes = allConfigTypes.filter(configType => CONFIG_DETAILS[configType].isOutput && configType !== ConfigType.TERSE)
+    const outputConfigTypes = Object.values(ConfigType).filter(configType => CONFIG_DETAILS[configType].isOutput)
 
     // Filter based on search query
     const filteredConfigTypes = useMemo(() => {
