@@ -6,21 +6,23 @@ icon: "zap"
 
 Triggers define the event that starts your workflow. Each trigger is tied to an integration and fires when a specific event occurs. Your `onTrigger` handler receives a typed event object with the payload.
 
+In TypeScript, `terse generate` writes a single **`Triggers`** object in `src/terse.generated.ts`. Import **`Triggers`** and call the nested helpers (for example **`Triggers.github.onPROpened(...)`**, **`Triggers.slack.onMessage(...)`**). System triggers use **`Triggers.schedule`**, **`Triggers.webhook`**, and **`Triggers.webMonitor`** instead of separate `Schedule` / `Webhook` / `WebMonitor` exports.
+
 ## Integration triggers
 
 ### GitHub
 
 | Trigger                   | Event type          | Description                |
 | ------------------------- | ------------------- | -------------------------- |
-| `GitHub.onPROpened()`     | `GithubPRTrigger`   | A pull request is opened   |
-| `GitHub.onPush()`         | `GithubPushTrigger` | Code is pushed to a branch |
-| `GitHub.onIssueCreated()` | `GithubTrigger`     | An issue is created        |
+| `Triggers.github.onPROpened()`     | `GithubPRTrigger`   | A pull request is opened   |
+| `Triggers.github.onPush()`         | `GithubPushTrigger` | Code is pushed to a branch |
+| `Triggers.github.trigger()`        | `GithubTrigger`     | Other GitHub events you configure |
 
 **Config:** Scoped to specific repositories via `repo` parameter.
 
 <CodeGroup>
 ```ts TypeScript
-triggers: [GitHub.onPROpened({ repo: Repos.MyOrg.MyRepo })]
+triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })]
 ```
 </CodeGroup>
 
@@ -46,14 +48,14 @@ triggers: [GitHub.onPROpened({ repo: Repos.MyOrg.MyRepo })]
 
 | Trigger             | Event type     | Description                      |
 | ------------------- | -------------- | -------------------------------- |
-| `Slack.onMessage()` | `SlackTrigger` | A message is posted in a channel |
-| `Slack.onDm()`      | `SlackTrigger` | A direct message is received     |
+| `Triggers.slack.onMessage()` | `SlackTrigger` | A message is posted in a channel |
+| `Triggers.slack.onDm()`      | `SlackTrigger` | A direct message is received     |
 
 **Config:** Scoped to specific channels or users.
 
 <CodeGroup>
 ```ts TypeScript
-triggers: [Slack.onMessage({ channel: SlackChannel.Engineering })]
+triggers: [Triggers.slack.onMessage({ channel: SlackChannel.Engineering })]
 ```
 </CodeGroup>
 
@@ -71,14 +73,14 @@ triggers: [Slack.onMessage({ channel: SlackChannel.Engineering })]
 
 | Trigger                   | Event type    | Description         |
 | ------------------------- | ------------- | ------------------- |
-| `Linear.onIssueCreated()` | `LinearEvent` | An issue is created |
-| `Linear.onIssueUpdated()` | `LinearEvent` | An issue is updated |
+| `Triggers.linear.onIssueCreated()` | `LinearIssueCreatedTrigger` | An issue is created |
+| `Triggers.linear.onIssueUpdated()` | `LinearIssueUpdatedTrigger` | An issue is updated |
 
 **Config:** Optionally scoped to a team and/or project using generated `LinearTeam` / `LinearProject` constants (same pattern as `SlackChannel` for Slack).
 
 <CodeGroup>
 ```ts TypeScript
-triggers: [Linear.onIssueCreated({ team: LinearTeam.Engineering, project: LinearProject.Backend })]
+triggers: [Triggers.linear.onIssueCreated({ team: LinearTeam.Engineering, project: LinearProject.Backend })]
 ```
 </CodeGroup>
 
@@ -90,25 +92,19 @@ triggers: [Linear.onIssueCreated({ team: LinearTeam.Engineering, project: Linear
 
 ### Attio
 
-| Trigger                   | Event type | Description                   |
-| ------------------------- | ---------- | ----------------------------- |
-| `Attio.onRecordCreated()` | `Trigger`  | A record is created in a list |
-
-**Config:** Scoped to a specific Attio list.
-
-<CodeGroup>
-```ts TypeScript
-triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })]
-```
-</CodeGroup>
+Attio record events are configured in your Terse workspace. After `terse generate`, check **`Triggers`** in `src/terse.generated.ts` for any Attio trigger helpers your connected workspace exposes.
 
 ### Gmail
 
 | Trigger              | Event type   | Description             |
 | -------------------- | ------------ | ----------------------- |
-| `Gmail.onNewEmail()` | `GmailEvent` | A new email is received |
+| `Triggers.gmail.onEmail()` | `GmailTrigger` | A new email is received |
 
-<CodeGroup>```ts TypeScript triggers: [Gmail.onNewEmail()] ```</CodeGroup>
+<CodeGroup>
+```ts TypeScript
+triggers: [Triggers.gmail.onEmail()]
+```
+</CodeGroup>
 
 <Expandable title="Event payload">
   - `data.subject` - email subject
@@ -123,13 +119,15 @@ triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })]
 
 | Trigger            | Event type      | Description           |
 | ------------------ | --------------- | --------------------- |
-| `WorkOS.onEvent()` | `WorkOSTrigger` | A WorkOS event occurs |
+| `Triggers.workOS.trigger()` | `WorkOSTrigger` (union) | A WorkOS event you select with `eventTypes` |
 
-**Config:** Filtered by event types (`user.created`, `organization.created`, `organization_membership.created`, `invitation.created`, etc.).
+**Config:** Filtered by event types (`user.created`, `organization.created`, `organization_membership.created`, `invitation.created`, etc.). Prefer the typed helpers on **`Triggers.workOS`** (for example **`onUserCreated()`**) when they match your use case.
 
 <CodeGroup>
 ```ts TypeScript
-triggers: [WorkOS.onEvent({ eventTypes: ["user.created"] })]
+import { WorkOSEventType } from "terse-sdk"
+
+triggers: [Triggers.workOS.trigger({ eventTypes: [WorkOSEventType.USER_CREATED] })]
 ```
 </CodeGroup>
 
@@ -145,51 +143,49 @@ triggers: [WorkOS.onEvent({ eventTypes: ["user.created"] })]
 
 Track web changes continuously and get notified when there are updates.
 
-You can add multiple `WebMonitor.onEvent(...)` triggers to the same workflow. Terse runs each monitor independently and calls the same `onTrigger` handler for every matching event.
+You can add multiple `Triggers.webMonitor.onEvent(...)` triggers to the same workflow. Terse runs each monitor independently and calls the same `onTrigger` handler for every matching event.
 
-| Trigger                | Event type          | Description                                                  |
-| ---------------------- | ------------------- | ------------------------------------------------------------ |
-| `WebMonitor.onEvent()` | `WebMonitorTrigger` | Fires when scheduled web monitoring detects relevant changes |
+| Trigger                           | Event type          | Description                                                  |
+| --------------------------------- | ------------------- | ------------------------------------------------------------ |
+| `Triggers.webMonitor.onEvent()` | `WebMonitorTrigger` | Fires when scheduled web monitoring detects relevant changes |
 
 <CodeGroup>
 ```ts TypeScript
+import { createJob, TerseAgent } from "terse-sdk"
+import * as z from "zod"
+import { Skills, SlackChannel, Triggers } from "./terse.generated"
 
 const outputSchema = z.object({
-summary: z.string(),
-sentiment: z.enum(["positive", "negative", "neutral"]),
-});
+    summary: z.string(),
+    sentiment: z.enum(["positive", "negative", "neutral"])
+})
 
-await client.createJob({
-name: "Web monitor trigger",
-triggers: [
-WebMonitor.onEvent({
-query: "What are a16z's latest investments?",
-frequency: { number: 1, unit: "day" },
-outputSchema: outputSchema,
-}),
-],
-onTrigger: async (event) => {
-// outputSchema is inferred: payload.summary and payload.sentiment are typed
-const summary = event.payload.summary;
-const sentiment = event.payload.sentiment;
-const sources = event.sourceUrls.join(", ");
+createJob({
+    name: "Web monitor trigger",
+    triggers: [
+        Triggers.webMonitor.onEvent({
+            query: "What are a16z's latest investments?",
+            frequency: { number: 1, unit: "day" },
+            outputSchema
+        })
+    ],
+    onTrigger: async event => {
+        const summary = event.payload.summary
+        const sentiment = event.payload.sentiment
+        const sources = event.sourceUrls.join(", ")
 
-    const agent = TerseAgent.create({
-      prompt:
-        "You are alerted when the web monitor finds new material. Read the event (query, payload, and structured fields), decide what matters, and post a concise summary to Slack.",
-      skills: [Slack.skill({ channel: SlackChannel.AllTerseInc })],
-    });
+        const agent = TerseAgent.create({
+            prompt:
+                "You are alerted when the web monitor finds new material. Read the event (query, payload, and structured fields), decide what matters, and post a concise summary to Slack.",
+            skills: [Skills.slack({ channel: SlackChannel.AllTerseInc })]
+        })
 
-    // Use formatForAgentRunner() as the user message so the monitor query and
-    // payload are not duplicated inside TerseAgent.prompt and again in runAndWait.
-    await agent.runAndWait(
-      `${event.formatForAgentRunner()}\n\nSummary: ${summary}\nSentiment: ${sentiment}\nSources: ${sources}`
-    );
-
-},
-});
-
-````
+        await agent.runAndWait(
+            `${event.formatForAgentRunner()}\n\nSummary: ${summary}\nSentiment: ${sentiment}\nSources: ${sources}`
+        )
+    }
+})
+```
 </CodeGroup>
 
 If you need to annotate monitor events manually, import `WebMonitorTriggerFor` from `terse-sdk` and bind it to your Zod schema:
@@ -203,8 +199,8 @@ const outputSchema = z.object({
   sentiment: z.enum(["positive", "negative", "neutral"]),
 });
 
-type MonitorEvent = WebMonitorTriggerFor<typeof outputSchema>;
-````
+type MonitorEvent = WebMonitorTriggerFor<typeof outputSchema>
+```
 
 #### Writing effective queries
 
@@ -237,9 +233,13 @@ The monitor matches by intent, not keywords. Write your query as a natural sente
 
 | Trigger           | Event type    | Description              |
 | ----------------- | ------------- | ------------------------ |
-| `Schedule.cron()` | `CronTrigger` | Fires on a cron schedule |
+| `Triggers.schedule.cron()` | `CronTrigger` | Fires on a cron schedule |
 
-<CodeGroup>```ts TypeScript triggers: [Schedule.cron("0 9 * * 1")] // Every Monday at 9am ```</CodeGroup>
+<CodeGroup>
+```ts TypeScript
+triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })] // Every Monday at 9am
+```
+</CodeGroup>
 
 <Expandable title="Event payload">
     - `data.isManualTrigger` - whether the run was triggered manually from the dashboard - `data.manualContext` - optional context string provided on manual triggers
@@ -249,16 +249,20 @@ The monitor matches by intent, not keywords. Write your query as a natural sente
 
 | Trigger               | Event type       | Description                                               |
 | --------------------- | ---------------- | --------------------------------------------------------- |
-| `Webhook.onRequest()` | `WebhookTrigger` | Fires when an HTTP request hits the generated webhook URL |
+| `Triggers.webhook.onRequest()` | `WebhookTrigger` | Fires when an HTTP request hits the generated webhook URL |
 
 Webhook URLs are auto-generated on deploy and remain stable across redeploys.
 
-Pass a type argument to `Webhook.onRequest<YourPayload>()` so `onTrigger` and `filter` see your JSON body shape on `event.body` (defaults to `unknown` when omitted).
+Pass a type argument to `Triggers.webhook.onRequest<YourPayload>()` so `onTrigger` and `filter` see your JSON body shape on `event.body` (defaults to `unknown` when omitted).
 
-<CodeGroup>```ts TypeScript triggers: [Webhook.onRequest()] ```</CodeGroup>
+<CodeGroup>
+```ts TypeScript
+triggers: [Triggers.webhook.onRequest()]
+```
+</CodeGroup>
 
 <Expandable title="Event payload">
-  - `body` - parsed JSON request body (typed when you use `Webhook.onRequest<...>()`)
+  - `body` - parsed JSON request body (typed when you use `Triggers.webhook.onRequest<...>()`)
   - `headers` - HTTP headers
   - `method` - HTTP method (GET, POST, etc.)
 </Expandable>
