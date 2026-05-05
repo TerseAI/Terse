@@ -157,13 +157,14 @@ function AdminRoute({ element }: { element: React.ReactElement }) {
 
 function BillingAvailabilityRoute({ element }: { element: React.ReactElement }) {
     const { user, isLoading: authLoading } = useAuth()
-    const { billingEnabled, isLoading: billingLoading } = useBillingContext(!authLoading && Boolean(user?.organizationId))
+    const isAdmin = user?.roles.includes("admin") ?? false
+    const { billingEnabled, isLoading: billingLoading } = useBillingContext(!authLoading && isAdmin && Boolean(user?.organizationId))
 
-    if (authLoading || (user?.organizationId && billingLoading)) {
+    if (authLoading || (isAdmin && user?.organizationId && billingLoading)) {
         return <AppBootScreen />
     }
 
-    if (!user?.organizationId || billingEnabled !== true) {
+    if (!isAdmin || !user?.organizationId || billingEnabled !== true) {
         return <Navigate to={FrontendRoutes.HOME} replace />
     }
 

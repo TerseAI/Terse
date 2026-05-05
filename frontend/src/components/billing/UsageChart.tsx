@@ -1,19 +1,29 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import type { UsageBucket } from "terse-types"
 
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { type ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatCredits } from "@/utility/billingFormat"
 
 const chartConfig = {
-    credits: { label: "Credits used", color: "var(--chart-1)" }
+    inputTokenCredits: { label: "Input tokens", color: "var(--chart-1)" },
+    outputTokenCredits: { label: "Output tokens", color: "var(--chart-2)" },
+    cachedInputCredits: { label: "Cached input", color: "var(--chart-3)" },
+    runCredits: { label: "Run starts", color: "var(--chart-4)" }
 } satisfies ChartConfig
 
 type Row = {
     startTimestamp: number
     label: string
-    credits: number
+    inputTokenCredits: number
+    outputTokenCredits: number
+    cachedInputCredits: number
+    runCredits: number
+}
+
+function rowTotal(row: Row): number {
+    return row.inputTokenCredits + row.outputTokenCredits + row.cachedInputCredits + row.runCredits
 }
 
 export function UsageChart({ buckets, timezone }: { buckets: UsageBucket[] | null; timezone: string }) {
@@ -31,24 +41,28 @@ export function UsageChart({ buckets, timezone }: { buckets: UsageBucket[] | nul
 
     const dayFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: timezone })
     const fullDayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: timezone })
+    const round2 = (n: number) => Math.round(n * 100) / 100
     const rows: Row[] = buckets
         .map(bucket => ({
             startTimestamp: bucket.startTimestamp,
             label: dayFormatter.format(new Date(bucket.startTimestamp)),
-            credits: bucket.credits
+            inputTokenCredits: round2(bucket.inputTokenCredits),
+            outputTokenCredits: round2(bucket.outputTokenCredits),
+            cachedInputCredits: round2(bucket.cachedInputCredits),
+            runCredits: round2(bucket.runCredits)
         }))
         .sort((a, b) => a.startTimestamp - b.startTimestamp)
 
-    const total = rows.reduce((sum, row) => sum + row.credits, 0)
+    const total = rows.reduce((sum, row) => sum + rowTotal(row), 0)
     const dailyAverage = total / rows.length
-    const peak = rows.reduce((best, row) => (row.credits > best.credits ? row : best), rows[0])
+    const peak = rows.reduce((best, row) => (rowTotal(row) > rowTotal(best) ? row : best), rows[0])
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-3 divide-x divide-border">
                 <Stat label="Total credits" value={formatCredits(total)} />
                 <Stat label="Daily average" value={formatCredits(dailyAverage)} />
-                <Stat label="Busiest day" value={formatCredits(peak.credits)} hint={peak.credits > 0 ? dayFormatter.format(new Date(peak.startTimestamp)) : undefined} />
+                <Stat label="Busiest day" value={formatCredits(rowTotal(peak))} hint={rowTotal(peak) > 0 ? dayFormatter.format(new Date(peak.startTimestamp)) : undefined} />
             </div>
 
             <ChartContainer config={chartConfig} className="aspect-auto h-44 w-full">
@@ -68,7 +82,11 @@ export function UsageChart({ buckets, timezone }: { buckets: UsageBucket[] | nul
                             />
                         }
                     />
-                    <Bar dataKey="credits" name="credits" fill="var(--color-credits)" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="inputTokenCredits" name="inputTokenCredits" stackId="usage" fill="var(--color-inputTokenCredits)" />
+                    <Bar dataKey="outputTokenCredits" name="outputTokenCredits" stackId="usage" fill="var(--color-outputTokenCredits)" />
+                    <Bar dataKey="cachedInputCredits" name="cachedInputCredits" stackId="usage" fill="var(--color-cachedInputCredits)" />
+                    <Bar dataKey="runCredits" name="runCredits" stackId="usage" fill="var(--color-runCredits)" radius={[3, 3, 0, 0]} />
+                    <ChartLegend content={<ChartLegendContent />} />
                 </BarChart>
             </ChartContainer>
         </div>

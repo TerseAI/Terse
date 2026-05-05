@@ -1,5 +1,5 @@
-import { GetRunHistoryParams } from "./RunHistoryTypes"
 import type { BillingContextQuery } from "./Billing"
+import { GetRunHistoryParams } from "./RunHistoryTypes"
 import type { StatsInterval } from "./types"
 
 export const currentUserKey = (): readonly [string] => ["currentUser"]

@@ -183,7 +183,7 @@ function ChartTooltipContent({
                                                 />
                                             )
                                         )}
-                                        <div className={cn("flex flex-1 justify-between leading-none", nestLabel ? "items-end" : "items-center")}>
+                                        <div className={cn("flex flex-1 justify-between gap-4 leading-none", nestLabel ? "items-end" : "items-center")}>
                                             <div className="grid gap-1.5">
                                                 {nestLabel ? tooltipLabel : null}
                                                 <span className="text-muted-foreground">{itemConfig?.label || item.name}</span>
@@ -266,4 +266,4 @@ function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key:
     return configLabelKey in config ? config[configLabelKey] : config[key as keyof typeof config]
 }
 
-export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartStyle }
+export { ChartContainer, ChartLegend, ChartLegendContent, ChartStyle, ChartTooltip, ChartTooltipContent }

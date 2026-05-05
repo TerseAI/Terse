@@ -68,7 +68,10 @@ export type BalanceSummary = z.infer<typeof balanceSummarySchema>
 export const usageBucketSchema = z.object({
     startTimestamp: z.number(),
     endTimestamp: z.number(),
-    credits: z.number()
+    inputTokenCredits: z.number(),
+    outputTokenCredits: z.number(),
+    cachedInputCredits: z.number(),
+    runCredits: z.number()
 })
 export type UsageBucket = z.infer<typeof usageBucketSchema>
 
