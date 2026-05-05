@@ -177,7 +177,8 @@ export const settings = {
     // Optional configuration
     optional: {
         redisUrl: optionalEnv("REDIS_URL"),
-        cookieDomain: optionalEnv("COOKIE_DOMAIN")
+        cookieDomain: optionalEnv("COOKIE_DOMAIN"),
+        corsAllowedOrigins: optionalEnv("CORS_ALLOWED_ORIGINS")
     },
 
     // Parallel (Web Event monitors + webhook verification)

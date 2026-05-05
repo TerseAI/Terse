@@ -74,6 +74,7 @@ import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTri
 import { registerSocketGetter } from "./services/CacheInvalidationService"
 import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./utility/analytics"
+import { buildCorsAllowedOrigins, isCorsOriginAllowed } from "./utility/corsOrigins"
 import { workos } from "./utility/workos"
 
 export type Session = {
@@ -85,8 +86,11 @@ export type Session = {
 const app = express()
 const server = createServer(app)
 
+const corsAllowedOrigins = buildCorsAllowedOrigins()
+logger.info("CORS allowlist initialized", { origins: [...corsAllowedOrigins].sort() })
+
 try {
-    await initializeRealtimeSocket(server)
+    await initializeRealtimeSocket(server, corsAllowedOrigins)
     registerSocketGetter(getRealtimeSocket)
     logger.info("✅ Socket.IO server initialized")
 } catch (error) {
@@ -102,8 +106,15 @@ setupLLMAnalytics()
 
 app.use(
     cors({
-        origin: true,
-        credentials: true
+        credentials: true,
+        origin(origin, callback) {
+            if (isCorsOriginAllowed(origin, corsAllowedOrigins)) {
+                callback(null, true)
+                return
+            }
+            logger.warn("CORS request blocked", { origin })
+            callback(null, false)
+        }
     })
 )
 
