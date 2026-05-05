@@ -594,23 +594,17 @@ export const BackendProvider: BackendService = {
 
     getUserById: (id: string) => {
         const url = buildRoute(ApiRoutes.USERS.BY_ID, { id })
-        return axios
-            .get<User>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<User>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     createUser: (name: string, email: string, password: string) => {
-        return axios
-            .post(`${backendBaseUrl}${ApiRoutes.USERS.CREATE}`, { name, email, password }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post(`${backendBaseUrl}${ApiRoutes.USERS.CREATE}`, { name, email, password }, { withCredentials: true }).then(response => response.data)
     },
 
     authenticateUser: (email: string, password: string) => {
-        return axios
-            .post(`${backendBaseUrl}${ApiRoutes.AUTH.LOGIN}`, { email, password }, { withCredentials: true })
-            .then(response => {
-                return response.data
-            })
+        return axios.post(`${backendBaseUrl}${ApiRoutes.AUTH.LOGIN}`, { email, password }, { withCredentials: true }).then(response => {
+            return response.data
+        })
     },
 
     getStats: (timezone?: string, interval?: StatsInterval) => {
@@ -618,9 +612,7 @@ export const BackendProvider: BackendService = {
             ...(timezone ? { tz: timezone } : {}),
             ...(interval ? { interval } : {})
         }
-        return axios
-            .get(`${backendBaseUrl}${ApiRoutes.STATS}`, { withCredentials: true, params })
-            .then(response => response.data)
+        return axios.get(`${backendBaseUrl}${ApiRoutes.STATS}`, { withCredentials: true, params }).then(response => response.data)
     },
 
     getIntegrationInstallationDetails: <T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>, stateToken?: string) => {
@@ -634,21 +626,15 @@ export const BackendProvider: BackendService = {
         const queryString = params.toString()
         const apiUrl = buildRoute(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, { integrationType })
         const url = `${backendBaseUrl}${apiUrl}${queryString ? `?${queryString}` : ""}`
-        return axios
-            .get(url, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get(url, { withCredentials: true }).then(response => response.data)
     },
 
     getAllIntegrations: () => {
-        return axios
-            .get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.LIST}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.LIST}`, { withCredentials: true }).then(response => response.data)
     },
 
     getActiveIntegrations: () => {
-        return axios
-            .get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.ACTIVE}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.ACTIVE}`, { withCredentials: true }).then(response => response.data)
     },
 
     getGithubRepositoriesForIntegration: (installationId: number) => {
@@ -661,51 +647,35 @@ export const BackendProvider: BackendService = {
     },
 
     requestGitHubAppInstallationUrl: () => {
-        return axios
-            .get(`${backendBaseUrl}${ApiRoutes.GITHUB.INSTALLATION_URL}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get(`${backendBaseUrl}${ApiRoutes.GITHUB.INSTALLATION_URL}`, { withCredentials: true }).then(response => response.data)
     },
 
     getCurrentSlackIntegration: () => {
-        return axios
-            .get(`${backendBaseUrl}${ApiRoutes.SLACK.GET_CURRENT_INTEGRATION}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get(`${backendBaseUrl}${ApiRoutes.SLACK.GET_CURRENT_INTEGRATION}`, { withCredentials: true }).then(response => response.data)
     },
 
     getLinearTeams: (integrationId: string) => {
-        return axios
-            .get<LinearTeam[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<LinearTeam[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true }).then(response => response.data)
     },
 
     getGmailIntegrations: () => {
-        return axios
-            .get<GmailIntegration[]>(`${backendBaseUrl}${ApiRoutes.GMAIL.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<GmailIntegration[]>(`${backendBaseUrl}${ApiRoutes.GMAIL.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     getGithubIntegrations: () => {
-        return axios
-            .get<GithubIntegration[]>(`${backendBaseUrl}${ApiRoutes.GITHUB.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<GithubIntegration[]>(`${backendBaseUrl}${ApiRoutes.GITHUB.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     getLinearIntegrations: () => {
-        return axios
-            .get<LinearIntegration[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<LinearIntegration[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     getNotionIntegrations: () => {
-        return axios
-            .get<NotionIntegration[]>(`${backendBaseUrl}${ApiRoutes.NOTION.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<NotionIntegration[]>(`${backendBaseUrl}${ApiRoutes.NOTION.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     getPosthogIntegrations: () => {
-        return axios
-            .get<PosthogIntegration[]>(`${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<PosthogIntegration[]>(`${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     createOrUpdatePosthogIntegration: (apiKey: string, stateToken?: string) => {
@@ -719,28 +689,20 @@ export const BackendProvider: BackendService = {
     },
 
     getLaunchDarklyIntegrations: () => {
-        return axios
-            .get<LaunchDarklyIntegration[]>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<LaunchDarklyIntegration[]>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     getAttioIntegrations: () => {
-        return axios
-            .get<AttioIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<AttioIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     getAttioObjects: (integrationId: string) => {
         const url = buildRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId })
-        return axios
-            .get<AttioObjectWithAttributes[]>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<AttioObjectWithAttributes[]>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getWorkOSIntegrations: () => {
-        return axios
-            .get<WorkOSIntegration[]>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<WorkOSIntegration[]>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     createOrUpdateWorkOSIntegration: (apiKey: string, webhookSecret?: string, stateToken?: string) => {
@@ -761,15 +723,11 @@ export const BackendProvider: BackendService = {
         if (stateToken) {
             body.state = stateToken
         }
-        return axios
-            .patch<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET}`, body, { withCredentials: true })
-            .then(response => response.data)
+        return axios.patch<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET}`, body, { withCredentials: true }).then(response => response.data)
     },
 
     getDatadogIntegrations: () => {
-        return axios
-            .get<DatadogIntegration[]>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<DatadogIntegration[]>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     createOrUpdateLaunchDarklyIntegration: (apiKey: string, stateToken?: string) => {
@@ -777,9 +735,7 @@ export const BackendProvider: BackendService = {
         if (stateToken) {
             body.state = stateToken
         }
-        return axios
-            .post<{ success: boolean; email: string | null }>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, body, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ success: boolean; email: string | null }>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
     },
 
     createOrUpdateDatadogIntegration: (apiKey: string, appKey: string, region: string, stateToken?: string) => {
@@ -787,23 +743,17 @@ export const BackendProvider: BackendService = {
         if (stateToken) {
             body.state = stateToken
         }
-        return axios
-            .post<{ success: boolean; region: string }>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, body, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ success: boolean; region: string }>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
     },
 
     getLaunchDarklyProjects: (integrationId: string) => {
         const url = buildRoute(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, { integrationId })
-        return axios
-            .get<LaunchDarklyProjectsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<LaunchDarklyProjectsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getLaunchDarklyEnvironments: (integrationId: string, projectKey: string) => {
         const url = buildRoute(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT, { integrationId, projectKey })
-        return axios
-            .get<LaunchDarklyEnvironmentsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<LaunchDarklyEnvironmentsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getDatadogIndexes: (integrationId: string) => {
@@ -816,9 +766,7 @@ export const BackendProvider: BackendService = {
     },
 
     getSnowflakeIntegrations: () => {
-        return axios
-            .get<SnowflakeIntegration[]>(`${backendBaseUrl}${ApiRoutes.SNOWFLAKE.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<SnowflakeIntegration[]>(`${backendBaseUrl}${ApiRoutes.SNOWFLAKE.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     createOrUpdateSnowflakeIntegration: (accountIdentifier: string, username: string, privateKey: string, passphrase: string, warehouse: string, stateToken?: string) => {
@@ -836,27 +784,19 @@ export const BackendProvider: BackendService = {
         if (search) {
             params.append("search", search)
         }
-        return axios
-            .get<PosthogProjectsResponse>(`${backendBaseUrl}${ApiRoutes.POSTHOG.PROJECTS}?${params.toString()}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<PosthogProjectsResponse>(`${backendBaseUrl}${ApiRoutes.POSTHOG.PROJECTS}?${params.toString()}`, { withCredentials: true }).then(response => response.data)
     },
 
     getSlackIntegrations: () => {
-        return axios
-            .get<SlackIntegration[]>(`${backendBaseUrl}${ApiRoutes.SLACK.INTEGRATIONS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<SlackIntegration[]>(`${backendBaseUrl}${ApiRoutes.SLACK.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     deleteGmailIntegration: () => {
-        return axios
-            .delete(`${backendBaseUrl}/gmail/delete-integration`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.delete(`${backendBaseUrl}/gmail/delete-integration`, { withCredentials: true }).then(response => response.data)
     },
 
     deleteNotionIntegration: () => {
-        return axios
-            .delete(`${backendBaseUrl}${ApiRoutes.NOTION.DELETE_INTEGRATION}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.delete(`${backendBaseUrl}${ApiRoutes.NOTION.DELETE_INTEGRATION}`, { withCredentials: true }).then(response => response.data)
     },
 
     getNotionResources: (integrationId: string, search?: string, type?: "page" | "database") => {
@@ -867,9 +807,7 @@ export const BackendProvider: BackendService = {
         if (type) {
             params.append("type", type)
         }
-        return axios
-            .get<NotionResourcesResponse>(`${backendBaseUrl}${ApiRoutes.NOTION.RESOURCES}?${params.toString()}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<NotionResourcesResponse>(`${backendBaseUrl}${ApiRoutes.NOTION.RESOURCES}?${params.toString()}`, { withCredentials: true }).then(response => response.data)
     },
 
     getSlackChannels: (integrationId: string) => {
@@ -879,18 +817,14 @@ export const BackendProvider: BackendService = {
     },
 
     getSlackUsers: (integrationId: string) => {
-        return axios
-            .get<SlackUsersResponse>(`${backendBaseUrl}${ApiRoutes.SLACK.USERS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<SlackUsersResponse>(`${backendBaseUrl}${ApiRoutes.SLACK.USERS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true }).then(response => response.data)
     },
 
     requestSessionSocketToken: () => {
-        return axios
-            .get<{ token: string } | string>(`${backendBaseUrl}${ApiRoutes.SESSION.TOKEN}`, { withCredentials: true })
-            .then(response => {
-                const data = response.data
-                return typeof data === "string" ? data : data.token
-            })
+        return axios.get<{ token: string } | string>(`${backendBaseUrl}${ApiRoutes.SESSION.TOKEN}`, { withCredentials: true }).then(response => {
+            const data = response.data
+            return typeof data === "string" ? data : data.token
+        })
     },
 
     getUserAgents: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
@@ -904,32 +838,24 @@ export const BackendProvider: BackendService = {
             params.append("search", search)
         }
 
-        return axios
-            .get<AgentsResponse>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}?${params.toString()}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<AgentsResponse>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}?${params.toString()}`, { withCredentials: true }).then(response => response.data)
     },
 
     getRecentAgents: (limit = 3) => {
         const params = new URLSearchParams()
         params.append("limit", limit.toString())
 
-        return axios
-            .get<RecentAgent[]>(`${backendBaseUrl}${ApiRoutes.AGENTS.RECENT}?${params.toString()}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<RecentAgent[]>(`${backendBaseUrl}${ApiRoutes.AGENTS.RECENT}?${params.toString()}`, { withCredentials: true }).then(response => response.data)
     },
 
     getAgentById: (id: string) => {
         const url = buildRoute(ApiRoutes.AGENTS.BY_ID, { id })
-        return axios
-            .get<Agent>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<Agent>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getProjectById: (id: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.BY_ID, { id })
-        return axios
-            .get<ProjectDetailResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<ProjectDetailResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     deleteProject: (id: string) => {
@@ -939,99 +865,71 @@ export const BackendProvider: BackendService = {
 
     getProjectDeploys: (id: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.DEPLOYS, { id })
-        return axios
-            .get<ProjectDeploysResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<ProjectDeploysResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getProjectSourceFiles: (id: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILES, { id })
-        return axios
-            .get<ProjectSourceFilesResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<ProjectSourceFilesResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getProjectSourceFileContent: (id: string, fileId: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, { id, fileId })
-        return axios
-            .get<AgentFileContentResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<AgentFileContentResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     verifySdkJobServer: (agentId: string) => {
         const url = buildRoute(ApiRoutes.SDK.VERIFY_JOB_SERVER, { agentId })
-        return axios
-            .post<SdkJobServerCheckResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<SdkJobServerCheckResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true }).then(response => response.data)
     },
 
     rotateProjectSigningSecret: (projectId: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, { id: projectId })
-        return axios
-            .post<ProjectRotateSigningSecretResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<ProjectRotateSigningSecretResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true }).then(response => response.data)
     },
 
     rotateProjectApiKey: (projectId: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.ROTATE_API_KEY, { id: projectId })
-        return axios
-            .post<ProjectRotateApiKeyResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<ProjectRotateApiKeyResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true }).then(response => response.data)
     },
 
     getAgentImprovements: (agentId: string) => {
         const url = buildRoute(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, { agentId })
-        return axios
-            .get<GetAgentImprovementsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<GetAgentImprovementsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     applyImprovement: (agentId: string, improvementId: string) => {
         const url = buildRoute(ApiRoutes.IMPROVEMENTS.APPLY, { agentId, id: improvementId })
-        return axios
-            .post<ApplyImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<ApplyImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true }).then(response => response.data)
     },
 
     dismissImprovement: (agentId: string, improvementId: string) => {
         const url = buildRoute(ApiRoutes.IMPROVEMENTS.DISMISS, { agentId, id: improvementId })
-        return axios
-            .post<DismissImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<DismissImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true }).then(response => response.data)
     },
 
     undoDismissImprovement: (agentId: string, improvementId: string) => {
         const url = buildRoute(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, { agentId, id: improvementId })
-        return axios
-            .post<{ success: boolean }>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ success: boolean }>(`${backendBaseUrl}${url}`, {}, { withCredentials: true }).then(response => response.data)
     },
 
     toggleImprovementsEnabled: (agentId: string, enabled: boolean) => {
         const url = buildRoute(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, { agentId })
-        return axios
-            .patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${url}`, { enabled }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${url}`, { enabled }, { withCredentials: true }).then(response => response.data)
     },
 
     createAgent: (data: AgentUpdate) => {
-        return axios
-            .post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true }).then(response => response.data)
     },
 
     updateAgent: (id: string, data: AgentUpdate) => {
         const url = buildRoute(ApiRoutes.AGENTS.BY_ID, { id })
-        return axios
-            .patch<{ success: boolean; id: string }>(`${backendBaseUrl}${url}`, data, { withCredentials: true })
-            .then(response => response.data)
+        return axios.patch<{ success: boolean; id: string }>(`${backendBaseUrl}${url}`, data, { withCredentials: true }).then(response => response.data)
     },
 
     deleteAgent: (id: string) => {
         const url = buildRoute(ApiRoutes.AGENTS.BY_ID, { id })
-        return axios
-            .delete<{ success: boolean; message: string }>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.delete<{ success: boolean; message: string }>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getAllRunHistory: params => {
@@ -1043,9 +941,7 @@ export const BackendProvider: BackendService = {
         if (params.end) usp.append("end", params.end)
         if (params.status && params.status.length) usp.append("status", params.status.join(","))
         const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.ALL}${usp.toString() ? `?${usp.toString()}` : ""}`
-        return axios
-            .get<GetAllRunHistoryResponse>(url, { withCredentials: true })
-            .then(r => r.data)
+        return axios.get<GetAllRunHistoryResponse>(url, { withCredentials: true }).then(r => r.data)
     },
 
     getRunHistory: (agentId, params) => {
@@ -1058,9 +954,7 @@ export const BackendProvider: BackendService = {
         if (params.status && params.status.length) usp.append("status", params.status.join(","))
         const apiUrl = buildRoute(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, { agentId })
         const url = `${backendBaseUrl}${apiUrl}${usp.toString() ? `?${usp.toString()}` : ""}`
-        return axios
-            .get<GetRunHistoryResponse>(url, { withCredentials: true })
-            .then(r => r.data)
+        return axios.get<GetRunHistoryResponse>(url, { withCredentials: true }).then(r => r.data)
     },
 
     getChatHistory: runId => {
@@ -1085,15 +979,11 @@ export const BackendProvider: BackendService = {
         const usp = new URLSearchParams()
         usp.append("ids", ids.join(","))
         const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.ACTIONS}?${usp.toString()}`
-        return axios
-            .get<RunHistoryActionWithId[]>(url, { withCredentials: true })
-            .then(r => r.data)
+        return axios.get<RunHistoryActionWithId[]>(url, { withCredentials: true }).then(r => r.data)
     },
 
     getNotificationDestinations: () => {
-        return axios
-            .get<NotificationDestination[]>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<NotificationDestination[]>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, { withCredentials: true }).then(response => response.data)
     },
 
     getSentNotifications: ({ page = 1, pageSize = 12 }) => {
@@ -1103,9 +993,7 @@ export const BackendProvider: BackendService = {
         const apiUrl = buildRoute(ApiRoutes.SENT_NOTIFICATIONS.LIST, {})
         const url = `${backendBaseUrl}${apiUrl}?${params.toString()}`
 
-        return axios
-            .get<GetSentNotificationsResponse>(url, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<GetSentNotificationsResponse>(url, { withCredentials: true }).then(response => response.data)
     },
 
     getPendingApprovals: (params?: { status?: ApprovalRequestFilter }) => {
@@ -1116,93 +1004,65 @@ export const BackendProvider: BackendService = {
         const queryString = queryParams.toString()
         const url = `${backendBaseUrl}${ApiRoutes.PENDING_APPROVALS.LIST}${queryString ? `?${queryString}` : ""}`
 
-        return axios
-            .get<GetPendingApprovalsResponse>(url, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<GetPendingApprovalsResponse>(url, { withCredentials: true }).then(response => response.data)
     },
 
     createNotificationDestination: (destination: CreateNotificationDestinationRequest) => {
-        return axios
-            .post<NotificationDestination>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, destination, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<NotificationDestination>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, destination, { withCredentials: true }).then(response => response.data)
     },
 
     updateNotificationDestination: (destination: NotificationDestination) => {
         const url = buildRoute(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, { id: destination.id })
-        return axios
-            .put<NotificationDestination>(`${backendBaseUrl}${url}`, destination, { withCredentials: true })
-            .then(response => response.data)
+        return axios.put<NotificationDestination>(`${backendBaseUrl}${url}`, destination, { withCredentials: true }).then(response => response.data)
     },
 
     deleteNotificationDestination: (destination: NotificationDestination) => {
         const url = buildRoute(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, { id: destination.id })
-        return axios
-            .delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getApiTokens: () => {
-        return axios
-            .get<ApiToken[]>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<ApiToken[]>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { withCredentials: true }).then(response => response.data)
     },
 
     createApiToken: (name: string) => {
-        return axios
-            .post<ApiTokenCreateResponse>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { name }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<ApiTokenCreateResponse>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { name }, { withCredentials: true }).then(response => response.data)
     },
 
     updateApiToken: (id: string, name: string) => {
         const url = buildRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
-        return axios
-            .patch<ApiToken>(`${backendBaseUrl}${url}`, { name }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.patch<ApiToken>(`${backendBaseUrl}${url}`, { name }, { withCredentials: true }).then(response => response.data)
     },
 
     deleteApiToken: (id: string) => {
         const url = buildRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
-        return axios
-            .delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getTemplates: () => {
-        return axios
-            .get<AgentTemplate[]>(`${backendBaseUrl}${ApiRoutes.TEMPLATES}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<AgentTemplate[]>(`${backendBaseUrl}${ApiRoutes.TEMPLATES}`, { withCredentials: true }).then(response => response.data)
     },
 
     fetchSampleEvents: (triggers: Array<{ triggerId?: string; integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {
-        return axios
-            .post<{ events: SampleEventRef[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ events: SampleEventRef[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true }).then(response => response.data)
     },
 
     hydrateSampleEvent: (entityType: string, entityId: string) => {
-        return axios
-            .post<{ event: SerializedEvent }>(`${backendBaseUrl}${ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT}`, { entityType, entityId }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ event: SerializedEvent }>(`${backendBaseUrl}${ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT}`, { entityType, entityId }, { withCredentials: true }).then(response => response.data)
     },
 
     triggerWithEvent: (automationId: string, event?: SerializedEvent, runId?: string) => {
         const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, { automationId })
-        return axios
-            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event: event?.data, runId }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event: event?.data, runId }, { withCredentials: true }).then(response => response.data)
     },
 
     triggerManually: (triggerId: string, context?: string) => {
         const url = buildRoute(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, { inputId: triggerId })
-        return axios
-            .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { context }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { context }, { withCredentials: true }).then(response => response.data)
     },
 
     getToolsThatRequireApprovals: (request: GetToolsThatRequireApprovalsRequest) => {
-        return axios
-            .post<GetToolsThatRequireApprovalsResponse>(`${backendBaseUrl}${ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS}`, request, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<GetToolsThatRequireApprovalsResponse>(`${backendBaseUrl}${ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS}`, request, { withCredentials: true }).then(response => response.data)
     },
 
     loginRedirect: () => {
@@ -1261,21 +1121,15 @@ export const BackendProvider: BackendService = {
     },
 
     createOrganization: (name: string, firstName?: string, lastName?: string) => {
-        return axios
-            .post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName }, { withCredentials: true }).then(response => response.data)
     },
 
     getCurrentOrganization: () => {
-        return axios
-            .get<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true }).then(response => response.data)
     },
 
     getUserOrganizations: () => {
-        return axios
-            .get<{ organizations: { id: string; name: string }[] }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LIST}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<{ organizations: { id: string; name: string }[] }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LIST}`, { withCredentials: true }).then(response => response.data)
     },
 
     switchOrganization: (organizationId: string) => {
@@ -1293,9 +1147,7 @@ export const BackendProvider: BackendService = {
     },
 
     getWidgetToken: () => {
-        return axios
-            .get<{ token: string; expiresAt: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS.WIDGET_TOKEN}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<{ token: string; expiresAt: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS.WIDGET_TOKEN}`, { withCredentials: true }).then(response => response.data)
     },
 
     getOrgLogoUploadUrl: (contentType: string) => {
@@ -1309,9 +1161,7 @@ export const BackendProvider: BackendService = {
 
     getOrgLogoUrl: (organizationId: string) => {
         const url = buildRoute(ApiRoutes.ORGANIZATIONS.LOGO, { organizationId })
-        return axios
-            .get<{ logoUrl: string | null }>(`${backendBaseUrl}${url}`, { withCredentials: true })
-            .then(response => response.data.logoUrl)
+        return axios.get<{ logoUrl: string | null }>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data.logoUrl)
     },
 
     uploadOrgLogo: async (file: File) => {
@@ -1326,15 +1176,11 @@ export const BackendProvider: BackendService = {
     },
 
     updateOrganization: (name: string) => {
-        return axios
-            .put<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.UPDATE}`, { name }, { withCredentials: true })
-            .then(response => response.data)
+        return axios.put<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.UPDATE}`, { name }, { withCredentials: true }).then(response => response.data)
     },
 
     getNotificationSettings: () => {
-        return axios
-            .get<NotificationSettings>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<NotificationSettings>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, { withCredentials: true }).then(response => response.data)
     },
 
     updateNotificationSettings: (agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean, applyToAllAgents?: boolean) => {
@@ -1343,19 +1189,13 @@ export const BackendProvider: BackendService = {
             weeklyAgentImprovements,
             ...(applyToAllAgents !== undefined && { applyToAllAgents })
         }
-        return axios
-            .post(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, payload, { withCredentials: true })
-            .then(() => undefined)
+        return axios.post(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, payload, { withCredentials: true }).then(() => undefined)
     },
     getAgentFiles: (agentId: string) => {
-        return axios
-            .get<AgentFilesResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILES, { agentId })}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<AgentFilesResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILES, { agentId })}`, { withCredentials: true }).then(response => response.data)
     },
 
     getAgentFileContent: (agentId: string, fileId: string) => {
-        return axios
-            .get<AgentFileContentResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILE_CONTENT, { agentId, fileId })}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<AgentFileContentResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILE_CONTENT, { agentId, fileId })}`, { withCredentials: true }).then(response => response.data)
     }
 }

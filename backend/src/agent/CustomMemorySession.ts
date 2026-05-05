@@ -5,9 +5,6 @@ import { createHash } from "crypto"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { RunHistoryMemory } from "../rag/runHistoryRag/indexer"
-import { RunHistoryRawEventWithRelations } from "../types/prisma"
-import { RAGNamespace } from "../types/rag"
 
 type BaseMemorySessionOptions = {
     sessionId: string
@@ -622,13 +619,4 @@ function extractSystemEventContentText(content: unknown): string {
         })
         .filter(Boolean)
         .join("\n")
-}
-
-/**
- * Keeping around for now, but not using it. We will want to test this in depth before
- * introducing this additional complexity.
- */
-async function persistLongTermMemory(events: RunHistoryRawEventWithRelations[], userId: string): Promise<void> {
-    const longTermMemory = new RunHistoryMemory(userId, RAGNamespace.RUN_HISTORY_MEMORY)
-    await longTermMemory.rememberBulk(events)
 }
