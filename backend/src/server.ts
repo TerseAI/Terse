@@ -118,7 +118,6 @@ app.use(
     })
 )
 
-
 if (slackReceiver?.receiver) {
     app.use("/slack", slackReceiver.receiver.router)
     logger.info("✅ Slack Bolt router mounted at /slack")
