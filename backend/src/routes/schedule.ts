@@ -6,7 +6,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEventParamsSchema, triggerWithEventRequestSchema } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { cloudScheduler, settings } from "../config/settings"
+import { settings } from "../config/settings"
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
 import { buildGithubTriggerMetadata } from "../integrations/GithubIntegration"
 import { WebMonitorIntegrationManager } from "../integrations/WebMonitorIntegration"
@@ -14,6 +14,7 @@ import { TriggerRuntime } from "../integrations/abstract/TriggerRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
+import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 import { verifyParallelWebhookSignature } from "../utility/parallelWebhookSignature"
 import { extractErrorMessage } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
@@ -102,21 +103,7 @@ export async function handleScheduleWebhook(req: Request, res: Response) {
 
     logger.info("⏰ Schedule webhook received", { inputId })
 
-    // Verify the request is from Cloud Scheduler using a shared secret
-    const authHeader = req.headers["authorization"]
-
-    if (!authHeader) {
-        logger.warn("⚠️  Unauthorized schedule webhook request: Missing Authorization header", { inputId })
-        res.status(401).json({ error: "Unauthorized" })
-        return
-    }
-
-    // Extract token from "Bearer <token>" or just check the header value
-    const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader
-
-    // Validate against configured secret
-    if (token !== cloudScheduler.secret) {
-        logger.warn("⚠️  Unauthorized schedule webhook request: Invalid token", { inputId })
+    if (!validateCloudSchedulerRequest(req, `ScheduleWebhook ${inputId ?? ""}`.trim())) {
         res.status(401).json({ error: "Unauthorized" })
         return
     }
