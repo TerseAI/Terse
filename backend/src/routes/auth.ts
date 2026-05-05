@@ -8,7 +8,7 @@ import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { Session } from "../types/session"
-import { AccessTokenClaims, decodeAccessTokenClaims } from "../utility/accessTokenClaims"
+import { AccessTokenClaims, getClaimsFromAuthResult } from "../utility/accessTokenClaims"
 import { extractErrorMessage } from "../utility/strings"
 import { workos } from "../utility/workos"
 
@@ -210,7 +210,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
             const authResult = await session.authenticate()
 
             if (authResult.authenticated) {
-                const claims = decodeAccessTokenClaims(authResult.accessToken)
+                const claims = getClaimsFromAuthResult(authResult)
                 const { user } = await getOrCreateDbUserFromWorkOS(authResult, claims)
                 if (!req.session) {
                     req.session = {
@@ -384,7 +384,7 @@ export async function callback(req: Request, res: Response) {
             workosUserId: authResult.user.id,
             email: authResult.user.email
         })
-        const claims = decodeAccessTokenClaims(authResult.accessToken)
+        const claims = getClaimsFromAuthResult(authResult)
         const { user: dbUser } = await getOrCreateDbUserFromWorkOS(authResult, claims)
         logger.info("[/callback] Database user ready", {
             dbUserId: dbUser.id,

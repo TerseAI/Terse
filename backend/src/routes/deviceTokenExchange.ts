@@ -4,7 +4,7 @@ import { DeviceTokenExchangeResponse } from "terse-types/types"
 import { deviceTokenExchangeRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
-import { decodeAccessTokenClaims } from "../utility/accessTokenClaims"
+import { getClaimsFromVerifiedPayload } from "../utility/accessTokenClaims"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { workos } from "../utility/workos"
@@ -74,7 +74,7 @@ export async function deviceTokenExchange(req: Request, res: Response) {
         }
 
         // Find or create the user in our database
-        const claims = decodeAccessTokenClaims(accessToken)
+        const claims = getClaimsFromVerifiedPayload(payload)
         const { user: dbUser } = await getOrCreateDbUserFromWorkOS({ user: workosUser, organizationId, roles }, claims)
 
         // Create an API token for CLI use
