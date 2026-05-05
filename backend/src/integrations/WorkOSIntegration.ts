@@ -179,8 +179,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             return { success: false, error: "API key is required", statusCode: 400 }
         }
 
-        const secret =
-            typeof webhookSecret === "string" && webhookSecret.trim().length > 0 ? webhookSecret.trim() : null
+        const secret = typeof webhookSecret === "string" && webhookSecret.trim().length > 0 ? webhookSecret.trim() : null
 
         try {
             // Validate API key by calling WorkOS API
