@@ -122,12 +122,6 @@ export const settings = {
         callbackUrl: requireEnv("ATLASSIAN_CALLBACK_URL")
     },
 
-    // TurboPuffer
-    turbopuffer: {
-        apiKey: requireEnv("TURBOPUFFER_API_KEY"),
-        region: optionalEnv("TURBOPUFFER_REGION", "aws-us-west-2")
-    },
-
     // Google Cloud Platform (GCP)
     gcp: {
         serviceAccountBase64: optionalEnv("GCP_SERVICE_ACCOUNT_BASE64"),

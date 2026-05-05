@@ -123,8 +123,7 @@ function AgentOptionsMenu({
             })
             onToggleActive(!isActive)
             toast.success(isActive ? "Agent paused" : "Agent resumed")
-        } catch (error) {
-            console.error("Failed to toggle agent status:", error)
+        } catch {
             toast.error("Failed to update agent status")
         }
     }
@@ -151,8 +150,7 @@ function AgentOptionsMenu({
             } else {
                 toast.error("Failed to clone agent: no ID returned")
             }
-        } catch (error) {
-            console.error("Failed to clone agent:", error)
+        } catch {
             toast.error("Failed to clone agent")
         } finally {
             setIsCloning(false)
@@ -165,8 +163,7 @@ function AgentOptionsMenu({
             await deleteAgent(agentId)
             toast.success("Agent deleted")
             navigate(FrontendRoutes.AGENTS.SETUP)
-        } catch (error) {
-            console.error("Failed to delete agent:", error)
+        } catch {
             toast.error("Failed to delete agent")
         } finally {
             setIsDeleting(false)
@@ -293,8 +290,7 @@ function SaveAgentButton({
             setTimeout(() => {
                 setSaveSuccess(false)
             }, 1000)
-        } catch (error) {
-            console.error("Error saving agent:", error)
+        } catch {
             toast.error("Failed to save agent. Please try again.")
         } finally {
             setIsSaving(false)

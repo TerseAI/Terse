@@ -29,8 +29,8 @@ export function emitAuthEvent(event: AuthEvent): void {
     for (const listener of eventListeners) {
         try {
             listener()
-        } catch (error) {
-            console.error(`[authEvents] Listener failed for "${event}":`, error)
+        } catch {
+            // Listener failures must not abort cleanup of other listeners
         }
     }
 }

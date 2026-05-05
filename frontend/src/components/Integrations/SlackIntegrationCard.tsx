@@ -40,11 +40,9 @@ function SlackIntegrationCard({ className, isActive = true, stateToken, compact 
                 window.open(installationDetails.oauthUrl, "oauth-popup", "width=600,height=700")
                 // Return to previous page after opening OAuth popup
                 setShowConnectionOptions(false)
-            } else {
-                console.error("OAuth URL not available for this integration type")
             }
-        } catch (error) {
-            console.error("Error initiating OAuth:", error)
+        } catch {
+            // OAuth initiation failed; user can retry
         } finally {
             setIsConnecting(false)
         }

@@ -1080,8 +1080,8 @@ export const BackendProvider: BackendService = {
             } else {
                 localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
             }
-        } catch (error) {
-            console.error("Failed to store post-login redirect", error)
+        } catch {
+            // localStorage may be unavailable; redirect proceeds without restoring path
         }
 
         const LOGIN_URL_TIMEOUT_MS = 15_000
@@ -1100,8 +1100,7 @@ export const BackendProvider: BackendService = {
                     window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
                 }
             })
-            .catch(error => {
-                console.error("Error getting WorkOS login URL, falling back to backend login endpoint:", error)
+            .catch(() => {
                 window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGIN}`
             })
             .finally(() => {
@@ -1114,8 +1113,7 @@ export const BackendProvider: BackendService = {
         try {
             const response = await axios.get<{ logoutUrl: string }>(`${backendBaseUrl}${ApiRoutes.AUTH.LOGOUT_URL}?${redirectToLoginQuery}`, { withCredentials: true })
             window.location.href = response.data.logoutUrl
-        } catch (error) {
-            console.error("Error getting WorkOS logout URL, falling back to backend logout endpoint:", error)
+        } catch {
             window.location.href = `${backendRedirectUrl}${ApiRoutes.AUTH.LOGOUT}?${redirectToLoginQuery}`
         }
     },
@@ -1141,7 +1139,6 @@ export const BackendProvider: BackendService = {
                 if (data?.redirectUrl) {
                     return Promise.reject({ ...error, redirectUrl: data.redirectUrl })
                 }
-                console.error("Error switching organization:", error)
                 throw error
             })
     },

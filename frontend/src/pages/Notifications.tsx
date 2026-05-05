@@ -118,12 +118,8 @@ function NotificationsPage() {
                         runs: response.items,
                         initialRunIndex
                     })
-                } catch (error) {
-                    console.error("Failed to open run history from notification action", {
-                        error,
-                        agentId,
-                        runId
-                    })
+                } catch {
+                    // Run may have been deleted; silently ignore deep link failure
                 }
                 return
             }
@@ -148,7 +144,8 @@ function NotificationsPage() {
                 return
             }
             default:
-                console.warn("Unsupported notifications deep link action", { deepLink })
+                // Unsupported deep link action; silently ignore
+                return
         }
     }
 

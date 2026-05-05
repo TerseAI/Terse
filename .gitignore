@@ -6,6 +6,7 @@ node_modules/
 /shared/node_modules
 /shared/pnpm-lock.yaml
 .pnpm-store/
+CURSOR.md
 
 # Build artifacts
 dist/

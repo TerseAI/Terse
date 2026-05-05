@@ -66,8 +66,6 @@ function addChatSubscription(runId: string, callback: ChatEventCallback) {
 function processPendingSubscriptions() {
     if (pendingSubscriptions.length === 0) return
 
-    console.log(`Processing ${pendingSubscriptions.length} pending socket subscriptions`)
-
     for (const sub of pendingSubscriptions) {
         addChatSubscription(sub.runId, sub.callback)
     }
@@ -96,28 +94,14 @@ export function initializeSocket() {
             try {
                 const token = await BackendProvider.requestSessionSocketToken()
                 cb({ token })
-            } catch (error) {
-                console.error("Failed to get socket token:", error)
+            } catch {
                 cb({ token: null })
             }
         },
         withCredentials: true
     })
 
-    socket.on(SocketEvents.CONNECT_ERROR, error => {
-        console.error("Socket.IO connection error:", error)
-        console.error("Error details:", {
-            message: error.message,
-            name: error.name,
-            stack: error.stack,
-            data: "data" in error ? error.data : undefined,
-            socketUrl,
-            socketPath
-        })
-    })
-
     socket.on(SocketEvents.CONNECT, () => {
-        console.log("Socket.IO connected")
         processPendingSubscriptions()
     })
 
@@ -172,7 +156,6 @@ export function subscribeToChatEvents(runId: string, callback: ChatEventCallback
     if (socket?.connected) {
         addChatSubscription(runId, callback)
     } else {
-        console.log("Socket not ready, queueing chat subscription for runId:", runId)
         pendingSubscriptions.push({ type: "chat", runId, callback })
     }
 
@@ -206,7 +189,6 @@ export function disconnectSocket() {
 
 export function sendChatMessage(runId: string | null, message: ModelRequest): void {
     if (!socket || !socket.connected) {
-        console.warn("Socket not connected, cannot send message")
         return
     }
     socket.emit(SocketEvents.AGENT_CHAT_MESSAGE, { runId, message })
@@ -219,7 +201,6 @@ export type ToolApprovalResponseOptions = {
 
 export function sendToolApprovalResponse(runId: string, stepId: string, approved: boolean, options?: ToolApprovalResponseOptions): void {
     if (!socket || !socket.connected) {
-        console.warn("Socket not connected, cannot send approval response")
         return
     }
     socket.emit(SocketEvents.AGENT_CHAT_APPROVAL, {
