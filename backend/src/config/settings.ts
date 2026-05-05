@@ -31,8 +31,7 @@ export const settings = {
 
     // Database connections
     database: {
-        url: requireEnv("DATABASE_URL"),
-        searchUrl: requireEnv("SEARCH_DATABASE_URL")
+        url: requireEnv("DATABASE_URL")
     },
 
     workos: {

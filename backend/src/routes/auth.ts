@@ -517,7 +517,7 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     // Backfill WorkOS user metadata with our DB ID so future requests get it via JWT Template claims
     if (isNewUser || !workosUser.metadata?.db_id) {
         try {
-            console.log("Backfilling WorkOS user metadata with db_id", { workosUserId: workosUser.id, dbUserId: dbUser.id })
+            logger.info("Backfilling WorkOS user metadata with db_id", { workosUserId: workosUser.id, dbUserId: dbUser.id })
             await workos.userManagement.updateUser({
                 userId: workosUser.id,
                 metadata: { db_id: dbUser.id }

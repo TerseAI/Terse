@@ -597,20 +597,12 @@ export const BackendProvider: BackendService = {
         return axios
             .get<User>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching user:", error)
-                throw error
-            })
     },
 
     createUser: (name: string, email: string, password: string) => {
         return axios
             .post(`${backendBaseUrl}${ApiRoutes.USERS.CREATE}`, { name, email, password }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating user:", error)
-                throw error
-            })
     },
 
     authenticateUser: (email: string, password: string) => {
@@ -618,10 +610,6 @@ export const BackendProvider: BackendService = {
             .post(`${backendBaseUrl}${ApiRoutes.AUTH.LOGIN}`, { email, password }, { withCredentials: true })
             .then(response => {
                 return response.data
-            })
-            .catch(error => {
-                console.error("Error logging in:", error)
-                throw error
             })
     },
 
@@ -633,10 +621,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get(`${backendBaseUrl}${ApiRoutes.STATS}`, { withCredentials: true, params })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting stats:", error)
-                throw error
-            })
     },
 
     getIntegrationInstallationDetails: <T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>, stateToken?: string) => {
@@ -653,30 +637,18 @@ export const BackendProvider: BackendService = {
         return axios
             .get(url, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting integration installation details:", error)
-                throw error
-            })
     },
 
     getAllIntegrations: () => {
         return axios
             .get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.LIST}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting all integrations:", error)
-                throw error
-            })
     },
 
     getActiveIntegrations: () => {
         return axios
             .get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.ACTIVE}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting active integrations:", error)
-                throw error
-            })
     },
 
     getGithubRepositoriesForIntegration: (installationId: number) => {
@@ -686,90 +658,54 @@ export const BackendProvider: BackendService = {
                 withCredentials: true
             })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting GitHub repositories for integration:", error)
-                throw error
-            })
     },
 
     requestGitHubAppInstallationUrl: () => {
         return axios
             .get(`${backendBaseUrl}${ApiRoutes.GITHUB.INSTALLATION_URL}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error requesting GitHub app installation URL:", error)
-                throw error
-            })
     },
 
     getCurrentSlackIntegration: () => {
         return axios
             .get(`${backendBaseUrl}${ApiRoutes.SLACK.GET_CURRENT_INTEGRATION}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting current Slack integration:", error)
-                throw error
-            })
     },
 
     getLinearTeams: (integrationId: string) => {
         return axios
             .get<LinearTeam[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.TEAMS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching Linear teams:", error)
-                throw error
-            })
     },
 
     getGmailIntegrations: () => {
         return axios
             .get<GmailIntegration[]>(`${backendBaseUrl}${ApiRoutes.GMAIL.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Gmail integrations:", error)
-                throw error
-            })
     },
 
     getGithubIntegrations: () => {
         return axios
             .get<GithubIntegration[]>(`${backendBaseUrl}${ApiRoutes.GITHUB.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting GitHub integrations:", error)
-                throw error
-            })
     },
 
     getLinearIntegrations: () => {
         return axios
             .get<LinearIntegration[]>(`${backendBaseUrl}${ApiRoutes.LINEAR.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Linear integrations:", error)
-                throw error
-            })
     },
 
     getNotionIntegrations: () => {
         return axios
             .get<NotionIntegration[]>(`${backendBaseUrl}${ApiRoutes.NOTION.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Notion integrations:", error)
-                throw error
-            })
     },
 
     getPosthogIntegrations: () => {
         return axios
             .get<PosthogIntegration[]>(`${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Posthog integrations:", error)
-                throw error
-            })
     },
 
     createOrUpdatePosthogIntegration: (apiKey: string, stateToken?: string) => {
@@ -780,30 +716,18 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ success: boolean; email: string | null; orgName: string | null }>(`${backendBaseUrl}${ApiRoutes.POSTHOG.INTEGRATIONS}`, body, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating/updating Posthog integration:", error)
-                throw error
-            })
     },
 
     getLaunchDarklyIntegrations: () => {
         return axios
             .get<LaunchDarklyIntegration[]>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting LaunchDarkly integrations:", error)
-                throw error
-            })
     },
 
     getAttioIntegrations: () => {
         return axios
             .get<AttioIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Attio integrations:", error)
-                throw error
-            })
     },
 
     getAttioObjects: (integrationId: string) => {
@@ -811,20 +735,12 @@ export const BackendProvider: BackendService = {
         return axios
             .get<AttioObjectWithAttributes[]>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Attio objects:", error)
-                throw error
-            })
     },
 
     getWorkOSIntegrations: () => {
         return axios
             .get<WorkOSIntegration[]>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting WorkOS integrations:", error)
-                throw error
-            })
     },
 
     createOrUpdateWorkOSIntegration: (apiKey: string, webhookSecret?: string, stateToken?: string) => {
@@ -838,10 +754,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ integrationId: string; webhookUrl: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS}`, body, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating/updating WorkOS integration:", error)
-                throw error
-            })
     },
 
     updateWorkOSWebhookSecret: (webhookSecret: string, stateToken?: string) => {
@@ -852,20 +764,12 @@ export const BackendProvider: BackendService = {
         return axios
             .patch<{ success: boolean }>(`${backendBaseUrl}${ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET}`, body, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error updating WorkOS webhook secret:", error)
-                throw error
-            })
     },
 
     getDatadogIntegrations: () => {
         return axios
             .get<DatadogIntegration[]>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Datadog integrations:", error)
-                throw error
-            })
     },
 
     createOrUpdateLaunchDarklyIntegration: (apiKey: string, stateToken?: string) => {
@@ -876,10 +780,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ success: boolean; email: string | null }>(`${backendBaseUrl}${ApiRoutes.LAUNCHDARKLY.INTEGRATIONS}`, body, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating/updating LaunchDarkly integration:", error)
-                throw error
-            })
     },
 
     createOrUpdateDatadogIntegration: (apiKey: string, appKey: string, region: string, stateToken?: string) => {
@@ -890,10 +790,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ success: boolean; region: string }>(`${backendBaseUrl}${ApiRoutes.DATADOG.INTEGRATIONS}`, body, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating/updating Datadog integration:", error)
-                throw error
-            })
     },
 
     getLaunchDarklyProjects: (integrationId: string) => {
@@ -901,10 +797,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<LaunchDarklyProjectsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching LaunchDarkly projects:", error)
-                throw error
-            })
     },
 
     getLaunchDarklyEnvironments: (integrationId: string, projectKey: string) => {
@@ -912,10 +804,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<LaunchDarklyEnvironmentsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching LaunchDarkly environments:", error)
-                throw error
-            })
     },
 
     getDatadogIndexes: (integrationId: string) => {
@@ -925,20 +813,12 @@ export const BackendProvider: BackendService = {
                 withCredentials: true
             })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Datadog indexes:", error)
-                throw error
-            })
     },
 
     getSnowflakeIntegrations: () => {
         return axios
             .get<SnowflakeIntegration[]>(`${backendBaseUrl}${ApiRoutes.SNOWFLAKE.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Snowflake integrations:", error)
-                throw error
-            })
     },
 
     createOrUpdateSnowflakeIntegration: (accountIdentifier: string, username: string, privateKey: string, passphrase: string, warehouse: string, stateToken?: string) => {
@@ -949,10 +829,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ success: boolean; accountIdentifier: string; warehouse: string }>(`${backendBaseUrl}${ApiRoutes.SNOWFLAKE.INTEGRATIONS}`, body, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating/updating Snowflake integration:", error)
-                throw error
-            })
     },
 
     getPosthogProjects: (integrationId: string, search?: string) => {
@@ -963,40 +839,24 @@ export const BackendProvider: BackendService = {
         return axios
             .get<PosthogProjectsResponse>(`${backendBaseUrl}${ApiRoutes.POSTHOG.PROJECTS}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching Posthog projects:", error)
-                throw error
-            })
     },
 
     getSlackIntegrations: () => {
         return axios
             .get<SlackIntegration[]>(`${backendBaseUrl}${ApiRoutes.SLACK.INTEGRATIONS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting Slack integrations:", error)
-                throw error
-            })
     },
 
     deleteGmailIntegration: () => {
         return axios
             .delete(`${backendBaseUrl}/gmail/delete-integration`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error deleting Gmail integration:", error)
-                throw error
-            })
     },
 
     deleteNotionIntegration: () => {
         return axios
             .delete(`${backendBaseUrl}${ApiRoutes.NOTION.DELETE_INTEGRATION}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error deleting Notion integration:", error)
-                throw error
-            })
     },
 
     getNotionResources: (integrationId: string, search?: string, type?: "page" | "database") => {
@@ -1010,30 +870,18 @@ export const BackendProvider: BackendService = {
         return axios
             .get<NotionResourcesResponse>(`${backendBaseUrl}${ApiRoutes.NOTION.RESOURCES}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error searching Notion resources:", error)
-                throw error
-            })
     },
 
     getSlackChannels: (integrationId: string) => {
         return axios
             .get<SlackChannelsResponse>(`${backendBaseUrl}${ApiRoutes.SLACK.CHANNELS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching Slack channels:", error)
-                throw error
-            })
     },
 
     getSlackUsers: (integrationId: string) => {
         return axios
             .get<SlackUsersResponse>(`${backendBaseUrl}${ApiRoutes.SLACK.USERS}?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching Slack users:", error)
-                throw error
-            })
     },
 
     requestSessionSocketToken: () => {
@@ -1042,10 +890,6 @@ export const BackendProvider: BackendService = {
             .then(response => {
                 const data = response.data
                 return typeof data === "string" ? data : data.token
-            })
-            .catch(error => {
-                console.error("Error requesting session socket token:", error)
-                throw error
             })
     },
 
@@ -1063,10 +907,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<AgentsResponse>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting agents:", error)
-                throw error
-            })
     },
 
     getRecentAgents: (limit = 3) => {
@@ -1076,10 +916,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<RecentAgent[]>(`${backendBaseUrl}${ApiRoutes.AGENTS.RECENT}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting recent agents:", error)
-                throw error
-            })
     },
 
     getAgentById: (id: string) => {
@@ -1087,10 +923,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<Agent>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting agent:", error)
-                throw error
-            })
     },
 
     getProjectById: (id: string) => {
@@ -1098,10 +930,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<ProjectDetailResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting project:", error)
-                throw error
-            })
     },
 
     deleteProject: (id: string) => {
@@ -1114,10 +942,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<ProjectDeploysResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting project deploys:", error)
-                throw error
-            })
     },
 
     getProjectSourceFiles: (id: string) => {
@@ -1125,10 +949,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<ProjectSourceFilesResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting project source files:", error)
-                throw error
-            })
     },
 
     getProjectSourceFileContent: (id: string, fileId: string) => {
@@ -1136,10 +956,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<AgentFileContentResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting project source file content:", error)
-                throw error
-            })
     },
 
     verifySdkJobServer: (agentId: string) => {
@@ -1147,10 +963,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<SdkJobServerCheckResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error verifying SDK job server:", error)
-                throw error
-            })
     },
 
     rotateProjectSigningSecret: (projectId: string) => {
@@ -1158,10 +970,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<ProjectRotateSigningSecretResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error rotating project signing secret:", error)
-                throw error
-            })
     },
 
     rotateProjectApiKey: (projectId: string) => {
@@ -1169,10 +977,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<ProjectRotateApiKeyResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error rotating project API key:", error)
-                throw error
-            })
     },
 
     getAgentImprovements: (agentId: string) => {
@@ -1180,10 +984,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<GetAgentImprovementsResponse>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting agent improvements:", error)
-                throw error
-            })
     },
 
     applyImprovement: (agentId: string, improvementId: string) => {
@@ -1191,10 +991,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<ApplyImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error applying improvement:", error)
-                throw error
-            })
     },
 
     dismissImprovement: (agentId: string, improvementId: string) => {
@@ -1202,10 +998,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<DismissImprovementResponse>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error dismissing improvement:", error)
-                throw error
-            })
     },
 
     undoDismissImprovement: (agentId: string, improvementId: string) => {
@@ -1213,10 +1005,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ success: boolean }>(`${backendBaseUrl}${url}`, {}, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error undoing dismiss:", error)
-                throw error
-            })
     },
 
     toggleImprovementsEnabled: (agentId: string, enabled: boolean) => {
@@ -1224,20 +1012,12 @@ export const BackendProvider: BackendService = {
         return axios
             .patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${url}`, { enabled }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error toggling improvements setting:", error)
-                throw error
-            })
     },
 
     createAgent: (data: AgentUpdate) => {
         return axios
             .post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating agent:", error)
-                throw error
-            })
     },
 
     updateAgent: (id: string, data: AgentUpdate) => {
@@ -1245,10 +1025,6 @@ export const BackendProvider: BackendService = {
         return axios
             .patch<{ success: boolean; id: string }>(`${backendBaseUrl}${url}`, data, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error updating agent:", error)
-                throw error
-            })
     },
 
     deleteAgent: (id: string) => {
@@ -1256,10 +1032,6 @@ export const BackendProvider: BackendService = {
         return axios
             .delete<{ success: boolean; message: string }>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error deleting agent:", error)
-                throw error
-            })
     },
 
     getAllRunHistory: params => {
@@ -1274,10 +1046,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<GetAllRunHistoryResponse>(url, { withCredentials: true })
             .then(r => r.data)
-            .catch(error => {
-                console.error("Error fetching all run history:", error)
-                throw error
-            })
     },
 
     getRunHistory: (agentId, params) => {
@@ -1293,10 +1061,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<GetRunHistoryResponse>(url, { withCredentials: true })
             .then(r => r.data)
-            .catch(error => {
-                console.error("Error fetching run history:", error)
-                throw error
-            })
     },
 
     getChatHistory: runId => {
@@ -1315,10 +1079,6 @@ export const BackendProvider: BackendService = {
                 withCredentials: true
             })
             .then(r => r.data)
-            .catch(error => {
-                console.error("Error fetching chat history:", error)
-                throw error
-            })
     },
 
     getRunHistoryActions: ids => {
@@ -1328,20 +1088,12 @@ export const BackendProvider: BackendService = {
         return axios
             .get<RunHistoryActionWithId[]>(url, { withCredentials: true })
             .then(r => r.data)
-            .catch(error => {
-                console.error("Error fetching run history actions:", error)
-                throw error
-            })
     },
 
     getNotificationDestinations: () => {
         return axios
             .get<NotificationDestination[]>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting notification destinations:", error)
-                throw error
-            })
     },
 
     getSentNotifications: ({ page = 1, pageSize = 12 }) => {
@@ -1354,10 +1106,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<GetSentNotificationsResponse>(url, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting sent notifications:", error)
-                throw error
-            })
     },
 
     getPendingApprovals: (params?: { status?: ApprovalRequestFilter }) => {
@@ -1371,20 +1119,12 @@ export const BackendProvider: BackendService = {
         return axios
             .get<GetPendingApprovalsResponse>(url, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting pending approvals:", error)
-                throw error
-            })
     },
 
     createNotificationDestination: (destination: CreateNotificationDestinationRequest) => {
         return axios
             .post<NotificationDestination>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_DESTINATIONS.LIST}`, destination, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating notification destination:", error)
-                throw error
-            })
     },
 
     updateNotificationDestination: (destination: NotificationDestination) => {
@@ -1392,10 +1132,6 @@ export const BackendProvider: BackendService = {
         return axios
             .put<NotificationDestination>(`${backendBaseUrl}${url}`, destination, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error updating notification destination:", error)
-                throw error
-            })
     },
 
     deleteNotificationDestination: (destination: NotificationDestination) => {
@@ -1403,30 +1139,18 @@ export const BackendProvider: BackendService = {
         return axios
             .delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error deleting notification destination:", error)
-                throw error
-            })
     },
 
     getApiTokens: () => {
         return axios
             .get<ApiToken[]>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting API tokens:", error)
-                throw error
-            })
     },
 
     createApiToken: (name: string) => {
         return axios
             .post<ApiTokenCreateResponse>(`${backendBaseUrl}${ApiRoutes.API_TOKENS.LIST}`, { name }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating API token:", error)
-                throw error
-            })
     },
 
     updateApiToken: (id: string, name: string) => {
@@ -1434,10 +1158,6 @@ export const BackendProvider: BackendService = {
         return axios
             .patch<ApiToken>(`${backendBaseUrl}${url}`, { name }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error updating API token:", error)
-                throw error
-            })
     },
 
     deleteApiToken: (id: string) => {
@@ -1445,40 +1165,24 @@ export const BackendProvider: BackendService = {
         return axios
             .delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error deleting API token:", error)
-                throw error
-            })
     },
 
     getTemplates: () => {
         return axios
             .get<AgentTemplate[]>(`${backendBaseUrl}${ApiRoutes.TEMPLATES}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting templates:", error)
-                throw error
-            })
     },
 
     fetchSampleEvents: (triggers: Array<{ triggerId?: string; integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {
         return axios
             .post<{ events: SampleEventRef[] }>(`${backendBaseUrl}${ApiRoutes.SDK.SAMPLE_EVENTS}`, { triggers }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching sample events:", error)
-                throw error
-            })
     },
 
     hydrateSampleEvent: (entityType: string, entityId: string) => {
         return axios
             .post<{ event: SerializedEvent }>(`${backendBaseUrl}${ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT}`, { entityType, entityId }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error hydrating sample event:", error)
-                throw error
-            })
     },
 
     triggerWithEvent: (automationId: string, event?: SerializedEvent, runId?: string) => {
@@ -1486,10 +1190,6 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { event: event?.data, runId }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error triggering with event:", error)
-                throw error
-            })
     },
 
     triggerManually: (triggerId: string, context?: string) => {
@@ -1497,20 +1197,12 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ received: boolean; message: string }>(`${backendBaseUrl}${url}`, { context }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error triggering manually:", error)
-                throw error
-            })
     },
 
     getToolsThatRequireApprovals: (request: GetToolsThatRequireApprovalsRequest) => {
         return axios
             .post<GetToolsThatRequireApprovalsResponse>(`${backendBaseUrl}${ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS}`, request, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting tools that require approvals:", error)
-                throw error
-            })
     },
 
     loginRedirect: () => {
@@ -1572,30 +1264,18 @@ export const BackendProvider: BackendService = {
         return axios
             .post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error creating organization:", error)
-                throw error
-            })
     },
 
     getCurrentOrganization: () => {
         return axios
             .get<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting current organization:", error)
-                throw error
-            })
     },
 
     getUserOrganizations: () => {
         return axios
             .get<{ organizations: { id: string; name: string }[] }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.LIST}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting user organizations:", error)
-                throw error
-            })
     },
 
     switchOrganization: (organizationId: string) => {
@@ -1616,10 +1296,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<{ token: string; expiresAt: string }>(`${backendBaseUrl}${ApiRoutes.WORKOS.WIDGET_TOKEN}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting widget token:", error)
-                throw error
-            })
     },
 
     getOrgLogoUploadUrl: (contentType: string) => {
@@ -1629,10 +1305,6 @@ export const BackendProvider: BackendService = {
                 withCredentials: true
             })
             .then(response => response.data.uploadUrl)
-            .catch(error => {
-                console.error("Error getting logo upload URL:", error)
-                throw error
-            })
     },
 
     getOrgLogoUrl: (organizationId: string) => {
@@ -1640,10 +1312,6 @@ export const BackendProvider: BackendService = {
         return axios
             .get<{ logoUrl: string | null }>(`${backendBaseUrl}${url}`, { withCredentials: true })
             .then(response => response.data.logoUrl)
-            .catch(error => {
-                console.error("Error getting logo URL:", error)
-                throw error
-            })
     },
 
     uploadOrgLogo: async (file: File) => {
@@ -1661,20 +1329,12 @@ export const BackendProvider: BackendService = {
         return axios
             .put<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.UPDATE}`, { name }, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error updating organization:", error)
-                throw error
-            })
     },
 
     getNotificationSettings: () => {
         return axios
             .get<NotificationSettings>(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error fetching notification settings:", error)
-                throw error
-            })
     },
 
     updateNotificationSettings: (agentDefaultNotifications: RunHistoryActionType[], weeklyAgentImprovements: boolean, applyToAllAgents?: boolean) => {
@@ -1686,28 +1346,16 @@ export const BackendProvider: BackendService = {
         return axios
             .post(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, payload, { withCredentials: true })
             .then(() => undefined)
-            .catch(error => {
-                console.error("Error updating notification settings:", error)
-                throw error
-            })
     },
     getAgentFiles: (agentId: string) => {
         return axios
             .get<AgentFilesResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILES, { agentId })}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting agent files:", error)
-                throw error
-            })
     },
 
     getAgentFileContent: (agentId: string, fileId: string) => {
         return axios
             .get<AgentFileContentResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILE_CONTENT, { agentId, fileId })}`, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => {
-                console.error("Error getting agent file content:", error)
-                throw error
-            })
     }
 }
