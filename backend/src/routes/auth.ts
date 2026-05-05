@@ -128,42 +128,15 @@ export async function logout(req: Request, res: Response) {
 }
 
 export async function me(req: Request, res: Response) {
-    logger.info("[/me] Endpoint called", {
-        hasSessionCookie: !!req.cookies[WORKOS_SESSION_COOKIE_NAME],
-        hasSession: !!req.session,
-        hasSessionUser: !!req.session?.user,
-        cookies: Object.keys(req.cookies || {})
-    })
-
     const user = req.session?.user || null
     if (!user) {
-        logger.warn("[/me] No user in session, returning 401", {
-            sessionKeys: req.session ? Object.keys(req.session) : []
-        })
         return res.status(401).send("Unauthorized")
     }
-
-    logger.info("[/me] User found in session", {
-        userId: user.id,
-        workosId: user.workosId,
-        email: user.email,
-        organizationId: user.organizationId
-    })
 
     // Always fetch fresh profile data from WorkOS so profile updates (e.g., from User Profile widget)
     // are reflected immediately when the frontend calls refreshUser()
     try {
-        logger.info("[/me] Fetching fresh user from WorkOS", {
-            workosId: user.workosId
-        })
         const workOSUser = await workos.userManagement.getUser(user.workosId)
-        logger.info("[/me] Successfully fetched WorkOS user", {
-            workosUserId: workOSUser.id,
-            email: workOSUser.email,
-            hasFirstName: !!workOSUser.firstName,
-            hasLastName: !!workOSUser.lastName,
-            hasProfilePicture: !!workOSUser.profilePictureUrl
-        })
 
         const refreshedUser: User = {
             ...user,
@@ -174,19 +147,10 @@ export async function me(req: Request, res: Response) {
             displayPhotoUrl: workOSUser.profilePictureUrl || ""
         }
 
-        logger.info("[/me] Returning refreshed user", {
-            userId: refreshedUser.id,
-            email: refreshedUser.email
-        })
         return res.send(refreshedUser)
     } catch (error) {
-        const errorMessage = extractErrorMessage(error)
-        const errorStack = error instanceof Error ? error.stack : undefined
         logger.warn("[/me] Failed to fetch fresh user from WorkOS, returning session user", {
-            error: errorMessage,
-            stack: errorStack,
-            userId: user.id,
-            workosId: user.workosId
+            error: extractErrorMessage(error)
         })
         return res.send(user)
     }
@@ -303,32 +267,18 @@ function sendOrganizationRequired(req: Request, res: Response) {
 }
 
 export async function callback(req: Request, res: Response) {
-    logger.info("[/callback] Endpoint called", {
-        hasCode: !!req.query.code,
-        queryParams: Object.keys(req.query || {}),
-        hasError: !!req.query.error,
-        error: req.query.error,
-        errorDescription: req.query.error_description
-    })
-
     const code = req.query.code as string
 
     if (!code) {
-        logger.warn("[/callback] No code provided in query params", {
-            query: req.query
-        })
+        if (req.query.error) {
+            logger.warn("[/callback] WorkOS returned an error to the callback", {
+                error: req.query.error
+            })
+        }
         return res.status(400).send("No code provided")
     }
 
-    logger.info("[/callback] Code received, authenticating with WorkOS", {
-        codeLength: code.length,
-        codePrefix: code.substring(0, 10) + "...",
-        clientId: settings.workos.clientId,
-        redirectUri: settings.workos.redirectUri
-    })
-
     try {
-        logger.info("[/callback] Calling workos.userManagement.authenticateWithCode")
         const authenticateResponse = await workos.userManagement.authenticateWithCode({
             clientId: settings.workos.clientId,
             code,
@@ -338,85 +288,36 @@ export async function callback(req: Request, res: Response) {
             }
         })
 
-        logger.info("[/callback] authenticateWithCode response received", {
-            hasSealedSession: !!authenticateResponse.sealedSession,
-            hasUser: !!authenticateResponse.user,
-            userId: authenticateResponse.user?.id,
-            userEmail: authenticateResponse.user?.email,
-            hasOrganizationId: !!authenticateResponse.organizationId,
-            organizationId: authenticateResponse.organizationId
-        })
-
         if (!authenticateResponse.sealedSession) {
-            logger.error("[/callback] No sealed session in authenticate response", {
-                responseKeys: Object.keys(authenticateResponse)
-            })
+            logger.error("[/callback] No sealed session in authenticate response")
             return res.status(401).send("No sealed session provided")
         }
 
-        logger.info("[/callback] Loading sealed session")
         const workosSession = workos.userManagement.loadSealedSession({
             sessionData: authenticateResponse.sealedSession,
             cookiePassword: settings.workos.cookiePassword
         })
 
-        logger.info("[/callback] Authenticating loaded session")
         const authResult = await workosSession.authenticate()
 
-        logger.info("[/callback] Session authentication result", {
-            authenticated: authResult.authenticated,
-            reason: !authResult.authenticated ? (authResult as any).reason : undefined,
-            userId: authResult.authenticated ? authResult.user?.id : undefined,
-            organizationId: authResult.authenticated ? authResult.organizationId : undefined,
-            roles: authResult.authenticated ? authResult.roles : undefined
-        })
-
         if (!authResult.authenticated) {
-            logger.error("[/callback] Session authentication failed", {
-                reason: (authResult as any).reason
+            logger.warn("[/callback] Session authentication failed", {
+                reason: (authResult as { reason?: string }).reason
             })
             return res.status(401).send("Failed to authenticate")
         }
 
-        // Create user record in database if it doesn't already
-        // exist
-        logger.info("[/callback] Creating/fetching user from database", {
-            workosUserId: authResult.user.id,
-            email: authResult.user.email
-        })
         const claims = getClaimsFromAuthResult(authResult)
-        const { user: dbUser } = await getOrCreateDbUserFromWorkOS(authResult, claims)
-        logger.info("[/callback] Database user ready", {
-            dbUserId: dbUser.id,
-            workosId: dbUser.workosId,
-            organizationId: dbUser.organizationId
-        })
+        await getOrCreateDbUserFromWorkOS(authResult, claims)
 
-        // Store the session in a cookie
-        logger.info("[/callback] Setting session cookie", {
-            cookieName: WORKOS_SESSION_COOKIE_NAME,
-            secure: settings.nodeEnv === "production",
-            sealedSessionLength: authenticateResponse.sealedSession.length
-        })
         setSessionCookie(res, authenticateResponse.sealedSession)
 
-        // Redirect the user to the homepage
-        logger.info("[/callback] Authentication successful, redirecting to frontend", {
-            redirectUrl: settings.urls.frontend
-        })
         return res.redirect(settings.urls.frontend)
     } catch (error) {
-        const errorMessage = extractErrorMessage(error)
-        const errorStack = error instanceof Error ? error.stack : undefined
-        const errorName = error instanceof Error ? error.name : "Unknown"
-
         logger.error("[/callback] WorkOS callback error", {
-            errorName,
-            errorMessage,
-            errorStack,
-            code: code ? `${code.substring(0, 10)}...` : undefined,
-            clientId: settings.workos.clientId,
-            redirectUri: settings.workos.redirectUri
+            errorName: error instanceof Error ? error.name : "Unknown",
+            errorMessage: extractErrorMessage(error),
+            stack: error instanceof Error ? error.stack : undefined
         })
 
         // Don't redirect to /login here as it causes an infinite redirect loop
@@ -425,7 +326,7 @@ export async function callback(req: Request, res: Response) {
         return res
             .status(500)
             .send(
-                `Authentication failed: ${errorMessage}. ` +
+                `Authentication failed. ` +
                     `Please <a href="${settings.urls.frontend}">return to the app</a> and try again. ` +
                     `If the problem persists, clear your cookies for this site.`
             )
@@ -517,17 +418,12 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     // Backfill WorkOS user metadata with our DB ID so future requests get it via JWT Template claims
     if (isNewUser || !workosUser.metadata?.db_id) {
         try {
-            logger.info("Backfilling WorkOS user metadata with db_id", { workosUserId: workosUser.id, dbUserId: dbUser.id })
             await workos.userManagement.updateUser({
                 userId: workosUser.id,
                 metadata: { db_id: dbUser.id }
             })
         } catch (error) {
-            logger.warn("Failed to backfill WorkOS user metadata with db_id", {
-                error,
-                workosUserId: workosUser.id,
-                dbUserId: dbUser.id
-            })
+            logger.warn("Failed to backfill WorkOS user metadata with db_id", { error: extractErrorMessage(error) })
         }
     }
 
