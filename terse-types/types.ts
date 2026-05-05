@@ -894,7 +894,10 @@ export const toggleImprovementsEnabledRequestSchema = z.object({
 export type ToggleImprovementsEnabledRequest = z.infer<typeof toggleImprovementsEnabledRequestSchema>
 
 export const workosWebhookSecretUpdateRequestSchema = z.object({
-    webhookSecret: z.string(),
+    webhookSecret: z
+        .string()
+        .transform(s => s.trim())
+        .pipe(z.string().min(1, "Webhook signing secret is required")),
     state: z.string().optional()
 })
 export type WorkosWebhookSecretUpdateRequest = z.infer<typeof workosWebhookSecretUpdateRequestSchema>
