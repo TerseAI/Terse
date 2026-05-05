@@ -28,7 +28,6 @@ import { persistRunAction } from "./EventProcessor"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
-import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
 import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storePendingApprovalState } from "./runHistory"
 
 // Types from @openai/agents SDK for content items
@@ -252,20 +251,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
                 })
             }
             await this.notificationManager.notify(action)
-
-            // Persist output attributions if:
-            // 1. Input event is Identifiable
-            // 2. Action has output_items populated
-            // 3. Action is not read-only (track both write and read actions per user request)
-            const sourceItemRef = this.inputEvent?.getIdentifiableInfo()
-            if (sourceItemRef && action.output_items && action.output_items.length > 0 && !isReadOnly) {
-                if (action.type === RunHistoryActionType.delete) {
-                    await removeOutputAttributions(this.agentConfig.id, action)
-                } else {
-                    // if we create or update, we persist
-                    await persistOutputAttributions(this.agentConfig.id, sourceItemRef, action)
-                }
-            }
         }
 
         return changedItems

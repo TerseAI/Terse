@@ -4,5 +4,4 @@ export { notionCreateOrUpdateDatabaseRowTool } from "./createOrUpdateDatabaseRow
 export { notionCreateOrUpdatePageTool } from "./createOrUpdatePage"
 export { notionQueryPageTool } from "./queryPage"
 export { notionModifyBlocksTool } from "./modifyBlocks"
-export { fetchRelatedEventsTool } from "./fetchRelatedEvents"
 export { notionListUsersTool } from "./listUsers"

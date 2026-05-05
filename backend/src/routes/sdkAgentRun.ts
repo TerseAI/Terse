@@ -45,6 +45,8 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     const { send, sandboxRunId } = initSseStream(req, res)
     const isProductionRun = !!sandboxRunId
 
+    console.log("WTF: ", data.toolApprovals)
+
     try {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
         const sdkRunner = createSdkRunner({

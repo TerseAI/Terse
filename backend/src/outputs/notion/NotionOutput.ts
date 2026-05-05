@@ -8,7 +8,6 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import {
-    fetchRelatedEventsTool,
     notionCreateOrUpdateDatabaseRowTool,
     notionCreateOrUpdatePageTool,
     notionGetSchemaTool,
@@ -27,7 +26,6 @@ export class NotionOutput extends Output<NotionConfig> {
             { tool: notionCreateOrUpdatePageTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
             { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
             { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
-            { tool: fetchRelatedEventsTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" },
             { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
         ]
         super(OutputConfigType.NOTION, toolbox)
