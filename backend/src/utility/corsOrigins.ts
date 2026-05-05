@@ -48,12 +48,8 @@ export function isCorsOriginAllowed(origin: string | undefined, allowedOrigins: 
 
 function normalizeToOrigin(raw: string): string | null {
     const trimmed = raw.trim()
-    if (!trimmed) {
+    if (!trimmed || !URL.canParse(trimmed)) {
         return null
     }
-    try {
-        return new URL(trimmed).origin
-    } catch {
-        return null
-    }
+    return new URL(trimmed).origin
 }

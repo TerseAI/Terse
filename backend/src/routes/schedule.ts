@@ -66,7 +66,20 @@ export async function handleManualTrigger(req: Request, res: Response) {
         return
     }
 
-    logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, hasContext: !!context })
+    const organizationId = session.user.organizationId
+
+    const ownedInput = await db().automation_inputs.findFirst({
+        where: {
+            id: inputId,
+            automation: { organization_id: organizationId }
+        },
+        select: { id: true }
+    })
+    if (!ownedInput) {
+        return res.status(404).json({ error: "Schedule trigger not found" })
+    }
+
+    logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, organizationId, hasContext: !!context })
 
     // Acknowledge immediately
     res.status(200).json({ received: true, message: "Manual trigger initiated" })
