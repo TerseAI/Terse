@@ -1,7 +1,7 @@
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { Session } from "../../../express"
 import { getWebSearchService } from "../../../services/webSearch"
 import { TypedToolOptions, defineTool } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
 
 export const webExtractTool = defineTool({
     name: "web_extract",

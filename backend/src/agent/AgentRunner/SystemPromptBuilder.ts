@@ -4,13 +4,13 @@ import { ConfigData, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"
+import { Session } from "../../express"
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { Output } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
 import { extractConversationContent } from "../../rag/runHistoryRag/conversationExtractor"
 import { RunHistoryMemory } from "../../rag/runHistoryRag/indexer"
-import { Session } from "../../types/session"
 
 export interface RunContext {
     runId: string

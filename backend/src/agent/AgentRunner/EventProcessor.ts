@@ -3,6 +3,7 @@ import { ConfigData } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
+import { Session } from "../../express"
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
@@ -14,7 +15,6 @@ import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
 import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent, SDKAgent, isSDKAgent } from "../../types/prisma"
-import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getActiveDeployForProject } from "../../utility/projectHelper"
@@ -298,8 +298,7 @@ export class EventProcessor {
 
         // Create base session for AgentRunner
         const session: Session = {
-            user: this.user,
-            isUserInitiated: true
+            user: this.user
         }
 
         // Filter the event using AI to see if it's relevant to this agent

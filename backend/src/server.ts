@@ -76,12 +76,6 @@ import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./utility/analytics"
 import { workos } from "./utility/workos"
 
-export type Session = {
-    user: User
-    isUserInitiated: boolean
-    teamId?: string
-}
-
 const app = express()
 const server = createServer(app)
 

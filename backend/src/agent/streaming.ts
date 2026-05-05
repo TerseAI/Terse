@@ -3,9 +3,9 @@ import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } fr
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import { ApprovalDecision } from "../agent/AgentRunner/BaseAgentRunner"
+import { Session } from "../express"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { ErrorContext } from "../tools/toolUtils"
-import { Session } from "../types/session"
 import { randomString } from "../utility/strings"
 
 import { AssistantDeltaProjector, CanonicalModelEvent } from "./DeltaProjector"
