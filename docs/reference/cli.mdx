@@ -441,6 +441,8 @@ terse docs
 
 If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs.
 
+Commands that call the Terse API honor **`TERSE_BACKEND_URL`** when set (otherwise the CLI uses its packaged default). Use this for local development or staging stacks. **`terse-sdk`** reads the same variable for outbound API calls when job context does not supply a base URL ([TypeScript SDK reference](/reference/typescript-sdk)).
+
 ## API key resolution
 
 Commands that call the Terse API resolve credentials in this order:

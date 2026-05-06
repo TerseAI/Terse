@@ -53,7 +53,7 @@ Duplicate **`name`** values throw an error when the second job registers. At mos
 | `triggers`       | typed trigger array                             | One or more triggers that start the workflow.                                                     |
 | `filter`         | `(event) => boolean \| Promise<boolean>`        | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger`      | `(event) => Promise<void>`                      | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or `https://app.useterse.ai/api`).      |
+| `remoteServerUrl` | `string`                                       | Optional field on the type; the CLI does not send it when you deploy. For self-hosted workflows, set `remoteServerUrl` in `terse.config.json` so Terse can POST signed triggers to your server ([Self-hosting](/self-hosting)). |
 
 Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
 
