@@ -47,7 +47,7 @@ Terse still runs the rest of the platform.
 
         | Variable               | Purpose                                                                                                                  |
         | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-        | `TERSE_API_KEY`        | Authenticates outbound calls from your handler to Terse: opening a session, executing tools, requesting approvals.       |
+        | `TERSE_API_KEY`        | Authenticates outbound calls from your handler to Terse: opening a session, executing tools, requesting approvals. Must be a current API token for an active user in that organization; revoked or stale tokens return **401**.       |
         | `TERSE_SIGNING_SECRET` | Verifies that incoming trigger requests really came from Terse. Used as the HMAC key for the `x-terse-signature` header. |
 
         <Warning>Treat `TERSE_SIGNING_SECRET` like any other webhook secret. Never log it, never ship it to the client, never commit it. Rotate it from the dashboard if it leaks.</Warning>

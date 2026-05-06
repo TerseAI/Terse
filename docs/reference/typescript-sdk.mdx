@@ -25,6 +25,11 @@ Import these from `terse-sdk`:
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 - `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
+- Session streaming (advanced): `openSessionStream`, `openListenStream`, `SessionStreamError`, and their handle / option / event types. `Terse.handleTrigger` uses this path internally when you self-host; you can import the same helpers for custom tooling that talks to the Terse session SSE endpoints.
+
+<Note>
+    Every request that sends **`TERSE_API_KEY`** as a Bearer token is checked against the live user and organization. Unknown, revoked, or stale tokens return **401** with `Invalid API token` or `API token is no longer valid for this organization`. Rotate the key in the Terse app (**Settings**) or fix org membership, then update your environment.
+</Note>
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
