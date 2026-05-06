@@ -79,8 +79,8 @@ function useDeepLinkedRun({
                 if (openRunFromList(runId, [matchedRun], openDrawer)) {
                     attemptedRunIdRef.current = runId
                 }
-            } catch (error) {
-                console.error("Failed to load deep-linked run", { agentId, runId, error })
+            } catch {
+                // Deep link target may have been deleted; silently fall back to list view
             }
         })()
 

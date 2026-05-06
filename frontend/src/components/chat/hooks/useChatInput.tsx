@@ -22,11 +22,7 @@ export function useChatInput({ sendMessage: sendModelRequest, onUserMessage }: U
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             client_turn_id: clientTurnId
         }
-        try {
-            sendModelRequest(modelRequest)
-        } catch (error) {
-            console.error("Failed to send message:", error)
-        }
+        sendModelRequest(modelRequest)
     }
 
     return {

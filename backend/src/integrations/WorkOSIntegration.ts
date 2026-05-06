@@ -154,7 +154,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                 label: "Webhook Signing Secret",
                 placeholder: "Enter your WorkOS webhook signing secret",
                 required: false,
-                hint: "The signing secret for verifying webhook payloads. You'll get this after creating the webhook endpoint in WorkOS."
+                hint: "After you save, use the webhook URL Terse returns to create an endpoint in WorkOS, then paste the signing secret here (or update later). Webhooks are rejected until this is set."
             }
         ]
     }
@@ -165,7 +165,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             url: "https://workos.com/docs/reference/api-authentication",
             instructions: [
                 "Use the API key for the correct WorkOS environment.",
-                "Add the webhook signing secret only if you configured webhook verification.",
+                "Save once to get your Terse webhook URL, create that endpoint in WorkOS, then add the signing secret — deliveries are rejected until the secret is stored.",
                 "Webhook setup reference: https://workos.com/docs/events/data-syncing/webhooks"
             ]
         }
@@ -179,7 +179,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             return { success: false, error: "API key is required", statusCode: 400 }
         }
 
-        const secret = webhookSecret && typeof webhookSecret === "string" ? webhookSecret : null
+        const secret = typeof webhookSecret === "string" && webhookSecret.trim().length > 0 ? webhookSecret.trim() : null
 
         try {
             // Validate API key by calling WorkOS API
@@ -215,6 +215,15 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             let integrationId: string
 
             if (existing) {
+                const storedWebhookSecret = await getSecret(IntegrationType.WORKOS, existing.id, SecretField.WebhookSecret)
+                if (!storedWebhookSecret && !secret) {
+                    return {
+                        success: false,
+                        error: "Webhook signing secret is required. Configure it in WorkOS and paste it here so deliveries can be verified.",
+                        statusCode: 400
+                    }
+                }
+
                 await storeSecret(IntegrationType.WORKOS, existing.id, SecretField.ApiKey, apiKey)
                 if (secret !== null) {
                     await storeSecret(IntegrationType.WORKOS, existing.id, SecretField.WebhookSecret, secret)

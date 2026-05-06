@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from "express"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { getUserForOrg } from "../utility/workos"
 
 export async function apiTokenAuthMiddleware(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers.authorization
@@ -21,8 +22,7 @@ export async function apiTokenAuthMiddleware(req: Request, res: Response, next: 
         const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex")
 
         const apiToken = await db().api_tokens.findUnique({
-            where: { token_hash: tokenHash },
-            include: { user: true }
+            where: { token_hash: tokenHash }
         })
 
         if (!apiToken) {
@@ -30,21 +30,18 @@ export async function apiTokenAuthMiddleware(req: Request, res: Response, next: 
             return
         }
 
-        // Populate session with the token owner's data
-        req.session = {
-            user: {
-                id: apiToken.user.id,
-                workosId: apiToken.user.workos_id,
-                organizationId: apiToken.organization_id,
-                organizationName: "",
-                email: "",
-                displayName: "",
-                firstName: null,
-                lastName: null,
-                displayPhotoUrl: "",
-                roles: []
-            }
+        const user = await getUserForOrg(apiToken.user_id, apiToken.organization_id)
+        if (!user) {
+            logger.warn("API token references a user/org that no longer resolves; rejecting", {
+                tokenId: apiToken.id,
+                userId: apiToken.user_id,
+                organizationId: apiToken.organization_id
+            })
+            res.status(401).json({ error: "API token is no longer valid for this organization" })
+            return
         }
+
+        req.session = { user }
 
         // Fire-and-forget update to last_used_at
         db()

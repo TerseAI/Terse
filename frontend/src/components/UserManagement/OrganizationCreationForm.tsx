@@ -107,7 +107,6 @@ export default function OrganizationCreationForm() {
                     await BackendProvider.uploadOrgLogo(logoFile)
                 } catch {
                     // Logo upload failed but org was created - continue anyway
-                    console.error("Failed to upload logo, but organization was created")
                 }
             }
 
