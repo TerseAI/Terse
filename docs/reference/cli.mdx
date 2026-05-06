@@ -448,6 +448,8 @@ Commands that call the Terse API resolve credentials in this order:
 1. `TERSE_API_KEY` in the current process environment
 2. The API key saved by `terse login`
 
+Those values are **user** API tokens (the same kind you create in the Terse app). Hosted executions use separate **project-scoped** tokens that Terse injects for you; you do not paste those into `.env`.
+
 After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 
 Your runtime still needs `TERSE_API_KEY` in its environment. Set that variable anywhere your Node process runs, such as a local `.env` file, a container secret, or your hosting provider's secret store.
