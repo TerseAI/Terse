@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 
 import RunHistoryChatAdapter from "./RunHistoryChatAdapter"
 import RunHistoryChatDrawerHeader from "./RunHistoryChatDrawerHeader"
+import { RunHistoryChatHistorySkeleton } from "./RunHistoryChatHistorySkeleton"
 import TriggerPayloadViewer from "./TriggerPayloadViewer"
 
 type Props = {
@@ -83,7 +84,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                     <AwaitingResponseAnimation />
                                 </div>
                             ) : isLoading ? (
-                                <div className="p-4 text-center text-muted-foreground">Loading history...</div>
+                                <RunHistoryChatHistorySkeleton />
                             ) : (
                                 <div className="p-4 text-center text-muted-foreground">No messages found</div>
                             )
