@@ -118,12 +118,8 @@ function NotificationsPage() {
                         runs: response.items,
                         initialRunIndex
                     })
-                } catch (error) {
-                    console.error("Failed to open run history from notification action", {
-                        error,
-                        agentId,
-                        runId
-                    })
+                } catch {
+                    // Run may have been deleted; silently ignore deep link failure
                 }
                 return
             }
@@ -148,7 +144,8 @@ function NotificationsPage() {
                 return
             }
             default:
-                console.warn("Unsupported notifications deep link action", { deepLink })
+                // Unsupported deep link action; silently ignore
+                return
         }
     }
 
@@ -506,8 +503,13 @@ function ErrorSentNotificationsRow() {
 function EmptySentNotificationsRow() {
     return (
         <TableRow>
-            <TableCell className="px-4 py-6 text-sm text-muted-foreground" colSpan={3}>
-                No notifications sent yet.
+            <TableCell className="px-4 py-8 align-middle" colSpan={3}>
+                <div className="mx-auto flex max-w-md flex-col gap-1 text-center">
+                    <span className="text-sm font-medium text-foreground">No notifications sent yet</span>
+                    <span className="text-sm text-muted-foreground">
+                        When agents send alerts or approval requests to your destinations, each delivery will show up in this table with status and timing.
+                    </span>
+                </div>
             </TableCell>
         </TableRow>
     )

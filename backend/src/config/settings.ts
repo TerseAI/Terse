@@ -31,8 +31,7 @@ export const settings = {
 
     // Database connections
     database: {
-        url: requireEnv("DATABASE_URL"),
-        searchUrl: requireEnv("SEARCH_DATABASE_URL")
+        url: requireEnv("DATABASE_URL")
     },
 
     workos: {
@@ -60,7 +59,7 @@ export const settings = {
     urls: {
         socketFrontend: optionalEnv("SOCKET_FRONTEND_URL"),
         frontend: requireEnv("FRONTEND_URL"),
-        backend: optionalEnv("BACKEND_URL", "http://localhost:3001"),
+        backend: requireEnv("BACKEND_URL"),
         backendProxy: optionalEnv("BACKEND_PROXY_URL")
     },
 
@@ -123,12 +122,6 @@ export const settings = {
         callbackUrl: requireEnv("ATLASSIAN_CALLBACK_URL")
     },
 
-    // TurboPuffer
-    turbopuffer: {
-        apiKey: requireEnv("TURBOPUFFER_API_KEY"),
-        region: optionalEnv("TURBOPUFFER_REGION", "aws-us-west-2")
-    },
-
     // Google Cloud Platform (GCP)
     gcp: {
         serviceAccountBase64: optionalEnv("GCP_SERVICE_ACCOUNT_BASE64"),
@@ -177,7 +170,8 @@ export const settings = {
     // Optional configuration
     optional: {
         redisUrl: optionalEnv("REDIS_URL"),
-        cookieDomain: optionalEnv("COOKIE_DOMAIN")
+        cookieDomain: optionalEnv("COOKIE_DOMAIN"),
+        corsAllowedOrigins: optionalEnv("CORS_ALLOWED_ORIGINS")
     },
 
     // Parallel (Web Event monitors + webhook verification)

@@ -1,4 +1,4 @@
-import { SnippetView } from "../SnippetView"
+import { SnippetView } from "../snippets/SnippetView"
 import type { SnippetUnit as SnippetUnitModel } from "../turnModel"
 
 export function SnippetUnit({ unit, onMultipleChoiceAnswer }: { unit: SnippetUnitModel; onMultipleChoiceAnswer?: (questionId: string, value: string) => void }) {

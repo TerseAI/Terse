@@ -8,7 +8,6 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output, ToolboxEntry } from "../abstract/Output"
 
 import {
-    fetchRelatedEventsTool,
     notionCreateOrUpdateDatabaseRowTool,
     notionCreateOrUpdatePageTool,
     notionGetSchemaTool,
@@ -27,7 +26,6 @@ export class NotionOutput extends Output<NotionConfig> {
             { tool: notionCreateOrUpdatePageTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
             { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
             { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
-            { tool: fetchRelatedEventsTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Fetch related events" },
             { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
         ]
         super(OutputConfigType.NOTION, toolbox)
@@ -96,7 +94,7 @@ export class NotionOutput extends Output<NotionConfig> {
 When calling Notion tools, use \`integrationId\` only to identify the connection. Use a \`databaseId\` or \`pageId\` from the allowed list for database/page tools. Never use integrationId as databaseId, page_id, or parentPageId.`)
 
         sections.push(
-            "\n**Database tools** (use with databaseId — must be UUID): `notion_get_schema`, `notion_query_database`, `notion_create_or_update_database_row`, `notion_list_users`. **Page tools:** `notion_create_or_update_page` (standalone subpages under an allowed parentPageId), `notion_query_page`, `notion_modify_blocks`, `notion_fetch_related_events`."
+            "\n**Database tools** (use with databaseId — must be UUID): `notion_get_schema`, `notion_query_database`, `notion_create_or_update_database_row`, `notion_list_users`. **Page tools:** `notion_create_or_update_page` (standalone subpages under an allowed parentPageId), `notion_query_page`, `notion_modify_blocks`."
         )
 
         sections.push(`

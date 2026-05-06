@@ -9,6 +9,7 @@ import { SdkAgentStreamEvent, User } from "terse-types"
 import { stripZodJsonSchemaMetadata } from "terse-types"
 
 import { settings } from "../../config/settings"
+import { Session } from "../../express"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
@@ -17,7 +18,6 @@ import { db } from "../../prismaClient"
 import type { BillingService } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
-import { Session } from "../../types/session"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { resolveLanguageModel } from "../modelRegistry"
@@ -307,7 +307,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private getToolContext(): SdkRunnerSession {
         return {
             user: this.user,
-            isUserInitiated: true,
             agent: {
                 toolApprovals: this.toolApprovals
             },

@@ -193,7 +193,7 @@ export class CronJobIntegrationManager
         }
 
         if (!jobId) {
-            console.warn("No job ID found for input", { inputId: agentTrigger.id })
+            logger.warn("No job ID found for input", { inputId: agentTrigger.id })
             return
         }
 

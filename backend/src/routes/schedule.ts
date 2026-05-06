@@ -6,7 +6,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEventParamsSchema, triggerWithEventRequestSchema } from "terse-types/types"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { cloudScheduler, settings } from "../config/settings"
+import { settings } from "../config/settings"
 import { CronJobIntegrationManager } from "../integrations/CronJobIntegration"
 import { buildGithubTriggerMetadata } from "../integrations/GithubIntegration"
 import { WebMonitorIntegrationManager } from "../integrations/WebMonitorIntegration"
@@ -66,7 +66,20 @@ export async function handleManualTrigger(req: Request, res: Response) {
         return
     }
 
-    logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, hasContext: !!context })
+    const organizationId = session.user.organizationId
+
+    const ownedInput = await db().automation_inputs.findFirst({
+        where: {
+            id: inputId,
+            automation: { organization_id: organizationId }
+        },
+        select: { id: true }
+    })
+    if (!ownedInput) {
+        return res.status(404).json({ error: "Schedule trigger not found" })
+    }
+
+    logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, organizationId, hasContext: !!context })
 
     // Acknowledge immediately
     res.status(200).json({ received: true, message: "Manual trigger initiated" })
@@ -88,25 +101,6 @@ export async function handleScheduleWebhook(req: Request, res: Response) {
     const { inputId } = req.params
 
     logger.info("⏰ Schedule webhook received", { inputId })
-
-    // Verify the request is from Cloud Scheduler using a shared secret
-    const authHeader = req.headers["authorization"]
-
-    if (!authHeader) {
-        logger.warn("⚠️  Unauthorized schedule webhook request: Missing Authorization header", { inputId })
-        res.status(401).json({ error: "Unauthorized" })
-        return
-    }
-
-    // Extract token from "Bearer <token>" or just check the header value
-    const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader
-
-    // Validate against configured secret
-    if (token !== cloudScheduler.secret) {
-        logger.warn("⚠️  Unauthorized schedule webhook request: Invalid token", { inputId })
-        res.status(401).json({ error: "Unauthorized" })
-        return
-    }
 
     if (!inputId) {
         logger.warn("⚠️  Schedule webhook missing inputId")

@@ -1,10 +1,12 @@
 // Define a session type that matches what we're actually using in auth
+import type { TokenKind } from "@prisma/client"
 import type { User } from "terse-types/types"
+
+export type AuthMethod = { kind: "cookie" } | { kind: "api_token"; tokenKind: TokenKind }
 
 export type Session = {
     user: User
-    isUserInitiated: boolean // true if the user has initiated the session, false if the session was initiated by the system
-    teamId?: string
+    authMethod?: AuthMethod
 }
 
 declare global {

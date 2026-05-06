@@ -46,8 +46,7 @@ export default function AgentImprovementsTab({ agentId, source }: AgentImproveme
         try {
             await BackendProvider.toggleImprovementsEnabled(agentId, enabled)
             await mutate()
-        } catch (error) {
-            console.error("Failed to toggle improvements setting", error)
+        } catch {
             toast.error("Failed to update improvements setting")
         } finally {
             setIsToggling(false)
@@ -60,8 +59,7 @@ export default function AgentImprovementsTab({ agentId, source }: AgentImproveme
             await BackendProvider.applyImprovement(agentId, improvement.id)
             await mutate()
             toast.success(isSdk ? "Improvement acknowledged" : "Improvement applied")
-        } catch (error) {
-            console.error("Failed to apply improvement", error)
+        } catch {
             toast.error("Failed to apply improvement")
         } finally {
             setIsApplyingId(null)
@@ -87,8 +85,7 @@ export default function AgentImprovementsTab({ agentId, source }: AgentImproveme
                     }
                 }
             })
-        } catch (error) {
-            console.error("Failed to dismiss improvement", error)
+        } catch {
             toast.error("Failed to dismiss improvement")
         } finally {
             setIsDismissingId(null)
@@ -103,8 +100,7 @@ export default function AgentImprovementsTab({ agentId, source }: AgentImproveme
             }
             await mutate()
             toast.success(isSdk ? `${pendingImprovements.length} improvements acknowledged` : `${pendingImprovements.length} improvements applied`)
-        } catch (error) {
-            console.error("Failed to apply all improvements", error)
+        } catch {
             toast.error("Failed to apply all improvements")
             await mutate()
         } finally {

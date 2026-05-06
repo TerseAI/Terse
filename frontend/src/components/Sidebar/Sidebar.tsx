@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Activity, BarChart3, Bell, BookOpen, ChevronRight, CreditCard, ExternalLink, Home, KeyRound, Plug, Terminal, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, BookOpen, ChevronRight, CreditCard, ExternalLink, Home, KeyRound, Plug, Zap } from "lucide-react"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useAgents } from "@/hooks/api/useAgents"
 import { useBillingContext } from "@/hooks/api/useBillingContext"
+import { useOrganizationProjects } from "@/hooks/api/useOrganizationProjects"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
 import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
 import { useAuth } from "@/services/auth"
@@ -32,7 +33,9 @@ import { AppSidebarFooter } from "./SidebarFooter"
 import { AppSidebarHeader } from "./SidebarHeader"
 
 export function AppSidebar() {
+    // TODO: This may need to be paginated at some point.
     const { agents, isLoading } = useAgents({ limit: 100 })
+    const { projects: organizationProjects, isLoading: projectsLoading } = useOrganizationProjects()
 
     const webUiAgents = agents.filter(a => a.source !== "SDK")
     const sdkJobs = agents.filter(a => a.source === "SDK")
@@ -44,7 +47,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation sdkJobs={sdkJobs} loading={isLoading} />
+                        <ApplicationNavigation sdkJobs={sdkJobs} organizationProjects={organizationProjects} loading={isLoading || projectsLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
@@ -71,6 +74,7 @@ export function AppSidebar() {
 
 interface ApplicationNavigationProps {
     sdkJobs: Agent[]
+    organizationProjects: { id: string; name: string }[]
     loading: boolean
 }
 
@@ -88,7 +92,9 @@ function PlainNavItem({ title, url, icon: Icon, iconColor }: NavItem) {
     )
 }
 
-function ApplicationNavigation({ sdkJobs, loading }: ApplicationNavigationProps) {
+function ApplicationNavigation({ sdkJobs, organizationProjects, loading }: ApplicationNavigationProps) {
+    const showProjectsNav = sdkJobs.length > 0 || organizationProjects.length > 0 || loading
+
     return (
         <SidebarMenu>
             <SidebarMenuItem>
@@ -103,22 +109,7 @@ function ApplicationNavigation({ sdkJobs, loading }: ApplicationNavigationProps)
 
             <PlainNavItem title="Home" url={FrontendRoutes.HOME} icon={Home} iconColor="text-primary" />
 
-            {(sdkJobs.length > 0 || loading) && (
-                <Collapsible defaultOpen asChild>
-                    <SidebarMenuItem className="group/collapsible">
-                        <CollapsibleTrigger asChild>
-                            <SidebarMenuButton className="cursor-pointer">
-                                <Terminal className="text-primary" />
-                                <span>Jobs</span>
-                                <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                            </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="overflow-hidden">
-                            <SdkJobsList agents={sdkJobs} loading={loading} />
-                        </CollapsibleContent>
-                    </SidebarMenuItem>
-                </Collapsible>
-            )}
+            {showProjectsNav && <SdkJobsList agents={sdkJobs} organizationProjects={organizationProjects} loading={loading} />}
 
             <PlainNavItem title="Activity" url={FrontendRoutes.ACTIVITY} icon={Activity} iconColor="text-primary" />
             <PlainNavItem title="Stats" url={FrontendRoutes.STATS} icon={BarChart3} iconColor="text-primary" />

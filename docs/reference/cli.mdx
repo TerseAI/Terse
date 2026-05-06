@@ -304,17 +304,51 @@ terse generate
 | Category                    | Examples                                                                                       |
 | --------------------------- | ---------------------------------------------------------------------------------------------- |
 | Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Pipeline.NewDeals`                |
-| Trigger builders            | `GitHub.onPROpened()`, `Slack.onMessage()`, `Schedule.cron()`, `Webhook.onRequest<BodyType>()` |
-| Skill constructors          | `GitHub.skill()`, `Slack.skill()`, `Attio.skill()`                                             |
-| Deterministic tool wrappers | `agent.tools.slack.sendMessage()`, `agent.tools.attio.queryRecords()`                          |
+| Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.slack.onMessage()`, `Triggers.schedule.cron()`, `Triggers.webhook.onRequest<BodyType>()` |
+| Skill constructors          | `Skills.github()`, `Skills.slack()`, `Skills.attio()`                                       |
+| Deterministic tool wrappers | `toolbox.slack.sendMessage()` (no `TerseAgent`, not limited by **skills**), `agent.tools.slack.sendMessage()` (same tools, limited by **skills**) |
 
 Each integration generates typed helpers from real workspace data such as repositories, channels, lists, projects, and tool definitions, so your workflows reference actual resources instead of raw ids.
 
-TypeScript projects also get `Webhook` from `src/terse.generated.ts`. Pass a type argument to `Webhook.onRequest<YourBodyType>()` so `onTrigger` and `filter` infer `WebhookTrigger<YourBodyType>` for `event.body`. See [Webhook trigger](/reference/triggers#webhook).
+TypeScript projects also get **`Triggers.webhook`** from `src/terse.generated.ts`. Pass a type argument to `Triggers.webhook.onRequest<YourBodyType>()` so `onTrigger` and `filter` infer `WebhookTrigger<YourBodyType>` for `event.body`. See [Webhook trigger](/reference/triggers#webhook).
 
 Run `terse generate` again after you connect or disconnect an integration, after resources change inside a connected workspace, or after you upgrade `terse-cli`.
 
 ## Observability
+### `terse listen [job-name]`
+
+Streams live trigger events for a deployed workflow and executes the matching local workflow on your machine.
+
+```bash
+terse listen
+terse listen my-workflow
+```
+
+What it does:
+
+- Opens an authenticated SSE stream to the backend for your project/workflow
+- Prints each forwarded event as it arrives
+- Runs your current local workflow code against that serialized trigger
+
+Requirements:
+
+- You’re authenticated (`terse login`) or `TERSE_API_KEY` is set
+- The workflow is deployed in this project (`terse deploy`)
+- `terse.config.json` exists with a valid `projectId`
+
+Options:
+
+| Flag                  | Description                              | Default          |
+| --------------------- | ---------------------------------------- | ---------------- |
+| `-v, --verbose`       | Show agent stream output during the run  | Enabled          |
+| `--entry-file <path>` | Override the default workflow entry file | Provider default |
+
+Common errors:
+
+- 401/403 Not authenticated: run `terse login`
+- 404 Workflow not deployed: run `terse deploy` first
+
+Press Ctrl-C to stop listening.
 
 ### `terse replay [run-id]`
 
@@ -365,6 +399,8 @@ terse dashboard
 
 If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
 
+ 
+
 ## Authentication
 
 ### `terse login`
@@ -411,6 +447,8 @@ Commands that call the Terse API resolve credentials in this order:
 
 1. `TERSE_API_KEY` in the current process environment
 2. The API key saved by `terse login`
+
+Those values are **user** API tokens (the same kind you create in the Terse app). Hosted executions use separate **project-scoped** tokens that Terse injects for you; you do not paste those into `.env`.
 
 After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 

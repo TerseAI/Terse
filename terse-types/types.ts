@@ -699,6 +699,17 @@ export const sdkCreateProjectResponseBodySchema = z.object({
 })
 export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
 
+export const projectListItemSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+export type ProjectListItem = z.infer<typeof projectListItemSchema>
+
+export const projectsListResponseSchema = z.object({
+    projects: z.array(projectListItemSchema)
+})
+export type ProjectsListResponse = z.infer<typeof projectsListResponseSchema>
+
 export const projectDetailResponseSchema = z.object({
     id: z.string(),
     name: z.string(),
@@ -716,6 +727,21 @@ export const projectDetailResponseSchema = z.object({
     )
 })
 export type ProjectDetailResponse = z.infer<typeof projectDetailResponseSchema>
+
+/**
+ * Rotation responses for self-hosted project credentials. Both endpoints
+ * regenerate the underlying secret immediately (replacing the old value) and
+ * return the freshly generated material exactly once.
+ */
+export const projectRotateSigningSecretResponseSchema = z.object({
+    signingSecret: z.string()
+})
+export type ProjectRotateSigningSecretResponse = z.infer<typeof projectRotateSigningSecretResponseSchema>
+
+export const projectRotateApiKeyResponseSchema = z.object({
+    projectApiKey: z.string()
+})
+export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
 
 export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
@@ -879,7 +905,10 @@ export const toggleImprovementsEnabledRequestSchema = z.object({
 export type ToggleImprovementsEnabledRequest = z.infer<typeof toggleImprovementsEnabledRequestSchema>
 
 export const workosWebhookSecretUpdateRequestSchema = z.object({
-    webhookSecret: z.string(),
+    webhookSecret: z
+        .string()
+        .transform(s => s.trim())
+        .pipe(z.string().min(1, "Webhook signing secret is required")),
     state: z.string().optional()
 })
 export type WorkosWebhookSecretUpdateRequest = z.infer<typeof workosWebhookSecretUpdateRequestSchema>
@@ -1038,3 +1067,30 @@ export const projectSourceFilesResponseSchema = z.object({
     files: z.array(fileSchema)
 })
 export type ProjectSourceFilesResponse = z.infer<typeof projectSourceFilesResponseSchema>
+
+export const sdkListenQuerySchema = z.object({
+    jobName: z.string().min(1),
+    projectId: z.string().min(1)
+})
+export type SdkListenQuery = z.infer<typeof sdkListenQuerySchema>
+
+export const sdkListenStartedSchema = z.object({
+    type: z.literal("listen_started"),
+    listenerId: z.string(),
+    organizationId: z.string(),
+    projectId: z.string(),
+    jobName: z.string()
+})
+
+export const sdkListenForwardedEventSchema = z.object({
+    type: z.literal("forwarded_event"),
+    agentId: z.string(),
+    agentName: z.string(),
+    projectId: z.string().nullable(),
+    event: serializedEventSchema
+})
+
+export const sdkListenStreamEventSchema = z.discriminatedUnion("type", [sdkListenStartedSchema, sdkListenForwardedEventSchema])
+export type SdkListenStreamEvent = z.infer<typeof sdkListenStreamEventSchema>
+export type SdkListenStartedEvent = z.infer<typeof sdkListenStartedSchema>
+export type SdkListenForwardedEvent = z.infer<typeof sdkListenForwardedEventSchema>

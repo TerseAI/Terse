@@ -3,6 +3,7 @@ import { ConfigData } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
+import { Session } from "../../express"
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
@@ -14,10 +15,10 @@ import { billingServiceProxyForOrganization, startBillingRun } from "../../servi
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
 import { AgentWithRelations, Agent as PrismaAgent, SDKAgent, isSDKAgent } from "../../types/prisma"
-import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getActiveDeployForProject } from "../../utility/projectHelper"
+import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
 import { CancelReason } from "../cancellation/RunCancellationTaskQueue"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
@@ -235,6 +236,23 @@ export class EventProcessor {
     private async processAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         logger.info(`Processing agent: ${agent.name} (${agent.id})`)
 
+        // Send event to terse listen listeners
+        try {
+            emitListenForwardedEvent(this.user.organizationId, {
+                type: "forwarded_event",
+                agentId: agent.id,
+                agentName: agent.name,
+                projectId: agent.project?.id ?? null,
+                event: this.inputEvent.getSerializedEvent()
+            })
+        } catch (error) {
+            logger.warn("Failed to emit listen-forwarded event", {
+                error,
+                agentId: agent.id,
+                agentName: agent.name
+            })
+        }
+
         if (!agent.prompt) {
             if (existingRunId) {
                 await this.failRunEarly(existingRunId, agent.id, "No prompt found for this agent")
@@ -281,8 +299,7 @@ export class EventProcessor {
 
         // Create base session for AgentRunner
         const session: Session = {
-            user: this.user,
-            isUserInitiated: true
+            user: this.user
         }
 
         // Filter the event using AI to see if it's relevant to this agent

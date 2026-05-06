@@ -4,13 +4,9 @@ import { ConfigData, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"
-import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
-import logger from "../../logger"
+import { Session } from "../../express"
 import { Output } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
-import { extractConversationContent } from "../../rag/runHistoryRag/conversationExtractor"
-import { RunHistoryMemory } from "../../rag/runHistoryRag/indexer"
-import { Session } from "../../types/session"
 
 export interface RunContext {
     runId: string
@@ -163,13 +159,6 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigData> 
             .withSection(() => this.buildOutputsSection())
     }
 
-    /**
-     * Precursor support for RAG, keeping around if we want to use this again in the future.
-     */
-    withSimilarEventsSection(inputEvent: TriggerRuntime): this {
-        return this.withSection(() => this.buildSimilarEventsSection(inputEvent))
-    }
-
     private async buildRunContextSection(): Promise<Section> {
         const { runId } = this.runContext
         const prisma = db()
@@ -247,61 +236,6 @@ This is event #${eventPosition} processed by this automation.`
         return {
             header: "OUTPUT INSTRUCTIONS",
             content: outputSections.join("\n\n")
-        }
-    }
-
-    protected async buildSimilarEventsSection(inputEvent: TriggerRuntime): Promise<Section | null> {
-        try {
-            if (!this.deps.agent.user_id) {
-                return null
-            }
-            // Extract searchable content from the current input event
-            const currentEventContent = inputEvent.formatForAgentRunner()
-
-            if (!currentEventContent || !currentEventContent.trim()) {
-                return null
-            }
-
-            const agentId = this.deps.agent.id
-            const runHistoryMemory = new RunHistoryMemory(this.deps.agent.user_id)
-
-            // Find similar past input events (top 5)
-            const similarEvents = await runHistoryMemory.findSimilarInputEvents(currentEventContent, agentId, 5)
-
-            if (similarEvents.length === 0) {
-                return null
-            }
-
-            // Extract content from the events for display
-            const eventContents = similarEvents.map(event => {
-                const rawEvent: AgentInputItem = typeof event.raw_event_json === "string" ? (JSON.parse(event.raw_event_json) as AgentInputItem) : (event.raw_event_json as AgentInputItem)
-                const content = extractConversationContent(rawEvent)
-                const eventChannelId = event.run_history_record?.automation?.id || agentId || "N/A"
-                const date = event.created_at.toISOString().split("T")[0]
-                return { content, agentId: eventChannelId, date }
-            })
-
-            const similarEventsList = eventContents
-                .map(
-                    (event, index) => `
-${index + 1}. ${event.content}
-   (Channel: ${event.agentId}, Date: ${event.date})
-`
-                )
-                .join("\n")
-
-            return {
-                header: "SIMILAR PAST INPUT EVENTS",
-                content: `Here are similar past input events that may provide context for how similar requests were handled:
-
-${similarEventsList}
-
-Use these examples as reference for understanding the user's intent and how similar requests were processed in the past.`
-            }
-        } catch (error) {
-            logger.error("Error fetching similar past input events", { error, agentId: this.deps.agent.id, runId: this.runContext.runId })
-            // Return null to continue without similar events if there's an error
-            return null
         }
     }
 }

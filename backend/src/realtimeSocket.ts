@@ -16,17 +16,18 @@ import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./
 import { CancelReason, listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
-import { nodeEnv, optional, urls } from "./config/settings"
+import { optional } from "./config/settings"
+import { Session } from "./express"
 import logger from "./logger"
 import { NotificationManager } from "./notifications/Notification"
 import { Output } from "./outputs/abstract/Output"
 import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
-import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { billingServiceProxyForOrganization } from "./services/BillingService"
 import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
 import { AgentWithRelations } from "./types/prisma"
+import { isCorsOriginAllowed } from "./utility/corsOrigins"
 import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
 import { randomString } from "./utility/strings"
 import { getUserForOrg, workos } from "./utility/workos"
@@ -42,14 +43,21 @@ let io: Server | null = null
 let pub: ReturnType<typeof createClient> | null = null
 let sub: ReturnType<typeof createClient> | null = null
 
-export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
+export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOrigins: Set<string>): Promise<Server> {
     logger.info("Initializing realtime socket", {
         address: server.address()?.toString()
     })
     // Set up Socket.IO server
     io = new Server(server, {
         cors: {
-            origin: getSocketCorsOrigin(),
+            origin(origin, callback) {
+                if (isCorsOriginAllowed(origin, corsAllowedOrigins)) {
+                    callback(null, true)
+                    return
+                }
+                logger.warn("Socket.IO CORS request blocked", { origin })
+                callback(null, false)
+            },
             credentials: true
         }
     })
@@ -324,7 +332,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         return
                     }
 
-                    const session: Session = { user, isUserInitiated: true }
+                    const session: Session = { user }
                     const runContext: RunContext = { runId }
                     const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
 
@@ -549,25 +557,7 @@ export async function markRunFailedAndInvalidate(runId: string, classified: Clas
     }
 }
 
-function getSocketCorsOrigin(): boolean | string | string[] {
-    const isProd = nodeEnv === "production"
-
-    let socketCorsOrigin: boolean | string | string[]
-
-    if (urls.socketFrontend) {
-        socketCorsOrigin = [urls.socketFrontend]
-    } else if (isProd) {
-        logger.error("[Socket.IO] SOCKET_FRONTEND_URL (urls.socketFrontend) is not set in production. " + "Blocking all cross-origin Socket.IO connections for safety.")
-        socketCorsOrigin = false // or throw if you prefer hard failure
-    } else {
-        // In dev, be permissive and echo back any origin
-        socketCorsOrigin = true
-    }
-
-    return socketCorsOrigin
-}
-
-export type CancelAckResponse = {
+type CancelAckResponse = {
     accepted: boolean
     reason?: string
 }

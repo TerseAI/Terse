@@ -14,11 +14,9 @@ export function useOAuthConnection<T extends IntegrationType>(integrationType: T
 
             if (installationDetails?.oauthUrl) {
                 window.open(installationDetails.oauthUrl, "oauth-popup", "width=600,height=700")
-            } else {
-                console.error("OAuth URL not available for this integration type")
             }
-        } catch (error) {
-            console.error("Error initiating OAuth:", error)
+        } catch {
+            // OAuth initiation failed; user can retry
         } finally {
             setIsConnecting(false)
         }

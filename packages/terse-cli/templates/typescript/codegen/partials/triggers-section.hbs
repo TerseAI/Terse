@@ -1,0 +1,180 @@
+{{sectionHeader "Triggers"}}
+
+/**
+ * Triggers available in your workspace.
+ *
+ * Type `Triggers.` in your editor to see every connected integration with triggers.
+ * Use these in `createJob({ triggers: [...] })`.
+ */
+export const Triggers = {
+{{#if slack}}
+    slack: {
+        /** Trigger on any message in a channel */
+        onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
+            return new SlackConfig("{{escape slack.id}}", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.MESSAGE])
+        },
+        /** Trigger on direct messages to the bot */
+        onDm(opts?: { userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
+            return new SlackConfig("{{escape slack.id}}", undefined, undefined, true, opts?.userIds ?? [], [SlackEventType.MESSAGE])
+        },
+        /** Trigger when the Slack app is directly mentioned */
+        onAppMention(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackAppMentionTrigger> {
+            return new SlackConfig("{{escape slack.id}}", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.APP_MENTION])
+        },
+        /** Trigger when a reaction is added to a message in a channel */
+        onReactionAdded(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackReactionAddedTrigger> {
+            return new SlackConfig("{{escape slack.id}}", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.REACTION_ADDED])
+        },
+        /** Trigger on all Slack events (messages + DMs) for a channel */
+        trigger(opts?: { channel?: SlackChannel; listenToUserDms?: boolean; userIds?: string[]; eventTypes?: SlackEventType[] }): TypedTrigger<SlackTrigger> {
+            return new SlackConfig("{{escape slack.id}}", opts?.channel?.channelId, opts?.channel?.name, opts?.listenToUserDms, opts?.userIds ?? [], opts?.eventTypes)
+        },
+    },
+{{/if}}
+{{#if github}}
+    github: {
+        /** Trigger on push to a repository */
+        onPush(opts: { repo: Repos }): TypedTrigger<GithubPushTrigger> {
+            return new GitHubConfig("{{escape github.id}}", [opts.repo.repositoryId], [GitHubEventType.PUSH])
+        },
+        /** Trigger when a pull request is opened */
+        onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> {
+            return new GitHubConfig("{{escape github.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED])
+        },
+        /** Trigger when a pull request is merged */
+        onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> {
+            return new GitHubConfig("{{escape github.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_MERGED])
+        },
+        /** Trigger when a pull request is closed */
+        onPRClosed(opts: { repo: Repos }): TypedTrigger<GithubPRClosedTrigger> {
+            return new GitHubConfig("{{escape github.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_CLOSED])
+        },
+        /** Trigger when a pull request is synchronized */
+        onPRSynchronized(opts: { repo: Repos }): TypedTrigger<GithubPRSynchronizedTrigger> {
+            return new GitHubConfig("{{escape github.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_SYNCHRONIZE])
+        },
+        /** Trigger on any pull request event */
+        onPR(opts: { repo: Repos }): TypedTrigger<GithubPRTrigger> {
+            return new GitHubConfig("{{escape github.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED, GitHubEventType.PR_MERGED, GitHubEventType.PR_CLOSED, GitHubEventType.PR_SYNCHRONIZE])
+        },
+        /** Trigger on specific GitHub events for the given repositories */
+        trigger(opts: { repos: Repos[]; eventTypes?: GitHubEventType[] }): TypedTrigger<GithubTrigger> {
+            return new GitHubConfig("{{escape github.id}}", opts.repos.map(r => r.repositoryId), opts.eventTypes)
+        },
+    },
+{{/if}}
+{{#if linear}}
+    linear: {
+        /** Trigger when a new issue is created. Optionally scope with `LinearTeam.*` / `LinearProject.*`. */
+        onIssueCreated(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearIssueCreatedTrigger> {
+            return new LinearInputConfig("{{escape linear.id}}", opts?.project?.projectId ?? null, [LinearEventType.ISSUE_CREATED], opts?.team?.teamId ?? null)
+        },
+        /** Trigger when an issue is updated */
+        onIssueUpdated(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearIssueUpdatedTrigger> {
+            return new LinearInputConfig("{{escape linear.id}}", opts?.project?.projectId ?? null, [LinearEventType.ISSUE_UPDATED], opts?.team?.teamId ?? null)
+        },
+        /** Trigger when a comment is added to an issue */
+        onComment(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearCommentCreatedTrigger> {
+            return new LinearInputConfig("{{escape linear.id}}", opts?.project?.projectId ?? null, [LinearEventType.COMMENT_CREATED], opts?.team?.teamId ?? null)
+        },
+        /** Trigger on all Linear events */
+        trigger(opts?: { team?: LinearTeam; project?: LinearProject; eventTypes?: LinearEventType[] }): TypedTrigger<LinearTrigger> {
+            return new LinearInputConfig("{{escape linear.id}}", opts?.project?.projectId ?? null, opts?.eventTypes, opts?.team?.teamId ?? null)
+        },
+    },
+{{/if}}
+{{#if gmail}}
+    gmail: {
+        /** Trigger when a new email is received */
+        onEmail(): TypedTrigger<GmailTrigger> {
+            return new GmailConfig("{{escape gmail.id}}", [GmailEventType.EMAIL_RECEIVED])
+        },
+        /** Trigger on all Gmail events */
+        trigger(opts?: { eventTypes?: GmailEventType[] }): TypedTrigger<GmailTrigger> {
+            return new GmailConfig("{{escape gmail.id}}", opts?.eventTypes)
+        },
+    },
+{{/if}}
+{{#if workos}}
+    workOS: {
+        /** Trigger on user creation */
+        onUserCreated(): TypedTrigger<WorkOSUserCreatedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.USER_CREATED])
+        },
+        /** Trigger on user update */
+        onUserUpdated(): TypedTrigger<WorkOSUserUpdatedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.USER_UPDATED])
+        },
+        /** Trigger on user deletion */
+        onUserDeleted(): TypedTrigger<WorkOSUserDeletedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.USER_DELETED])
+        },
+        /** Trigger on organization membership creation */
+        onMembershipCreated(): TypedTrigger<WorkOSOrganizationMembershipCreatedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED])
+        },
+        /** Trigger on organization membership update */
+        onMembershipUpdated(): TypedTrigger<WorkOSOrganizationMembershipUpdatedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED])
+        },
+        /** Trigger on organization membership deletion */
+        onMembershipDeleted(): TypedTrigger<WorkOSOrganizationMembershipDeletedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED])
+        },
+        /** Trigger on any organization membership change */
+        onMembershipChanged(): TypedTrigger<WorkOSMembershipTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED, WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED, WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED])
+        },
+        /** Trigger when an invitation is sent (created or resent) */
+        onInvitationSent(): TypedTrigger<WorkOSInvitationTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_CREATED, WorkOSEventType.INVITATION_RESENT])
+        },
+        /** Trigger when an invitation is first created */
+        onInvitationCreated(): TypedTrigger<WorkOSInvitationCreatedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_CREATED])
+        },
+        /** Trigger when an invitation is resent */
+        onInvitationResent(): TypedTrigger<WorkOSInvitationResentTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_RESENT])
+        },
+        /** Trigger on invitation accepted */
+        onInvitationAccepted(): TypedTrigger<WorkOSInvitationAcceptedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_ACCEPTED])
+        },
+        /** Trigger when an invitation is revoked */
+        onInvitationRevoked(): TypedTrigger<WorkOSInvitationRevokedTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_REVOKED])
+        },
+        /** Trigger on organization creation */
+        onOrganizationCreated(): TypedTrigger<WorkOSOrganizationTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_CREATED])
+        },
+        /** Trigger on specific WorkOS event types */
+        trigger(opts?: { eventTypes?: WorkOSEventType[] }): TypedTrigger<WorkOSTrigger | WorkOSUserTrigger | WorkOSMembershipTrigger | WorkOSInvitationTrigger | WorkOSOrganizationTrigger> {
+            return new WorkOSInputConfig("{{escape workos.id}}", opts?.eventTypes)
+        },
+    },
+{{/if}}
+    schedule: {
+        /** Run on a cron schedule */
+        cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
+            return new TimeTriggerConfig(opts.expression)
+        },
+    },
+    webhook: {
+        /** Trigger via an external HTTP request to a generated URL */
+        onRequest<TBody = unknown>(): TypedTrigger<WebhookTrigger<TBody>> {
+            return new WebhookInputConfig()
+        },
+    },
+    webMonitor: {
+        /** Trigger when a query against the live web matches the given schema */
+        onEvent<const TSchema>(opts: {
+            query: string
+            frequency: { number: number; unit: FrequencyUnit }
+            outputSchema?: TSchema
+        }): TypedTrigger<WebMonitorTrigger<InferStructuredOutput<TSchema>>> {
+            return new WebMonitorConfig(opts.query, opts.frequency, opts.outputSchema)
+        },
+    },
+}

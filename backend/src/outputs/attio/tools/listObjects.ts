@@ -2,11 +2,9 @@ import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
 import type { AttioAttribute, AttioObject } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
 
 export const attioListObjectsTool = defineSessionTool({
     name: "attio_list_objects",

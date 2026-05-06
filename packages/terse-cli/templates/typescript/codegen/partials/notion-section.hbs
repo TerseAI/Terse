@@ -3,13 +3,3 @@
 {{> resource-class databaseClass}}
 
 {{> resource-class pageClass}}
-
-export const Notion = {
-    /** Use in `skills[]` */
-    skill(opts?: { databases?: NotionDatabase[]; pages?: NotionPage[] }): TypedSkill<{{{skillToolType}}}> {
-        return new NotionConfig("{{escape id}}",
-            opts?.databases?.map(d => d.databaseId), opts?.databases?.map(d => d.title),
-            opts?.pages?.map(p => p.pageId), opts?.pages?.map(p => p.title)) as TypedSkill<{{{skillToolType}}}>
-    },
-}
-

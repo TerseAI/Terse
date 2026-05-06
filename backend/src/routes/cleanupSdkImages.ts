@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 
 import logger from "../logger"
 import { SdkSandboxImageService } from "../services/SdkSandboxImageService"
-import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
+import { deleteExpiredApiTokens } from "../utility/apiTokens"
 
 function parseOptionalNumber(value: unknown): number | undefined {
     if (value === undefined || value === null || value === "") {
@@ -20,11 +20,6 @@ function parseOptionalNumber(value: unknown): number | undefined {
 export async function cleanupSdkImages(req: Request, res: Response) {
     logger.info("SDK image cleanup cron job triggered")
 
-    if (!validateCloudSchedulerRequest(req, "CleanupSdkImages")) {
-        logger.error("Unauthorized: Request did not pass Cloud Scheduler validation")
-        return res.status(401).json({ error: "Unauthorized" })
-    }
-
     try {
         const sourceImageGraceHours = parseOptionalNumber(req.body?.sourceImageGraceHours)
         const dependencyImageGraceHours = parseOptionalNumber(req.body?.dependencyImageGraceHours)
@@ -36,15 +31,22 @@ export async function cleanupSdkImages(req: Request, res: Response) {
             batchSize
         })
 
+        const deletedExpiredTokens = await deleteExpiredApiTokens().catch(error => {
+            logger.error("Failed to delete expired API tokens", { error })
+            return 0
+        })
+
         logger.info("SDK image cleanup cron job completed", {
             deletedSourceImages: result.deletedSourceImages,
             deletedDependencyImages: result.deletedDependencyImages,
+            deletedExpiredTokens,
             failures: result.failures.length
         })
 
         return res.json({
             message: "SDK image cleanup completed",
-            ...result
+            ...result,
+            deletedExpiredTokens
         })
     } catch (error) {
         logger.error("Error in SDK image cleanup cron job", { error })

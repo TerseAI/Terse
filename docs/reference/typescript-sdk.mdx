@@ -9,6 +9,8 @@ Terse workflows combine two sources:
 - the public `terse-sdk` package
 - the generated helpers in `src/terse.generated.ts`
 
+After `terse generate`, integration trigger builders and skill factories are grouped under top-level **`Triggers`** and **`Skills`** objects (for example `Triggers.github.onPROpened(...)`, `Skills.slack({ channel: ... })`). System-style helpers live there too: `Triggers.schedule.cron(...)`, `Triggers.webhook.onRequest()`, and `Triggers.webMonitor.onEvent(...)`. Prefer these namespaces instead of older per-integration root exports such as `GitHub.*`, `Slack.*`, or `Schedule.*` / `Webhook.*`.
+
 ## Core SDK imports
 
 Import these from `terse-sdk`:
@@ -22,12 +24,25 @@ Import these from `terse-sdk`:
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), and other per-integration exports (see `terse-sdk` package entry)
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
+- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
 ```bash
 npm install terse-sdk zod
 ```
+
+## Authentication and `TERSE_API_KEY`
+
+`Terse`, `TerseAgent`, and other SDK calls that reach Terse send `Authorization: Bearer …` from **`process.env.TERSE_API_KEY`**. Terse API tokens use the `terse_` prefix.
+
+- **User tokens** are the API tokens you create in the Terse app or get from **`terse login`**. Use them for local runs, the CLI, and self-hosted **`handleTrigger`** servers. They authenticate to the full set of SDK routes your workflow needs (including deploy, codegen, and runtime calls).
+
+- **Project-scoped tokens** are minted automatically inside hosted Modal sandboxes. They are limited to SDK **runtime** endpoints for that project (for example agent runs, tool execution, approvals, and session streams) and cannot stand in for a user token on organization or integration-management routes. Terse removes the sandbox token when the run completes.
+
+- Tokens with an **expiration** stop working when they expire; the API responds with **401** and an expired-token message.
+
+The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
 ## Trigger payloads
 
@@ -50,21 +65,21 @@ Duplicate **`name`** values throw an error when the second job registers. At mos
 | `triggers`       | typed trigger array                             | One or more triggers that start the workflow.                                                     |
 | `filter`         | `(event) => boolean \| Promise<boolean>`        | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger`      | `(event) => Promise<void>`                      | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or the default).      |
+| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or `https://app.useterse.ai/api`).      |
 
 Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
 
 ```ts
-import { createJob, TerseAgent, type Trigger } from "terse-sdk"
-import { Attio, AttioList, Apollo, Slack, SlackChannel } from "./terse.generated"
+import { GithubPRTrigger, createJob, TerseAgent } from "terse-sdk"
+import { Repos, Skills, SlackChannel, Triggers } from "./terse.generated"
 
 createJob({
-    name: "new-deal-enrichment",
-    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    onTrigger: async (event: Trigger) => {
+    name: "pr-auto-reply",
+    triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
+    onTrigger: async (event: GithubPRTrigger) => {
         const agent = TerseAgent.create({
-            prompt: "You enrich new deals with research and clear summaries.",
-            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })]
+            prompt: "You summarize pull requests and post concise thread replies in Slack.",
+            skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] }), Skills.slack({ channel: SlackChannel.Engineering })]
         })
         // workflow logic using agent and event
     }
@@ -85,7 +100,7 @@ const terse = new Terse()
 
 ## `TerseAgent`
 
-Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI.
+Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI. The same context applies to **`TerseAgent.executeTool`** and to generated **`toolbox`** calls.
 
 ### `run(userMessage)`
 
@@ -129,36 +144,46 @@ const scored = await agent.runAndWait("Score this account and explain why.", Sco
 // scored is typed as: { score: number; rationale: string }
 ```
 
-### `executeTool(toolName, params)`
+### `TerseAgent.executeTool(toolName, params?)`
 
-Calls a named tool directly, bypassing the LLM.
+Static method. Calls a named tool directly, bypassing the LLM. Generated **`toolbox`** and **`agent.tools.*`** helpers use this path, so string-based and typed deterministic calls behave the same.
 
 ```ts
-await agent.executeTool("attio.updateRecord", {
-    list: AttioList.Pipeline.NewDeals,
-    recordId: "rec_123",
-    fields: { fit_score: 92 }
+import { TerseAgent } from "terse-sdk"
+import { SlackChannel } from "./terse.generated"
+
+await TerseAgent.executeTool("slack_send_message", {
+    channelId: SlackChannel.DealDesk.channelId,
+    message: "Pipeline digest is ready."
 })
 ```
 
-Use `executeTool` when you want guaranteed execution of a specific tool.
+Use `TerseAgent.executeTool` when you want guaranteed execution of a specific tool by name (for example when the name is only known at runtime).
+
+## `toolbox.*` (generated)
+
+`terse generate` writes a **`toolbox`** export in `src/terse.generated.ts` with the same typed namespaces as `agent.tools.*`. Import **`toolbox`** to call integration tools deterministically **without** constructing a `TerseAgent` and without listing integrations in **`skills`**.
 
 ## `agent.tools.*`
 
 Generated helpers attach deterministic wrappers under `agent.tools.*`. These call integration actions directly, not through the LLM.
 
 ```ts
-const enrichment = await agent.tools.apollo.enrichCompany({
-    domain: "northstarlogistics.com"
+import { TerseAgent } from "terse-sdk"
+import { Skills, SlackChannel } from "./terse.generated"
+
+const agent = TerseAgent.create({
+    prompt: "You draft short Slack updates for the deal desk.",
+    skills: [Skills.slack({ channel: SlackChannel.DealDesk })]
 })
 
 await agent.tools.slack.sendMessage({
     channelId: SlackChannel.DealDesk.channelId,
-    message: `Industry: ${enrichment.industry}, Employees: ${enrichment.employeeCount}`
+    message: "Northstar Logistics: follow up on the open proposal thread."
 })
 ```
 
-Use `agent.tools.*` for guaranteed side effects. These wrappers are available when the integration appears in the workflow's triggers or in the **`skills`** array you pass to **`TerseAgent.create()`**.
+Use `agent.tools.*` for guaranteed side effects when you already pass **`skills`** to **`TerseAgent.create()`** (or when the integration is implied by a trigger). For the same calls **without** listing **`skills`**, use generated **`toolbox`** instead.
 
 ## Structured output
 
@@ -169,18 +194,20 @@ Use `runAndWait(message, schema)` when you need typed, validated JSON. Use `runA
 Use `filter` to skip runs for events that don't match your criteria. Return `true` to run, `false` to skip.
 
 ```ts
+type ContractPayload = { record: { values: { stage: string; company_name: string } } }
+
 createJob({
     name: "contract-alerts",
-    triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
-    filter: (event: Trigger) => event.record.values.stage === "contract-sent",
-    onTrigger: async (event: Trigger) => {
+    triggers: [Triggers.webhook.onRequest<ContractPayload>()],
+    filter: event => event.body.record.values.stage === "contract-sent",
+    onTrigger: async event => {
         const agent = TerseAgent.create({
             prompt: "You notify the deal desk when contracts are sent.",
-            skills: [Attio.skill({ lists: [AttioList.Pipeline.OpenDeals] }), Slack.skill({ channel: SlackChannel.DealDesk })]
+            skills: [Skills.slack({ channel: SlackChannel.DealDesk })]
         })
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
-            message: `Contract sent for ${event.record.values.company_name}.`
+            message: `Contract sent for ${event.body.record.values.company_name}.`
         })
     }
 })
@@ -192,33 +219,23 @@ List tool names in **`toolApprovals`** on **`TerseAgent.create()`** to require h
 
 ```ts
 createJob({
-    name: "deal-enrichment-with-approval",
-    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    onTrigger: async (event: Trigger) => {
+    name: "slack-digest-with-approval",
+    triggers: [Triggers.slack.onMessage({ channel: SlackChannel.DealDesk })],
+    onTrigger: async event => {
         const agent = TerseAgent.create({
-            prompt: "You enrich new deals and post summaries to Slack.",
-            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill(), Slack.skill({ channel: SlackChannel.DealDesk })],
-            toolApprovals: ["attio.updateRecord", "slack.sendMessage"]
-        })
-
-        const company = await agent.tools.apollo.enrichCompany({
-            domain: event.record.values.company_domain
+            prompt: "You draft a short reply when someone posts in Deal Desk.",
+            skills: [Skills.slack({ channel: SlackChannel.DealDesk })],
+            toolApprovals: ["slack.sendMessage"]
         })
 
         const summary = await agent.runAndWait(
-            ["Summarize this company for the account owner.", `Company: ${event.record.values.company_name}`, `Industry: ${company.industry}`, `Employees: ${company.employeeCount}`].join("\n")
+            ["Summarize this thread in one sentence for the on-call owner.", `Channel: ${event.channelName}`, `From: ${event.userName}`, `Text: ${event.text}`].join("\n")
         )
 
-        // These two calls will pause and wait for human approval
-        await agent.tools.attio.updateRecord({
-            list: AttioList.Pipeline.NewDeals,
-            recordId: event.record.id,
-            fields: { research_summary: summary }
-        })
-
+        // Pauses until a human approves in the CLI (local) or Notifications (prod)
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
-            message: `New deal enriched: ${event.record.values.company_name}\n\n${summary}`
+            message: `Suggested reply based on: ${summary}`
         })
     }
 })
@@ -239,7 +256,7 @@ Event typing depends on the trigger.
 | Manual trigger              | `ManualSampleTrigger`       |
 | Webhook HTTP requests       | `WebhookTrigger`            |
 
-`Trigger` is the common base interface. Use the most specific trigger event type your trigger exposes. For webhooks, use `Webhook.onRequest<YourBodyType>()` from `terse.generated` so `event.body` matches the JSON you POST to the webhook URL.
+`Trigger` is the common base interface. Use the most specific trigger event type your trigger exposes. For webhooks, use `Triggers.webhook.onRequest<YourBodyType>()` from `terse.generated` so `event.body` matches the JSON you POST to the webhook URL.
 
 ## Generated helpers
 
@@ -247,55 +264,14 @@ Event typing depends on the trigger.
 
 It exports:
 
-- `Schedule`: cron and interval trigger builders
-- Integration namespaces: `Attio`, `Apollo`, `Slack`, `Http`
-- Workspace resource constants: `AttioList`, `SlackChannel`, `AttioOwner`
-- Deterministic tool wrappers exposed through `agent.tools.*`
+- **`Triggers`**: per-integration trigger builders (when connected) plus **`Triggers.schedule`**, **`Triggers.webhook`**, and **`Triggers.webMonitor`**
+- **`Skills`**: per-integration skill factories (when connected) plus built-in **`Skills.web()`** and **`Skills.imageEdit()`**
+- Workspace resource constants (for example **`Repos`**, **`SlackChannel`**, **`AttioObject.*`** statics) and other typed prelude exports your workspace needs
+- **`toolbox`**: deterministic tool wrappers without an agent or **`skills`** filter
+- Deterministic tool wrappers on **`TerseAgent`** via `agent.tools.*` (filtered by **`skills`**)
 
 <Warning>Re-run `terse generate` when your integration context changes. Do not edit `src/terse.generated.ts` by hand.</Warning>
 
 ## Bring your own API
 
-Use the `Http` skill to call any REST API that Terse does not have a native integration for. This is useful for enrichment providers, internal services, or any system with an HTTP API.
-
-```ts
-import { createJob, TerseAgent, type Trigger } from "terse-sdk"
-
-import { Attio, AttioList, Http } from "./terse.generated"
-
-createJob({
-    name: "custom-enrichment",
-    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    onTrigger: async (event: Trigger) => {
-        const agent = TerseAgent.create({
-            prompt: "You enrich Attio records using internal and external data.",
-            skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Http.skill()]
-        })
-
-        // Call any REST API directly
-        const response = await agent.tools.http.request({
-            method: "GET",
-            url: `https://api.example.com/companies?domain=${event.record.values.company_domain}`,
-            headers: {
-                Authorization: `Bearer ${process.env.EXAMPLE_API_KEY}`
-            }
-        })
-
-        const company = JSON.parse(response.body)
-
-        const summary = await agent.runAndWait(["Summarize this company for the account owner.", `Data: ${JSON.stringify(company)}`].join("\n"))
-
-        await agent.tools.attio.updateRecord({
-            list: AttioList.Pipeline.NewDeals,
-            recordId: event.record.id,
-            fields: { research_summary: summary }
-        })
-    }
-})
-```
-
-The `Http` skill gives you full control over headers, method, body, and URL. Use it when:
-
-- You need an enrichment provider Terse does not have a native skill for
-- You want to call an internal API or microservice
-- You need to integrate with a webhook-based system
+Call REST endpoints from `onTrigger` with **`fetch`** (or your HTTP client of choice), then pass results into **`TerseAgent.runAndWait`** or deterministic **`agent.tools.*`** / **`TerseAgent.executeTool`** calls. Pair that with **`Triggers.webhook.onRequest`** when an external system should start the workflow, and use **`Skills.web()`** when you want the built-in web research tools on the agent.

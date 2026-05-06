@@ -112,21 +112,25 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
 
         const webhookSecret = await getSecret(IntegrationType.WORKOS, integration.id, SecretField.WebhookSecret)
 
-        // Verify webhook signature using the WorkOS SDK
-        if (webhookSecret) {
-            if (!sigHeader) {
-                logger.warn("WorkOS trigger webhook missing signature header", { integrationId })
-                res.status(401).json({ error: "Missing signature" })
-                return
-            }
-            await workos.webhooks.constructEvent({
-                payload,
-                sigHeader,
-                secret: webhookSecret
+        if (!webhookSecret) {
+            logger.warn("WorkOS trigger webhook rejected: no signing secret configured", { integrationId })
+            res.status(403).json({
+                error: "Webhook signing secret is not configured for this integration. Add it in Terse or WorkOS integration settings before accepting deliveries."
             })
-        } else {
-            logger.warn("WorkOS trigger webhook received without signing secret configured — skipping signature verification", { integrationId })
+            return
         }
+
+        if (!sigHeader) {
+            logger.warn("WorkOS trigger webhook missing signature header", { integrationId })
+            res.status(401).json({ error: "Missing signature" })
+            return
+        }
+
+        await workos.webhooks.constructEvent({
+            payload,
+            sigHeader,
+            secret: webhookSecret
+        })
 
         // Respond 200 immediately
         res.status(200).json({ received: true })

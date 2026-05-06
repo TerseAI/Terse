@@ -1,7 +1,7 @@
 import type { CallModelInputFilterArgs, ModelInputData } from "@openai/agents-core"
 
+import type { Session } from "../express"
 import { billingServiceProxyForOrganization } from "../services/BillingService"
-import type { Session } from "../types/session"
 
 import type { InputGuardrailForSession, SessionWithTracking } from "./AgentRunner/BaseAgentRunner"
 import { CancelReason, requestOrgCancellation } from "./cancellation/RunCancellationTaskQueue"

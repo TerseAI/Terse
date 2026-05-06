@@ -28,9 +28,8 @@ export function ManualTriggerDialog({ isOpen, onClose, inputId, onTriggered }: M
             await BackendProvider.triggerManually(inputId, context.trim() || undefined)
             onTriggered?.()
             handleClose()
-        } catch (err) {
+        } catch {
             setError("Failed to trigger. Please try again.")
-            console.error("Manual trigger failed:", err)
         } finally {
             setIsTriggering(false)
         }

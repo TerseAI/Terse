@@ -970,12 +970,6 @@ export const notionGetSchemaInputSchema = z.object({
     databaseId: z.string().describe("The Notion database ID (data source ID) to get the schema for.")
 })
 
-export const notionFetchRelatedEventsInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
-    pageId: z.string().describe("The Notion page ID (not used directly, but required for consistency)."),
-    block_id: z.string().describe("The Notion block ID to fetch related events for")
-})
-
 export const notionListUsersInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Notion workspace to use."),
     query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
@@ -1387,16 +1381,6 @@ export const notionGetSchemaTool = defineTool({
         database_name: z.string(),
         schema: z.record(z.string(), notionSchemaPropertySchema),
         property_count: z.number().int()
-    })
-})
-
-export const notionFetchRelatedEventsTool = defineTool({
-    name: "notion_fetch_related_events",
-    inputSchema: notionFetchRelatedEventsInputSchema,
-    outputSchema: toolOutputSuccessSchema.extend({
-        events_count: z.number().int(),
-        events: z.string().optional(),
-        message: z.string()
     })
 })
 
@@ -2146,7 +2130,6 @@ export const ToolDefinitions = {
     [notionQueryPageTool.name]: notionQueryPageTool,
     [notionQueryDatabaseTool.name]: notionQueryDatabaseTool,
     [notionGetSchemaTool.name]: notionGetSchemaTool,
-    [notionFetchRelatedEventsTool.name]: notionFetchRelatedEventsTool,
     [notionListUsersTool.name]: notionListUsersTool,
     [gmailSendEmailTool.name]: gmailSendEmailTool,
     [gmailCreateDraftTool.name]: gmailCreateDraftTool,

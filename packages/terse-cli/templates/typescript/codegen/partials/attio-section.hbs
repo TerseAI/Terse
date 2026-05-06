@@ -29,10 +29,3 @@ export class AttioObject<
 {{/if}}
 }
 
-export const Attio = {
-    /** Use in `skills[]` */
-    skill(opts: { object: AttioObject<any> }): TypedSkill<{{{skillToolType}}}> {
-        return new AttioOutputConfig("{{escape id}}", opts.object.apiSlug) as TypedSkill<{{{skillToolType}}}>
-    },
-}
-

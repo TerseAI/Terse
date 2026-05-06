@@ -5,6 +5,7 @@ import { CONFIG_DETAILS, ConfigType } from "terse-types/Configs"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 
 import { IconForConfigType } from "../components/Integration"
@@ -19,8 +20,7 @@ export function AddOutputModal({ isOpen, onClose, onSelectOutput }: AddOutputMod
     const [searchQuery, setSearchQuery] = useState("")
 
     // Get all output config types, excluding TERSE (always available, hidden from UI)
-    const allConfigTypes = Object.values(ConfigType)
-    const outputConfigTypes = allConfigTypes.filter(configType => CONFIG_DETAILS[configType].isOutput && configType !== ConfigType.TERSE)
+    const outputConfigTypes = Object.values(ConfigType).filter(configType => CONFIG_DETAILS[configType].isOutput)
 
     // Filter based on search query
     const filteredConfigTypes = useMemo(() => {
@@ -70,7 +70,14 @@ export function AddOutputModal({ isOpen, onClose, onSelectOutput }: AddOutputMod
                             )
                         })}
                     </div>
-                    {filteredConfigTypes.length === 0 && <div className="text-center text-muted-foreground py-8">No skills found matching "{searchQuery}"</div>}
+                    {filteredConfigTypes.length === 0 && (
+                        <Empty className="border-0 py-10">
+                            <EmptyHeader>
+                                <EmptyTitle className="text-base">No skills match &quot;{searchQuery}&quot;</EmptyTitle>
+                                <EmptyDescription>Try a different search or clear the field to browse all available skills.</EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
+                    )}
                 </div>
 
                 <DialogFooter>

@@ -144,9 +144,7 @@ export interface ToolsSectionContext {
     groups: ToolGroupContext[]
 }
 
-export interface SystemSectionContext {
-    skillToolType: string
-}
+export interface SystemSectionContext {}
 
 export interface TemplateContext {
     imports: string[]
@@ -699,10 +697,10 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             case "listGitHubDirectory":
             case "listGitHubCommits":
             case "summarizeGitHubPullRequestDiff":
-                return "{ ...params, repository: __normalizeGitHubRepos((params as any).repository) }"
+                return "{ ...params, repository: __normalizeGitHubRepos((params).repository) }"
             case "searchGitHubCode":
             case "grepGitHubCode":
-                return "{ ...params, repositoryNames: __normalizeGitHubReposNames((params as any).repositoryNames) }"
+                return "{ ...params, repositoryNames: __normalizeGitHubReposNames((params).repositoryNames) }"
             default:
                 return "params"
         }
@@ -961,27 +959,27 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             if (group.integration === "attio" && tool.name === "attio_query_records" && group.integrationId) {
                 runtimeLines = [
                     `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioQueryResult(params.object, result)),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioQueryResult(params.object, result)),`
                 ]
             } else if (group.integration === "attio" && tool.name === "attio_upsert_record" && group.integrationId) {
                 runtimeLines = [
                     `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
                 ]
             } else if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
                 runtimeLines = [
                     `${methodName}: (params: AttioListObjectsParams = {}) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
                 ]
             } else if (group.integrationId && hasAutoFillId(tool)) {
                 runtimeLines = [
                     `${methodName}: (params: ${paramsType}) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
                 ]
             } else {
                 runtimeLines = [
                     `${methodName}: (params: ${paramsType}) =>`,
-                    `    agent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", ${normalizedParamsExpr}),`
+                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", ${normalizedParamsExpr}),`
                 ]
             }
 
@@ -1004,11 +1002,12 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     }
 }
 
-function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSectionContext> {
+function prepareSystemSection(): SectionContext<SystemSectionContext> {
     return sectionData(
         [
             "TimeTriggerConfig",
-            "TerseConfig",
+            "WebConfig",
+            "ImageEditConfig",
             "TypedSkill",
             "WebhookInputConfig",
             "WebhookTrigger",
@@ -1019,9 +1018,7 @@ function prepareSystemSection(tools: ToolDefinition[]): SectionContext<SystemSec
             "FrequencyUnit",
             "InferStructuredOutput"
         ],
-        {
-            skillToolType: buildSkillToolTypeForIntegration(tools, "terse")
-        }
+        {}
     )
 }
 
@@ -1040,7 +1037,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const attio = prepareAttioSection(input.attio, input.tools)
     const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
     const tools = prepareToolsSection(input.tools, input)
-    const system = prepareSystemSection(input.tools)
+    const system = prepareSystemSection()
 
     const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
 

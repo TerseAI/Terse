@@ -1,13 +1,13 @@
 import { createJob, TerseAgent, type WebhookTrigger } from "terse-sdk"
 
-import { Webhook } from "./terse.generated"
+import { Triggers } from "./terse.generated"
 
 // ─── Job 1: Simple webhook trigger, no skills ───────────────────────────────
 // Validates the minimal job shape: a single webhook trigger calling the agent.
 
 createJob({
     name: "Tell me a joke",
-    triggers: [Webhook.onRequest()],
+    triggers: [Triggers.webhook.onRequest()],
     onTrigger: async (_event: WebhookTrigger) => {
         const agent = TerseAgent.create({ prompt: "You tell short, clean jokes." })
         await agent.runAndWait("Tell me a funny joke")

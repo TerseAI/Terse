@@ -1,13 +1,13 @@
 import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
-import { GitHub, Repos, Slack, SlackChannel } from "./terse.generated"
+import { Repos, Skills, SlackChannel, Triggers } from "./terse.generated"
 
 createJob({
     name: "Summarize PR and send slack message",
-    triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
+    triggers: [Triggers.github.onPROpened({ repo: Repos.TerseAI.Terse })],
     onTrigger: async (event: GithubPRTrigger) => {
         const agent = TerseAgent.create({
             prompt: "You summarise GitHub pull requests and post concise updates to Slack.",
-            skills: [GitHub.skill({ repos: [Repos.TerseAI.LandingPage, Repos.TerseAI.Terse] }), Slack.skill({ channel: SlackChannel.AllTerseInc })]
+            skills: [Skills.github({ repos: [Repos.TerseAI.LandingPage, Repos.TerseAI.Terse] }), Skills.slack({ channel: SlackChannel.AllTerseInc })]
         })
 
         const message = await agent.tools.slack.sendMessage({
