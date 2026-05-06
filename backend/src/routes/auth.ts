@@ -1,5 +1,4 @@
 import { users as PrismaUser } from "@prisma/client"
-import { AuthenticateWithSessionCookieSuccessResponse, AuthenticationResponse } from "@workos-inc/node"
 import { NextFunction, Request, Response } from "express"
 import { ApiRoutes } from "terse-types"
 import { Role, User } from "terse-types/types"
@@ -150,112 +149,6 @@ export async function me(req: Request, res: Response) {
         })
         return res.send(user)
     }
-}
-
-function createAuthMiddleware(requireOrganization: boolean) {
-    return async (req: Request, res: Response, next: NextFunction) => {
-        // If apiTokenAuthMiddleware already populated the session, skip cookie auth
-        if (req.session?.user) {
-            if (requireOrganization && !req.session.user.organizationId) {
-                return sendOrganizationRequired(req, res)
-            }
-            return next()
-        }
-
-        try {
-            const session = workos.userManagement.loadSealedSession({
-                sessionData: req.cookies[WORKOS_SESSION_COOKIE_NAME],
-                cookiePassword: settings.workos.cookiePassword
-            })
-            const authResult = await session.authenticate()
-
-            if (authResult.authenticated) {
-                const claims = getClaimsFromAuthResult(authResult)
-                const { user } = await getOrCreateDbUserFromWorkOS(authResult, claims)
-                if (!req.session) {
-                    req.session = {
-                        user
-                    }
-                } else {
-                    req.session.user = user
-                }
-                if (requireOrganization && !user.organizationId) {
-                    return sendOrganizationRequired(req, res)
-                }
-                return next()
-            }
-
-            // Give up if no cookie is provided
-            const authenticated = authResult.authenticated
-            const authFailedReason = authResult.reason
-            if (!authenticated && authFailedReason === "no_session_cookie_provided") {
-                return sendUnauthorized(req, res)
-            }
-
-            // try refreshing the session, it may have gone stale
-            logger.info("Session expired, attempting refresh", {
-                reason: authFailedReason
-            })
-            const refreshedSessionResult = await session.refresh({
-                cookiePassword: settings.workos.cookiePassword
-            })
-            if (!refreshedSessionResult.authenticated) {
-                logger.warn("Session refresh failed")
-                return sendUnauthorized(req, res)
-            }
-            logger.info("Session refreshed successfully")
-            // After a session refresh, no access token is available — always do full DB lookup
-            const { user } = await getOrCreateDbUserFromWorkOS(refreshedSessionResult)
-            if (!req.session) {
-                req.session = {
-                    user
-                }
-            } else {
-                req.session.user = user
-            }
-
-            if (requireOrganization && !user.organizationId) {
-                return sendOrganizationRequired(req, res)
-            }
-
-            // update the cookie if we have a sealed session
-            if (refreshedSessionResult.sealedSession) {
-                setSessionCookie(res, refreshedSessionResult.sealedSession)
-                // Keep request-scoped cookie data in sync so downstream handlers in the
-                // same request (e.g. /session/token) read the refreshed sealed session.
-                if (req.cookies) {
-                    req.cookies[WORKOS_SESSION_COOKIE_NAME] = refreshedSessionResult.sealedSession
-                }
-            }
-            return next()
-        } catch (error) {
-            logger.error("Failed to authorize user", {
-                error
-            })
-            clearSessionCookies(res)
-            return sendUnauthorized(req, res)
-        }
-    }
-}
-
-function isApiRequest(req: Request): boolean {
-    const acceptHeader = req.get("accept") || ""
-    return acceptHeader.includes("application/json")
-}
-
-function sendUnauthorized(req: Request, res: Response) {
-    if (isApiRequest(req)) {
-        return res.status(401).json({ error: "Unauthorized" })
-    }
-    return res.redirect("/login")
-}
-
-function sendOrganizationRequired(req: Request, res: Response) {
-    return res.status(403).json({
-        code: "ORGANIZATION_REQUIRED",
-        message: "User must create or join an organization",
-        redirectTo: "/organization/create"
-    })
 }
 
 export async function callback(req: Request, res: Response) {
@@ -436,18 +329,5 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
 
     return { user }
 }
-
-// Library doesn't export this type properly, so we need to define it ourselves
-type RefreshSessionSuccessResponse = Omit<AuthenticateWithSessionCookieSuccessResponse, "accessToken"> & {
-    authenticated: true
-    session?: AuthenticationResponse
-    sealedSession?: string
-}
-
-// By default, every user must be in an organization for most routes
-export const authMiddleware = createAuthMiddleware(true)
-
-// Some routes have an exception to this rule
-export const authMiddlewareAllowNoOrg = createAuthMiddleware(false)
 
 export default { me, login, loginUrl, logout, logoutUrl, getWorkOSWidgetToken, callback }

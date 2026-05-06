@@ -14,7 +14,6 @@ import { sendWeeklyReviewEmail } from "../notifications/channels/emailNotificati
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { SdkImprovementService } from "../services/SdkImprovementService"
-import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { extractErrorMessage } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
@@ -43,10 +42,6 @@ type EmailGroup = {
 
 export async function reviewAllAgents(req: Request, res: Response) {
     logger.info("[ReviewAgents] Weekly review job triggered")
-
-    if (!validateCloudSchedulerRequest(req, "ReviewAgents")) {
-        return res.status(401).json({ error: "Unauthorized" })
-    }
 
     const featureFlagService = FeatureFlagService.getInstance()
     const periodEnd = new Date()

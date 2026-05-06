@@ -5,7 +5,6 @@ import { z } from "zod"
 import { isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
-import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 import { getSecretManagerClient } from "../utility/secretManagerClient"
 
 const clearOldSecretVersionsRequestSchema = z.object({
@@ -20,12 +19,6 @@ const clearOldSecretVersionsRequestSchema = z.object({
  */
 export async function refreshAllTokens(req: Request, res: Response) {
     logger.info("Token refresh cron job triggered")
-
-    // Validate request comes from Google Cloud Scheduler
-    if (!validateCloudSchedulerRequest(req, "RefreshTokens")) {
-        logger.error("Unauthorized: Request did not pass Cloud Scheduler validation")
-        return res.status(401).json({ error: "Unauthorized" })
-    }
 
     try {
         const results: {
@@ -134,12 +127,6 @@ export async function refreshAllTokens(req: Request, res: Response) {
 
 export async function clearOldSecretVersions(req: Request, res: Response) {
     logger.info("Clearing old secret versions cron job triggered")
-
-    // Validate request comes from Google Cloud Scheduler
-    if (!validateCloudSchedulerRequest(req, "ClearOldSecretVersions")) {
-        logger.error("Unauthorized: Request did not pass Cloud Scheduler validation")
-        return res.status(401).json({ error: "Unauthorized" })
-    }
 
     const parsedInput = clearOldSecretVersionsRequestSchema.safeParse({
         dryRun: req.query.dryRun ?? req.body?.dryRun
