@@ -109,8 +109,7 @@ export type BillingChargeRunBaseBody = z.infer<typeof billingChargeRunBaseBodySc
 
 /** Acknowledgement from POST /billing/charge-run-base (credits debited for starting a run). */
 export const billingChargeRunBaseResponseSchema = z.object({
-    runId: z.string().min(1),
-    creditsCharged: z.number().nonnegative()
+    runId: z.string().min(1)
 })
 export type BillingChargeRunBaseResponse = z.infer<typeof billingChargeRunBaseResponseSchema>
 
@@ -125,8 +124,7 @@ export type BillingRecordLlmBody = z.infer<typeof billingRecordLlmBodySchema>
 
 /** Acknowledgement from POST /billing/record-llm (credits debited for model usage). */
 export const billingRecordLlmResponseSchema = z.object({
-    responseId: z.string().min(1),
-    creditsCharged: z.number().nonnegative()
+    responseId: z.string().min(1)
 })
 export type BillingRecordLlmResponse = z.infer<typeof billingRecordLlmResponseSchema>
 

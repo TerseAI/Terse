@@ -263,7 +263,7 @@ export class ApprovalService {
 
             const decision = approved ? "approve" : "reject"
             const cancellationController = new AbortController()
-            const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
+            const cancellationSubscription = listenForRunCancellation(runId, channel.organization_id, cancellationController)
 
             let result: Awaited<ReturnType<typeof agentRunner.resumeFromPendingApproval>>
             try {
@@ -284,7 +284,8 @@ export class ApprovalService {
                 )
             } catch (error) {
                 if (cancellationSubscription.isCancellationRequested()) {
-                    await markRunCancelledAndInvalidate(runId, channel.id, channel.organization_id, user.id)
+                    const reason = cancellationSubscription.getReason()
+                    await markRunCancelledAndInvalidate(runId, channel.id, channel.organization_id, user.id, reason)
                     await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
                     return {
                         status: ApprovalProcessingStatus.COMPLETED
@@ -296,7 +297,8 @@ export class ApprovalService {
             }
 
             if (cancellationSubscription.isCancellationRequested()) {
-                await markRunCancelledAndInvalidate(runId, channel.id, channel.organization_id, user.id)
+                const reason = cancellationSubscription.getReason()
+                await markRunCancelledAndInvalidate(runId, channel.id, channel.organization_id, user.id, reason)
                 await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
                 return {
                     status: ApprovalProcessingStatus.COMPLETED

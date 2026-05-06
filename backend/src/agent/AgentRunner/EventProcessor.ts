@@ -13,13 +13,13 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRu
 import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
-import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent, SDKAgent, isSDKAgent } from "../../types/prisma"
 import { Session } from "../../types/session"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getActiveDeployForProject } from "../../utility/projectHelper"
 import { classifyAgentError } from "../agentErrorUtils"
+import { CancelReason } from "../cancellation/RunCancellationTaskQueue"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 
@@ -364,7 +364,7 @@ export class EventProcessor {
         const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
         agentRunner.setInputEvent(this.inputEvent)
         const cancellationController = new AbortController()
-        const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
+        const cancellationSubscription = listenForRunCancellation(runId, this.user.organizationId, cancellationController)
 
         // Run the agent runner with streaming parameters
         let result: ApprovalResult<SessionWithTracking<Session>, OpenAIAgent<SessionWithTracking<Session>, AgentOutputType>>
@@ -383,11 +383,12 @@ export class EventProcessor {
             )
         } catch (error) {
             const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
+            const reason = cancellationSubscription.getReason()
             cancellationSubscription.unsubscribe()
 
             if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
-                await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
-                return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
+                await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
+                return new ProcessorResult(false, CancelReason.USER_CANCELLED, agent, undefined, runId)
             }
 
             const classified = classifyAgentError(error)
@@ -403,11 +404,12 @@ export class EventProcessor {
         }
 
         const wasCancelled = cancellationSubscription.isCancellationRequested()
+        const reason = cancellationSubscription.getReason()
         cancellationSubscription.unsubscribe()
 
         if (wasCancelled) {
-            await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
-            return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
+            await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
+            return new ProcessorResult(false, CancelReason.USER_CANCELLED, agent, undefined, runId)
         }
 
         if (result.status === AgentRunResultStatus.COMPLETED) {

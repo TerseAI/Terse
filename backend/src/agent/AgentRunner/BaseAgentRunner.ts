@@ -1,5 +1,5 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunStreamEvent, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
-import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
+import type { Session as AgentMemorySession, CallModelInputFilter, GuardrailFunctionOutput, InputGuardrail, InputGuardrailFunctionArgs, ModelSettings } from "@openai/agents-core"
 import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
 import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
@@ -10,6 +10,7 @@ import { settings } from "../../config/settings"
 import logger from "../../logger"
 import type { BillingService } from "../../services/BillingService"
 import { Session as AppSession } from "../../types/session"
+import { billingHook, billingInputGuardrail } from "../billingHook"
 import { parseModelReference } from "../modelRegistry"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
@@ -22,6 +23,16 @@ export type SessionWithTracking<T extends AppSession> = T & {
     }
     runId: string
     agentId: string
+}
+
+/**
+ * SDK `InputGuardrail` is not generic; use this for a typed `execute`, then cast at `runner.run`
+ * (same idea as `CallModelInputFilter<TSession>` vs `CallModelInputFilter`).
+ */
+export type InputGuardrailForSession<TContext> = {
+    name: string
+    execute: (args: InputGuardrailFunctionArgs<TContext>) => Promise<GuardrailFunctionOutput>
+    runInParallel?: boolean
 }
 
 export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> {
@@ -73,7 +84,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     async runAgent(userHistory: AgentInputItem[], settings: RunExecutionSettings<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
         // Base run charges happen at explicit run-start call sites (SDK route, EventProcessor).
         // Still gate every loop entry so unpaid orgs cannot continue on a new turn.
-        await this.checkRunGate(settings)
         await this.initializeLoopIfNeeded()
         this.resetRunOutcomeTracking()
         const result = await settings.runner.run(this.requireAgent(), userHistory, {
@@ -82,7 +92,9 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             session: settings.memorySession,
             sessionInputCallback: settings.sessionInputCallback,
             maxTurns: settings.maxTurns,
-            signal: settings.signal
+            signal: settings.signal,
+            callModelInputFilter: this.getCallModelInputFilter(),
+            inputGuardrails: this.getInputGuardrails()
         })
 
         await this.processStream(result, settings)
@@ -97,7 +109,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         responseId?: string
         prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
     }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
-        await this.checkRunGate(params.settings)
         await this.initializeLoopIfNeeded()
         this.resetRunOutcomeTracking()
         const pendingState = await this.loadPendingApprovalState(this.runId)
@@ -134,7 +145,9 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             session: params.settings.memorySession,
             sessionInputCallback: params.settings.sessionInputCallback,
             maxTurns: params.settings.maxTurns,
-            signal: params.settings.signal
+            signal: params.settings.signal,
+            callModelInputFilter: this.getCallModelInputFilter(),
+            inputGuardrails: this.getInputGuardrails()
         })
 
         const approvalDecision: ApprovalDecision = { decision: params.decision, rejectionReason: params.rejectionReason, responseId: seedResponseId }
@@ -232,12 +245,22 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         return this.agent
     }
 
-    async checkRunGate(settings: RunExecutionSettings<TSession, TAgent>): Promise<void> {
-        const orgId = settings.context.user.organizationId
-        const gateDecision = await this.billing.checkRunGate({ organizationId: orgId })
-        if (!gateDecision.allow) {
-            throw new CreditGateDeniedError(gateDecision.reason)
-        }
+    private getCallModelInputFilter(): CallModelInputFilter {
+        /**
+         * Workaround casting due to limitation of SDK doesn't make the
+         * generic available
+         */
+        const typedBillingHook: CallModelInputFilter<TSession> = billingHook
+        return typedBillingHook as CallModelInputFilter
+    }
+
+    private getInputGuardrails(): InputGuardrail[] {
+        /**
+         * Workaround casting due to limitation of SDK doesn't make the
+         * generic available
+         */
+        const typed: InputGuardrailForSession<TSession>[] = [billingInputGuardrail]
+        return typed as InputGuardrail[]
     }
 
     private getModel(): ModelReference {
@@ -325,6 +348,8 @@ type LoopRunner<TSession, TAgent extends Agent<TSession, AgentOutputType>> = {
             sessionInputCallback?: SessionInputCallback
             maxTurns: number
             signal?: AbortSignal
+            callModelInputFilter: CallModelInputFilter
+            inputGuardrails: InputGuardrail[]
         }
     ) => Promise<StreamedRunResult<TSession, TAgent>>
 }

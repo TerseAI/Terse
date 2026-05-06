@@ -8,8 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatCredits } from "@/utility/billingFormat"
 
-export function CreditBalanceWidget({ balance, plan, isLoading = false }: { balance: BalanceSummary | null; plan: Plan | null; isLoading?: boolean }) {
-    if (!balance || isLoading) {
+export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary | null; plan: Plan | null }) {
+    if (!balance) {
         return (
             <div aria-busy="true" aria-live="polite" role="status">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

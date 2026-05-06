@@ -183,7 +183,6 @@
         "CHECKOUT_SESSION": "/billing/checkout-session",
         "CHANGE": "/billing/change",
         "PORTAL_SESSION": "/billing/portal-session",
-        "OVERAGE_MODE": "/billing/overage-mode",
         "CACHE_INVALIDATION": "/billing/cache-invalidation"
     }
 }

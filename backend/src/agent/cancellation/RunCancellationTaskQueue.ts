@@ -1,46 +1,62 @@
-import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
 import { Task } from "../../tasks/abstract/tasks"
 
-const RUN_CANCELLATION_TASK_NAME = "RUN_CANCELLATION_TASK" as const
+const CANCELLATION_TASK_NAME = "CANCELLATION_TASK" as const
 
-class RunCancellationTask implements Task {
-    readonly taskName = RUN_CANCELLATION_TASK_NAME
+export enum CancelReason {
+    USER_CANCELLED = "user_cancelled",
+    BILLING_OVERAGE = "billing_overage"
+}
+
+class CancellationTask implements Task {
+    readonly taskName = CANCELLATION_TASK_NAME
 
     constructor(
-        public runId: string,
-        public reason: string = USER_CANCELLED_REASON
+        public organizationId: string,
+        public runId: string | undefined,
+        public reason: CancelReason
     ) {}
 }
 
-const runCancellationTaskQueue = new EventEmitterTaskQueue<RunCancellationTask>()
+const cancellationTaskQueue = new EventEmitterTaskQueue<CancellationTask>()
 
 type RunCancellationSubscription = {
     isCancellationRequested: () => boolean
     unsubscribe: () => void
+    getReason: () => CancelReason
 }
 
-export function requestRunCancellation(runId: string, reason: string = USER_CANCELLED_REASON): void {
-    runCancellationTaskQueue.emit(new RunCancellationTask(runId, reason))
+export function requestRunCancellation(runId: string, organizationId: string, reason: CancelReason = CancelReason.USER_CANCELLED): void {
+    cancellationTaskQueue.emit(new CancellationTask(organizationId, runId, reason))
 }
 
-export function listenForRunCancellation(runId: string, controller: AbortController): RunCancellationSubscription {
+export function requestOrgCancellation(organizationId: string, reason: CancelReason = CancelReason.BILLING_OVERAGE): void {
+    cancellationTaskQueue.emit(new CancellationTask(organizationId, undefined, reason))
+}
+
+export function listenForRunCancellation(runId: string, organizationId: string, controller: AbortController): RunCancellationSubscription {
     let cancellationRequested = false
+    let reason: CancelReason | undefined
 
-    const unsubscribe = runCancellationTaskQueue.addListener({
-        taskName: RUN_CANCELLATION_TASK_NAME,
+    const unsubscribe = cancellationTaskQueue.addListener({
+        taskName: CANCELLATION_TASK_NAME,
         onTask: task => {
-            if (task.runId !== runId) {
+            if (task.organizationId !== organizationId) {
+                return
+            }
+            if (task.runId !== undefined && task.runId !== runId) {
                 return
             }
 
             cancellationRequested = true
+            reason = task.reason
             controller.abort(task.reason)
         }
     })
 
     return {
         isCancellationRequested: () => cancellationRequested,
+        getReason: () => reason ?? CancelReason.USER_CANCELLED,
         unsubscribe
     }
 }

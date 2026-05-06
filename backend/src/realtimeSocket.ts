@@ -13,7 +13,7 @@ import { SdkAgentRunner } from "./agent/AgentRunner/SdkAgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed, readSdkSkillsFromJson } from "./agent/AgentRunner/runHistory"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
-import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
+import { CancelReason, listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { nodeEnv, optional, urls } from "./config/settings"
@@ -26,7 +26,6 @@ import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { billingServiceProxyForOrganization } from "./services/BillingService"
 import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
-import { CancelAckResponse, USER_CANCELLED_REASON } from "./socketHandlers/activeExecution"
 import { AgentWithRelations } from "./types/prisma"
 import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
 import { randomString } from "./utility/strings"
@@ -279,7 +278,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)
 
             const cancellationController = new AbortController()
-            const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
+            const cancellationSubscription = listenForRunCancellation(runId, organizationIdForRun, cancellationController)
             const notificationManager = new NotificationManager(user, agent)
 
             const isSdkAgent = agent.source === "SDK"
@@ -350,10 +349,11 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             } catch (error) {
                 const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
+                const reason = cancellationSubscription.getReason()
                 cancellationSubscription.unsubscribe()
 
                 if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
-                    await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId)
+                    await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId, reason)
                     return
                 }
 
@@ -365,10 +365,11 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             const wasCancelled = cancellationSubscription.isCancellationRequested()
+            const reason = cancellationSubscription.getReason()
             cancellationSubscription.unsubscribe()
 
             if (wasCancelled) {
-                await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId)
+                await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId, reason)
                 return
             }
 
@@ -399,7 +400,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             if (runRecord.status === RunHistoryStatus.AWAITING_APPROVAL) {
-                await markRunCancelledAndInvalidate(runId, runRecord.automation.id, runRecord.automation.organization_id, userId)
+                await markRunCancelledAndInvalidate(runId, runRecord.automation.id, runRecord.automation.organization_id, userId, CancelReason.USER_CANCELLED)
                 ack({ accepted: true })
                 return
             }
@@ -409,7 +410,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return
             }
 
-            requestRunCancellation(runId, USER_CANCELLED_REASON)
+            requestRunCancellation(runId, runRecord.automation.organization_id, CancelReason.USER_CANCELLED)
             ack({ accepted: true })
         })
 
@@ -564,4 +565,9 @@ function getSocketCorsOrigin(): boolean | string | string[] {
     }
 
     return socketCorsOrigin
+}
+
+export type CancelAckResponse = {
+    accepted: boolean
+    reason?: string
 }

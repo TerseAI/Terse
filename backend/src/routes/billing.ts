@@ -40,9 +40,3 @@ export async function getBillingContext(req: Request, res: Response) {
     const withAvailability = billingService.getBillingContext(parsed.data)
     await BillingServiceProxy.respondJson(res, withAvailability)
 }
-
-export async function setBillingOverageMode(req: Request, res: Response) {
-    const body = billingOverageModePatchBodySchema.parse(req.body)
-    const billingService = billingServiceProxyForRequest(req)
-    await BillingServiceProxy.respondJson(res, billingService.setBillingOverageMode(body))
-}

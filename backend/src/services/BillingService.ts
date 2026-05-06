@@ -54,7 +54,6 @@ export interface BillingService {
     changeBillingSubscription(body: BillingChangeRequestBody): Promise<BillingChangeResponse>
     getBillingCatalog(): Promise<BillingCatalogResponse>
     getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse>
-    setBillingOverageMode(body: BillingOverageModePatchBody): Promise<SetOverageModeResponse>
     getOrCreateCustomer(body?: GetOrCreateCustomerRequestBody): Promise<GetOrCreateCustomerResponse>
     checkRunGate(body: BillingRunGateRequestBody): Promise<RunGateDecision>
     chargeRunBase(body: BillingChargeRunBaseBody): Promise<BillingChargeRunBaseResponse>
@@ -143,10 +142,6 @@ export class BillingNoOpService implements BillingService {
         }
     }
 
-    async setBillingOverageMode(): Promise<SetOverageModeResponse> {
-        return { ok: true }
-    }
-
     async getOrCreateCustomer(): Promise<GetOrCreateCustomerResponse> {
         return { customerId: "" }
     }
@@ -156,11 +151,11 @@ export class BillingNoOpService implements BillingService {
     }
 
     async chargeRunBase(body: BillingChargeRunBaseBody): Promise<BillingChargeRunBaseResponse> {
-        return { runId: body.runId, creditsCharged: 0 }
+        return { runId: body.runId }
     }
 
     async recordLLMCall(body: BillingRecordLlmBody): Promise<BillingRecordLlmResponse> {
-        return { responseId: body.responseId, creditsCharged: 0 }
+        return { responseId: body.responseId }
     }
 }
 
@@ -270,13 +265,6 @@ export class BillingServiceProxy implements BillingService {
         params.set("timezone", query.timezone)
         const qs = params.toString()
         return this.jsonRequest<BillingContextResponse>(`${BillingRoutes.CONTEXT}${qs ? `?${qs}` : ""}`, { method: "GET" })
-    }
-
-    setBillingOverageMode(body: BillingOverageModePatchBody): Promise<SetOverageModeResponse> {
-        return this.jsonRequest<SetOverageModeResponse>(BillingRoutes.OVERAGE_MODE, {
-            method: "PATCH",
-            body: JSON.stringify(body)
-        })
     }
 
     async getOrCreateCustomer(body?: GetOrCreateCustomerRequestBody): Promise<GetOrCreateCustomerResponse> {

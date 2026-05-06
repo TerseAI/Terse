@@ -4,7 +4,6 @@
     "CHECKOUT_SESSION": "/billing/checkout-session",
     "CHANGE": "/billing/change",
     "PORTAL_SESSION": "/billing/portal-session",
-    "OVERAGE_MODE": "/billing/overage-mode",
     "CUSTOMER": "/billing/customer",
     "RUN_GATE": "/billing/run-gate",
     "CHARGE_RUN_BASE": "/billing/charge-run-base",
