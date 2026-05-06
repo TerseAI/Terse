@@ -87,7 +87,7 @@ export async function updateApiToken(req: Request, res: Response) {
 
     try {
         const existing = await db().api_tokens.findFirst({
-            where: { id: tokenId, user_id: userId, organization_id: organizationId }
+            where: { id: tokenId, user_id: userId, organization_id: organizationId, kind: "USER" }
         })
 
         if (!existing) {
@@ -134,7 +134,7 @@ export async function deleteApiToken(req: Request, res: Response) {
 
     try {
         const existing = await db().api_tokens.findFirst({
-            where: { id: tokenId, user_id: userId, organization_id: organizationId }
+            where: { id: tokenId, user_id: userId, organization_id: organizationId, kind: "USER" }
         })
 
         if (!existing) {

@@ -90,7 +90,7 @@ export async function createSandboxToken(params: { userId: string; organizationI
 
 export async function getApiTokensForUser(userId: string, organizationId: string): Promise<ApiToken[]> {
     const tokens = await db().api_tokens.findMany({
-        where: { user_id: userId, organization_id: organizationId },
+        where: { user_id: userId, organization_id: organizationId, kind: TokenKind.USER },
         orderBy: { created_at: "desc" }
     })
 
@@ -101,4 +101,13 @@ export async function getApiTokensForUser(userId: string, organizationId: string
         createdAt: t.created_at.toISOString(),
         lastUsedAt: t.last_used_at?.toISOString() ?? null
     }))
+}
+
+export async function deleteExpiredApiTokens(): Promise<number> {
+    const result = await db().api_tokens.deleteMany({
+        where: {
+            expires_at: { not: null, lt: new Date() }
+        }
+    })
+    return result.count
 }

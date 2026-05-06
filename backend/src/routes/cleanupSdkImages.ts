@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 
 import logger from "../logger"
 import { SdkSandboxImageService } from "../services/SdkSandboxImageService"
+import { deleteExpiredApiTokens } from "../utility/apiTokens"
 
 function parseOptionalNumber(value: unknown): number | undefined {
     if (value === undefined || value === null || value === "") {
@@ -30,15 +31,22 @@ export async function cleanupSdkImages(req: Request, res: Response) {
             batchSize
         })
 
+        const deletedExpiredTokens = await deleteExpiredApiTokens().catch(error => {
+            logger.error("Failed to delete expired API tokens", { error })
+            return 0
+        })
+
         logger.info("SDK image cleanup cron job completed", {
             deletedSourceImages: result.deletedSourceImages,
             deletedDependencyImages: result.deletedDependencyImages,
+            deletedExpiredTokens,
             failures: result.failures.length
         })
 
         return res.json({
             message: "SDK image cleanup completed",
-            ...result
+            ...result,
+            deletedExpiredTokens
         })
     } catch (error) {
         logger.error("Error in SDK image cleanup cron job", { error })
