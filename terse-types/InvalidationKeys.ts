@@ -197,3 +197,5 @@ export const projectDeploysKey = (projectId: string): readonly [string, string] 
 export const projectSourceFilesKey = (projectId: string): readonly [string, string] => ["projectSourceFiles", projectId]
 
 export const projectSourceFileContentKey = (projectId: string, fileId: string): readonly [string, string, string] => ["projectSourceFileContent", projectId, fileId]
+
+export const organizationProjectsKey = (): readonly [string] => ["organization-projects"]

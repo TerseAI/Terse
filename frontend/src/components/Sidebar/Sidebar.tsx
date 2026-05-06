@@ -22,6 +22,7 @@ import {
     SidebarMenuSubItem
 } from "@/components/ui/sidebar"
 import { useAgents } from "@/hooks/api/useAgents"
+import { useOrganizationProjects } from "@/hooks/api/useOrganizationProjects"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
 import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
 
@@ -30,7 +31,9 @@ import { AppSidebarFooter } from "./SidebarFooter"
 import { AppSidebarHeader } from "./SidebarHeader"
 
 export function AppSidebar() {
+    // TODO: This may need to be paginated at some point.
     const { agents, isLoading } = useAgents({ limit: 100 })
+    const { projects: organizationProjects, isLoading: projectsLoading } = useOrganizationProjects()
 
     const webUiAgents = agents.filter(a => a.source !== "SDK")
     const sdkJobs = agents.filter(a => a.source === "SDK")
@@ -42,7 +45,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation sdkJobs={sdkJobs} loading={isLoading} />
+                        <ApplicationNavigation sdkJobs={sdkJobs} organizationProjects={organizationProjects} loading={isLoading || projectsLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
@@ -69,6 +72,7 @@ export function AppSidebar() {
 
 interface ApplicationNavigationProps {
     sdkJobs: Agent[]
+    organizationProjects: { id: string; name: string }[]
     loading: boolean
 }
 
@@ -86,7 +90,9 @@ function PlainNavItem({ title, url, icon: Icon, iconColor }: NavItem) {
     )
 }
 
-function ApplicationNavigation({ sdkJobs, loading }: ApplicationNavigationProps) {
+function ApplicationNavigation({ sdkJobs, organizationProjects, loading }: ApplicationNavigationProps) {
+    const showProjectsNav = sdkJobs.length > 0 || organizationProjects.length > 0 || loading
+
     return (
         <SidebarMenu>
             <SidebarMenuItem>
@@ -101,7 +107,7 @@ function ApplicationNavigation({ sdkJobs, loading }: ApplicationNavigationProps)
 
             <PlainNavItem title="Home" url={FrontendRoutes.HOME} icon={Home} iconColor="text-primary" />
 
-            {(sdkJobs.length > 0 || loading) && <SdkJobsList agents={sdkJobs} loading={loading} />}
+            {showProjectsNav && <SdkJobsList agents={sdkJobs} organizationProjects={organizationProjects} loading={loading} />}
 
             <PlainNavItem title="Activity" url={FrontendRoutes.ACTIVITY} icon={Activity} iconColor="text-primary" />
             <PlainNavItem title="Stats" url={FrontendRoutes.STATS} icon={BarChart3} iconColor="text-primary" />

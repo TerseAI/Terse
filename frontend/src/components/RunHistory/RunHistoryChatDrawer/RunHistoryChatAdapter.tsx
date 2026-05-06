@@ -11,8 +11,8 @@ import type { Turn } from "@/components/chat/turnModel"
 import { useChatHistory } from "@/hooks/api/useChatHistory"
 import { cancelAgentChatRun, sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
 
-import { Spinner } from "../../ui/spinner"
-
+import { RunHistoryChatEmptyMessages } from "./RunHistoryChatEmptyMessages"
+import { RunHistoryChatHistorySkeleton } from "./RunHistoryChatHistorySkeleton"
 import { convertRunHistoryEventsToTurns } from "./runHistoryEventsToTurns"
 
 type RunHistoryChatAdapterProps = {
@@ -77,7 +77,13 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     }
 
     if (isLoading) {
-        return <Spinner />
+        return (
+            <div className="flex h-full min-h-[280px] flex-col bg-background rounded-lg">
+                <div className="flex-1 overflow-hidden p-4">
+                    <RunHistoryChatHistorySkeleton />
+                </div>
+            </div>
+        )
     }
 
     if (children) {
@@ -110,9 +116,9 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
                 <AwaitingResponseAnimation />
             </div>
         ) : isLoading ? (
-            <div className="p-4 text-center text-muted-foreground">Loading history...</div>
+            <RunHistoryChatHistorySkeleton />
         ) : (
-            <div className="p-4 text-center text-muted-foreground">No messages found</div>
+            <RunHistoryChatEmptyMessages />
         )
 
     return (

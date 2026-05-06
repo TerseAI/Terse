@@ -699,6 +699,17 @@ export const sdkCreateProjectResponseBodySchema = z.object({
 })
 export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
 
+export const projectListItemSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+export type ProjectListItem = z.infer<typeof projectListItemSchema>
+
+export const projectsListResponseSchema = z.object({
+    projects: z.array(projectListItemSchema)
+})
+export type ProjectsListResponse = z.infer<typeof projectsListResponseSchema>
+
 export const projectDetailResponseSchema = z.object({
     id: z.string(),
     name: z.string(),
