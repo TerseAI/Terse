@@ -31,6 +31,7 @@ import { AppSidebarFooter } from "./SidebarFooter"
 import { AppSidebarHeader } from "./SidebarHeader"
 
 export function AppSidebar() {
+    // TODO: This may need to be paginated at some point.
     const { agents, isLoading } = useAgents({ limit: 100 })
     const { projects: organizationProjects, isLoading: projectsLoading } = useOrganizationProjects()
 

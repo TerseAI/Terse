@@ -13,7 +13,6 @@ const UNASSIGNED_PROJECT_KEY = "__unassigned__"
 
 interface SdkJobsListProps {
     agents: Agent[]
-    /** Organization projects (includes empty projects with no deployed jobs). */
     organizationProjects: { id: string; name: string }[]
     loading: boolean
 }
