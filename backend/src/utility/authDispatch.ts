@@ -10,7 +10,7 @@ import { getOrCreateDbUserFromWorkOS } from "../routes/auth"
 
 import { getClaimsFromAuthResult } from "./accessTokenClaims"
 import { hashToken } from "./apiTokens"
-import { secretsMatch } from "./cloudScheduler"
+import { secretsMatch } from "./cryptoUtils"
 import { workos } from "./workos"
 import { getUserForOrg } from "./workos"
 

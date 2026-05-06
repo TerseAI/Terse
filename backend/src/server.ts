@@ -196,7 +196,7 @@ app.post(ApiRoutes.CLEANUP_SDK_IMAGES, requireAuth([AuthKind.CloudScheduler]), a
     cleanupSdkImages(req, res)
 })
 
-// MARK: WEBHOOKS (before apiTokenAuthMiddleware — these use their own auth via signatures/tokens)
+// MARK: WEBHOOKS (each handler verifies its own provider signature)
 
 app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
     handleGmailWebhook(req, res)
@@ -223,7 +223,7 @@ app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, async (req, res) =
     handleWorkOSTriggerWebhook(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
     handleScheduleWebhook(req, res)
 })
 

@@ -2,7 +2,6 @@ import { Request, Response } from "express"
 
 import logger from "../logger"
 import { SdkSandboxImageService } from "../services/SdkSandboxImageService"
-import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 
 function parseOptionalNumber(value: unknown): number | undefined {
     if (value === undefined || value === null || value === "") {
@@ -19,11 +18,6 @@ function parseOptionalNumber(value: unknown): number | undefined {
 
 export async function cleanupSdkImages(req: Request, res: Response) {
     logger.info("SDK image cleanup cron job triggered")
-
-    if (!validateCloudSchedulerRequest(req, "CleanupSdkImages")) {
-        logger.error("Unauthorized: Request did not pass Cloud Scheduler validation")
-        return res.status(401).json({ error: "Unauthorized" })
-    }
 
     try {
         const sourceImageGraceHours = parseOptionalNumber(req.body?.sourceImageGraceHours)

@@ -53,9 +53,8 @@ async function handleBearer(bearer: string, allow: AuthKind[], opts: AuthOptions
     if (bearer.startsWith("terse_")) {
         const result = await authenticateViaApiToken(bearer)
         if (!result.ok) {
-            const status = result.reason === "expired" ? 401 : 401
             const message = result.reason === "expired" ? "API token has expired" : "Invalid API token"
-            res.status(status).json({ error: message })
+            res.status(401).json({ error: message })
             return
         }
 
