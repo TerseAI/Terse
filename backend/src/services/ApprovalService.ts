@@ -10,6 +10,7 @@ import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalS
 import { listenForRunCancellation } from "../agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../agent/cancellation/runCancellationEffects"
 import { appendToolApprovalResponseSystemEvent } from "../agent/systemEvents/toolApprovalSystemEvent"
+import { Session } from "../express"
 import logger from "../logger"
 import { NotificationManager } from "../notifications/Notification"
 import { Output } from "../outputs/abstract/Output"
@@ -18,7 +19,6 @@ import { db } from "../prismaClient"
 import { resolveApprovalDecision } from "../routes/sdkApprovalGate"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
 import { AgentWithRelations } from "../types/prisma"
-import { Session } from "../types/session"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { updateSlackApprovalMessage } from "../utility/slack"
 import { getUserForOrg } from "../utility/workos"
@@ -213,8 +213,7 @@ export class ApprovalService {
             const outputs = this.createOutputs(channel)
 
             const session: Session = {
-                user,
-                isUserInitiated: true
+                user
             }
 
             // Ensure run status is 'in_progress' for streaming

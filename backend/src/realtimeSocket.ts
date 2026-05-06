@@ -17,12 +17,12 @@ import { listenForRunCancellation, requestRunCancellation } from "./agent/cancel
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { nodeEnv, optional, urls } from "./config/settings"
+import { Session } from "./express"
 import logger from "./logger"
 import { NotificationManager } from "./notifications/Notification"
 import { Output } from "./outputs/abstract/Output"
 import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
-import { Session } from "./server"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
 import { CancelAckResponse, USER_CANCELLED_REASON } from "./socketHandlers/activeExecution"
@@ -321,7 +321,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         return
                     }
 
-                    const session: Session = { user, isUserInitiated: true }
+                    const session: Session = { user }
                     const runContext: RunContext = { runId }
                     const agentRunner = new AgentRunner(session, outputs, agent, runContext)
 

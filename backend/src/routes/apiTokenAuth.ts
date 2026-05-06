@@ -43,8 +43,7 @@ export async function apiTokenAuthMiddleware(req: Request, res: Response, next: 
                 lastName: null,
                 displayPhotoUrl: "",
                 roles: []
-            },
-            isUserInitiated: false
+            }
         }
 
         // Fire-and-forget update to last_used_at
