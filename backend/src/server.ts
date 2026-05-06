@@ -75,13 +75,17 @@ import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTri
 import { registerSocketGetter } from "./services/CacheInvalidationService"
 import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./utility/analytics"
+import { buildCorsAllowedOrigins, isCorsOriginAllowed } from "./utility/corsOrigins"
 import { workos } from "./utility/workos"
 
 const app = express()
 const server = createServer(app)
 
+const corsAllowedOrigins = buildCorsAllowedOrigins()
+logger.info("CORS allowlist initialized", { origins: [...corsAllowedOrigins].sort() })
+
 try {
-    await initializeRealtimeSocket(server)
+    await initializeRealtimeSocket(server, corsAllowedOrigins)
     registerSocketGetter(getRealtimeSocket)
     logger.info("✅ Socket.IO server initialized")
 } catch (error) {
@@ -97,60 +101,17 @@ setupLLMAnalytics()
 
 app.use(
     cors({
-        origin: true,
-        credentials: true
+        credentials: true,
+        origin(origin, callback) {
+            if (isCorsOriginAllowed(origin, corsAllowedOrigins)) {
+                callback(null, true)
+                return
+            }
+            logger.warn("CORS request blocked", { origin })
+            callback(null, false)
+        }
     })
 )
-
-// Access logging middleware - only in production (too noisy for local dev)
-// if (settings.nodeEnv !== "development") {
-app.use((req: Request, res: Response, next: NextFunction) => {
-    const startTime = Date.now()
-    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-
-    // Capture request details
-    const requestInfo = {
-        requestId,
-        method: req.method,
-        path: req.path,
-        query: Object.keys(req.query).length > 0 ? req.query : undefined,
-        ip: req.ip || req.socket.remoteAddress || "unknown",
-        userAgent: req.get("user-agent"),
-        contentType: req.get("content-type"),
-        contentLength: req.get("content-length") ? parseInt(req.get("content-length") || "0") : undefined,
-        userId: (req.session?.user as User)?.id
-    }
-
-    // Log incoming request
-    logger.info(`📥 ${req.method} ${req.path}`, requestInfo)
-
-    // Capture response details
-    const originalSend = res.send
-    res.send = function (body: any) {
-        const duration = Date.now() - startTime
-        const responseInfo = {
-            requestId,
-            method: req.method,
-            path: req.path,
-            statusCode: res.statusCode,
-            duration: `${duration}ms`,
-            contentLength: res.get("content-length") ? parseInt(res.get("content-length") || "0") : undefined,
-            userId: (req.session?.user as User)?.id
-        }
-
-        // Log response
-        if (res.statusCode >= 400) {
-            logger.warn(`📤 ${req.method} ${req.path} ${res.statusCode}`, responseInfo)
-        } else {
-            logger.info(`📤 ${req.method} ${req.path} ${res.statusCode}`, responseInfo)
-        }
-
-        return originalSend.call(this, body)
-    }
-
-    next()
-})
-// }
 
 if (slackReceiver?.receiver) {
     app.use("/slack", slackReceiver.receiver.router)

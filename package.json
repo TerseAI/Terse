@@ -1,5 +1,5 @@
 {
-    "name": "ai-product-owner",
+    "name": "terse",
     "private": true,
     "scripts": {
         "build": "pnpm -r run build",

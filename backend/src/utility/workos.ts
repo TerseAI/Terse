@@ -64,7 +64,7 @@ export async function getUserForOrg(userId: string, organizationId: string): Pro
         organizationId: organizationId,
         organizationName: organizationName,
         email: workOSUser.email,
-        displayName: workOSUser.firstName + " " + workOSUser.lastName,
+        displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" "),
         firstName: workOSUser.firstName || null,
         lastName: workOSUser.lastName || null,
         displayPhotoUrl: workOSUser.profilePictureUrl || "",

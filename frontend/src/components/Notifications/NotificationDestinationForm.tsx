@@ -63,11 +63,9 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                 window.open(installationDetails.oauthUrl, "oauth-popup", "width=600,height=700")
                 setShowConnectionOptions(false)
             } else {
-                console.error("OAuth URL not available for this integration type")
                 toast.error("Could not start Slack connection. Please try again.")
             }
-        } catch (error) {
-            console.error("Error initiating OAuth:", error)
+        } catch {
             toast.error("Failed to connect Slack workspace. Please try again.")
         } finally {
             setIsConnecting(false)
@@ -117,8 +115,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
             }
             mutate(notificationDestinationsKey())
             onSuccess?.()
-        } catch (error) {
-            console.error("Failed to save notification destination:", error)
+        } catch {
             toast.error(`Failed to ${isEditMode ? "update" : "add"} notification destination. Please try again.`)
         } finally {
             setIsSaving(false)

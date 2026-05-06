@@ -44,8 +44,9 @@ export function useCompletionSocket({ subscribeToEvents, sendMessage, onEvent }:
                     onEventRef.current(message)
                     break
                 default: {
-                    const exhaustiveCheck: never = message
-                    console.warn("Unhandled chat event", exhaustiveCheck)
+                    // exhaustive check — type system enforces all cases handled
+                    const _exhaustiveCheck: never = message
+                    void _exhaustiveCheck
                 }
             }
         })
