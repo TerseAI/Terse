@@ -16,6 +16,7 @@ import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./
 import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
+import { optional } from "./config/settings"
 import { Session } from "./express"
 import logger from "./logger"
 import { NotificationManager } from "./notifications/Notification"
