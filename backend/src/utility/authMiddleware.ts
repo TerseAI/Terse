@@ -25,16 +25,28 @@ export function requireAuth(allow: AuthKind[], opts: AuthOptions = {}): RequestH
         const bearer = readBearerToken(req.headers.authorization)
         const cookie = readSealedSessionCookie(req.cookies)
 
-        if (bearer) {
-            return handleBearer(bearer, allow, opts, req, res, next)
+        const bearerWanted = bearer !== null && allow.some(k => CREDENTIAL_CHANNEL[k] === "bearer")
+        const cookieWanted = cookie !== undefined && allow.some(k => CREDENTIAL_CHANNEL[k] === "cookie")
+
+        if (bearerWanted) {
+            return handleBearer(bearer!, allow, opts, req, res, next)
         }
 
-        if (cookie) {
-            return handleCookie(cookie, allow, opts, req, res, next)
+        if (cookieWanted) {
+            return handleCookie(cookie!, allow, opts, req, res, next)
         }
 
         return sendUnauthorized(req, res)
     }
+}
+
+type CredentialChannel = "bearer" | "cookie"
+
+const CREDENTIAL_CHANNEL: Record<AuthKind, CredentialChannel> = {
+    [AuthKind.UserCookie]: "cookie",
+    [AuthKind.UserToken]: "bearer",
+    [AuthKind.ProjectToken]: "bearer",
+    [AuthKind.CloudScheduler]: "bearer"
 }
 
 async function handleBearer(bearer: string, allow: AuthKind[], opts: AuthOptions, req: Request, res: Response, next: NextFunction) {
