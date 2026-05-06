@@ -26,6 +26,8 @@ terse init my-project
 
 If you omit `project-name`, the CLI scaffolds into the current directory. If you run `terse init` in an existing npm project, the CLI tells you to use `terse attach` instead.
 
+After `terse init` creates the project, it shows up in the app's project navigation immediately, even before your first `terse deploy`.
+
 **What it does in order:**
 
 1. Creates the target directory and scaffolds `package.json`, `tsconfig.json`, `src/terse.jobs.ts`, `.env.example`, and `.gitignore`
@@ -44,6 +46,8 @@ terse attach
 ```
 
 Use `terse attach` when you already have an application repo and want Terse to sync workflows to infrastructure you control instead of uploading source to Terse hosting.
+
+The linked project appears in the app's project navigation right away, even if it has zero deployed workflows.
 
 **What it does:**
 
