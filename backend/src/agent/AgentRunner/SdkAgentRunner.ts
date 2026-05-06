@@ -81,7 +81,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             agentType: AgentType.AGENT_RUNNER,
             runId: this.sdkRunId,
             user: this.user,
-            env: settings.nodeEnv
+            env: settings.nodeEnv,
+            inputGuardrails: this.getInputGuardrails()
         })
     }
 

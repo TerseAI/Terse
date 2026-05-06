@@ -254,7 +254,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         return typedBillingHook as CallModelInputFilter
     }
 
-    private getInputGuardrails(): InputGuardrail[] {
+    protected getInputGuardrails(): InputGuardrail[] {
         /**
          * Workaround casting due to limitation of SDK doesn't make the
          * generic available

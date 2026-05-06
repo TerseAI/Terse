@@ -318,7 +318,7 @@ export class BillingServiceProxy implements BillingService {
  * resume paths where the base fee was already taken at initial start.
  */
 export async function startBillingRun(billing: BillingService, params: { organizationId: string; runId: string; chargeBaseRun?: boolean }): Promise<void> {
-    const gate = await billing.checkRunGate({ organizationId: params.organizationId })
+    const gate = await billing.checkRunGate({ organizationId: params.organizationId, breakCache: true })
     if (!gate.allow) {
         throw new CreditGateDeniedError(gate.reason)
     }
@@ -327,7 +327,8 @@ export async function startBillingRun(billing: BillingService, params: { organiz
 
     await billing.chargeRunBase({
         organizationId: params.organizationId,
-        runId: params.runId
+        runId: params.runId,
+        breakCache: true
     })
 }
 

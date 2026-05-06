@@ -15,7 +15,10 @@ export async function billingHook<TSession extends SessionWithTracking<Session>>
     }
     const organizationId = args.context.user.organizationId
 
-    await isBillingOver(organizationId)
+    const shouldBlock = await isBillingOver(organizationId)
+    if (shouldBlock) {
+        throw new Error("Billing overage")
+    }
     return args.modelData
 }
 
@@ -25,7 +28,7 @@ export async function billingHook<TSession extends SessionWithTracking<Session>>
 export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking<Session>> = {
     name: "Hard block guardrail",
     runInParallel: false,
-    execute: async ({ agent, input, context }) => {
+    execute: async ({ context }) => {
         const organizationId = context.context.user.organizationId
         const shouldBlock = await isBillingOver(organizationId)
         return {
@@ -37,7 +40,7 @@ export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking
 
 export async function isBillingOver(organizationId: string): Promise<boolean> {
     const billing = billingServiceProxyForOrganization(organizationId)
-    const gate = await billing.checkRunGate({ organizationId })
+    const gate = await billing.checkRunGate({ organizationId, breakCache: false })
     if (!gate.allow) {
         // Signal to all agents we are stopping.
         requestOrgCancellation(organizationId, CancelReason.BILLING_OVERAGE)

@@ -110,7 +110,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
-            env: settings.nodeEnv
+            env: settings.nodeEnv,
+            inputGuardrails: this.getInputGuardrails()
         })
 
         logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) })
@@ -145,7 +146,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
-            env: settings.nodeEnv
+            env: settings.nodeEnv,
+            inputGuardrails: this.getInputGuardrails()
         })
         this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
@@ -183,7 +185,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
-            env: settings.nodeEnv
+            env: settings.nodeEnv,
+            inputGuardrails: this.getInputGuardrails()
         })
         const toolContext = this.getToolContext()
         this.setActiveStreamingParams(streamingParams)

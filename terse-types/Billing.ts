@@ -98,7 +98,8 @@ export const completedEventUsageSchema = z.object({
 export type CompletedEventUsage = z.infer<typeof completedEventUsageSchema>
 
 export const billingRunGateRequestBodySchema = z.object({
-    organizationId: z.string().min(1)
+    organizationId: z.string().min(1),
+    breakCache: z.boolean().default(false)
 })
 export type BillingRunGateRequestBody = z.infer<typeof billingRunGateRequestBodySchema>
 
