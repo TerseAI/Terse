@@ -60,9 +60,6 @@ function shouldRedirectToLogin(value: unknown): boolean {
 }
 
 function getBackendLoginUrl(): string {
-    if (!settings.urls.backend) {
-        return getDirectWorkOSLoginUrl()
-    }
     const normalizedBackendUrl = settings.urls.backend.endsWith("/") ? settings.urls.backend : `${settings.urls.backend}/`
     const loginPath = ApiRoutes.AUTH.LOGIN.replace(/^\//, "")
     return new URL(loginPath, normalizedBackendUrl).toString()

@@ -59,7 +59,7 @@ export const settings = {
     urls: {
         socketFrontend: optionalEnv("SOCKET_FRONTEND_URL"),
         frontend: requireEnv("FRONTEND_URL"),
-        backend: optionalEnv("BACKEND_URL", "http://localhost:3001"),
+        backend: requireEnv("BACKEND_URL"),
         backendProxy: optionalEnv("BACKEND_PROXY_URL")
     },
 
