@@ -5,12 +5,13 @@ import { User } from "terse-types/types"
 import { cloudScheduler, settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { setSessionCookie, WORKOS_SESSION_COOKIE_NAME } from "../routes/auth"
+import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../routes/auth"
+import { getOrCreateDbUserFromWorkOS } from "../routes/auth"
+
 import { getClaimsFromAuthResult } from "./accessTokenClaims"
 import { hashToken } from "./apiTokens"
 import { secretsMatch } from "./cloudScheduler"
 import { workos } from "./workos"
-import { getOrCreateDbUserFromWorkOS } from "../routes/auth"
 import { getUserForOrg } from "./workos"
 
 export type CookieAuthOutcome = { ok: true; user: User } | { ok: false; reason: "no_cookie" | "auth_failed" }

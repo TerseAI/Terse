@@ -656,15 +656,15 @@ app.get(ApiRoutes.SDK.ME, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, 
     }
 })
 
-app.post(ApiRoutes.SDK.SAMPLE_EVENTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.post(ApiRoutes.SDK.SAMPLE_EVENTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleSampleEvents(req, res)
 })
 
-app.post(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.post(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleHydrateSampleEvent(req, res)
 })
 
-app.post(ApiRoutes.SDK.VERIFY_JOB_SERVER, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.post(ApiRoutes.SDK.VERIFY_JOB_SERVER, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleVerifySdkJobServer(req, res)
 })
 
@@ -700,19 +700,19 @@ app.post(ApiRoutes.SDK.DEPLOY, requireAuth([AuthKind.UserCookie, AuthKind.UserTo
     handleSdkDeploy(req, res)
 })
 
-app.get(ApiRoutes.SDK.INTEGRATION_FIELDS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.get(ApiRoutes.SDK.INTEGRATION_FIELDS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleSdkIntegrationFields(req, res)
 })
 
-app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleSdkIntegrationFormSubmit(req, res)
 })
 
-app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getSentNotifications(req, res)
 })
 
-app.get(ApiRoutes.PENDING_APPROVALS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.get(ApiRoutes.PENDING_APPROVALS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getPendingApprovals(req, res)
 })
 
@@ -724,7 +724,7 @@ app.get(ApiRoutes.PROJECTS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.User
     handleListProjects(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.get(ApiRoutes.PROJECTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleGetProjectById(req, res)
 })
 
@@ -732,15 +732,15 @@ app.delete(ApiRoutes.PROJECTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.
     handleProjectDelete(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.DEPLOYS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.get(ApiRoutes.PROJECTS.DEPLOYS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleGetProjectDeploys(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.SOURCE_FILES, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.get(ApiRoutes.PROJECTS.SOURCE_FILES, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleGetProjectSourceFiles(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+app.get(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleGetProjectSourceFileContent(req, res)
 })
 
