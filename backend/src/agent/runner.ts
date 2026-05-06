@@ -1,4 +1,4 @@
-import { Runner, type InputGuardrail } from "@openai/agents-core"
+import { type InputGuardrail, Runner } from "@openai/agents-core"
 import { User } from "terse-types/types"
 
 export enum AgentType {
