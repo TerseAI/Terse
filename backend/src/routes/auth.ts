@@ -21,14 +21,14 @@ export function clearSessionCookies(res: Response) {
     res.clearCookie(WORKOS_SESSION_COOKIE_NAME, WORKOS_SESSION_COOKIE_OPTIONS)
 }
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
 const workosSessionCookieBaseOptions = {
     path: "/",
     httpOnly: true,
     secure: settings.nodeEnv === "production",
     sameSite: "lax" as const,
-    maxAge: SEVEN_DAYS_MS
+    maxAge: ONE_DAY_MS
 }
 
 export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
