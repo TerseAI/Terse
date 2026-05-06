@@ -1,13 +1,11 @@
 import useSWR from "swr"
-
+import { organizationProjectsKey } from "terse-types"
 import type { ProjectsListResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
 
-const ORGANIZATION_PROJECTS_KEY = ["organization-projects"] as const
-
 export function useOrganizationProjects() {
-    const { data, error, isValidating, mutate } = useSWR<ProjectsListResponse>(ORGANIZATION_PROJECTS_KEY, () => BackendProvider.listProjects(), {
+    const { data, error, isValidating, mutate } = useSWR<ProjectsListResponse>(organizationProjectsKey(), () => BackendProvider.listProjects(), {
         revalidateOnFocus: false
     })
 

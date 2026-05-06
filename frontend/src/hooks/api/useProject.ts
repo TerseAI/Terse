@@ -1,4 +1,5 @@
 import useSWR, { mutate } from "swr"
+import { organizationProjectsKey } from "terse-types"
 import type { ProjectDetailResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
@@ -26,6 +27,7 @@ export function useProjectMutations() {
         await BackendProvider.deleteProject(id)
         await mutate(projectDetailKey(id), undefined, { revalidate: false })
         await mutate(key => Array.isArray(key) && key[0] === "agents")
+        await mutate(organizationProjectsKey())
     }
 
     return { deleteProject }

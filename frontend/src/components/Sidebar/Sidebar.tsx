@@ -44,11 +44,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation
-                            sdkJobs={sdkJobs}
-                            organizationProjects={organizationProjects}
-                            loading={isLoading || projectsLoading}
-                        />
+                        <ApplicationNavigation sdkJobs={sdkJobs} organizationProjects={organizationProjects} loading={isLoading || projectsLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 

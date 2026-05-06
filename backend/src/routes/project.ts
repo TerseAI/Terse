@@ -6,10 +6,10 @@ import {
     ProjectDeployUser,
     ProjectDeploysResponse,
     ProjectDetailResponse,
-    ProjectsListResponse,
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
     ProjectSourceFilesResponse,
+    ProjectsListResponse,
     User
 } from "terse-types/types"
 import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from "terse-types/types"
@@ -143,6 +143,7 @@ export async function handleProjectDelete(req: Request, res: Response) {
 
     emitCacheInvalidationWithKey(user.organizationId, "agents")
     emitCacheInvalidationWithKey(user.organizationId, "recentAgents")
+    emitCacheInvalidationWithKey(user.organizationId, "organization-projects")
 
     logger.info("Project deleted", { projectId: id, organizationId: user.organizationId, automationCount: automationIds.length })
 
@@ -398,6 +399,8 @@ export async function handleProjectCreate(req: Request, res: Response) {
             projectId: project.id,
             name: project.name
         }
+
+        emitCacheInvalidationWithKey(user.organizationId, "organization-projects")
 
         res.status(200).json(response)
     } catch (error) {
