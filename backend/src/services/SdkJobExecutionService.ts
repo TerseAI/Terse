@@ -1,4 +1,3 @@
-import crypto from "crypto"
 import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
@@ -11,6 +10,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { SDKAgent, project_deploys } from "../types/prisma"
+import { createSandboxToken } from "../utility/apiTokens"
 import { getActiveDeployForProject } from "../utility/projectHelper"
 import { extractErrorMessage } from "../utility/strings"
 
@@ -103,18 +103,14 @@ export class SdkJobExecutionService {
             const sourceImage = await this.resolveOrPrepareSourceImage({ agent, gcsKey, orgId, runId })
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
 
-            const { rawToken, tokenId } = await this.createSandboxApiToken(userId, orgId, agent.project.id)
+            const { rawToken, tokenId } = await createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id })
             sandboxApiKey = rawToken
             sandboxTokenId = tokenId
             logger.info("SDK sandbox: created temp API token", { runId, agentId: agent.id })
 
-            void this.cleanupStaleSandboxTokens(orgId).catch(err => {
-                logger.warn("Failed to cleanup stale sandbox tokens", { error: err })
-            })
-
             const sandboxEnv = {
                 TERSE_API_KEY: sandboxApiKey,
-                TERSE_BACKEND_URL: settings.urls.backend ?? "http://localhost:3001",
+                TERSE_BACKEND_URL: settings.urls.backend,
                 TERSE_RUN_ID: runId,
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
@@ -560,43 +556,9 @@ export class SdkJobExecutionService {
         throw new Error(`Unsupported SDK runtime: ${runtime}`)
     }
 
-    private async createSandboxApiToken(userId: string, organizationId: string, projectId: string): Promise<{ rawToken: string; tokenId: string }> {
-        const rawToken = `terse_${crypto.randomBytes(32).toString("hex")}`
-        const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex")
-        const tokenPrefix = rawToken.slice(0, 14)
-
-        const token = await db().api_tokens.create({
-            data: {
-                user_id: userId,
-                organization_id: organizationId,
-                project_id: projectId,
-                name: "sdk-sandbox-runner",
-                token_hash: tokenHash,
-                token_prefix: tokenPrefix
-            }
-        })
-
-        return { rawToken, tokenId: token.id }
-    }
-
     private async deleteSandboxApiToken(tokenId: string): Promise<void> {
         await db().api_tokens.delete({
             where: { id: tokenId }
         })
-    }
-
-    private async cleanupStaleSandboxTokens(organizationId: string): Promise<void> {
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-        const deleted = await db().api_tokens.deleteMany({
-            where: {
-                organization_id: organizationId,
-                name: "sdk-sandbox-runner",
-                created_at: { lt: oneHourAgo }
-            }
-        })
-
-        if (deleted.count > 0) {
-            logger.info("Cleaned up stale sandbox API tokens", { count: deleted.count, organizationId })
-        }
     }
 }

@@ -23,7 +23,7 @@ export function validateCloudSchedulerRequest(req: Request, logContext?: string)
     return true
 }
 
-function secretsMatch(a: string, b: string): boolean {
+export function secretsMatch(a: string, b: string): boolean {
     const aBuf = Buffer.from(a, "utf8")
     const bBuf = Buffer.from(b, "utf8")
     if (aBuf.length !== bBuf.length) {

@@ -1,3 +1,4 @@
+import { TokenKind } from "@prisma/client"
 import crypto from "crypto"
 import { ApiToken, ApiTokenCreateResponse } from "terse-types/types"
 
@@ -23,7 +24,8 @@ export async function createApiToken(userId: string, organizationId: string, nam
             organization_id: organizationId,
             name: name.trim(),
             token_hash: tokenHash,
-            token_prefix: tokenPrefix
+            token_prefix: tokenPrefix,
+            kind: TokenKind.USER
         }
     })
 
@@ -55,7 +57,31 @@ export async function createProjectScopedToken(
             project_id: params.projectId,
             name: `proj_${params.projectName}`,
             token_hash: tokenHash,
-            token_prefix: tokenPrefix
+            token_prefix: tokenPrefix,
+            kind: TokenKind.PROJECT
+        }
+    })
+
+    return { rawToken, tokenId: token.id }
+}
+
+export const SANDBOX_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
+
+export async function createSandboxToken(params: { userId: string; organizationId: string; projectId: string }): Promise<{ rawToken: string; tokenId: string }> {
+    const rawToken = generateRawToken()
+    const tokenHash = hashToken(rawToken)
+    const tokenPrefix = rawToken.slice(0, 14)
+
+    const token = await db().api_tokens.create({
+        data: {
+            user_id: params.userId,
+            organization_id: params.organizationId,
+            project_id: params.projectId,
+            name: "sdk-sandbox-runner",
+            token_hash: tokenHash,
+            token_prefix: tokenPrefix,
+            kind: TokenKind.PROJECT,
+            expires_at: new Date(Date.now() + SANDBOX_TOKEN_TTL_MS)
         }
     })
 

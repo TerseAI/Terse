@@ -16,10 +16,9 @@ import "./integrations/IntegrationTaskHandler"
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { createAgent, deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
-import { apiTokenAuthMiddleware } from "./routes/apiTokenAuth"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
-import { authMiddleware, authMiddlewareAllowNoOrg, callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
+import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
@@ -75,6 +74,7 @@ import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTri
 import { registerSocketGetter } from "./services/CacheInvalidationService"
 import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./utility/analytics"
+import { AuthKind, requireAuth } from "./utility/authMiddleware"
 import { buildCorsAllowedOrigins, isCorsOriginAllowed } from "./utility/corsOrigins"
 import { workos } from "./utility/workos"
 
@@ -178,21 +178,21 @@ app.use((err: Error & { type?: string; statusCode?: number }, req: Request, res:
 })
 app.use(cookieParser())
 
-// MARK: CRON JOBS (before apiTokenAuthMiddleware — these use their own auth via validateCloudSchedulerRequest)
+// MARK: CRON JOBS
 
-app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
+app.post(ApiRoutes.REFRESH_TOKENS, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
     refreshAllTokens(req, res)
 })
 
-app.post(ApiRoutes.CLEAR_OLD_SECRET_VERSIONS, async (req, res) => {
+app.post(ApiRoutes.CLEAR_OLD_SECRET_VERSIONS, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
     clearOldSecretVersions(req, res)
 })
 
-app.post(ApiRoutes.REVIEW_AGENTS, async (req, res) => {
+app.post(ApiRoutes.REVIEW_AGENTS, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
     reviewAllAgents(req, res)
 })
 
-app.post(ApiRoutes.CLEANUP_SDK_IMAGES, async (req, res) => {
+app.post(ApiRoutes.CLEANUP_SDK_IMAGES, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
     cleanupSdkImages(req, res)
 })
 
@@ -241,16 +241,14 @@ app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
     await githubAppUnifiedEvent(req, res)
 })
 
-// MARK: DEVICE AUTH (before apiTokenAuthMiddleware — uses WorkOS JWT, not bearer token)
+// MARK: DEVICE AUTH (uses WorkOS JWT in body, not bearer token)
 app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
     deviceTokenExchange(req, res)
 })
 
-app.use(apiTokenAuthMiddleware)
-
 // MARK: AUTH
 
-app.get(ApiRoutes.AUTH.ME, authMiddlewareAllowNoOrg, me)
+app.get(ApiRoutes.AUTH.ME, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), me)
 
 // GITHUB Will call this immediately after the user installs the app.
 app.get(ApiRoutes.AUTH.GITHUB_APP_CALLBACK, async (req, res) => {
@@ -277,74 +275,74 @@ app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, (req, res) => {
     callback(req, res)
 })
 
-app.get(ApiRoutes.WORKOS.WIDGET_TOKEN, authMiddleware, (req, res) => getWorkOSWidgetToken(req, res))
+app.get(ApiRoutes.WORKOS.WIDGET_TOKEN, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getWorkOSWidgetToken(req, res))
 
 // MARK: Organizations (WorkOS) - auth without org required so user can create org
-app.post(ApiRoutes.ORGANIZATIONS.CREATE, authMiddlewareAllowNoOrg, (req, res) => createOrganization(req, res))
+app.post(ApiRoutes.ORGANIZATIONS.CREATE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), (req, res) => createOrganization(req, res))
 
-app.get(ApiRoutes.ORGANIZATIONS.GET_CURRENT, authMiddlewareAllowNoOrg, (req, res) => getCurrentOrganization(req, res))
+app.get(ApiRoutes.ORGANIZATIONS.GET_CURRENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), (req, res) => getCurrentOrganization(req, res))
 
-app.get(ApiRoutes.ORGANIZATIONS.LIST, authMiddleware, (req, res) => getUserOrganizations(req, res))
+app.get(ApiRoutes.ORGANIZATIONS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getUserOrganizations(req, res))
 
-app.post(ApiRoutes.ORGANIZATIONS.SWITCH, authMiddleware, (req, res) => switchOrganization(req, res))
+app.post(ApiRoutes.ORGANIZATIONS.SWITCH, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => switchOrganization(req, res))
 
-app.put(ApiRoutes.ORGANIZATIONS.UPDATE, authMiddleware, (req, res) => updateOrganization(req, res))
+app.put(ApiRoutes.ORGANIZATIONS.UPDATE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => updateOrganization(req, res))
 
-app.get(ApiRoutes.ORGANIZATIONS.LOGO_UPLOAD_URL, authMiddleware, (req, res) => getLogoUploadUrl(req, res))
+app.get(ApiRoutes.ORGANIZATIONS.LOGO_UPLOAD_URL, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getLogoUploadUrl(req, res))
 
-app.get(ApiRoutes.ORGANIZATIONS.LOGO, authMiddleware, (req, res) => getLogoUrl(req, res))
+app.get(ApiRoutes.ORGANIZATIONS.LOGO, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getLogoUrl(req, res))
 
 // MARK: STATS
-app.get(ApiRoutes.STATS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.STATS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getStats(req, res)
 })
 
 // MARK: RUN HISTORY
 
-app.get(ApiRoutes.RUN_HISTORY.ACTIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.ACTIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getRunHistoryActions(req, res)
 })
 
-app.get(ApiRoutes.RUN_HISTORY.ALL, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.ALL, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAllRunHistory(req, res)
 })
 
-app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getRunHistory(req, res)
 })
 
-app.get(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getChatHistory(req, res)
 })
 
 // MARK: SESSION
 
-app.get(ApiRoutes.SESSION.TOKEN, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SESSION.TOKEN, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     requestSessionSocketToken(req, res)
 })
 
 // MARK: USERS
 
-app.get(ApiRoutes.USERS.BY_ID, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.USERS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getUserById(req, res)
 })
 
 // MARK: GITHUB APP
 
-app.get(ApiRoutes.GITHUB.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.GITHUB.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getGithubIntegrations(req, res)
 })
 
-app.get(ApiRoutes.GITHUB.INSTALLATION_URL, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.GITHUB.INSTALLATION_URL, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getInstallationUrl(req, res)
 })
 
-app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getGithubRepositoriesForIntegration(req, res)
 })
 
 // MARK: GMAIL
-app.get(ApiRoutes.GMAIL.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.GMAIL.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getGmailIntegrations(req, res)
 })
 
@@ -352,13 +350,13 @@ app.get(ApiRoutes.GMAIL.CALLBACK, async (req, res) => {
     gmailCallback(req, res)
 })
 
-app.delete(ApiRoutes.GMAIL.DELETE_INTEGRATION, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.GMAIL.DELETE_INTEGRATION, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     deleteGmailIntegration(req, res)
 })
 
 // MARK: NOTION
 
-app.get(ApiRoutes.NOTION.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.NOTION.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getNotionIntegrations(req, res)
 })
 
@@ -368,13 +366,13 @@ app.get(ApiRoutes.NOTION.OAUTH_CALLBACK, async (req, res) => {
     notionOAuthCallback(req, res)
 })
 
-app.get(ApiRoutes.NOTION.RESOURCES, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.NOTION.RESOURCES, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getNotionResources(req, res)
 })
 
 // MARK: ATTIO
 
-app.get(ApiRoutes.ATTIO.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.ATTIO.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAttioIntegrations(req, res)
 })
 
@@ -382,7 +380,7 @@ app.get(ApiRoutes.ATTIO.OAUTH_CALLBACK, async (req, res) => {
     attioOAuthCallback(req, res)
 })
 
-app.get(ApiRoutes.ATTIO.OBJECTS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.ATTIO.OBJECTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAttioObjects(req, res)
 })
 
@@ -392,35 +390,35 @@ app.get(ApiRoutes.LINEAR.OAUTH_CALLBACK, async (req, res) => {
     linearOAuthCallback(req, res)
 })
 
-app.get(ApiRoutes.LINEAR.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LINEAR.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getLinearIntegrations(req, res)
 })
 
-app.get(ApiRoutes.LINEAR.TEAMS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LINEAR.TEAMS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getLinearTeams(req, res)
 })
 
-app.get(ApiRoutes.LINEAR.PROJECTS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LINEAR.PROJECTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getLinearProjects(req, res)
 })
 
 // Manual trigger endpoint (authenticated)
-app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleManualTrigger(req, res)
 })
 
 // Trigger with a specific event payload (authenticated)
-app.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleTriggerWithEvent(req, res)
 })
 
 // MARK: SLACK
 
-app.get(ApiRoutes.SLACK.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SLACK.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getSlackIntegrations(req, res)
 })
 
-app.get(ApiRoutes.SLACK.GET_CURRENT_INTEGRATION, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SLACK.GET_CURRENT_INTEGRATION, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getCurrentSlackIntegration(req, res)
 })
 
@@ -428,137 +426,137 @@ app.get(ApiRoutes.SLACK.OAUTH_CALLBACK, async (req, res) => {
     slackOAuthCallback(req, res)
 })
 
-app.get(ApiRoutes.SLACK.CHANNELS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SLACK.CHANNELS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getSlackChannels(req, res)
 })
 
-app.get(ApiRoutes.SLACK.USERS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SLACK.USERS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     await getSlackUsers(req, res)
 })
 
 // MARK: POSTHOG
 
-app.get(ApiRoutes.POSTHOG.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.POSTHOG.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getPosthogIntegrations(req, res)
 })
 
-app.post(ApiRoutes.POSTHOG.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.POSTHOG.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     createOrUpdatePosthogIntegration(req, res)
 })
 
-app.get(ApiRoutes.POSTHOG.PROJECTS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.POSTHOG.PROJECTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getPosthogProjects(req, res)
 })
 
 // MARK: LAUNCHDARKLY
 
-app.get(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getLaunchDarklyIntegrations(req, res)
 })
 
-app.post(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     createOrUpdateLaunchDarklyIntegration(req, res)
 })
 
-app.get(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getLaunchDarklyProjects(req, res)
 })
 
-app.get(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getLaunchDarklyEnvironments(req, res)
 })
 
 // MARK: DATADOG
 
-app.get(ApiRoutes.DATADOG.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.DATADOG.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getDatadogIntegrations(req, res)
 })
 
-app.post(ApiRoutes.DATADOG.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.DATADOG.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     createOrUpdateDatadogIntegration(req, res)
 })
 
-app.get(ApiRoutes.DATADOG.INDEXES, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.DATADOG.INDEXES, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getDatadogIndexes(req, res)
 })
 
 // MARK: SNOWFLAKE
 
-app.get(ApiRoutes.SNOWFLAKE.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SNOWFLAKE.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getSnowflakeIntegrations(req, res)
 })
 
-app.post(ApiRoutes.SNOWFLAKE.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SNOWFLAKE.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     createOrUpdateSnowflakeIntegration(req, res)
 })
 
 // MARK: WORKOS INTEGRATION (customer's own WorkOS account)
 
-app.get(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getWorkOSIntegrations(req, res)
 })
 
-app.post(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     createOrUpdateWorkOSIntegration(req, res)
 })
 
-app.patch(ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET, authMiddleware, async (req, res) => {
+app.patch(ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     updateWorkOSWebhookSecret(req, res)
 })
 
 // MARK: AGENTS
 
-app.get("/agents", authMiddleware, async (req, res) => {
+app.get("/agents", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getUserAgents(req, res)
 })
 
-app.get("/agents/recent", authMiddleware, async (req, res) => {
+app.get("/agents/recent", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getRecentAgents(req, res)
 })
 
-app.get(ApiRoutes.AGENTS.BY_ID, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.AGENTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getUserAgent(req, res)
 })
 
-app.post("/agents", authMiddleware, async (req, res) => {
+app.post("/agents", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     createAgent(req, res)
 })
 
-app.patch(ApiRoutes.AGENTS.BY_ID, authMiddleware, async (req, res) => {
+app.patch(ApiRoutes.AGENTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     updateAgent(req, res)
 })
 
-app.delete(ApiRoutes.AGENTS.BY_ID, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.AGENTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     deleteAgent(req, res)
 })
 
-app.get(ApiRoutes.AGENTS.FILES, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.AGENTS.FILES, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAgentFiles(req, res)
 })
 
-app.get(ApiRoutes.AGENTS.FILE_CONTENT, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.AGENTS.FILE_CONTENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAgentFileContent(req, res)
 })
 
 // MARK: IMPROVEMENTS
 
-app.get(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAgentImprovements(req, res)
 })
 
-app.post(ApiRoutes.IMPROVEMENTS.APPLY, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.IMPROVEMENTS.APPLY, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     applyImprovement(req, res)
 })
 
-app.post(ApiRoutes.IMPROVEMENTS.DISMISS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.IMPROVEMENTS.DISMISS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     dismissImprovement(req, res)
 })
 
-app.post(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     undoDismissImprovement(req, res)
 })
 
-app.patch(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, authMiddleware, async (req, res) => {
+app.patch(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     toggleImprovementsEnabled(req, res)
 })
 
@@ -568,75 +566,75 @@ app.get(ApiRoutes.PUBLIC.TEMPLATES, async (req, res) => {
     getPublicTemplates(req, res)
 })
 
-app.get("/templates", authMiddleware, async (req, res) => {
+app.get("/templates", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getTemplates(req, res)
 })
 
 // MARK: INTEGRATIONS
 
-app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getIntegrationInstallationDetails(req, res)
 })
 
-app.get("/integrations", authMiddleware, async (req, res) => {
+app.get("/integrations", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAllIntegrations(req, res)
 })
 
-app.delete(ApiRoutes.INTEGRATIONS.DISCONNECT_BY_TYPE, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.INTEGRATIONS.DISCONNECT_BY_TYPE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     disconnectIntegration(req, res)
 })
 
-app.get("/integrations/active", authMiddleware, async (req, res) => {
+app.get("/integrations/active", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getActiveIntegrations(req, res)
 })
 
 // MARK: NOTIFICATION DESTINATIONS
 
-app.get(ApiRoutes.NOTIFICATION_DESTINATIONS.LIST, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.NOTIFICATION_DESTINATIONS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getNotificationDestinations(req, res)
 })
 
-app.post(ApiRoutes.NOTIFICATION_DESTINATIONS.LIST, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.NOTIFICATION_DESTINATIONS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     createNotificationDestination(req, res)
 })
 
-app.get(ApiRoutes.NOTIFICATION_SETTINGS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.NOTIFICATION_SETTINGS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getNotificationSettings(req, res)
 })
 
-app.post(ApiRoutes.NOTIFICATION_SETTINGS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.NOTIFICATION_SETTINGS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     updateNotificationSettings(req, res)
 })
 
-app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, authMiddleware, async (req, res) => {
+app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     updateNotificationDestination(req, res)
 })
 
-app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     deleteNotificationDestination(req, res)
 })
 
 // MARK: API TOKENS
 
-app.get(ApiRoutes.API_TOKENS.LIST, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.API_TOKENS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getApiTokens(req, res)
 })
 
-app.post(ApiRoutes.API_TOKENS.LIST, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.API_TOKENS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     createApiToken(req, res)
 })
 
-app.patch(ApiRoutes.API_TOKENS.BY_ID, authMiddleware, async (req, res) => {
+app.patch(ApiRoutes.API_TOKENS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     updateApiToken(req, res)
 })
 
-app.delete(ApiRoutes.API_TOKENS.BY_ID, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.API_TOKENS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     deleteApiToken(req, res)
 })
 
 // MARK: SDK
 
-app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) => {
+app.get(ApiRoutes.SDK.ME, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req: Request, res: Response) => {
     const user = req.session?.user
     if (!user) {
         return res.status(401).json({ error: "Unauthorized" })
@@ -658,105 +656,105 @@ app.get(ApiRoutes.SDK.ME, authMiddleware, async (req: Request, res: Response) =>
     }
 })
 
-app.post(ApiRoutes.SDK.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.SAMPLE_EVENTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleSampleEvents(req, res)
 })
 
-app.post(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleHydrateSampleEvent(req, res)
 })
 
-app.post(ApiRoutes.SDK.VERIFY_JOB_SERVER, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.VERIFY_JOB_SERVER, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleVerifySdkJobServer(req, res)
 })
 
-app.post(ApiRoutes.SDK.TOOL_EXECUTE, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.TOOL_EXECUTE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleToolExecute(req, res)
 })
 
-app.get(ApiRoutes.SDK.TOOL_DEFINITIONS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SDK.TOOL_DEFINITIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleToolDefinitions(req, res)
 })
 
-app.get(ApiRoutes.SDK.RUN_TRIGGER_EVENT, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SDK.RUN_TRIGGER_EVENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleSdkRunTriggerEvent(req, res)
 })
 
-app.post(ApiRoutes.SDK.AGENT_RUN, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.AGENT_RUN, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleSdkAgentRun(req, res)
 })
 
-app.post(ApiRoutes.SDK.APPROVAL_DECISION, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.APPROVAL_DECISION, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleSdkApprovalDecision(req, res)
 })
 
-app.get(ApiRoutes.SDK.SESSION_EVENTS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SDK.SESSION_EVENTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleSessionEvents(req, res)
 })
 
-app.get(ApiRoutes.SDK.LISTEN, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SDK.LISTEN, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleSdkListen(req, res)
 })
 
-app.post(ApiRoutes.SDK.DEPLOY, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.DEPLOY, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleSdkDeploy(req, res)
 })
 
-app.get(ApiRoutes.SDK.INTEGRATION_FIELDS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SDK.INTEGRATION_FIELDS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleSdkIntegrationFields(req, res)
 })
 
-app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleSdkIntegrationFormSubmit(req, res)
 })
 
-app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     getSentNotifications(req, res)
 })
 
-app.get(ApiRoutes.PENDING_APPROVALS.LIST, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.PENDING_APPROVALS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     getPendingApprovals(req, res)
 })
 
-app.post(ApiRoutes.SDK.CREATE_PROJECT, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SDK.CREATE_PROJECT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleProjectCreate(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.LIST, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.PROJECTS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleListProjects(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.BY_ID, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.PROJECTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleGetProjectById(req, res)
 })
 
-app.delete(ApiRoutes.PROJECTS.BY_ID, authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.PROJECTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleProjectDelete(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.DEPLOYS, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.PROJECTS.DEPLOYS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleGetProjectDeploys(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.SOURCE_FILES, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.PROJECTS.SOURCE_FILES, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleGetProjectSourceFiles(req, res)
 })
 
-app.get(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, authMiddleware, async (req, res) => {
+app.get(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
     handleGetProjectSourceFileContent(req, res)
 })
 
-app.post(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleRotateProjectSigningSecret(req, res)
 })
 
-app.post(ApiRoutes.PROJECTS.ROTATE_API_KEY, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.PROJECTS.ROTATE_API_KEY, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleRotateProjectApiKey(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS
 
-app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, authMiddleware, async (req, res) => {
+app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     toolsThatRequireApprovalsRoute(req, res)
 })
 

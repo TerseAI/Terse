@@ -172,13 +172,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
             if (authResult.authenticated) {
                 const claims = getClaimsFromAuthResult(authResult)
                 const { user } = await getOrCreateDbUserFromWorkOS(authResult, claims)
-                if (!req.session) {
-                    req.session = {
-                        user
-                    }
-                } else {
-                    req.session.user = user
-                }
+                req.session = { user, authMethod: { kind: "cookie" } }
                 if (requireOrganization && !user.organizationId) {
                     return sendOrganizationRequired(req, res)
                 }
@@ -206,13 +200,7 @@ function createAuthMiddleware(requireOrganization: boolean) {
             logger.info("Session refreshed successfully")
             // After a session refresh, no access token is available — always do full DB lookup
             const { user } = await getOrCreateDbUserFromWorkOS(refreshedSessionResult)
-            if (!req.session) {
-                req.session = {
-                    user
-                }
-            } else {
-                req.session.user = user
-            }
+            req.session = { user, authMethod: { kind: "cookie" } }
 
             if (requireOrganization && !user.organizationId) {
                 return sendOrganizationRequired(req, res)

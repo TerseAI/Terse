@@ -30,6 +30,12 @@ export async function apiTokenAuthMiddleware(req: Request, res: Response, next: 
             return
         }
 
+        if (apiToken.expires_at && apiToken.expires_at.getTime() < Date.now()) {
+            logger.warn("API token has expired; rejecting", { tokenId: apiToken.id, kind: apiToken.kind })
+            res.status(401).json({ error: "API token has expired" })
+            return
+        }
+
         const user = await getUserForOrg(apiToken.user_id, apiToken.organization_id)
         if (!user) {
             logger.warn("API token references a user/org that no longer resolves; rejecting", {
@@ -41,7 +47,7 @@ export async function apiTokenAuthMiddleware(req: Request, res: Response, next: 
             return
         }
 
-        req.session = { user }
+        req.session = { user, authMethod: { kind: "api_token", tokenKind: apiToken.kind } }
 
         // Fire-and-forget update to last_used_at
         db()
