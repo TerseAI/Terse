@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
-import { AlertTriangle, ArrowRight, CheckCircle2, CircleDot, Loader2, RotateCcw, XCircle } from "lucide-react"
+import { AlertTriangle, ArrowRight, Briefcase, CheckCircle2, CircleDot, Loader2, Rocket, RotateCcw, XCircle } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../components/ui/empty"
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { Skeleton } from "../../components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip"
@@ -108,13 +109,18 @@ export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
         return (
             <section className="mt-8">
                 <SectionLabel>Jobs</SectionLabel>
-                <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
-                    <p className="text-foreground text-sm">No jobs yet.</p>
-                    <p className="text-muted-foreground mt-1 text-xs">
-                        Define jobs in your SDK project and run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse deploy</code>{" "}
-                        to ship them.
-                    </p>
-                </div>
+                <Empty className="border-solid border-border/60 bg-muted/10 items-stretch p-6 md:p-8">
+                    <EmptyHeader className="max-w-lg">
+                        <EmptyMedia variant="icon">
+                            <Briefcase className="text-primary" />
+                        </EmptyMedia>
+                        <EmptyTitle className="text-base">No jobs yet</EmptyTitle>
+                        <EmptyDescription className="text-xs">
+                            Define jobs in your SDK project, then run{" "}
+                            <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse deploy</code> to ship them to this project.
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
             </section>
         )
     }
@@ -294,13 +300,18 @@ function LiveBadge() {
 
 export function DeploysEmpty() {
     return (
-        <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
-            <p className="text-foreground text-sm">No deployments yet.</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-                Run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse deploy</code> from your SDK project to ship your first
-                agent.
-            </p>
-        </div>
+        <Empty className="border-solid border-border/60 bg-muted/10 items-stretch p-6 md:p-8">
+            <EmptyHeader className="max-w-lg">
+                <EmptyMedia variant="icon">
+                    <Rocket className="text-primary" />
+                </EmptyMedia>
+                <EmptyTitle className="text-base">No deployments yet</EmptyTitle>
+                <EmptyDescription className="text-xs">
+                    Run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse deploy</code> from your SDK project to publish your
+                    first deployment and track it here.
+                </EmptyDescription>
+            </EmptyHeader>
+        </Empty>
     )
 }
 

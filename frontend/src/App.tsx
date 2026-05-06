@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useNavigate } from "react-router-dom"
+import { Link, Navigate, Outlet, Route, BrowserRouter as Router, Routes, useNavigate } from "react-router-dom"
 
 import { AnimatePresence } from "framer-motion"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
@@ -8,6 +8,8 @@ import BreadCrumb from "./components/BreadCrumb"
 import { AppSidebar } from "./components/Sidebar/Sidebar"
 import AppBootScreen from "./components/loading/AppBootScreen"
 import { ThemeProvider } from "./components/theme-provider"
+import { Button } from "./components/ui/button"
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "./components/ui/empty"
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
@@ -54,7 +56,7 @@ function App() {
                         <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
                         <Route path={FrontendRoutes.OAUTH.SUCCESS} element={<OAuthSuccess />} />
                         <Route path={FrontendRoutes.OAUTH.ERROR} element={<OAuthError />} />
-                        <Route path="*" element={<div>Not Found</div>} />
+                        <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                 </Router>
             </AuthProvider>
@@ -132,6 +134,24 @@ function AppLayout() {
                 </div>
             </main>
         </SidebarProvider>
+    )
+}
+
+function NotFoundPage() {
+    return (
+        <div className="flex min-h-[50vh] items-center justify-center bg-background p-6">
+            <Empty>
+                <EmptyHeader>
+                    <EmptyTitle>Page not found</EmptyTitle>
+                    <EmptyDescription>This URL doesn&apos;t match anything in the app. Check the link or return to Home.</EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                    <Button asChild>
+                        <Link to={FrontendRoutes.HOME}>Back to Home</Link>
+                    </Button>
+                </EmptyContent>
+            </Empty>
+        </div>
     )
 }
 

@@ -11,6 +11,7 @@ import type { Turn } from "@/components/chat/turnModel"
 import { useChatHistory } from "@/hooks/api/useChatHistory"
 import { cancelAgentChatRun, sendChatMessage, sendToolApprovalResponse, subscribeToChatEvents } from "@/socket"
 
+import { RunHistoryChatEmptyMessages } from "./RunHistoryChatEmptyMessages"
 import { RunHistoryChatHistorySkeleton } from "./RunHistoryChatHistorySkeleton"
 import { convertRunHistoryEventsToTurns } from "./runHistoryEventsToTurns"
 
@@ -117,7 +118,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
         ) : isLoading ? (
             <RunHistoryChatHistorySkeleton />
         ) : (
-            <div className="p-4 text-center text-muted-foreground">No messages found</div>
+            <RunHistoryChatEmptyMessages />
         )
 
     return (
