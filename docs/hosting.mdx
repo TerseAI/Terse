@@ -29,7 +29,7 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
 
 ## Security
 
-Each execution runs in its own isolated [Modal](https://modal.com) sandbox with a scoped, time-limited API token that is automatically revoked when the run finishes. Your code and credentials are never shared across runs or organizations.
+Each execution runs in its own isolated [Modal](https://modal.com) sandbox with a **project-scoped**, short-lived API token that is removed when the run finishes (and may also carry an expiration time). Your code and credentials are never shared across runs or organizations.
 
 ## What gets uploaded
 
