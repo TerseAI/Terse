@@ -237,15 +237,6 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return name ? `Loaded layout for "${truncate(name)}"` : "Layout loaded"
         }
     },
-    notion_fetch_related_events: {
-        preparing: "Looking for related activity",
-        executing: () => "Loading related activity",
-        complete: (_params, result) => {
-            const parsed = safeParseResult(result)
-            const count = parsed?.events_count as number | undefined
-            return count !== undefined ? `Found ${count} related update${count !== 1 ? "s" : ""}` : "Related activity loaded"
-        }
-    },
 
     notion_list_users: {
         preparing: "Loading workspace members",

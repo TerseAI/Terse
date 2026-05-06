@@ -3,9 +3,9 @@ import { ConfigData } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
+import { Session } from "../../express"
 import { TypedToolOptions } from "../../tools/toolUtils"
 import { PrismaTransaction } from "../../types/prisma"
-import { Session } from "../../types/session"
 
 export interface ToolboxEntry {
     tool: TypedToolOptions<any, SessionWithTracking<Session>>
