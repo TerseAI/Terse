@@ -6,6 +6,7 @@ import {
     ProjectDeployUser,
     ProjectDeploysResponse,
     ProjectDetailResponse,
+    ProjectsListResponse,
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
     ProjectSourceFilesResponse,
@@ -28,6 +29,22 @@ import { tearDownAgentTriggers } from "./agents"
 const MAX_DEPLOYS_RETURNED = 25
 
 const ACTIVE_RUN_STATUSES: RunHistoryStatus[] = [RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL]
+
+export async function handleListProjects(req: Request, res: Response) {
+    const user = req.session?.user as User | undefined
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Unauthorized" })
+    }
+
+    const rows = await db().projects.findMany({
+        where: { organization_id: user.organizationId },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" }
+    })
+
+    const response: ProjectsListResponse = { projects: rows }
+    return res.status(200).json(response)
+}
 
 export async function handleGetProjectById(req: Request, res: Response) {
     const user = req.session?.user as User | undefined

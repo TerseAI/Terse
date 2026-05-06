@@ -13,10 +13,12 @@ const UNASSIGNED_PROJECT_KEY = "__unassigned__"
 
 interface SdkJobsListProps {
     agents: Agent[]
+    /** Organization projects (includes empty projects with no deployed jobs). */
+    organizationProjects: { id: string; name: string }[]
     loading: boolean
 }
 
-export function SdkJobsList({ agents, loading }: SdkJobsListProps) {
+export function SdkJobsList({ agents, organizationProjects, loading }: SdkJobsListProps) {
     if (loading) {
         return (
             <>
@@ -30,7 +32,7 @@ export function SdkJobsList({ agents, loading }: SdkJobsListProps) {
         )
     }
 
-    const groups = groupAgentsByProject(agents)
+    const groups = buildProjectGroups(agents, organizationProjects)
 
     return (
         <>
@@ -109,9 +111,26 @@ function groupAgentsByProject(agents: Agent[]): ProjectGroup[] {
         }
     }
 
-    return [...byProject.values()].sort((a, b) => {
-        if (a.projectId === UNASSIGNED_PROJECT_KEY) return 1
-        if (b.projectId === UNASSIGNED_PROJECT_KEY) return -1
-        return a.projectName.localeCompare(b.projectName)
-    })
+    return [...byProject.values()].sort(sortProjectGroups)
+}
+
+function sortProjectGroups(a: ProjectGroup, b: ProjectGroup): number {
+    if (a.projectId === UNASSIGNED_PROJECT_KEY) return 1
+    if (b.projectId === UNASSIGNED_PROJECT_KEY) return -1
+    return a.projectName.localeCompare(b.projectName)
+}
+
+/** Merges SDK agents by project with org projects that may have zero jobs yet. */
+function buildProjectGroups(agents: Agent[], organizationProjects: { id: string; name: string }[]): ProjectGroup[] {
+    const fromAgents = groupAgentsByProject(agents)
+    const map = new Map<string, ProjectGroup>()
+    for (const g of fromAgents) {
+        map.set(g.projectId, { ...g, agents: [...g.agents] })
+    }
+    for (const p of organizationProjects) {
+        if (!map.has(p.id)) {
+            map.set(p.id, { projectId: p.id, projectName: p.name, agents: [] })
+        }
+    }
+    return [...map.values()].sort(sortProjectGroups)
 }

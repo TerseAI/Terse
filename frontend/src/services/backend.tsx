@@ -47,6 +47,7 @@ import {
     PosthogProjectsResponse,
     ProjectDeploysResponse,
     ProjectDetailResponse,
+    ProjectsListResponse,
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
     ProjectSourceFilesResponse,
@@ -297,6 +298,11 @@ interface BackendService {
      * Fetches the detail view for a single project.
      */
     getProjectById(id: string): Promise<ProjectDetailResponse>
+
+    /**
+     * Lists all projects in the current organization (including those with no jobs).
+     */
+    listProjects(): Promise<ProjectsListResponse>
 
     /**
      * Deletes a project and all its jobs. Throws if the project has in-flight runs.
@@ -1100,6 +1106,16 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error("Error getting project:", error)
+                throw error
+            })
+    },
+
+    listProjects: () => {
+        return axios
+            .get<ProjectsListResponse>(`${backendBaseUrl}${ApiRoutes.PROJECTS.LIST}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error listing projects:", error)
                 throw error
             })
     },

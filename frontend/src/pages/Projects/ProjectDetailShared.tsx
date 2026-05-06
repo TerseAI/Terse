@@ -109,7 +109,7 @@ export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
         return (
             <section className="mt-8">
                 <SectionLabel>Jobs</SectionLabel>
-                <Empty className="border-solid border-border/60 bg-muted/10 items-stretch p-6 md:p-8">
+                <Empty className="mx-auto w-full max-w-lg border-solid border-border/60 bg-muted/10 p-6 md:p-8">
                     <EmptyHeader className="max-w-lg">
                         <EmptyMedia variant="icon">
                             <Briefcase className="text-primary" />
@@ -300,7 +300,7 @@ function LiveBadge() {
 
 export function DeploysEmpty() {
     return (
-        <Empty className="border-solid border-border/60 bg-muted/10 items-stretch p-6 md:p-8">
+        <Empty className="mx-auto w-full max-w-lg border-solid border-border/60 bg-muted/10 p-6 md:p-8">
             <EmptyHeader className="max-w-lg">
                 <EmptyMedia variant="icon">
                     <Rocket className="text-primary" />
