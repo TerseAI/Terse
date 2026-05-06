@@ -50,6 +50,7 @@ import {
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
     ProjectSourceFilesResponse,
+    ProjectsListResponse,
     RecentAgent,
     SdkJobServerCheckResponse,
     SlackChannelsResponse,
@@ -297,6 +298,11 @@ interface BackendService {
      * Fetches the detail view for a single project.
      */
     getProjectById(id: string): Promise<ProjectDetailResponse>
+
+    /**
+     * Lists all projects in the current organization (including those with no jobs).
+     */
+    listProjects(): Promise<ProjectsListResponse>
 
     /**
      * Deletes a project and all its jobs. Throws if the project has in-flight runs.
@@ -856,6 +862,16 @@ export const BackendProvider: BackendService = {
     getProjectById: (id: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.BY_ID, { id })
         return axios.get<ProjectDetailResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    listProjects: () => {
+        return axios
+            .get<ProjectsListResponse>(`${backendBaseUrl}${ApiRoutes.PROJECTS.LIST}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error("Error listing projects:", error)
+                throw error
+            })
     },
 
     deleteProject: (id: string) => {

@@ -9,6 +9,7 @@ import {
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
     ProjectSourceFilesResponse,
+    ProjectsListResponse,
     User
 } from "terse-types/types"
 import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from "terse-types/types"
@@ -28,6 +29,22 @@ import { tearDownAgentTriggers } from "./agents"
 const MAX_DEPLOYS_RETURNED = 25
 
 const ACTIVE_RUN_STATUSES: RunHistoryStatus[] = [RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL]
+
+export async function handleListProjects(req: Request, res: Response) {
+    const user = req.session?.user as User | undefined
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Unauthorized" })
+    }
+
+    const rows = await db().projects.findMany({
+        where: { organization_id: user.organizationId },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" }
+    })
+
+    const response: ProjectsListResponse = { projects: rows }
+    return res.status(200).json(response)
+}
 
 export async function handleGetProjectById(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -126,6 +143,7 @@ export async function handleProjectDelete(req: Request, res: Response) {
 
     emitCacheInvalidationWithKey(user.organizationId, "agents")
     emitCacheInvalidationWithKey(user.organizationId, "recentAgents")
+    emitCacheInvalidationWithKey(user.organizationId, "organization-projects")
 
     logger.info("Project deleted", { projectId: id, organizationId: user.organizationId, automationCount: automationIds.length })
 
@@ -381,6 +399,8 @@ export async function handleProjectCreate(req: Request, res: Response) {
             projectId: project.id,
             name: project.name
         }
+
+        emitCacheInvalidationWithKey(user.organizationId, "organization-projects")
 
         res.status(200).json(response)
     } catch (error) {

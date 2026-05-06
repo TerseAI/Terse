@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { Search } from "lucide-react"
 import { CONFIG_DETAILS, ConfigType } from "terse-types/Configs"
 
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 
 import { IconForConfigType } from "./Integration"
@@ -55,7 +56,14 @@ export function OutputToolSetPicker({ onSelectIntegration }: { onSelectIntegrati
                     </button>
                 ))}
             </div>
-            {filteredConfigTypes.length === 0 && <div className="text-center text-muted-foreground py-8">No skills found matching "{searchQuery}"</div>}
+            {filteredConfigTypes.length === 0 && (
+                <Empty className="border-0 py-10">
+                    <EmptyHeader>
+                        <EmptyTitle className="text-base">No skills match &quot;{searchQuery}&quot;</EmptyTitle>
+                        <EmptyDescription>Try a different search or clear the field to see every skill you can attach.</EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
+            )}
         </div>
     )
 }

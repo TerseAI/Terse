@@ -209,6 +209,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
         emitCacheInvalidationWithKey(organizationId, "agents")
+        emitCacheInvalidationWithKey(organizationId, "organization-projects")
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
         emitCacheInvalidationWithWildcard(organizationId, "projectSourceFiles", projectId)
         emitCacheInvalidationWithWildcard(organizationId, "project", projectId)
@@ -424,6 +425,7 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
 
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")
+    emitCacheInvalidationWithKey(organizationId, "organization-projects")
 
     return stale.map(a => ({ id: a.id, name: a.name }))
 }

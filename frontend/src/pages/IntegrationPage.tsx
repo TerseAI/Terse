@@ -1,9 +1,12 @@
+import { Link } from "react-router-dom"
+
 import { AnimatePresence, motion } from "framer-motion"
 import { FileText } from "lucide-react"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import IntegrationCard, { IntegrationCardSkeleton } from "@/components/Integrations/IntegrationCard"
-import { EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { Empty } from "@/components/ui/empty"
+import { Button } from "@/components/ui/button"
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { FadeSwitch } from "@/components/ui/fade-switch"
 import { useIntegrations } from "@/hooks/api/useIntegrations"
 
@@ -67,9 +70,14 @@ function NoIntegrations() {
                 <EmptyMedia variant="icon">
                     <FileText className="text-primary" />
                 </EmptyMedia>
-                <EmptyTitle>No integrations found</EmptyTitle>
-                <EmptyDescription>Integrations will appear here as you connect them with Automations.</EmptyDescription>
+                <EmptyTitle>No active integrations</EmptyTitle>
+                <EmptyDescription>Connect Slack, GitHub, and other providers from an agent&apos;s setup. Once linked, active integrations show here for a quick overview.</EmptyDescription>
             </EmptyHeader>
+            <EmptyContent>
+                <Button size="sm" asChild>
+                    <Link to={FrontendRoutes.HOME}>Go to agents</Link>
+                </Button>
+            </EmptyContent>
         </Empty>
     )
 }
