@@ -42,6 +42,7 @@ import {
     handleGetProjectDeploys,
     handleGetProjectSourceFileContent,
     handleGetProjectSourceFiles,
+    handleListProjects,
     handleProjectCreate,
     handleProjectDelete,
     handleRotateProjectApiKey,
@@ -758,6 +759,10 @@ app.get(ApiRoutes.PENDING_APPROVALS.LIST, authMiddleware, async (req, res) => {
 
 app.post(ApiRoutes.SDK.CREATE_PROJECT, authMiddleware, async (req, res) => {
     handleProjectCreate(req, res)
+})
+
+app.get(ApiRoutes.PROJECTS.LIST, authMiddleware, async (req, res) => {
+    handleListProjects(req, res)
 })
 
 app.get(ApiRoutes.PROJECTS.BY_ID, authMiddleware, async (req, res) => {

@@ -5,6 +5,7 @@ import { CONFIG_DETAILS, ConfigType } from "terse-types/Configs"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 
 import { IconForConfigType } from "./Integration"
@@ -70,7 +71,14 @@ export function AddTriggerModal({ isOpen, onClose, onSelectIntegration }: AddTri
                             )
                         })}
                     </div>
-                    {filteredConfigTypes.length === 0 && <div className="text-center text-muted-foreground py-8">No integrations found matching "{searchQuery}"</div>}
+                    {filteredConfigTypes.length === 0 && (
+                        <Empty className="border-0 py-10">
+                            <EmptyHeader>
+                                <EmptyTitle className="text-base">No triggers match &quot;{searchQuery}&quot;</EmptyTitle>
+                                <EmptyDescription>Try another keyword or clear the search to see all event sources.</EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
+                    )}
                 </div>
 
                 <DialogFooter>

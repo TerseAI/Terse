@@ -126,6 +126,7 @@
         "BY_ID": "/api-tokens/:id"
     },
     "PROJECTS": {
+        "LIST": "/projects",
         "BY_ID": "/projects/:id",
         "DEPLOYS": "/projects/:id/deploys",
         "SOURCE_FILES": "/projects/:id/source/files",
