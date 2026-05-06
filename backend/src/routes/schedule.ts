@@ -14,7 +14,6 @@ import { TriggerRuntime } from "../integrations/abstract/TriggerRuntime"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { validateCloudSchedulerRequest } from "../utility/cloudScheduler"
 import { verifyParallelWebhookSignature } from "../utility/parallelWebhookSignature"
 import { extractErrorMessage } from "../utility/strings"
 import { getUserForOrg } from "../utility/workos"
@@ -102,11 +101,6 @@ export async function handleScheduleWebhook(req: Request, res: Response) {
     const { inputId } = req.params
 
     logger.info("⏰ Schedule webhook received", { inputId })
-
-    if (!validateCloudSchedulerRequest(req, `ScheduleWebhook ${inputId ?? ""}`.trim())) {
-        res.status(401).json({ error: "Unauthorized" })
-        return
-    }
 
     if (!inputId) {
         logger.warn("⚠️  Schedule webhook missing inputId")

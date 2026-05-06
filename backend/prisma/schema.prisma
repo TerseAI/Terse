@@ -974,6 +974,11 @@ model user_notification_destinations {
   @@index([slack_user_id])
 }
 
+enum TokenKind {
+  USER
+  PROJECT
+}
+
 model api_tokens {
   id              String    @id @default(cuid())
   user_id         String
@@ -982,6 +987,8 @@ model api_tokens {
   name            String
   token_hash      String    @unique
   token_prefix    String
+  kind            TokenKind
+  expires_at      DateTime?
   last_used_at    DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
@@ -993,6 +1000,7 @@ model api_tokens {
   @@index([organization_id])
   @@index([project_id])
   @@index([token_hash])
+  @@index([expires_at])
 }
 
 model user_notification_settings {
