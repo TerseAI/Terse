@@ -7,6 +7,7 @@ import { ChangeEventType, ChangedItem, ModelEvent } from "terse-types"
 import type { ConfigData, RunHistoryAction, TrackingParams, Trigger } from "terse-types"
 
 import { settings } from "../../config/settings"
+import { Session } from "../../express"
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
@@ -15,7 +16,6 @@ import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/C
 import { FileCategory, StoredFile } from "../../services/FileStorageService"
 import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
-import { Session } from "../../types/session"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { resolveLanguageModel } from "../modelRegistry"
@@ -28,7 +28,6 @@ import { persistRunAction } from "./EventProcessor"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
-import { persistOutputAttributions, removeOutputAttributions } from "./persistOutputAttributions"
 import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storePendingApprovalState } from "./runHistory"
 
 // Types from @openai/agents SDK for content items
@@ -252,20 +251,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
                 })
             }
             await this.notificationManager.notify(action)
-
-            // Persist output attributions if:
-            // 1. Input event is Identifiable
-            // 2. Action has output_items populated
-            // 3. Action is not read-only (track both write and read actions per user request)
-            const sourceItemRef = this.inputEvent?.getIdentifiableInfo()
-            if (sourceItemRef && action.output_items && action.output_items.length > 0 && !isReadOnly) {
-                if (action.type === RunHistoryActionType.delete) {
-                    await removeOutputAttributions(this.agentConfig.id, action)
-                } else {
-                    // if we create or update, we persist
-                    await persistOutputAttributions(this.agentConfig.id, sourceItemRef, action)
-                }
-            }
         }
 
         return changedItems

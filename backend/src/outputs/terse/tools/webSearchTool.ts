@@ -1,7 +1,7 @@
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { Session } from "../../../express"
 import { getWebSearchService } from "../../../services/webSearch/getWebSearchService"
 import { TypedToolOptions, defineTool } from "../../../tools/toolUtils"
-import { Session } from "../../../types/session"
 
 export const webSearchTool = defineTool({
     name: "web_search",

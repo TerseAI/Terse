@@ -4,9 +4,9 @@ import { ConfigData, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types"
 
 import { settings } from "../../config/settings"
+import { Session } from "../../express"
 import { Output } from "../../outputs/abstract/Output"
 import { db } from "../../prismaClient"
-import { Session } from "../../types/session"
 
 export interface RunContext {
     runId: string

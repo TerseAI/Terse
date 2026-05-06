@@ -14,10 +14,10 @@ import {
     persistDeterministicToolCallFailure,
     persistDeterministicToolCallStart
 } from "../agent/toolCallHistory"
+import { Session } from "../express"
 import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
-import { Session } from "../types/session"
 import { extractErrorMessage } from "../utility/strings"
 import { randomString } from "../utility/strings"
 
@@ -152,7 +152,6 @@ export async function handleToolExecute(req: Request, res: Response) {
     const runContextPayload = {
         context: {
             user,
-            isUserInitiated: true,
             agent: { toolApprovals: [] }, // pass through tool approvals here so we can support this if we want
             runId: effectiveRunId,
             agentId: effectiveAgentId

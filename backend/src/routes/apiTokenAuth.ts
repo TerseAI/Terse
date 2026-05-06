@@ -41,10 +41,7 @@ export async function apiTokenAuthMiddleware(req: Request, res: Response, next: 
             return
         }
 
-        req.session = {
-            user,
-            isUserInitiated: false
-        }
+        req.session = { user }
 
         // Fire-and-forget update to last_used_at
         db()

@@ -7,7 +7,6 @@ import { Role, User } from "terse-types/types"
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { Session } from "../types/session"
 import { AccessTokenClaims, getClaimsFromAuthResult } from "../utility/accessTokenClaims"
 import { extractErrorMessage } from "../utility/strings"
 import { workos } from "../utility/workos"
@@ -178,12 +177,10 @@ function createAuthMiddleware(requireOrganization: boolean) {
                 const { user } = await getOrCreateDbUserFromWorkOS(authResult, claims)
                 if (!req.session) {
                     req.session = {
-                        user,
-                        isUserInitiated: true
+                        user
                     }
                 } else {
                     req.session.user = user
-                    req.session.isUserInitiated = true
                 }
                 if (requireOrganization && !user.organizationId) {
                     return sendOrganizationRequired(req, res)
@@ -214,12 +211,10 @@ function createAuthMiddleware(requireOrganization: boolean) {
             const { user } = await getOrCreateDbUserFromWorkOS(refreshedSessionResult)
             if (!req.session) {
                 req.session = {
-                    user,
-                    isUserInitiated: true
-                } as Session
+                    user
+                }
             } else {
                 req.session.user = user
-                req.session.isUserInitiated = true
             }
 
             if (requireOrganization && !user.organizationId) {

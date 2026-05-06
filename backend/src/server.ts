@@ -77,12 +77,6 @@ import { analytics } from "./utility/analytics"
 import { buildCorsAllowedOrigins, isCorsOriginAllowed } from "./utility/corsOrigins"
 import { workos } from "./utility/workos"
 
-export type Session = {
-    user: User
-    isUserInitiated: boolean
-    teamId?: string
-}
-
 const app = express()
 const server = createServer(app)
 
