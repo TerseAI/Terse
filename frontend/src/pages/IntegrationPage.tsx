@@ -75,7 +75,7 @@ function NoIntegrations() {
             </EmptyHeader>
             <EmptyContent>
                 <Button size="sm" asChild>
-                    <Link to={FrontendRoutes.AGENTS.LIST}>Go to agents</Link>
+                    <Link to={FrontendRoutes.HOME}>Go to agents</Link>
                 </Button>
             </EmptyContent>
         </Empty>
