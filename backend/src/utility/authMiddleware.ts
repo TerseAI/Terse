@@ -89,7 +89,7 @@ async function handleCookie(cookie: string, allow: AuthKind[], opts: AuthOptions
         return
     }
 
-    const result = await authenticateViaCookie(cookie, res)
+    const result = await authenticateViaCookie(cookie, req, res)
     if (!result.ok) {
         clearSessionCookies(res)
         return sendUnauthorized(req, res)

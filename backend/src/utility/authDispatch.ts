@@ -1,5 +1,5 @@
 import { TokenKind } from "@prisma/client"
-import { Response } from "express"
+import { Request, Response } from "express"
 import { User } from "terse-types/types"
 
 import { cloudScheduler, settings } from "../config/settings"
@@ -16,7 +16,7 @@ import { getUserForOrg } from "./workos"
 
 export type CookieAuthOutcome = { ok: true; user: User } | { ok: false; reason: "no_cookie" | "auth_failed" }
 
-export async function authenticateViaCookie(sealedSessionData: string | undefined, res: Response): Promise<CookieAuthOutcome> {
+export async function authenticateViaCookie(sealedSessionData: string | undefined, req: Request, res: Response): Promise<CookieAuthOutcome> {
     if (!sealedSessionData) {
         return { ok: false, reason: "no_cookie" }
     }
@@ -47,6 +47,9 @@ export async function authenticateViaCookie(sealedSessionData: string | undefine
         const { user } = await getOrCreateDbUserFromWorkOS(refreshed)
         if (refreshed.sealedSession) {
             setSessionCookie(res, refreshed.sealedSession)
+            if (req.cookies) {
+                req.cookies[WORKOS_SESSION_COOKIE_NAME] = refreshed.sealedSession
+            }
         }
         return { ok: true, user }
     } catch (error) {
