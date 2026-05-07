@@ -251,7 +251,7 @@ triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })] // Every Monday 
 | --------------------- | ---------------- | --------------------------------------------------------- |
 | `Triggers.webhook.onRequest()` | `WebhookTrigger` | Fires when an HTTP request hits the generated webhook URL |
 
-Webhook URLs are auto-generated on deploy and remain stable across redeploys.
+Webhook URLs are auto-generated on deploy and remain stable across redeploys. After **`terse deploy`**, the CLI prints that URL for each affected workflow so you can copy it straight into your caller or load test.
 
 Pass a type argument to `Triggers.webhook.onRequest<YourPayload>()` so `onTrigger` and `filter` see your JSON body shape on `event.body` (defaults to `unknown` when omitted).
 
