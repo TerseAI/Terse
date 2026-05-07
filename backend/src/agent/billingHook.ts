@@ -6,9 +6,6 @@ import { billingServiceProxyForOrganization } from "../services/BillingService"
 import type { InputGuardrailForSession, SessionWithTracking } from "./AgentRunner/BaseAgentRunner"
 import { CancelReason, requestOrgCancellation } from "./cancellation/RunCancellationTaskQueue"
 
-/**
- * Used to block execution at model call if the billing is over.
- */
 export async function billingHook<TSession extends SessionWithTracking<Session>>(args: CallModelInputFilterArgs<TSession>): Promise<ModelInputData> {
     if (!args.context) {
         throw new Error("Context is required")
@@ -22,9 +19,6 @@ export async function billingHook<TSession extends SessionWithTracking<Session>>
     return args.modelData
 }
 
-/**
- * Used to block execution at tool call start time if the billing is over.
- */
 export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking<Session>> = {
     name: "Hard block guardrail",
     runInParallel: false,

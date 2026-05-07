@@ -1,8 +1,13 @@
 import { mutate } from "swr"
 import { billingCatalogKey, billingContextKey } from "terse-types/InvalidationKeys"
 
-/** Revalidates billing data for all subscribers (SWR). Call after billing-affecting API calls from the client. */
+const billingContextKeyPrefix = billingContextKey()[0]
+
+function isBillingContextSwrKey(key: unknown): boolean {
+    return Array.isArray(key) && key[0] === billingContextKeyPrefix
+}
+
 export function invalidateBillingCaches(): void {
-    void mutate(billingContextKey())
+    void mutate(key => isBillingContextSwrKey(key), undefined)
     void mutate(billingCatalogKey())
 }

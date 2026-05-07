@@ -112,7 +112,8 @@ export class BillingNoOpService implements BillingService {
     }
 
     async getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
-        const { start, end } = resolveBillingUsageRangeForNoop(query)
+        const start = query.start ?? DateTime.now().setZone(query.timezone).minus({ days: 30 }).startOf("day").toJSDate()
+        const end = query.end ?? DateTime.now().setZone(query.timezone).plus({ days: 1 }).startOf("day").toJSDate()
         return {
             billingEnabled: settings.billing.enabled,
             balance: {
@@ -158,9 +159,6 @@ export class BillingServiceProxy implements BillingService {
         private readonly extraHeaders?: Record<string, string | undefined>
     ) {}
 
-    /**
-     * Runs a billing service call and writes JSON to `res`, or sends 204 when no billing backend is configured.
-     */
     static async respondJson<T>(res: Response, work: Promise<T>): Promise<void> {
         try {
             res.json(await work)
@@ -306,8 +304,7 @@ export class BillingServiceProxy implements BillingService {
 
 /**
  * Explicit run-start boundary: gate first, then optional base charge.
- * No-op when billing is not configured. Use `chargeBaseRun: false` for
- * resume paths where the base fee was already taken at initial start.
+ * No-op when billing is not configured.
  */
 export async function startBillingRun(billing: BillingService, params: { organizationId: string; runId: string }): Promise<void> {
     const gate = await billing.checkRunGate({ organizationId: params.organizationId, breakCache: true })
@@ -320,10 +317,4 @@ export async function startBillingRun(billing: BillingService, params: { organiz
         runId: params.runId,
         breakCache: true
     })
-}
-
-function resolveBillingUsageRangeForNoop(bounds: BillingContextQuery): { start: Date; end: Date } {
-    const end = bounds.end ?? DateTime.now().setZone(bounds.timezone).plus({ days: 1 }).startOf("day").toJSDate()
-    const start = bounds.start ?? DateTime.fromJSDate(end).setZone(bounds.timezone).minus({ days: 30 }).toJSDate()
-    return { start, end }
 }

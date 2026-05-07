@@ -18,46 +18,6 @@ import { useAuth } from "@/services/auth"
 import { BackendProvider } from "@/services/backend"
 import { formatCredits, formatUsd } from "@/utility/billingFormat"
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
-
-function periodLabel(period: BillingPeriod): string {
-    return period === "yearly" ? "annual" : "monthly"
-}
-
-function formatPriceLine(plan: Plan): string {
-    return `${formatCredits(plan.includedCreditsPerMonth)} credits / mo`
-}
-
-const PRO_USAGE_EXAMPLES = [
-    { workflow: "Deterministic workflow, no AI", cost: "1" },
-    { workflow: "Deterministic workflow, little AI", cost: "1-3" },
-    { workflow: "Tiny classification or routing", cost: "6-10" },
-    { workflow: "Email or ticket triage summary", cost: "12-30" },
-    { workflow: "CRM or lead scoring with AI judgment", cost: "25-60" },
-    { workflow: "PR summary or release note draft", cost: "60-120" },
-    { workflow: "Deeper code review or test plan", cost: "150-300" }
-] as const
-
-function formatScheduledNote(balance: BalanceSummary | null, plan: Plan): string | null {
-    if (!balance?.scheduledChange) return null
-    const change = balance.scheduledChange
-    const date = dateFormatter.format(new Date(change.effectiveAt))
-    if (change.kind === "cancel_to_free" && (plan.key === "free" || plan.key === balance.planKey)) {
-        return `Downgrading to Free on ${date}.`
-    }
-    if (change.kind === "change_period" && isPurchasablePlan(plan)) {
-        return `Switching to ${periodLabel(change.period)} billing on ${date}.`
-    }
-    return null
-}
-
-const getAnnualSavingsYearly = (plans: Plan[]) => {
-    const purchasable = plans.find(p => isPurchasablePlan(p) && p.priceInUsdMonthly && p.priceInUsdMonthlyAnnual)
-    if (!purchasable) return null
-    const diff = (purchasable.priceInUsdMonthly! - purchasable.priceInUsdMonthlyAnnual!) * 12
-    return diff > 0 ? diff : null
-}
-
 export default function PricingPage() {
     const navigate = useNavigate()
     const { user, isLoading: authLoading } = useAuth()
@@ -451,4 +411,44 @@ function LoadingButton({ loading, loadingLabel, children, disabled, ...props }: 
             )}
         </Button>
     )
+}
+
+const dateFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" })
+
+function periodLabel(period: BillingPeriod): string {
+    return period === "yearly" ? "annual" : "monthly"
+}
+
+function formatPriceLine(plan: Plan): string {
+    return `${formatCredits(plan.includedCreditsPerMonth)} credits / mo`
+}
+
+const PRO_USAGE_EXAMPLES = [
+    { workflow: "Deterministic workflow, no AI", cost: "1" },
+    { workflow: "Deterministic workflow, little AI", cost: "1-3" },
+    { workflow: "Tiny classification or routing", cost: "6-10" },
+    { workflow: "Email or ticket triage summary", cost: "12-30" },
+    { workflow: "CRM or lead scoring with AI judgment", cost: "25-60" },
+    { workflow: "PR summary or release note draft", cost: "60-120" },
+    { workflow: "Deeper code review or test plan", cost: "150-300" }
+] as const
+
+function formatScheduledNote(balance: BalanceSummary | null, plan: Plan): string | null {
+    if (!balance?.scheduledChange) return null
+    const change = balance.scheduledChange
+    const date = dateFormatter.format(new Date(change.effectiveAt))
+    if (change.kind === "cancel_to_free" && (plan.key === "free" || plan.key === balance.planKey)) {
+        return `Downgrading to Free on ${date}.`
+    }
+    if (change.kind === "change_period" && isPurchasablePlan(plan)) {
+        return `Switching to ${periodLabel(change.period)} billing on ${date}.`
+    }
+    return null
+}
+
+const getAnnualSavingsYearly = (plans: Plan[]) => {
+    const purchasable = plans.find(p => isPurchasablePlan(p) && p.priceInUsdMonthly && p.priceInUsdMonthlyAnnual)
+    if (!purchasable) return null
+    const diff = (purchasable.priceInUsdMonthly! - purchasable.priceInUsdMonthlyAnnual!) * 12
+    return diff > 0 ? diff : null
 }
