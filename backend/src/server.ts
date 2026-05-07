@@ -20,6 +20,8 @@ import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
+import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingCatalog, getBillingContext } from "./routes/billing"
+import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
@@ -244,6 +246,31 @@ app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
 // MARK: DEVICE AUTH (uses WorkOS JWT in body, not bearer token)
 app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
     deviceTokenExchange(req, res)
+})
+
+// Billing service callback: uses a service JWT, not bearer API token auth.
+app.post(ApiRoutes.BILLING.CACHE_INVALIDATION, async (req, res) => {
+    await invalidateBillingCachesFromService(req, res)
+})
+
+app.post(ApiRoutes.BILLING.CHECKOUT_SESSION, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
+    await createBillingCheckoutSession(req, res)
+})
+
+app.post(ApiRoutes.BILLING.CHANGE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
+    await changeBillingSubscription(req, res)
+})
+
+app.post(ApiRoutes.BILLING.PORTAL_SESSION, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
+    await createBillingPortalSession(req, res)
+})
+
+app.get(ApiRoutes.BILLING.CONTEXT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
+    await getBillingContext(req, res)
+})
+
+app.get(ApiRoutes.BILLING.CATALOG, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
+    await getBillingCatalog(req, res)
 })
 
 // MARK: AUTH

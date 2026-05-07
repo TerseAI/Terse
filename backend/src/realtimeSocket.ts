@@ -13,7 +13,7 @@ import { SdkAgentRunner } from "./agent/AgentRunner/SdkAgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed, readSdkSkillsFromJson } from "./agent/AgentRunner/runHistory"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
-import { listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
+import { CancelReason, listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { optional } from "./config/settings"
@@ -24,8 +24,8 @@ import { Output } from "./outputs/abstract/Output"
 import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
+import { billingServiceProxyForOrganization } from "./services/BillingService"
 import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
-import { CancelAckResponse, USER_CANCELLED_REASON } from "./socketHandlers/activeExecution"
 import { AgentWithRelations } from "./types/prisma"
 import { isCorsOriginAllowed } from "./utility/corsOrigins"
 import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
@@ -286,13 +286,15 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
             invalidateRunAndChatHistory(organizationIdForRun, agent.id, runId)
 
             const cancellationController = new AbortController()
-            const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
+            const cancellationSubscription = listenForRunCancellation(runId, organizationIdForRun, cancellationController)
             const notificationManager = new NotificationManager(user, agent)
 
             const isSdkAgent = agent.source === "SDK"
 
             let endedWithToolFailure = false
             let finalOutput: unknown = undefined
+
+            const billing = billingServiceProxyForOrganization(user.organizationId)
 
             try {
                 if (isSdkAgent) {
@@ -308,7 +310,8 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                         maxTurns: 50,
                         requireApproval: true,
                         send: () => {},
-                        isProductionRun: true
+                        isProductionRun: true,
+                        billing
                     })
 
                     const sdkResult = await sdkRunner.userMessageRun(userMessage, {
@@ -331,7 +334,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
 
                     const session: Session = { user }
                     const runContext: RunContext = { runId }
-                    const agentRunner = new AgentRunner(session, outputs, agent, runContext)
+                    const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
 
                     const result = await agentRunner.userMessageRun(
                         userMessage,
@@ -354,10 +357,11 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                 }
             } catch (error) {
                 const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
+                const reason = cancellationSubscription.getReason()
                 cancellationSubscription.unsubscribe()
 
                 if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
-                    await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId)
+                    await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId, reason)
                     return
                 }
 
@@ -369,10 +373,11 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
             }
 
             const wasCancelled = cancellationSubscription.isCancellationRequested()
+            const reason = cancellationSubscription.getReason()
             cancellationSubscription.unsubscribe()
 
             if (wasCancelled) {
-                await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId)
+                await markRunCancelledAndInvalidate(runId, agent.id, organizationIdForRun, userId, reason)
                 return
             }
 
@@ -403,7 +408,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
             }
 
             if (runRecord.status === RunHistoryStatus.AWAITING_APPROVAL) {
-                await markRunCancelledAndInvalidate(runId, runRecord.automation.id, runRecord.automation.organization_id, userId)
+                await markRunCancelledAndInvalidate(runId, runRecord.automation.id, runRecord.automation.organization_id, userId, CancelReason.USER_CANCELLED)
                 ack({ accepted: true })
                 return
             }
@@ -413,7 +418,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                 return
             }
 
-            requestRunCancellation(runId, USER_CANCELLED_REASON)
+            requestRunCancellation(runId, runRecord.automation.organization_id, CancelReason.USER_CANCELLED)
             ack({ accepted: true })
         })
 
@@ -550,4 +555,9 @@ export async function markRunFailedAndInvalidate(runId: string, classified: Clas
     } catch (e) {
         logger.error("Failed to mark run as failed and invalidate cache", { error: e, runId })
     }
+}
+
+type CancelAckResponse = {
+    accepted: boolean
+    reason?: string
 }

@@ -4,12 +4,13 @@ import { DeviceTokenExchangeResponse } from "terse-types/types"
 import { deviceTokenExchangeRequestSchema } from "terse-types/types"
 
 import logger from "../logger"
+import { billingServiceProxyForOrganization } from "../services/BillingService"
 import { getClaimsFromVerifiedPayload } from "../utility/accessTokenClaims"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { workos } from "../utility/workos"
 
-import { getOrCreateDbUserFromWorkOS } from "./auth"
+import { getOrCreateDbUserFromWorkOS, setDefaultOrganizationMetadata } from "./auth"
 
 const featureFlagService = FeatureFlagService.getInstance()
 
@@ -68,6 +69,10 @@ export async function deviceTokenExchange(req: Request, res: Response) {
             })
             organizationId = organization.id
             roles = ["admin"]
+
+            const billing = billingServiceProxyForOrganization(organizationId)
+            const { customerId } = await billing.getOrCreateCustomer()
+            await setDefaultOrganizationMetadata(organizationId, customerId)
         } else {
             const membership = memberships.data.find(m => m.organizationId === organizationId)
             roles = membership?.roles?.map(role => role.slug) ?? []

@@ -12,6 +12,7 @@ import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
+import { BillingService, billingServiceProxyForOrganization } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { FileCategory, StoredFile } from "../../services/FileStorageService"
 import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
@@ -51,8 +52,18 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
     private activeStreamingParams?: TrackingParams
     private activeStreamEventEmitter?: StreamEventEmitter
 
-    constructor(session: T, outputs: Output<TConfig>[], agent: AgentWithRelations, runContext: RunContext, maxTurns: number = 50) {
-        super({ runId: runContext.runId })
+    constructor(
+        session: T,
+        outputs: Output<TConfig>[],
+        agent: AgentWithRelations,
+        runContext: RunContext,
+        maxTurns: number = 50,
+        billing: BillingService = billingServiceProxyForOrganization(session.user.organizationId)
+    ) {
+        super({
+            runId: runContext.runId,
+            billing
+        })
         this.session = session
         this.outputs = outputs
         this.agentConfig = agent
@@ -98,7 +109,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
-            env: settings.nodeEnv
+            env: settings.nodeEnv,
+            inputGuardrails: this.getInputGuardrails()
         })
 
         logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) })
@@ -133,7 +145,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
-            env: settings.nodeEnv
+            env: settings.nodeEnv,
+            inputGuardrails: this.getInputGuardrails()
         })
         this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
@@ -171,7 +184,8 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
-            env: settings.nodeEnv
+            env: settings.nodeEnv,
+            inputGuardrails: this.getInputGuardrails()
         })
         const toolContext = this.getToolContext()
         this.setActiveStreamingParams(streamingParams)

@@ -3,11 +3,12 @@ import { SocketEvents, SocketRooms } from "terse-types"
 
 import logger from "../../logger"
 import { getSocketIO, invalidateRunAndChatHistory } from "../../services/CacheInvalidationService"
-import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { randomString } from "../../utility/strings"
 import { markRunCancelled } from "../AgentRunner/runHistory"
 import { createCancelledEvent } from "../streaming"
 import { appendRunHistoryCancelledSystemEvent } from "../systemEvents/cancelledSystemEvent"
+
+import { CancelReason } from "./RunCancellationTaskQueue"
 
 function emitCancelledForRun(runId: string, agentId: string, organizationId: string, reason?: string): void {
     const io = getSocketIO()
@@ -27,7 +28,7 @@ function emitCancelledForRun(runId: string, agentId: string, organizationId: str
     io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
 }
 
-export async function markRunCancelledAndInvalidate(runId: string, agentId: string, organizationId: string, userId: string, reason: string = USER_CANCELLED_REASON): Promise<void> {
+export async function markRunCancelledAndInvalidate(runId: string, agentId: string, organizationId: string, userId: string, reason: CancelReason): Promise<void> {
     try {
         await markRunCancelled(runId, reason)
     } catch (cancelError) {

@@ -3,10 +3,11 @@ import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSc
 
 import { settings } from "../config/settings"
 import logger from "../logger"
+import { billingServiceProxyForOrganization } from "../services/BillingService"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../services/FileStorageService"
 import { workos } from "../utility/workos"
 
-import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "./auth"
+import { WORKOS_SESSION_COOKIE_NAME, setDefaultOrganizationMetadata, setSessionCookie } from "./auth"
 
 export async function createOrganization(req: Request, res: Response) {
     const user = req.session?.user
@@ -33,6 +34,10 @@ export async function createOrganization(req: Request, res: Response) {
             userId: user.workosId,
             roleSlug: "admin"
         })
+
+        const billing = billingServiceProxyForOrganization(organization.id)
+        const { customerId } = await billing.getOrCreateCustomer()
+        await setDefaultOrganizationMetadata(organization.id, customerId)
 
         const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
         if (!sealedSessionData) {

@@ -1,13 +1,18 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
-import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunStreamEvent, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
+import type { Session as AgentMemorySession, CallModelInputFilter, GuardrailFunctionOutput, InputGuardrail, InputGuardrailFunctionArgs, ModelSettings } from "@openai/agents-core"
 import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
-import { ConfigData } from "terse-types"
+import { ConfigData, completedEventUsageSchema } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
+import { BillingError, CompletedEventUsage, ModelReference } from "terse-types"
+import { z } from "zod"
 
+import { settings } from "../../config/settings"
 import { Session as AppSession } from "../../express"
 import logger from "../../logger"
-import type { StreamEventIngestionSession } from "../CustomMemorySession"
+import type { BillingService } from "../../services/BillingService"
+import { billingHook, billingInputGuardrail } from "../billingHook"
+import { parseModelReference } from "../modelRegistry"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
@@ -21,15 +26,27 @@ export type SessionWithTracking<T extends AppSession> = T & {
     agentId: string
 }
 
+/**
+ * SDK `InputGuardrail` is not generic; use this for a typed `execute`, then cast at `runner.run`
+ * (same idea as `CallModelInputFilter<TSession>` vs `CallModelInputFilter`).
+ */
+export type InputGuardrailForSession<TContext> = {
+    name: string
+    execute: (args: InputGuardrailFunctionArgs<TContext>) => Promise<GuardrailFunctionOutput>
+    runInParallel?: boolean
+}
+
 export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> {
     private runId: string
     private endedWithToolFailure = false
     protected agent?: TAgent
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
     private buildAgentPromise?: Promise<TAgent>
+    private readonly billing: BillingService
 
-    constructor(params: { runId: string }) {
+    constructor(params: { runId: string; billing: BillingService }) {
         this.runId = params.runId
+        this.billing = params.billing
     }
 
     protected abstract onModelEvent(event: ModelEvent, timestamp: number): Promise<void>
@@ -65,6 +82,8 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async runAgent(userHistory: AgentInputItem[], settings: RunExecutionSettings<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
+        // Base run charges happen at explicit run-start call sites (SDK route, EventProcessor).
+        // Still gate every loop entry so unpaid orgs cannot continue on a new turn.
         await this.initializeLoopIfNeeded()
         this.resetRunOutcomeTracking()
         const result = await settings.runner.run(this.requireAgent(), userHistory, {
@@ -73,10 +92,12 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             session: settings.memorySession,
             sessionInputCallback: settings.sessionInputCallback,
             maxTurns: settings.maxTurns,
-            signal: settings.signal
+            signal: settings.signal,
+            callModelInputFilter: this.getCallModelInputFilter(),
+            inputGuardrails: this.getInputGuardrails()
         })
 
-        await this.processStream(result)
+        await this.processStream(result, settings)
         return this.buildResult(result)
     }
 
@@ -124,16 +145,23 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
             session: params.settings.memorySession,
             sessionInputCallback: params.settings.sessionInputCallback,
             maxTurns: params.settings.maxTurns,
-            signal: params.settings.signal
+            signal: params.settings.signal,
+            callModelInputFilter: this.getCallModelInputFilter(),
+            inputGuardrails: this.getInputGuardrails()
         })
 
-        await this.processStream(result, { approvalDecision: { decision: params.decision, rejectionReason: params.rejectionReason, responseId: seedResponseId } })
+        const approvalDecision: ApprovalDecision = { decision: params.decision, rejectionReason: params.rejectionReason, responseId: seedResponseId }
+
+        await this.processStream(result, params.settings, { approvalDecision })
         return this.buildResult(result)
     }
 
-    private async processStream(result: StreamedRunResult<TSession, TAgent>, options: { approvalDecision?: ApprovalDecision } = {}): Promise<void> {
+    private async processStream(result: StreamedRunResult<TSession, TAgent>, settings: RunExecutionSettings<TSession, TAgent>, options: { approvalDecision?: ApprovalDecision } = {}): Promise<void> {
         const eventStream = transformAgentStreamToModelEvents(result, {
             onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
+            onRawStreamEvent: async streamEvent => {
+                await this.recordLLMUsage(settings, streamEvent)
+            },
             approvalDecision: options.approvalDecision
         })
 
@@ -196,7 +224,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         this.endedWithToolFailure = false
     }
 
-    private observeModelEvent(event: ModelEvent): void {
+    private trackFailedToolCalls(event: ModelEvent): void {
         if (event.type !== "ToolCallComplete") return
         const toolFailed = isFailedToolExecutionStatus(event.status) || Boolean(event.errorContext)
         this.endedWithToolFailure = toolFailed
@@ -204,7 +232,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
 
     private async *trackEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>): AsyncGenerator<ModelEvent, void, unknown> {
         for await (const event of eventStream) {
-            this.observeModelEvent(event)
+            this.trackFailedToolCalls(event)
             yield event
         }
     }
@@ -215,14 +243,82 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         }
         return this.agent
     }
+
+    private getCallModelInputFilter(): CallModelInputFilter {
+        /**
+         * Workaround casting due to limitation of SDK doesn't make the
+         * generic available
+         */
+        const typedBillingHook: CallModelInputFilter<TSession> = billingHook
+        return typedBillingHook as CallModelInputFilter
+    }
+
+    protected getInputGuardrails(): InputGuardrail[] {
+        /**
+         * Workaround casting due to limitation of SDK doesn't make the
+         * generic available
+         */
+        const typed: InputGuardrailForSession<TSession>[] = [billingInputGuardrail]
+        return typed as InputGuardrail[]
+    }
+
+    private getModel(): ModelReference {
+        const defaultModel = settings.aisdk.default
+        if (!defaultModel) {
+            throw new Error("Default model not set")
+        }
+        const resolved = parseModelReference(defaultModel)
+        return resolved
+    }
+
+    private recordLLMUsage = async (settings: RunExecutionSettings<TSession, TAgent>, event: RunStreamEvent): Promise<void> => {
+        if (event.type !== "raw_model_stream_event") return
+
+        const data = (event as any).data
+        const completedEvent = data.type === "response_done" ? data : null
+        if (!completedEvent) return
+
+        const usage = normalizeCompletedEventUsage(completedEvent.response?.usage)
+        if (!usage) {
+            logger.warn("BaseAgentRunner: No usage found for completed event", { event })
+            return
+        }
+
+        const responseId = completedEvent.response?.id
+        if (!responseId) {
+            logger.warn("BaseAgentRunner: No response ID found for completed event", { event })
+            return
+        }
+
+        try {
+            await this.billing.recordLLMCall({
+                organizationId: settings.context.user.organizationId,
+                runId: settings.context.runId,
+                responseId,
+                model: this.getModel(),
+                usage
+            })
+        } catch (error) {
+            if (error instanceof BillingError) {
+                logger.error("BaseAgentRunner: billing provider error; failing run", { runId: settings.context.runId, error })
+            } else {
+                logger.error("BaseAgentRunner: unexpected charge failure", { runId: settings.context.runId, error })
+            }
+            throw error
+        }
+    }
 }
 
-function asStreamEventIngestionSession(memorySession: AgentMemorySession): StreamEventIngestionSession | null {
-    const candidate = memorySession as unknown as StreamEventIngestionSession
-    if (typeof candidate?.ingestStreamEvent !== "function") {
-        return null
+function normalizeCompletedEventUsage(raw: unknown): CompletedEventUsage | null {
+    if (!raw || typeof raw !== "object") return null
+    const rawUsage = raw as Record<string, unknown>
+    const parsed = completedEventUsageSchema.safeParse(rawUsage)
+    if (!parsed.success) {
+        logger.error("BaseAgentRunner: Failed to parse LLM usage", { error: parsed.error, rawUsage })
+        throw new Error("Failed to parse LLM usage")
     }
-    return candidate
+
+    return parsed.data
 }
 
 type SessionInputCallback = (history: AgentInputItem[], newItems: AgentInputItem[]) => AgentInputItem[]
@@ -238,6 +334,8 @@ type LoopRunner<TSession, TAgent extends Agent<TSession, AgentOutputType>> = {
             sessionInputCallback?: SessionInputCallback
             maxTurns: number
             signal?: AbortSignal
+            callModelInputFilter: CallModelInputFilter
+            inputGuardrails: InputGuardrail[]
         }
     ) => Promise<StreamedRunResult<TSession, TAgent>>
 }

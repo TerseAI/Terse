@@ -13,9 +13,12 @@ export * from "./Notifications"
 export * from "./RunHistoryTypes"
 export * from "./SentNotifications"
 export * from "./SlackTypes"
+export * from "./OrganizationMetadata"
 export * from "./SocketEvents"
 export * from "./Survey"
 export * from "./Tools"
+export * from "./Billing"
+export * from "./ModelRegistry"
 export {
     Comment,
     CreateTicketInput,

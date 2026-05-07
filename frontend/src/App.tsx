@@ -16,12 +16,14 @@ import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storage
 import ActivityPage from "./pages/Activity"
 import AgentDetail from "./pages/Agents/AgentDetail"
 import ApiTokensPage from "./pages/ApiTokens"
+import BillingPage from "./pages/BillingPage"
 import HomePage from "./pages/Home"
 import IntegrationPage from "./pages/IntegrationPage"
 import NotificationsPage from "./pages/Notifications"
 import OAuthError from "./pages/OAuthError"
 import OAuthSuccess from "./pages/OAuthSuccess"
 import OrganizationCreationPage from "./pages/OrganizationCreationPage"
+import PricingPage from "./pages/PricingPage"
 import ProfilePage from "./pages/ProfilePage"
 import ProjectDeploysPage from "./pages/Projects/ProjectDeploysPage"
 import ProjectDetail from "./pages/Projects/ProjectDetail"
@@ -38,9 +40,11 @@ function App() {
                 <Router>
                     <Routes>
                         <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
+                        <Route path="/pricing" element={<Navigate to={FrontendRoutes.PRICING} replace />} />
                         <Route path={FrontendRoutes.APP} element={<Content />}>
                             <Route index element={<Navigate to="home" replace />} />
                             <Route path="home" element={<HomePage />} />
+                            <Route path="pricing" element={<PricingPage />} />
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
@@ -51,6 +55,9 @@ function App() {
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="api-tokens" element={<ApiTokensPage />} />
+                            <Route element={<RequireAdminOutlet />}>
+                                <Route path="billing" element={<BillingPage />} />
+                            </Route>
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                         <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
@@ -135,6 +142,20 @@ function AppLayout() {
             </main>
         </SidebarProvider>
     )
+}
+
+function RequireAdminOutlet() {
+    const { user, isLoading } = useAuth()
+
+    if (isLoading) {
+        return <AppBootScreen />
+    }
+
+    if (!user?.roles.includes("admin")) {
+        return <Navigate to={FrontendRoutes.HOME} replace />
+    }
+
+    return <Outlet />
 }
 
 function NotFoundPage() {

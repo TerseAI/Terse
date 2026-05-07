@@ -180,5 +180,13 @@
     "USERS": {
         "CREATE": "/users",
         "BY_ID": "/users/:id"
+    },
+    "BILLING": {
+        "CATALOG": "/billing/catalog",
+        "CONTEXT": "/billing/context",
+        "CHECKOUT_SESSION": "/billing/checkout-session",
+        "CHANGE": "/billing/change",
+        "PORTAL_SESSION": "/billing/portal-session",
+        "CACHE_INVALIDATION": "/billing/cache-invalidation"
     }
 }

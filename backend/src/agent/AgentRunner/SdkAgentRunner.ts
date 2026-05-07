@@ -2,7 +2,7 @@ import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { AiSdkModel, aisdk } from "@openai/agents-extensions/ai-sdk"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
-import { CONFIG_DETAILS, ConfigData, configDataSchema } from "terse-types"
+import { CONFIG_DETAILS, ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { SdkAgentStreamEvent, User } from "terse-types"
@@ -15,6 +15,7 @@ import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
+import type { BillingService } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
@@ -46,7 +47,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
     constructor(params: SdkAgentRunnerParams) {
-        super({ runId: params.runId })
+        super({ runId: params.runId, billing: params.billing })
         this.sdkRunId = params.runId
         this.user = params.user
         this.prompt = params.prompt
@@ -80,7 +81,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             agentType: AgentType.AGENT_RUNNER,
             runId: this.sdkRunId,
             user: this.user,
-            env: settings.nodeEnv
+            env: settings.nodeEnv,
+            inputGuardrails: this.getInputGuardrails()
         })
     }
 
@@ -399,6 +401,7 @@ type SdkAgentRunnerParams = {
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun?: boolean
     outputSchema?: Record<string, unknown>
+    billing: BillingService
 }
 
 type SdkAgentRunnerResult = {

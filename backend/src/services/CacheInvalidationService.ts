@@ -1,4 +1,5 @@
 import { Server } from "socket.io"
+import { billingCatalogKey, billingContextKey } from "terse-types/InvalidationKeys"
 import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
 import logger from "../logger"
@@ -38,4 +39,10 @@ export function emitCacheInvalidationWithWildcard(organizationId: string, key: s
 export function invalidateRunAndChatHistory(organizationId: string, agentId: string, runId: string): void {
     emitCacheInvalidationWithWildcard(organizationId, "runHistory", agentId)
     emitCacheInvalidationWithWildcard(organizationId, "chatHistory", runId)
+}
+
+/** Frontend SWR tags — emitted after meter/consumption changes so billing UI refreshes for the org. */
+export function emitBillingCachesInvalidated(organizationId: string): void {
+    emitCacheInvalidationWithKey(organizationId, billingContextKey()[0])
+    emitCacheInvalidationWithKey(organizationId, billingCatalogKey()[0])
 }

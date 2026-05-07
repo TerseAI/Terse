@@ -1,9 +1,11 @@
-import { Agent, StreamedRunResult } from "@openai/agents"
+import { Agent, RunStreamEvent, StreamedRunResult } from "@openai/agents"
+import { BillingError, CreditGateDeniedError } from "terse-types"
 import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import { ApprovalDecision } from "../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../express"
+import logger from "../logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { ErrorContext } from "../tools/toolUtils"
 import { randomString } from "../utility/strings"
@@ -16,10 +18,10 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
     options: {
         onToolCallComplete?: ToolCallCompleteHandler
         approvalDecision?: ApprovalDecision
+        onRawStreamEvent?: (event: RunStreamEvent) => Promise<void> | void
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
-    const { onToolCallComplete, approvalDecision } = options
-
+    const { onToolCallComplete, approvalDecision, onRawStreamEvent } = options
     let initialResponseId: string | undefined = undefined
     if (approvalDecision) {
         initialResponseId = approvalDecision.responseId
@@ -27,6 +29,18 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
     const deltaProjector = new AssistantDeltaProjector({ initialResponseId })
 
     for await (const event of result) {
+        if (onRawStreamEvent) {
+            try {
+                await onRawStreamEvent(event)
+            } catch (error) {
+                if (error instanceof BillingError) throw error
+                if (error instanceof CreditGateDeniedError) throw error
+                logger.warn("Failed to persist raw stream event", {
+                    error,
+                    eventType: event.type
+                })
+            }
+        }
         const canonicalEvent = deltaProjector.ingestModelEvent(event)
         if (!canonicalEvent) continue
         switch (canonicalEvent.type) {

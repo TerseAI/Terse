@@ -1,3 +1,4 @@
+import type { BillingContextQuery } from "./Billing"
 import { GetRunHistoryParams } from "./RunHistoryTypes"
 import type { StatsInterval } from "./types"
 
@@ -198,4 +199,12 @@ export const projectSourceFilesKey = (projectId: string): readonly [string, stri
 
 export const projectSourceFileContentKey = (projectId: string, fileId: string): readonly [string, string, string] => ["projectSourceFileContent", projectId, fileId]
 
+export const billingContextKey = (params?: Partial<BillingContextQuery>): readonly [string, string, string, string] => [
+    "billingContext",
+    params?.timezone ?? "",
+    params?.start?.toISOString() ?? "",
+    params?.end?.toISOString() ?? ""
+]
+
+export const billingCatalogKey = (): readonly [string] => ["billingCatalog"]
 export const organizationProjectsKey = (): readonly [string] => ["organization-projects"]
