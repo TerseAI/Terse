@@ -22,6 +22,24 @@ function optionalEnv(name: string, defaultValue?: string): string | undefined {
     return defaultValue
 }
 
+function optionalBoolEnv(name: string, defaultValue = false): boolean {
+    const value = optionalEnv(name)
+
+    if (value === undefined) {
+        return defaultValue
+    }
+
+    if (value === "true") {
+        return true
+    }
+
+    if (value === "false") {
+        return false
+    }
+
+    throw new Error(`Invalid boolean environment variable: ${name}. Expected "true" or "false".`)
+}
+
 // Core configuration
 export const settings = {
     // Core secrets and keys
@@ -185,7 +203,7 @@ export const settings = {
     },
 
     billing: {
-        enabled: optionalEnv("BILLING_ENABLED", "false") === "true",
+        enabled: optionalBoolEnv("BILLING_ENABLED"),
         url: optionalEnv("BILLING_SERVICE_URL"),
         jwtSecret: optionalEnv("BILLING_JWT_SECRET")
     }

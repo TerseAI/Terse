@@ -75,7 +75,9 @@ function billingServiceForOrganizationAuth(auth: BillingProxyAuth): BillingServi
     if (!settings.billing.enabled) return new BillingNoOpService()
     const url = settings.billing.url?.trim()
     const secret = settings.billing.jwtSecret?.trim()
-    if (!url || !secret) return new BillingNoOpService()
+    if (!url || !secret) {
+        throw new BillingNoBackendError()
+    }
     return new BillingServiceProxy(url, auth)
 }
 

@@ -1,10 +1,11 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunStreamEvent, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, CallModelInputFilter, GuardrailFunctionOutput, InputGuardrail, InputGuardrailFunctionArgs, ModelSettings } from "@openai/agents-core"
 import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
-import { ConfigData } from "terse-types"
+import { ConfigData, completedEventUsageSchema } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { BillingError, CompletedEventUsage, ModelReference } from "terse-types"
+import { z } from "zod"
 
 import { settings } from "../../config/settings"
 import { Session as AppSession } from "../../express"
@@ -310,27 +311,14 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
 
 function normalizeCompletedEventUsage(raw: unknown): CompletedEventUsage | null {
     if (!raw || typeof raw !== "object") return null
-    const usage = raw as Record<string, unknown>
-    const inputTokens = numberValue(usage.inputTokens ?? usage.input_tokens)
-    const outputTokens = numberValue(usage.outputTokens ?? usage.output_tokens)
-    const totalTokens = numberValue(usage.totalTokens ?? usage.total_tokens)
-    if (inputTokens == null || outputTokens == null || totalTokens == null) return null
-
-    const inputDetails = (usage.inputTokensDetails ?? usage.input_tokens_details) as Record<string, unknown> | undefined
-    const cachedTokens = numberValue(inputDetails?.cached_tokens ?? inputDetails?.cachedTokens) ?? 0
-
-    return {
-        inputTokens,
-        outputTokens,
-        totalTokens,
-        inputTokensDetails: {
-            cached_tokens: cachedTokens
-        }
+    const rawUsage = raw as Record<string, unknown>
+    const parsed = completedEventUsageSchema.safeParse(rawUsage)
+    if (!parsed.success) {
+        logger.error("BaseAgentRunner: Failed to parse LLM usage", { error: parsed.error, rawUsage })
+        throw new Error("Failed to parse LLM usage")
     }
-}
 
-function numberValue(value: unknown): number | null {
-    return typeof value === "number" && Number.isFinite(value) ? value : null
+    return parsed.data
 }
 
 type SessionInputCallback = (history: AgentInputItem[], newItems: AgentInputItem[]) => AgentInputItem[]
