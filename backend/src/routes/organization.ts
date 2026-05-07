@@ -35,7 +35,7 @@ export async function createOrganization(req: Request, res: Response) {
             roleSlug: "admin"
         })
 
-        const billing = billingServiceProxyForOrganization(organization.id, user.id)
+        const billing = billingServiceProxyForOrganization(organization.id, user.workosId)
         const { customerId } = await billing.getOrCreateCustomer()
         await setDefaultOrganizationMetadata(organization.id, customerId)
 
