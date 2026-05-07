@@ -940,6 +940,7 @@ export type Identifiable = z.infer<typeof identifiableSchema>
 
 export const sdkSampleEventRefSchema = z.object({
     entity: identifiableSchema.optional(),
+    recordedAt: z.string().optional(),
     serializedEvent: serializedEventSchema
 })
 export type SdkSampleEventRef = z.infer<typeof sdkSampleEventRefSchema>

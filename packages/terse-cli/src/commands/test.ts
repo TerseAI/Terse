@@ -1,5 +1,6 @@
 import { cancel, intro, isCancel, log, outro, select } from "@clack/prompts"
 import chalk from "chalk"
+import { DateTime } from "luxon"
 import fs from "node:fs"
 import type { CreateJobParameters } from "terse-sdk"
 import { IntegrationType } from "terse-sdk"
@@ -243,13 +244,17 @@ export async function fetchSampleEventCandidatesForJob(job: CreateJobParameters,
                     entityId: event.entity.entityId
                 })
             } else {
+                const time = event.recordedAt ? (DateTime.fromISO(event.recordedAt).toRelative() ?? null) : null
+                const method = event.serializedEvent.display?.subtitle ?? null
+                const labelParts = [event.serializedEvent.integrationType === IntegrationType.WEBHOOK ? "Webhook" : event.serializedEvent.integrationType, method, time].filter(Boolean) as string[]
                 candidates.push({
                     id: `stored:${storedIndex++}`,
                     kind: "stored",
                     integrationType: event.serializedEvent.integrationType,
                     eventType: event.serializedEvent.eventType,
-                    label: normalizeSingleLine(event.serializedEvent.display?.title || `${event.serializedEvent.integrationType} / ${event.serializedEvent.eventType}`),
+                    label: labelParts.join(" · "),
                     subtitle: event.serializedEvent.display?.subtitle ?? null,
+                    recordedAt: event.recordedAt ?? null,
                     event: event.serializedEvent
                 })
             }
@@ -284,9 +289,23 @@ function formatEventLabel(event: SerializedEvent): string {
 }
 
 function formatEventHint(candidate: SampleEventCandidate): string {
+    if (candidate.kind === "stored") {
+        const preview = previewPayload(candidate.event)
+        if (preview) return truncate(preview, 120)
+    }
     if (candidate.subtitle) return truncate(normalizeSingleLine(candidate.subtitle), 120)
-    if (candidate.kind === "stored") return truncate(`Past ${candidate.integrationType} event`, 120)
     return candidate.kind === "ref" ? truncate(`${candidate.integrationType}/${candidate.eventType}`, 120) : "Synthetic sample event"
+}
+
+function previewPayload(event: SerializedEvent): string | null {
+    const data = event.data as Record<string, unknown> | undefined
+    const body = data && "body" in data ? data.body : data
+    if (body == null) return null
+    try {
+        return normalizeSingleLine(JSON.stringify(body))
+    } catch {
+        return null
+    }
 }
 
 function truncate(value: string, maxLength: number): string {
@@ -444,6 +463,7 @@ type SampleEventCandidate =
           eventType: string
           label: string
           subtitle: string | null
+          recordedAt: string | null
           event: SerializedEvent
       }
 

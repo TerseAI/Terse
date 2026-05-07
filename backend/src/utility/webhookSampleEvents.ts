@@ -50,13 +50,13 @@ export async function fetchWebhookSampleEvents(opts: { jobName: string; projectI
         },
         orderBy: { timestamp: "desc" },
         take: PAST_WEBHOOK_EVENTS_LIMIT,
-        select: { id: true, trigger_payload: true }
+        select: { id: true, timestamp: true, trigger_payload: true }
     })
 
     const events: SampleEventRef[] = records.flatMap(record => {
         try {
             const event = parseSerializedTriggerPayload(record.trigger_payload)
-            return event ? [{ serializedEvent: event }] : []
+            return event ? [{ serializedEvent: event, recordedAt: record.timestamp.toISOString() }] : []
         } catch (err) {
             logger.warn("[webhook-sample-events] Skipping run with malformed trigger_payload", { runId: record.id, err })
             return []
