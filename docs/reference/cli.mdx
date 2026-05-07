@@ -26,6 +26,8 @@ terse init my-project
 
 If you omit `project-name`, the CLI scaffolds into the current directory. If you run `terse init` in an existing npm project, the CLI tells you to use `terse attach` instead.
 
+If you use **Claude Code**, install the **Terse** plugin from the marketplace and run the **`/terse:init`** skill to scaffold with `terse init` and walk through common setup issues (missing CLI, existing npm project, authentication).
+
 **What it does in order:**
 
 1. Creates the target directory and scaffolds `package.json`, `tsconfig.json`, `src/terse.jobs.ts`, `.env.example`, and `.gitignore`
@@ -422,6 +424,12 @@ terse login
 5. Saves the API key so later CLI commands can reuse it
 
 If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
+
+### Non-interactive runs and CI
+
+When **stdin or stdout is not a TTY** (for example in some CI jobs or when stdin is redirected), the CLI **skips interactive prompts** such as “log in again with a different account?” It can still start the **device login** flow if there is **no saved key** or the saved key is **invalid**, so automated environments may need a human step or a prior `terse login` on the machine.
+
+Pass **`--non-interactive`** (`-y`) on **`terse init`** or **`terse attach`** when you want **fail-fast** behavior: those commands **require a valid API key already saved** by `terse login`. They **exit with an error** instead of device login when credentials are missing or no longer valid—use this when you must not block on browser authorization (for example in strict CI).
 
 ### `terse logout`
 
