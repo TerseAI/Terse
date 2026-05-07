@@ -15,11 +15,10 @@ export enum AuthKind {
 
 export interface AuthOptions {
     allowNoOrg?: boolean
-
     requireAdmin?: boolean
 }
 
-export function requireAuth(allow: AuthKind[], opts: AuthOptions = {}): RequestHandler {
+export function requireAuth(allow: AuthKind[], opts: AuthOptions = { allowNoOrg: false, requireAdmin: false }): RequestHandler {
     if (allow.length === 0) {
         throw new Error("requireAuth() called with empty allow list — at least one AuthKind required")
     }

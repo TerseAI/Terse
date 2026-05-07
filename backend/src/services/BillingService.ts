@@ -317,13 +317,11 @@ export class BillingServiceProxy implements BillingService {
  * No-op when billing is not configured. Use `chargeBaseRun: false` for
  * resume paths where the base fee was already taken at initial start.
  */
-export async function startBillingRun(billing: BillingService, params: { organizationId: string; runId: string; chargeBaseRun?: boolean }): Promise<void> {
+export async function startBillingRun(billing: BillingService, params: { organizationId: string; runId: string }): Promise<void> {
     const gate = await billing.checkRunGate({ organizationId: params.organizationId, breakCache: true })
     if (!gate.allow) {
         throw new CreditGateDeniedError(gate.reason)
     }
-
-    if (params.chargeBaseRun === false) return
 
     await billing.chargeRunBase({
         organizationId: params.organizationId,

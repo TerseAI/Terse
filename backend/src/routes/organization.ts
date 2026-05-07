@@ -37,9 +37,7 @@ export async function createOrganization(req: Request, res: Response) {
 
         const billing = billingServiceProxyForOrganization(organization.id)
         const { customerId } = await billing.getOrCreateCustomer()
-        if (customerId) {
-            await setDefaultOrganizationMetadata(organization.id, customerId)
-        }
+        await setDefaultOrganizationMetadata(organization.id, customerId)
 
         const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
         if (!sealedSessionData) {

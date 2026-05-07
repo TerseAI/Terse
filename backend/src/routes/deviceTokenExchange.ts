@@ -72,9 +72,7 @@ export async function deviceTokenExchange(req: Request, res: Response) {
 
             const billing = billingServiceProxyForOrganization(organizationId)
             const { customerId } = await billing.getOrCreateCustomer()
-            if (customerId) {
-                await setDefaultOrganizationMetadata(organizationId, customerId)
-            }
+            await setDefaultOrganizationMetadata(organizationId, customerId)
         } else {
             const membership = memberships.data.find(m => m.organizationId === organizationId)
             roles = membership?.roles?.map(role => role.slug) ?? []
