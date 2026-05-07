@@ -132,7 +132,9 @@ export async function login(): Promise<{ apiKey: string; displayName: string | n
 }
 
 export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiKey: string; displayName: string | null } | null> {
-    const nonInteractive = isNonInteractive(opts)
+    const skipPrompts = isNonInteractive(opts)
+    const canFallToDeviceLogin = !opts?.nonInteractive
+
     const stored = getStoredApiKey()
 
     if (stored) {
@@ -141,12 +143,12 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
         const existingName = await fetchDisplayNameForKey(stored)
         if (existingName) {
             s.stop(`Already logged in as ${existingName}`)
-            if (nonInteractive) return { apiKey: stored, displayName: existingName }
+            if (skipPrompts) return { apiKey: stored, displayName: existingName }
             const shouldContinue = await confirm({ message: "Log in again with a different account?", default: false })
             if (!shouldContinue) return { apiKey: stored, displayName: existingName }
         } else {
             s.stop("Existing API key is invalid or expired")
-            if (nonInteractive) {
+            if (!canFallToDeviceLogin) {
                 throw new CliError("not_authenticated", "Stored credentials are invalid or expired.", {
                     detail: 'Run "terse login" to refresh them.',
                     actionRequired: true,
@@ -154,7 +156,7 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
                 })
             }
         }
-    } else if (nonInteractive) {
+    } else if (!canFallToDeviceLogin) {
         throw new CliError("not_authenticated", "Not authenticated.", {
             detail: 'Run "terse login" first, then retry.',
             actionRequired: true,
