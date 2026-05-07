@@ -1,4 +1,4 @@
-import { Runner } from "@openai/agents-core"
+import { type InputGuardrail, Runner } from "@openai/agents-core"
 import { User } from "terse-types/types"
 
 export enum AgentType {
@@ -17,6 +17,7 @@ type RunnerConfig = {
     runId?: string
     user: User
     env: string
+    inputGuardrails?: InputGuardrail[]
 }
 
 /**
@@ -29,6 +30,7 @@ type RunnerConfig = {
  */
 export function runnerFactory(config: RunnerConfig): Runner {
     return new Runner({
+        inputGuardrails: config.inputGuardrails,
         traceMetadata: {
             agentId: config.agentId,
             runId: config?.runId ?? "",

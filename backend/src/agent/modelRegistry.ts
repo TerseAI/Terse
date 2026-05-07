@@ -1,17 +1,9 @@
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createProviderRegistry } from "ai"
+import { ModelReference, SUPPORTED_PROVIDERS, SupportedProvider } from "terse-types"
 
 export const DEFAULT_MODEL_REF = "openai:gpt-5.2"
-
-const SUPPORTED_PROVIDERS = ["anthropic", "openai"] as const
-type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number]
-
-export type ModelReference = {
-    providerId: SupportedProvider
-    modelId: string
-    value: `${SupportedProvider}:${string}`
-}
 
 export function getDefaultModelRef(): string {
     return DEFAULT_MODEL_REF
@@ -48,7 +40,7 @@ export function resolveLanguageModel(modelRef: string = getDefaultModelRef()) {
 
     return {
         ...parsed,
-        model: registry.languageModel(parsed.value)
+        model: registry.languageModel(`${parsed.providerId}:${parsed.modelId}`)
     }
 }
 

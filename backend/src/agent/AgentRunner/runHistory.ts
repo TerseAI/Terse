@@ -7,8 +7,8 @@ import { type SkillConfigData, skillConfigDataSchema } from "terse-types/Configs
 import logger from "../../logger"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
-import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters"
+import { CancelReason } from "../cancellation/RunCancellationTaskQueue"
 
 export type RunTrigger = RunHistoryTrigger
 
@@ -151,7 +151,7 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
     })
 }
 
-export async function markRunCancelled(runId: string, reason: string = USER_CANCELLED_REASON): Promise<void> {
+export async function markRunCancelled(runId: string, reason: string = CancelReason.USER_CANCELLED): Promise<void> {
     const prisma = db()
     await prisma.run_history_records.update({
         where: { id: runId },

@@ -1,5 +1,6 @@
 import { TokenKind } from "@prisma/client"
 import { NextFunction, Request, RequestHandler, Response } from "express"
+import type { User } from "terse-types/types"
 
 import { clearSessionCookies } from "../routes/auth"
 
@@ -14,9 +15,10 @@ export enum AuthKind {
 
 export interface AuthOptions {
     allowNoOrg?: boolean
+    requireAdmin?: boolean
 }
 
-export function requireAuth(allow: AuthKind[], opts: AuthOptions = {}): RequestHandler {
+export function requireAuth(allow: AuthKind[], opts: AuthOptions = { allowNoOrg: false, requireAdmin: false }): RequestHandler {
     if (allow.length === 0) {
         throw new Error("requireAuth() called with empty allow list — at least one AuthKind required")
     }
@@ -69,11 +71,16 @@ async function handleBearer(bearer: string, allow: AuthKind[], opts: AuthOptions
         }
 
         req.session = { user: result.user, authMethod: { kind: "api_token", tokenKind: result.tokenKind } }
+        if (!assertAdminIfRequired(opts, result.user, res)) return
         return next()
     }
 
     if (allow.includes(AuthKind.CloudScheduler)) {
         if (validateCloudSchedulerHeader(req.headers.authorization)) {
+            if (opts.requireAdmin) {
+                res.status(403).json({ error: "Only organization admins can perform this action" })
+                return
+            }
             return next()
         }
         res.status(401).json({ error: "Invalid scheduler credential" })
@@ -100,6 +107,7 @@ async function handleCookie(cookie: string, allow: AuthKind[], opts: AuthOptions
     }
 
     req.session = { user: result.user, authMethod: { kind: "cookie" } }
+    if (!assertAdminIfRequired(opts, result.user, res)) return
     return next()
 }
 
@@ -127,4 +135,13 @@ function sendOrganizationRequired(res: Response) {
         message: "User must create or join an organization",
         redirectTo: "/organization/create"
     })
+}
+
+function assertAdminIfRequired(opts: AuthOptions, user: User, res: Response): boolean {
+    if (!opts.requireAdmin) return true
+    if (!user.roles?.includes("admin")) {
+        res.status(403).json({ error: "Only organization admins can perform this action" })
+        return false
+    }
+    return true
 }

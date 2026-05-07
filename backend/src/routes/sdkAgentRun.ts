@@ -1,8 +1,8 @@
 import { Request, Response } from "express"
 import crypto from "node:crypto"
+import { BillingError, CreditGateDeniedError } from "terse-types"
 import { SkillConfigData } from "terse-types/Configs"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
-import { debugTrigger, formatTriggerForAgent } from "terse-types/Triggers"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
 
@@ -10,6 +10,7 @@ import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
+import { type BillingService, billingServiceProxyForOrganization } from "../services/BillingService"
 import { extractErrorMessage } from "../utility/strings"
 
 import { resolveApprovalDecision, waitForApprovalDecision } from "./sdkApprovalGate"
@@ -47,6 +48,10 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
     try {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
+        const orgId = user.organizationId
+
+        const billingForRunner = billingServiceProxyForOrganization(orgId)
+
         const sdkRunner = createSdkRunner({
             runId,
             user,
@@ -56,9 +61,9 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             send,
             isProductionRun,
             options: data.options,
-            outputSchema: data.outputSchema
+            outputSchema: data.outputSchema,
+            billing: billingForRunner
         })
-
         send({ type: "run_started", runId })
 
         if (isProductionRun) {
@@ -85,6 +90,18 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
         finishSseStream(res, send, result, sdkRunner)
     } catch (error) {
+        if (error instanceof CreditGateDeniedError) {
+            send({ type: "error", message: error.message })
+            send({ type: "done" })
+            res.end()
+            return
+        }
+        if (error instanceof BillingError) {
+            send({ type: "error", message: "Billing temporarily unavailable. Please retry shortly." })
+            send({ type: "done" })
+            res.end()
+            return
+        }
         const message = extractErrorMessage(error)
         send({ type: "error", message })
         send({ type: "done" })
@@ -174,6 +191,7 @@ function createSdkRunner(params: {
     isProductionRun: boolean
     options?: { maxTurns?: number; requireApproval?: boolean }
     outputSchema?: Record<string, unknown>
+    billing: BillingService
 }): SdkAgentRunner {
     return new SdkAgentRunner({
         runId: params.runId,
@@ -185,6 +203,7 @@ function createSdkRunner(params: {
         requireApproval: params.options?.requireApproval ?? true,
         send: params.send,
         isProductionRun: params.isProductionRun,
-        outputSchema: params.outputSchema
+        outputSchema: params.outputSchema,
+        billing: params.billing
     })
 }

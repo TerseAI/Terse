@@ -11,15 +11,16 @@ import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRunFailedAndInvalidate } from "../../realtimeSocket"
+import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
-import { USER_CANCELLED_REASON } from "../../socketHandlers/activeExecution"
 import { AgentWithRelations, Agent as PrismaAgent, SDKAgent, isSDKAgent } from "../../types/prisma"
 import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getActiveDeployForProject } from "../../utility/projectHelper"
 import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
+import { CancelReason } from "../cancellation/RunCancellationTaskQueue"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 
@@ -373,16 +374,20 @@ export class EventProcessor {
             runId
         })
 
+        const billing = billingServiceProxyForOrganization(this.user.organizationId)
+
         // Create agent runner with the session and outputs
         const runContext: RunContext = { runId }
-        const agentRunner = new AgentRunner(session, outputs, agent, runContext)
+        const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
         agentRunner.setInputEvent(this.inputEvent)
         const cancellationController = new AbortController()
-        const cancellationSubscription = listenForRunCancellation(runId, cancellationController)
+        const cancellationSubscription = listenForRunCancellation(runId, this.user.organizationId, cancellationController)
 
         // Run the agent runner with streaming parameters
         let result: ApprovalResult<SessionWithTracking<Session>, OpenAIAgent<SessionWithTracking<Session>, AgentOutputType>>
         try {
+            await startBillingRun(billing, { organizationId: this.user.organizationId, runId })
+
             result = await agentRunner.run(
                 {
                     runId,
@@ -395,11 +400,12 @@ export class EventProcessor {
             )
         } catch (error) {
             const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
+            const reason = cancellationSubscription.getReason()
             cancellationSubscription.unsubscribe()
 
             if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
-                await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
-                return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
+                await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
+                return new ProcessorResult(false, reason, agent, undefined, runId)
             }
 
             const classified = classifyAgentError(error)
@@ -415,11 +421,12 @@ export class EventProcessor {
         }
 
         const wasCancelled = cancellationSubscription.isCancellationRequested()
+        const reason = cancellationSubscription.getReason()
         cancellationSubscription.unsubscribe()
 
         if (wasCancelled) {
-            await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id)
-            return new ProcessorResult(false, USER_CANCELLED_REASON, agent, undefined, runId)
+            await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
+            return new ProcessorResult(false, reason, agent, undefined, runId)
         }
 
         if (result.status === AgentRunResultStatus.COMPLETED) {
@@ -444,6 +451,9 @@ export class EventProcessor {
         }
 
         logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
+
+        const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId)
+        await startBillingRun(billingForRunner, { organizationId: this.user.organizationId, runId })
 
         // Fire-and-forget: sandbox runs asynchronously
         const service = new SdkJobExecutionService()

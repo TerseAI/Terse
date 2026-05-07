@@ -3,21 +3,13 @@ import { statsKey } from "terse-types/InvalidationKeys"
 import { StatsInterval, StatsResponse } from "terse-types/types"
 
 import { BackendProvider } from "@/services/backend"
+import { getUserTimezone } from "@/utility/timezone"
 
 export type UseStatsReturn = {
     stats: StatsResponse | null
     isLoading: boolean
     isError: Error | null
     mutate: KeyedMutator<StatsResponse>
-}
-
-// Get the user's timezone, with fallback to UTC
-function getUserTimezone(): string {
-    try {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone
-    } catch {
-        return "UTC"
-    }
 }
 
 export function useStats(interval?: StatsInterval) {

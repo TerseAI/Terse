@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Activity, BarChart3, Bell, BookOpen, ChevronRight, ExternalLink, Home, KeyRound, Plug, Zap } from "lucide-react"
+import { Activity, BarChart3, Bell, BookOpen, ChevronRight, CreditCard, ExternalLink, Home, KeyRound, Plug, Zap } from "lucide-react"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
@@ -25,6 +25,7 @@ import { useAgents } from "@/hooks/api/useAgents"
 import { useOrganizationProjects } from "@/hooks/api/useOrganizationProjects"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
 import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
+import { useAuth } from "@/services/auth"
 
 import { SdkJobsList } from "./SdkJobsList"
 import { AppSidebarFooter } from "./SidebarFooter"
@@ -146,10 +147,13 @@ function SettingsNavigation() {
     const { approvals } = usePendingApprovals({ status: "pending" })
     const pendingCount = approvals.length
     const showSdkInterface = useFeatureFlag(FeatureFlags.SDK_INTERFACE)
+    const { user } = useAuth()
+    const isAdmin = user?.roles.includes("admin")
 
     const settingsItems: NavItem[] = [
         { title: "Integrations", url: FrontendRoutes.INTEGRATIONS, icon: Plug, iconColor: "text-primary" },
         { title: "Notifications", url: FrontendRoutes.NOTIFICATIONS, icon: Bell, iconColor: "text-primary" },
+        ...(isAdmin ? [{ title: "Billing", url: FrontendRoutes.BILLING, icon: CreditCard, iconColor: "text-primary" }] : []),
         ...(showSdkInterface ? [{ title: "API Tokens", url: FrontendRoutes.API_TOKENS, icon: KeyRound, iconColor: "text-primary" }] : [])
     ]
 

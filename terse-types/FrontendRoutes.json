@@ -1,5 +1,6 @@
 {
     "APP": "/app",
+    "PRICING": "/app/pricing",
     "OAUTH": {
         "SUCCESS": "/oauth/success",
         "ERROR": "/oauth/error"
@@ -26,6 +27,7 @@
     "STATS": "/app/stats",
     "NOTIFICATIONS": "/app/notifications",
     "API_TOKENS": "/app/api-tokens",
+    "BILLING": "/app/billing",
     "PROFILE": "/app/profile",
     "USER_MANAGEMENT": "/app/profile?tab=users",
     "ORGANIZATIONS": {

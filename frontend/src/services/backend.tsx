@@ -1,6 +1,7 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
+import { BillingCatalogResponse, BillingChangeResponse, BillingContextQuery, BillingContextResponse, BillingPeriod, BillingStripeRedirectResponse, PlanKey } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -584,12 +585,21 @@ interface BackendService {
      * Gets the content of a file uploaded to an agent as a presigend URL
      */
     getAgentFileContent(agentId: string, fileId: string): Promise<AgentFileContentResponse>
+
+    getBillingContext(params: BillingContextQuery): Promise<BillingContextResponse>
+    getBillingCatalog(): Promise<BillingCatalogResponse>
+    createCheckoutForPlan(planKey: PlanKey, period: BillingPeriod): Promise<BillingStripeRedirectResponse>
+    createCheckoutForTopup(packCredits: number): Promise<BillingStripeRedirectResponse>
+    changeBillingSubscription(input: { kind: "cancel_to_free" } | { kind: "change_period"; planKey: PlanKey; period: BillingPeriod }): Promise<BillingChangeResponse>
+    createPortalSession(): Promise<BillingStripeRedirectResponse>
 }
 
 export const BackendProvider: BackendService = {
     getCurrentUser: () => {
         return axios
-            .get<User>(`${backendBaseUrl}${ApiRoutes.AUTH.ME}`, { withCredentials: true })
+            .get<User>(`${backendBaseUrl}${ApiRoutes.AUTH.ME}`, {
+                withCredentials: true
+            })
             .then(response => {
                 return response.data
             })
@@ -1210,5 +1220,16 @@ export const BackendProvider: BackendService = {
 
     getAgentFileContent: (agentId: string, fileId: string) => {
         return axios.get<AgentFileContentResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILE_CONTENT, { agentId, fileId })}`, { withCredentials: true }).then(response => response.data)
-    }
+    },
+    getBillingContext: (params: BillingContextQuery) =>
+        axios.get<BillingContextResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CONTEXT}`, { withCredentials: true, params }).then(response => response.data),
+    getBillingCatalog: () => axios.get<BillingCatalogResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CATALOG}`, { withCredentials: true }).then(response => response.data),
+    createCheckoutForPlan: (planKey: PlanKey, period: BillingPeriod) =>
+        axios
+            .post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CHECKOUT_SESSION}`, { kind: "plan", planKey, period }, { withCredentials: true })
+            .then(response => response.data),
+    createCheckoutForTopup: (packCredits: number) =>
+        axios.post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CHECKOUT_SESSION}`, { kind: "topup", packCredits }, { withCredentials: true }).then(response => response.data),
+    changeBillingSubscription: input => axios.post<BillingChangeResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CHANGE}`, input, { withCredentials: true }).then(response => response.data),
+    createPortalSession: () => axios.post<BillingStripeRedirectResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.PORTAL_SESSION}`, {}, { withCredentials: true }).then(response => response.data)
 }

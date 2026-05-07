@@ -1,6 +1,7 @@
 import { users as PrismaUser } from "@prisma/client"
-import { NextFunction, Request, Response } from "express"
-import { ApiRoutes } from "terse-types"
+import { Organization } from "@workos-inc/node"
+import { Request, Response } from "express"
+import { ApiRoutes, OrganizationMetadata, organizationMetadataSchema } from "terse-types"
 import { Role, User } from "terse-types/types"
 
 import { settings } from "../config/settings"
@@ -239,19 +240,6 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
     return res.json({ token: widgetToken })
 }
 
-export interface WorkOSAuthContext {
-    user: {
-        id: string
-        email: string
-        firstName: string | null
-        lastName: string | null
-        profilePictureUrl: string | null
-        metadata?: Record<string, string>
-    }
-    organizationId?: string | null
-    roles?: string[]
-}
-
 export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: User }> {
     const workosUser = authContext.user
 
@@ -328,6 +316,38 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     }
 
     return { user }
+}
+
+export async function setDefaultOrganizationMetadata(orgId: string, stripeCustomerId: string) {
+    const organization = await workos.organizations.updateOrganization({
+        organization: orgId,
+        metadata: {
+            stripeCustomerId: stripeCustomerId
+        }
+    })
+    return parseOrganizationMetadata(organization)
+}
+
+function parseOrganizationMetadata(organization: Organization): WorkOsOrganizationWithMetadata {
+    const parsed = organizationMetadataSchema.parse(organization.metadata)
+    return { ...organization, metadata: parsed }
+}
+
+export type WorkOsOrganizationWithMetadata = Omit<Organization, "metadata"> & {
+    metadata: OrganizationMetadata
+}
+
+export interface WorkOSAuthContext {
+    user: {
+        id: string
+        email: string
+        firstName: string | null
+        lastName: string | null
+        profilePictureUrl: string | null
+        metadata?: Record<string, string>
+    }
+    organizationId?: string | null
+    roles?: string[]
 }
 
 export default { me, login, loginUrl, logout, logoutUrl, getWorkOSWidgetToken, callback }
