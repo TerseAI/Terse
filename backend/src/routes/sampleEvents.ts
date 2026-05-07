@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import type { SdkSampleEventRef as SampleEventRef, SdkSampleEventsResponse, User } from "terse-types"
+import { IntegrationType, type SdkSampleEventRef as SampleEventRef, type SdkSampleEventsResponse, type User } from "terse-types"
 import { sdkSampleEventsRequestSchema, sdkSampleEventsResponseSchema } from "terse-types/types"
 
 import { fetchSampleEvents } from "../integrations/abstract/sampleEvents"
@@ -16,6 +16,7 @@ export async function handleSampleEvents(req: Request, res: Response) {
 
     const events: SampleEventRef[] = []
     const webhookEndpoints: NonNullable<SdkSampleEventsResponse["webhookEndpoints"]> = []
+    let webhookFetched = false
 
     for (const trigger of triggers) {
         const { triggerId, integrationId, integrationType, config } = trigger
@@ -23,6 +24,12 @@ export async function handleSampleEvents(req: Request, res: Response) {
         if (!integrationId || !integrationType) {
             logger.warn("[sample-events] Skipping trigger with missing fields", { trigger })
             continue
+        }
+
+        // Webhook samples are automation-scoped, not trigger-scoped — fetch once per request.
+        if (integrationType === IntegrationType.WEBHOOK) {
+            if (webhookFetched) continue
+            webhookFetched = true
         }
 
         try {

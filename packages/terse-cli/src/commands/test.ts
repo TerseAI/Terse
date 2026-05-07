@@ -292,9 +292,12 @@ function formatEventHint(candidate: SampleEventCandidate): string {
     if (candidate.kind === "stored") {
         const preview = previewPayload(candidate.event)
         if (preview) return truncate(preview, 120)
+        if (candidate.subtitle) return truncate(normalizeSingleLine(candidate.subtitle), 120)
+        return truncate(`${candidate.integrationType}/${candidate.eventType}`, 120)
     }
     if (candidate.subtitle) return truncate(normalizeSingleLine(candidate.subtitle), 120)
-    return candidate.kind === "ref" ? truncate(`${candidate.integrationType}/${candidate.eventType}`, 120) : "Synthetic sample event"
+    if (candidate.kind === "ref") return truncate(`${candidate.integrationType}/${candidate.eventType}`, 120)
+    return "Synthetic sample event"
 }
 
 function previewPayload(event: SerializedEvent): string | null {
