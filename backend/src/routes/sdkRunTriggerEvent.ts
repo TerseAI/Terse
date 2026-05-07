@@ -1,19 +1,10 @@
-import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
-import { SdkRunTriggerEventResponse, SerializedEvent, serializedEventSchema } from "terse-types"
+import { SdkRunTriggerEventResponse } from "terse-types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { extractErrorMessage } from "../utility/strings"
-
-function parseSerializedTriggerPayload(payload: Prisma.JsonValue | null): SerializedEvent | null {
-    if (payload === null) {
-        return null
-    }
-
-    const rawPayload = typeof payload === "string" ? JSON.parse(payload) : payload
-    return serializedEventSchema.parse(rawPayload)
-}
+import { parseSerializedTriggerPayload } from "../utility/triggerPayload"
 
 export async function handleSdkRunTriggerEvent(req: Request, res: Response) {
     const user = req.session?.user

@@ -914,6 +914,8 @@ export const workosWebhookSecretUpdateRequestSchema = z.object({
 export type WorkosWebhookSecretUpdateRequest = z.infer<typeof workosWebhookSecretUpdateRequestSchema>
 
 export const sdkSampleEventsRequestSchema = z.object({
+    projectId: z.string().optional(),
+    jobName: z.string().optional(),
     triggers: z
         .array(
             z.object({
@@ -937,13 +939,22 @@ export const identifiableSchema = z.object({
 export type Identifiable = z.infer<typeof identifiableSchema>
 
 export const sdkSampleEventRefSchema = z.object({
-    entity: identifiableSchema,
+    entity: identifiableSchema.optional(),
+    recordedAt: z.string().optional(),
     serializedEvent: serializedEventSchema
 })
 export type SdkSampleEventRef = z.infer<typeof sdkSampleEventRefSchema>
 
 export const sdkSampleEventsResponseSchema = z.object({
-    events: z.array(sdkSampleEventRefSchema)
+    events: z.array(sdkSampleEventRefSchema),
+    webhookEndpoints: z
+        .array(
+            z.object({
+                triggerId: z.string(),
+                webhookUrl: z.string()
+            })
+        )
+        .optional()
 })
 export type SdkSampleEventsResponse = z.infer<typeof sdkSampleEventsResponseSchema>
 
