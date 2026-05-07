@@ -2,9 +2,7 @@ import * as z from "zod"
 
 export const organizationMetadataSchema = z.object({
     stripeCustomerId: z.string(),
-    metronomeCustomerId: z.string(),
-    overageMode: z.enum(["soft", "strict"]),
-    overageCapMultiplier: z.string().transform(val => Number(val))
+    metronomeCustomerId: z.string()
 })
 
 export type OrganizationMetadata = z.infer<typeof organizationMetadataSchema>

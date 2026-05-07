@@ -26,17 +26,12 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
         return null
     }
 
-    const { consumedCredits, totalCreditCapacity, hardCap, overageMode } = balance
+    const { consumedCredits, totalCreditCapacity, hardCap } = balance
     const withinIncluded = consumedCredits <= totalCreditCapacity
     const capPct = Math.floor((consumedCredits / hardCap) * 100)
     const overHardCap = consumedCredits >= hardCap
 
     const fillClass = setFillClass(balance)
-
-    // Where should we show the tick?
-    const includedTickPct = setIncludedTickPct(balance)
-    // Should we show the tick?
-    const showIncludedTick = setShowIncludedTick(balance)
 
     // Text to show
     const creditsUsedTooltip = setCreditsUsedTooltip(balance, hardCap)
@@ -59,21 +54,6 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                     </TooltipTrigger>
                     <TooltipContent side="top">{creditsUsedTooltip}</TooltipContent>
                 </Tooltip>
-                {showIncludedTick && (
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div
-                                role="presentation"
-                                aria-label={`Soft limit: ${formatCredits(balance.totalCreditCapacity)} credits`}
-                                className="absolute inset-y-0 w-2 -translate-x-1/2 cursor-help"
-                                style={{ left: `${includedTickPct}%` }}
-                            >
-                                <div aria-hidden className="absolute inset-y-0 left-1/2 w-1 -translate-x-1/2 bg-foreground" />
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Soft limit: {formatCredits(balance.totalCreditCapacity)} credits</TooltipContent>
-                    </Tooltip>
-                )}
             </div>
 
             {withinIncluded && <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your hard limit</p>}
@@ -84,9 +64,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                         <p className="font-medium text-danger">
                             {plan?.key === PlanKey.FREE
                                 ? "You are past your included credits. To get your jobs running again, upgrade to a paid plan or purchase a credit pack."
-                                : overageMode === "soft"
-                                  ? "You are past your included credits. Purchase a credit pack to get your jobs running again."
-                                  : "You are past your included credits. Purchase a credit pack or enable soft overages to get your jobs running again."}
+                                : "You are past your included credits. Purchase a credit pack to get your jobs running again."}
                         </p>
                         <Button variant="default" size="sm" className="group h-8 gap-1" asChild>
                             <Link to={FrontendRoutes.PRICING}>
@@ -102,23 +80,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
 }
 
 function setFillClass(balance: BalanceSummary): string {
-    const overageMode = balance.overageMode
-
-    switch (overageMode) {
-        case "soft":
-            return balance.consumedCredits >= balance.hardCap ? "bg-danger" : balance.consumedCredits >= balance.totalCreditCapacity ? "bg-warning" : "bg-accent-secondary"
-        case "strict":
-            return balance.consumedCredits >= balance.totalCreditCapacity ? "bg-danger" : balance.consumedCredits >= 0.75 * balance.totalCreditCapacity ? "bg-warning" : "bg-accent-secondary"
-    }
-    return "bg-danger"
-}
-
-function setIncludedTickPct(balance: BalanceSummary): number {
-    return balance.overageMode === "soft" ? Math.floor((balance.totalCreditCapacity / balance.hardCap) * 100) : 0
-}
-
-function setShowIncludedTick(balance: BalanceSummary): boolean {
-    return balance.overageMode === "soft"
+    return balance.consumedCredits >= balance.totalCreditCapacity ? "bg-danger" : balance.consumedCredits >= 0.75 * balance.totalCreditCapacity ? "bg-warning" : "bg-accent-secondary"
 }
 
 function setCreditsUsedTooltip(balance: BalanceSummary, displayCapacity: number): string {

@@ -30,12 +30,6 @@ export const envIdSchema = z.object({
 })
 export type EnvId = z.infer<typeof envIdSchema>
 
-export const overageModeSchema = z.enum(["soft", "strict"])
-export type OverageMode = z.infer<typeof overageModeSchema>
-
-export const DEFAULT_OVERAGE_CAP_MULTIPLIER = 2
-export const DEFAULT_OVERAGE_MODE: OverageMode = "strict"
-
 export const billingScheduledChangeSchema = z.discriminatedUnion("kind", [
     z.object({
         kind: z.literal("cancel_to_free"),
@@ -58,7 +52,6 @@ export const balanceSummarySchema = z.object({
     totalCreditCapacity: z.number(),
     periodStart: z.coerce.date(),
     periodEnd: z.coerce.date(),
-    overageMode: overageModeSchema,
     hardCap: z.number(),
     canBuyTopups: z.boolean(),
     scheduledChange: billingScheduledChangeSchema.nullable()
@@ -167,11 +160,6 @@ export const billingChangePeriodBodySchema = z.object({
 export const billingChangeRequestBodySchema = z.discriminatedUnion("kind", [billingChangeCancelBodySchema, billingChangePeriodBodySchema])
 export type BillingChangeRequestBody = z.infer<typeof billingChangeRequestBodySchema>
 
-export const billingOverageModePatchBodySchema = z.object({
-    mode: overageModeSchema
-})
-export type BillingOverageModePatchBody = z.infer<typeof billingOverageModePatchBodySchema>
-
 export const billingPortalSessionRequestBodySchema = z.object({}).strict()
 export type BillingPortalSessionRequestBody = z.infer<typeof billingPortalSessionRequestBodySchema>
 
@@ -244,14 +232,9 @@ export const planSchema = z.object({
     name: z.string(),
     monthlyBasePriceId: envIdSchema.nullable(),
     annualBasePriceId: envIdSchema.nullable(),
-    overagePriceId: envIdSchema.nullable(),
     priceInUsdMonthly: z.number().nullable(),
     priceInUsdMonthlyAnnual: z.number().nullable(),
-    includedCreditsPerMonth: z.number(),
-    markupPct: z.number(),
-    overageCentsPerCredit: z.number(),
-    hardCapMultiplier: z.number(),
-    defaultOverageMode: overageModeSchema
+    includedCreditsPerMonth: z.number()
 })
 export type Plan = z.infer<typeof planSchema>
 

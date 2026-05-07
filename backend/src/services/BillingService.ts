@@ -11,7 +11,6 @@ import {
     BillingContextQuery,
     BillingContextResponse,
     BillingError,
-    BillingOverageModePatchBody,
     BillingPortalSessionRequestBody,
     BillingRecordLlmBody,
     BillingRecordLlmResponse,
@@ -19,13 +18,10 @@ import {
     BillingRunGateRequestBody,
     BillingStripeRedirectResponse,
     CreditGateDeniedError,
-    DEFAULT_OVERAGE_CAP_MULTIPLIER,
-    DEFAULT_OVERAGE_MODE,
     GetOrCreateCustomerRequestBody,
     GetOrCreateCustomerResponse,
     PlanKey,
     RunGateDecision,
-    SetOverageModeResponse,
     type TerseBillingJwtClaims,
     billingChargeRunBaseResponseSchema,
     billingRecordLlmResponseSchema,
@@ -104,14 +100,9 @@ export class BillingNoOpService implements BillingService {
                     name: "Free",
                     monthlyBasePriceId: null,
                     annualBasePriceId: null,
-                    overagePriceId: null,
                     priceInUsdMonthly: null,
                     priceInUsdMonthlyAnnual: null,
-                    includedCreditsPerMonth: 0,
-                    markupPct: 0,
-                    overageCentsPerCredit: 0,
-                    hardCapMultiplier: DEFAULT_OVERAGE_CAP_MULTIPLIER,
-                    defaultOverageMode: DEFAULT_OVERAGE_MODE
+                    includedCreditsPerMonth: 0
                 }
             ],
             topUps: []
@@ -131,7 +122,6 @@ export class BillingNoOpService implements BillingService {
                 totalCreditCapacity: 0,
                 periodStart: start,
                 periodEnd: end,
-                overageMode: DEFAULT_OVERAGE_MODE,
                 hardCap: 0,
                 canBuyTopups: false,
                 scheduledChange: null

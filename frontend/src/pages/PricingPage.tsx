@@ -244,14 +244,6 @@ export default function PricingPage() {
                                 </span>
                             </li>
                         )}
-                        {currentPlan?.overageCentsPerCredit ? (
-                            <li className="flex items-baseline gap-2">
-                                <span aria-hidden className="text-muted-foreground">
-                                    −
-                                </span>
-                                <span>Soft overage stops — runs pause when credits run out.</span>
-                            </li>
-                        ) : null}
                         <li className="flex items-baseline gap-2">
                             <span aria-hidden className="text-muted-foreground">
                                 −

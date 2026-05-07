@@ -1,7 +1,7 @@
 import { users as PrismaUser } from "@prisma/client"
 import { Organization } from "@workos-inc/node"
 import { Request, Response } from "express"
-import { ApiRoutes, DEFAULT_OVERAGE_CAP_MULTIPLIER, DEFAULT_OVERAGE_MODE, OrganizationMetadata, organizationMetadataSchema } from "terse-types"
+import { ApiRoutes, OrganizationMetadata, organizationMetadataSchema } from "terse-types"
 import { Role, User } from "terse-types/types"
 
 import { settings } from "../config/settings"
@@ -322,9 +322,7 @@ export async function setDefaultOrganizationMetadata(orgId: string, stripeCustom
     const organization = await workos.organizations.updateOrganization({
         organization: orgId,
         metadata: {
-            stripeCustomerId: stripeCustomerId,
-            overageMode: DEFAULT_OVERAGE_MODE,
-            overageCapMultiplier: DEFAULT_OVERAGE_CAP_MULTIPLIER.toString()
+            stripeCustomerId: stripeCustomerId
         }
     })
     return parseOrganizationMetadata(organization)
