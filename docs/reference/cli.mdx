@@ -453,3 +453,5 @@ Those values are **user** API tokens (the same kind you create in the Terse app)
 After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 
 Your runtime still needs `TERSE_API_KEY` in its environment. Set that variable anywhere your Node process runs, such as a local `.env` file, a container secret, or your hosting provider's secret store.
+
+Set **`TERSE_BACKEND_URL`** when the CLI or your workflow should call a Terse API other than the default. If you run that API from the open-source monorepo, optional billing integration for the server is documented with **`BILLING_ENABLED`**, **`BILLING_SERVICE_URL`**, and **`BILLING_JWT_SECRET`** in **`backend/.env.example`**.

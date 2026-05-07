@@ -44,6 +44,10 @@ npm install terse-sdk zod
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
+<Note>
+    If you run the Terse API from the [open-source monorepo](https://github.com/TerseAI/Terse), optional billing integration is configured on the server with **`BILLING_ENABLED`**, **`BILLING_SERVICE_URL`**, and **`BILLING_JWT_SECRET`**. Those variables are documented in **`backend/.env.example`** next to the other backend settings.
+</Note>
+
 ## Trigger payloads
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
