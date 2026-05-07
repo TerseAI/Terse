@@ -19,6 +19,21 @@ claude --plugin-dir ./packages/terse-claude-plugin
 
 ## Skills
 
+### `/terse:init [project-name]`
+
+Get set up on Terse from scratch. The skill:
+
+1. Checks whether `terse-cli` is installed and offers `npm i -g terse-cli` if not.
+2. Decides whether to scaffold into the current directory (when empty) or a named subdirectory, and redirects to `terse attach` if you're inside an existing npm project.
+3. Runs `terse init` and walks you through the WorkOS browser login. The CLI then creates a remote Terse project, installs dependencies, and runs `terse generate`.
+4. Hands off with the next likely step (connect more integrations, `/terse:create` your first job, or `terse deploy`).
+
+**Example:**
+
+```
+/terse:init my-automations
+```
+
 ### `/terse:create <job-description>`
 
 Create a new Terse SDK job. Describe what the job should do and the skill will:
