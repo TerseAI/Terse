@@ -6,6 +6,7 @@ import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { type BalanceSummary, FrontendRoutes, type Plan, isPurchasablePlan } from "terse-types"
 
+import { BillingDisabledState } from "@/components/billing/BillingDisabledState"
 import { CreditBalanceWidget } from "@/components/billing/CreditBalanceWidget"
 import { UsageChart } from "@/components/billing/UsageChart"
 import { Badge } from "@/components/ui/badge"
@@ -21,8 +22,9 @@ import { getUserTimezone } from "@/utility/timezone"
 export default function BillingPage() {
     const timezone = getUserTimezone()
     const usageRangeLabel = formatUsageRangeLabel(timezone)
-    const { balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
-    const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(true)
+    const { billingEnabled, balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
+    const catalogEnabled = billingEnabled !== false
+    const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(catalogEnabled)
 
     const loading = balanceLoading
 
@@ -55,6 +57,7 @@ export default function BillingPage() {
     const plan = planKey ? (plans.find(p => p.key === planKey) ?? null) : null
     const showPlanHeaderSkeleton = balanceLoading || (Boolean(balance) && catalogLoading)
     const showError = ((balanceError && !balance) || (catalogError && plans.length === 0)) && !balanceLoading
+    const billingDisabled = !balanceLoading && billingEnabled === false
     const scheduledChange = balance ? formatScheduledChange(balance) : null
 
     return (
@@ -65,13 +68,17 @@ export default function BillingPage() {
                         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Billing</h1>
                         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Track your credit usage, change plans, and manage payment details.</p>
                     </div>
-                    <Button variant="outline" onClick={manageBilling}>
-                        <CreditCard className="size-4" />
-                        Manage billing
-                    </Button>
+                    {!billingDisabled && (
+                        <Button variant="outline" onClick={manageBilling}>
+                            <CreditCard className="size-4" />
+                            Manage billing
+                        </Button>
+                    )}
                 </header>
 
-                {showError ? (
+                {billingDisabled ? (
+                    <BillingDisabledState />
+                ) : showError ? (
                     <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border bg-card p-6">
                         <div>
                             <p className="text-sm font-medium text-foreground">Couldn't load billing details.</p>
