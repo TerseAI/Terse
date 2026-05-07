@@ -13,8 +13,7 @@ export function BillingDisabledState() {
                 <div className="space-y-2">
                     <h2 className="text-lg font-semibold tracking-tight text-foreground">Billing is not enabled</h2>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                        Plans, credits, and payment management are not available on this deployment. If your organization expects billing here, ask an administrator to
-                        configure the billing service.
+                        Plans, credits, and payment management are not available on this deployment. If your organization expects billing here, ask an administrator to configure the billing service.
                     </p>
                 </div>
             </div>
