@@ -1,6 +1,6 @@
 {
     "name": "terse-cli",
-    "version": "0.1.42",
+    "version": "0.1.43",
     "type": "module",
     "bin": {
         "terse": "dist/index.js"
