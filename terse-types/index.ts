@@ -18,7 +18,6 @@ export * from "./Survey"
 export * from "./Tools"
 export * from "./Billing"
 export * from "./ModelRegistry"
-export * from "./OrganizationMetadata"
 export {
     Comment,
     CreateTicketInput,
