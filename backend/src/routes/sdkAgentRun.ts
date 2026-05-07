@@ -50,7 +50,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
         const orgId = user.organizationId
 
-        const billingForRunner = billingServiceProxyForOrganization(orgId)
+        const billingForRunner = billingServiceProxyForOrganization(orgId, user.id)
 
         const sdkRunner = createSdkRunner({
             runId,

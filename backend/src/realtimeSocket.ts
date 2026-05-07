@@ -294,7 +294,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
             let endedWithToolFailure = false
             let finalOutput: unknown = undefined
 
-            const billing = billingServiceProxyForOrganization(user.organizationId)
+            const billing = billingServiceProxyForOrganization(user.organizationId, user.id)
 
             try {
                 if (isSdkAgent) {

@@ -63,12 +63,13 @@ export function billingServiceProxyForRequest(req: Request): BillingService {
         throw new Error("Billing requires an authenticated session with organizationId")
     }
     return billingServiceForOrganizationAuth({
-        organizationId: user.organizationId
+        organizationId: user.organizationId,
+        userId: user.id
     })
 }
 
-export function billingServiceProxyForOrganization(organizationId: string): BillingService {
-    return billingServiceForOrganizationAuth({ organizationId })
+export function billingServiceProxyForOrganization(organizationId: string, userId: string): BillingService {
+    return billingServiceForOrganizationAuth({ organizationId, userId: userId })
 }
 
 function billingServiceForOrganizationAuth(auth: BillingProxyAuth): BillingService {

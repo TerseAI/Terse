@@ -261,7 +261,8 @@ export const BILLING_SERVICE_CALLBACK_JWT_ISSUER = "terse-billing" as const
 export const BILLING_SERVICE_CALLBACK_JWT_AUDIENCE = "terse-api" as const
 
 export const terseBillingJwtClaimsSchema = z.object({
-    organizationId: z.string().min(1)
+    organizationId: z.string().min(1),
+    userId: z.string().min(1)
 })
 export type TerseBillingJwtClaims = z.infer<typeof terseBillingJwtClaimsSchema>
 

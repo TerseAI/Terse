@@ -12,7 +12,7 @@ export async function billingHook<TSession extends SessionWithTracking<Session>>
     }
     const organizationId = args.context.user.organizationId
 
-    const shouldBlock = await isBillingOver(organizationId)
+    const shouldBlock = await isBillingOver(organizationId, args.context.user.id)
     if (shouldBlock) {
         throw new Error("Billing overage")
     }
@@ -24,7 +24,7 @@ export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking
     runInParallel: false,
     execute: async ({ context }) => {
         const organizationId = context.context.user.organizationId
-        const shouldBlock = await isBillingOver(organizationId)
+        const shouldBlock = await isBillingOver(organizationId, context.context.user.id)
         return {
             outputInfo: { reason: shouldBlock ? "Billing overage" : "OK" },
             tripwireTriggered: shouldBlock
@@ -32,8 +32,8 @@ export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking
     }
 }
 
-export async function isBillingOver(organizationId: string): Promise<boolean> {
-    const billing = billingServiceProxyForOrganization(organizationId)
+export async function isBillingOver(organizationId: string, userId: string): Promise<boolean> {
+    const billing = billingServiceProxyForOrganization(organizationId, userId)
     const gate = await billing.checkRunGate({ organizationId, breakCache: false })
     if (!gate.allow) {
         // Signal to all agents we are stopping.

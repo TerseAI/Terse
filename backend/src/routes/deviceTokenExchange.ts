@@ -70,7 +70,7 @@ export async function deviceTokenExchange(req: Request, res: Response) {
             organizationId = organization.id
             roles = ["admin"]
 
-            const billing = billingServiceProxyForOrganization(organizationId)
+            const billing = billingServiceProxyForOrganization(organizationId, workosUser.id)
             const { customerId } = await billing.getOrCreateCustomer()
             await setDefaultOrganizationMetadata(organizationId, customerId)
         } else {
