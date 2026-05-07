@@ -13,7 +13,6 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 import { SidebarProvider } from "./components/ui/sidebar"
 import { Toaster } from "./components/ui/sonner"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "./constants/storageKeys"
-import { useBillingContext } from "./hooks/api/useBillingContext"
 import ActivityPage from "./pages/Activity"
 import AgentDetail from "./pages/Agents/AgentDetail"
 import ApiTokensPage from "./pages/ApiTokens"
@@ -45,7 +44,7 @@ function App() {
                         <Route path={FrontendRoutes.APP} element={<Content />}>
                             <Route index element={<Navigate to="home" replace />} />
                             <Route path="home" element={<HomePage />} />
-                            <Route path="pricing" element={<BillingAvailabilityRoute element={<PricingPage />} />} />
+                            <Route path="pricing" element={<PricingPage />} />
                             <Route path="agents/new" element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
@@ -56,7 +55,9 @@ function App() {
                             <Route path="integrations" element={<IntegrationPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="api-tokens" element={<ApiTokensPage />} />
-                            <Route path="billing" element={<BillingAvailabilityRoute element={<AdminRoute element={<BillingPage />} />} />} />
+                            <Route element={<RequireAdminOutlet />}>
+                                <Route path="billing" element={<BillingPage />} />
+                            </Route>
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                         <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
@@ -143,7 +144,7 @@ function AppLayout() {
     )
 }
 
-function AdminRoute({ element }: { element: React.ReactElement }) {
+function RequireAdminOutlet() {
     const { user, isLoading } = useAuth()
 
     if (isLoading) {
@@ -154,23 +155,7 @@ function AdminRoute({ element }: { element: React.ReactElement }) {
         return <Navigate to={FrontendRoutes.HOME} replace />
     }
 
-    return element
-}
-
-function BillingAvailabilityRoute({ element }: { element: React.ReactElement }) {
-    const { user, isLoading: authLoading } = useAuth()
-    const isAdmin = user?.roles.includes("admin") ?? false
-    const { billingEnabled, isLoading: billingLoading } = useBillingContext(!authLoading && isAdmin && Boolean(user?.organizationId))
-
-    if (authLoading || (isAdmin && user?.organizationId && billingLoading)) {
-        return <AppBootScreen />
-    }
-
-    if (!isAdmin || !user?.organizationId || billingEnabled !== true) {
-        return <Navigate to={FrontendRoutes.HOME} replace />
-    }
-
-    return element
+    return <Outlet />
 }
 
 function NotFoundPage() {

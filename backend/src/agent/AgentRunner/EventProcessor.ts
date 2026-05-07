@@ -452,6 +452,9 @@ export class EventProcessor {
 
         logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
 
+        const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId)
+        await startBillingRun(billingForRunner, { organizationId: this.user.organizationId, runId })
+
         // Fire-and-forget: sandbox runs asynchronously
         const service = new SdkJobExecutionService()
         void service
