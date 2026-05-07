@@ -87,10 +87,11 @@ If you only have one workflow, the CLI selects it automatically. If you have mor
 **How it works:**
 
 1. Loads your local workflow registry from the entry file
-2. Fetches sample events from Terse for integration triggers such as GitHub, Slack, or Attio
-3. Synthesizes local sample events for cron and webhook triggers
-4. Prompts you to choose one sample event
-5. Executes the workflow locally
+2. Fetches sample events from Terse for integration triggers such as GitHub, Slack, or Attio, and **stored webhook payloads** when your workflow has already received HTTP traffic
+3. Synthesizes local sample events for **cron** triggers (and other cases without stored samples)
+4. If you use a **webhook** trigger but **no deliveries are stored yet**, prints a **`curl`** example against your webhook URL instead of opening an empty picker—run **`terse deploy`** first so the CLI can show the URL, send a test POST, then run **`terse test`** again
+5. Prompts you to choose one sample event
+6. Executes the workflow locally
 
 #### `terse test list [job-name]`
 
@@ -101,7 +102,7 @@ terse test list
 terse test list my-job --json
 ```
 
-Use this command when you want a stable handle for a sample event without opening the interactive picker. The id stays the same as long as the underlying trigger payload stays the same.
+Use this command when you want a stable handle for a sample event without opening the interactive picker. The id stays the same as long as the underlying trigger payload stays the same. With **`--json`**, the output includes **`webhookEndpoints`** (URLs you can POST to) when your workflow has a webhook trigger—useful for scripting alongside stored samples.
 
 **Options:**
 
@@ -171,6 +172,7 @@ terse deploy --entry-file src/server.ts
 - New workflows are created on the platform
 - Existing workflows are updated
 - Workflows removed from your code are removed from Terse
+- For each workflow that includes a **webhook** trigger, the CLI prints a **Webhook URL** line after deploy so you can wire up external systems without opening the app
 
 **Deployment modes:**
 
