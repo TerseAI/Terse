@@ -5,7 +5,7 @@ import type { DeviceTokenExchangeResponse } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
-import { type NonInteractiveOpts } from "../cliHelpers.js"
+import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 import { BACKEND_URL, WORKOS_CLIENT_ID } from "../config.js"
 import { openUrlInBrowser } from "../openBrowser.js"
@@ -132,11 +132,8 @@ export async function login(): Promise<{ apiKey: string; displayName: string | n
 }
 
 export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiKey: string; displayName: string | null } | null> {
-    const explicitNonInteractive = opts?.nonInteractive ?? false
-    const noTty = !process.stdin.isTTY || !process.stdout.isTTY
-
-    const skipPrompts = explicitNonInteractive || noTty
-    const canFallToDeviceLogin = !explicitNonInteractive
+    const skipPrompts = isNonInteractive(opts)
+    const canFallToDeviceLogin = !opts?.nonInteractive
 
     const stored = getStoredApiKey()
 
