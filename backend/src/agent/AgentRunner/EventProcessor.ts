@@ -405,7 +405,7 @@ export class EventProcessor {
 
             if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
                 await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
-                return new ProcessorResult(false, CancelReason.USER_CANCELLED, agent, undefined, runId)
+                return new ProcessorResult(false, reason, agent, undefined, runId)
             }
 
             const classified = classifyAgentError(error)
@@ -426,7 +426,7 @@ export class EventProcessor {
 
         if (wasCancelled) {
             await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
-            return new ProcessorResult(false, CancelReason.USER_CANCELLED, agent, undefined, runId)
+            return new ProcessorResult(false, reason, agent, undefined, runId)
         }
 
         if (result.status === AgentRunResultStatus.COMPLETED) {
