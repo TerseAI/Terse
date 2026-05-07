@@ -1,10 +1,11 @@
 import { cancel, intro, isCancel, log, outro, select } from "@clack/prompts"
 import chalk from "chalk"
+import { DateTime } from "luxon"
 import fs from "node:fs"
 import type { CreateJobParameters } from "terse-sdk"
 import { IntegrationType } from "terse-sdk"
 import { ApiRoutes, debugTrigger, displayTrigger, formatTriggerForAgent, serializedEventSchema } from "terse-types"
-import type { SdkSampleEventRef as SampleEventRef, SerializedEvent, Trigger } from "terse-types"
+import type { SdkSampleEventsResponse, SerializedEvent, Trigger } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
@@ -12,6 +13,7 @@ import { CliError } from "../cliError.js"
 import { isNonInteractive } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 import { loadJob } from "../loadJob.js"
+import { readProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
@@ -35,19 +37,24 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     const spinner = createSpinner()
     spinner.start("Fetching sample events")
     let candidates: SampleEventCandidate[] = []
+    let webhookEndpoints: SampleEventCandidatesResult["webhookEndpoints"] = []
     try {
-        candidates = await fetchSampleEventCandidatesForJob(job, apiKey)
+        const result = await fetchSampleEventCandidatesForJob(job, apiKey)
+        candidates = result.candidates
+        webhookEndpoints = result.webhookEndpoints
         spinner.stop(`Fetched ${candidates.length} sample event${candidates.length === 1 ? "" : "s"}`)
     } catch (err) {
         spinner.stop(err instanceof Error ? err.message : "Failed to fetch sample events.")
     }
 
     if (candidates.length === 0) {
-        const webhookHint = hasWebhookTrigger(job)
+        if (webhookEndpoints.length > 0) {
+            log.info(emptyWebhookCurlHint(job.name, webhookEndpoints))
+            outro("Done")
+            return
+        }
         throw new CliError("no_sample_events", "No sample events available.", {
-            detail: webhookHint
-                ? "Webhook triggers do not provide sample events yet. Use `--event` / `--event-file` with a concrete payload."
-                : "Make sure your triggers are configured and events have been received."
+            detail: "Make sure your triggers are configured and events have been received."
         })
     }
 
@@ -74,7 +81,7 @@ export async function testList(opts: TestListOpts = {}): Promise<void> {
     const { job } = await loadJob(provider, opts.jobName, opts.entryFile, { nonInteractive: true })
     const apiKey = readApiKeyOrBail()
 
-    const candidates = await fetchSampleEventCandidatesForJob(job, apiKey)
+    const { candidates, webhookEndpoints } = await fetchSampleEventCandidatesForJob(job, apiKey)
 
     if (opts.json) {
         const payload = {
@@ -87,15 +94,16 @@ export async function testList(opts: TestListOpts = {}): Promise<void> {
                 subtitle: candidate.subtitle,
                 entityType: candidate.kind === "ref" ? candidate.entityType : null,
                 entityId: candidate.kind === "ref" ? candidate.entityId : null
-            }))
+            })),
+            webhookEndpoints
         }
         process.stdout.write(JSON.stringify(payload, null, 2) + "\n")
         return
     }
 
     if (candidates.length === 0) {
-        if (hasWebhookTrigger(job)) {
-            process.stdout.write("No sample events available. Webhook triggers are not supported for test samples.\n")
+        if (webhookEndpoints.length > 0) {
+            process.stdout.write(emptyWebhookCurlHint(job.name, webhookEndpoints) + "\n")
         } else {
             process.stdout.write("No sample events available.\n")
         }
@@ -161,7 +169,7 @@ async function resolveEventById(provider: LanguageProvider, id: string, jobNameH
 
 async function resolveEventByIdForJob(job: CreateJobParameters, id: string): Promise<SerializedEvent> {
     const apiKey = readApiKeyOrBail()
-    const candidates = await fetchSampleEventCandidatesForJob(job, apiKey)
+    const { candidates } = await fetchSampleEventCandidatesForJob(job, apiKey)
     const match = candidates.find(candidate => candidate.id === id)
     if (match) return hydrateCandidateEvent(match, apiKey)
 
@@ -198,18 +206,22 @@ function parseEventJson(raw: string): SerializedEvent {
     }
 }
 
-export async function fetchSampleEventCandidatesForJob(job: CreateJobParameters, apiKey: string): Promise<SampleEventCandidate[]> {
+export async function fetchSampleEventCandidatesForJob(job: CreateJobParameters, apiKey: string): Promise<SampleEventCandidatesResult> {
     const timeTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.CRON_JOB)
-    const integrationTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB && t.integrationType !== IntegrationType.WEBHOOK)
+    const sampleEventTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB)
 
     const candidates: SampleEventCandidate[] = []
+    const webhookEndpoints: NonNullable<SdkSampleEventsResponse["webhookEndpoints"]> = []
 
-    if (integrationTriggers.length > 0) {
-        const result = await fetchWithAuth<{ events: SampleEventRef[] }>(
+    if (sampleEventTriggers.length > 0) {
+        const projectId = readProjectConfig()?.projectId
+        const result = await fetchWithAuth<SdkSampleEventsResponse>(
             ApiRoutes.SDK.SAMPLE_EVENTS,
             apiKey,
             {
-                triggers: integrationTriggers.map(trigger => ({
+                projectId,
+                jobName: job.name,
+                triggers: sampleEventTriggers.map(trigger => ({
                     triggerId: undefined,
                     integrationId: trigger.integrationId,
                     integrationType: trigger.integrationType,
@@ -218,18 +230,36 @@ export async function fetchSampleEventCandidatesForJob(job: CreateJobParameters,
             },
             "POST"
         )
-        candidates.push(
-            ...result.events.map(event => ({
-                id: encodeRefId(event.entity.entityType, event.entity.entityId),
-                kind: "ref" as const,
-                integrationType: event.serializedEvent.integrationType,
-                eventType: event.serializedEvent.eventType,
-                label: normalizeSingleLine(event.serializedEvent.display?.title || `${event.serializedEvent.integrationType} / ${event.serializedEvent.eventType}`),
-                subtitle: event.serializedEvent.display?.subtitle ?? null,
-                entityType: event.entity.entityType,
-                entityId: event.entity.entityId
-            }))
-        )
+        let storedIndex = 0
+        for (const event of result.events) {
+            if (event.entity) {
+                candidates.push({
+                    id: encodeRefId(event.entity.entityType, event.entity.entityId),
+                    kind: "ref",
+                    integrationType: event.serializedEvent.integrationType,
+                    eventType: event.serializedEvent.eventType,
+                    label: normalizeSingleLine(event.serializedEvent.display?.title || `${event.serializedEvent.integrationType} / ${event.serializedEvent.eventType}`),
+                    subtitle: event.serializedEvent.display?.subtitle ?? null,
+                    entityType: event.entity.entityType,
+                    entityId: event.entity.entityId
+                })
+            } else {
+                const time = event.recordedAt ? (DateTime.fromISO(event.recordedAt).toRelative() ?? null) : null
+                const method = event.serializedEvent.display?.subtitle ?? null
+                const labelParts = [event.serializedEvent.integrationType === IntegrationType.WEBHOOK ? "Webhook" : event.serializedEvent.integrationType, method, time].filter(Boolean) as string[]
+                candidates.push({
+                    id: `stored:${storedIndex++}`,
+                    kind: "stored",
+                    integrationType: event.serializedEvent.integrationType,
+                    eventType: event.serializedEvent.eventType,
+                    label: labelParts.join(" · "),
+                    subtitle: event.serializedEvent.display?.subtitle ?? null,
+                    recordedAt: event.recordedAt ?? null,
+                    event: event.serializedEvent
+                })
+            }
+        }
+        if (result.webhookEndpoints) webhookEndpoints.push(...result.webhookEndpoints)
     }
 
     for (const [index, trigger] of timeTriggers.entries()) {
@@ -251,7 +281,7 @@ export async function fetchSampleEventCandidatesForJob(job: CreateJobParameters,
         })
     }
 
-    return candidates
+    return { candidates, webhookEndpoints }
 }
 
 function formatEventLabel(event: SerializedEvent): string {
@@ -259,8 +289,26 @@ function formatEventLabel(event: SerializedEvent): string {
 }
 
 function formatEventHint(candidate: SampleEventCandidate): string {
+    if (candidate.kind === "stored") {
+        const preview = previewPayload(candidate.event)
+        if (preview) return truncate(preview, 120)
+        if (candidate.subtitle) return truncate(normalizeSingleLine(candidate.subtitle), 120)
+        return truncate(`${candidate.integrationType}/${candidate.eventType}`, 120)
+    }
     if (candidate.subtitle) return truncate(normalizeSingleLine(candidate.subtitle), 120)
-    return candidate.kind === "ref" ? truncate(`${candidate.integrationType}/${candidate.eventType}`, 120) : "Synthetic sample event"
+    if (candidate.kind === "ref") return truncate(`${candidate.integrationType}/${candidate.eventType}`, 120)
+    return "Synthetic sample event"
+}
+
+function previewPayload(event: SerializedEvent): string | null {
+    const data = event.data as Record<string, unknown> | undefined
+    const body = data && "body" in data ? data.body : data
+    if (body == null) return null
+    try {
+        return normalizeSingleLine(JSON.stringify(body))
+    } catch {
+        return null
+    }
 }
 
 function truncate(value: string, maxLength: number): string {
@@ -309,7 +357,7 @@ async function chooseSampleEvent(candidates: SampleEventCandidate[], apiKey: str
 }
 
 async function hydrateCandidateEvent(candidate: SampleEventCandidate, apiKey: string): Promise<SerializedEvent> {
-    if (candidate.kind === "synthetic") {
+    if (candidate.kind === "synthetic" || candidate.kind === "stored") {
         return candidate.event
     }
     const payload = await fetchWithAuth<{ event: SerializedEvent }>(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, apiKey, { entityType: candidate.entityType, entityId: candidate.entityId }, "POST")
@@ -321,8 +369,16 @@ function encodeRefId(entityType: string, entityId: string): string {
     return `ref:${token}`
 }
 
-function hasWebhookTrigger(job: CreateJobParameters): boolean {
-    return job.triggers.some(trigger => trigger.integrationType === IntegrationType.WEBHOOK)
+function emptyWebhookCurlHint(jobName: string, endpoints: NonNullable<SdkSampleEventsResponse["webhookEndpoints"]>): string {
+    const lines = [`No past webhook events for ${chalk.cyan(jobName)} yet. Trigger one with:`, ""]
+    for (const { webhookUrl } of endpoints) {
+        lines.push(`  curl -X POST ${chalk.cyan(webhookUrl)} \\`)
+        lines.push(`    -H 'Content-Type: application/json' \\`)
+        lines.push(`    -d '{ "your": "payload" }'`)
+        lines.push("")
+    }
+    lines.push(chalk.dim("After the first event lands, `terse test` will pick it up automatically."))
+    return lines.join("\n")
 }
 
 async function inspectSampleEvent(event: SerializedEvent): Promise<"back" | "run"> {
@@ -403,3 +459,18 @@ type SampleEventCandidate =
           subtitle: string | null
           event: SerializedEvent
       }
+    | {
+          id: string
+          kind: "stored"
+          integrationType: string
+          eventType: string
+          label: string
+          subtitle: string | null
+          recordedAt: string | null
+          event: SerializedEvent
+      }
+
+export type SampleEventCandidatesResult = {
+    candidates: SampleEventCandidate[]
+    webhookEndpoints: NonNullable<SdkSampleEventsResponse["webhookEndpoints"]>
+}

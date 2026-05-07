@@ -755,7 +755,7 @@ export async function deleteAgent(req: Request, res: Response) {
     }
 }
 
-function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { metadata?: { webhookUrl: string } } {
+export function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { metadata?: { webhookUrl: string } } {
     if (trigger.webhook_config) {
         return { metadata: { webhookUrl: buildWebhookUrl(trigger.webhook_config.webhook_token) } }
     }

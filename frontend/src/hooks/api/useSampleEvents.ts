@@ -45,23 +45,20 @@ export function useSampleEvents(triggers: AgentTrigger[], automationId?: string)
         }
     }, [integrationTriggers])
 
-    const triggerWithEvent = useCallback(
-        async (eventRef: SampleEventRef) => {
-            if (!automationId) return
-            setIsTriggering(true)
-            try {
-                const hydrated = await BackendProvider.hydrateSampleEvent(eventRef.entity.entityType, eventRef.entity.entityId)
-                await BackendProvider.triggerWithEvent(automationId, hydrated.event)
-                toast.success("Job triggered with selected event")
-                setIsDialogOpen(false)
-            } catch {
-                toast.error("Failed to trigger job")
-            } finally {
-                setIsTriggering(false)
-            }
-        },
-        [automationId]
-    )
+    const triggerWithEvent = async (eventRef: SampleEventRef) => {
+        if (!automationId) return
+        setIsTriggering(true)
+        try {
+            const event = eventRef.entity ? (await BackendProvider.hydrateSampleEvent(eventRef.entity.entityType, eventRef.entity.entityId)).event : eventRef.serializedEvent
+            await BackendProvider.triggerWithEvent(automationId, event)
+            toast.success("Job triggered with selected event")
+            setIsDialogOpen(false)
+        } catch {
+            toast.error("Failed to trigger job")
+        } finally {
+            setIsTriggering(false)
+        }
+    }
 
     const closeDialog = useCallback(() => setIsDialogOpen(false), [])
 

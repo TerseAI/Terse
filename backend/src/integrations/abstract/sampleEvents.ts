@@ -1,25 +1,39 @@
-import type { ConfigData } from "terse-types"
+import type { ConfigData, SdkSampleEventRef as SampleEventRef, SdkSampleEventsResponse } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import logger from "../../logger"
 import { validateUserOwnsIntegration } from "../../routes/agents"
+import { fetchWebhookSampleEvents } from "../../utility/webhookSampleEvents"
 
 import { INTEGRATION_REGISTRY } from "./IntegrationRegistry"
-import type { TriggerRuntime } from "./TriggerRuntime"
+
+export type FetchSampleEventsOptions = {
+    integrationId: string
+    integrationType: IntegrationType
+    triggerConfig: ConfigData
+    organizationId: string
+    userId: string
+    triggerId?: string
+    jobName?: string
+    projectId?: string
+    limit?: number
+}
 
 /**
- * Fetch sample events for a given integration trigger config.
- * Extracted from ChatAgentTools.ts so it can be reused by the SDK endpoint.
+ * Fetch sample events for a single trigger. Routes to the right integration manager,
+ * or to the webhook past-event store for webhook triggers (which have no manager).
  */
-export async function fetchSampleEvents(
-    integrationId: string,
-    integrationType: IntegrationType,
-    triggerConfig: ConfigData,
-    organizationId: string,
-    userId: string,
-    options?: { limit?: number; triggerId?: string }
-): Promise<TriggerRuntime[]> {
-    const limit = options?.limit ?? 5
+export async function fetchSampleEvents(opts: FetchSampleEventsOptions): Promise<SdkSampleEventsResponse> {
+    const { integrationType, integrationId, triggerConfig, organizationId, userId, triggerId, jobName, projectId } = opts
+    const limit = opts.limit ?? 5
+
+    if (integrationType === IntegrationType.WEBHOOK) {
+        if (!jobName || !projectId) {
+            logger.warn("[fetchSampleEvents] Webhook trigger requires jobName + projectId; skipping")
+            return { events: [] }
+        }
+        return fetchWebhookSampleEvents({ jobName, projectId, organizationId })
+    }
 
     const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
     if (!manager || !manager.getSampleEvents) {
@@ -32,11 +46,24 @@ export async function fetchSampleEvents(
         throw new Error(`Integration ${integrationType} not found or not in your organization`)
     }
 
-    const inputEvents = await manager.getSampleEvents(integrationId, organizationId, userId, triggerConfig, { limit, triggerId: options?.triggerId })
+    const inputEvents = await manager.getSampleEvents(integrationId, organizationId, userId, triggerConfig, { limit, triggerId })
     logger.info("[fetchSampleEvents] Fetched raw events from integration", {
         integrationType,
         count: inputEvents.length
     })
 
-    return inputEvents
+    const events: SampleEventRef[] = []
+    for (const evt of inputEvents) {
+        const identifiable = evt.getIdentifiableInfo()
+        if (!identifiable) {
+            logger.warn("[fetchSampleEvents] Skipping non-hydratable sample runtime", {
+                integrationType,
+                eventType: evt.eventType
+            })
+            continue
+        }
+        events.push({ entity: identifiable, serializedEvent: evt.getSerializedEvent() })
+    }
+
+    return { events }
 }

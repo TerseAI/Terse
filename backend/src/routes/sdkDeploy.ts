@@ -19,7 +19,7 @@ import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType
 import { UrlValidationError, validateRemoteServerUrl } from "../utility/urlValidation"
 import { generateWebhookSecret } from "../utility/webhookSecrets"
 
-import { createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
+import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "./agents"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -180,7 +180,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             results.push({
                 jobName: job.jobName,
                 automationId: agent.id,
-                isUpdate
+                isUpdate,
+                triggers: buildDeployResultTriggers(agent)
             })
 
             emitCacheInvalidationWithWildcard(organizationId, "agentFiles", agent.id)
@@ -428,4 +429,11 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
     emitCacheInvalidationWithKey(organizationId, "organization-projects")
 
     return stale.map(a => ({ id: a.id, name: a.name }))
+}
+
+function buildDeployResultTriggers(agent: AgentWithTriggerRelations): SdkDeployResponseBody["results"][number]["triggers"] {
+    return agent.inputs.map(trigger => ({
+        id: trigger.id,
+        ...buildTriggerMetadata(trigger)
+    }))
 }

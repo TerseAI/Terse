@@ -25,12 +25,14 @@
         "dotenv": "^17.4.2",
         "fflate": "^0.8.0",
         "handlebars": "^4.7.9",
+        "luxon": "^3.7.2",
         "ora": "^8.0.0",
         "terse-sdk": "workspace:*",
         "terse-types": "workspace:*",
         "tsx": "^4.0.0"
     },
     "devDependencies": {
+        "@types/luxon": "^3.7.1",
         "@types/node": "^22.0.0",
         "typescript": "^5.0.0"
     }
