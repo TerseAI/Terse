@@ -22,7 +22,6 @@ import {
     SidebarMenuSubItem
 } from "@/components/ui/sidebar"
 import { useAgents } from "@/hooks/api/useAgents"
-import { useBillingContext } from "@/hooks/api/useBillingContext"
 import { useOrganizationProjects } from "@/hooks/api/useOrganizationProjects"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
 import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
