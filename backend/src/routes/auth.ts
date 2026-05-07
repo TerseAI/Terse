@@ -1,8 +1,7 @@
 import { users as PrismaUser } from "@prisma/client"
 import { Organization } from "@workos-inc/node"
-import { User as WorkOSUser } from "@workos-inc/node"
 import { Request, Response } from "express"
-import { ApiRoutes, DEFAULT_OVERAGE_CAP_MULTIPLIER, DEFAULT_OVERAGE_MODE, OrganizationMetadata, OverageMode, organizationMetadataSchema } from "terse-types"
+import { ApiRoutes, DEFAULT_OVERAGE_CAP_MULTIPLIER, DEFAULT_OVERAGE_MODE, OrganizationMetadata, organizationMetadataSchema } from "terse-types"
 import { Role, User } from "terse-types/types"
 
 import { settings } from "../config/settings"
@@ -241,19 +240,6 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
     return res.json({ token: widgetToken })
 }
 
-export interface WorkOSAuthContext {
-    user: {
-        id: string
-        email: string
-        firstName: string | null
-        lastName: string | null
-        profilePictureUrl: string | null
-        metadata?: Record<string, string>
-    }
-    organizationId?: string | null
-    roles?: string[]
-}
-
 export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: User }> {
     const workosUser = authContext.user
 
@@ -332,31 +318,6 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     return { user }
 }
 
-export async function resolveWorkOSAdminUser(orgId: string): Promise<WorkOSUser> {
-    const memberships = await workos.userManagement.listOrganizationMemberships({
-        organizationId: orgId,
-        statuses: ["active"]
-    })
-    const adminUserMembership = memberships.data?.find(m => m.roles?.some(r => r.slug === "admin"))
-    if (!adminUserMembership) {
-        throw new Error("Admin user not found in organization")
-    }
-    return await workos.userManagement.getUser(adminUserMembership.userId)
-}
-
-export async function updateOrganizationMetadata(orgId: string, metadata: Partial<OrganizationMetadata>): Promise<WorkOsOrganizationWithMetadata> {
-    const currentOrg = await workos.organizations.getOrganization(orgId)
-    const currentMetadata = parseOrganizationMetadata(currentOrg).metadata
-    const newMetadata = { ...currentMetadata, ...metadata }
-    const updatedOrg = await workos.organizations.updateOrganization({
-        organization: orgId,
-        metadata: {
-            ...Object.fromEntries(Object.entries(newMetadata).map(([key, value]) => [key, value.toString()]))
-        }
-    })
-    return parseOrganizationMetadata(updatedOrg)
-}
-
 export async function setDefaultOrganizationMetadata(orgId: string, stripeCustomerId: string) {
     const organization = await workos.organizations.updateOrganization({
         organization: orgId,
@@ -369,15 +330,6 @@ export async function setDefaultOrganizationMetadata(orgId: string, stripeCustom
     return parseOrganizationMetadata(organization)
 }
 
-export async function getOrganization(orgId: string): Promise<Organization> {
-    return await workos.organizations.getOrganization(orgId)
-}
-
-export async function getOrganizationWithMetadata(organizationId: string): Promise<WorkOsOrganizationWithMetadata> {
-    const organization = await getOrganization(organizationId)
-    return parseOrganizationMetadata(organization)
-}
-
 function parseOrganizationMetadata(organization: Organization): WorkOsOrganizationWithMetadata {
     const parsed = organizationMetadataSchema.parse(organization.metadata)
     return { ...organization, metadata: parsed }
@@ -385,6 +337,19 @@ function parseOrganizationMetadata(organization: Organization): WorkOsOrganizati
 
 export type WorkOsOrganizationWithMetadata = Omit<Organization, "metadata"> & {
     metadata: OrganizationMetadata
+}
+
+export interface WorkOSAuthContext {
+    user: {
+        id: string
+        email: string
+        firstName: string | null
+        lastName: string | null
+        profilePictureUrl: string | null
+        metadata?: Record<string, string>
+    }
+    organizationId?: string | null
+    roles?: string[]
 }
 
 export default { me, login, loginUrl, logout, logoutUrl, getWorkOSWidgetToken, callback }
