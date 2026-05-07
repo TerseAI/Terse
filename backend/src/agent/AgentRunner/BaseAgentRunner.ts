@@ -4,7 +4,7 @@ import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
 import { ConfigData } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
-import { CompletedEventUsage, CreditGateDeniedError, ModelReference, StripeError } from "terse-types"
+import { BillingError, CompletedEventUsage, ModelReference } from "terse-types"
 
 import { settings } from "../../config/settings"
 import { Session as AppSession } from "../../express"
@@ -298,7 +298,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
                 usage
             })
         } catch (error) {
-            if (error instanceof StripeError) {
+            if (error instanceof BillingError) {
                 logger.error("BaseAgentRunner: billing provider error; failing run", { runId: settings.context.runId, error })
             } else {
                 logger.error("BaseAgentRunner: unexpected charge failure", { runId: settings.context.runId, error })

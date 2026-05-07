@@ -284,7 +284,7 @@ export type TerseBillingJwtClaims = z.infer<typeof terseBillingJwtClaimsSchema>
 
 export const BillingRoutes = billingRoutes
 
-export type BillingForbiddenErrorType = "CreditGateDeniedError" | "StripeError"
+export type BillingForbiddenErrorType = "CreditGateDeniedError" | "BillingError"
 
 export type BillingForbiddenErrorBody = {
     type: BillingForbiddenErrorType
@@ -300,31 +300,31 @@ export class CreditGateDeniedError extends Error {
     }
 }
 
-export class StripeError extends Error {
+export class BillingError extends Error {
     readonly reason?: string
     constructor(message?: string, reason?: string) {
         super(message ?? reason ?? "Billing provider error")
-        this.name = "StripeError"
+        this.name = "BillingError"
         this.reason = reason
     }
 }
 
-export function billingErrorFromForbiddenBody(body: unknown): CreditGateDeniedError | StripeError | null {
+export function billingErrorFromForbiddenBody(body: unknown): CreditGateDeniedError | BillingError | null {
     if (!body || typeof body !== "object") return null
     const o = body as Record<string, unknown>
     const t = o.type ?? o.errorType
     if (t === "CreditGateDeniedError") {
         return new CreditGateDeniedError(parseRunGateDenyReason(o.reason))
     }
-    if (t === "StripeError") {
+    if (t === "BillingError") {
         const reason = typeof o.reason === "string" ? o.reason : undefined
-        return new StripeError(reason, reason)
+        return new BillingError(reason, reason)
     }
     return null
 }
 /** Parse JSON body from a billing HTTP 403 response */
 
-export function parseBillingForbiddenJson(raw: string): CreditGateDeniedError | StripeError | null {
+export function parseBillingForbiddenJson(raw: string): CreditGateDeniedError | BillingError | null {
     try {
         return billingErrorFromForbiddenBody(JSON.parse(raw))
     } catch {

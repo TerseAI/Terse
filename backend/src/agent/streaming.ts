@@ -1,5 +1,5 @@
 import { Agent, RunStreamEvent, StreamedRunResult } from "@openai/agents"
-import { CreditGateDeniedError, StripeError } from "terse-types"
+import { BillingError, CreditGateDeniedError } from "terse-types"
 import { ChangedItem, type ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
@@ -33,7 +33,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
             try {
                 await onRawStreamEvent(event)
             } catch (error) {
-                if (error instanceof StripeError) throw error
+                if (error instanceof BillingError) throw error
                 if (error instanceof CreditGateDeniedError) throw error
                 logger.warn("Failed to persist raw stream event", {
                     error,

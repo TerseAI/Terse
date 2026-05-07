@@ -3,16 +3,10 @@ import { billingCacheInvalidationBodySchema } from "terse-types"
 
 import { emitBillingCachesInvalidated } from "../services/CacheInvalidationService"
 import { verifyBillingServiceCallbackJwt } from "../services/billingJwt"
-
-function bearerToken(req: Request): string | undefined {
-    const raw = req.headers.authorization
-    if (typeof raw !== "string") return undefined
-    const match = raw.trim().match(/^Bearer\s+(.+)$/i)
-    return match?.[1]?.trim()
-}
+import { readBearerToken } from "../utility/authDispatch"
 
 export async function invalidateBillingCachesFromService(req: Request, res: Response) {
-    const token = bearerToken(req)
+    const token = readBearerToken(req.headers.authorization)
     if (!token) {
         return res.status(401).json({ error: "Missing billing callback token" })
     }

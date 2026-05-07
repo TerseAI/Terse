@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { CreditGateDeniedError, StripeError } from "terse-types"
+import { BillingError, CreditGateDeniedError } from "terse-types"
 import { SkillConfigData } from "terse-types/Configs"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
@@ -99,7 +99,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             res.end()
             return
         }
-        if (error instanceof StripeError) {
+        if (error instanceof BillingError) {
             send({ type: "error", message: "Billing temporarily unavailable. Please retry shortly." })
             send({ type: "done" })
             res.end()

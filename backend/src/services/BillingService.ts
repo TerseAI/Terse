@@ -10,6 +10,7 @@ import {
     BillingCheckoutRequestBody,
     BillingContextQuery,
     BillingContextResponse,
+    BillingError,
     BillingOverageModePatchBody,
     BillingPortalSessionRequestBody,
     BillingRecordLlmBody,
@@ -25,7 +26,6 @@ import {
     PlanKey,
     RunGateDecision,
     SetOverageModeResponse,
-    StripeError,
     type TerseBillingJwtClaims,
     billingChargeRunBaseResponseSchema,
     billingRecordLlmResponseSchema,
@@ -229,7 +229,7 @@ export class BillingServiceProxy implements BillingService {
         try {
             return JSON.parse(text) as T
         } catch {
-            throw new StripeError("Billing service returned invalid JSON")
+            throw new BillingError("Billing service returned invalid JSON")
         }
     }
 
@@ -287,11 +287,11 @@ export class BillingServiceProxy implements BillingService {
             body: JSON.stringify(body)
         })
         if (raw === undefined) {
-            throw new StripeError("Billing service returned an empty charge-run-base response")
+            throw new BillingError("Billing service returned an empty charge-run-base response")
         }
         const parsed = billingChargeRunBaseResponseSchema.safeParse(raw)
         if (!parsed.success) {
-            throw new StripeError("Billing service returned an invalid charge-run-base response")
+            throw new BillingError("Billing service returned an invalid charge-run-base response")
         }
         return parsed.data
     }
@@ -302,11 +302,11 @@ export class BillingServiceProxy implements BillingService {
             body: JSON.stringify(body)
         })
         if (raw === undefined) {
-            throw new StripeError("Billing service returned an empty record-llm response")
+            throw new BillingError("Billing service returned an empty record-llm response")
         }
         const parsed = billingRecordLlmResponseSchema.safeParse(raw)
         if (!parsed.success) {
-            throw new StripeError("Billing service returned an invalid record-llm response")
+            throw new BillingError("Billing service returned an invalid record-llm response")
         }
         return parsed.data
     }
