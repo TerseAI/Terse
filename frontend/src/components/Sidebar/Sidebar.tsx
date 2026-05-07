@@ -149,8 +149,8 @@ function SettingsNavigation() {
     const pendingCount = approvals.length
     const showSdkInterface = useFeatureFlag(FeatureFlags.SDK_INTERFACE)
     const { user } = useAuth()
-    const isAdmin = user?.roles.includes("admin") ?? false
-    const { billingEnabled } = useBillingContext(Boolean(user?.organizationId))
+    const isAdmin = user?.roles.includes("admin")
+    const { billingEnabled } = useBillingContext()
 
     const settingsItems: NavItem[] = [
         { title: "Integrations", url: FrontendRoutes.INTEGRATIONS, icon: Plug, iconColor: "text-primary" },

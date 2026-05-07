@@ -21,7 +21,7 @@ import { getUserTimezone } from "@/utility/timezone"
 export default function BillingPage() {
     const timezone = getUserTimezone()
     const usageRangeLabel = formatUsageRangeLabel(timezone)
-    const { balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext(true, { timezone })
+    const { balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(true)
 
     const loading = balanceLoading

@@ -61,9 +61,8 @@ const getAnnualSavingsYearly = (plans: Plan[]) => {
 export default function PricingPage() {
     const navigate = useNavigate()
     const { user, isLoading: authLoading } = useAuth()
-    const balanceEnabled = !authLoading && !!user
-    const { balance, isLoading: balanceLoading } = useBillingContext(balanceEnabled)
-    const { plans, topUps, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(balanceEnabled)
+    const { balance, isLoading: balanceLoading } = useBillingContext()
+    const { plans, topUps, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog()
     const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null)
     const [loadingTopupCredits, setLoadingTopupCredits] = useState<number | null>(null)
     const [period, setPeriod] = useState<TimePeriods>(TimePeriods.YEARLY)
@@ -71,7 +70,7 @@ export default function PricingPage() {
 
     const currentPlanKey = balance?.planKey ?? null
     const currentPeriod = balance?.billingPeriod ?? null
-    const showPlanGridSkeleton = authLoading || catalogLoading || (balanceEnabled && balanceLoading)
+    const showPlanGridSkeleton = authLoading || catalogLoading || balanceLoading
 
     const annualSavingsYearly = getAnnualSavingsYearly(plans)
 

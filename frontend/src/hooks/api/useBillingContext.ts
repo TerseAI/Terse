@@ -5,10 +5,7 @@ import { billingContextKey } from "terse-types/InvalidationKeys"
 import { BackendProvider } from "@/services/backend"
 import { getUserTimezone } from "@/utility/timezone"
 
-export function useBillingContext(
-    enabled: boolean,
-    params?: Partial<BillingContextQuery>
-): {
+export function useBillingContext(params?: Partial<BillingContextQuery>): {
     billingEnabled: boolean | null
     balance: BalanceSummary | null
     buckets: UsageBucket[] | null
@@ -19,7 +16,7 @@ export function useBillingContext(
 } {
     const timezone = params?.timezone ?? getUserTimezone()
     const requestParams = { ...params, timezone }
-    const { data, error, isLoading, isValidating, mutate } = useSWR(enabled ? billingContextKey(requestParams) : null, () => BackendProvider.getBillingContext(requestParams))
+    const { data, error, isLoading, isValidating, mutate } = useSWR(billingContextKey(requestParams), () => BackendProvider.getBillingContext(requestParams))
 
     return {
         billingEnabled: data?.billingEnabled ?? null,
