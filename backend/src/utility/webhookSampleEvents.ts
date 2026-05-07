@@ -1,10 +1,10 @@
 import { Prisma, IntegrationType as PrismaIntegrationType } from "@prisma/client"
 import type { SdkSampleEventRef as SampleEventRef, SdkSampleEventsResponse } from "terse-types"
-import { serializedEventSchema } from "terse-types"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 
+import { parseSerializedTriggerPayload } from "./triggerPayload"
 import { buildWebhookUrl } from "./webhookUrl"
 
 const PAST_WEBHOOK_EVENTS_LIMIT = 5
@@ -53,15 +53,15 @@ export async function fetchWebhookSampleEvents(opts: { jobName: string; projectI
         select: { id: true, trigger_payload: true }
     })
 
-    const events: SampleEventRef[] = []
-    for (const record of records) {
-        const parsed = serializedEventSchema.safeParse(record.trigger_payload)
-        if (!parsed.success) {
-            logger.warn("[webhook-sample-events] Skipping run with malformed trigger_payload", { runId: record.id })
-            continue
+    const events: SampleEventRef[] = records.flatMap(record => {
+        try {
+            const event = parseSerializedTriggerPayload(record.trigger_payload)
+            return event ? [{ serializedEvent: event }] : []
+        } catch (err) {
+            logger.warn("[webhook-sample-events] Skipping run with malformed trigger_payload", { runId: record.id, err })
+            return []
         }
-        events.push({ serializedEvent: parsed.data })
-    }
+    })
 
     return { events, webhookEndpoints }
 }
