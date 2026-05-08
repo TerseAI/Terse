@@ -222,10 +222,6 @@ const chatStorageStrategy: RawEventStorageStrategy = {
     }
 }
 
-export type StreamEventIngestionSession = {
-    ingestStreamEvent(event: RunStreamEvent): Promise<void>
-}
-
 class BaseChatMemorySession implements Session {
     private readonly sessionId: string
     private readonly skipSave: boolean

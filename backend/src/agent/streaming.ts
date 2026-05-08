@@ -187,7 +187,7 @@ export function createCancelledEvent(reason?: string): ModelEvent {
 
 export type ToolCallCompleteHandler = (callId: string, toolName: string, actions?: RunHistoryAction[]) => Promise<ChangedItem[]>
 
-export type ToolCallCompleteData = {
+type ToolCallCompleteData = {
     id: string
     response_id: string
     name: string

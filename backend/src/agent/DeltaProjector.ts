@@ -1,4 +1,5 @@
 import type { ResponseStreamEvent, RunStreamEvent } from "@openai/agents"
+import { Decision } from "terse-types"
 
 type ModelStreamEvent = {
     type: string
@@ -61,7 +62,7 @@ export class AssistantDeltaProjector {
     private currentResponseId: string | undefined
     private readonly completedResponseIds = new Set<string>()
 
-    constructor(options?: { initialResponseId?: string; decision?: "approve" | "reject" }) {
+    constructor(options?: { initialResponseId?: string; decision?: Decision }) {
         this.currentResponseId = options?.initialResponseId
     }
 

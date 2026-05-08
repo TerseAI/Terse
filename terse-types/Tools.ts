@@ -41,8 +41,6 @@ export const linearIssueAssigneeSchema = z.object({
     email: z.string().optional()
 })
 
-export const linearIssueTeamSchema = linearTeamSchema
-
 export const linearIssueProjectSchema = z.object({
     id: z.string(),
     name: z.string()
@@ -62,7 +60,7 @@ export const linearIssueSummarySchema = z.object({
 })
 
 export const linearIssueDetailSchema = linearIssueSummarySchema.extend({
-    team: linearIssueTeamSchema.nullable(),
+    team: linearTeamSchema.nullable(),
     project: linearIssueProjectSchema.nullable(),
     dueDate: dateLikeSchema.optional(),
     estimate: z.number().nullable().optional()
@@ -271,8 +269,6 @@ export const notionReadablePropertyValueSchema = z.union([
     notionLooseObjectSchema
 ])
 
-export const notionPageParentSchema = notionLooseObjectSchema
-
 export const notionPageBlockSchema: z.ZodType<{
     id: string
     type: string
@@ -337,7 +333,7 @@ export const notionPageQueryMetadataSchema = z.object({
     archived: z.boolean().optional(),
     icon: notionLooseObjectSchema.nullable().optional(),
     cover: notionLooseObjectSchema.nullable().optional(),
-    parent: notionPageParentSchema.optional(),
+    parent: notionLooseObjectSchema.optional(),
     created_by: notionUserReferenceSchema.optional(),
     last_edited_by: notionUserReferenceSchema.optional(),
     in_trash: z.boolean().optional()

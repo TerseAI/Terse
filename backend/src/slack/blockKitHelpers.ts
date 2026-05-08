@@ -1,8 +1,8 @@
 import type { AppMentionEvent, Button, GenericMessageEvent, KnownBlock, ModalView } from "@slack/types"
 import { WebClient } from "@slack/web-api"
-import { SlackAttachment, SlackBlock, SlackBlocks, SlackFile, SlackFiles, SlackTrigger } from "terse-types"
+import { SlackAttachment, SlackBlock, SlackFile, SlackFiles, SlackTrigger } from "terse-types"
+import { ConfigurationFieldDefinition, FormFieldDefinition } from "terse-types"
 
-import { ConfigurationFieldDefinition, FormFieldDefinition } from "../integrations/abstract/Integration"
 import logger from "../logger"
 import { extractErrorMessage } from "../utility/strings"
 

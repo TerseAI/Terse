@@ -25,15 +25,15 @@ export const getWorkOSUserTool = defineSessionTool({
             const formattedUser = {
                 id: workosUser.id,
                 email: workosUser.email,
-                emailVerified: workosUser.email_verified,
-                firstName: workosUser.first_name,
-                lastName: workosUser.last_name,
-                profilePictureUrl: workosUser.profile_picture_url,
-                createdAt: workosUser.created_at,
-                updatedAt: workosUser.updated_at
+                emailVerified: workosUser.emailVerified,
+                firstName: workosUser.firstName,
+                lastName: workosUser.lastName,
+                profilePictureUrl: workosUser.profilePictureUrl,
+                createdAt: workosUser.createdAt,
+                updatedAt: workosUser.updatedAt
             }
 
-            const displayName = [workosUser.first_name, workosUser.last_name].filter(Boolean).join(" ") || workosUser.email
+            const displayName = [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || workosUser.email
 
             const action = {
                 action: "Fetched WorkOS user",

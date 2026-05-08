@@ -3,7 +3,7 @@ import { SdkListenForwardedEvent } from "terse-types"
 import { EventEmitterTaskQueue } from "../tasks/abstract/eventEmitterTasks"
 import { Task } from "../tasks/abstract/tasks"
 
-export interface ListenForwardedTask extends Task {
+interface ListenForwardedTask extends Task {
     event: SdkListenForwardedEvent
 }
 
