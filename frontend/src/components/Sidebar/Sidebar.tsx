@@ -236,7 +236,6 @@ function AgentListItem({ agent }: AgentListItemProps) {
     )
 }
 
-
 interface NavItem {
     title: string
     url: string

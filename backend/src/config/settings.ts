@@ -210,7 +210,7 @@ export const settings = {
 } as const
 
 // Export individual settings for convenience
-export const { jwt,    gemini, urls,  gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
+export const { jwt, gemini, urls, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
 
 // Type exports
 type Settings = typeof settings

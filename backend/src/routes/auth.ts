@@ -349,4 +349,3 @@ export interface WorkOSAuthContext {
     organizationId?: string | null
     roles?: string[]
 }
-

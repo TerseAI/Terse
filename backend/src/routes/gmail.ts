@@ -161,4 +161,3 @@ function extractWebhookData(req: Request): { emailAddress: string; historyId: nu
         return null
     }
 }
-
