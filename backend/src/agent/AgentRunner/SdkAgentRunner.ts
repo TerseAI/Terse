@@ -26,9 +26,9 @@ import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprov
 import { buildUserMessage } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
-import { buildOpenAiToolsFromOutputs } from "./buildOpenAiToolsFromOutputs"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { BaseSystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
+import { buildOpenAiToolsFromOutputs } from "./buildOpenAiToolsFromOutputs"
 import { clearPendingApprovalState as clearPendingApprovalStateDb, markRunInProgress as markRunInProgressDb, storePendingApprovalState } from "./runHistory"
 
 export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>> {

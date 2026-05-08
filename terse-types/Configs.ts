@@ -744,7 +744,10 @@ export type TimeTriggerConfigData = z.infer<typeof TimeTriggerConfigSchema>
 export type TimeTriggerConfigInstance = TimeTriggerConfigData & ConfigBehavior
 
 export class TimeTriggerConfig extends BaseConfigInstance<IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER, "system"> implements TimeTriggerConfigInstance {
-    constructor(public cronExpression: string, readOnly: boolean = false) {
+    constructor(
+        public cronExpression: string,
+        readOnly: boolean = false
+    ) {
         super("system", IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER, readOnly)
     }
 

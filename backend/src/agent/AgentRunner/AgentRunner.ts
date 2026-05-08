@@ -25,10 +25,10 @@ import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprov
 import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, SessionWithTracking } from "./BaseAgentRunner"
-import { buildOpenAiToolsFromOutputs } from "./buildOpenAiToolsFromOutputs"
 import { persistRunAction } from "./EventProcessor"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
+import { buildOpenAiToolsFromOutputs } from "./buildOpenAiToolsFromOutputs"
 import { buildRunTriggerContextMessage, formatAgentTriggersForAgent } from "./formatContext"
 import { clearPendingApprovalState, getPendingApprovalState, markRunInProgress, storePendingApprovalState } from "./runHistory"
 

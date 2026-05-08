@@ -16,7 +16,4 @@ export const integrationACLPolicy = {
     [IntegrationType.SNOWFLAKE]: "integration",
     [IntegrationType.WEBHOOK]: "none",
     [IntegrationType.WEBMONITOR]: "none"
-} as const satisfies Record<
-    IntegrationType,
-    "scoped" | "integration" | "capability" | "none"
->
+} as const satisfies Record<IntegrationType, "scoped" | "integration" | "capability" | "none">

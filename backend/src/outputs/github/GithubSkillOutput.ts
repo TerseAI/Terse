@@ -5,7 +5,7 @@ import { IntegrationType } from "terse-types"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolboxEntry, Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
+import { Output, RuntimeSystemInstructionsContext, defineToolboxEntry } from "../abstract/Output"
 
 import { validateGitHubRepositoriesACL, validateGitHubRepositoryACL } from "./acl"
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"

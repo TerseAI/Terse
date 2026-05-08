@@ -3,7 +3,7 @@ import { GmailDraftOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
+import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
 
 import { validateGmailDraftACL } from "./acl"
 import { gmailCreateDraftTool } from "./tools/createDraft"

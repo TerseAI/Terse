@@ -1,5 +1,3 @@
-
-
 import * as z from "zod"
 
 import { IntegrationType } from "./Integrations"
@@ -140,10 +138,7 @@ export type AttioACLRule = z.infer<typeof attioACLRuleSchema>
 export type WorkOSACLRule = z.infer<typeof workosACLRuleSchema>
 export type SnowflakeACLRule = z.infer<typeof snowflakeACLRuleSchema>
 
-export function hasACLRule(
-    rules: ACLRule[],
-    rule: Pick<ACLRule, "integrationType" | "integrationId" | "resourceType" | "resourceId">
-): boolean {
+export function hasACLRule(rules: ACLRule[], rule: Pick<ACLRule, "integrationType" | "integrationId" | "resourceType" | "resourceId">): boolean {
     return rules.some(
         candidate =>
             candidate.integrationType === rule.integrationType &&
@@ -153,14 +148,8 @@ export function hasACLRule(
     )
 }
 
-export function hasAnyACLRuleForIntegration(params: {
-    rules: ACLRule[]
-    integrationType: ACLRule["integrationType"]
-    integrationId: string
-}): boolean {
-    return params.rules.some(
-        rule => rule.integrationType === params.integrationType && rule.integrationId === params.integrationId
-    )
+export function hasAnyACLRuleForIntegration(params: { rules: ACLRule[]; integrationType: ACLRule["integrationType"]; integrationId: string }): boolean {
+    return params.rules.some(rule => rule.integrationType === params.integrationType && rule.integrationId === params.integrationId)
 }
 
 /**
@@ -170,12 +159,6 @@ export function hasAnyACLRuleForIntegration(params: {
  * They must not persist ACL state, mutate configs, or affect deterministic developer-authored
  * tool calls.
  */
-export function getACLRulesForIntegration(params: {
-    rules: ACLRule[]
-    integrationType: ACLRule["integrationType"]
-    integrationId: string
-}): ACLRule[] {
-    return params.rules.filter(
-        rule => rule.integrationType === params.integrationType && rule.integrationId === params.integrationId
-    )
+export function getACLRulesForIntegration(params: { rules: ACLRule[]; integrationType: ACLRule["integrationType"]; integrationId: string }): ACLRule[] {
+    return params.rules.filter(rule => rule.integrationType === params.integrationType && rule.integrationId === params.integrationId)
 }

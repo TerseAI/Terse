@@ -3,7 +3,7 @@ import { SnowflakeOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolboxEntry, Output } from "../abstract/Output"
+import { Output, defineToolboxEntry } from "../abstract/Output"
 
 import { validateSnowflakeIntegrationACL } from "./acl"
 import { snowflakeExecuteQueryTool } from "./tools/executeQuery"

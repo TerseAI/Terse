@@ -3,7 +3,7 @@ import { WebConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolboxEntry, Output } from "../abstract/Output"
+import { Output, defineToolboxEntry } from "../abstract/Output"
 
 import { validateWebCapabilityACL } from "./acl"
 import { webExtractTool } from "./tools/webExtractTool"

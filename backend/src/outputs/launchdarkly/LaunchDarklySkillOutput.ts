@@ -5,7 +5,7 @@ import { IntegrationType } from "terse-types"
 
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolboxEntry, Output } from "../abstract/Output"
+import { Output, defineToolboxEntry } from "../abstract/Output"
 
 import { validateLaunchDarklyGetFlagDetailsACL, validateLaunchDarklyListFlagsACL } from "./acl"
 import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"

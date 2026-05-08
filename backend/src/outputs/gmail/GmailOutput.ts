@@ -4,7 +4,7 @@ import { GmailOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
+import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
 
 import { validateGmailSendACL } from "./acl"
 import { gmailSendEmailTool } from "./tools/sendEmail"

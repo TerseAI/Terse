@@ -2,7 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 import { WorkOSOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { defineToolboxEntry, Output } from "../../outputs/abstract/Output"
+import { Output, defineToolboxEntry } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
 
 import { validateWorkOSIntegrationACL, validateWorkOSListUsersACL } from "./acl"

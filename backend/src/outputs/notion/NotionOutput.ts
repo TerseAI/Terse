@@ -5,7 +5,7 @@ import { IntegrationType } from "terse-types"
 
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
+import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
 
 import { validateNotionCreateOrUpdatePageACL, validateNotionDatabaseACL, validateNotionDatabaseRowACL, validateNotionIntegrationACL, validateNotionPageACL } from "./acl"
 import {
