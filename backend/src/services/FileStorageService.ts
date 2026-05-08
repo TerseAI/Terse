@@ -12,7 +12,7 @@ if (!gcp.serviceAccountBase64 || !gcp.projectId || !gcs.imageBucket) {
 
 export type BucketTarget = "image" | "code"
 
-export interface BucketConfig {
+interface BucketConfig {
     bucket: string
     prefix?: string
 }
@@ -89,7 +89,7 @@ const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 
 let storageClient: Storage | null = null
 
-export function classifyFile(mimeType?: string, filename?: string): FileCategory {
+function classifyFile(mimeType?: string, filename?: string): FileCategory {
     // Try MIME type first
     const category = classifyFileByMimeType(mimeType)
     if (category !== FileCategory.UNSUPPORTED) {
@@ -98,7 +98,7 @@ export function classifyFile(mimeType?: string, filename?: string): FileCategory
     return classifyFileByExtension(filename)
 }
 
-export function classifyFileByMimeType(mimeType?: string): FileCategory {
+function classifyFileByMimeType(mimeType?: string): FileCategory {
     if (mimeType) {
         const normalizedMime = mimeType.toLowerCase().split(";")[0].trim()
         if (MIME_TYPE_CATEGORIES[normalizedMime]) {
@@ -108,7 +108,7 @@ export function classifyFileByMimeType(mimeType?: string): FileCategory {
     return FileCategory.UNSUPPORTED
 }
 
-export function classifyFileByExtension(filename?: string): FileCategory {
+function classifyFileByExtension(filename?: string): FileCategory {
     if (filename) {
         const ext = filename.toLowerCase().match(/\.[^.]+$/)?.[0]
         if (ext && EXTENSION_CATEGORIES[ext]) {
@@ -263,7 +263,7 @@ export async function ensureStoredWithMetadata(primaryKey: string, download: Fil
 
 // Helper functions for generating primary keys
 
-export function md5Hash(input: string): string {
+function md5Hash(input: string): string {
     return crypto.createHash("md5").update(input, "utf8").digest("hex")
 }
 
@@ -273,7 +273,7 @@ export function md5Hash(input: string): string {
  * - https://storage.googleapis.com/<bucket>/<object>?...
  * - https://<bucket>.storage.googleapis.com/<object>?...
  */
-export function isInternalGcsBucketUrl(url: string): boolean {
+function isInternalGcsBucketUrl(url: string): boolean {
     let parsed: URL
     try {
         parsed = new URL(url)
@@ -333,7 +333,7 @@ export function buildImageEditKey(imageUrl: string, prompt: string): string {
 
 // SDK deploy helpers
 
-export function buildSdkDeployKey(zipBuffer: Buffer): string {
+function buildSdkDeployKey(zipBuffer: Buffer): string {
     const hash = crypto.createHash("sha256").update(zipBuffer).digest("hex")
     return `sdk-deploys/${hash}/code.zip`
 }
@@ -385,7 +385,7 @@ export async function downloadSdkDeployZip(gcsKey: string): Promise<Buffer | nul
 
 // Organization logo helpers
 
-export function buildOrgLogoKey(workosOrgId: string): string {
+function buildOrgLogoKey(workosOrgId: string): string {
     return `org-logos/${workosOrgId}`
 }
 

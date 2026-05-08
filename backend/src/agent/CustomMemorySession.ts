@@ -306,13 +306,13 @@ export class RunHistoryChatMemorySession extends BaseChatMemorySession {
  * Session implementation for general chat sessions (uses chat_raw_events table)
  * For chats not tied to run history records (e.g., Slack threads, direct chats)
  */
-export class ChatMemorySession extends BaseChatMemorySession {
+class ChatMemorySession extends BaseChatMemorySession {
     constructor(options: ChatMemorySessionOptions) {
         super(options, chatStorageStrategy)
     }
 }
 
-export function buildAgentInputItemEventKey(item: AgentInputItem): string {
+function buildAgentInputItemEventKey(item: AgentInputItem): string {
     const itemAny = item as any
     const itemType = typeof itemAny?.type === "string" ? itemAny.type : ""
     const itemId = typeof itemAny?.id === "string" ? itemAny.id.trim() : ""
@@ -453,7 +453,7 @@ function isUserMessage(item: AgentInputItem): boolean {
     return item.type === "message" && item.role === "user"
 }
 
-export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): AgentInputItem[] {
+function trimToLastTurns(items: AgentInputItem[], maxTurns: number): AgentInputItem[] {
     if (items.length === 0) return items
     maxTurns = Math.max(1, maxTurns)
 

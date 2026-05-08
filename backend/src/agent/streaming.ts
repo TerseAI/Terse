@@ -156,7 +156,7 @@ function createToolApprovalResponseEvent(data: ToolCallCompleteData, approvalDec
     }
 }
 
-export function createToolCallCompleteEvent(data: ToolCallCompleteData, changedItems: ChangedItem[]): ModelEvent {
+function createToolCallCompleteEvent(data: ToolCallCompleteData, changedItems: ChangedItem[]): ModelEvent {
     const integration = OutputFactory.getToolIntegrationType(data.name)
 
     const event: ModelEvent = {

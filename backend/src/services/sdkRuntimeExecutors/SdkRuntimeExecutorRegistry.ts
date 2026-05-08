@@ -6,11 +6,11 @@ import type { SdkRuntimeExecutor } from "./types"
 // instantiated and exported so the surrounding code (types, services,
 // migrations) keeps compiling, but it is excluded from runtime resolution
 // so deploys/runs targeting Python are rejected with a clear error.
-export const PYTHON_SDK_RUNTIME_ENABLED = false
+const PYTHON_SDK_RUNTIME_ENABLED = false
 
 const PYTHON_DISABLED_MESSAGE = "Python SDK support is currently disabled."
 
-export class SdkRuntimeExecutorRegistry {
+class SdkRuntimeExecutorRegistry {
     constructor(private readonly executors: readonly SdkRuntimeExecutor[]) {}
 
     resolve(entries: Set<string>): SdkRuntimeExecutor {

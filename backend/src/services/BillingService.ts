@@ -35,14 +35,14 @@ import { signTerseBillingJwt } from "./billingJwt"
 
 const BILLING_REQUEST_TIMEOUT_MS = 15_000
 
-export class BillingNoBackendError extends Error {
+class BillingNoBackendError extends Error {
     constructor() {
         super("Billing backend URL is not configured")
         this.name = "BillingNoBackendError"
     }
 }
 
-export type BillingProxyAuth = TerseBillingJwtClaims
+type BillingProxyAuth = TerseBillingJwtClaims
 
 export interface BillingService {
     createCheckoutSession(body: BillingCheckoutRequestBody): Promise<BillingStripeRedirectResponse>
@@ -81,7 +81,7 @@ function billingServiceForOrganizationAuth(auth: BillingProxyAuth): BillingServi
     return new BillingServiceProxy(url, auth)
 }
 
-export class BillingNoOpService implements BillingService {
+class BillingNoOpService implements BillingService {
     async createCheckoutSession(): Promise<BillingStripeRedirectResponse> {
         return { url: settings.urls.frontend }
     }

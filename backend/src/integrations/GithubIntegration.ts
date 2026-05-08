@@ -517,7 +517,7 @@ export function buildGithubTriggerMetadata(data: GithubTrigger): RunHistoryTrigg
 }
 
 // MARK: - Helper Functions - GITHUB REST API
-export async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubAppUser> {
+async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubAppUser> {
     const resp = await axios.get("https://api.github.com/user", {
         headers: {
             Authorization: `Bearer ${githubAppAccessToken}`,
@@ -532,7 +532,7 @@ export async function getGithubAppUser(githubAppAccessToken: string): Promise<Gi
     return resp.data
 }
 
-export async function exchangeCodeForAccessToken(
+async function exchangeCodeForAccessToken(
     code: string,
     redirectUri?: string
 ): Promise<{
@@ -632,7 +632,7 @@ export async function getAppInstallationRepositories(oAuthToken: string, install
 }
 
 // Given an installation, we need to fetch all users that are associated with that installation.
-export async function resolveUsersForGithubInstallation(installationId: number): Promise<PrismaUser[]> {
+async function resolveUsersForGithubInstallation(installationId: number): Promise<PrismaUser[]> {
     return db().$transaction(async tx => {
         const githubAppUsers = await tx.github_app_tokens.findMany()
         const installationResults = await Promise.all(

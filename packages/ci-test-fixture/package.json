@@ -6,9 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "terse-sdk": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "typescript": "^5.0.0"
   }

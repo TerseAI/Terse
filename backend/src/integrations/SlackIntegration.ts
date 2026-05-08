@@ -1598,7 +1598,7 @@ async function handleSlackReactionAdded(event: SimplifiedSlackEvent, teamId: str
     }
 }
 
-export function isValidSlackSig(req: Request) {
+function isValidSlackSig(req: Request) {
     const ts = req.headers["x-slack-request-timestamp"] as string
     const sig = req.headers["x-slack-signature"] as string
 
@@ -1677,7 +1677,7 @@ export async function validateSlackUserIds(accessToken: string, userIds: string[
     }
 }
 
-export async function downloadSlackFiles(files: SlackFiles, teamId: string, botToken: string): Promise<StoredFile[]> {
+async function downloadSlackFiles(files: SlackFiles, teamId: string, botToken: string): Promise<StoredFile[]> {
     try {
         const supportedFiles = filterSupportedSlackFiles(files)
         if (!supportedFiles || supportedFiles.length === 0) return []

@@ -43,7 +43,7 @@ const TOOL_OUTPUT_MODEL_BY_TOOL: Record<string, string> = {
     snowflakeExplainQuery: "SnowflakeExplainQueryToolOutput"
 }
 
-export interface PythonToolCtx {
+interface PythonToolCtx {
     name: string
     nameRepr: string
     methodName: string
@@ -51,14 +51,14 @@ export interface PythonToolCtx {
     approvable: boolean
 }
 
-export interface PythonAttioAttrCtx {
+interface PythonAttioAttrCtx {
     apiSlug: string
     recordType: string
     inputType: string
     filterType: string
 }
 
-export interface PythonAttioObjectCtx {
+interface PythonAttioObjectCtx {
     apiSlug: string
     apiSlugRepr: string
     singularNoun: string
@@ -80,7 +80,7 @@ export interface PythonAttioObjectCtx {
     staticDeclaration: string
 }
 
-export interface PythonAttioCtx {
+interface PythonAttioCtx {
     instanceIdRepr: string
     hasAttrs: boolean
     objects: PythonAttioObjectCtx[]
@@ -90,20 +90,20 @@ export interface PythonAttioCtx {
     skillObjectType: string
 }
 
-export interface PythonSnowflakeCtx {
+interface PythonSnowflakeCtx {
     instanceIdRepr: string
     tools: PythonToolCtx[]
     approvableTools: PythonToolCtx[]
     skillToolType: string
 }
 
-export interface PythonSlackChannelCtx {
+interface PythonSlackChannelCtx {
     staticName: string
     channelIdRepr: string
     nameRepr: string
 }
 
-export interface PythonSlackCtx {
+interface PythonSlackCtx {
     instanceIdRepr: string
     channels: PythonSlackChannelCtx[]
     tools: PythonToolCtx[]
@@ -111,12 +111,12 @@ export interface PythonSlackCtx {
     skillToolType: string
 }
 
-export interface PythonGitHubOwnerCtx {
+interface PythonGitHubOwnerCtx {
     staticName: string
     nameRepr: string
 }
 
-export interface PythonGitHubRepoCtx {
+interface PythonGitHubRepoCtx {
     staticName: string
     repositoryId: number
     nameRepr: string
@@ -124,41 +124,41 @@ export interface PythonGitHubRepoCtx {
     ownerStaticName: string
 }
 
-export interface PythonGitHubRepoGroupCtx {
+interface PythonGitHubRepoGroupCtx {
     ownerStaticName: string
     repos: PythonGitHubRepoCtx[]
 }
 
-export interface PythonGitHubCtx {
+interface PythonGitHubCtx {
     instanceIdRepr: string
     owners: PythonGitHubOwnerCtx[]
     repoGroups: PythonGitHubRepoGroupCtx[]
 }
 
-export interface PythonGmailCtx {
+interface PythonGmailCtx {
     instanceIdRepr: string
 }
 
-export interface PythonLinearTeamCtx {
+interface PythonLinearTeamCtx {
     staticName: string
     teamIdRepr: string
     nameRepr: string
     keyRepr: string
 }
 
-export interface PythonLinearProjectCtx {
+interface PythonLinearProjectCtx {
     staticName: string
     projectIdRepr: string
     nameRepr: string
 }
 
-export interface PythonLinearCtx {
+interface PythonLinearCtx {
     instanceIdRepr: string
     teams: PythonLinearTeamCtx[]
     projects: PythonLinearProjectCtx[]
 }
 
-export interface PythonWorkOSCtx {
+interface PythonWorkOSCtx {
     instanceIdRepr: string
 }
 

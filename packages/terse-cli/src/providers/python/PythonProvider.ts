@@ -40,7 +40,7 @@ type ApprovalState = {
     runId?: string
 }
 
-export class PythonProvider implements LanguageProvider {
+class PythonProvider implements LanguageProvider {
     readonly language = "python" as const
     readonly displayName = "Python"
     readonly detectionMarkers = {

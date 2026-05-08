@@ -52,7 +52,7 @@ export function resolveProvider(opts?: { command?: string; language?: string; cw
     })
 }
 
-export function resolveProviderByLanguage(language: string): LanguageProvider {
+function resolveProviderByLanguage(language: string): LanguageProvider {
     const normalized = LANGUAGE_ALIASES[language.toLowerCase()]
     if (!normalized) {
         throw new CliError("unsupported_init_language", `Unsupported init target "${language}". Use ts or typescript.`)

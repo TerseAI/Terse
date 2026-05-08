@@ -254,7 +254,7 @@ function isSchedulerJobNotFoundError(error: unknown): boolean {
     return typeof anyError.message === "string" && anyError.message.includes("NOT_FOUND")
 }
 
-export class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {
+class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {
     readonly integrationType = IntegrationType.CRON_JOB
     data: CronTrigger
 

@@ -32,7 +32,7 @@ export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking
     }
 }
 
-export async function isBillingOver(organizationId: string): Promise<boolean> {
+async function isBillingOver(organizationId: string): Promise<boolean> {
     const billing = billingServiceProxyForOrganization(organizationId)
     const gate = await billing.checkRunGate({ organizationId, breakCache: false })
     if (!gate.allow) {

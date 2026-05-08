@@ -7,7 +7,7 @@ import logger from "../logger"
  * Analytics events for tracking key user actions.
  * These map to PostHog events for product analytics.
  */
-export enum AnalyticsEvent {
+enum AnalyticsEvent {
     NEW_USER_ADDED = "new_user_added",
     AGENT_TRIGGERED = "agent_triggered",
     ACTION_TAKEN = "action_taken",

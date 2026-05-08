@@ -79,4 +79,4 @@ export class ModalSandboxService implements SandboxService {
     }
 }
 
-export type { Sandbox, SandboxApp, SandboxImage, SandboxService }
+export type { Sandbox,   SandboxService }

@@ -6,9 +6,9 @@ import { promisify } from "node:util"
 
 const execFileAsync = promisify(execFile)
 
-export const UV_INSTALL_DOCS_URL = "https://docs.astral.sh/uv/getting-started/installation/"
+const UV_INSTALL_DOCS_URL = "https://docs.astral.sh/uv/getting-started/installation/"
 
-export function shellEscape(value: string): string {
+function shellEscape(value: string): string {
     return `'${value.replace(/'/g, `'\\''`)}'`
 }
 

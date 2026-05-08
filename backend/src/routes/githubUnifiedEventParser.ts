@@ -67,7 +67,7 @@ const githubPullRequestUnifiedEventIngressSchema = githubUnifiedEventIngressBase
     pullRequest: pullRequestIngressSchema
 })
 
-export const githubUnifiedEventIngressSchema = z.discriminatedUnion("eventType", [githubPushUnifiedEventIngressSchema, githubPullRequestUnifiedEventIngressSchema])
+const githubUnifiedEventIngressSchema = z.discriminatedUnion("eventType", [githubPushUnifiedEventIngressSchema, githubPullRequestUnifiedEventIngressSchema])
 
 function toOptionalString(value: string | null | undefined): string | undefined {
     return value ?? undefined

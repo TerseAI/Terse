@@ -398,7 +398,7 @@ export class SecretManagerClient {
     }
 }
 
-export function createSecretManagerClient(): SecretManagerClient {
+function createSecretManagerClient(): SecretManagerClient {
     return new SecretManagerClient()
 }
 

@@ -30,12 +30,12 @@ function ensureDotenvLoaded(cwd: string = process.cwd()): void {
     dotenvLoadedFor = cwd
 }
 
-export function readEnvVar(name: string): string | null {
+function readEnvVar(name: string): string | null {
     ensureDotenvLoaded()
     return process.env[name] || null
 }
 
-export function readEnvVarFromDir(dir: string, name: string): string | null {
+function readEnvVarFromDir(dir: string, name: string): string | null {
     const envPath = path.resolve(dir, ".env")
     if (!fs.existsSync(envPath)) return null
     const parsed = dotenv.parse(fs.readFileSync(envPath))

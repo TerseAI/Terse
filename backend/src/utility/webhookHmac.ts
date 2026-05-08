@@ -7,7 +7,7 @@ export function generateChallengeToken(): string {
 }
 
 /** Compute an HMAC-SHA256 signature for an outbound request body. */
-export function computeRequestSignature(signingSecret: string, timestamp: number, body: string): string {
+function computeRequestSignature(signingSecret: string, timestamp: number, body: string): string {
     const baseString = `${TERSE_SIGNATURE_VERSION}:${timestamp}:${body}`
     const hmac = crypto.createHmac("sha256", signingSecret).update(baseString).digest("hex")
     return `${TERSE_SIGNATURE_VERSION}=${hmac}`
@@ -24,14 +24,14 @@ export function buildSignatureHeaders(signingSecret: string, body: string): Reco
 }
 
 /** Verify an incoming request signature using timing-safe comparison. */
-export function verifyRequestSignature(signingSecret: string, signature: string, timestamp: number, body: string): boolean {
+function verifyRequestSignature(signingSecret: string, signature: string, timestamp: number, body: string): boolean {
     const expected = computeRequestSignature(signingSecret, timestamp, body)
     if (signature.length !== expected.length) return false
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
 }
 
 /** Compute an HMAC-SHA256 of a challenge token (used in challenge-response identity proof). */
-export function computeChallengeSignature(signingSecret: string, challengeToken: string): string {
+function computeChallengeSignature(signingSecret: string, challengeToken: string): string {
     return crypto.createHmac("sha256", signingSecret).update(challengeToken).digest("hex")
 }
 

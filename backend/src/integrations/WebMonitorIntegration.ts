@@ -289,7 +289,7 @@ export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<u
     }
 }
 
-export interface WebMonitorWebhookPayload {
+interface WebMonitorWebhookPayload {
     inputId: string
     rawBody: string | Buffer
     parsedJson: ParallelMonitorDetectedWebhookPayload

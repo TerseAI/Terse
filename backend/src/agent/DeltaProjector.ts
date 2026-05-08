@@ -253,10 +253,10 @@ function normalizeResponseId(value: unknown): string | undefined {
 
 type MutableRecord = Record<string, any>
 
-export function readNonEmptyString(value: unknown): string | undefined {
+function readNonEmptyString(value: unknown): string | undefined {
     return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined
 }
 
-export function readNonEmptyText(value: unknown): string | undefined {
+function readNonEmptyText(value: unknown): string | undefined {
     return typeof value === "string" && value.length > 0 ? value : undefined
 }
