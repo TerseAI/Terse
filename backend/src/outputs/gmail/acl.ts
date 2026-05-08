@@ -1,8 +1,11 @@
 import { IntegrationType, hasACLRule } from "terse-types"
 
-import { ToolACLValidator } from "../abstract/Output"
+import { ToolACLValidator, configIsWritableForIntegration, denyToolACL } from "../abstract/Output"
 
-export const validateGmailSendACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
+export const validateGmailSendACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs }) => {
+    if (!configIsWritableForIntegration({ configs, integrationId: args.integrationId })) {
+        return denyToolACL(`Gmail ACL denied: integration ${args.integrationId} is read-only for this run.`)
+    }
     const allowed = hasACLRule(aclRules, {
         integrationType: IntegrationType.GMAIL,
         integrationId: args.integrationId,
@@ -12,13 +15,13 @@ export const validateGmailSendACL: ToolACLValidator<{ integrationId: string }> =
 
     return allowed
         ? { ok: true }
-        : {
-              ok: false,
-              message: `Gmail ACL denied: sending email is not configured for integration ${args.integrationId}.`
-          }
+        : denyToolACL(`Gmail ACL denied: sending email is not configured for integration ${args.integrationId}.`)
 }
 
-export const validateGmailDraftACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
+export const validateGmailDraftACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs }) => {
+    if (!configIsWritableForIntegration({ configs, integrationId: args.integrationId })) {
+        return denyToolACL(`Gmail ACL denied: integration ${args.integrationId} is read-only for this run.`)
+    }
     const allowed = hasACLRule(aclRules, {
         integrationType: IntegrationType.GMAIL,
         integrationId: args.integrationId,
@@ -28,8 +31,5 @@ export const validateGmailDraftACL: ToolACLValidator<{ integrationId: string }> 
 
     return allowed
         ? { ok: true }
-        : {
-              ok: false,
-              message: `Gmail ACL denied: creating drafts is not configured for integration ${args.integrationId}.`
-          }
+        : denyToolACL(`Gmail ACL denied: creating drafts is not configured for integration ${args.integrationId}.`)
 }

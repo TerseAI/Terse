@@ -24,7 +24,7 @@ import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../r
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
 
-import { AgentRunnerLoopResult, BaseAgentRunner, SessionWithTracking } from "./BaseAgentRunner"
+import { AgentInitializationParams, AgentRunnerLoopResult, BaseAgentRunner, SessionWithTracking } from "./BaseAgentRunner"
 import { persistRunAction } from "./EventProcessor"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
@@ -445,7 +445,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         }
     }
 
-    protected async getAgentInitializationParams() {
+    protected async getAgentInitializationParams(): Promise<AgentInitializationParams<SessionWithTracking<T>>> {
         const deps: SystemPromptBuilderDependencies<SessionWithTracking<T>, TConfig> = {
             session: this.getToolContext(),
             agent: this.agentConfig,
@@ -454,10 +454,10 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
 
         const configs = this.outputs.flatMap(output => output.configs ?? [])
         const aclRules = await buildRunACLRules(configs, { userId: this.session.user.id })
-        const tools = buildOpenAiToolsFromOutputs({
+        const tools = buildOpenAiToolsFromOutputs<SessionWithTracking<T>>({
             outputs: this.outputs as Output<ConfigData>[],
             aclRules
-        }) as Tool<SessionWithTracking<T>>[]
+        })
 
         return {
             name: "Automation Agent",

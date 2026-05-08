@@ -8,11 +8,18 @@ import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 
 import { SessionWithTracking } from "./BaseAgentRunner"
 
-export function buildOpenAiToolsFromOutputs(params: { outputs: Output<ConfigData>[]; aclRules: ACLRule[] }): Tool<SessionWithTracking<Session>>[] {
-    const toolsMap = new Map<string, Tool<SessionWithTracking<Session>>>()
+export function buildOpenAiToolsFromOutputs<TSession extends SessionWithTracking<Session>>(params: {
+    outputs: Output<ConfigData>[]
+    aclRules: ACLRule[]
+}): Tool<TSession>[] {
+    const allConfigs = params.outputs.flatMap(output => output.configs ?? [])
+    const toolsMap = new Map<string, Tool<TSession>>()
 
     for (const output of params.outputs) {
         const configs = output.configs ?? []
+        // This only hides write tools when every config for this output is read-only.
+        // Mixed read-only/read-write config groups still expose write tools for the writable configs.
+        // Write validators must reject calls targeting read-only integrationIds.
         const allowWriteTools = configs.length === 0 || configs.some(config => config.readOnly !== true)
 
         for (const entry of output.toolbox) {
@@ -28,6 +35,7 @@ export function buildOpenAiToolsFromOutputs(params: { outputs: Output<ConfigData
                     createToolACLGuardrail({
                         toolName,
                         aclRules: params.aclRules,
+                        configs: allConfigs,
                         validateACL: entry.validateACL
                     })
                 )
@@ -40,7 +48,7 @@ export function buildOpenAiToolsFromOutputs(params: { outputs: Output<ConfigData
                 errorFunction: formatError
             }
 
-            const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
+            const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, TSession>)
             toolsMap.set(toolEntry.name, toolEntry)
         }
     }

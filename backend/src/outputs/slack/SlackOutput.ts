@@ -5,9 +5,16 @@ import { IntegrationType } from "terse-types"
 
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
+import {
+    Output,
+    defineToolboxEntry,
+    formatConfigAccess,
+    mixedReadWriteToolInstructionParagraph,
+    outputHasMixedReadOnlyAndWritable,
+    outputIsReadOnly
+} from "../abstract/Output"
 
-import { validateSlackChannelACL, validateSlackIntegrationACL } from "./acl"
+import { validateSlackIntegrationACL, validateSlackReadChannelACL, validateSlackWriteChannelACL } from "./acl"
 import { slackListChannelsTool } from "./tools/listChannels"
 import { slackListUsersTool } from "./tools/listUsers"
 import { slackReadConversationTool } from "./tools/readConversation"
@@ -21,7 +28,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 isReadOnly: false,
                 integration: IntegrationType.SLACK,
                 displayName: "Send message",
-                validateACL: validateSlackChannelACL
+                validateACL: validateSlackWriteChannelACL
             }),
             defineToolboxEntry({
                 tool: slackListUsersTool,
@@ -42,7 +49,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
                 isReadOnly: true,
                 integration: IntegrationType.SLACK,
                 displayName: "Read conversation",
-                validateACL: validateSlackChannelACL
+                validateACL: validateSlackReadChannelACL
             })
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
@@ -83,19 +90,24 @@ export class SlackOutput extends Output<SlackOutputConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
+            const access = formatConfigAccess(config)
             const channelId = config.channelId
             const channelName = config.channelName
             const userIds = config.userIds ?? []
             const listensToUserDms = config.listenToUserDms === true
             if (channelId) {
-                configList.push(`  • Integration ID: ${config.integrationId} - Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`)
+                configList.push(
+                    `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`
+                )
             }
             if (listensToUserDms && userIds.length === 0) {
-                configList.push(`  • Integration ID: ${config.integrationId} - Direct messages: all users`)
+                configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Direct messages: all users`)
             } else if (listensToUserDms && userIds.length > 0) {
-                configList.push(`  • Integration ID: ${config.integrationId} - Direct messages (user filter): ${userIds.join(", ")}`)
+                configList.push(
+                    `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Direct messages (user filter): ${userIds.join(", ")}`
+                )
             } else if (userIds.length > 0) {
-                configList.push(`  • Integration ID: ${config.integrationId} - User IDs for DMs: ${userIds.join(", ")}`)
+                configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    DM user IDs: ${userIds.join(", ")}`)
             }
         }
 
@@ -108,6 +120,9 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         const sections: string[] = []
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
+        if (outputHasMixedReadOnlyAndWritable(configs)) {
+            sections.push(mixedReadWriteToolInstructionParagraph())
+        }
         if (readOnly) {
             sections.push("\nThis Slack integration is read-only for this run. You cannot send messages; only read conversations and list channels/users.")
             sections.push(

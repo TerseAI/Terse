@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry } from "../abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess } from "../abstract/Output"
 
 import { validateDatadogIntegrationACL, validateDatadogLogsACL } from "./acl"
 import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
@@ -76,8 +76,9 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
         sections.push("Available configurations:")
 
         for (const config of configs) {
+            const access = formatConfigAccess(config)
             const indexes = config.defaultIndexes || ["main"]
-            sections.push(`  • Integration ID: ${config.integrationId} - Default indexes: ${indexes.join(", ")}`)
+            sections.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Default indexes: ${indexes.join(", ")}`)
         }
 
         sections.push("\nWhen calling Datadog tools, include integrationId from a configured entry.")

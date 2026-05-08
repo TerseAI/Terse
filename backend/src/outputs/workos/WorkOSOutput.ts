@@ -2,7 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 import { WorkOSOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { Output, defineToolboxEntry } from "../../outputs/abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
 
 import { validateWorkOSIntegrationACL, validateWorkOSListUsersACL } from "./acl"
@@ -64,7 +64,8 @@ export class WorkOSOutput extends Output<WorkOSOutputConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
-            configList.push(`  • Integration ID: ${config.integrationId}`)
+            const access = formatConfigAccess(config)
+            configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))

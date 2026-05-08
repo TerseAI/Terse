@@ -1,11 +1,10 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { LaunchDarklyConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry } from "../abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess } from "../abstract/Output"
 
 import { validateLaunchDarklyGetFlagDetailsACL, validateLaunchDarklyListFlagsACL } from "./acl"
 import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
@@ -63,7 +62,10 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
         sections.push("Available configurations:")
 
         for (const config of configs) {
-            sections.push(`  • Integration ID: ${config.integrationId} - Project: ${config.projectKey}, Environments: ${(config.environmentKeys || []).join(", ")}`)
+            const access = formatConfigAccess(config)
+            sections.push(
+                `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Project: ${config.projectKey}, Environments: ${(config.environmentKeys || []).join(", ")}`
+            )
         }
 
         sections.push("\nWhen calling LaunchDarkly tools, include integrationId, projectKey, and environmentKeys from a configured entry.")

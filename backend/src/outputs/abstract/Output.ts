@@ -49,12 +49,42 @@ export abstract class Output<TConfig extends ConfigData> {
 
 export type ToolACLValidationResult = { ok: true } | { ok: false; message: string }
 
+export function denyToolACL(message: string): ToolACLValidationResult {
+    return { ok: false, message }
+}
+
 export type ToolACLValidator<TArgs = unknown> = (params: {
     args: TArgs
     aclRules: ACLRule[]
+    /** Flattened configs for all outputs on this run (write validators use `readOnly` + `integrationId`). */
+    configs: ConfigData[]
     /** Present when the guardrail runs inside an agent turn; optional so validators that only need args + rules stay simple. */
     runContext?: RunContext<SessionWithTracking<Session>>
 }) => Promise<ToolACLValidationResult> | ToolACLValidationResult
+
+export function formatConfigAccess(config: ConfigData): string {
+    return config.readOnly === true ? "read-only" : "read-write"
+}
+
+/** True when this `integrationId` has at least one non-read-only config on the run. */
+export function configIsWritableForIntegration(params: { configs: ConfigData[]; integrationId: string }): boolean {
+    return params.configs.some(config => config.integrationId === params.integrationId && config.readOnly !== true)
+}
+
+/** True when every config for this `integrationId` is explicitly read-only (and at least one config matches). */
+export function configIsReadOnlyForIntegration(params: { configs: ConfigData[]; integrationId: string }): boolean {
+    const matching = params.configs.filter(config => config.integrationId === params.integrationId)
+    return matching.length > 0 && matching.every(config => config.readOnly === true)
+}
+
+/** Some configs read-only and some read-write within the same output/run instructions context. */
+export function outputHasMixedReadOnlyAndWritable(configs: ConfigData[]): boolean {
+    return configs.some(config => config.readOnly === true) && configs.some(config => config.readOnly !== true)
+}
+
+export function mixedReadWriteToolInstructionParagraph(): string {
+    return "\nWrite tools may only be used with integration IDs marked read-write.\nDo not use write tools with integration IDs marked read-only."
+}
 
 export type ToolboxEntry<TName extends ToolName = ToolName> = {
     tool: TypedToolOptions<TName, SessionWithTracking<Session>>

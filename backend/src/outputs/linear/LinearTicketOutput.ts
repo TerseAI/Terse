@@ -1,13 +1,25 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { LinearOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
+import {
+    Output,
+    defineToolboxEntry,
+    formatConfigAccess,
+    mixedReadWriteToolInstructionParagraph,
+    outputHasMixedReadOnlyAndWritable,
+    outputIsReadOnly
+} from "../abstract/Output"
 
-import { validateLinearCreateTicketACL, validateLinearIntegrationACL, validateLinearTeamScopedACL, validateLinearUpdateTicketACL } from "./acl"
+import {
+    validateLinearAddCommentACL,
+    validateLinearCreateTicketACL,
+    validateLinearIntegrationACL,
+    validateLinearTeamScopedACL,
+    validateLinearUpdateTicketACL
+} from "./acl"
 import { linearAddCommentTool } from "./tools/addComment"
 import { linearCreateTicketTool } from "./tools/createTicket"
 import { linearGetLabelsTool } from "./tools/getLabels"
@@ -83,7 +95,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
                 isReadOnly: false,
                 integration: IntegrationType.LINEAR,
                 displayName: "Add comment",
-                validateACL: validateLinearIntegrationACL
+                validateACL: validateLinearAddCommentACL
             }),
             defineToolboxEntry({
                 tool: linearReadTicketTool,
@@ -132,13 +144,19 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
+            const access = formatConfigAccess(config)
             const teamId = config.teamId
             const teamName = config.teamName
             const projectId = config.projectId
-            configList.push(`  • Integration ID: ${config.integrationId} - Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project ID: ${projectId || "N/A"}`)
+            configList.push(
+                `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project ID: ${projectId || "N/A"}`
+            )
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
+        if (outputHasMixedReadOnlyAndWritable(configs)) {
+            sections.push(mixedReadWriteToolInstructionParagraph())
+        }
         sections.push("\nWhen calling Linear tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
 
         if (readOnly) {

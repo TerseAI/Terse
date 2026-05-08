@@ -25,7 +25,7 @@ import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage } from "../userMessage"
 
-import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
+import { AgentInitializationParams, AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { BaseSystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { buildOpenAiToolsFromOutputs } from "./buildOpenAiToolsFromOutputs"
@@ -282,7 +282,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return this.agent
     }
 
-    protected async getAgentInitializationParams() {
+    protected async getAgentInitializationParams(): Promise<AgentInitializationParams<SdkRunnerSession>> {
         const deps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData> = {
             session: this.getToolContext(),
             agent: {
@@ -296,10 +296,10 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
 
         const configs = this.outputs.flatMap(output => output.configs ?? [])
         const aclRules = await buildRunACLRules(configs, { userId: this.user.id })
-        const tools = buildOpenAiToolsFromOutputs({
+        const tools = buildOpenAiToolsFromOutputs<SdkRunnerSession>({
             outputs: this.outputs,
             aclRules
-        }) as Tool<SdkRunnerSession>[]
+        })
 
         return {
             name: "Terse SDK Agent",

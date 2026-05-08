@@ -3,7 +3,7 @@ import { SnowflakeOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry } from "../abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess } from "../abstract/Output"
 
 import { validateSnowflakeIntegrationACL } from "./acl"
 import { snowflakeExecuteQueryTool } from "./tools/executeQuery"
@@ -56,8 +56,8 @@ export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
         sections.push("Available configurations:")
 
         for (const config of configs) {
-            const parts = [`  • Integration ID: ${config.integrationId}`]
-            sections.push(parts.join(", "))
+            const access = formatConfigAccess(config)
+            sections.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}`)
         }
 
         sections.push("\nWhen calling Snowflake tools, include integrationId from a configured entry.")

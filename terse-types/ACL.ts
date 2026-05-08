@@ -138,8 +138,11 @@ export type AttioACLRule = z.infer<typeof attioACLRuleSchema>
 export type WorkOSACLRule = z.infer<typeof workosACLRuleSchema>
 export type SnowflakeACLRule = z.infer<typeof snowflakeACLRuleSchema>
 
-export function hasACLRule(rules: ACLRule[], rule: Pick<ACLRule, "integrationType" | "integrationId" | "resourceType" | "resourceId">): boolean {
-    return rules.some(
+export function findACLRule(
+    rules: ACLRule[],
+    rule: Pick<ACLRule, "integrationType" | "integrationId" | "resourceType" | "resourceId">
+): ACLRule | undefined {
+    return rules.find(
         candidate =>
             candidate.integrationType === rule.integrationType &&
             candidate.integrationId === rule.integrationId &&
@@ -148,16 +151,35 @@ export function hasACLRule(rules: ACLRule[], rule: Pick<ACLRule, "integrationTyp
     )
 }
 
+export function hasACLRule(
+    rules: ACLRule[],
+    rule: Pick<ACLRule, "integrationType" | "integrationId" | "resourceType" | "resourceId">
+): boolean {
+    return !!findACLRule(rules, rule)
+}
+
+export function getACLRulesForResourceType(params: {
+    rules: ACLRule[]
+    integrationType: ACLRule["integrationType"]
+    integrationId: string
+    resourceType: ACLRule["resourceType"]
+}): ACLRule[] {
+    return params.rules.filter(
+        rule =>
+            rule.integrationType === params.integrationType &&
+            rule.integrationId === params.integrationId &&
+            rule.resourceType === params.resourceType
+    )
+}
+
 export function hasAnyACLRuleForIntegration(params: { rules: ACLRule[]; integrationType: ACLRule["integrationType"]; integrationId: string }): boolean {
     return params.rules.some(rule => rule.integrationType === params.integrationType && rule.integrationId === params.integrationId)
 }
 
 /**
- * Phase 3: ACL validators are colocated with the output/tool definitions they protect.
- * Each validator receives the model-provided tool args and the flat per-run `ACLRule[]`.
- * Validators must only decide whether the model-selected tool call is in scope for this run.
- * They must not persist ACL state, mutate configs, or affect deterministic developer-authored
- * tool calls.
+ * ACL validators are colocated with the output/tool definitions they protect.
+ * Each validator receives model tool args, the flat per-run `ACLRule[]`, and run configs (`readOnly`, `integrationId`).
+ * Validators decide in-scope only; they must not persist ACL state, mutate configs, or affect deterministic developer-authored tool calls.
  */
 export function getACLRulesForIntegration(params: { rules: ACLRule[]; integrationType: ACLRule["integrationType"]; integrationId: string }): ACLRule[] {
     return params.rules.filter(rule => rule.integrationType === params.integrationType && rule.integrationId === params.integrationId)

@@ -1,10 +1,16 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { GmailOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
+import {
+    Output,
+    defineToolboxEntry,
+    formatConfigAccess,
+    mixedReadWriteToolInstructionParagraph,
+    outputHasMixedReadOnlyAndWritable,
+    outputIsReadOnly
+} from "../abstract/Output"
 
 import { validateGmailSendACL } from "./acl"
 import { gmailSendEmailTool } from "./tools/sendEmail"
@@ -47,10 +53,14 @@ export class GmailOutput extends Output<GmailOutputConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
-            configList.push(`  • Integration ID: ${config.integrationId}`)
+            const access = formatConfigAccess(config)
+            configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
+        if (outputHasMixedReadOnlyAndWritable(configs)) {
+            sections.push(mixedReadWriteToolInstructionParagraph())
+        }
         if (readOnly) {
             sections.push("\nThis Gmail integration is read-only for this run. Sending email is not available.")
         } else {

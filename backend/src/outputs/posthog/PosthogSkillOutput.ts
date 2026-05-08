@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry } from "../abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess } from "../abstract/Output"
 
 import { validatePostHogProjectACL } from "./acl"
 import { getSessionEventsTool } from "./tools/getSessionEvents"
@@ -76,7 +76,10 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         sections.push("Available configurations:")
 
         for (const config of configs) {
-            sections.push(`  • Integration ID: ${config.integrationId} - Project Name: ${config.projectName || "N/A"}, Project ID: ${config.projectId || "N/A"}`)
+            const access = formatConfigAccess(config)
+            sections.push(
+                `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Project Name: ${config.projectName || "N/A"}, Project ID: ${config.projectId || "N/A"}`
+            )
         }
 
         sections.push("\nWhen calling PostHog tools, include integrationId and projectId from a configured entry.")

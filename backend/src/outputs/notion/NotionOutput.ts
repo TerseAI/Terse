@@ -1,13 +1,26 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { NotionConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
+import {
+    Output,
+    defineToolboxEntry,
+    formatConfigAccess,
+    mixedReadWriteToolInstructionParagraph,
+    outputHasMixedReadOnlyAndWritable,
+    outputIsReadOnly
+} from "../abstract/Output"
 
-import { validateNotionCreateOrUpdatePageACL, validateNotionDatabaseACL, validateNotionDatabaseRowACL, validateNotionIntegrationACL, validateNotionPageACL } from "./acl"
+import {
+    validateNotionCreateOrUpdatePageACL,
+    validateNotionDatabaseACL,
+    validateNotionDatabaseRowACL,
+    validateNotionIntegrationACL,
+    validateNotionReadPageACL,
+    validateNotionWritePageACL
+} from "./acl"
 import {
     notionCreateOrUpdateDatabaseRowTool,
     notionCreateOrUpdatePageTool,
@@ -54,14 +67,14 @@ export class NotionOutput extends Output<NotionConfig> {
                 isReadOnly: true,
                 integration: IntegrationType.NOTION,
                 displayName: "Query page",
-                validateACL: validateNotionPageACL
+                validateACL: validateNotionReadPageACL
             }),
             defineToolboxEntry({
                 tool: notionModifyBlocksTool,
                 isReadOnly: false,
                 integration: IntegrationType.NOTION,
                 displayName: "Modify blocks",
-                validateACL: validateNotionPageACL
+                validateACL: validateNotionWritePageACL
             }),
             defineToolboxEntry({
                 tool: notionListUsersTool,
@@ -113,21 +126,25 @@ export class NotionOutput extends Output<NotionConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
+            const access = formatConfigAccess(config)
             const dbIds = config.databaseIds ?? []
             const dbNames = config.databaseNames ?? []
             const pageIds = config.pageIds ?? []
             const pageNames = config.pageNames ?? []
-            const parts: string[] = [`Integration ID: ${config.integrationId}`]
+            const lines: string[] = [`  • Integration ID: ${config.integrationId}`, `    Access: ${access}`]
             if (dbIds.length > 0) {
-                parts.push(`Allowed databases: ${dbIds.map((id, i) => `${dbNames[i] || id} (${id})`).join("; ")}`)
+                lines.push(`    Databases: ${dbIds.map((id, i) => `${dbNames[i] || id} (${id})`).join("; ")}`)
             }
             if (pageIds.length > 0) {
-                parts.push(`Allowed pages: ${pageIds.map((id, i) => `${pageNames[i] || id} (${id})`).join("; ")}`)
+                lines.push(`    Pages: ${pageIds.map((id, i) => `${pageNames[i] || id} (${id})`).join("; ")}`)
             }
-            configList.push(`  • ${parts.join(" | ")}`)
+            configList.push(lines.join("\n"))
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
+        if (outputHasMixedReadOnlyAndWritable(configs)) {
+            sections.push(mixedReadWriteToolInstructionParagraph())
+        }
 
         if (readOnly) {
             sections.push(`

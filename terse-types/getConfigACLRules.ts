@@ -4,12 +4,10 @@
  * ACL and `readOnly` apply only to model-selected tool calls during agent runs; see `ACL.ts`
  * for the full product contract.
  */
-
 import type {
     ACLRule,
     AttioACLRule,
     DatadogACLRule,
-    GitHubACLRule,
     GmailACLRule,
     ImageEditACLRule,
     LaunchDarklyACLRule,
@@ -25,8 +23,6 @@ import type {
     AttioOutputConfigData,
     ConfigData,
     DatadogConfigData,
-    GitHubConfigData,
-    GitHubSkillConfigData,
     GmailDraftOutputConfigData,
     GmailOutputConfigData,
     ImageEditConfigData,
@@ -49,31 +45,33 @@ function assertNever(value: never): never {
     throw new Error(`Unhandled config type: ${JSON.stringify(value)}`)
 }
 
-function isGitHubSkillConfig(
-    config: GitHubConfigData | GitHubSkillConfigData
-): config is GitHubSkillConfigData {
-    return !("eventTypes" in config)
+function aclRule<T extends ACLRule>(rule: T): T {
+    return rule
 }
 
 function getSlackOutputConfigACLRules(config: SlackOutputConfigData): SlackACLRule[] {
     const rules: SlackACLRule[] = []
 
     if (config.channelId) {
-        rules.push({
-            integrationType: IntegrationType.SLACK,
-            integrationId: config.integrationId,
-            resourceType: "channel",
-            resourceId: config.channelId
-        })
+        rules.push(
+            aclRule<SlackACLRule>({
+                integrationType: IntegrationType.SLACK,
+                integrationId: config.integrationId,
+                resourceType: "channel",
+                resourceId: config.channelId
+            })
+        )
     }
 
     for (const userId of config.userIds ?? []) {
-        rules.push({
-            integrationType: IntegrationType.SLACK,
-            integrationId: config.integrationId,
-            resourceType: "dm_user",
-            resourceId: userId
-        })
+        rules.push(
+            aclRule<SlackACLRule>({
+                integrationType: IntegrationType.SLACK,
+                integrationId: config.integrationId,
+                resourceType: "dm_user",
+                resourceId: userId
+            })
+        )
     }
 
     return rules
@@ -83,21 +81,25 @@ function getSlackInputConfigACLRules(config: SlackConfigData): SlackACLRule[] {
     const rules: SlackACLRule[] = []
 
     if (config.channelId) {
-        rules.push({
-            integrationType: IntegrationType.SLACK,
-            integrationId: config.integrationId,
-            resourceType: "channel",
-            resourceId: config.channelId
-        })
+        rules.push(
+            aclRule<SlackACLRule>({
+                integrationType: IntegrationType.SLACK,
+                integrationId: config.integrationId,
+                resourceType: "channel",
+                resourceId: config.channelId
+            })
+        )
     }
 
     for (const userId of config.userIds ?? []) {
-        rules.push({
-            integrationType: IntegrationType.SLACK,
-            integrationId: config.integrationId,
-            resourceType: "dm_user",
-            resourceId: userId
-        })
+        rules.push(
+            aclRule<SlackACLRule>({
+                integrationType: IntegrationType.SLACK,
+                integrationId: config.integrationId,
+                resourceType: "dm_user",
+                resourceId: userId
+            })
+        )
     }
 
     return rules
@@ -122,20 +124,6 @@ function getNotionConfigACLRules(config: NotionConfigData): NotionACLRule[] {
             })
         )
     ]
-}
-
-/**
- * GitHub configs store repository IDs, while model tools use owner/repo names.
- * Pure terse-types derivation cannot hydrate IDs to names.
- * Backend runtime hydration will add GitHub repository ACL rules in a later phase.
- */
-function getGitHubSkillConfigACLRules(_config: GitHubSkillConfigData): GitHubACLRule[] {
-    return []
-}
-
-/** @see getGitHubSkillConfigACLRules */
-function getGitHubTriggerConfigACLRules(_config: GitHubConfigData): GitHubACLRule[] {
-    return []
 }
 
 function getGmailOutputConfigACLRules(config: GmailOutputConfigData): GmailACLRule[] {
@@ -283,7 +271,7 @@ function getLaunchDarklyConfigACLRules(config: LaunchDarklyConfigData): LaunchDa
             integrationType: IntegrationType.LAUNCHDARKLY,
             integrationId: config.integrationId,
             resourceType: "environment",
-            resourceId: envKey
+            resourceId: `${config.projectKey}:${envKey}`
         })
     }
     return rules
@@ -344,7 +332,11 @@ function getSnowflakeOutputConfigACLRules(config: SnowflakeOutputConfigData): Sn
 
 export function getConfigACLRules(config: ConfigData): ACLRule[] {
     switch (config.configType) {
+        // Input/trigger-only configs do not grant model-selected output tool ACL.
         case ConfigType.GMAIL:
+        case ConfigType.TIME_TRIGGER:
+        case ConfigType.WEBHOOK_INPUT:
+        case ConfigType.WEBMONITOR:
             return []
         case ConfigType.SLACK:
             return getSlackInputConfigACLRules(config)
@@ -357,7 +349,8 @@ export function getConfigACLRules(config: ConfigData): ACLRule[] {
         case ConfigType.LINEAR_OUTPUT:
             return getLinearOutputConfigACLRules(config)
         case ConfigType.GITHUB:
-            return isGitHubSkillConfig(config) ? getGitHubSkillConfigACLRules(config) : getGitHubTriggerConfigACLRules(config)
+            // GitHub repository IDs require backend hydration to owner/repo names.
+            return []
         case ConfigType.GMAIL_OUTPUT:
             return getGmailOutputConfigACLRules(config)
         case ConfigType.GMAIL_DRAFT_OUTPUT:
@@ -380,10 +373,6 @@ export function getConfigACLRules(config: ConfigData): ACLRule[] {
             return getAttioOutputConfigACLRules(config)
         case ConfigType.SNOWFLAKE_OUTPUT:
             return getSnowflakeOutputConfigACLRules(config)
-        case ConfigType.TIME_TRIGGER:
-        case ConfigType.WEBHOOK_INPUT:
-        case ConfigType.WEBMONITOR:
-            return []
         default:
             return assertNever(config)
     }

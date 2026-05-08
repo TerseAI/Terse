@@ -1,10 +1,14 @@
+import type { RunContext } from "@openai/agents"
 import { Client } from "@notionhq/client"
 import { GetPageResponse } from "@notionhq/client/build/src/api-endpoints"
 import { ACLRule, IntegrationType, hasACLRule, hasAnyACLRuleForIntegration } from "terse-types"
 
+import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
+import { Session } from "../../express"
 import { getNotionAccessTokenForOrganization } from "../../integrations/NotionIntegration"
 import logger from "../../logger"
-import { ToolACLValidator } from "../abstract/Output"
+import type { ToolACLValidationResult } from "../abstract/Output"
+import { ToolACLValidator, configIsWritableForIntegration, denyToolACL } from "../abstract/Output"
 
 const MAX_PAGE_PARENT_WALK_DEPTH = 50
 
@@ -91,19 +95,10 @@ async function notionPageInScope(params: { aclRules: ACLRule[]; integrationId: s
             continue
         }
 
-        // workspace, block_id, or unknown — fail closed.
         return false
     }
 
     return false
-}
-
-function denyDatabase(message: string) {
-    return { ok: false as const, message }
-}
-
-function denyPage(message: string) {
-    return { ok: false as const, message }
 }
 
 async function buildNotionClient(integrationId: string, organizationId: string): Promise<Client | null> {
@@ -119,71 +114,121 @@ async function buildNotionClient(integrationId: string, organizationId: string):
     }
 }
 
-export const validateNotionDatabaseACL: ToolACLValidator<{ integrationId: string; databaseId: string }> = ({ args, aclRules }) => {
+async function validateNotionPageScope(params: {
+    args: { integrationId: string; pageId: string }
+    aclRules: ACLRule[]
+    runContext?: RunContext<SessionWithTracking<Session>>
+}): Promise<ToolACLValidationResult> {
+    const organizationId = params.runContext?.context?.user?.organizationId
+    if (!organizationId) {
+        return denyToolACL(`Notion ACL denied: page ${params.args.pageId} is not configured for this run.`)
+    }
+    const client = await buildNotionClient(params.args.integrationId, organizationId)
+    if (!client) {
+        return denyToolACL(`Notion ACL denied: page ${params.args.pageId} is not configured for this run.`)
+    }
+
+    const allowed = await notionPageInScope({
+        aclRules: params.aclRules,
+        integrationId: params.args.integrationId,
+        pageId: params.args.pageId,
+        client
+    })
+    return allowed ? { ok: true } : denyToolACL(`Notion ACL denied: page ${params.args.pageId} is not configured for this run.`)
+}
+
+export const validateNotionDatabaseACL: ToolACLValidator<{ integrationId: string; databaseId: string }> = ({ args, aclRules, configs: _configs }) => {
     if (hasNotionDatabaseACL({ aclRules, integrationId: args.integrationId, databaseId: args.databaseId })) {
         return { ok: true }
     }
-    return denyDatabase(`Notion ACL denied: database ${args.databaseId} is not configured for this run.`)
+    return denyToolACL(`Notion ACL denied: database ${args.databaseId} is not configured for this run.`)
 }
 
-export const validateNotionDatabaseRowACL: ToolACLValidator<{ integrationId: string; databaseId: string; page_id: string | null | undefined }> = async ({ args, aclRules, runContext }) => {
+export const validateNotionDatabaseRowACL: ToolACLValidator<{
+    integrationId: string
+    databaseId: string
+    page_id: string | null | undefined
+}> = async ({ args, aclRules, configs, runContext }) => {
+    if (
+        !configIsWritableForIntegration({
+            configs,
+            integrationId: args.integrationId
+        })
+    ) {
+        return denyToolACL(`Notion ACL denied: integration ${args.integrationId} is read-only for this run.`)
+    }
+
     if (args.page_id) {
         const organizationId = runContext?.context?.user?.organizationId
         if (!organizationId) {
-            return denyPage(`Notion ACL denied: page ${args.page_id} is not configured for this run.`)
+            return denyToolACL(`Notion ACL denied: page ${args.page_id} is not configured for this run.`)
         }
         const client = await buildNotionClient(args.integrationId, organizationId)
         if (!client) {
-            return denyPage(`Notion ACL denied: page ${args.page_id} is not configured for this run.`)
+            return denyToolACL(`Notion ACL denied: page ${args.page_id} is not configured for this run.`)
         }
         const allowed = await notionPageInScope({ aclRules, integrationId: args.integrationId, pageId: args.page_id, client })
-        return allowed ? { ok: true } : denyPage(`Notion ACL denied: page ${args.page_id} is not configured for this run.`)
+        return allowed ? { ok: true } : denyToolACL(`Notion ACL denied: page ${args.page_id} is not configured for this run.`)
     }
 
     if (hasNotionDatabaseACL({ aclRules, integrationId: args.integrationId, databaseId: args.databaseId })) {
         return { ok: true }
     }
-    return denyDatabase(`Notion ACL denied: database ${args.databaseId} is not configured for this run.`)
+    return denyToolACL(`Notion ACL denied: database ${args.databaseId} is not configured for this run.`)
 }
 
-export const validateNotionCreateOrUpdatePageACL: ToolACLValidator<{ integrationId: string; page_id?: string | null; parentPageId?: string | null }> = async ({ args, aclRules, runContext }) => {
+export const validateNotionCreateOrUpdatePageACL: ToolACLValidator<{
+    integrationId: string
+    page_id?: string | null
+    parentPageId?: string | null
+}> = async ({ args, aclRules, configs, runContext }) => {
+    if (
+        !configIsWritableForIntegration({
+            configs,
+            integrationId: args.integrationId
+        })
+    ) {
+        return denyToolACL(`Notion ACL denied: integration ${args.integrationId} is read-only for this run.`)
+    }
+
     const organizationId = runContext?.context?.user?.organizationId
     if (!organizationId) {
-        return denyPage(`Notion ACL denied: page ${args.page_id ?? args.parentPageId ?? "(none)"} is not configured for this run.`)
+        return denyToolACL(`Notion ACL denied: page ${args.page_id ?? args.parentPageId ?? "(none)"} is not configured for this run.`)
     }
     const client = await buildNotionClient(args.integrationId, organizationId)
     if (!client) {
-        return denyPage(`Notion ACL denied: page ${args.page_id ?? args.parentPageId ?? "(none)"} is not configured for this run.`)
+        return denyToolACL(`Notion ACL denied: page ${args.page_id ?? args.parentPageId ?? "(none)"} is not configured for this run.`)
     }
 
     if (args.page_id) {
         const allowed = await notionPageInScope({ aclRules, integrationId: args.integrationId, pageId: args.page_id, client })
-        return allowed ? { ok: true } : denyPage(`Notion ACL denied: page ${args.page_id} is not configured for this run.`)
+        return allowed ? { ok: true } : denyToolACL(`Notion ACL denied: page ${args.page_id} is not configured for this run.`)
     }
 
     if (args.parentPageId) {
         const allowed = await notionPageInScope({ aclRules, integrationId: args.integrationId, pageId: args.parentPageId, client })
-        return allowed ? { ok: true } : denyPage(`Notion ACL denied: parent page ${args.parentPageId} is not configured for this run.`)
+        return allowed ? { ok: true } : denyToolACL(`Notion ACL denied: parent page ${args.parentPageId} is not configured for this run.`)
     }
 
-    return denyPage("Notion ACL denied: notion_create_or_update_page requires page_id (update) or parentPageId (create).")
+    return denyToolACL("Notion ACL denied: notion_create_or_update_page requires page_id (update) or parentPageId (create).")
 }
 
-export const validateNotionPageACL: ToolACLValidator<{ integrationId: string; pageId: string }> = async ({ args, aclRules, runContext }) => {
-    const organizationId = runContext?.context?.user?.organizationId
-    if (!organizationId) {
-        return denyPage(`Notion ACL denied: page ${args.pageId} is not configured for this run.`)
-    }
-    const client = await buildNotionClient(args.integrationId, organizationId)
-    if (!client) {
-        return denyPage(`Notion ACL denied: page ${args.pageId} is not configured for this run.`)
-    }
+export const validateNotionReadPageACL: ToolACLValidator<{ integrationId: string; pageId: string }> = params =>
+    validateNotionPageScope(params)
 
-    const allowed = await notionPageInScope({ aclRules, integrationId: args.integrationId, pageId: args.pageId, client })
-    return allowed ? { ok: true } : denyPage(`Notion ACL denied: page ${args.pageId} is not configured for this run.`)
+export const validateNotionWritePageACL: ToolACLValidator<{ integrationId: string; pageId: string }> = async params => {
+    if (
+        !configIsWritableForIntegration({
+            configs: params.configs,
+            integrationId: params.args.integrationId
+        })
+    ) {
+        return denyToolACL(`Notion ACL denied: integration ${params.args.integrationId} is read-only for this run.`)
+    }
+    return validateNotionPageScope(params)
 }
 
-export const validateNotionIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
+export const validateNotionIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
     const allowed = hasAnyACLRuleForIntegration({
         rules: aclRules,
         integrationType: IntegrationType.NOTION,
@@ -191,8 +236,5 @@ export const validateNotionIntegrationACL: ToolACLValidator<{ integrationId: str
     })
     return allowed
         ? { ok: true }
-        : {
-              ok: false,
-              message: `Notion ACL denied: integration ${args.integrationId} has no Notion resources configured for this run.`
-          }
+        : denyToolACL(`Notion ACL denied: integration ${args.integrationId} has no Notion resources configured for this run.`)
 }

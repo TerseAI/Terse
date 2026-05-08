@@ -4,9 +4,16 @@ import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
+import {
+    Output,
+    defineToolboxEntry,
+    formatConfigAccess,
+    mixedReadWriteToolInstructionParagraph,
+    outputHasMixedReadOnlyAndWritable,
+    outputIsReadOnly
+} from "../abstract/Output"
 
-import { validateAttioIntegrationACL, validateAttioObjectACL } from "./acl"
+import { validateAttioIntegrationACL, validateAttioReadObjectACL, validateAttioWriteObjectACL } from "./acl"
 import { attioListObjectsTool } from "./tools/listObjects"
 import { attioQueryRecordsTool } from "./tools/queryRecords"
 import { attioUpsertRecordTool } from "./tools/upsertRecord"
@@ -26,14 +33,14 @@ export class AttioOutput extends Output<AttioOutputConfig> {
                 isReadOnly: true,
                 integration: IntegrationType.ATTIO,
                 displayName: "Query records",
-                validateACL: validateAttioObjectACL
+                validateACL: validateAttioReadObjectACL
             }),
             defineToolboxEntry({
                 tool: attioUpsertRecordTool,
                 isReadOnly: false,
                 integration: IntegrationType.ATTIO,
                 displayName: "Upsert record",
-                validateACL: validateAttioObjectACL
+                validateACL: validateAttioWriteObjectACL
             })
         ]
         super(OutputConfigType.ATTIO, toolbox)
@@ -84,11 +91,15 @@ export class AttioOutput extends Output<AttioOutputConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
+            const access = formatConfigAccess(config)
             const objectSlug = config.objectSlug
-            configList.push(`  - Integration ID: ${config.integrationId} - Object: ${objectSlug}`)
+            configList.push(`  - Integration ID: ${config.integrationId}\n    Access: ${access}\n    Object: ${objectSlug}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
+        if (outputHasMixedReadOnlyAndWritable(configs)) {
+            sections.push(mixedReadWriteToolInstructionParagraph())
+        }
         sections.push("\nWhen calling Attio tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
         sections.push("Use attio_list_objects to discover available object types and their attributes.")
         if (readOnly) {

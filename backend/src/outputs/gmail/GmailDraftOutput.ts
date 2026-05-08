@@ -3,7 +3,14 @@ import { GmailDraftOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, outputIsReadOnly } from "../abstract/Output"
+import {
+    Output,
+    defineToolboxEntry,
+    formatConfigAccess,
+    mixedReadWriteToolInstructionParagraph,
+    outputHasMixedReadOnlyAndWritable,
+    outputIsReadOnly
+} from "../abstract/Output"
 
 import { validateGmailDraftACL } from "./acl"
 import { gmailCreateDraftTool } from "./tools/createDraft"
@@ -46,10 +53,14 @@ export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
 
         const configList: string[] = []
         for (const config of configs) {
-            configList.push(`  - Integration ID: ${config.integrationId}`)
+            const access = formatConfigAccess(config)
+            configList.push(`  - Integration ID: ${config.integrationId}\n    Access: ${access}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
+        if (outputHasMixedReadOnlyAndWritable(configs)) {
+            sections.push(mixedReadWriteToolInstructionParagraph())
+        }
         if (readOnly) {
             sections.push("\nThis Gmail Draft integration is read-only for this run. Creating drafts is not available.")
         } else {

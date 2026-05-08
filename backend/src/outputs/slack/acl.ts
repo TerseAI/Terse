@@ -1,10 +1,14 @@
+import type { RunContext } from "@openai/agents"
 import type { ACLRule } from "terse-types"
 import { IntegrationType, hasACLRule, hasAnyACLRuleForIntegration } from "terse-types"
 
+import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
+import { Session } from "../../express"
 import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { ToolACLValidator } from "../abstract/Output"
+import type { ToolACLValidationResult } from "../abstract/Output"
+import { ToolACLValidator, configIsWritableForIntegration, denyToolACL } from "../abstract/Output"
 
 function hasSlackChannelACL(params: { aclRules: ACLRule[]; integrationId: string; channelId: string }): boolean {
     return hasACLRule(params.aclRules, {
@@ -59,7 +63,34 @@ async function resolveSlackDmUserIdForChannel(params: { integrationId: string; o
     }
 }
 
-export const validateSlackIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
+async function validateSlackChannelScope(params: {
+    args: { integrationId: string; channelId: string }
+    aclRules: ACLRule[]
+    runContext?: RunContext<SessionWithTracking<Session>>
+}): Promise<ToolACLValidationResult> {
+    if (hasSlackChannelACL({ aclRules: params.aclRules, integrationId: params.args.integrationId, channelId: params.args.channelId })) {
+        return { ok: true }
+    }
+
+    const organizationId = params.runContext?.context?.user?.organizationId
+    if (!organizationId) {
+        return denyToolACL(`Slack ACL denied: channel ${params.args.channelId} is not configured for this run.`)
+    }
+
+    const dmUserId = await resolveSlackDmUserIdForChannel({
+        integrationId: params.args.integrationId,
+        organizationId,
+        channelId: params.args.channelId
+    })
+
+    if (dmUserId && hasSlackDmUserACL({ aclRules: params.aclRules, integrationId: params.args.integrationId, userId: dmUserId })) {
+        return { ok: true }
+    }
+
+    return denyToolACL(`Slack ACL denied: channel ${params.args.channelId} is not configured for this run.`)
+}
+
+export const validateSlackIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
     const allowed = hasAnyACLRuleForIntegration({
         rules: aclRules,
         integrationType: IntegrationType.SLACK,
@@ -68,41 +99,22 @@ export const validateSlackIntegrationACL: ToolACLValidator<{ integrationId: stri
 
     return allowed
         ? { ok: true }
-        : {
-              ok: false,
-              message: `Slack ACL denied: integration ${args.integrationId} is not configured for this run.`
-          }
+        : denyToolACL(`Slack ACL denied: integration ${args.integrationId} is not configured for this run.`)
 }
 
-/**
- * Channel-scoped Slack tools: allow exact `channel` rule, or fall back to DM `user` resolution
- * when the channel is a 1:1 IM and a `dm_user` rule matches the resolved user. Fail closed.
- */
-export const validateSlackChannelACL: ToolACLValidator<{ integrationId: string; channelId: string }> = async ({ args, aclRules, runContext }) => {
-    if (hasSlackChannelACL({ aclRules, integrationId: args.integrationId, channelId: args.channelId })) {
-        return { ok: true }
-    }
+/** Read tools: channel or DM scope only. */
+export const validateSlackReadChannelACL: ToolACLValidator<{ integrationId: string; channelId: string }> = params =>
+    validateSlackChannelScope(params)
 
-    const organizationId = runContext?.context?.user?.organizationId
-    if (!organizationId) {
-        return {
-            ok: false,
-            message: `Slack ACL denied: channel ${args.channelId} is not configured for this run.`
-        }
+/** Send message: integration must be writable for this run, then channel/DM scope. */
+export const validateSlackWriteChannelACL: ToolACLValidator<{ integrationId: string; channelId: string }> = async params => {
+    if (
+        !configIsWritableForIntegration({
+            configs: params.configs,
+            integrationId: params.args.integrationId
+        })
+    ) {
+        return denyToolACL(`Slack ACL denied: integration ${params.args.integrationId} is read-only for this run.`)
     }
-
-    const dmUserId = await resolveSlackDmUserIdForChannel({
-        integrationId: args.integrationId,
-        organizationId,
-        channelId: args.channelId
-    })
-
-    if (dmUserId && hasSlackDmUserACL({ aclRules, integrationId: args.integrationId, userId: dmUserId })) {
-        return { ok: true }
-    }
-
-    return {
-        ok: false,
-        message: `Slack ACL denied: channel ${args.channelId} is not configured for this run.`
-    }
+    return validateSlackChannelScope(params)
 }

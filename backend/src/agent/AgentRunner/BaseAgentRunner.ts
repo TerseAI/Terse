@@ -40,7 +40,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     private endedWithToolFailure = false
     protected agent?: TAgent
     // Protect lazy initialization from double-build races when run/resume are called concurrently.
-    private buildAgentPromise?: Promise<TAgent>
+    private agentInitializationPromise?: Promise<TAgent>
     private readonly billing: BillingService
 
     constructor(params: { runId: string; billing: BillingService }) {
@@ -55,19 +55,21 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     protected abstract loadPendingApprovalState(runId: string): Promise<PendingApprovalState | null>
     protected abstract clearPendingApprovalState(runId: string): Promise<void>
     protected abstract markRunInProgress(runId: string): Promise<void>
-    protected abstract getAgentInitializationParams(): AgentInitializationParams<TSession> | Promise<AgentInitializationParams<TSession>>
+    protected abstract getAgentInitializationParams(): Promise<AgentInitializationParams<TSession>>
+
+    private async initializeAgent(): Promise<TAgent> {
+        const params = await this.getAgentInitializationParams()
+        return this.buildAgent(params)
+    }
 
     protected async initializeLoopIfNeeded(): Promise<void> {
         if (this.agent) return
-        if (!this.buildAgentPromise) {
-            this.buildAgentPromise = (async () => {
-                const params = await Promise.resolve(this.getAgentInitializationParams())
-                return this.buildAgent(params)
-            })().finally(() => {
-                this.buildAgentPromise = undefined
+        if (!this.agentInitializationPromise) {
+            this.agentInitializationPromise = this.initializeAgent().finally(() => {
+                this.agentInitializationPromise = undefined
             })
         }
-        await this.buildAgentPromise
+        await this.agentInitializationPromise
     }
 
     async buildAgent(params: AgentInitializationParams<TSession>): Promise<TAgent> {
@@ -360,7 +362,7 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
     signal?: AbortSignal
 }
 
-type AgentInitializationParams<TSession extends AppSession> = {
+export type AgentInitializationParams<TSession extends AppSession> = {
     name: string
     systemPromptDeps: SystemPromptBuilderDependencies<TSession, ConfigData>
     runContext: RunContext
