@@ -207,4 +207,5 @@ export const billingContextKey = (params?: Partial<BillingContextQuery>): readon
 ]
 
 export const billingCatalogKey = (): readonly [string] => ["billingCatalog"]
+export const billingStatusKey = (): readonly [string] => ["billingStatus"]
 export const organizationProjectsKey = (): readonly [string] => ["organization-projects"]

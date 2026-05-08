@@ -27,6 +27,11 @@ export async function getBillingCatalog(req: Request, res: Response) {
     await BillingServiceProxy.respondJson(res, billingService.getBillingCatalog())
 }
 
+export async function getBillingStatus(req: Request, res: Response) {
+    const billingService = billingServiceProxyForRequest(req)
+    await BillingServiceProxy.respondJson(res, billingService.getBillingStatus())
+}
+
 export async function getBillingContext(req: Request, res: Response) {
     const parsed = billingContextQuerySchema.safeParse({
         start: req.query.start,

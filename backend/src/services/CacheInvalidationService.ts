@@ -1,5 +1,5 @@
 import { Server } from "socket.io"
-import { billingCatalogKey, billingContextKey } from "terse-types/InvalidationKeys"
+import { billingCatalogKey, billingContextKey, billingStatusKey } from "terse-types/InvalidationKeys"
 import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
 import logger from "../logger"
@@ -45,4 +45,5 @@ export function invalidateRunAndChatHistory(organizationId: string, agentId: str
 export function emitBillingCachesInvalidated(organizationId: string): void {
     emitCacheInvalidationWithKey(organizationId, billingContextKey()[0])
     emitCacheInvalidationWithKey(organizationId, billingCatalogKey()[0])
+    emitCacheInvalidationWithKey(organizationId, billingStatusKey()[0])
 }

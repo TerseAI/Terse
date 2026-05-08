@@ -16,6 +16,7 @@ import {
     BillingRecordLlmResponse,
     BillingRoutes,
     BillingRunGateRequestBody,
+    BillingStatusResponse,
     BillingStripeRedirectResponse,
     CreditGateDeniedError,
     GetOrCreateCustomerRequestBody,
@@ -49,8 +50,8 @@ export interface BillingService {
     createBillingPortalSession(body?: BillingPortalSessionRequestBody): Promise<BillingStripeRedirectResponse>
     changeBillingSubscription(body: BillingChangeRequestBody): Promise<BillingChangeResponse>
     getBillingCatalog(): Promise<BillingCatalogResponse>
+    getBillingStatus(): Promise<BillingStatusResponse>
     getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse>
-    getOrCreateCustomer(body?: GetOrCreateCustomerRequestBody): Promise<GetOrCreateCustomerResponse>
     checkRunGate(body: BillingRunGateRequestBody): Promise<RunGateDecision>
     chargeRunBase(body: BillingChargeRunBaseBody): Promise<BillingChargeRunBaseResponse>
     recordLLMCall(body: BillingRecordLlmBody): Promise<BillingRecordLlmResponse>
@@ -64,7 +65,7 @@ export function billingServiceProxyForRequest(req: Request): BillingService {
     }
     return billingServiceForOrganizationAuth({
         organizationId: user.organizationId,
-        userId: user.id
+        userId: user.workosId
     })
 }
 
@@ -112,6 +113,16 @@ export class BillingNoOpService implements BillingService {
         }
     }
 
+    async getBillingStatus(): Promise<BillingStatusResponse> {
+        return {
+            billingEnabled: settings.billing.enabled,
+            hasStripeCustomer: false,
+            hasActivePaidSubscription: false,
+            canManageBilling: false,
+            planKey: PlanKey.FREE
+        }
+    }
+
     async getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
         const start = query.start ?? DateTime.now().setZone(query.timezone).minus({ days: 30 }).startOf("day").toJSDate()
         const end = query.end ?? DateTime.now().setZone(query.timezone).plus({ days: 1 }).startOf("day").toJSDate()
@@ -134,10 +145,6 @@ export class BillingNoOpService implements BillingService {
                 buckets: []
             }
         }
-    }
-
-    async getOrCreateCustomer(): Promise<GetOrCreateCustomerResponse> {
-        return { customerId: "" }
     }
 
     async checkRunGate(): Promise<RunGateDecision> {
@@ -249,6 +256,10 @@ export class BillingServiceProxy implements BillingService {
         return this.jsonRequest<BillingCatalogResponse>(BillingRoutes.CATALOG, { method: "GET" })
     }
 
+    getBillingStatus(): Promise<BillingStatusResponse> {
+        return this.jsonRequest<BillingStatusResponse>(BillingRoutes.STATUS, { method: "GET" })
+    }
+
     getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
         const params = new URLSearchParams()
         if (query.start != null) params.set("start", query.start.toISOString())
@@ -256,13 +267,6 @@ export class BillingServiceProxy implements BillingService {
         params.set("timezone", query.timezone)
         const qs = params.toString()
         return this.jsonRequest<BillingContextResponse>(`${BillingRoutes.CONTEXT}${qs ? `?${qs}` : ""}`, { method: "GET" })
-    }
-
-    async getOrCreateCustomer(body?: GetOrCreateCustomerRequestBody): Promise<GetOrCreateCustomerResponse> {
-        return this.jsonRequest<GetOrCreateCustomerResponse>(BillingRoutes.CUSTOMER, {
-            method: "POST",
-            body: JSON.stringify(body ?? {})
-        })
     }
 
     async checkRunGate(body: BillingRunGateRequestBody): Promise<RunGateDecision> {

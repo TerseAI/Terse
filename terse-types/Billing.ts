@@ -80,6 +80,15 @@ export const billingContextResponseSchema = z.object({
 })
 export type BillingContextResponse = z.infer<typeof billingContextResponseSchema>
 
+export const billingStatusResponseSchema = z.object({
+    billingEnabled: z.boolean(),
+    hasStripeCustomer: z.boolean(),
+    hasActivePaidSubscription: z.boolean(),
+    canManageBilling: z.boolean(),
+    planKey: planKeySchema.nullable()
+})
+export type BillingStatusResponse = z.infer<typeof billingStatusResponseSchema>
+
 export const completedEventUsageSchema = z.object({
     inputTokens: z.number().nonnegative(),
     outputTokens: z.number().nonnegative(),

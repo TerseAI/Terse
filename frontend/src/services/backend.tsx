@@ -1,7 +1,7 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
-import { BillingCatalogResponse, BillingChangeResponse, BillingContextQuery, BillingContextResponse, BillingPeriod, BillingStripeRedirectResponse, PlanKey } from "terse-types"
+import { BillingCatalogResponse, BillingChangeResponse, BillingContextQuery, BillingContextResponse, BillingPeriod, BillingStatusResponse, BillingStripeRedirectResponse, PlanKey } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -587,6 +587,7 @@ interface BackendService {
     getAgentFileContent(agentId: string, fileId: string): Promise<AgentFileContentResponse>
 
     getBillingContext(params: BillingContextQuery): Promise<BillingContextResponse>
+    getBillingStatus(): Promise<BillingStatusResponse>
     getBillingCatalog(): Promise<BillingCatalogResponse>
     createCheckoutForPlan(planKey: PlanKey, period: BillingPeriod): Promise<BillingStripeRedirectResponse>
     createCheckoutForTopup(packCredits: number): Promise<BillingStripeRedirectResponse>
@@ -1223,6 +1224,7 @@ export const BackendProvider: BackendService = {
     },
     getBillingContext: (params: BillingContextQuery) =>
         axios.get<BillingContextResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CONTEXT}`, { withCredentials: true, params }).then(response => response.data),
+    getBillingStatus: () => axios.get<BillingStatusResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.STATUS}`, { withCredentials: true }).then(response => response.data),
     getBillingCatalog: () => axios.get<BillingCatalogResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CATALOG}`, { withCredentials: true }).then(response => response.data),
     createCheckoutForPlan: (planKey: PlanKey, period: BillingPeriod) =>
         axios

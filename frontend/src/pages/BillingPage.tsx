@@ -19,12 +19,15 @@ import { BackendProvider } from "@/services/backend"
 import { formatUsd } from "@/utility/billingFormat"
 import { getUserTimezone } from "@/utility/timezone"
 
+import { useBillingStatus } from "../hooks/api/useBillingStatus"
+
 export default function BillingPage() {
     const timezone = getUserTimezone()
     const usageRangeLabel = formatUsageRangeLabel(timezone)
     const { billingEnabled, balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
     const catalogEnabled = billingEnabled !== false
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(catalogEnabled)
+    const { status: billingStatus, isLoading: billingStatusLoading } = useBillingStatus()
 
     const loading = balanceLoading
 
@@ -68,7 +71,7 @@ export default function BillingPage() {
                         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Billing</h1>
                         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Track your credit usage, change plans, and manage payment details.</p>
                     </div>
-                    {!billingDisabled && (
+                    {!billingDisabled && !billingStatusLoading && billingStatus?.canManageBilling && (
                         <Button variant="outline" onClick={manageBilling}>
                             <CreditCard className="size-4" />
                             Manage billing
