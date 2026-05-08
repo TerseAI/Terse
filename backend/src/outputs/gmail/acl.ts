@@ -1,10 +1,15 @@
 import { IntegrationType, hasACLRule } from "terse-types"
 
+import type { ToolACLValidationResult } from "../abstract/Output"
 import { ToolACLValidator, configIsWritableForIntegration, denyToolACL } from "../abstract/Output"
+
+function denyReadOnlyIntegration(integrationId: string): ToolACLValidationResult {
+    return denyToolACL(`Gmail ACL denied: integration ${integrationId} is read-only for this run.`)
+}
 
 export const validateGmailSendACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs }) => {
     if (!configIsWritableForIntegration({ configs, integrationId: args.integrationId })) {
-        return denyToolACL(`Gmail ACL denied: integration ${args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(args.integrationId)
     }
     const allowed = hasACLRule(aclRules, {
         integrationType: IntegrationType.GMAIL,
@@ -18,7 +23,7 @@ export const validateGmailSendACL: ToolACLValidator<{ integrationId: string }> =
 
 export const validateGmailDraftACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs }) => {
     if (!configIsWritableForIntegration({ configs, integrationId: args.integrationId })) {
-        return denyToolACL(`Gmail ACL denied: integration ${args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(args.integrationId)
     }
     const allowed = hasACLRule(aclRules, {
         integrationType: IntegrationType.GMAIL,

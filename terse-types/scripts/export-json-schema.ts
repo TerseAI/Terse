@@ -67,7 +67,7 @@ function rewriteRecursiveRefs(schemaName: string, value: unknown): unknown {
 async function main() {
     const moduleExports = (await import(new URL("../dist/index.js", import.meta.url).href)) as ExportModule
 
-    // Phase 1: Discover all schemas and build identity registry
+    // Walk module exports and register every schema we will emit (tools + standalone).
     const schemaRegistry = new Map<z.ZodTypeAny, string>()
     const schemasToExport = new Map<string, z.ZodTypeAny>()
     let toolCount = 0
@@ -92,7 +92,7 @@ async function main() {
         }
     }
 
-    // Phase 2: Convert to JSON Schema with $ref resolution for named sub-schemas
+    // Convert each registered Zod schema to draft-2020-12 JSON Schema, resolving named sub-schemas as $refs.
     const defs: Record<string, unknown> = {}
     const converting = new Set<string>()
 
@@ -145,7 +145,7 @@ async function main() {
         }
     }
 
-    // Phase 2b: Title inline objects in oneOf/anyOf unions by discriminator
+    // Title inline objects in oneOf/anyOf unions by discriminator
     // value. datamodel-codegen's parent-prefixed naming then scopes them to
     // the containing model (e.g. ModelEventToolApprovalResponse).
     function toPascalCase(s: string): string {
@@ -173,7 +173,7 @@ async function main() {
         }
     }
 
-    // Phase 2c: Strip JS Number.MAX_SAFE_INTEGER / MIN_SAFE_INTEGER bounds —
+    // Strip JS Number.MAX_SAFE_INTEGER / MIN_SAFE_INTEGER bounds —
     // they carry no Python semantics and produce noisy constraints.
     const JS_SAFE_MAX = 9007199254740991
     const JS_SAFE_MIN = -9007199254740991
@@ -192,7 +192,7 @@ async function main() {
     }
     stripJsSafeBounds(defs)
 
-    // Phase 3: Write output
+    // Write the combined schema document to dist.
     const outputPath = fileURLToPath(new URL("../dist/json-schema/terse-types.schema.json", import.meta.url))
     await mkdir(dirname(outputPath), { recursive: true })
     await writeFile(

@@ -10,7 +10,7 @@ function hasDatadogIntegrationACL(params: { aclRules: ACLRule[]; integrationId: 
     })
 }
 
-export const validateDatadogIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
+export const validateDatadogIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
     return hasDatadogIntegrationACL({ aclRules, integrationId: args.integrationId })
         ? { ok: true }
         : denyToolACL(`Datadog ACL denied: integration ${args.integrationId} is not configured for this run.`)
@@ -20,7 +20,7 @@ export const validateDatadogLogsACL: ToolACLValidator<{
     integrationId: string
     indexes?: string[] | null
     defaultIndexes?: string[] | null
-}> = ({ args, aclRules, configs: _configs }) => {
+}> = ({ args, aclRules }) => {
     if (!hasDatadogIntegrationACL({ aclRules, integrationId: args.integrationId })) {
         return denyToolACL(`Datadog ACL denied: integration ${args.integrationId} is not configured for this run.`)
     }

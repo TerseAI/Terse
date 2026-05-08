@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
+import { Output, allConfigsReadOnly, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable } from "../abstract/Output"
 
 import {
     validateNotionCreateOrUpdatePageACL,
@@ -112,7 +112,7 @@ export class NotionOutput extends Output<NotionConfig> {
             throw new Error("No Notion configs provided")
         }
 
-        const readOnly = outputIsReadOnly(configs)
+        const readOnly = allConfigsReadOnly(configs)
 
         const sections: string[] = []
         sections.push(readOnly ? "=== NOTION OUTPUT (READ-ONLY) ===" : "=== NOTION OUTPUT ===")

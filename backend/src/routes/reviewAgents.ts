@@ -73,7 +73,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
         let skippedTooManyImprovements = 0
         let improvementsCreated = 0
 
-        // Phase 1: Pre-check — determine which automations are eligible (sequential for caching)
+        // Eligibility pre-check runs sequentially so user and feature-flag lookups stay cache-friendly.
         const eligible: EligibleAutomation[] = []
 
         for (const automation of automations) {
@@ -134,7 +134,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
             }
         }
 
-        // Phase 2: Evaluate all eligible automations concurrently
+        // Judge each eligible automation concurrently once the pre-check list is complete.
         const results = await Promise.allSettled(
             eligible.map(async automation => {
                 const context = await fetchFullJudgeContext(automation.id, automation.organization_id)

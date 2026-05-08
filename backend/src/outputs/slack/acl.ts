@@ -10,6 +10,10 @@ import { db } from "../../prismaClient"
 import type { ToolACLValidationResult } from "../abstract/Output"
 import { ToolACLValidator, configIsWritableForIntegration, denyToolACL } from "../abstract/Output"
 
+function denyReadOnlyIntegration(integrationId: string): ToolACLValidationResult {
+    return denyToolACL(`Slack ACL denied: integration ${integrationId} is read-only for this run.`)
+}
+
 function hasSlackChannelACL(params: { aclRules: ACLRule[]; integrationId: string; channelId: string }): boolean {
     return hasACLRule(params.aclRules, {
         integrationType: IntegrationType.SLACK,
@@ -90,7 +94,7 @@ async function validateSlackChannelScope(params: {
     return denyToolACL(`Slack ACL denied: channel ${params.args.channelId} is not configured for this run.`)
 }
 
-export const validateSlackIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
+export const validateSlackIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
     const allowed = hasAnyACLRuleForIntegration({
         rules: aclRules,
         integrationType: IntegrationType.SLACK,
@@ -111,7 +115,7 @@ export const validateSlackWriteChannelACL: ToolACLValidator<{ integrationId: str
             integrationId: params.args.integrationId
         })
     ) {
-        return denyToolACL(`Slack ACL denied: integration ${params.args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(params.args.integrationId)
     }
     return validateSlackChannelScope(params)
 }

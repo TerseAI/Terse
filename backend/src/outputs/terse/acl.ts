@@ -2,7 +2,7 @@ import { IntegrationType, hasACLRule } from "terse-types"
 
 import { ToolACLValidator, denyToolACL } from "../abstract/Output"
 
-export const validateWebCapabilityACL: ToolACLValidator = ({ aclRules, configs: _configs }) => {
+export const validateWebCapabilityACL: ToolACLValidator = ({ aclRules }) => {
     const allowed = hasACLRule(aclRules, {
         integrationType: IntegrationType.TERSE,
         integrationId: "system",
@@ -13,7 +13,7 @@ export const validateWebCapabilityACL: ToolACLValidator = ({ aclRules, configs: 
     return allowed ? { ok: true } : denyToolACL("Web ACL denied: web capability is not configured for this run.")
 }
 
-export const validateImageEditCapabilityACL: ToolACLValidator = ({ aclRules, configs: _configs }) => {
+export const validateImageEditCapabilityACL: ToolACLValidator = ({ aclRules }) => {
     const allowed = hasACLRule(aclRules, {
         integrationType: IntegrationType.TERSE,
         integrationId: "system",

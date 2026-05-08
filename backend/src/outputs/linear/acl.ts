@@ -1,4 +1,4 @@
-import { ACLRule, IntegrationType, hasACLRule, hasAnyACLRuleForIntegration } from "terse-types"
+import { ACLRule, IntegrationType, getACLRulesForResourceType, hasACLRule, hasAnyACLRuleForIntegration } from "terse-types"
 
 import type { ToolACLValidationResult } from "../abstract/Output"
 import { ToolACLValidator, configIsWritableForIntegration, denyToolACL } from "../abstract/Output"
@@ -20,11 +20,25 @@ function hasLinearIntegrationACL(params: { aclRules: ACLRule[]; integrationId: s
 }
 
 function linearHasAnyTeamRules(params: { aclRules: ACLRule[]; integrationId: string }): boolean {
-    return params.aclRules.some(rule => rule.integrationType === IntegrationType.LINEAR && rule.integrationId === params.integrationId && rule.resourceType === "team")
+    return (
+        getACLRulesForResourceType({
+            rules: params.aclRules,
+            integrationType: IntegrationType.LINEAR,
+            integrationId: params.integrationId,
+            resourceType: "team"
+        }).length > 0
+    )
 }
 
 function linearHasAnyProjectRules(params: { aclRules: ACLRule[]; integrationId: string }): boolean {
-    return params.aclRules.some(rule => rule.integrationType === IntegrationType.LINEAR && rule.integrationId === params.integrationId && rule.resourceType === "project")
+    return (
+        getACLRulesForResourceType({
+            rules: params.aclRules,
+            integrationType: IntegrationType.LINEAR,
+            integrationId: params.integrationId,
+            resourceType: "project"
+        }).length > 0
+    )
 }
 
 function hasLinearTeamACL(params: { aclRules: ACLRule[]; integrationId: string; teamId: string }): boolean {
@@ -49,11 +63,15 @@ function denyIntegration(integrationId: string): ToolACLValidationResult {
     return denyToolACL(`Linear ACL denied: integration ${integrationId} is not configured for this run.`)
 }
 
-export const validateLinearIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
+function denyReadOnlyIntegration(integrationId: string): ToolACLValidationResult {
+    return denyToolACL(`Linear ACL denied: integration ${integrationId} is read-only for this run.`)
+}
+
+export const validateLinearIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
     return hasLinearIntegrationACL({ aclRules, integrationId: args.integrationId }) ? { ok: true } : denyIntegration(args.integrationId)
 }
 
-export const validateLinearTeamScopedACL: ToolACLValidator<{ integrationId: string; teamId?: string | null }> = ({ args, aclRules, configs: _configs }) => {
+export const validateLinearTeamScopedACL: ToolACLValidator<{ integrationId: string; teamId?: string | null }> = ({ args, aclRules }) => {
     if (!hasLinearIntegrationACL({ aclRules, integrationId: args.integrationId })) {
         return denyIntegration(args.integrationId)
     }
@@ -70,7 +88,7 @@ export const validateLinearCreateTicketACL: ToolACLValidator<{
     ticket: { teamId: string; projectId?: string | null }
 }> = ({ args, aclRules, configs }) => {
     if (!configIsWritableForIntegration({ configs, integrationId: args.integrationId })) {
-        return denyToolACL(`Linear ACL denied: integration ${args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(args.integrationId)
     }
     if (!hasLinearIntegrationACL({ aclRules, integrationId: args.integrationId })) {
         return denyIntegration(args.integrationId)
@@ -96,7 +114,7 @@ export const validateLinearUpdateTicketACL: ToolACLValidator<{
     updates: { projectId?: string | null }
 }> = ({ args, aclRules, configs }) => {
     if (!configIsWritableForIntegration({ configs, integrationId: args.integrationId })) {
-        return denyToolACL(`Linear ACL denied: integration ${args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(args.integrationId)
     }
     if (!hasLinearIntegrationACL({ aclRules, integrationId: args.integrationId })) {
         return denyIntegration(args.integrationId)
@@ -114,7 +132,7 @@ export const validateLinearUpdateTicketACL: ToolACLValidator<{
 
 export const validateLinearAddCommentACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs }) => {
     if (!configIsWritableForIntegration({ configs, integrationId: args.integrationId })) {
-        return denyToolACL(`Linear ACL denied: integration ${args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(args.integrationId)
     }
     return hasLinearIntegrationACL({ aclRules, integrationId: args.integrationId }) ? { ok: true } : denyIntegration(args.integrationId)
 }

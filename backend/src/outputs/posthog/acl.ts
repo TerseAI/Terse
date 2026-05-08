@@ -2,7 +2,7 @@ import { IntegrationType, hasACLRule } from "terse-types"
 
 import { ToolACLValidator, denyToolACL } from "../abstract/Output"
 
-export const validatePostHogProjectACL: ToolACLValidator<{ integrationId: string; projectId: string }> = ({ args, aclRules, configs: _configs }) => {
+export const validatePostHogProjectACL: ToolACLValidator<{ integrationId: string; projectId: string }> = ({ args, aclRules }) => {
     const allowed = hasACLRule(aclRules, {
         integrationType: IntegrationType.POSTHOG,
         integrationId: args.integrationId,

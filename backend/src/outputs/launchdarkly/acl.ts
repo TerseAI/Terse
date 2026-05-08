@@ -44,7 +44,7 @@ export const validateLaunchDarklyListFlagsACL: ToolACLValidator<{
     integrationId: string
     projectKey: string
     environmentKeys: string[]
-}> = ({ args, aclRules, configs: _configs }) => {
+}> = ({ args, aclRules }) => {
     if (!hasLaunchDarklyProjectACL({ aclRules, integrationId: args.integrationId, projectKey: args.projectKey })) {
         return denyToolACL(`LaunchDarkly ACL denied: project ${args.projectKey} is not configured for this run.`)
     }
@@ -61,7 +61,7 @@ export const validateLaunchDarklyGetFlagDetailsACL: ToolACLValidator<{
     projectKey: string
     environmentKeys: string[]
     environmentKey?: string | null
-}> = ({ args, aclRules, configs: _configs }) => {
+}> = ({ args, aclRules }) => {
     if (!hasLaunchDarklyProjectACL({ aclRules, integrationId: args.integrationId, projectKey: args.projectKey })) {
         return denyToolACL(`LaunchDarkly ACL denied: project ${args.projectKey} is not configured for this run.`)
     }

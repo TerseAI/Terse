@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
+import { Output, allConfigsReadOnly, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable } from "../abstract/Output"
 
 import { validateAttioIntegrationACL, validateAttioReadObjectACL, validateAttioWriteObjectACL } from "./acl"
 import { attioListObjectsTool } from "./tools/listObjects"
@@ -77,7 +77,7 @@ export class AttioOutput extends Output<AttioOutputConfig> {
             throw new Error("No Attio configs provided")
         }
 
-        const readOnly = outputIsReadOnly(configs)
+        const readOnly = allConfigsReadOnly(configs)
 
         const sections: string[] = []
         sections.push(readOnly ? "=== ATTIO OUTPUT (READ-ONLY) ===" : "=== ATTIO OUTPUT ===")

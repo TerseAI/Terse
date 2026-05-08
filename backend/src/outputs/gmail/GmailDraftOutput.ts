@@ -3,7 +3,7 @@ import { GmailDraftOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
+import { Output, allConfigsReadOnly, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable } from "../abstract/Output"
 
 import { validateGmailDraftACL } from "./acl"
 import { gmailCreateDraftTool } from "./tools/createDraft"
@@ -42,7 +42,7 @@ export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
         }
 
         const sections: string[] = []
-        const readOnly = outputIsReadOnly(configs)
+        const readOnly = allConfigsReadOnly(configs)
 
         const configList: string[] = []
         for (const config of configs) {

@@ -100,7 +100,8 @@ export function defineToolboxEntry<TName extends ToolName>(entry: ToolboxEntry<T
     return entry
 }
 
-export function outputIsReadOnly(configs: ConfigData[]): boolean {
+/** True when every config on this output instance is read-only (and there is at least one config). */
+export function allConfigsReadOnly(configs: ConfigData[]): boolean {
     return configs.length > 0 && configs.every(config => config.readOnly === true)
 }
 

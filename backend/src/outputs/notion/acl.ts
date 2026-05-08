@@ -10,6 +10,10 @@ import logger from "../../logger"
 import type { ToolACLValidationResult } from "../abstract/Output"
 import { ToolACLValidator, configIsWritableForIntegration, denyToolACL } from "../abstract/Output"
 
+function denyReadOnlyIntegration(integrationId: string): ToolACLValidationResult {
+    return denyToolACL(`Notion ACL denied: integration ${integrationId} is read-only for this run.`)
+}
+
 const MAX_PAGE_PARENT_WALK_DEPTH = 50
 
 type NotionParent =
@@ -137,7 +141,7 @@ async function validateNotionPageScope(params: {
     return allowed ? { ok: true } : denyToolACL(`Notion ACL denied: page ${params.args.pageId} is not configured for this run.`)
 }
 
-export const validateNotionDatabaseACL: ToolACLValidator<{ integrationId: string; databaseId: string }> = ({ args, aclRules, configs: _configs }) => {
+export const validateNotionDatabaseACL: ToolACLValidator<{ integrationId: string; databaseId: string }> = ({ args, aclRules }) => {
     if (hasNotionDatabaseACL({ aclRules, integrationId: args.integrationId, databaseId: args.databaseId })) {
         return { ok: true }
     }
@@ -155,7 +159,7 @@ export const validateNotionDatabaseRowACL: ToolACLValidator<{
             integrationId: args.integrationId
         })
     ) {
-        return denyToolACL(`Notion ACL denied: integration ${args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(args.integrationId)
     }
 
     if (args.page_id) {
@@ -188,7 +192,7 @@ export const validateNotionCreateOrUpdatePageACL: ToolACLValidator<{
             integrationId: args.integrationId
         })
     ) {
-        return denyToolACL(`Notion ACL denied: integration ${args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(args.integrationId)
     }
 
     const organizationId = runContext?.context?.user?.organizationId
@@ -222,12 +226,12 @@ export const validateNotionWritePageACL: ToolACLValidator<{ integrationId: strin
             integrationId: params.args.integrationId
         })
     ) {
-        return denyToolACL(`Notion ACL denied: integration ${params.args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(params.args.integrationId)
     }
     return validateNotionPageScope(params)
 }
 
-export const validateNotionIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
+export const validateNotionIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
     const allowed = hasAnyACLRuleForIntegration({
         rules: aclRules,
         integrationType: IntegrationType.NOTION,

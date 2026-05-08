@@ -5,7 +5,7 @@ import { IntegrationType } from "terse-types"
 
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
+import { Output, allConfigsReadOnly, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable } from "../abstract/Output"
 
 import { validateSlackIntegrationACL, validateSlackReadChannelACL, validateSlackWriteChannelACL } from "./acl"
 import { slackListChannelsTool } from "./tools/listChannels"
@@ -104,7 +104,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             throw new Error("No Slack output scope configured (channel, DM users, or DM scope).")
         }
 
-        const readOnly = outputIsReadOnly(configs)
+        const readOnly = allConfigsReadOnly(configs)
 
         const sections: string[] = []
         sections.push("Available configurations:")

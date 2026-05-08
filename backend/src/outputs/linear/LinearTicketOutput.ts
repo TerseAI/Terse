@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
+import { Output, allConfigsReadOnly, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable } from "../abstract/Output"
 
 import { validateLinearAddCommentACL, validateLinearCreateTicketACL, validateLinearIntegrationACL, validateLinearTeamScopedACL, validateLinearUpdateTicketACL } from "./acl"
 import { linearAddCommentTool } from "./tools/addComment"
@@ -124,7 +124,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             throw new Error("No Linear configs provided")
         }
 
-        const readOnly = outputIsReadOnly(configs)
+        const readOnly = allConfigsReadOnly(configs)
 
         const sections: string[] = []
         sections.push(readOnly ? "=== LINEAR TICKET OUTPUT (READ-ONLY) ===" : "=== LINEAR TICKET OUTPUT ===")

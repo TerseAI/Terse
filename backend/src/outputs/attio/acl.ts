@@ -1,7 +1,11 @@
-import { ACLRule, IntegrationType, hasACLRule, hasAnyACLRuleForIntegration } from "terse-types"
+import { ACLRule, IntegrationType, getACLRulesForResourceType, hasACLRule, hasAnyACLRuleForIntegration } from "terse-types"
 
 import type { ToolACLValidationResult } from "../abstract/Output"
 import { ToolACLValidator, configIsWritableForIntegration, denyToolACL } from "../abstract/Output"
+
+function denyReadOnlyIntegration(integrationId: string): ToolACLValidationResult {
+    return denyToolACL(`Attio ACL denied: integration ${integrationId} is read-only for this run.`)
+}
 
 function hasAttioIntegrationACL(params: { aclRules: ACLRule[]; integrationId: string }): boolean {
     return (
@@ -20,7 +24,14 @@ function hasAttioIntegrationACL(params: { aclRules: ACLRule[]; integrationId: st
 }
 
 function attioHasAnyObjectRules(params: { aclRules: ACLRule[]; integrationId: string }): boolean {
-    return params.aclRules.some(rule => rule.integrationType === IntegrationType.ATTIO && rule.integrationId === params.integrationId && rule.resourceType === "object")
+    return (
+        getACLRulesForResourceType({
+            rules: params.aclRules,
+            integrationType: IntegrationType.ATTIO,
+            integrationId: params.integrationId,
+            resourceType: "object"
+        }).length > 0
+    )
 }
 
 function hasAttioObjectACL(params: { aclRules: ACLRule[]; integrationId: string; objectSlug: string }): boolean {
@@ -44,7 +55,7 @@ function validateAttioObjectScope(params: { args: { integrationId: string; objec
     return { ok: true }
 }
 
-export const validateAttioIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
+export const validateAttioIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
     return hasAttioIntegrationACL({ aclRules, integrationId: args.integrationId }) ? { ok: true } : denyToolACL(`Attio ACL denied: integration ${args.integrationId} is not configured for this run.`)
 }
 
@@ -52,7 +63,7 @@ export const validateAttioReadObjectACL: ToolACLValidator<{ integrationId: strin
 
 export const validateAttioWriteObjectACL: ToolACLValidator<{ integrationId: string; objectSlug: string }> = params => {
     if (!configIsWritableForIntegration({ configs: params.configs, integrationId: params.args.integrationId })) {
-        return denyToolACL(`Attio ACL denied: integration ${params.args.integrationId} is read-only for this run.`)
+        return denyReadOnlyIntegration(params.args.integrationId)
     }
     return validateAttioObjectScope(params)
 }

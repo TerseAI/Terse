@@ -45,33 +45,27 @@ function assertNever(value: never): never {
     throw new Error(`Unhandled config type: ${JSON.stringify(value)}`)
 }
 
-function aclRule<T extends ACLRule>(rule: T): T {
-    return rule
-}
+// Slack
 
 function getSlackOutputConfigACLRules(config: SlackOutputConfigData): SlackACLRule[] {
     const rules: SlackACLRule[] = []
 
     if (config.channelId) {
-        rules.push(
-            aclRule<SlackACLRule>({
-                integrationType: IntegrationType.SLACK,
-                integrationId: config.integrationId,
-                resourceType: "channel",
-                resourceId: config.channelId
-            })
-        )
+        rules.push({
+            integrationType: IntegrationType.SLACK,
+            integrationId: config.integrationId,
+            resourceType: "channel",
+            resourceId: config.channelId
+        })
     }
 
     for (const userId of config.userIds ?? []) {
-        rules.push(
-            aclRule<SlackACLRule>({
-                integrationType: IntegrationType.SLACK,
-                integrationId: config.integrationId,
-                resourceType: "dm_user",
-                resourceId: userId
-            })
-        )
+        rules.push({
+            integrationType: IntegrationType.SLACK,
+            integrationId: config.integrationId,
+            resourceType: "dm_user",
+            resourceId: userId
+        })
     }
 
     return rules
@@ -81,29 +75,27 @@ function getSlackInputConfigACLRules(config: SlackConfigData): SlackACLRule[] {
     const rules: SlackACLRule[] = []
 
     if (config.channelId) {
-        rules.push(
-            aclRule<SlackACLRule>({
-                integrationType: IntegrationType.SLACK,
-                integrationId: config.integrationId,
-                resourceType: "channel",
-                resourceId: config.channelId
-            })
-        )
+        rules.push({
+            integrationType: IntegrationType.SLACK,
+            integrationId: config.integrationId,
+            resourceType: "channel",
+            resourceId: config.channelId
+        })
     }
 
     for (const userId of config.userIds ?? []) {
-        rules.push(
-            aclRule<SlackACLRule>({
-                integrationType: IntegrationType.SLACK,
-                integrationId: config.integrationId,
-                resourceType: "dm_user",
-                resourceId: userId
-            })
-        )
+        rules.push({
+            integrationType: IntegrationType.SLACK,
+            integrationId: config.integrationId,
+            resourceType: "dm_user",
+            resourceId: userId
+        })
     }
 
     return rules
 }
+
+// Notion
 
 function getNotionConfigACLRules(config: NotionConfigData): NotionACLRule[] {
     return [
@@ -125,6 +117,8 @@ function getNotionConfigACLRules(config: NotionConfigData): NotionACLRule[] {
         )
     ]
 }
+
+// Gmail
 
 function getGmailOutputConfigACLRules(config: GmailOutputConfigData): GmailACLRule[] {
     return [
@@ -148,6 +142,8 @@ function getGmailDraftOutputConfigACLRules(config: GmailDraftOutputConfigData): 
     ]
 }
 
+// Terse built-in capabilities
+
 function getWebConfigACLRules(config: WebConfigData): WebACLRule[] {
     return [
         {
@@ -169,6 +165,8 @@ function getImageEditConfigACLRules(config: ImageEditConfigData): ImageEditACLRu
         }
     ]
 }
+
+// Linear
 
 function getLinearInputConfigACLRules(config: LinearInputConfigData): LinearACLRule[] {
     const rules: LinearACLRule[] = [
@@ -226,6 +224,8 @@ function getLinearOutputConfigACLRules(config: LinearOutputConfigData): LinearAC
     return rules
 }
 
+// PostHog
+
 function getPosthogConfigACLRules(config: PosthogConfigData): PosthogACLRule[] {
     return [
         {
@@ -236,6 +236,8 @@ function getPosthogConfigACLRules(config: PosthogConfigData): PosthogACLRule[] {
         }
     ]
 }
+
+// Datadog
 
 function getDatadogConfigACLRules(config: DatadogConfigData): DatadogACLRule[] {
     const rules: DatadogACLRule[] = [
@@ -257,6 +259,8 @@ function getDatadogConfigACLRules(config: DatadogConfigData): DatadogACLRule[] {
     return rules
 }
 
+// LaunchDarkly
+
 function getLaunchDarklyConfigACLRules(config: LaunchDarklyConfigData): LaunchDarklyACLRule[] {
     const rules: LaunchDarklyACLRule[] = [
         {
@@ -276,6 +280,8 @@ function getLaunchDarklyConfigACLRules(config: LaunchDarklyConfigData): LaunchDa
     }
     return rules
 }
+
+// WorkOS
 
 function getWorkOSInputConfigACLRules(config: WorkOSInputConfigData): WorkOSACLRule[] {
     return [
@@ -299,6 +305,8 @@ function getWorkOSOutputConfigACLRules(config: WorkOSOutputConfigData): WorkOSAC
     ]
 }
 
+// Attio
+
 function getAttioOutputConfigACLRules(config: AttioOutputConfigData): AttioACLRule[] {
     const rules: AttioACLRule[] = [
         {
@@ -318,6 +326,8 @@ function getAttioOutputConfigACLRules(config: AttioOutputConfigData): AttioACLRu
     }
     return rules
 }
+
+// Snowflake
 
 function getSnowflakeOutputConfigACLRules(config: SnowflakeOutputConfigData): SnowflakeACLRule[] {
     return [

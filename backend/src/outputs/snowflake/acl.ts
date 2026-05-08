@@ -2,7 +2,7 @@ import { IntegrationType, hasAnyACLRuleForIntegration } from "terse-types"
 
 import { ToolACLValidator, denyToolACL } from "../abstract/Output"
 
-export const validateSnowflakeIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
+export const validateSnowflakeIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules }) => {
     const allowed = hasAnyACLRuleForIntegration({
         rules: aclRules,
         integrationType: IntegrationType.SNOWFLAKE,

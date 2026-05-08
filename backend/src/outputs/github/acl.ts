@@ -11,14 +11,14 @@ function isGitHubRepositoryAllowed(rules: ACLRule[], repository: string): boolea
     return rules.some(rule => rule.integrationType === IntegrationType.GITHUB && rule.resourceType === "repository" && rule.resourceId === resourceId)
 }
 
-export const validateGitHubRepositoryACL: ToolACLValidator<{ repository: string }> = ({ args, aclRules, configs: _configs }) => {
+export const validateGitHubRepositoryACL: ToolACLValidator<{ repository: string }> = ({ args, aclRules }) => {
     if (isGitHubRepositoryAllowed(aclRules, args.repository)) {
         return { ok: true }
     }
     return denyToolACL(`GitHub ACL denied: repository ${args.repository} is not configured for this run.`)
 }
 
-export const validateGitHubRepositoriesACL: ToolACLValidator<{ repositoryNames: string[] }> = ({ args, aclRules, configs: _configs }) => {
+export const validateGitHubRepositoriesACL: ToolACLValidator<{ repositoryNames: string[] }> = ({ args, aclRules }) => {
     const denied = (args.repositoryNames ?? []).filter(repository => !isGitHubRepositoryAllowed(aclRules, repository))
     if (denied.length === 0) {
         return { ok: true }
