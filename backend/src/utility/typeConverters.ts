@@ -412,6 +412,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.WEBHOOK_INPUT
         case ConfigType.WEBMONITOR:
             return InputConfigType.WEBMONITOR
+        case ConfigType.HEY_REACH_INPUT:
+            return InputConfigType.HEY_REACH_INPUT
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error("SLACK_OUTPUT is an output type, not an input type")
@@ -434,8 +436,6 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("ATTIO_OUTPUT is an output type, not an input type")
         case ConfigType.SNOWFLAKE_OUTPUT:
             throw new Error("SNOWFLAKE_OUTPUT is an output type, not an input type")
-        case ConfigType.HEY_REACH_INPUT:
-            throw new Error("HEY_REACH_INPUT is an input type, not an output type")
         default:
             throw configType satisfies never
     }
