@@ -1,11 +1,11 @@
 import { z } from "zod"
 
-import { GitHubEventType, WorkOSEventType, frequencyUnitSchema, gitHubEventTypeSchema, gmailEventTypeSchema, linearEventTypeSchema, slackEventTypeSchema, workOSEventTypeSchema } from "./Configs"
+import { GitHubEventType, HeyReachEventType, WorkOSEventType, frequencyUnitSchema, gitHubEventTypeSchema, gmailEventTypeSchema, heyReachEventTypeSchema, linearEventTypeSchema, slackEventTypeSchema, workOSEventTypeSchema } from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
 import { debugTrigger as debugTriggerWithPresenter, displayTrigger as displayTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"
 
-const providerTriggerTypeSchema = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema])
+const providerTriggerTypeSchema = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema, heyReachEventTypeSchema])
 
 const TriggerHeaderSchema = z.object({
     integrationType: integrationTypeEnum,
@@ -316,6 +316,7 @@ export const TriggerTypeSchema = z.union([
     linearEventTypeSchema,
     gmailEventTypeSchema,
     workOSEventTypeSchema,
+    heyReachEventTypeSchema,
     webhookTriggerTypeSchema,
     cronTriggerTypeSchema,
     webMonitorTriggerTypeSchema,
@@ -522,6 +523,141 @@ export const workOSTriggerSchema = z.discriminatedUnion("eventType", [
 ])
 export type WorkOSTrigger = z.infer<typeof workOSTriggerSchema>
 
+// MARK: HeyReach Triggers
+
+export const heyReachLeadSchema = z
+    .object({
+        id: z.string().optional(),
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+        profileUrl: z.string().optional(),
+        linkedInId: z.string().optional(),
+        companyName: z.string().optional(),
+        position: z.string().optional(),
+        location: z.string().optional()
+    })
+    .passthrough()
+export type HeyReachLead = z.infer<typeof heyReachLeadSchema>
+
+export const heyReachCampaignSchema = z
+    .object({
+        id: z.union([z.string(), z.number()]).optional(),
+        name: z.string().optional()
+    })
+    .passthrough()
+export type HeyReachCampaign = z.infer<typeof heyReachCampaignSchema>
+
+export const heyReachLinkedInAccountSchema = z
+    .object({
+        id: z.union([z.string(), z.number()]).optional(),
+        firstName: z.string().optional(),
+        lastName: z.string().optional()
+    })
+    .passthrough()
+export type HeyReachLinkedInAccount = z.infer<typeof heyReachLinkedInAccountSchema>
+
+export const heyReachWebhookPayloadSchema = z
+    .object({
+        event: z.string(),
+        eventId: z.string().optional(),
+        timestamp: z.string().optional(),
+        lead: heyReachLeadSchema.optional(),
+        campaign: heyReachCampaignSchema.optional(),
+        linkedInAccount: heyReachLinkedInAccountSchema.optional(),
+        messageBody: z.string().optional(),
+        postUrl: z.string().optional(),
+        tags: z.array(z.string()).optional()
+    })
+    .passthrough()
+export type HeyReachWebhookPayload = z.infer<typeof heyReachWebhookPayloadSchema>
+
+const heyReachTriggerBaseSchema = baseTriggerSchema.extend({
+    integrationType: z.literal(IntegrationType.HEY_REACH),
+    eventType: heyReachEventTypeSchema,
+    eventId: z.string(),
+    createdAt: z.string(),
+    lead: heyReachLeadSchema.optional(),
+    campaign: heyReachCampaignSchema.optional(),
+    linkedInAccount: heyReachLinkedInAccountSchema.optional(),
+    rawPayload: z.record(z.string(), z.unknown())
+})
+
+export const heyReachConnectionRequestSentTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.CONNECTION_REQUEST_SENT)
+})
+export type HeyReachConnectionRequestSentTrigger = z.infer<typeof heyReachConnectionRequestSentTriggerSchema>
+
+export const heyReachConnectionRequestAcceptedTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.CONNECTION_REQUEST_ACCEPTED)
+})
+export type HeyReachConnectionRequestAcceptedTrigger = z.infer<typeof heyReachConnectionRequestAcceptedTriggerSchema>
+
+export const heyReachMessageSentTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.MESSAGE_SENT),
+    messageBody: z.string().optional()
+})
+export type HeyReachMessageSentTrigger = z.infer<typeof heyReachMessageSentTriggerSchema>
+
+export const heyReachMessageReplyReceivedTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.MESSAGE_REPLY_RECEIVED),
+    messageBody: z.string().optional()
+})
+export type HeyReachMessageReplyReceivedTrigger = z.infer<typeof heyReachMessageReplyReceivedTriggerSchema>
+
+export const heyReachInmailSentTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.INMAIL_SENT),
+    messageBody: z.string().optional()
+})
+export type HeyReachInmailSentTrigger = z.infer<typeof heyReachInmailSentTriggerSchema>
+
+export const heyReachInmailReplyReceivedTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.INMAIL_REPLY_RECEIVED),
+    messageBody: z.string().optional()
+})
+export type HeyReachInmailReplyReceivedTrigger = z.infer<typeof heyReachInmailReplyReceivedTriggerSchema>
+
+export const heyReachFollowSentTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.FOLLOW_SENT)
+})
+export type HeyReachFollowSentTrigger = z.infer<typeof heyReachFollowSentTriggerSchema>
+
+export const heyReachPostLikedTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.POST_LIKED),
+    postUrl: z.string().optional()
+})
+export type HeyReachPostLikedTrigger = z.infer<typeof heyReachPostLikedTriggerSchema>
+
+export const heyReachProfileViewedTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.PROFILE_VIEWED)
+})
+export type HeyReachProfileViewedTrigger = z.infer<typeof heyReachProfileViewedTriggerSchema>
+
+export const heyReachCampaignCompletedTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.CAMPAIGN_COMPLETED)
+})
+export type HeyReachCampaignCompletedTrigger = z.infer<typeof heyReachCampaignCompletedTriggerSchema>
+
+export const heyReachProspectTagUpdatedTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.PROSPECT_TAG_UPDATED),
+    tags: z.array(z.string()).optional()
+})
+export type HeyReachProspectTagUpdatedTrigger = z.infer<typeof heyReachProspectTagUpdatedTriggerSchema>
+
+export const heyReachTriggerSchema = z.discriminatedUnion("eventType", [
+    heyReachConnectionRequestSentTriggerSchema,
+    heyReachConnectionRequestAcceptedTriggerSchema,
+    heyReachMessageSentTriggerSchema,
+    heyReachMessageReplyReceivedTriggerSchema,
+    heyReachInmailSentTriggerSchema,
+    heyReachInmailReplyReceivedTriggerSchema,
+    heyReachFollowSentTriggerSchema,
+    heyReachPostLikedTriggerSchema,
+    heyReachProfileViewedTriggerSchema,
+    heyReachCampaignCompletedTriggerSchema,
+    heyReachProspectTagUpdatedTriggerSchema
+])
+export type HeyReachTrigger = z.infer<typeof heyReachTriggerSchema>
+
 export const webhookTriggerSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.WEBHOOK),
     eventType: webhookTriggerTypeSchema,
@@ -612,6 +748,7 @@ export const TriggerSchema = z.union([
     gmailTriggerSchema,
     linearTriggerSchema,
     workOSTriggerSchema,
+    heyReachTriggerSchema,
     webhookTriggerSchema,
     cronTriggerSchema,
     webMonitorTriggerSchema,

@@ -12,7 +12,8 @@ export function getInputConfigInclude() {
         time_trigger_config: true,
         workos_config: true,
         webhook_config: true,
-        webmonitor_config: true
+        webmonitor_config: true,
+        hey_reach_config: true
     } as const
 }
 

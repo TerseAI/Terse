@@ -20,6 +20,18 @@ import type {
     GithubPushTrigger as _RawGithubPushTrigger,
     GithubTrigger as _RawGithubTrigger,
     GmailTrigger as _RawGmailTrigger,
+    HeyReachCampaignCompletedTrigger as _RawHeyReachCampaignCompletedTrigger,
+    HeyReachConnectionRequestAcceptedTrigger as _RawHeyReachConnectionRequestAcceptedTrigger,
+    HeyReachConnectionRequestSentTrigger as _RawHeyReachConnectionRequestSentTrigger,
+    HeyReachFollowSentTrigger as _RawHeyReachFollowSentTrigger,
+    HeyReachInmailReplyReceivedTrigger as _RawHeyReachInmailReplyReceivedTrigger,
+    HeyReachInmailSentTrigger as _RawHeyReachInmailSentTrigger,
+    HeyReachMessageReplyReceivedTrigger as _RawHeyReachMessageReplyReceivedTrigger,
+    HeyReachMessageSentTrigger as _RawHeyReachMessageSentTrigger,
+    HeyReachPostLikedTrigger as _RawHeyReachPostLikedTrigger,
+    HeyReachProfileViewedTrigger as _RawHeyReachProfileViewedTrigger,
+    HeyReachProspectTagUpdatedTrigger as _RawHeyReachProspectTagUpdatedTrigger,
+    HeyReachTrigger as _RawHeyReachTrigger,
     LinearCommentCreatedTrigger as _RawLinearCommentCreatedTrigger,
     LinearIssueCreatedTrigger as _RawLinearIssueCreatedTrigger,
     LinearIssueUpdatedTrigger as _RawLinearIssueUpdatedTrigger,
@@ -102,11 +114,13 @@ export {
     SnowflakeOutputConfig,
     WebhookInputConfig,
     WebMonitorConfig,
+    HeyReachInputConfig,
     SlackEventType,
     GitHubEventType,
     LinearEventType,
     GmailEventType,
     WorkOSEventType,
+    HeyReachEventType,
     debugTrigger,
     formatTriggerForAgent
 } from "terse-types"
@@ -121,6 +135,18 @@ export type GithubPRTrigger = SDKTrigger<_RawGithubPRTrigger>
 export type GithubPushTrigger = SDKTrigger<_RawGithubPushTrigger>
 export type GithubTrigger = SDKTrigger<_RawGithubTrigger>
 export type GmailTrigger = SDKTrigger<_RawGmailTrigger>
+export type HeyReachConnectionRequestSentTrigger = SDKTrigger<_RawHeyReachConnectionRequestSentTrigger>
+export type HeyReachConnectionRequestAcceptedTrigger = SDKTrigger<_RawHeyReachConnectionRequestAcceptedTrigger>
+export type HeyReachMessageSentTrigger = SDKTrigger<_RawHeyReachMessageSentTrigger>
+export type HeyReachMessageReplyReceivedTrigger = SDKTrigger<_RawHeyReachMessageReplyReceivedTrigger>
+export type HeyReachInmailSentTrigger = SDKTrigger<_RawHeyReachInmailSentTrigger>
+export type HeyReachInmailReplyReceivedTrigger = SDKTrigger<_RawHeyReachInmailReplyReceivedTrigger>
+export type HeyReachFollowSentTrigger = SDKTrigger<_RawHeyReachFollowSentTrigger>
+export type HeyReachPostLikedTrigger = SDKTrigger<_RawHeyReachPostLikedTrigger>
+export type HeyReachProfileViewedTrigger = SDKTrigger<_RawHeyReachProfileViewedTrigger>
+export type HeyReachCampaignCompletedTrigger = SDKTrigger<_RawHeyReachCampaignCompletedTrigger>
+export type HeyReachProspectTagUpdatedTrigger = SDKTrigger<_RawHeyReachProspectTagUpdatedTrigger>
+export type HeyReachTrigger = SDKTrigger<_RawHeyReachTrigger>
 export type LinearCommentCreatedTrigger = SDKTrigger<_RawLinearCommentCreatedTrigger>
 export type LinearIssueCreatedTrigger = SDKTrigger<_RawLinearIssueCreatedTrigger>
 export type LinearIssueUpdatedTrigger = SDKTrigger<_RawLinearIssueUpdatedTrigger>

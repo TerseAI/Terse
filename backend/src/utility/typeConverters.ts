@@ -9,6 +9,8 @@ import {
     GmailConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
+    HeyReachEventType,
+    HeyReachInputConfig,
     ImageEditConfig,
     LaunchDarklyConfig,
     LinearEventType,
@@ -65,6 +67,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.WEBHOOK
         case IntegrationType.WEBMONITOR:
             return PrismaIntegrationType.WEBMONITOR
+        case IntegrationType.HEY_REACH:
+            return PrismaIntegrationType.HEY_REACH
         default:
             throw integrationType satisfies never
     }
@@ -104,6 +108,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.WEBHOOK
         case PrismaIntegrationType.WEBMONITOR:
             return IntegrationType.WEBMONITOR
+        case PrismaIntegrationType.HEY_REACH:
+            return IntegrationType.HEY_REACH
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -142,6 +148,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.WEBHOOK
         case IntegrationType.WEBMONITOR:
             return PrismaIntegrationType.WEBMONITOR
+        case IntegrationType.HEY_REACH:
+            return PrismaIntegrationType.HEY_REACH
         default:
             throw integrationType satisfies never
     }
@@ -182,6 +190,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.WEBHOOK
         case PrismaIntegrationType.WEBMONITOR:
             return IntegrationType.WEBMONITOR
+        case PrismaIntegrationType.HEY_REACH:
+            return IntegrationType.HEY_REACH
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -256,6 +266,10 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         return new WebMonitorConfig("", { number: 1, unit: "day" })
     }
 
+    if (channelInput.hey_reach_config) {
+        return new HeyReachInputConfig(integrationId, (channelInput.hey_reach_config.event_types || []) as HeyReachEventType[])
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelInput.config_type) {
         case InputConfigType.GMAIL:
@@ -269,6 +283,7 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         case InputConfigType.WORKOS_INPUT:
         case InputConfigType.WEBHOOK_INPUT:
         case InputConfigType.WEBMONITOR:
+        case InputConfigType.HEY_REACH_INPUT:
             break
         default:
             throw channelInput.config_type satisfies never
@@ -419,6 +434,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("ATTIO_OUTPUT is an output type, not an input type")
         case ConfigType.SNOWFLAKE_OUTPUT:
             throw new Error("SNOWFLAKE_OUTPUT is an output type, not an input type")
+        case ConfigType.HEY_REACH_INPUT:
+            throw new Error("HEY_REACH_INPUT is an input type, not an output type")
         default:
             throw configType satisfies never
     }
@@ -447,6 +464,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.WEBHOOK_INPUT
         case InputConfigType.WEBMONITOR:
             return ConfigType.WEBMONITOR
+        case InputConfigType.HEY_REACH_INPUT:
+            return ConfigType.HEY_REACH_INPUT
         default:
             throw inputConfigType satisfies never
     }

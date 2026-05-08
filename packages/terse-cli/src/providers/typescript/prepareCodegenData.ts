@@ -6,6 +6,7 @@ import type {
     CodegenInput,
     DatadogInstanceData,
     GitHubInstanceData,
+    HeyReachInstanceData,
     IntegrationInstanceData,
     LaunchDarklyInstanceData,
     LinearInstanceData,
@@ -119,6 +120,11 @@ export interface SnowflakeSectionContext {
     skillToolType: string
 }
 
+export interface HeyReachSectionContext {
+    id: string
+    campaignClass: ResourceClassContext
+}
+
 export interface ToolParamTypeContext {
     description?: string
     typeName: string
@@ -160,6 +166,7 @@ export interface TemplateContext {
     workos?: WorkOSSectionContext
     attio?: AttioSectionContext
     snowflake?: SnowflakeSectionContext
+    heyreach?: HeyReachSectionContext
     tools?: ToolsSectionContext
     system: SystemSectionContext
 }
@@ -629,6 +636,42 @@ function prepareSnowflakeSection(instances: SnowflakeInstanceData[], tools: Tool
     })
 }
 
+function prepareHeyReachSection(instances: HeyReachInstanceData[]): SectionContext<HeyReachSectionContext> {
+    if (instances.length === 0) return sectionData([])
+    const inst = instances[0]
+    return sectionData(
+        [
+            "HeyReachInputConfig",
+            "HeyReachEventType",
+            "TypedTrigger",
+            "HeyReachTrigger",
+            "HeyReachConnectionRequestSentTrigger",
+            "HeyReachConnectionRequestAcceptedTrigger",
+            "HeyReachMessageSentTrigger",
+            "HeyReachMessageReplyReceivedTrigger",
+            "HeyReachInmailSentTrigger",
+            "HeyReachInmailReplyReceivedTrigger",
+            "HeyReachFollowSentTrigger",
+            "HeyReachPostLikedTrigger",
+            "HeyReachProfileViewedTrigger",
+            "HeyReachCampaignCompletedTrigger",
+            "HeyReachProspectTagUpdatedTrigger"
+        ],
+        {
+            id: inst.id,
+            campaignClass: buildResourceClassContext(
+                "HeyReachCampaign",
+                [
+                    { classField: "campaignId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" }
+                ],
+                "name",
+                inst.campaigns
+            )
+        }
+    )
+}
+
 function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionContext<ToolsSectionContext> {
     if (tools.length === 0) return sectionData([])
 
@@ -1036,10 +1079,11 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const workos = prepareWorkOSSection(input.workos, input.tools)
     const attio = prepareAttioSection(input.attio, input.tools)
     const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
+    const heyreach = prepareHeyReachSection(input.heyreach)
     const tools = prepareToolsSection(input.tools, input)
     const system = prepareSystemSection()
 
-    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
+    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
 
     for (const section of sections) {
         section.imports.forEach(value => allImports.add(value))
@@ -1061,6 +1105,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         workos: workos.data,
         attio: attio.data,
         snowflake: snowflake.data,
+        heyreach: heyreach.data,
         tools: tools.data,
         system: system.data!
     }

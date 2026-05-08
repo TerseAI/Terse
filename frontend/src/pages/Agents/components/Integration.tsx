@@ -8,6 +8,7 @@ import {
     DatadogIcon,
     GithubIcon,
     GmailIcon,
+    HeyReachIcon,
     LaunchDarklyIcon,
     LinearIcon,
     NotionIcon,
@@ -56,6 +57,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.WEB:
         case ConfigType.IMAGE_EDIT:
             return <TerseIcon />
+        case ConfigType.HEY_REACH_INPUT:
+            return <HeyReachIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -93,6 +96,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <AttioIcon />
         case IntegrationType.SNOWFLAKE:
             return <SnowflakeIcon />
+        case IntegrationType.HEY_REACH:
+            return <HeyReachIcon />
         default:
             throw integration satisfies never
     }

@@ -53,6 +53,7 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <SnowflakeIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:
         case IntegrationType.WEBMONITOR:
+        case IntegrationType.HEY_REACH:
             return null
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing

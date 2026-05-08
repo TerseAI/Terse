@@ -5,6 +5,7 @@ import { CronJobIntegrationManager } from "../CronJobIntegration"
 import { DatadogIntegrationManager } from "../DatadogIntegration"
 import { GithubIntegrationManager } from "../GithubIntegration"
 import { GmailIntegrationManager } from "../GmailIntegration"
+import { HeyReachIntegrationManager } from "../HeyReachIntegration"
 import { LaunchDarklyIntegrationManager } from "../LaunchDarklyIntegration"
 import { LinearIntegrationManager } from "../LinearIntegration"
 import { NotionIntegrationManager } from "../NotionIntegration"
@@ -38,5 +39,6 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new DatadogIntegrationManager(),
     new WorkOSIntegrationManager(),
     new AttioIntegrationManager(),
-    new SnowflakeIntegrationManager()
+    new SnowflakeIntegrationManager(),
+    new HeyReachIntegrationManager()
 ]

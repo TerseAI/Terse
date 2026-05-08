@@ -1,5 +1,5 @@
 import { IntegrationType } from "./Integrations"
-import type { CronTrigger, GithubTrigger, GmailTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebMonitorTrigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
+import type { CronTrigger, GithubTrigger, GmailTrigger, HeyReachTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebMonitorTrigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
 
 interface TriggerPresenter<TEvent extends Trigger> {
     formatForAgent(event: TEvent): string
@@ -77,6 +77,11 @@ const TriggerPresenters = {
         debug: (event: WorkOSTrigger): string => `WorkOS ${event.eventType}`,
         display: formatWorkOSDisplay
     },
+    [IntegrationType.HEY_REACH]: {
+        formatForAgent: formatHeyReachTrigger,
+        debug: (event: HeyReachTrigger): string => `HeyReach ${event.eventType}${event.lead?.linkedInId ? ` lead=${event.lead.linkedInId}` : ""}`,
+        display: formatHeyReachDisplay
+    },
     [IntegrationType.WEBHOOK]: {
         formatForAgent: formatWebhookTrigger,
         debug: (event: WebhookTrigger): string => `Webhook Trigger (${event.method})`,
@@ -106,6 +111,8 @@ function dispatchPresenter(event: IntegrationTrigger, method: keyof TriggerPrese
             return TriggerPresenters[IntegrationType.LINEAR][method](event)
         case IntegrationType.WORKOS:
             return TriggerPresenters[IntegrationType.WORKOS][method](event)
+        case IntegrationType.HEY_REACH:
+            return TriggerPresenters[IntegrationType.HEY_REACH][method](event)
         case IntegrationType.WEBHOOK:
             return TriggerPresenters[IntegrationType.WEBHOOK][method](event)
         case IntegrationType.CRON_JOB:
@@ -485,6 +492,44 @@ function formatWebMonitorTrigger(event: WebMonitorTrigger): string {
         lines.push(`Raw Payload:\n${event.rawPayload}`)
     }
     return lines.join("\n\n")
+}
+
+function heyReachLeadFullName(event: HeyReachTrigger): string | null {
+    const lead = event.lead
+    if (!lead) return null
+    const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(" ").trim()
+    return fullName || lead.linkedInId || lead.id || null
+}
+
+function formatHeyReachTrigger(event: HeyReachTrigger): string {
+    const lines = [`HeyReach Event: ${event.eventType}`, `Event ID: ${event.eventId}`, `Created At: ${event.createdAt}`]
+    const leadName = heyReachLeadFullName(event)
+    if (leadName) lines.push(`Lead: ${leadName}`)
+    if (event.lead?.profileUrl) lines.push(`LinkedIn URL: ${event.lead.profileUrl}`)
+    if (event.lead?.companyName) lines.push(`Company: ${event.lead.companyName}`)
+    if (event.lead?.position) lines.push(`Position: ${event.lead.position}`)
+    if (event.campaign) lines.push(`Campaign: ${event.campaign.name || event.campaign.id || "unknown"}`)
+    if (event.linkedInAccount) {
+        const accountName = [event.linkedInAccount.firstName, event.linkedInAccount.lastName].filter(Boolean).join(" ").trim()
+        if (accountName) lines.push(`LinkedIn Account: ${accountName}`)
+    }
+    if ("messageBody" in event && event.messageBody) lines.push(`Message:\n${event.messageBody}`)
+    if ("postUrl" in event && event.postUrl) lines.push(`Post URL: ${event.postUrl}`)
+    if ("tags" in event && event.tags?.length) lines.push(`Tags: ${event.tags.join(", ")}`)
+    lines.push(`\nFull Payload:\n${JSON.stringify(event.rawPayload, null, 2)}`)
+    return lines.join("\n")
+}
+
+function formatHeyReachDisplay(event: HeyReachTrigger): TriggerDisplay {
+    const subtitle = humanizeWorkOSEventType(event.eventType.toLowerCase())
+    const leadName = heyReachLeadFullName(event)
+    if (leadName) {
+        return { title: leadName, subtitle }
+    }
+    if (event.campaign?.name) {
+        return { title: event.campaign.name, subtitle }
+    }
+    return { title: "HeyReach event", subtitle }
 }
 
 function formatCronTrigger(event: CronTrigger): string {

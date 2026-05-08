@@ -27,6 +27,7 @@ import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrat
 import { deviceTokenExchange } from "./routes/deviceTokenExchange"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
+import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations, handleHeyReachWebhook } from "./routes/heyreach"
 import { handleHydrateSampleEvent } from "./routes/hydrateSampleEvent"
 import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
 import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
@@ -237,6 +238,10 @@ app.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, async (req, res) => {
 
 app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, async (req, res) => {
     handleWebhookTrigger(req, res)
+})
+
+app.post(ApiRoutes.WEBHOOKS.HEY_REACH_BY_INTEGRATION_ID, async (req, res) => {
+    handleHeyReachWebhook(req, res)
 })
 
 app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
@@ -459,6 +464,20 @@ app.get(ApiRoutes.SLACK.CHANNELS, requireAuth([AuthKind.UserCookie, AuthKind.Use
 
 app.get(ApiRoutes.SLACK.USERS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     await getSlackUsers(req, res)
+})
+
+// MARK: HEYREACH
+
+app.get(ApiRoutes.HEY_REACH.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    getHeyReachIntegrations(req, res)
+})
+
+app.post(ApiRoutes.HEY_REACH.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    createOrUpdateHeyReachIntegration(req, res)
+})
+
+app.get(ApiRoutes.HEY_REACH.CAMPAIGNS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    getHeyReachCampaigns(req, res)
 })
 
 // MARK: POSTHOG
