@@ -258,18 +258,14 @@ function DatadogBody({ config, label, type }: { config: DatadogConfigData; label
 
 function HeyReachBody({ config, label, type }: { config: HeyReachInputConfigData; label: string; type: ConfigType }) {
     const { campaigns } = useHeyReachCampaigns(config.integrationId)
-    const events = config.eventTypes ?? []
     const campaignIds = config.campaignIds ?? []
     const campaignLabels = campaignIds.map(id => campaigns.find(c => c.id === id)?.name ?? id)
-    const summary = events.length > 0 ? `${events.length} ${events.length === 1 ? "event" : "events"}` : undefined
 
     return (
-        <Frame type={type} label={label} summary={summary}>
-            {events.length > 0 ? (
-                <Field label="Events">
-                    <Chips items={events.map(formatHeyReachEvent)} />
-                </Field>
-            ) : null}
+        <Frame type={type} label={label}>
+            <Field label="Event">
+                <Chips items={[formatHeyReachEvent(config.eventType)]} />
+            </Field>
             <Field label="Campaigns">{campaignIds.length > 0 ? <Chips items={campaignLabels} /> : <span className="text-muted-foreground text-xs">All campaigns</span>}</Field>
         </Frame>
     )

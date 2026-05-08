@@ -665,7 +665,7 @@ model automation_workos_configs {
 model automation_hey_reach_configs {
   id                  String   @id @default(cuid())
   automation_input_id String   @unique
-  event_types         String[]
+  event_type          String
   campaign_ids        String[] @default([])
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt

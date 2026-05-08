@@ -1,5 +1,6 @@
 import { ConfigType, HeyReachInputConfigData } from "terse-types/Configs"
 
+import { createHeyReachWebhook } from "../integrations/HeyReachIntegration"
 import { db } from "../prismaClient"
 import { PrismaTransaction } from "../types/prisma"
 
@@ -13,16 +14,17 @@ export class HeyReachTrigger implements Trigger<HeyReachInputConfigData> {
         if (!integration) {
             throw new Error(`HeyReach integration ${trigger.integrationId} not found`)
         }
-        if (!trigger.eventTypes.length) {
+        if (!trigger.eventType) {
             throw new Error("HeyReach trigger requires at least one event type")
         }
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: HeyReachInputConfigData): Promise<void> {
+        const webhookUrl = await createHeyReachWebhook(tx, agentTriggerId, trigger.eventType, trigger.campaignIds)
         await tx.automation_hey_reach_configs.create({
             data: {
                 automation_input_id: agentTriggerId,
-                event_types: trigger.eventTypes,
+                event_type: trigger.eventType,
                 campaign_ids: trigger.campaignIds
             }
         })

@@ -690,7 +690,7 @@ export type GitHubSkillConfigData = z.infer<typeof GitHubSkillConfigSchema>
 export const HeyReachInputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.HEY_REACH),
     configType: z.literal(ConfigType.HEY_REACH_INPUT),
-    eventTypes: z.array(heyReachEventTypeSchema).default([]),
+    eventType: heyReachEventTypeSchema,
     campaignIds: z.array(z.string()).default([])
 })
 export type HeyReachInputConfigData = z.infer<typeof HeyReachInputConfigSchema>
@@ -699,18 +699,18 @@ export type HeyReachInputConfigInstance = HeyReachInputConfigData & ConfigBehavi
 export class HeyReachInputConfig extends BaseConfigInstance<IntegrationType.HEY_REACH, ConfigType.HEY_REACH_INPUT> implements HeyReachInputConfigInstance {
     constructor(
         integrationId: string,
-        public eventTypes: HeyReachEventType[] = [],
+        public eventType: HeyReachEventType,
         public campaignIds: string[] = []
     ) {
         super(integrationId, IntegrationType.HEY_REACH, ConfigType.HEY_REACH_INPUT)
     }
 
     isComplete(): boolean {
-        return this.eventTypes.length > 0
+        return !!this.eventType
     }
 
     formatForAgent(): string {
-        const parts = [`Type: HeyReach Events`, `Integration ID: ${this.integrationId}`, `Listening for: ${this.eventTypes.join(", ")}`]
+        const parts = [`Type: HeyReach Events`, `Integration ID: ${this.integrationId}`, `Listening for: ${this.eventType}`]
         if (this.campaignIds.length > 0) parts.push(`Campaigns: ${this.campaignIds.join(", ")}`)
         return parts.join("\n")
     }
@@ -1193,7 +1193,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.WORKOS_INPUT:
             return config.eventTypes.length > 0
         case ConfigType.HEY_REACH_INPUT:
-            return config.eventTypes.length > 0
+            return !!config.eventType
         case ConfigType.ATTIO_OUTPUT:
             return !!config.objectSlug
         default:
@@ -1301,7 +1301,7 @@ export function formatConfigForAgent(config: ConfigData): string {
         case ConfigType.WORKOS_INPUT:
             return `Type: WorkOS Events\nListening for: ${config.eventTypes.join(", ")}`
         case ConfigType.HEY_REACH_INPUT: {
-            const parts = [`Type: HeyReach Events`, `Integration ID: ${config.integrationId}`, `Listening for: ${config.eventTypes.join(", ")}`]
+            const parts = [`Type: HeyReach Events`, `Integration ID: ${config.integrationId}`, `Listening for: ${config.eventType}`]
             if (config.campaignIds.length > 0) parts.push(`Campaigns: ${config.campaignIds.join(", ")}`)
             return parts.join("\n")
         }

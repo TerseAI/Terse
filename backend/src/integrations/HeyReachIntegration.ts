@@ -11,7 +11,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
 import {
@@ -207,8 +207,8 @@ export class HeyReachTriggerRuntime extends TriggerRuntime<HeyReachTrigger> {
         if (agentTrigger.config_type !== InputConfigType.HEY_REACH_INPUT) return false
         if (agentTrigger.integration_id !== this.integrationId) return false
         const config = agentTrigger.hey_reach_config
-        if (!config?.event_types?.length) return false
-        if (!config.event_types.includes(this.data.eventType)) return false
+        if (!config?.event_type) return false
+        if (config.event_type !== this.data.eventType) return false
         if (config.campaign_ids.length === 0) return true
         const campaignId = this.data.campaign?.id
         if (campaignId === undefined) return false
@@ -330,8 +330,9 @@ const heyReachWebhookResponseSchema = z.object({
     url: z.string()
 })
 
-export async function createHeyReachWebhook(triggerId: string, eventType: HeyReachEventType, campaignIds: string[] = []) {
-    const automationInput = await db().automation_inputs.findUnique({
+export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: string, eventType: HeyReachEventType, campaignIds: string[] = []) {
+    console.log("WTF: createHeyReachWebhook", triggerId, eventType, campaignIds)
+    const automationInput = await tx.automation_inputs.findUnique({
         where: { id: triggerId },
         select: { integration_id: true, config_type: true }
     })
@@ -359,6 +360,8 @@ export async function createHeyReachWebhook(triggerId: string, eventType: HeyRea
         headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
     })
+
+    console.log("WTF: HeyReach webhook creation response", response)
 
     const data = heyReachWebhookResponseSchema.parse(await response.json())
 
