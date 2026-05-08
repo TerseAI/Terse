@@ -652,10 +652,10 @@ function prepareHeyReachSection(instances: HeyReachInstanceData[]): SectionConte
             "HeyReachInmailSentTrigger",
             "HeyReachInmailReplyReceivedTrigger",
             "HeyReachFollowSentTrigger",
-            "HeyReachPostLikedTrigger",
-            "HeyReachProfileViewedTrigger",
+            "HeyReachLikedPostTrigger",
+            "HeyReachViewedProfileTrigger",
             "HeyReachCampaignCompletedTrigger",
-            "HeyReachProspectTagUpdatedTrigger"
+            "HeyReachLeadTagUpdatedTrigger"
         ],
         {
             id: inst.id,

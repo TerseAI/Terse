@@ -262,9 +262,9 @@ function buildHeyReachTrigger(payload: HeyReachWebhookPayload): HeyReachTrigger 
         case HeyReachEventType.INMAIL_SENT:
         case HeyReachEventType.INMAIL_REPLY_RECEIVED:
             return { ...base, eventType, messageBody: typeof payload.messageBody === "string" ? payload.messageBody : undefined }
-        case HeyReachEventType.POST_LIKED:
+        case HeyReachEventType.LIKED_POST:
             return { ...base, eventType, postUrl: typeof payload.postUrl === "string" ? payload.postUrl : undefined }
-        case HeyReachEventType.PROSPECT_TAG_UPDATED:
+        case HeyReachEventType.LEAD_TAG_UPDATED:
             return { ...base, eventType, tags: Array.isArray(payload.tags) ? (payload.tags as string[]) : undefined }
         default:
             return { ...base, eventType }
@@ -317,4 +317,50 @@ export async function fetchHeyReachCampaigns(organizationId: string, integration
 
     const data = heyReachCampaignsResponseSchema.parse(await response.json())
     return data.items.map(c => ({ id: String(c.id), name: c.name || `Campaign ${c.id}` }))
+}
+
+const heyReachWebhookRequestSchema = z.object({
+    webhookName: z.string(),
+    webhookUrl: z.string(),
+    eventType: z.string(),
+    campaignIds: z.array(z.string()).optional()
+})
+
+const heyReachWebhookResponseSchema = z.object({
+    url: z.string()
+})
+
+export async function createHeyReachWebhook(triggerId: string, eventType: HeyReachEventType, campaignIds: string[] = []) {
+    const automationInput = await db().automation_inputs.findUnique({
+        where: { id: triggerId },
+        select: { integration_id: true, config_type: true }
+    })
+    if (!automationInput || automationInput.config_type !== InputConfigType.HEY_REACH_INPUT) {
+        throw new Error("HeyReach trigger not found")
+    }
+    const integrationId = automationInput.integration_id
+
+    const heyReachRow = await db().hey_reach_integrations.findUnique({ where: { id: integrationId } })
+    if (!heyReachRow) {
+        throw new Error("HeyReach integration not found")
+    }
+
+    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
+    if (!apiKey) {
+        throw new Error("HeyReach API key not found")
+    }
+
+    const webhookName = `Terse ${eventType}`
+    const webhookUrl = `${urls.backend}/webhooks/heyreach/${triggerId}`
+
+    const requestBody = heyReachWebhookRequestSchema.parse({ webhookName, webhookUrl, eventType, campaignIds })
+    const response = await fetch(`${HEYREACH_API_BASE}/webhooks/CreateWebhook`, {
+        method: "POST",
+        headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+    })
+
+    const data = heyReachWebhookResponseSchema.parse(await response.json())
+
+    return data.url
 }

@@ -632,27 +632,27 @@ export const heyReachFollowSentTriggerSchema = heyReachTriggerBaseSchema.extend(
 })
 export type HeyReachFollowSentTrigger = z.infer<typeof heyReachFollowSentTriggerSchema>
 
-export const heyReachPostLikedTriggerSchema = heyReachTriggerBaseSchema.extend({
-    eventType: z.literal(HeyReachEventType.POST_LIKED),
+export const heyReachLikedPostTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.LIKED_POST),
     postUrl: z.string().optional()
 })
-export type HeyReachPostLikedTrigger = z.infer<typeof heyReachPostLikedTriggerSchema>
+export type HeyReachLikedPostTrigger = z.infer<typeof heyReachLikedPostTriggerSchema>
 
-export const heyReachProfileViewedTriggerSchema = heyReachTriggerBaseSchema.extend({
-    eventType: z.literal(HeyReachEventType.PROFILE_VIEWED)
+export const heyReachViewedProfileTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.VIEWED_PROFILE)
 })
-export type HeyReachProfileViewedTrigger = z.infer<typeof heyReachProfileViewedTriggerSchema>
+export type HeyReachViewedProfileTrigger = z.infer<typeof heyReachViewedProfileTriggerSchema>
 
 export const heyReachCampaignCompletedTriggerSchema = heyReachTriggerBaseSchema.extend({
     eventType: z.literal(HeyReachEventType.CAMPAIGN_COMPLETED)
 })
 export type HeyReachCampaignCompletedTrigger = z.infer<typeof heyReachCampaignCompletedTriggerSchema>
 
-export const heyReachProspectTagUpdatedTriggerSchema = heyReachTriggerBaseSchema.extend({
-    eventType: z.literal(HeyReachEventType.PROSPECT_TAG_UPDATED),
+export const heyReachLeadTagUpdatedTriggerSchema = heyReachTriggerBaseSchema.extend({
+    eventType: z.literal(HeyReachEventType.LEAD_TAG_UPDATED),
     tags: z.array(z.string()).optional()
 })
-export type HeyReachProspectTagUpdatedTrigger = z.infer<typeof heyReachProspectTagUpdatedTriggerSchema>
+export type HeyReachLeadTagUpdatedTrigger = z.infer<typeof heyReachLeadTagUpdatedTriggerSchema>
 
 export const heyReachTriggerSchema = z.discriminatedUnion("eventType", [
     heyReachConnectionRequestSentTriggerSchema,
@@ -662,10 +662,10 @@ export const heyReachTriggerSchema = z.discriminatedUnion("eventType", [
     heyReachInmailSentTriggerSchema,
     heyReachInmailReplyReceivedTriggerSchema,
     heyReachFollowSentTriggerSchema,
-    heyReachPostLikedTriggerSchema,
-    heyReachProfileViewedTriggerSchema,
+    heyReachLikedPostTriggerSchema,
+    heyReachViewedProfileTriggerSchema,
     heyReachCampaignCompletedTriggerSchema,
-    heyReachProspectTagUpdatedTriggerSchema
+    heyReachLeadTagUpdatedTriggerSchema
 ])
 export type HeyReachTrigger = z.infer<typeof heyReachTriggerSchema>
 

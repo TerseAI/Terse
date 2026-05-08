@@ -309,10 +309,10 @@ export const HeyReachEventType = {
     INMAIL_SENT: "INMAIL_SENT",
     INMAIL_REPLY_RECEIVED: "INMAIL_REPLY_RECEIVED",
     FOLLOW_SENT: "FOLLOW_SENT",
-    POST_LIKED: "POST_LIKED",
-    PROFILE_VIEWED: "PROFILE_VIEWED",
+    LIKED_POST: "LIKED_POST",
+    VIEWED_PROFILE: "VIEWED_PROFILE",
     CAMPAIGN_COMPLETED: "CAMPAIGN_COMPLETED",
-    PROSPECT_TAG_UPDATED: "PROSPECT_TAG_UPDATED"
+    LEAD_TAG_UPDATED: "LEAD_TAG_UPDATED"
 } as const
 export const heyReachEventTypeSchema = z.enum(HeyReachEventType)
 export type HeyReachEventType = z.infer<typeof heyReachEventTypeSchema>

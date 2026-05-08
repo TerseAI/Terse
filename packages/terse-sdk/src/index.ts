@@ -28,9 +28,9 @@ import type {
     HeyReachInmailSentTrigger as _RawHeyReachInmailSentTrigger,
     HeyReachMessageReplyReceivedTrigger as _RawHeyReachMessageReplyReceivedTrigger,
     HeyReachMessageSentTrigger as _RawHeyReachMessageSentTrigger,
-    HeyReachPostLikedTrigger as _RawHeyReachPostLikedTrigger,
-    HeyReachProfileViewedTrigger as _RawHeyReachProfileViewedTrigger,
-    HeyReachProspectTagUpdatedTrigger as _RawHeyReachProspectTagUpdatedTrigger,
+    HeyReachLikedPostTrigger as _RawHeyReachLikedPostTrigger,
+    HeyReachViewedProfileTrigger as _RawHeyReachViewedProfileTrigger,
+    HeyReachLeadTagUpdatedTrigger as _RawHeyReachLeadTagUpdatedTrigger,
     HeyReachTrigger as _RawHeyReachTrigger,
     LinearCommentCreatedTrigger as _RawLinearCommentCreatedTrigger,
     LinearIssueCreatedTrigger as _RawLinearIssueCreatedTrigger,
@@ -142,10 +142,10 @@ export type HeyReachMessageReplyReceivedTrigger = SDKTrigger<_RawHeyReachMessage
 export type HeyReachInmailSentTrigger = SDKTrigger<_RawHeyReachInmailSentTrigger>
 export type HeyReachInmailReplyReceivedTrigger = SDKTrigger<_RawHeyReachInmailReplyReceivedTrigger>
 export type HeyReachFollowSentTrigger = SDKTrigger<_RawHeyReachFollowSentTrigger>
-export type HeyReachPostLikedTrigger = SDKTrigger<_RawHeyReachPostLikedTrigger>
-export type HeyReachProfileViewedTrigger = SDKTrigger<_RawHeyReachProfileViewedTrigger>
+export type HeyReachLikedPostTrigger = SDKTrigger<_RawHeyReachLikedPostTrigger>
+export type HeyReachViewedProfileTrigger = SDKTrigger<_RawHeyReachViewedProfileTrigger>
 export type HeyReachCampaignCompletedTrigger = SDKTrigger<_RawHeyReachCampaignCompletedTrigger>
-export type HeyReachProspectTagUpdatedTrigger = SDKTrigger<_RawHeyReachProspectTagUpdatedTrigger>
+export type HeyReachLeadTagUpdatedTrigger = SDKTrigger<_RawHeyReachLeadTagUpdatedTrigger>
 export type HeyReachTrigger = SDKTrigger<_RawHeyReachTrigger>
 export type LinearCommentCreatedTrigger = SDKTrigger<_RawLinearCommentCreatedTrigger>
 export type LinearIssueCreatedTrigger = SDKTrigger<_RawLinearIssueCreatedTrigger>

@@ -410,14 +410,14 @@ function formatHeyReachEvent(type: string): string {
             return "InMail reply"
         case "FOLLOW_SENT":
             return "Follow sent"
-        case "POST_LIKED":
+        case "LIKED_POST":
             return "Post liked"
-        case "PROFILE_VIEWED":
+        case "VIEWED_PROFILE":
             return "Profile viewed"
         case "CAMPAIGN_COMPLETED":
             return "Campaign completed"
-        case "PROSPECT_TAG_UPDATED":
-            return "Prospect tag updated"
+        case "LEAD_TAG_UPDATED":
+            return "Lead tag updated"
         default:
             return type
     }

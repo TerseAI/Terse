@@ -126,20 +126,20 @@ export const Triggers = {
             return new HeyReachInputConfig("{{escape heyreach.id}}", [HeyReachEventType.FOLLOW_SENT], (opts?.campaigns ?? []).map(c => c.campaignId))
         },
         /** Trigger when a post is liked */
-        onPostLiked(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachPostLikedTrigger> {
-            return new HeyReachInputConfig("{{escape heyreach.id}}", [HeyReachEventType.POST_LIKED], (opts?.campaigns ?? []).map(c => c.campaignId))
+        onLikedPost(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachLikedPostTrigger> {
+            return new HeyReachInputConfig("{{escape heyreach.id}}", [HeyReachEventType.LIKED_POST], (opts?.campaigns ?? []).map(c => c.campaignId))
         },
         /** Trigger when a profile is viewed */
-        onProfileViewed(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachProfileViewedTrigger> {
-            return new HeyReachInputConfig("{{escape heyreach.id}}", [HeyReachEventType.PROFILE_VIEWED], (opts?.campaigns ?? []).map(c => c.campaignId))
+        onViewedProfile(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachViewedProfileTrigger> {
+            return new HeyReachInputConfig("{{escape heyreach.id}}", [HeyReachEventType.VIEWED_PROFILE], (opts?.campaigns ?? []).map(c => c.campaignId))
         },
         /** Trigger when a campaign completes */
         onCampaignCompleted(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachCampaignCompletedTrigger> {
             return new HeyReachInputConfig("{{escape heyreach.id}}", [HeyReachEventType.CAMPAIGN_COMPLETED], (opts?.campaigns ?? []).map(c => c.campaignId))
         },
-        /** Trigger when prospect tags are updated */
-        onProspectTagUpdated(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachProspectTagUpdatedTrigger> {
-            return new HeyReachInputConfig("{{escape heyreach.id}}", [HeyReachEventType.PROSPECT_TAG_UPDATED], (opts?.campaigns ?? []).map(c => c.campaignId))
+        /** Trigger when lead tags are updated */
+        onLeadTagUpdated(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachLeadTagUpdatedTrigger> {
+            return new HeyReachInputConfig("{{escape heyreach.id}}", [HeyReachEventType.LEAD_TAG_UPDATED], (opts?.campaigns ?? []).map(c => c.campaignId))
         },
         /** Trigger on specific HeyReach event types */
         trigger(opts?: { campaigns?: HeyReachCampaign[]; eventTypes?: HeyReachEventType[] }): TypedTrigger<HeyReachTrigger> {
