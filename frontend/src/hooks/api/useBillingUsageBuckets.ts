@@ -14,9 +14,7 @@ export function useBillingUsageBuckets(params?: Partial<BillingUsageBucketsQuery
 } {
     const timezone = params?.timezone ?? getUserTimezone()
     const requestParams = { ...params, timezone }
-    const { data, error, isLoading, isValidating, mutate } = useSWR(billingUsageBucketsKey(requestParams), () =>
-        BackendProvider.getBillingUsageBuckets(requestParams)
-    )
+    const { data, error, isLoading, isValidating, mutate } = useSWR(billingUsageBucketsKey(requestParams), () => BackendProvider.getBillingUsageBuckets(requestParams))
 
     return {
         buckets: data?.buckets ?? null,

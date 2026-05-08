@@ -1,11 +1,5 @@
 import { Request, Response } from "express"
-import {
-    billingChangeRequestBodySchema,
-    billingCheckoutRequestBodySchema,
-    billingContextQuerySchema,
-    billingPortalSessionRequestBodySchema,
-    billingUsageBucketsQuerySchema
-} from "terse-types"
+import { billingChangeRequestBodySchema, billingCheckoutRequestBodySchema, billingContextQuerySchema, billingPortalSessionRequestBodySchema, billingUsageBucketsQuerySchema } from "terse-types"
 
 import { settings } from "../config/settings"
 import { BillingServiceProxy, billingServiceProxyForRequest } from "../services/BillingService"

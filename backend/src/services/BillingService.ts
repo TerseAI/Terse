@@ -10,7 +10,6 @@ import {
     BillingCheckoutRequestBody,
     BillingContextQuery,
     BillingContextResponse,
-    BillingUsageBucketsQuery,
     BillingError,
     BillingPortalSessionRequestBody,
     BillingRecordLlmBody,
@@ -19,14 +18,15 @@ import {
     BillingRunGateRequestBody,
     BillingStatusResponse,
     BillingStripeRedirectResponse,
+    BillingUsageBucketsQuery,
     CreditGateDeniedError,
     PlanKey,
     RunGateDecision,
     type TerseBillingJwtClaims,
+    type UsageResponse,
     billingChargeRunBaseResponseSchema,
     billingRecordLlmResponseSchema,
-    parseBillingForbiddenJson,
-    type UsageResponse
+    parseBillingForbiddenJson
 } from "terse-types"
 import type { User } from "terse-types/types"
 
