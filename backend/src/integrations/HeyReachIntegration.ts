@@ -1,9 +1,9 @@
 import { InputConfigType } from "@prisma/client"
 import { HeyReachEventType, HeyReachTrigger, HeyReachWebhookPayload } from "terse-types"
-import { z } from "zod"
 import { ConfigData, ConfigType } from "terse-types/Configs"
 import { HeyReachIntegration, HeyReachIntegrationMetadata, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
@@ -126,7 +126,7 @@ export class HeyReachIntegrationManager
     getFormSetup(): FormIntegrationSetup {
         return {
             title: "Connect HeyReach",
-            url: "https://app.heyreach.io",
+            url: "https://app.heyreach.io/app/integrations/public-api/api",
             instructions: [
                 "Generate an API key in HeyReach under Integrations & API.",
                 "After saving, use the webhook URL Terse returns to create a webhook in HeyReach for the events you want to listen to."

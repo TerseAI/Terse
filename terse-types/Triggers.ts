@@ -1,6 +1,17 @@
 import { z } from "zod"
 
-import { GitHubEventType, HeyReachEventType, WorkOSEventType, frequencyUnitSchema, gitHubEventTypeSchema, gmailEventTypeSchema, heyReachEventTypeSchema, linearEventTypeSchema, slackEventTypeSchema, workOSEventTypeSchema } from "./Configs"
+import {
+    GitHubEventType,
+    HeyReachEventType,
+    WorkOSEventType,
+    frequencyUnitSchema,
+    gitHubEventTypeSchema,
+    gmailEventTypeSchema,
+    heyReachEventTypeSchema,
+    linearEventTypeSchema,
+    slackEventTypeSchema,
+    workOSEventTypeSchema
+} from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
 import { debugTrigger as debugTriggerWithPresenter, displayTrigger as displayTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"

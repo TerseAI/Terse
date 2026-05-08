@@ -309,9 +309,10 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                 const instances = await fetchWithAuth<HeyReachIntegration[]>(ApiRoutes.HEY_REACH.INTEGRATIONS, apiKey)
                 input.heyreach = await Promise.all(
                     instances.map(async (inst): Promise<HeyReachInstanceData> => {
-                        const resp = await fetchWithAuth<{ campaigns: Array<{ id: string; name: string }> }>(`${ApiRoutes.HEY_REACH.CAMPAIGNS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(
-                            () => ({ campaigns: [] })
-                        )
+                        const resp = await fetchWithAuth<{ campaigns: Array<{ id: string; name: string }> }>(
+                            `${ApiRoutes.HEY_REACH.CAMPAIGNS}?integrationId=${encodeURIComponent(inst.id)}`,
+                            apiKey
+                        ).catch(() => ({ campaigns: [] }))
                         return { id: inst.id, displayName: inst.id, campaigns: resp.campaigns || [] }
                     })
                 )
