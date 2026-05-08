@@ -1,7 +1,6 @@
 import { z } from "zod"
 
 import { runHistoryActionBaseSchema } from "./RunHistoryTypes"
-import { LinearStateName } from "./TicketSystem"
 
 type AnySchema = z.ZodTypeAny
 
@@ -26,6 +25,15 @@ export function defineTool<const TName extends string, TInput extends AnySchema,
     return def
 }
 
+export enum LinearStateName {
+    Triage = "Triage",
+    Backlog = "Backlog",
+    Todo = "Todo",
+    InProgress = "In Progress",
+    InReview = "In Review",
+    Done = "Done",
+    Canceled = "Canceled"
+}
 const linearStateNameValues = Object.values(LinearStateName)
 const dateLikeSchema = z.union([z.string(), z.date()])
 

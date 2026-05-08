@@ -20,22 +20,6 @@ export * from "./Survey"
 export * from "./Tools"
 export * from "./Billing"
 export * from "./ModelRegistry"
-export {
-    Comment,
-    CreateTicketInput,
-    LinearStateName,
-    Milestone,
-    Organization,
-    Project,
-    Team,
-    Ticket,
-    TicketState,
-    TicketSystemType,
-    TicketWebhookHandler,
-    Update,
-    UpdateTicketInput,
-    UserContext
-} from "./TicketSystem"
 export * from "./ToolDisplayUtils"
 export * from "./Triggers"
 export * from "./ToolsTypes"

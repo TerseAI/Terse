@@ -187,7 +187,7 @@ export type PrismaTransaction = Parameters<Parameters<PrismaClient["$transaction
 type RunHistoryRawEvent = run_history_raw_events
 
 type OutputChangeAttribution = output_change_attributions
-export type IdentifiableRef = identifiable_refs
+type IdentifiableRef = identifiable_refs
 
 // Extended type for RunHistoryRawEvent with runHistory and automation relations included
 export type RunHistoryRawEventWithRelations = Prisma.run_history_raw_eventsGetPayload<{
