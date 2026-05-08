@@ -75,8 +75,7 @@ export type UsageResponse = z.infer<typeof usageResponseSchema>
 
 export const billingContextResponseSchema = z.object({
     billingEnabled: z.boolean(),
-    balance: balanceSummarySchema,
-    usage: usageResponseSchema
+    balance: balanceSummarySchema
 })
 export type BillingContextResponse = z.infer<typeof billingContextResponseSchema>
 
@@ -195,8 +194,12 @@ export const billingContextQuerySchema = z.object({
 })
 export type BillingContextQuery = z.infer<typeof billingContextQuerySchema>
 
-export const getOrCreateCustomerRequestBodySchema = z.object({}).strict()
-export type GetOrCreateCustomerRequestBody = z.infer<typeof getOrCreateCustomerRequestBodySchema>
+/** Query params for GET /billing/usage-buckets (same range semantics as the chart on the billing page). */
+export const billingUsageBucketsQuerySchema = billingContextQuerySchema
+export type BillingUsageBucketsQuery = z.infer<typeof billingUsageBucketsQuerySchema>
+
+export const billingUsageBucketsResponseSchema = usageResponseSchema
+export type BillingUsageBucketsResponse = z.infer<typeof billingUsageBucketsResponseSchema>
 
 export const billingStripeRedirectResponseSchema = z.object({
     url: z.string()
@@ -230,11 +233,6 @@ export function parseRunGateDenyReason(raw: unknown): RunGateDenyReason {
     const parsed = runGateDenyReasonSchema.safeParse(raw)
     return parsed.success ? parsed.data : "credits_exhausted"
 }
-
-export const getOrCreateCustomerResponseSchema = z.object({
-    customerId: z.string()
-})
-export type GetOrCreateCustomerResponse = z.infer<typeof getOrCreateCustomerResponseSchema>
 
 export const planSchema = z.object({
     key: planKeySchema,

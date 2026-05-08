@@ -10,6 +10,7 @@ import {
     BillingCheckoutRequestBody,
     BillingContextQuery,
     BillingContextResponse,
+    BillingUsageBucketsQuery,
     BillingError,
     BillingPortalSessionRequestBody,
     BillingRecordLlmBody,
@@ -19,14 +20,13 @@ import {
     BillingStatusResponse,
     BillingStripeRedirectResponse,
     CreditGateDeniedError,
-    GetOrCreateCustomerRequestBody,
-    GetOrCreateCustomerResponse,
     PlanKey,
     RunGateDecision,
     type TerseBillingJwtClaims,
     billingChargeRunBaseResponseSchema,
     billingRecordLlmResponseSchema,
-    parseBillingForbiddenJson
+    parseBillingForbiddenJson,
+    type UsageResponse
 } from "terse-types"
 import type { User } from "terse-types/types"
 
@@ -52,6 +52,7 @@ export interface BillingService {
     getBillingCatalog(): Promise<BillingCatalogResponse>
     getBillingStatus(): Promise<BillingStatusResponse>
     getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse>
+    getBillingUsageBuckets(query: BillingUsageBucketsQuery): Promise<UsageResponse>
     checkRunGate(body: BillingRunGateRequestBody): Promise<RunGateDecision>
     chargeRunBase(body: BillingChargeRunBaseBody): Promise<BillingChargeRunBaseResponse>
     recordLLMCall(body: BillingRecordLlmBody): Promise<BillingRecordLlmResponse>
@@ -140,11 +141,12 @@ export class BillingNoOpService implements BillingService {
                 hardCap: 0,
                 canBuyTopups: false,
                 scheduledChange: null
-            },
-            usage: {
-                buckets: []
             }
         }
+    }
+
+    async getBillingUsageBuckets(_query: BillingUsageBucketsQuery): Promise<UsageResponse> {
+        return { buckets: [] }
     }
 
     async checkRunGate(): Promise<RunGateDecision> {
@@ -267,6 +269,15 @@ export class BillingServiceProxy implements BillingService {
         params.set("timezone", query.timezone)
         const qs = params.toString()
         return this.jsonRequest<BillingContextResponse>(`${BillingRoutes.CONTEXT}${qs ? `?${qs}` : ""}`, { method: "GET" })
+    }
+
+    getBillingUsageBuckets(query: BillingUsageBucketsQuery): Promise<UsageResponse> {
+        const params = new URLSearchParams()
+        if (query.start != null) params.set("start", query.start.toISOString())
+        if (query.end != null) params.set("end", query.end.toISOString())
+        params.set("timezone", query.timezone)
+        const qs = params.toString()
+        return this.jsonRequest<UsageResponse>(`${BillingRoutes.USAGE_BUCKETS}${qs ? `?${qs}` : ""}`, { method: "GET" })
     }
 
     async checkRunGate(body: BillingRunGateRequestBody): Promise<RunGateDecision> {

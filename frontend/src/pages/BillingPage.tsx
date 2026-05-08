@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { invalidateBillingCaches } from "@/hooks/api/billingCache"
 import { useBillingCatalog } from "@/hooks/api/useBillingCatalog"
 import { useBillingContext } from "@/hooks/api/useBillingContext"
+import { useBillingUsageBuckets } from "@/hooks/api/useBillingUsageBuckets"
 import { BackendProvider } from "@/services/backend"
 import { formatUsd } from "@/utility/billingFormat"
 import { getUserTimezone } from "@/utility/timezone"
@@ -24,7 +25,8 @@ import { useBillingStatus } from "../hooks/api/useBillingStatus"
 export default function BillingPage() {
     const timezone = getUserTimezone()
     const usageRangeLabel = formatUsageRangeLabel(timezone)
-    const { billingEnabled, balance, buckets, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
+    const { billingEnabled, balance, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
+    const { buckets } = useBillingUsageBuckets({ timezone })
     const catalogEnabled = billingEnabled !== false
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(catalogEnabled)
     const { status: billingStatus, isLoading: billingStatusLoading } = useBillingStatus()
