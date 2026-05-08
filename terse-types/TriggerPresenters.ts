@@ -520,8 +520,16 @@ function formatHeyReachTrigger(event: HeyReachTrigger): string {
     return lines.join("\n")
 }
 
+function humanizeHeyReachEventType(eventType: string): string {
+    return eventType
+        .split("_")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(" ")
+}
+
 function formatHeyReachDisplay(event: HeyReachTrigger): TriggerDisplay {
-    const subtitle = humanizeWorkOSEventType(event.eventType.toLowerCase())
+    const subtitle = humanizeHeyReachEventType(event.eventType)
     const leadName = heyReachLeadFullName(event)
     if (leadName) {
         return { title: leadName, subtitle }

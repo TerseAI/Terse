@@ -267,7 +267,7 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
     }
 
     if (channelInput.hey_reach_config) {
-        return new HeyReachInputConfig(integrationId, (channelInput.hey_reach_config.event_types || []) as HeyReachEventType[])
+        return new HeyReachInputConfig(integrationId, (channelInput.hey_reach_config.event_types || []) as HeyReachEventType[], channelInput.hey_reach_config.campaign_ids || [])
     }
 
     // Type guard to ensure we implement conversion here
