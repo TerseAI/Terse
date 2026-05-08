@@ -288,7 +288,7 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     // of what db user is for fast lookups
     if (isNewUser || !workosUser.metadata?.db_id) {
         try {
-            setDefaultUserMetadata(workosUser.id, dbUser.id)
+            await setDefaultUserMetadata(workosUser.id, dbUser.id)
         } catch (error) {
             logger.warn("Failed to backfill WorkOS user metadata with db_id", { error: extractErrorMessage(error) })
         }
