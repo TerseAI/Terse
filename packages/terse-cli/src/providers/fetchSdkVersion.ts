@@ -14,7 +14,7 @@ async function fetchPypiSdkVersion(): Promise<string> {
     return data.info.version
 }
 
-export async function fetchSdkVersion(language: "typescript" | "python"): Promise<string> {
+export async function fetchSdkVersion(language: "typescript"): Promise<string> {
     try {
         return language === "typescript" ? await fetchNpmSdkVersion() : await fetchPypiSdkVersion()
     } catch {

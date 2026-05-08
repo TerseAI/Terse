@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { runHistoryActionBaseSchema } from "./RunHistoryTypes"
+import { LinearStateName } from "./TicketSystem"
 
 type AnySchema = z.ZodTypeAny
 
@@ -25,15 +26,6 @@ export function defineTool<const TName extends string, TInput extends AnySchema,
     return def
 }
 
-export enum LinearStateName {
-    Triage = "Triage",
-    Backlog = "Backlog",
-    Todo = "Todo",
-    InProgress = "In Progress",
-    InReview = "In Review",
-    Done = "Done",
-    Canceled = "Canceled"
-}
 const linearStateNameValues = Object.values(LinearStateName)
 const dateLikeSchema = z.union([z.string(), z.date()])
 
@@ -707,7 +699,7 @@ export const slackReadConversationInputSchema = z.object({
 export const searchGitHubCodeInputSchema = z.object({
     repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
     query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
-    language: z.string().nullable().optional().describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
+    language: z.string().nullable().optional().describe('Filter by programming language (e.g., "typescript", "javascript"). Use null to search all languages.'),
     filename: z.string().nullable().optional().describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
     path: z.string().nullable().optional().describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
     perPage: z.number().int().describe("Number of results to return (default: 10, max: 100)"),

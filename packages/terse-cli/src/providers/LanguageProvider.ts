@@ -4,7 +4,7 @@ import type { SerializedEvent, Trigger } from "terse-types"
 import type { CodegenInput } from "./codegenTypes"
 
 export interface LanguageProvider {
-    readonly language: "typescript" | "python"
+    readonly language: "typescript"
     readonly displayName: string
     readonly detectionMarkers: {
         requiredFiles: string[]

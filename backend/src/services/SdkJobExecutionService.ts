@@ -549,7 +549,7 @@ export class SdkJobExecutionService {
     }
 
     private parseRuntime(runtime: string): SdkProjectRuntime {
-        if (runtime === "typescript" || runtime === "python") {
+        if (runtime === "typescript") {
             return runtime
         }
 

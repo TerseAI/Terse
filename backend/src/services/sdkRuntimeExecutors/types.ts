@@ -5,7 +5,7 @@ import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export { SandboxStage }
 
-export type SdkProjectRuntime = "typescript" | "python"
+export type SdkProjectRuntime = "typescript"
 
 export interface SandboxCommandResult {
     exitCode: number

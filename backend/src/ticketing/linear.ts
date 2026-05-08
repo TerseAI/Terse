@@ -1,5 +1,5 @@
 import { LinearClient } from "@linear/sdk"
-import { Organization, Team, TicketSystemType, User, UserContext } from "terse-types/TicketSystem"
+import { Organization, Team, TicketSystemType, TicketSystemUser, UserContext } from "terse-types/TicketSystem"
 
 export class LinearAdapter {
     private client: LinearClient
@@ -13,7 +13,7 @@ export class LinearAdapter {
         const organization = await this.client.organization
         const teams = await viewer.teams()
 
-        const user: User = {
+        const user: TicketSystemUser = {
             id: viewer.id,
             name: viewer.name,
             email: viewer.email

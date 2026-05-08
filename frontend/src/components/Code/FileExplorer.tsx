@@ -112,7 +112,6 @@ const languageByExtension: Record<string, string> = {
     tsx: "typescript",
     js: "javascript",
     jsx: "javascript",
-    py: "python",
     json: "json",
     html: "html",
     css: "css",
