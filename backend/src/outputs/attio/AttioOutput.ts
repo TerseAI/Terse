@@ -4,14 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import {
-    Output,
-    defineToolboxEntry,
-    formatConfigAccess,
-    mixedReadWriteToolInstructionParagraph,
-    outputHasMixedReadOnlyAndWritable,
-    outputIsReadOnly
-} from "../abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
 
 import { validateAttioIntegrationACL, validateAttioReadObjectACL, validateAttioWriteObjectACL } from "./acl"
 import { attioListObjectsTool } from "./tools/listObjects"

@@ -16,12 +16,7 @@ function hasLaunchDarklyProjectACL(params: { aclRules: ACLRule[]; integrationId:
     })
 }
 
-function checkEnvironmentSubset(params: {
-    aclRules: ACLRule[]
-    integrationId: string
-    projectKey: string
-    requestedEnvironmentKeys: string[]
-}): ToolACLValidationResult {
+function checkEnvironmentSubset(params: { aclRules: ACLRule[]; integrationId: string; projectKey: string; requestedEnvironmentKeys: string[] }): ToolACLValidationResult {
     const envRules = getACLRulesForResourceType({
         rules: params.aclRules,
         integrationType: IntegrationType.LAUNCHDARKLY,

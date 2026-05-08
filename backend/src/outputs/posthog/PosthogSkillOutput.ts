@@ -77,9 +77,7 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
 
         for (const config of configs) {
             const access = formatConfigAccess(config)
-            sections.push(
-                `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Project Name: ${config.projectName || "N/A"}, Project ID: ${config.projectId || "N/A"}`
-            )
+            sections.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Project Name: ${config.projectName || "N/A"}, Project ID: ${config.projectId || "N/A"}`)
         }
 
         sections.push("\nWhen calling PostHog tools, include integrationId and projectId from a configured entry.")

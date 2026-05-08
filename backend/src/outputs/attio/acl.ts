@@ -32,10 +32,7 @@ function hasAttioObjectACL(params: { aclRules: ACLRule[]; integrationId: string;
     })
 }
 
-function validateAttioObjectScope(params: {
-    args: { integrationId: string; objectSlug: string }
-    aclRules: ACLRule[]
-}): ToolACLValidationResult {
+function validateAttioObjectScope(params: { args: { integrationId: string; objectSlug: string }; aclRules: ACLRule[] }): ToolACLValidationResult {
     if (!hasAttioIntegrationACL({ aclRules: params.aclRules, integrationId: params.args.integrationId })) {
         return denyToolACL(`Attio ACL denied: integration ${params.args.integrationId} is not configured for this run.`)
     }
@@ -48,13 +45,10 @@ function validateAttioObjectScope(params: {
 }
 
 export const validateAttioIntegrationACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs: _configs }) => {
-    return hasAttioIntegrationACL({ aclRules, integrationId: args.integrationId })
-        ? { ok: true }
-        : denyToolACL(`Attio ACL denied: integration ${args.integrationId} is not configured for this run.`)
+    return hasAttioIntegrationACL({ aclRules, integrationId: args.integrationId }) ? { ok: true } : denyToolACL(`Attio ACL denied: integration ${args.integrationId} is not configured for this run.`)
 }
 
-export const validateAttioReadObjectACL: ToolACLValidator<{ integrationId: string; objectSlug: string }> = params =>
-    validateAttioObjectScope(params)
+export const validateAttioReadObjectACL: ToolACLValidator<{ integrationId: string; objectSlug: string }> = params => validateAttioObjectScope(params)
 
 export const validateAttioWriteObjectACL: ToolACLValidator<{ integrationId: string; objectSlug: string }> = params => {
     if (!configIsWritableForIntegration({ configs: params.configs, integrationId: params.args.integrationId })) {

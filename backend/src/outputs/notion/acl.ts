@@ -1,6 +1,6 @@
-import type { RunContext } from "@openai/agents"
 import { Client } from "@notionhq/client"
 import { GetPageResponse } from "@notionhq/client/build/src/api-endpoints"
+import type { RunContext } from "@openai/agents"
 import { ACLRule, IntegrationType, hasACLRule, hasAnyACLRuleForIntegration } from "terse-types"
 
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
@@ -213,8 +213,7 @@ export const validateNotionCreateOrUpdatePageACL: ToolACLValidator<{
     return denyToolACL("Notion ACL denied: notion_create_or_update_page requires page_id (update) or parentPageId (create).")
 }
 
-export const validateNotionReadPageACL: ToolACLValidator<{ integrationId: string; pageId: string }> = params =>
-    validateNotionPageScope(params)
+export const validateNotionReadPageACL: ToolACLValidator<{ integrationId: string; pageId: string }> = params => validateNotionPageScope(params)
 
 export const validateNotionWritePageACL: ToolACLValidator<{ integrationId: string; pageId: string }> = async params => {
     if (
@@ -234,7 +233,5 @@ export const validateNotionIntegrationACL: ToolACLValidator<{ integrationId: str
         integrationType: IntegrationType.NOTION,
         integrationId: args.integrationId
     })
-    return allowed
-        ? { ok: true }
-        : denyToolACL(`Notion ACL denied: integration ${args.integrationId} has no Notion resources configured for this run.`)
+    return allowed ? { ok: true } : denyToolACL(`Notion ACL denied: integration ${args.integrationId} has no Notion resources configured for this run.`)
 }

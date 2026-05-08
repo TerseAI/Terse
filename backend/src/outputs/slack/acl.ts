@@ -97,14 +97,11 @@ export const validateSlackIntegrationACL: ToolACLValidator<{ integrationId: stri
         integrationId: args.integrationId
     })
 
-    return allowed
-        ? { ok: true }
-        : denyToolACL(`Slack ACL denied: integration ${args.integrationId} is not configured for this run.`)
+    return allowed ? { ok: true } : denyToolACL(`Slack ACL denied: integration ${args.integrationId} is not configured for this run.`)
 }
 
 /** Read tools: channel or DM scope only. */
-export const validateSlackReadChannelACL: ToolACLValidator<{ integrationId: string; channelId: string }> = params =>
-    validateSlackChannelScope(params)
+export const validateSlackReadChannelACL: ToolACLValidator<{ integrationId: string; channelId: string }> = params => validateSlackChannelScope(params)
 
 /** Send message: integration must be writable for this run, then channel/DM scope. */
 export const validateSlackWriteChannelACL: ToolACLValidator<{ integrationId: string; channelId: string }> = async params => {

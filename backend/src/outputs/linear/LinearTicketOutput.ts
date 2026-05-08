@@ -4,22 +4,9 @@ import { IntegrationType } from "terse-types"
 
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import {
-    Output,
-    defineToolboxEntry,
-    formatConfigAccess,
-    mixedReadWriteToolInstructionParagraph,
-    outputHasMixedReadOnlyAndWritable,
-    outputIsReadOnly
-} from "../abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
 
-import {
-    validateLinearAddCommentACL,
-    validateLinearCreateTicketACL,
-    validateLinearIntegrationACL,
-    validateLinearTeamScopedACL,
-    validateLinearUpdateTicketACL
-} from "./acl"
+import { validateLinearAddCommentACL, validateLinearCreateTicketACL, validateLinearIntegrationACL, validateLinearTeamScopedACL, validateLinearUpdateTicketACL } from "./acl"
 import { linearAddCommentTool } from "./tools/addComment"
 import { linearCreateTicketTool } from "./tools/createTicket"
 import { linearGetLabelsTool } from "./tools/getLabels"
@@ -148,9 +135,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             const teamId = config.teamId
             const teamName = config.teamName
             const projectId = config.projectId
-            configList.push(
-                `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project ID: ${projectId || "N/A"}`
-            )
+            configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Team Name: ${teamName || "N/A"}, Team ID: ${teamId || "N/A"}, Project ID: ${projectId || "N/A"}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))

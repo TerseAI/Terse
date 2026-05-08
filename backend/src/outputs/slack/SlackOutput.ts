@@ -5,14 +5,7 @@ import { IntegrationType } from "terse-types"
 
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import {
-    Output,
-    defineToolboxEntry,
-    formatConfigAccess,
-    mixedReadWriteToolInstructionParagraph,
-    outputHasMixedReadOnlyAndWritable,
-    outputIsReadOnly
-} from "../abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
 
 import { validateSlackIntegrationACL, validateSlackReadChannelACL, validateSlackWriteChannelACL } from "./acl"
 import { slackListChannelsTool } from "./tools/listChannels"
@@ -96,16 +89,12 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             const userIds = config.userIds ?? []
             const listensToUserDms = config.listenToUserDms === true
             if (channelId) {
-                configList.push(
-                    `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`
-                )
+                configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Channel ID: ${channelId}${channelName ? ` (${channelName})` : ""}`)
             }
             if (listensToUserDms && userIds.length === 0) {
                 configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Direct messages: all users`)
             } else if (listensToUserDms && userIds.length > 0) {
-                configList.push(
-                    `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Direct messages (user filter): ${userIds.join(", ")}`
-                )
+                configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Direct messages (user filter): ${userIds.join(", ")}`)
             } else if (userIds.length > 0) {
                 configList.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    DM user IDs: ${userIds.join(", ")}`)
             }

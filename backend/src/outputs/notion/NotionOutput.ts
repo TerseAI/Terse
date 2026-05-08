@@ -4,14 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import {
-    Output,
-    defineToolboxEntry,
-    formatConfigAccess,
-    mixedReadWriteToolInstructionParagraph,
-    outputHasMixedReadOnlyAndWritable,
-    outputIsReadOnly
-} from "../abstract/Output"
+import { Output, defineToolboxEntry, formatConfigAccess, mixedReadWriteToolInstructionParagraph, outputHasMixedReadOnlyAndWritable, outputIsReadOnly } from "../abstract/Output"
 
 import {
     validateNotionCreateOrUpdatePageACL,

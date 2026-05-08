@@ -8,10 +8,7 @@ import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
 
 import { SessionWithTracking } from "./BaseAgentRunner"
 
-export function buildOpenAiToolsFromOutputs<TSession extends SessionWithTracking<Session>>(params: {
-    outputs: Output<ConfigData>[]
-    aclRules: ACLRule[]
-}): Tool<TSession>[] {
+export function buildOpenAiToolsFromOutputs<TSession extends SessionWithTracking<Session>>(params: { outputs: Output<ConfigData>[]; aclRules: ACLRule[] }): Tool<TSession>[] {
     const allConfigs = params.outputs.flatMap(output => output.configs ?? [])
     const toolsMap = new Map<string, Tool<TSession>>()
 

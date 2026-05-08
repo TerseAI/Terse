@@ -13,9 +13,7 @@ export const validateGmailSendACL: ToolACLValidator<{ integrationId: string }> =
         resourceId: "send"
     })
 
-    return allowed
-        ? { ok: true }
-        : denyToolACL(`Gmail ACL denied: sending email is not configured for integration ${args.integrationId}.`)
+    return allowed ? { ok: true } : denyToolACL(`Gmail ACL denied: sending email is not configured for integration ${args.integrationId}.`)
 }
 
 export const validateGmailDraftACL: ToolACLValidator<{ integrationId: string }> = ({ args, aclRules, configs }) => {
@@ -29,7 +27,5 @@ export const validateGmailDraftACL: ToolACLValidator<{ integrationId: string }> 
         resourceId: "draft"
     })
 
-    return allowed
-        ? { ok: true }
-        : denyToolACL(`Gmail ACL denied: creating drafts is not configured for integration ${args.integrationId}.`)
+    return allowed ? { ok: true } : denyToolACL(`Gmail ACL denied: creating drafts is not configured for integration ${args.integrationId}.`)
 }

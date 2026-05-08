@@ -44,7 +44,5 @@ export const validateDatadogLogsACL: ToolACLValidator<{
     const allowedIndexes = new Set(indexRules.map((rule: ACLRule) => rule.resourceId))
     const deniedIndexes = requestedIndexes.filter(index => !allowedIndexes.has(index))
 
-    return deniedIndexes.length === 0
-        ? { ok: true }
-        : denyToolACL(`Datadog ACL denied: indexes not configured for this run: ${deniedIndexes.join(", ")}.`)
+    return deniedIndexes.length === 0 ? { ok: true } : denyToolACL(`Datadog ACL denied: indexes not configured for this run: ${deniedIndexes.join(", ")}.`)
 }

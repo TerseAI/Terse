@@ -15,12 +15,7 @@ import type { ToolACLValidator } from "../../outputs/abstract/Output"
  * per-guardrail `runInParallel` flag for tool input guardrails in SDK 0.8.x (unlike agent input guardrails).
  * Tool input guardrails run in definition order.
  */
-export function createToolACLGuardrail<TArgs>(params: {
-    toolName: string
-    aclRules: ACLRule[]
-    configs: ConfigData[]
-    validateACL: ToolACLValidator<TArgs>
-}) {
+export function createToolACLGuardrail<TArgs>(params: { toolName: string; aclRules: ACLRule[]; configs: ConfigData[]; validateACL: ToolACLValidator<TArgs> }) {
     return defineToolInputGuardrail<SessionWithTracking<Session>>({
         name: `acl_${params.toolName}`,
         run: async ({ toolCall, context }) => {

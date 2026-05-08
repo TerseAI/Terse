@@ -63,9 +63,7 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
 
         for (const config of configs) {
             const access = formatConfigAccess(config)
-            sections.push(
-                `  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Project: ${config.projectKey}, Environments: ${(config.environmentKeys || []).join(", ")}`
-            )
+            sections.push(`  • Integration ID: ${config.integrationId}\n    Access: ${access}\n    Project: ${config.projectKey}, Environments: ${(config.environmentKeys || []).join(", ")}`)
         }
 
         sections.push("\nWhen calling LaunchDarkly tools, include integrationId, projectKey, and environmentKeys from a configured entry.")
