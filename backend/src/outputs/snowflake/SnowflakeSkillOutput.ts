@@ -1,19 +1,32 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { SnowflakeOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output } from "../abstract/Output"
 
+import { validateSnowflakeIntegrationACL } from "./acl"
 import { snowflakeExecuteQueryTool } from "./tools/executeQuery"
 import { snowflakeExplainQueryTool } from "./tools/explainQuery"
 
 export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query" },
-            { tool: snowflakeExecuteQueryTool, isReadOnly: true, supportsApproval: true, integration: IntegrationType.SNOWFLAKE, displayName: "Execute query" }
+        const toolbox = [
+            defineToolboxEntry({
+                tool: snowflakeExplainQueryTool,
+                isReadOnly: true,
+                integration: IntegrationType.SNOWFLAKE,
+                displayName: "Explain query",
+                validateACL: validateSnowflakeIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: snowflakeExecuteQueryTool,
+                isReadOnly: true,
+                supportsApproval: true,
+                integration: IntegrationType.SNOWFLAKE,
+                displayName: "Execute query",
+                validateACL: validateSnowflakeIntegrationACL
+            })
         ]
 
         super(OutputConfigType.SNOWFLAKE, toolbox)

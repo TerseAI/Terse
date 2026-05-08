@@ -4,18 +4,37 @@ import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
 
+import { validateAttioIntegrationACL, validateAttioObjectACL } from "./acl"
 import { attioListObjectsTool } from "./tools/listObjects"
 import { attioQueryRecordsTool } from "./tools/queryRecords"
 import { attioUpsertRecordTool } from "./tools/upsertRecord"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects" },
-            { tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records" },
-            { tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
+        const toolbox = [
+            defineToolboxEntry({
+                tool: attioListObjectsTool,
+                isReadOnly: true,
+                integration: IntegrationType.ATTIO,
+                displayName: "List objects",
+                validateACL: validateAttioIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: attioQueryRecordsTool,
+                isReadOnly: true,
+                integration: IntegrationType.ATTIO,
+                displayName: "Query records",
+                validateACL: validateAttioObjectACL
+            }),
+            defineToolboxEntry({
+                tool: attioUpsertRecordTool,
+                isReadOnly: false,
+                integration: IntegrationType.ATTIO,
+                displayName: "Upsert record",
+                validateACL: validateAttioObjectACL
+            })
         ]
         super(OutputConfigType.ATTIO, toolbox)
     }
@@ -58,8 +77,10 @@ export class AttioOutput extends Output<AttioOutputConfig> {
             throw new Error("No Attio configs provided")
         }
 
+        const readOnly = outputIsReadOnly(configs)
+
         const sections: string[] = []
-        sections.push("=== ATTIO OUTPUT ===")
+        sections.push(readOnly ? "=== ATTIO OUTPUT (READ-ONLY) ===" : "=== ATTIO OUTPUT ===")
 
         const configList: string[] = []
         for (const config of configs) {
@@ -69,8 +90,13 @@ export class AttioOutput extends Output<AttioOutputConfig> {
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
         sections.push("\nWhen calling Attio tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
-        sections.push("Use attio_list_objects to discover available object types and their attributes before creating/updating records.")
-        sections.push("Use attio_query_records to find existing records before updating them.")
+        sections.push("Use attio_list_objects to discover available object types and their attributes.")
+        if (readOnly) {
+            sections.push("Use attio_query_records to read existing records.")
+            sections.push("\nThis Attio integration is read-only for this run. Upserting records is not available.")
+        } else {
+            sections.push("Use attio_query_records to find existing records before updating them.")
+        }
 
         return sections.join("\n")
     }

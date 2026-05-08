@@ -9,87 +9,89 @@
 export const Skills = {
 {{#if slack}}
     /** Slack — send messages and manage threads in a specific channel */
-    slack(opts: { channel: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<{{{slack.skillToolType}}}> {
-        return new SlackOutputConfig("{{escape slack.id}}", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? [], opts.userNames ?? null, opts.listenToUserDms)
+    slack(opts: { channel: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean; readOnly?: boolean }): TypedSkill<{{{slack.skillToolType}}}> {
+        return new SlackOutputConfig("{{escape slack.id}}", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? [], opts.userNames ?? null, opts.listenToUserDms, opts.readOnly ?? false)
     },
 {{/if}}
 {{#if github}}
     /** GitHub — read code and pull requests from the given repositories */
-    github(opts: { repos: Repos[] }): TypedSkill<{{{github.skillToolType}}}> {
-        return new GitHubConfig("{{escape github.id}}", opts.repos.map(r => r.repositoryId))
+    github(opts: { repos: Repos[]; readOnly?: boolean }): TypedSkill<{{{github.skillToolType}}}> {
+        return new GitHubConfig("{{escape github.id}}", opts.repos.map(r => r.repositoryId), null, opts.readOnly ?? false)
     },
 {{/if}}
 {{#if linear}}
     /** Linear — read and write issues, optionally scoped to a team or project */
-    linear(opts?: { team?: LinearTeam; project?: LinearProject }): TypedSkill<{{{linear.skillToolType}}}> {
+    linear(opts?: { team?: LinearTeam; project?: LinearProject; readOnly?: boolean }): TypedSkill<{{{linear.skillToolType}}}> {
         return new LinearOutputConfig(
             "{{escape linear.id}}",
             opts?.team?.teamId ?? null,
             opts?.team?.name ?? null,
-            opts?.project?.projectId ?? null
+            opts?.project?.projectId ?? null,
+            opts?.readOnly ?? false
         )
     },
 {{/if}}
 {{#if gmail}}
     /** Gmail — send emails */
-    gmail(): TypedSkill<{{{gmail.skillToolType}}}> {
-        return new GmailOutputConfig("{{escape gmail.id}}")
+    gmail(opts?: { readOnly?: boolean }): TypedSkill<{{{gmail.skillToolType}}}> {
+        return new GmailOutputConfig("{{escape gmail.id}}", opts?.readOnly ?? false)
     },
     /** Gmail — create draft emails (no auto-send) */
-    gmailDraft(): TypedSkill<{{{gmail.skillToolType}}}> {
-        return new GmailDraftOutputConfig("{{escape gmail.id}}")
+    gmailDraft(opts?: { readOnly?: boolean }): TypedSkill<{{{gmail.skillToolType}}}> {
+        return new GmailDraftOutputConfig("{{escape gmail.id}}", opts?.readOnly ?? false)
     },
 {{/if}}
 {{#if notion}}
     /** Notion — read and write to the given databases or pages */
-    notion(opts?: { databases?: NotionDatabase[]; pages?: NotionPage[] }): TypedSkill<{{{notion.skillToolType}}}> {
+    notion(opts?: { databases?: NotionDatabase[]; pages?: NotionPage[]; readOnly?: boolean }): TypedSkill<{{{notion.skillToolType}}}> {
         return new NotionConfig("{{escape notion.id}}",
-            opts?.databases?.map(d => d.databaseId), opts?.databases?.map(d => d.title),
-            opts?.pages?.map(p => p.pageId), opts?.pages?.map(p => p.title))
+            opts?.databases?.map(d => d.databaseId) ?? [], opts?.databases?.map(d => d.title) ?? [],
+            opts?.pages?.map(p => p.pageId) ?? [], opts?.pages?.map(p => p.title) ?? [],
+            opts?.readOnly ?? false)
     },
 {{/if}}
 {{#if posthog}}
     /** PostHog — query analytics for a specific project */
-    posthog(opts: { project: PosthogProject }): TypedSkill<{{{posthog.skillToolType}}}> {
-        return new PosthogConfig("{{escape posthog.id}}", opts.project.projectId, opts.project.name)
+    posthog(opts: { project: PosthogProject; readOnly?: boolean }): TypedSkill<{{{posthog.skillToolType}}}> {
+        return new PosthogConfig("{{escape posthog.id}}", opts.project.projectId, opts.project.name, opts.readOnly ?? false)
     },
 {{/if}}
 {{#if datadog}}
     /** Datadog — search and analyze logs, optionally scoped to specific indexes */
-    datadog(opts?: { indexes?: DatadogIndex[] }): TypedSkill<{{{datadog.skillToolType}}}> {
-        return new DatadogConfig("{{escape datadog.id}}", opts?.indexes?.map(i => i.name))
+    datadog(opts?: { indexes?: DatadogIndex[]; readOnly?: boolean }): TypedSkill<{{{datadog.skillToolType}}}> {
+        return new DatadogConfig("{{escape datadog.id}}", opts?.indexes?.map(i => i.name), opts?.readOnly ?? false)
     },
 {{/if}}
 {{#if launchdarkly}}
     /** LaunchDarkly — read and toggle feature flags in a project + environments */
-    launchDarkly(opts: { project: LaunchDarklyProject; environmentKeys: string[] }): TypedSkill<{{{launchdarkly.skillToolType}}}> {
-        return new LaunchDarklyConfig("{{escape launchdarkly.id}}", opts.project.projectKey, opts.environmentKeys)
+    launchDarkly(opts: { project: LaunchDarklyProject; environmentKeys: string[]; readOnly?: boolean }): TypedSkill<{{{launchdarkly.skillToolType}}}> {
+        return new LaunchDarklyConfig("{{escape launchdarkly.id}}", opts.project.projectKey, opts.environmentKeys, opts.readOnly ?? false)
     },
 {{/if}}
 {{#if workos}}
     /** WorkOS — manage users, organizations and invitations */
-    workOS(): TypedSkill<{{{workos.skillToolType}}}> {
-        return new WorkOSOutputConfig("{{escape workos.id}}")
+    workOS(opts?: { readOnly?: boolean }): TypedSkill<{{{workos.skillToolType}}}> {
+        return new WorkOSOutputConfig("{{escape workos.id}}", opts?.readOnly ?? false)
     },
 {{/if}}
 {{#if attio}}
     /** Attio — query and upsert records on a CRM object */
-    attio(opts: { object: AttioObject<any> }): TypedSkill<{{{attio.skillToolType}}}> {
-        return new AttioOutputConfig("{{escape attio.id}}", opts.object.apiSlug)
+    attio(opts: { object: AttioObject<any>; readOnly?: boolean }): TypedSkill<{{{attio.skillToolType}}}> {
+        return new AttioOutputConfig("{{escape attio.id}}", opts.object.apiSlug, opts.readOnly ?? false)
     },
 {{/if}}
 {{#if snowflake}}
     /** Snowflake — run SQL queries against your warehouse */
-    snowflake(): TypedSkill<{{{snowflake.skillToolType}}}> {
-        return new SnowflakeOutputConfig("{{escape snowflake.id}}")
+    snowflake(opts?: { readOnly?: boolean }): TypedSkill<{{{snowflake.skillToolType}}}> {
+        return new SnowflakeOutputConfig("{{escape snowflake.id}}", opts?.readOnly ?? false)
     },
 {{/if}}
     /** Web — built-in web search, page extraction, and multi-source research */
-    web(): TypedSkill<"web_search" | "web_extract" | "web_research"> {
-        return new WebConfig()
+    web(opts?: { readOnly?: boolean }): TypedSkill<"web_search" | "web_extract" | "web_research"> {
+        return new WebConfig(opts?.readOnly ?? false)
     },
     /** ImageEdit — edit and generate images */
-    imageEdit(): TypedSkill<"image_edit"> {
-        return new ImageEditConfig()
+    imageEdit(opts?: { readOnly?: boolean }): TypedSkill<"image_edit"> {
+        return new ImageEditConfig(opts?.readOnly ?? false)
     },
 }

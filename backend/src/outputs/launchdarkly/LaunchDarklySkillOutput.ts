@@ -5,16 +5,29 @@ import { IntegrationType } from "terse-types"
 
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output } from "../abstract/Output"
 
+import { validateLaunchDarklyGetFlagDetailsACL, validateLaunchDarklyListFlagsACL } from "./acl"
 import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
 import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags"
 
 export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: listLaunchDarklyFlagsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "List feature flags" },
-            { tool: getLaunchDarklyFlagDetailsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "Get flag details" }
+        const toolbox = [
+            defineToolboxEntry({
+                tool: listLaunchDarklyFlagsTool,
+                isReadOnly: true,
+                integration: IntegrationType.LAUNCHDARKLY,
+                displayName: "List feature flags",
+                validateACL: validateLaunchDarklyListFlagsACL
+            }),
+            defineToolboxEntry({
+                tool: getLaunchDarklyFlagDetailsTool,
+                isReadOnly: true,
+                integration: IntegrationType.LAUNCHDARKLY,
+                displayName: "Get flag details",
+                validateACL: validateLaunchDarklyGetFlagDetailsACL
+            })
         ]
 
         super(OutputConfigType.LAUNCHDARKLY, toolbox)

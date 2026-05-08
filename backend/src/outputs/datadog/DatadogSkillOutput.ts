@@ -4,8 +4,9 @@ import { IntegrationType } from "terse-types"
 
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output } from "../abstract/Output"
 
+import { validateDatadogIntegrationACL, validateDatadogLogsACL } from "./acl"
 import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
 import { listRumEventsTool } from "./tools/listRumEvents"
 import { searchDatadogLogsTool } from "./tools/searchLogs"
@@ -13,11 +14,35 @@ import { searchRumEventsTool } from "./tools/searchRumEvents"
 
 export class DatadogSkillOutput extends Output<DatadogConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: searchDatadogLogsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs" },
-            { tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events" },
-            { tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events" },
-            { tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events" }
+        const toolbox = [
+            defineToolboxEntry({
+                tool: searchDatadogLogsTool,
+                isReadOnly: true,
+                integration: IntegrationType.DATADOG,
+                displayName: "Search logs",
+                validateACL: validateDatadogLogsACL
+            }),
+            defineToolboxEntry({
+                tool: listRumEventsTool,
+                isReadOnly: true,
+                integration: IntegrationType.DATADOG,
+                displayName: "List events",
+                validateACL: validateDatadogIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: searchRumEventsTool,
+                isReadOnly: true,
+                integration: IntegrationType.DATADOG,
+                displayName: "Search RUM events",
+                validateACL: validateDatadogIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: aggregateRumEventsTool,
+                isReadOnly: true,
+                integration: IntegrationType.DATADOG,
+                displayName: "Aggregate RUM events",
+                validateACL: validateDatadogIntegrationACL
+            })
         ]
 
         super(OutputConfigType.DATADOG, toolbox)

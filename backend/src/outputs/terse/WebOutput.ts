@@ -3,33 +3,37 @@ import { WebConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output } from "../abstract/Output"
 
+import { validateWebCapabilityACL } from "./acl"
 import { webExtractTool } from "./tools/webExtractTool"
 import { webResearchTool } from "./tools/webResearchTool"
 import { runHistoryWebSearchTool } from "./tools/webSearchTool"
 
 export class WebOutput extends Output<WebConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            {
+        const toolbox = [
+            defineToolboxEntry({
                 tool: runHistoryWebSearchTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
-                displayName: "Web Search"
-            },
-            {
+                displayName: "Web Search",
+                validateACL: validateWebCapabilityACL
+            }),
+            defineToolboxEntry({
                 tool: webExtractTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
-                displayName: "Extract Page"
-            },
-            {
+                displayName: "Extract Page",
+                validateACL: validateWebCapabilityACL
+            }),
+            defineToolboxEntry({
                 tool: webResearchTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
-                displayName: "Research"
-            }
+                displayName: "Research",
+                validateACL: validateWebCapabilityACL
+            })
         ]
         super(OutputConfigType.WEB, toolbox)
     }

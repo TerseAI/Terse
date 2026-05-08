@@ -5,8 +5,9 @@ import { IntegrationType } from "terse-types"
 
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
 
+import { validateLinearCreateTicketACL, validateLinearIntegrationACL, validateLinearTeamScopedACL, validateLinearUpdateTicketACL } from "./acl"
 import { linearAddCommentTool } from "./tools/addComment"
 import { linearCreateTicketTool } from "./tools/createTicket"
 import { linearGetLabelsTool } from "./tools/getLabels"
@@ -20,17 +21,77 @@ import { linearUpdateTicketTool } from "./tools/updateTicket"
 
 export class LinearTicketOutput extends Output<LinearOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: linearSearchTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Search tickets" },
-            { tool: linearGetTeamsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get teams" },
-            { tool: linearGetStatesTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get states" },
-            { tool: linearGetLabelsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get labels" },
-            { tool: linearGetProjectsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get projects" },
-            { tool: linearGetUsersTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users" },
-            { tool: linearCreateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket" },
-            { tool: linearUpdateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" },
-            { tool: linearAddCommentTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" },
-            { tool: linearReadTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket" }
+        const toolbox = [
+            defineToolboxEntry({
+                tool: linearSearchTicketTool,
+                isReadOnly: true,
+                integration: IntegrationType.LINEAR,
+                displayName: "Search tickets",
+                validateACL: validateLinearIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: linearGetTeamsTool,
+                isReadOnly: true,
+                integration: IntegrationType.LINEAR,
+                displayName: "Get teams",
+                validateACL: validateLinearIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: linearGetStatesTool,
+                isReadOnly: true,
+                integration: IntegrationType.LINEAR,
+                displayName: "Get states",
+                validateACL: validateLinearTeamScopedACL
+            }),
+            defineToolboxEntry({
+                tool: linearGetLabelsTool,
+                isReadOnly: true,
+                integration: IntegrationType.LINEAR,
+                displayName: "Get labels",
+                validateACL: validateLinearTeamScopedACL
+            }),
+            defineToolboxEntry({
+                tool: linearGetProjectsTool,
+                isReadOnly: true,
+                integration: IntegrationType.LINEAR,
+                displayName: "Get projects",
+                validateACL: validateLinearTeamScopedACL
+            }),
+            defineToolboxEntry({
+                tool: linearGetUsersTool,
+                isReadOnly: true,
+                integration: IntegrationType.LINEAR,
+                displayName: "Get users",
+                validateACL: validateLinearIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: linearCreateTicketTool,
+                isReadOnly: false,
+                integration: IntegrationType.LINEAR,
+                displayName: "Create ticket",
+                validateACL: validateLinearCreateTicketACL
+            }),
+            defineToolboxEntry({
+                tool: linearUpdateTicketTool,
+                isReadOnly: false,
+                integration: IntegrationType.LINEAR,
+                displayName: "Update ticket",
+                validateACL: validateLinearUpdateTicketACL
+            }),
+            defineToolboxEntry({
+                tool: linearAddCommentTool,
+                isReadOnly: false,
+                integration: IntegrationType.LINEAR,
+                displayName: "Add comment",
+                validateACL: validateLinearIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: linearReadTicketTool,
+                isReadOnly: true,
+                integration: IntegrationType.LINEAR,
+                displayName: "Read ticket",
+                validateACL: validateLinearIntegrationACL
+            })
         ]
         super(OutputConfigType.LINEAR_TICKET, toolbox)
     }
@@ -64,10 +125,11 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             throw new Error("No Linear configs provided")
         }
 
-        const sections: string[] = []
-        sections.push("=== LINEAR TICKET OUTPUT ===")
+        const readOnly = outputIsReadOnly(configs)
 
-        // List all available configurations
+        const sections: string[] = []
+        sections.push(readOnly ? "=== LINEAR TICKET OUTPUT (READ-ONLY) ===" : "=== LINEAR TICKET OUTPUT ===")
+
         const configList: string[] = []
         for (const config of configs) {
             const teamId = config.teamId
@@ -78,6 +140,12 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
         sections.push("\nWhen calling Linear tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
+
+        if (readOnly) {
+            sections.push(
+                "\nThis Linear integration is read-only for this run. You can search and read tickets, list teams/states/labels/projects/users, but cannot create tickets, update tickets, or add comments."
+            )
+        }
 
         return sections.join("\n")
     }

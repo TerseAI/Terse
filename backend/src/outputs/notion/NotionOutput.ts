@@ -5,8 +5,9 @@ import { IntegrationType } from "terse-types"
 
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
 
+import { validateNotionCreateOrUpdatePageACL, validateNotionDatabaseACL, validateNotionDatabaseRowACL, validateNotionIntegrationACL, validateNotionPageACL } from "./acl"
 import {
     notionCreateOrUpdateDatabaseRowTool,
     notionCreateOrUpdatePageTool,
@@ -19,14 +20,56 @@ import {
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
-            { tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
-            { tool: notionCreateOrUpdateDatabaseRowTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update database row" },
-            { tool: notionCreateOrUpdatePageTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
-            { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
-            { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
-            { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
+        const toolbox = [
+            defineToolboxEntry({
+                tool: notionGetSchemaTool,
+                isReadOnly: true,
+                integration: IntegrationType.NOTION,
+                displayName: "Get datasource schema",
+                validateACL: validateNotionDatabaseACL
+            }),
+            defineToolboxEntry({
+                tool: notionQueryDatabaseTool,
+                isReadOnly: true,
+                integration: IntegrationType.NOTION,
+                displayName: "Query database",
+                validateACL: validateNotionDatabaseACL
+            }),
+            defineToolboxEntry({
+                tool: notionCreateOrUpdateDatabaseRowTool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Create or update database row",
+                validateACL: validateNotionDatabaseRowACL
+            }),
+            defineToolboxEntry({
+                tool: notionCreateOrUpdatePageTool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Create or update page (standalone)",
+                validateACL: validateNotionCreateOrUpdatePageACL
+            }),
+            defineToolboxEntry({
+                tool: notionQueryPageTool,
+                isReadOnly: true,
+                integration: IntegrationType.NOTION,
+                displayName: "Query page",
+                validateACL: validateNotionPageACL
+            }),
+            defineToolboxEntry({
+                tool: notionModifyBlocksTool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Modify blocks",
+                validateACL: validateNotionPageACL
+            }),
+            defineToolboxEntry({
+                tool: notionListUsersTool,
+                isReadOnly: true,
+                integration: IntegrationType.NOTION,
+                displayName: "List workspace users",
+                validateACL: validateNotionIntegrationACL
+            })
         ]
         super(OutputConfigType.NOTION, toolbox)
     }
@@ -63,8 +106,10 @@ export class NotionOutput extends Output<NotionConfig> {
             throw new Error("No Notion configs provided")
         }
 
+        const readOnly = outputIsReadOnly(configs)
+
         const sections: string[] = []
-        sections.push("=== NOTION OUTPUT ===")
+        sections.push(readOnly ? "=== NOTION OUTPUT (READ-ONLY) ===" : "=== NOTION OUTPUT ===")
 
         const configList: string[] = []
         for (const config of configs) {
@@ -84,7 +129,19 @@ export class NotionOutput extends Output<NotionConfig> {
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
 
-        sections.push(`
+        if (readOnly) {
+            sections.push(`
+**This Notion integration is read-only for this run.** You can read and inspect Notion content but cannot create or update anything.
+
+**RESTRICTION — You may only read within this scope:**
+- **Databases:** Use only the database IDs listed above (must be Notion API UUID format). You may query those databases and read any of their rows.
+- **Pages:** Use only the page IDs listed above. You may read those pages and any of their subpages (children, nested pages).
+
+When calling Notion tools, use \`integrationId\` only to identify the connection. Use a \`databaseId\` or \`pageId\` from the allowed list. Never use integrationId as databaseId or pageId.`)
+
+            sections.push("\n**Read-only tools available:** `notion_get_schema`, `notion_query_database`, `notion_query_page`, `notion_list_users`.")
+        } else {
+            sections.push(`
 **REQUIREMENT — You must have a root page or database:** Notion output requires at least one **allowed database** or one **allowed page** in the config above. There is no "workspace root only" mode — you must supply a page (to create subpages under and to modify) and/or a database (to query and add rows to).
 
 **RESTRICTION — You may only edit within this scope:**
@@ -93,11 +150,11 @@ export class NotionOutput extends Output<NotionConfig> {
 
 When calling Notion tools, use \`integrationId\` only to identify the connection. Use a \`databaseId\` or \`pageId\` from the allowed list for database/page tools. Never use integrationId as databaseId, page_id, or parentPageId.`)
 
-        sections.push(
-            "\n**Database tools** (use with databaseId — must be UUID): `notion_get_schema`, `notion_query_database`, `notion_create_or_update_database_row`, `notion_list_users`. **Page tools:** `notion_create_or_update_page` (standalone subpages under an allowed parentPageId), `notion_query_page`, `notion_modify_blocks`."
-        )
+            sections.push(
+                "\n**Database tools** (use with databaseId — must be UUID): `notion_get_schema`, `notion_query_database`, `notion_create_or_update_database_row`, `notion_list_users`. **Page tools:** `notion_create_or_update_page` (standalone subpages under an allowed parentPageId), `notion_query_page`, `notion_modify_blocks`."
+            )
 
-        sections.push(`
+            sections.push(`
 CREATE OR UPDATE DATABASE ROW (\`notion_create_or_update_database_row\`): Use with \`databaseId\` (UUID only), \`page_id\` (null to create), \`properties_json\`. Use \`notion_get_schema\` first; do not create duplicates.
 
 CREATE OR UPDATE PAGE (\`notion_create_or_update_page\`): For **standalone subpages** under an allowed page. Provide \`parentPageId\` (an allowed page ID from the list), \`title\`. Creates an empty page; always use \`notion_modify_blocks\` on the returned \`page_id\` to add content.
@@ -113,7 +170,8 @@ PEOPLE & RELATION PROPERTIES:
   then \`notion_query_database\` on that database to find the target page ID.
 `)
 
-        sections.push("\n" + NOTION_FOOTER_INSTRUCTIONS)
+            sections.push("\n" + NOTION_FOOTER_INSTRUCTIONS)
+        }
 
         return sections.join("\n")
     }

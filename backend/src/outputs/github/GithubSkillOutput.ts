@@ -5,8 +5,9 @@ import { IntegrationType } from "terse-types"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, RuntimeSystemInstructionsContext, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
 
+import { validateGitHubRepositoriesACL, validateGitHubRepositoryACL } from "./acl"
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
 import { grepGitHubCodeTool } from "./tools/grepCode"
 import { listGitHubCommitsTool } from "./tools/listCommits"
@@ -18,14 +19,56 @@ import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequest
 
 export class GithubSkillOutput extends Output<GitHubConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code" },
-            { tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code" },
-            { tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file" },
-            { tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory" },
-            { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests" },
-            { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits" },
-            { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" }
+        const toolbox = [
+            defineToolboxEntry({
+                tool: searchGitHubCodeTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB,
+                displayName: "Search code",
+                validateACL: validateGitHubRepositoriesACL
+            }),
+            defineToolboxEntry({
+                tool: grepGitHubCodeTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB,
+                displayName: "Grep code",
+                validateACL: validateGitHubRepositoriesACL
+            }),
+            defineToolboxEntry({
+                tool: readGitHubFileTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB,
+                displayName: "Read file",
+                validateACL: validateGitHubRepositoryACL
+            }),
+            defineToolboxEntry({
+                tool: listGitHubDirectoryTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB,
+                displayName: "List directory",
+                validateACL: validateGitHubRepositoryACL
+            }),
+            defineToolboxEntry({
+                tool: listGitHubPullRequestsTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB,
+                displayName: "List pull requests",
+                validateACL: validateGitHubRepositoryACL
+            }),
+            defineToolboxEntry({
+                tool: listGitHubCommitsTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB,
+                displayName: "List commits",
+                validateACL: validateGitHubRepositoryACL
+            }),
+            defineToolboxEntry({
+                tool: summarizeGitHubPullRequestDiffTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB,
+                displayName: "Summarize PR diff",
+                validateACL: validateGitHubRepositoryACL
+            })
         ]
 
         super(OutputConfigType.GITHUB, toolbox)

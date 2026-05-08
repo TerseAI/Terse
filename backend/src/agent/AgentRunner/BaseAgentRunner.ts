@@ -5,7 +5,6 @@ import { ConfigData, completedEventUsageSchema } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { BillingError, CompletedEventUsage, ModelReference } from "terse-types"
-import { z } from "zod"
 
 import { settings } from "../../config/settings"
 import { Session as AppSession } from "../../express"
@@ -56,12 +55,15 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     protected abstract loadPendingApprovalState(runId: string): Promise<PendingApprovalState | null>
     protected abstract clearPendingApprovalState(runId: string): Promise<void>
     protected abstract markRunInProgress(runId: string): Promise<void>
-    protected abstract getAgentInitializationParams(): AgentInitializationParams<TSession>
+    protected abstract getAgentInitializationParams(): AgentInitializationParams<TSession> | Promise<AgentInitializationParams<TSession>>
 
     protected async initializeLoopIfNeeded(): Promise<void> {
         if (this.agent) return
         if (!this.buildAgentPromise) {
-            this.buildAgentPromise = this.buildAgent(this.getAgentInitializationParams()).finally(() => {
+            this.buildAgentPromise = (async () => {
+                const params = await Promise.resolve(this.getAgentInitializationParams())
+                return this.buildAgent(params)
+            })().finally(() => {
                 this.buildAgentPromise = undefined
             })
         }

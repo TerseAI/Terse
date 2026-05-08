@@ -5,8 +5,9 @@ import { IntegrationType } from "terse-types"
 
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
 
+import { validateSlackChannelACL, validateSlackIntegrationACL } from "./acl"
 import { slackListChannelsTool } from "./tools/listChannels"
 import { slackListUsersTool } from "./tools/listUsers"
 import { slackReadConversationTool } from "./tools/readConversation"
@@ -14,11 +15,35 @@ import { slackSendMessageTool } from "./tools/sendMessage"
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
-            { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" },
-            { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels" },
-            { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation" }
+        const toolbox = [
+            defineToolboxEntry({
+                tool: slackSendMessageTool,
+                isReadOnly: false,
+                integration: IntegrationType.SLACK,
+                displayName: "Send message",
+                validateACL: validateSlackChannelACL
+            }),
+            defineToolboxEntry({
+                tool: slackListUsersTool,
+                isReadOnly: true,
+                integration: IntegrationType.SLACK,
+                displayName: "List users",
+                validateACL: validateSlackIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: slackListChannelsTool,
+                isReadOnly: true,
+                integration: IntegrationType.SLACK,
+                displayName: "List channels",
+                validateACL: validateSlackIntegrationACL
+            }),
+            defineToolboxEntry({
+                tool: slackReadConversationTool,
+                isReadOnly: true,
+                integration: IntegrationType.SLACK,
+                displayName: "Read conversation",
+                validateACL: validateSlackChannelACL
+            })
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
     }
@@ -78,14 +103,23 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             throw new Error("No Slack output scope configured (channel, DM users, or DM scope).")
         }
 
+        const readOnly = outputIsReadOnly(configs)
+
         const sections: string[] = []
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
-        sections.push(
-            "\nWhen calling Slack tools, you MUST include `integrationId` from one of the configurations listed above. For channel-scoped configs, use the configured `channelId`. For DM-scoped configs, use `slack_list_channels` to discover DM channel IDs before calling read/send tools."
-        )
+        if (readOnly) {
+            sections.push("\nThis Slack integration is read-only for this run. You cannot send messages; only read conversations and list channels/users.")
+            sections.push(
+                "\nWhen calling Slack tools, you MUST include `integrationId` from one of the configurations listed above. For channel-scoped configs, use the configured `channelId`. For DM-scoped configs, use `slack_list_channels` to discover DM channel IDs before reading."
+            )
+        } else {
+            sections.push(
+                "\nWhen calling Slack tools, you MUST include `integrationId` from one of the configurations listed above. For channel-scoped configs, use the configured `channelId`. For DM-scoped configs, use `slack_list_channels` to discover DM channel IDs before calling read/send tools."
+            )
+        }
         sections.push("\nUse slack_list_users to resolve Slack user IDs to names when needed.")
-        sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
+        sections.push("\n" + (readOnly ? SLACK_OUTPUT_READONLY_INSTRUCTIONS : SLACK_OUTPUT_INSTRUCTIONS))
         return sections.join("\n")
     }
 }
@@ -120,4 +154,15 @@ BEST PRACTICES:
 - Keep concise and actionable
 - Include relevant links
 - For thread conversations, always use the \`thread_ts\` from previous message results to maintain thread context
+`.trim()
+
+const SLACK_OUTPUT_READONLY_INSTRUCTIONS = `
+=== SLACK OUTPUT (READ-ONLY) ===
+
+TOOLS:
+- slack_list_channels: Discover available channels and DM IDs.
+- slack_list_users: Resolve workspace user IDs to names.
+- slack_read_conversation: Read message history from a channel or DM.
+
+This integration is read-only for this run. Sending messages is not available.
 `.trim()

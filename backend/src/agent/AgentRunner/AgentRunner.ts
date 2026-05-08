@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, protocol, tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunToolApprovalItem, Tool, protocol } from "@openai/agents"
 import { AiSdkModel, aisdk } from "@openai/agents-extensions/ai-sdk"
 import { RunHistoryActionType } from "@prisma/client"
 import { EntityType } from "terse-types"
@@ -15,7 +15,7 @@ import { Output } from "../../outputs/abstract/Output"
 import { BillingService, billingServiceProxyForOrganization } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { FileCategory, StoredFile } from "../../services/FileStorageService"
-import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
+import { buildRunACLRules } from "../../tools/acl/buildRunACLRules"
 import { AgentWithRelations } from "../../types/prisma"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
@@ -25,6 +25,7 @@ import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprov
 import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, SessionWithTracking } from "./BaseAgentRunner"
+import { buildOpenAiToolsFromOutputs } from "./buildOpenAiToolsFromOutputs"
 import { persistRunAction } from "./EventProcessor"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
@@ -43,7 +44,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
     private inputEvent: TriggerRuntime | null = null
     private agentConfig: AgentWithRelations
     private outputs: Output<TConfig>[]
-    private tools: Tool<SessionWithTracking<T>>[] = []
     private runContext: RunContext
     private toolMetadataMap: Map<string, ToolMetadata> = new Map()
     private memorySession: RunHistoryChatMemorySession
@@ -67,21 +67,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         this.session = session
         this.outputs = outputs
         this.agentConfig = agent
-        const toolsMap = new Map<string, Tool<SessionWithTracking<T>>>()
-
-        outputs.forEach(output => {
-            output.toolbox.forEach(entry => {
-                const toolOptions = {
-                    ...entry.tool,
-                    needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
-                    errorFunction: formatError
-                }
-                const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
-                toolsMap.set(toolEntry.name, toolEntry)
-            })
-        })
-
-        this.tools = Array.from(toolsMap.values())
 
         this.runContext = runContext
         this.buildToolMetadataMap()
@@ -460,19 +445,26 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         }
     }
 
-    protected getAgentInitializationParams() {
+    protected async getAgentInitializationParams() {
         const deps: SystemPromptBuilderDependencies<SessionWithTracking<T>, TConfig> = {
             session: this.getToolContext(),
             agent: this.agentConfig,
             outputs: this.outputs
         }
 
+        const configs = this.outputs.flatMap(output => output.configs ?? [])
+        const aclRules = await buildRunACLRules(configs, { userId: this.session.user.id })
+        const tools = buildOpenAiToolsFromOutputs({
+            outputs: this.outputs as Output<ConfigData>[],
+            aclRules
+        }) as Tool<SessionWithTracking<T>>[]
+
         return {
             name: "Automation Agent",
             systemPromptDeps: deps as SystemPromptBuilderDependencies<SessionWithTracking<T>, ConfigData>,
             runContext: this.runContext,
             model: this.chooseModel(),
-            tools: this.tools,
+            tools,
             modelSettings: this.getModelSettings()
         }
     }

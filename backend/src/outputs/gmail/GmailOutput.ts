@@ -4,13 +4,22 @@ import { GmailOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
 
+import { validateGmailSendACL } from "./acl"
 import { gmailSendEmailTool } from "./tools/sendEmail"
 
 export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email" }]
+        const toolbox = [
+            defineToolboxEntry({
+                tool: gmailSendEmailTool,
+                isReadOnly: false,
+                integration: IntegrationType.GMAIL,
+                displayName: "Send email",
+                validateACL: validateGmailSendACL
+            })
+        ]
         super(OutputConfigType.GMAIL, toolbox)
     }
 
@@ -34,16 +43,20 @@ export class GmailOutput extends Output<GmailOutputConfig> {
         }
 
         const sections: string[] = []
+        const readOnly = outputIsReadOnly(configs)
 
-        // List all available configurations
         const configList: string[] = []
         for (const config of configs) {
             configList.push(`  • Integration ID: ${config.integrationId}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
-        sections.push("\nWhen calling Gmail tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
-        sections.push("\n" + GMAIL_OUTPUT_INSTRUCTIONS)
+        if (readOnly) {
+            sections.push("\nThis Gmail integration is read-only for this run. Sending email is not available.")
+        } else {
+            sections.push("\nWhen calling Gmail tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
+            sections.push("\n" + GMAIL_OUTPUT_INSTRUCTIONS)
+        }
 
         return sections.join("\n")
     }

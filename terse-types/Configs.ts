@@ -309,7 +309,8 @@ export type WorkOSEventType = z.infer<typeof workOSEventTypeSchema>
 export const ConfigInstanceSchema = z.object({
     integrationId: z.string(),
     integrationType: integrationTypeEnum,
-    configType: configTypeEnum
+    configType: configTypeEnum,
+    readOnly: z.boolean().optional().default(false)
 })
 export type ConfigInstanceType = z.infer<typeof ConfigInstanceSchema>
 export type ConfigInstance = ConfigInstanceType & ConfigBehavior
@@ -327,7 +328,8 @@ abstract class BaseConfigInstance<TIntegrationType extends IntegrationType, TCon
     constructor(
         public readonly integrationId: TIntegrationId,
         public readonly integrationType: TIntegrationType,
-        public readonly configType: TConfigType
+        public readonly configType: TConfigType,
+        public readonly readOnly: boolean = false
     ) {}
 
     abstract isComplete(): boolean
@@ -345,9 +347,10 @@ export type GmailConfigInstance = GmailConfigData & ConfigBehavior
 export class GmailConfig extends BaseConfigInstance<IntegrationType.GMAIL, ConfigType.GMAIL> implements GmailConfigInstance {
     constructor(
         integrationId: string,
-        public eventTypes: GmailEventType[] | null = null
+        public eventTypes: GmailEventType[] | null = null,
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL)
+        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL, readOnly)
     }
 
     isComplete(): boolean {
@@ -378,9 +381,10 @@ export class SlackConfig extends BaseConfigInstance<IntegrationType.SLACK, Confi
         public channelName: string | null = null,
         public listenToUserDms: boolean = false,
         public userIds: string[] | null = null,
-        public eventTypes: SlackEventType[] | null = null
+        public eventTypes: SlackEventType[] | null = null,
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.SLACK, ConfigType.SLACK)
+        super(integrationId, IntegrationType.SLACK, ConfigType.SLACK, readOnly)
     }
 
     isComplete(): boolean {
@@ -428,9 +432,10 @@ export class SlackOutputConfig extends BaseConfigInstance<IntegrationType.SLACK,
         public channelName: string | null = null,
         public userIds: string[] | null = null,
         public userNames: string[] | null = null,
-        public listenToUserDms: boolean = false
+        public listenToUserDms: boolean = false,
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.SLACK, ConfigType.SLACK_OUTPUT)
+        super(integrationId, IntegrationType.SLACK, ConfigType.SLACK_OUTPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -461,8 +466,8 @@ export type GmailOutputConfigData = z.infer<typeof GmailOutputConfigSchema>
 export type GmailOutputConfigInstance = GmailOutputConfigData & ConfigBehavior
 
 export class GmailOutputConfig extends BaseConfigInstance<IntegrationType.GMAIL, ConfigType.GMAIL_OUTPUT> implements GmailOutputConfigInstance {
-    constructor(integrationId: string) {
-        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL_OUTPUT)
+    constructor(integrationId: string, readOnly: boolean = false) {
+        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL_OUTPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -483,8 +488,8 @@ export type GmailDraftOutputConfigData = z.infer<typeof GmailDraftOutputConfigSc
 export type GmailDraftOutputConfigInstance = GmailDraftOutputConfigData & ConfigBehavior
 
 export class GmailDraftOutputConfig extends BaseConfigInstance<IntegrationType.GMAIL, ConfigType.GMAIL_DRAFT_OUTPUT> implements GmailDraftOutputConfigInstance {
-    constructor(integrationId: string) {
-        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL_DRAFT_OUTPUT)
+    constructor(integrationId: string, readOnly: boolean = false) {
+        super(integrationId, IntegrationType.GMAIL, ConfigType.GMAIL_DRAFT_OUTPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -513,9 +518,10 @@ export class NotionConfig extends BaseConfigInstance<IntegrationType.NOTION, Con
         public databaseIds: string[] = [],
         public databaseNames: string[] = [],
         public pageIds: string[] = [],
-        public pageNames: string[] = []
+        public pageNames: string[] = [],
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.NOTION, ConfigType.NOTION)
+        super(integrationId, IntegrationType.NOTION, ConfigType.NOTION, readOnly)
     }
 
     isComplete(): boolean {
@@ -553,9 +559,10 @@ export class LinearInputConfig extends BaseConfigInstance<IntegrationType.LINEAR
         integrationId: string,
         public projectId: string | null = null,
         public eventTypes: LinearEventType[] | null = null,
-        public teamId: string | null = null
+        public teamId: string | null = null,
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_INPUT)
+        super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_INPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -592,9 +599,10 @@ export class LinearOutputConfig extends BaseConfigInstance<IntegrationType.LINEA
         integrationId: string,
         public teamId: string | null = null,
         public teamName: string | null = null,
-        public projectId: string | null = null
+        public projectId: string | null = null,
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_OUTPUT)
+        super(integrationId, IntegrationType.LINEAR, ConfigType.LINEAR_OUTPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -628,9 +636,10 @@ export class GitHubConfig extends BaseConfigInstance<IntegrationType.GITHUB, Con
     constructor(
         integrationId: string,
         public repositoryIds: number[],
-        public eventTypes: GitHubEventType[] | null = null
+        public eventTypes: GitHubEventType[] | null = null,
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.GITHUB, ConfigType.GITHUB)
+        super(integrationId, IntegrationType.GITHUB, ConfigType.GITHUB, readOnly)
     }
 
     isComplete(): boolean {
@@ -673,9 +682,10 @@ export class PosthogConfig extends BaseConfigInstance<IntegrationType.POSTHOG, C
     constructor(
         integrationId: string,
         public projectId: string,
-        public projectName: string | null = null
+        public projectName: string | null = null,
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.POSTHOG, ConfigType.POSTHOG)
+        super(integrationId, IntegrationType.POSTHOG, ConfigType.POSTHOG, readOnly)
     }
 
     isComplete(): boolean {
@@ -705,9 +715,10 @@ export type DatadogConfigInstance = DatadogConfigData & ConfigBehavior
 export class DatadogConfig extends BaseConfigInstance<IntegrationType.DATADOG, ConfigType.DATADOG> implements DatadogConfigInstance {
     constructor(
         integrationId: string,
-        public defaultIndexes: string[] = ["main"]
+        public defaultIndexes: string[] = ["main"],
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.DATADOG, ConfigType.DATADOG)
+        super(integrationId, IntegrationType.DATADOG, ConfigType.DATADOG, readOnly)
     }
 
     isComplete(): boolean {
@@ -733,8 +744,8 @@ export type TimeTriggerConfigData = z.infer<typeof TimeTriggerConfigSchema>
 export type TimeTriggerConfigInstance = TimeTriggerConfigData & ConfigBehavior
 
 export class TimeTriggerConfig extends BaseConfigInstance<IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER, "system"> implements TimeTriggerConfigInstance {
-    constructor(public cronExpression: string) {
-        super("system", IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER)
+    constructor(public cronExpression: string, readOnly: boolean = false) {
+        super("system", IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER, readOnly)
     }
 
     isComplete(): boolean {
@@ -763,9 +774,10 @@ export class LaunchDarklyConfig extends BaseConfigInstance<IntegrationType.LAUNC
     constructor(
         integrationId: string,
         public projectKey: string,
-        public environmentKeys: string[] // ["production", "staging"]
+        public environmentKeys: string[], // ["production", "staging"]
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.LAUNCHDARKLY, ConfigType.LAUNCHDARKLY)
+        super(integrationId, IntegrationType.LAUNCHDARKLY, ConfigType.LAUNCHDARKLY, readOnly)
     }
 
     isComplete(): boolean {
@@ -793,8 +805,8 @@ export type WebConfigData = z.infer<typeof WebConfigSchema>
 export type WebConfigInstance = WebConfigData & ConfigBehavior
 
 export class WebConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB, "system"> implements WebConfigInstance {
-    constructor() {
-        super("system", IntegrationType.TERSE, ConfigType.WEB)
+    constructor(readOnly: boolean = false) {
+        super("system", IntegrationType.TERSE, ConfigType.WEB, readOnly)
     }
 
     isComplete(): boolean {
@@ -815,8 +827,8 @@ export type ImageEditConfigData = z.infer<typeof ImageEditConfigSchema>
 export type ImageEditConfigInstance = ImageEditConfigData & ConfigBehavior
 
 export class ImageEditConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.IMAGE_EDIT, "system"> implements ImageEditConfigInstance {
-    constructor() {
-        super("system", IntegrationType.TERSE, ConfigType.IMAGE_EDIT)
+    constructor(readOnly: boolean = false) {
+        super("system", IntegrationType.TERSE, ConfigType.IMAGE_EDIT, readOnly)
     }
 
     isComplete(): boolean {
@@ -839,9 +851,10 @@ export type WorkOSInputConfigInstance = WorkOSInputConfigData & ConfigBehavior
 export class WorkOSInputConfig extends BaseConfigInstance<IntegrationType.WORKOS, ConfigType.WORKOS_INPUT> implements WorkOSInputConfigInstance {
     constructor(
         integrationId: string,
-        public eventTypes: WorkOSEventType[] = []
+        public eventTypes: WorkOSEventType[] = [],
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.WORKOS, ConfigType.WORKOS_INPUT)
+        super(integrationId, IntegrationType.WORKOS, ConfigType.WORKOS_INPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -861,8 +874,8 @@ export type WorkOSOutputConfigData = z.infer<typeof WorkOSOutputConfigSchema>
 export type WorkOSOutputConfigInstance = WorkOSOutputConfigData & ConfigBehavior
 
 export class WorkOSOutputConfig extends BaseConfigInstance<IntegrationType.WORKOS, ConfigType.WORKOS_OUTPUT> implements WorkOSOutputConfigInstance {
-    constructor(integrationId: string) {
-        super(integrationId, IntegrationType.WORKOS, ConfigType.WORKOS_OUTPUT)
+    constructor(integrationId: string, readOnly: boolean = false) {
+        super(integrationId, IntegrationType.WORKOS, ConfigType.WORKOS_OUTPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -885,9 +898,10 @@ export type AttioOutputConfigInstance = AttioOutputConfigData & ConfigBehavior
 export class AttioOutputConfig extends BaseConfigInstance<IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT> implements AttioOutputConfigInstance {
     constructor(
         integrationId: string,
-        public objectSlug: string | null = null
+        public objectSlug: string | null = null,
+        readOnly: boolean = false
     ) {
-        super(integrationId, IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT)
+        super(integrationId, IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -911,8 +925,8 @@ export type SnowflakeOutputConfigData = z.infer<typeof SnowflakeOutputConfigSche
 export type SnowflakeOutputConfigInstance = SnowflakeOutputConfigData & ConfigBehavior
 
 export class SnowflakeOutputConfig extends BaseConfigInstance<IntegrationType.SNOWFLAKE, ConfigType.SNOWFLAKE_OUTPUT> implements SnowflakeOutputConfigInstance {
-    constructor(integrationId: string) {
-        super(integrationId, IntegrationType.SNOWFLAKE, ConfigType.SNOWFLAKE_OUTPUT)
+    constructor(integrationId: string, readOnly: boolean = false) {
+        super(integrationId, IntegrationType.SNOWFLAKE, ConfigType.SNOWFLAKE_OUTPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -934,8 +948,8 @@ export type WebhookInputConfigData = z.infer<typeof WebhookInputConfigSchema>
 export type WebhookInputConfigInstance = WebhookInputConfigData & ConfigBehavior
 
 export class WebhookInputConfig extends BaseConfigInstance<IntegrationType.WEBHOOK, ConfigType.WEBHOOK_INPUT, "system"> implements WebhookInputConfigInstance {
-    constructor() {
-        super("system", IntegrationType.WEBHOOK, ConfigType.WEBHOOK_INPUT)
+    constructor(readOnly: boolean = false) {
+        super("system", IntegrationType.WEBHOOK, ConfigType.WEBHOOK_INPUT, readOnly)
     }
 
     isComplete(): boolean {
@@ -1007,9 +1021,10 @@ export class WebMonitorConfig extends BaseConfigInstance<IntegrationType.WEBMONI
             number: number
             unit: FrequencyUnit
         },
-        outputSchema?: unknown
+        outputSchema?: unknown,
+        readOnly: boolean = false
     ) {
-        super("system", IntegrationType.WEBMONITOR, ConfigType.WEBMONITOR)
+        super("system", IntegrationType.WEBMONITOR, ConfigType.WEBMONITOR, readOnly)
         this.rawOutputSchema = outputSchema
         this.outputSchema = normalizeWebMonitorOutputSchema(outputSchema)
     }

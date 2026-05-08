@@ -231,7 +231,8 @@ export const pythonProvider = new PythonProvider()
 function createJobParametersFromPython(data: PythonJobData): CreateJobParameters {
     const jobParams: CreateJobParameters = {
         name: data.name,
-        triggers: (data.triggers ?? []).map(reconstructPythonConfig) as TypedTrigger[],
+        // TODO: Temporarily adding unknown, fixing this later.
+        triggers: (data.triggers ?? []).map(reconstructPythonConfig) as unknown as TypedTrigger[],
         onTrigger: async () => {
             throw new Error("Python job execution must go through provider.executeJob()")
         },

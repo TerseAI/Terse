@@ -5,7 +5,8 @@ import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
 import { Session } from "../express"
 import logger from "../logger"
 
-// Extend OpenAI's ToolOptions — override execute to enforce output type
+// Extend OpenAI's ToolOptions — override execute to enforce output type.
+// `inputGuardrails` / `outputGuardrails` are inherited from `ToolOptions` (OpenAI Agents SDK); model-run tooling merges ACL guardrails without replacing them.
 export type TypedToolOptions<TName extends ToolName, Context = UnknownContext> = Omit<ToolOptions<ToolInputSchemaByName[TName], Context>, "execute" | "name" | "parameters" | "strict"> & {
     name: TName
     parameters: ToolInputSchemaByName[TName]

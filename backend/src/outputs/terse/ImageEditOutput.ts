@@ -3,19 +3,21 @@ import { ImageEditConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output } from "../abstract/Output"
 
+import { validateImageEditCapabilityACL } from "./acl"
 import { imageEditTool } from "./tools/editImage"
 
 export class ImageEditOutput extends Output<ImageEditConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            {
+        const toolbox = [
+            defineToolboxEntry({
                 tool: imageEditTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
-                displayName: "Edit Image"
-            }
+                displayName: "Edit Image",
+                validateACL: validateImageEditCapabilityACL
+            })
         ]
         super(OutputConfigType.IMAGE_EDIT, toolbox)
     }

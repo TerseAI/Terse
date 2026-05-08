@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult, RunToolApprovalItem, Tool, ToolInputParameters, ToolOptions, tool } from "@openai/agents"
+import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult, RunToolApprovalItem, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { AiSdkModel, aisdk } from "@openai/agents-extensions/ai-sdk"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
@@ -17,7 +17,7 @@ import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import type { BillingService } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
-import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
+import { buildRunACLRules } from "../../tools/acl/buildRunACLRules"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { resolveLanguageModel } from "../modelRegistry"
@@ -26,6 +26,7 @@ import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprov
 import { buildUserMessage } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
+import { buildOpenAiToolsFromOutputs } from "./buildOpenAiToolsFromOutputs"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { BaseSystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { clearPendingApprovalState as clearPendingApprovalStateDb, markRunInProgress as markRunInProgressDb, storePendingApprovalState } from "./runHistory"
@@ -35,7 +36,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly user: User
     private readonly prompt: string
     private readonly outputs: Output<ConfigData>[]
-    private readonly tools: Tool<SdkRunnerSession>[]
     private readonly maxTurns: number
     private readonly toolApprovals: string[]
     private readonly send: (event: SdkAgentStreamEvent) => void
@@ -53,7 +53,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.prompt = params.prompt
         const skillConfigs = params.skills
         this.outputs = this.buildOutputsFromConfigs(skillConfigs)
-        this.tools = this.buildToolsFromOutputs()
         this.maxTurns = params.maxTurns
         this.toolApprovals = params.toolApprovals
         this.send = params.send
@@ -283,7 +282,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return this.agent
     }
 
-    protected getAgentInitializationParams() {
+    protected async getAgentInitializationParams() {
         const deps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData> = {
             session: this.getToolContext(),
             agent: {
@@ -295,12 +294,19 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         const defaultModel = settings.aisdk.default
         const resolved = resolveLanguageModel(defaultModel)
 
+        const configs = this.outputs.flatMap(output => output.configs ?? [])
+        const aclRules = await buildRunACLRules(configs, { userId: this.user.id })
+        const tools = buildOpenAiToolsFromOutputs({
+            outputs: this.outputs,
+            aclRules
+        }) as Tool<SdkRunnerSession>[]
+
         return {
             name: "Terse SDK Agent",
             systemPromptDeps: deps,
             runContext: { runId: this.sdkRunId } as RunContext,
             model: aisdk(resolved.model),
-            tools: this.tools
+            tools
         }
     }
 
@@ -337,23 +343,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         const remaining = this.failedToolCalls.length - summarized.length
         const suffix = remaining > 0 ? ` (+${remaining} more)` : ""
         return `Tool call failures: ${summarized.join("; ")}${suffix}`
-    }
-
-    private buildToolsFromOutputs(): Tool<SdkRunnerSession>[] {
-        const toolsMap = new Map<string, Tool<SdkRunnerSession>>()
-        for (const output of this.outputs) {
-            for (const entry of output.toolbox) {
-                const toolOptions = {
-                    ...entry.tool,
-                    needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
-                    errorFunction: formatError
-                }
-                const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
-                if (toolsMap.has(toolEntry.name)) continue
-                toolsMap.set(toolEntry.name, toolEntry)
-            }
-        }
-        return Array.from(toolsMap.values())
     }
 
     private buildOutputsFromConfigs(configs: ConfigData[]): Output<ConfigData>[] {

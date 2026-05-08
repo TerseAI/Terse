@@ -3,13 +3,22 @@ import { GmailDraftOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { defineToolboxEntry, Output, outputIsReadOnly } from "../abstract/Output"
 
+import { validateGmailDraftACL } from "./acl"
 import { gmailCreateDraftTool } from "./tools/createDraft"
 
 export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: gmailCreateDraftTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft" }]
+        const toolbox = [
+            defineToolboxEntry({
+                tool: gmailCreateDraftTool,
+                isReadOnly: false,
+                integration: IntegrationType.GMAIL,
+                displayName: "Create draft",
+                validateACL: validateGmailDraftACL
+            })
+        ]
         super(OutputConfigType.GMAIL_DRAFT, toolbox)
     }
 
@@ -33,16 +42,20 @@ export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
         }
 
         const sections: string[] = []
+        const readOnly = outputIsReadOnly(configs)
 
-        // List all available configurations
         const configList: string[] = []
         for (const config of configs) {
             configList.push(`  - Integration ID: ${config.integrationId}`)
         }
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
-        sections.push("\nWhen calling Gmail Draft tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
-        sections.push("\n" + GMAIL_DRAFT_OUTPUT_INSTRUCTIONS)
+        if (readOnly) {
+            sections.push("\nThis Gmail Draft integration is read-only for this run. Creating drafts is not available.")
+        } else {
+            sections.push("\nWhen calling Gmail Draft tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
+            sections.push("\n" + GMAIL_DRAFT_OUTPUT_INSTRUCTIONS)
+        }
 
         return sections.join("\n")
     }
