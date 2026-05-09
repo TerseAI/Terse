@@ -11,7 +11,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
+import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
 import {
@@ -106,7 +106,15 @@ export class HeyReachIntegrationManager
         await deleteSecretsBestEffort([{ integrationType: IntegrationType.HEY_REACH, recordId: integrationId, field: SecretField.ApiKey }])
     }
 
-    async setupAgentTrigger(_integrationId: string, _agentTrigger: AgentTriggerWithConfigs): Promise<void> {}
+    async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
+        if (agentTrigger.config_type !== InputConfigType.HEY_REACH_INPUT) return
+        const cfg = agentTrigger.hey_reach_config
+        if (!cfg?.event_type) {
+            logger.warn("HeyReach setup skipped: missing hey_reach_config", { inputId: agentTrigger.id })
+            return
+        }
+        await createHeyReachWebhook(integrationId, cfg.event_type as HeyReachEventType, cfg.campaign_ids ?? [])
+    }
 
     async teardownAgentTrigger(_integrationId: string, _agentTrigger: AgentTriggerWithConfigs): Promise<void> {}
 
@@ -332,17 +340,8 @@ function clipHeyReachWebhookName(eventType: HeyReachEventType): string {
     return base.length <= HEYREACH_WEBHOOK_NAME_MAX_LEN ? base : base.slice(0, HEYREACH_WEBHOOK_NAME_MAX_LEN)
 }
 
-export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: string, eventType: HeyReachEventType, campaignIds: string[] = []) {
-    const automationInput = await tx.automation_inputs.findUnique({
-        where: { id: triggerId },
-        select: { integration_id: true, config_type: true }
-    })
-    if (!automationInput || automationInput.config_type !== InputConfigType.HEY_REACH_INPUT) {
-        throw new Error("HeyReach trigger not found")
-    }
-    const integrationId = automationInput.integration_id
-
-    const heyReachRow = await tx.hey_reach_integrations.findUnique({ where: { id: integrationId } })
+export async function createHeyReachWebhook(integrationId: string, eventType: HeyReachEventType, campaignIds: string[] = []) {
+    const heyReachRow = await db().hey_reach_integrations.findUnique({ where: { id: integrationId } })
     if (!heyReachRow) {
         throw new Error("HeyReach integration not found")
     }
