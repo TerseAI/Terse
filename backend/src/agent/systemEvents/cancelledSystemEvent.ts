@@ -60,7 +60,7 @@ function buildPayload(reason?: string, options?: CancelledSystemEventOptions): C
     return payload
 }
 
-export function buildCancelledSystemEventItem(reason?: string, options?: CancelledSystemEventOptions): AgentInputItem {
+function buildCancelledSystemEventItem(reason?: string, options?: CancelledSystemEventOptions): AgentInputItem {
     return cancelledSystemEvent.createItem(buildPayload(reason, options))
 }
 

@@ -22,7 +22,7 @@ import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExec
 import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
-export interface SdkJobExecutionParams {
+interface SdkJobExecutionParams {
     gcsKey: string
     runId: string
     agent: SDKAgent
@@ -549,7 +549,7 @@ export class SdkJobExecutionService {
     }
 
     private parseRuntime(runtime: string): SdkProjectRuntime {
-        if (runtime === "typescript" || runtime === "python") {
+        if (runtime === "typescript") {
             return runtime
         }
 

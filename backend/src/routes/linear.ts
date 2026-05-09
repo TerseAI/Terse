@@ -161,7 +161,7 @@ export async function getLinearProjects(req: Request, res: Response) {
     }
 }
 
-export async function fetchLinearProjects(organizationId: string, integrationId: string): Promise<LinearProjectSummary[]> {
+async function fetchLinearProjects(organizationId: string, integrationId: string): Promise<LinearProjectSummary[]> {
     const integration = await db().linear_integrations.findFirst({
         where: {
             id: integrationId,

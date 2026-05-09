@@ -25,7 +25,7 @@ const HYDRATOR_FACTORIES: {
 }
 
 // Create a composite hydrator for a namespace with context
-export function createNamespaceHydrator(namespace: RAGNamespace, ctx: HydrationContext): CompositeHydrator<Hydrator<Identifiable>[]> {
+function createNamespaceHydrator(namespace: RAGNamespace, ctx: HydrationContext): CompositeHydrator<Hydrator<Identifiable>[]> {
     const runHistoryHydrator = new RunHistoryRawEventHydrator(ctx)
 
     switch (namespace) {
@@ -41,7 +41,7 @@ export function createNamespaceHydrator(namespace: RAGNamespace, ctx: HydrationC
 }
 
 // Get a hydrator by type (requires context)
-export function getHydrator<K extends HydratorType>(entityType: K, ctx: HydrationContext): Hydrator<HydratorTypeMap[K]> | undefined {
+function getHydrator<K extends HydratorType>(entityType: K, ctx: HydrationContext): Hydrator<HydratorTypeMap[K]> | undefined {
     const factory = HYDRATOR_FACTORIES[entityType]
     return factory ? factory(ctx) : undefined
 }

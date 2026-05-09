@@ -8,7 +8,7 @@ import { computeAverageRunDurationMs } from "./runMetrics"
 
 const PERIOD_DAYS_DEFAULT = 7
 
-export async function fetchAgentConfig(automationId: string, orgId: string) {
+async function fetchAgentConfig(automationId: string, orgId: string) {
     logger.info("[fetchJudgeContext:agentConfig] Fetching", { automationId })
     const automation = await db().automations.findFirst({
         where: { id: automationId, organization_id: orgId },
@@ -52,7 +52,7 @@ export async function fetchAgentConfig(automationId: string, orgId: string) {
     }
 }
 
-export async function fetchRunHistory(automationId: string, orgId: string, periodDays = PERIOD_DAYS_DEFAULT) {
+async function fetchRunHistory(automationId: string, orgId: string, periodDays = PERIOD_DAYS_DEFAULT) {
     logger.info("[fetchJudgeContext:runHistory] Fetching", { automationId, periodDays })
     const now = new Date()
     const start = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
@@ -106,7 +106,7 @@ export async function fetchRunHistory(automationId: string, orgId: string, perio
     return { runs: normalizedRuns, stats }
 }
 
-export async function fetchRunDetails(runId: string, orgId: string) {
+async function fetchRunDetails(runId: string, orgId: string) {
     logger.info("[fetchJudgeContext:runDetails] Fetching", { runId })
     const run = await db().run_history_records.findFirst({
         where: { id: runId, automation: { organization_id: orgId } },
@@ -155,7 +155,7 @@ export async function fetchRunDetails(runId: string, orgId: string) {
     }
 }
 
-export async function fetchPastImprovements(automationId: string, orgId: string) {
+async function fetchPastImprovements(automationId: string, orgId: string) {
     logger.info("[fetchJudgeContext:pastImprovements] Fetching", { automationId })
     const pastImprovements = await db().agent_improvements.findMany({
         where: {

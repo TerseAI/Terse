@@ -3,8 +3,9 @@ export * from "./ApprovalTypes"
 export * from "./ClientBoundTools"
 export * from "./Configs"
 export * from "./DonatedState"
-export * from "./Entities"
 export * from "./FrontendRoutesBuilder"
+export * from "./Entities"
+export * from "./Decision"
 export * from "./Integrations"
 export * from "./InvalidationKeys"
 export * from "./JsonSchemaUtils"
@@ -19,22 +20,7 @@ export * from "./Survey"
 export * from "./Tools"
 export * from "./Billing"
 export * from "./ModelRegistry"
-export {
-    Comment,
-    CreateTicketInput,
-    LinearStateName,
-    Milestone,
-    Organization,
-    Project,
-    Team,
-    Ticket,
-    TicketState,
-    TicketSystemType,
-    TicketWebhookHandler,
-    Update,
-    UpdateTicketInput,
-    UserContext
-} from "./TicketSystem"
+export * from "./TicketSystem"
 export * from "./ToolDisplayUtils"
 export * from "./Triggers"
 export * from "./ToolsTypes"

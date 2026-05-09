@@ -71,7 +71,7 @@ function buildPayload(classified: ClassifiedError, options?: RunErrorSystemEvent
     return payload
 }
 
-export function buildRunErrorSystemEventItem(classified: ClassifiedError, options?: RunErrorSystemEventOptions): AgentInputItem {
+function buildRunErrorSystemEventItem(classified: ClassifiedError, options?: RunErrorSystemEventOptions): AgentInputItem {
     return runErrorSystemEvent.createItem(buildPayload(classified, options))
 }
 

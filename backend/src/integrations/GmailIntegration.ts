@@ -4,6 +4,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { ConfigData, ConfigType, GmailEventType, GmailMessagePayload, GmailParsedAttachment, GmailTrigger } from "terse-types"
+import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -22,7 +23,7 @@ import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
-import { ConfigurationFieldDefinition, Integration, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import { Integration, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 // OAuth2 scopes for Gmail

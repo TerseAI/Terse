@@ -183,19 +183,6 @@ export function ScheduleEditor({ value, onChange, className }: ScheduleEditorPro
 }
 
 // Utility exports
-export function isValidCronExpression(expression: string): boolean {
-    try {
-        CronExpressionParser.parse(expression)
-        return true
-    } catch {
-        return false
-    }
-}
-
-export function getNextCronRuns(expression: string, count: number = 5): Date[] {
-    return getNextRuns(expression, count)
-}
-
 export function getCronDescription(cron: string): string {
     const state = parseCronToState(cron)
     if (!state.frequency) return "No schedule configured"

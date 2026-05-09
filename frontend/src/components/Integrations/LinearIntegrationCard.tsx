@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"
 
-import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import CompactIntegrationRow from "./CompactIntegrationRow"
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"

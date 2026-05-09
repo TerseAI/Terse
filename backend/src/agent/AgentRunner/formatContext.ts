@@ -85,7 +85,7 @@ export function formatAgentForSystemPrompt(agent: FormattableAgent): string {
     return sections.join("\n")
 }
 
-export function formatAgentTriggerForAgent(input: AgentTrigger | AgentTriggerWithConfigs): string {
+function formatAgentTriggerForAgent(input: AgentTrigger | AgentTriggerWithConfigs): string {
     try {
         const configData = convertPrismaConfigToConfigData(input as AgentTriggerWithConfigs)
 
@@ -96,7 +96,7 @@ export function formatAgentTriggerForAgent(input: AgentTrigger | AgentTriggerWit
     }
 }
 
-export function formatAgentOutputForAgent(output: AgentOutput | AgentOutputWithConfigs): string {
+function formatAgentOutputForAgent(output: AgentOutput | AgentOutputWithConfigs): string {
     try {
         const configData = convertPrismaOutputConfigToConfigData(output as AgentOutputWithConfigs)
         return formatConfigForAgent(configData)
@@ -123,7 +123,7 @@ export function formatAgentTriggersForAgent(inputs: (AgentTrigger | AgentTrigger
         .join("\n\n")
 }
 
-export function formatAgentOutputsForAgent(outputs: (AgentOutput | AgentOutputWithConfigs)[]): string {
+function formatAgentOutputsForAgent(outputs: (AgentOutput | AgentOutputWithConfigs)[]): string {
     if (outputs.length === 0) {
         return "No outputs configured"
     }

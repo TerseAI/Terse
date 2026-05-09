@@ -1,6 +1,7 @@
 import { Client } from "@notionhq/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
+import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "terse-types/Integrations"
 import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
@@ -16,14 +17,7 @@ import { createOAuthStateToken } from "../utility/oauth"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import {
-    ConfigurationFieldDefinition,
-    Integration,
-    IntegrationWithResources,
-    OAuthIntegrationInstallation,
-    createConnectedCliDisplayState,
-    createNotConnectedCliDisplayState
-} from "./abstract/Integration"
+import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata, NotionResource>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() {}

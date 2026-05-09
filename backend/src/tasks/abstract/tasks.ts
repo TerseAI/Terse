@@ -12,7 +12,7 @@ export interface TaskListener<T extends Task> {
     onTask(task: T): void | Promise<void>
 }
 
-export interface TaskEmitter<T extends Task> {
+interface TaskEmitter<T extends Task> {
     emit(task: T): void
 }
 

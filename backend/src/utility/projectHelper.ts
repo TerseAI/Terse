@@ -24,7 +24,7 @@ export async function getActiveSourceCodeGcsKeyForProject(projectId: string): Pr
     return deploy?.sdk_source_image?.gcs_key ?? null
 }
 
-export async function getActiveSourceCodeGcsKeyForJob(agent: SDKAgent): Promise<string | null> {
+async function getActiveSourceCodeGcsKeyForJob(agent: SDKAgent): Promise<string | null> {
     return getActiveSourceCodeGcsKeyForProject(agent.project.id)
 }
 
@@ -35,7 +35,7 @@ export async function getActiveSourceCodeGcsKeyForAutomation(automation: AgentWi
 
     return getActiveSourceCodeGcsKeyForProject(automation.project.id)
 }
-export async function getRemoteServerUrlForAutomation(automation: AgentWithRelations): Promise<string | null> {
+async function getRemoteServerUrlForAutomation(automation: AgentWithRelations): Promise<string | null> {
     if (!isSDKAgent(automation)) {
         return null
     }

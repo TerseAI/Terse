@@ -15,7 +15,7 @@
             "source": "terse-claude-plugin",
             "description": "Create and improve Terse SDK jobs — background AI agents that react to events and take actions across GitHub, Slack, Linear, and more",
             "version": "0.1.0",
-            "skills": ["./skills/create", "./skills/improve"],
+            "skills": ["./skills/init", "./skills/create", "./skills/improve"],
             "author": {
                 "name": "Terse AI",
                 "email": "support@useterse.ai"

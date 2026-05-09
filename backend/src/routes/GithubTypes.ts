@@ -1,4 +1,4 @@
-export type GitHubUserPayload = {
+type GitHubUserPayload = {
     login: string
     id: number
     node_id: string
@@ -51,7 +51,7 @@ export type GitHubUserPayload = {
  * GitHub unified event request type
  * Used for processing GitHub webhook events (push, PR, etc.)
  */
-export type GithubAppUnifiedEventRequest = {
+type GithubAppUnifiedEventRequest = {
     username: string
     installationId: number
     repositoryName: string
@@ -91,18 +91,18 @@ export type GithubAppUnifiedEventRequest = {
     }
 }
 
-export type GithubAppInstallationDeletedRequest = {
+type GithubAppInstallationDeletedRequest = {
     username: string
     installationId: number
 }
 
-export type Commit = {
+type Commit = {
     sha: string
     name: string
     fileDiffs: FileDiff[]
 }
 
-export type FileDiff = {
+type FileDiff = {
     filename: string
     diff: string
 }
@@ -115,7 +115,7 @@ export type GithubAppUser = {
     email: string | null
 }
 
-export type GithubUserRepository = {
+type GithubUserRepository = {
     id: number
     name: string
     owner: string

@@ -3,11 +3,11 @@
  * Field names match tool JSON output so the model and UI stay stable when swapping providers.
  */
 
-export type WebSearchDepth = "basic" | "advanced"
+type WebSearchDepth = "basic" | "advanced"
 
-export type WebSearchTopic = "general" | "news"
+type WebSearchTopic = "general" | "news"
 
-export type WebSearchTimeRange = "day" | "week" | "month" | "year"
+type WebSearchTimeRange = "day" | "week" | "month" | "year"
 
 export interface WebSearchRequest {
     query: string
@@ -18,7 +18,7 @@ export interface WebSearchRequest {
     timeRange?: WebSearchTimeRange
 }
 
-export interface WebSearchResultItem {
+interface WebSearchResultItem {
     title: string
     url: string
     content: string
@@ -31,14 +31,14 @@ export interface WebSearchResponse {
     results: WebSearchResultItem[]
 }
 
-export type WebExtractDepth = "basic" | "advanced"
+type WebExtractDepth = "basic" | "advanced"
 
 export interface WebExtractRequest {
     urls: string[]
     extractDepth: WebExtractDepth
 }
 
-export interface WebExtractResultItem {
+interface WebExtractResultItem {
     url: string
     raw_content: string
 }
@@ -49,14 +49,14 @@ export interface WebExtractResponse {
     failed_results: unknown
 }
 
-export type WebResearchModel = "mini" | "pro" | "auto"
+type WebResearchModel = "mini" | "pro" | "auto"
 
 export interface WebResearchRequest {
     input: string
     model: WebResearchModel
 }
 
-export interface WebResearchSource {
+interface WebResearchSource {
     title: string
     url: string
 }
