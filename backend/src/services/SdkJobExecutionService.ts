@@ -141,7 +141,12 @@ export class SdkJobExecutionService {
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
         } catch (error) {
             const errorMessage = extractErrorMessage(error)
-            logger.error("SDK job execution failed", { error, runId, agentId: agent.id, totalDuration: this.elapsed(executionStart) })
+            logger.error("SDK job execution failed", {
+                errorMessage,
+                runId,
+                agentId: agent.id,
+                totalDuration: this.elapsed(executionStart)
+            })
 
             try {
                 await markRunFailed(runId, errorMessage, "agent")
