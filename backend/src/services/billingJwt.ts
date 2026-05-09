@@ -19,7 +19,8 @@ export async function signTerseBillingJwt(claims: TerseBillingJwtClaims): Promis
     }
     const key = new TextEncoder().encode(secret)
     const body: TerseBillingJwtClaims = {
-        organizationId: claims.organizationId
+        organizationId: claims.organizationId,
+        userId: claims.userId
     }
     return new SignJWT(body)
         .setProtectedHeader({ alg: "HS256" })
