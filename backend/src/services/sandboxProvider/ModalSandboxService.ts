@@ -2,7 +2,6 @@ import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, 
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
-import { extractErrorFields } from "../../utility/strings"
 
 import { Sandbox, SandboxApp, SandboxImage, SandboxService } from "./SandboxService"
 
@@ -26,6 +25,8 @@ const createRetryDelayMs = (attempt: number): number => {
     return Math.min(exponential + jitter, 2000)
 }
 
+const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+
 export class ModalSandboxService implements SandboxService {
     private readonly modal: ModalClient
 
@@ -45,13 +46,12 @@ export class ModalSandboxService implements SandboxService {
             logger.info("Modal app: ready", { app: name, durationMs: Date.now() - t0 })
             return app
         } catch (error) {
-            logger.error("Modal app: fromName failed", { app: name, durationMs: Date.now() - t0, ...extractErrorFields(error) })
+            logger.error("Modal app: fromName failed", { app: name, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
             throw error
         }
     }
 
     getImageFromRegistry(registry: string): SandboxImage {
-        // Local config-only call; logged at debug-equivalent (info kept low-cardinality).
         return this.modal.images.fromRegistry(registry)
     }
 
@@ -62,7 +62,7 @@ export class ModalSandboxService implements SandboxService {
             logger.info("Modal image: fromId", { imageId, durationMs: Date.now() - t0 })
             return image
         } catch (error) {
-            logger.error("Modal image: fromId failed", { imageId, durationMs: Date.now() - t0, ...extractErrorFields(error) })
+            logger.error("Modal image: fromId failed", { imageId, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
             throw error
         }
     }
@@ -73,7 +73,7 @@ export class ModalSandboxService implements SandboxService {
             await this.modal.images.delete(imageId)
             logger.info("Modal image: deleted", { imageId, durationMs: Date.now() - t0 })
         } catch (error) {
-            logger.error("Modal image: delete failed", { imageId, durationMs: Date.now() - t0, ...extractErrorFields(error) })
+            logger.error("Modal image: delete failed", { imageId, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
             throw error
         }
     }
@@ -153,7 +153,7 @@ export class ModalSandboxService implements SandboxService {
                 app: appName,
                 name,
                 lookupDurationMs: Date.now() - lookupStart,
-                ...extractErrorFields(error)
+                errorMessage: errorMessage(error)
             })
             throw error
         }
@@ -177,7 +177,7 @@ export class ModalSandboxService implements SandboxService {
                 name,
                 sandboxId: sandbox.sandboxId,
                 durationMs: Date.now() - t0,
-                ...extractErrorFields(error)
+                errorMessage: errorMessage(error)
             })
         }
     }
@@ -195,7 +195,7 @@ export class ModalSandboxService implements SandboxService {
                         name,
                         imageId: imageRef.imageId,
                         attempt,
-                        ...extractErrorFields(error)
+                        errorMessage: errorMessage(error)
                     })
                     throw error
                 }
@@ -282,7 +282,7 @@ export class ModalSandboxService implements SandboxService {
             logger.warn("Modal sandbox: recovery lookup failed, will retry create", {
                 app: appName,
                 name,
-                ...extractErrorFields(error)
+                errorMessage: errorMessage(error)
             })
         }
 
@@ -345,7 +345,7 @@ export class ModalSandboxService implements SandboxService {
                 name,
                 sandboxId: sandbox.sandboxId,
                 probeDurationMs: Date.now() - t0,
-                ...extractErrorFields(error)
+                errorMessage: errorMessage(error)
             })
             return false
         }

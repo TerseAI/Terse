@@ -8,26 +8,6 @@ export function extractErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
 }
 
-export function extractErrorFields(error: unknown): Record<string, unknown> {
-    if (!(error instanceof Error)) {
-        return { errorName: typeof error, errorMessage: String(error) }
-    }
-    const fields: Record<string, unknown> = {
-        errorName: error.name || error.constructor.name,
-        errorMessage: error.message
-    }
-    const code = (error as { code?: unknown }).code
-    if (code !== undefined) fields.errorCode = code
-    const cause = (error as { cause?: unknown }).cause
-    if (cause !== undefined) {
-        fields.errorCause = cause instanceof Error ? cause.message : String(cause)
-    }
-    if (error.stack) {
-        fields.errorStackHead = error.stack.split("\n").slice(0, 3).join("\n")
-    }
-    return fields
-}
-
 export const isValidEpochTimestamp = (str: string): boolean => {
     const num = Number(str)
     if (isNaN(num) || num < 0) {
