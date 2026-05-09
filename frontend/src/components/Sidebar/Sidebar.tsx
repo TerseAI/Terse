@@ -236,8 +236,6 @@ function AgentListItem({ agent }: AgentListItemProps) {
     )
 }
 
-export default Sidebar
-
 interface NavItem {
     title: string
     url: string

@@ -3,7 +3,7 @@ import { randomUUID } from "crypto"
 
 const MAX_USER_MESSAGE_ID_LENGTH = 63
 
-export function buildUserMessageId(): string {
+function buildUserMessageId(): string {
     const id = `msg_${randomUUID()}`
     if (id.length <= MAX_USER_MESSAGE_ID_LENGTH) {
         return id

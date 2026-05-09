@@ -31,7 +31,7 @@ const workosSessionCookieBaseOptions = {
     maxAge: ONE_DAY_MS
 }
 
-export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
+const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
 
 function getDirectWorkOSLoginUrl(): string {
     return workos.userManagement.getAuthorizationUrl({
@@ -333,7 +333,7 @@ function parseOrganizationMetadata(organization: Organization): WorkOsOrganizati
     return { ...organization, metadata: parsed }
 }
 
-export type WorkOsOrganizationWithMetadata = Omit<Organization, "metadata"> & {
+type WorkOsOrganizationWithMetadata = Omit<Organization, "metadata"> & {
     metadata: OrganizationMetadata
 }
 
@@ -349,5 +349,3 @@ export interface WorkOSAuthContext {
     organizationId?: string | null
     roles?: string[]
 }
-
-export default { me, login, loginUrl, logout, logoutUrl, getWorkOSWidgetToken, callback }

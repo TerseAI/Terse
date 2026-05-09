@@ -40,28 +40,3 @@ export class StreamEventEmitter {
         this.io.to(this.room).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
     }
 }
-
-export async function processModelEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>, options: StreamProcessorOptions): Promise<void> {
-    const emitter = new StreamEventEmitter(options.io, {
-        runId: options.runId,
-        agentId: options.agentId,
-        user: options.user
-    })
-
-    try {
-        for await (const event of eventStream) {
-            const timestamp = Date.now()
-            emitter.emit(event, timestamp)
-        }
-    } catch (error) {
-        logger.error("Error processing model event stream", { error, runId: options.runId, userId: options.user.id, agentId: options.agentId })
-        throw error
-    }
-}
-
-export interface StreamProcessorOptions {
-    runId: string
-    agentId: string
-    user: User
-    io: Server | null
-}

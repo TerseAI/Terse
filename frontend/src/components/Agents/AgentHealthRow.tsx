@@ -11,9 +11,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 import { formatTimestamp } from "@/utility/timeUtils"
 
-export const HEALTH_WINDOW = 20
-export const STRIP_LENGTH = 10
-export const FAILURE_STREAK_THRESHOLD = 3
+const HEALTH_WINDOW = 20
+const STRIP_LENGTH = 10
+const FAILURE_STREAK_THRESHOLD = 3
 
 export const ALL_RUN_STATUSES = new Set([
     RunHistoryStatus.SUCCESS,

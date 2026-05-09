@@ -22,7 +22,7 @@ import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
 import { buildWebhookUrl } from "../utility/webhookUrl"
 
-export function isUuidV4(s: string): boolean {
+function isUuidV4(s: string): boolean {
     return validateUuid(s) && uuidVersion(s) === 4
 }
 
@@ -39,7 +39,7 @@ export async function createTriggerConfig(tx: PrismaTransaction, triggerId: stri
     await trigger.addTriggerToAgent(tx, triggerId, config.config)
 }
 
-export async function createOutputConfig(tx: PrismaTransaction, outputId: string, config: ConfigData, userId: string): Promise<void> {
+async function createOutputConfig(tx: PrismaTransaction, outputId: string, config: ConfigData, userId: string): Promise<void> {
     const output = OutputFactory.OUTPUT_REGISTRY.get(convertConfigTypeToOutputConfigType(config.configType))
     if (!output) {
         throw new Error(`Output not found for integration type: ${config.configType}`)
@@ -93,7 +93,7 @@ async function upsertNotificationSettings(tx: PrismaTransaction, automationId: s
     })
 }
 
-export function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
+function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
     // Deduplicate tool approvals to prevent unique constraint violations
     const uniqueToolApprovals = Array.from(new Set(toolApprovals))
 
@@ -106,7 +106,7 @@ export function validateAndDeduplicateToolApprovals(toolApprovals: string[]): st
     return uniqueToolApprovals
 }
 
-export async function persistToolApprovals(tx: PrismaTransaction, automationId: string, toolApprovals: string[] | null, options?: { replaceExisting?: boolean }): Promise<void> {
+async function persistToolApprovals(tx: PrismaTransaction, automationId: string, toolApprovals: string[] | null, options?: { replaceExisting?: boolean }): Promise<void> {
     if (toolApprovals === undefined) {
         return
     }
@@ -129,9 +129,9 @@ export async function persistToolApprovals(tx: PrismaTransaction, automationId: 
     }
 }
 
-export type ApplyAgentOptions = { createWithId?: string }
+type ApplyAgentOptions = { createWithId?: string }
 
-export async function applyAgentForUser(userId: string, organizationId: string, draft: AgentDraft, options?: ApplyAgentOptions): Promise<{ id: string }> {
+async function applyAgentForUser(userId: string, organizationId: string, draft: AgentDraft, options?: ApplyAgentOptions): Promise<{ id: string }> {
     const { name, triggers, outputs, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = draft
 
     logger.debug("Outputs from frontend", {
@@ -282,7 +282,7 @@ export async function applyAgentForUser(userId: string, organizationId: string, 
     return { id: agent.id }
 }
 
-export async function updateAgentForUser(userId: string, organizationId: string, agentId: string, update: Partial<AgentUpdate>): Promise<{ id: string }> {
+async function updateAgentForUser(userId: string, organizationId: string, agentId: string, update: Partial<AgentUpdate>): Promise<{ id: string }> {
     const { name, triggers, outputs, prompt, isActive, requireApproval, notificationSettings, toolApprovals } = update
 
     const prisma = db()

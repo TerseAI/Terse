@@ -206,7 +206,7 @@ function parseEventJson(raw: string): SerializedEvent {
     }
 }
 
-export async function fetchSampleEventCandidatesForJob(job: CreateJobParameters, apiKey: string): Promise<SampleEventCandidatesResult> {
+async function fetchSampleEventCandidatesForJob(job: CreateJobParameters, apiKey: string): Promise<SampleEventCandidatesResult> {
     const timeTriggers = job.triggers.filter(t => t.integrationType === IntegrationType.CRON_JOB)
     const sampleEventTriggers = job.triggers.filter(t => t.integrationType !== IntegrationType.CRON_JOB)
 
@@ -470,7 +470,7 @@ type SampleEventCandidate =
           event: SerializedEvent
       }
 
-export type SampleEventCandidatesResult = {
+type SampleEventCandidatesResult = {
     candidates: SampleEventCandidate[]
     webhookEndpoints: NonNullable<SdkSampleEventsResponse["webhookEndpoints"]>
 }

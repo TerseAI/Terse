@@ -106,11 +106,11 @@ function buildToolApprovalResponsePayload(input: ToolApprovalResponseSystemEvent
     }
 }
 
-export function buildToolApprovalRequestSystemEventItem(input: ToolApprovalRequestSystemEventInput): AgentInputItem {
+function buildToolApprovalRequestSystemEventItem(input: ToolApprovalRequestSystemEventInput): AgentInputItem {
     return toolApprovalSystemEvent.createItem(buildToolApprovalRequestPayload(input))
 }
 
-export function buildToolApprovalResponseSystemEventItem(input: ToolApprovalResponseSystemEventInput): AgentInputItem {
+function buildToolApprovalResponseSystemEventItem(input: ToolApprovalResponseSystemEventInput): AgentInputItem {
     return toolApprovalSystemEvent.createItem(buildToolApprovalResponsePayload(input))
 }
 

@@ -15,7 +15,7 @@ import { Label } from "../ui/label"
 import { Skeleton } from "../ui/skeleton"
 import { Textarea } from "../ui/textarea"
 
-import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import CompactIntegrationRow from "./CompactIntegrationRow"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"
 

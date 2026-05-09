@@ -1,3 +1,4 @@
+import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "terse-types/Integrations"
 import { LaunchDarklyProject } from "terse-types/types"
 
@@ -9,9 +10,7 @@ import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import {
-    FormFieldDefinition,
     FormIntegrationInstallation,
-    FormIntegrationSetup,
     FormSubmissionInput,
     FormSubmissionResult,
     Integration,

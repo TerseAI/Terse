@@ -1,8 +1,8 @@
 import type { AppMentionEvent, Button, GenericMessageEvent, KnownBlock, ModalView } from "@slack/types"
 import { WebClient } from "@slack/web-api"
-import { SlackAttachment, SlackBlock, SlackBlocks, SlackFile, SlackFiles, SlackTrigger } from "terse-types"
+import { SlackAttachment, SlackBlock, SlackFile, SlackFiles, SlackTrigger } from "terse-types"
+import { ConfigurationFieldDefinition, FormFieldDefinition } from "terse-types"
 
-import { ConfigurationFieldDefinition, FormFieldDefinition } from "../integrations/abstract/Integration"
 import logger from "../logger"
 import { extractErrorMessage } from "../utility/strings"
 
@@ -11,7 +11,7 @@ import { SlackApprovalMessageStatus } from "./ApprovalStatus"
 /**
  * Creates a section block with markdown text
  */
-export function createSectionBlock(text: string, fields?: Array<{ label: string; value: string }>): KnownBlock {
+function createSectionBlock(text: string, fields?: Array<{ label: string; value: string }>): KnownBlock {
     if (fields && fields.length > 0) {
         return {
             type: "section",
@@ -34,7 +34,7 @@ export function createSectionBlock(text: string, fields?: Array<{ label: string;
 /**
  * Creates a button element
  */
-export function createButton(
+function createButton(
     text: string,
     actionId: string,
     options?: {
@@ -71,7 +71,7 @@ export function createButton(
 /**
  * Creates an actions block containing button elements
  */
-export function createActionBlock(elements: Button[]): KnownBlock {
+function createActionBlock(elements: Button[]): KnownBlock {
     return {
         type: "actions",
         elements: elements
@@ -99,7 +99,7 @@ function createHeaderBlock(title: string, subtitle: string): KnownBlock[] {
 /**
  * Creates a divider block
  */
-export function createDividerBlock(): KnownBlock {
+function createDividerBlock(): KnownBlock {
     return {
         type: "divider"
     }
@@ -110,7 +110,7 @@ export function createDividerBlock(): KnownBlock {
  * Uses a section (question text) and an actions block with static_select.
  * The block_id on the actions block encodes sessionId and channel for the response handler.
  */
-export function createSurveyQuestionBlocks(question: string, options: { label: string; value: string }[], blockId: string): KnownBlock[] {
+function createSurveyQuestionBlocks(question: string, options: { label: string; value: string }[], blockId: string): KnownBlock[] {
     const sectionBlock: KnownBlock = {
         type: "section",
         text: {
@@ -143,7 +143,7 @@ export function createSurveyQuestionBlocks(question: string, options: { label: s
 /**
  * Creates a message with integration connection button
  */
-export function createIntegrationConnectionMessage(
+function createIntegrationConnectionMessage(
     integration: string,
     buttonType: "form" | "config" | "oauth",
     options: {
@@ -745,7 +745,7 @@ function extractImagesFromFiles(files: SlackFiles): SlackMessageImage[] {
     return images
 }
 
-export async function addEyesReaction(client: WebClient, messageEvent: AppMentionEvent | GenericMessageEvent) {
+async function addEyesReaction(client: WebClient, messageEvent: AppMentionEvent | GenericMessageEvent) {
     try {
         await client.reactions.add({
             channel: messageEvent.channel,
@@ -757,7 +757,7 @@ export async function addEyesReaction(client: WebClient, messageEvent: AppMentio
     }
 }
 
-export async function removeEyesReaction(client: WebClient, messageEvent: AppMentionEvent | GenericMessageEvent) {
+async function removeEyesReaction(client: WebClient, messageEvent: AppMentionEvent | GenericMessageEvent) {
     try {
         await client.reactions.remove({
             channel: messageEvent.channel,

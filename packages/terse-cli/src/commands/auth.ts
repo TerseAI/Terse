@@ -90,7 +90,7 @@ async function exchangeForApiKey(accessToken: string): Promise<DeviceTokenExchan
     return res.json() as Promise<DeviceTokenExchangeResponse>
 }
 
-export async function login(): Promise<{ apiKey: string; displayName: string | null } | null> {
+async function login(): Promise<{ apiKey: string; displayName: string | null } | null> {
     const s = createSpinner()
     s.start("Requesting login code")
 
@@ -176,7 +176,7 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
     return result
 }
 
-export async function getExistingAuthenticatedUserName(): Promise<string | null> {
+async function getExistingAuthenticatedUserName(): Promise<string | null> {
     const stored = getStoredApiKey()
     if (!stored) return null
     return fetchDisplayNameForKey(stored)

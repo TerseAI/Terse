@@ -52,7 +52,7 @@ export async function submitApprovalDecision(apiKey: string, params: SdkApproval
     }
 }
 
-export function logSessionEvent(event: SessionStreamEvent, options: { isPaused?: () => boolean; verbose?: boolean } = {}): void {
+function logSessionEvent(event: SessionStreamEvent, options: { isPaused?: () => boolean; verbose?: boolean } = {}): void {
     if (!options.verbose) return
     if (options.isPaused?.()) return
     if (event.type === "session_started" || event.type === "tool_approval_requested" || event.type === "run_started") {
