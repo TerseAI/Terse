@@ -5,10 +5,6 @@ import logger from "../../logger"
 
 import { Sandbox, SandboxApp, SandboxImage, SandboxService } from "./SandboxService"
 
-// Modal's documented sandbox defaults are 5 min lifetime; we extend ours to 24 h so a single named
-// sandbox can serve many runs. Idle timeout still bounds free-floating sandboxes.
-// Refs:
-//   - https://modal.com/docs/guide/sandboxes ("Sandboxes have a default maximum lifetime of 5 minutes... up to 24 hours")
 export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     idleTimeoutMs: 5 * 60 * 1000,
     timeoutMs: 24 * 60 * 60 * 1000
@@ -16,16 +12,6 @@ export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
 
 const CREATE_MAX_ATTEMPTS = 6
 const CREATE_RETRY_BASE_DELAY_MS = 150
-
-const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
-
-const createRetryDelayMs = (attempt: number): number => {
-    const exponential = CREATE_RETRY_BASE_DELAY_MS * 2 ** attempt
-    const jitter = Math.floor(Math.random() * 100)
-    return Math.min(exponential + jitter, 2000)
-}
-
-const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 export class ModalSandboxService implements SandboxService {
     private readonly modal: ModalClient
@@ -99,18 +85,9 @@ export class ModalSandboxService implements SandboxService {
             return existing
         }
 
-        // Create or recover a live sandbox. Handles Modal's stale-name window after terminate().
         return this.createSandboxWithRetries(app, image, name, params, opStart)
     }
 
-    /**
-     * fromName throws NotFoundError when no sandbox exists. Per Modal docs, fromName only returns
-     * running sandboxes and poll() is null while running — in practice both lag real state; a
-     * liveness exec is the reliable check (see sandbox_pool example). Refs:
-     * https://modal.com/docs/guide/sandboxes
-     * https://modal.com/docs/reference/modal.Sandbox
-     * https://modal.com/docs/examples/sandbox_pool
-     */
     private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<Sandbox | null> {
         const lookupStart = Date.now()
 
@@ -242,10 +219,6 @@ export class ModalSandboxService implements SandboxService {
         return sandbox
     }
 
-    /**
-     * ALREADY_EXISTS from create: peer may hold a live named sandbox, or Modal's registry still
-     * lists a stale name after terminate(). Ref: libmodal sandbox.ts (AlreadyExistsError).
-     */
     private async recoverFromCreateConflict(appName: string, name: string, attempt: number, opStart: number): Promise<Sandbox | null> {
         const recoveryStart = Date.now()
 
@@ -304,19 +277,6 @@ export class ModalSandboxService implements SandboxService {
         await sleep(delayMs)
     }
 
-    /**
-     * Confirms a sandbox is actually accepting work. Necessary because poll() and fromName both
-     * lag the real sandbox state by an eventual-consistency window — a sandbox that has been
-     * cancelled/terminated can still report poll() === null for several seconds, and exec() will
-     * then throw "Sandbox has already completed". The probe runs `true` (a Unix no-op available
-     * in every container image we use) and treats any throw or non-zero exit as a failed probe.
-     *
-     * Cost: ~50–150ms on a healthy sandbox. Acceptable given the alternative is letting a job
-     * land on a dead sandbox and fail.
-     *
-     * Modal's own pool example uses the same pattern:
-     *   https://modal.com/docs/examples/sandbox_pool
-     */
     private async livenessProbe(sandbox: Sandbox, appName: string, name: string): Promise<boolean> {
         const t0 = Date.now()
         try {
@@ -351,5 +311,15 @@ export class ModalSandboxService implements SandboxService {
         }
     }
 }
+
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+
+const createRetryDelayMs = (attempt: number): number => {
+    const exponential = CREATE_RETRY_BASE_DELAY_MS * 2 ** attempt
+    const jitter = Math.floor(Math.random() * 100)
+    return Math.min(exponential + jitter, 2000)
+}
+
+const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 export type { Sandbox, SandboxService }
