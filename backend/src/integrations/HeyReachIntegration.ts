@@ -319,19 +319,20 @@ export async function fetchHeyReachCampaigns(organizationId: string, integration
     return data.items.map(c => ({ id: String(c.id), name: c.name || `Campaign ${c.id}` }))
 }
 
+const HEYREACH_WEBHOOK_NAME_MAX_LEN = 25
 const heyReachWebhookRequestSchema = z.object({
-    webhookName: z.string(),
-    webhookUrl: z.string(),
+    webhookName: z.string().max(HEYREACH_WEBHOOK_NAME_MAX_LEN),
+    webhookUrl: z.string().url(),
     eventType: z.string(),
     campaignIds: z.array(z.string()).optional()
 })
 
-const heyReachWebhookResponseSchema = z.object({
-    url: z.string()
-})
+function clipHeyReachWebhookName(eventType: HeyReachEventType): string {
+    const base = `T:${eventType}`
+    return base.length <= HEYREACH_WEBHOOK_NAME_MAX_LEN ? base : base.slice(0, HEYREACH_WEBHOOK_NAME_MAX_LEN)
+}
 
 export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: string, eventType: HeyReachEventType, campaignIds: string[] = []) {
-    console.log("WTF: createHeyReachWebhook", triggerId, eventType, campaignIds)
     const automationInput = await tx.automation_inputs.findUnique({
         where: { id: triggerId },
         select: { integration_id: true, config_type: true }
@@ -341,7 +342,7 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
     }
     const integrationId = automationInput.integration_id
 
-    const heyReachRow = await db().hey_reach_integrations.findUnique({ where: { id: integrationId } })
+    const heyReachRow = await tx.hey_reach_integrations.findUnique({ where: { id: integrationId } })
     if (!heyReachRow) {
         throw new Error("HeyReach integration not found")
     }
@@ -351,8 +352,8 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
         throw new Error("HeyReach API key not found")
     }
 
-    const webhookName = `Terse ${eventType}`
-    const webhookUrl = `${urls.backend}/webhooks/heyreach/${triggerId}`
+    const webhookName = clipHeyReachWebhookName(eventType)
+    const webhookUrl = `${urls.backend}/webhooks/heyreach/${integrationId}`
 
     const requestBody = heyReachWebhookRequestSchema.parse({ webhookName, webhookUrl, eventType, campaignIds })
     const response = await fetch(`${HEYREACH_API_BASE}/webhooks/CreateWebhook`, {
@@ -361,9 +362,9 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
         body: JSON.stringify(requestBody)
     })
 
-    console.log("WTF: HeyReach webhook creation response", response)
-
-    const data = heyReachWebhookResponseSchema.parse(await response.json())
-
-    return data.url
+    const responseText = await response.text()
+    if (!response.ok) {
+        logger.error("HeyReach CreateWebhook failed", { status: response.status, body: responseText, webhookName, eventType })
+        throw new Error(response.status === 400 ? `HeyReach rejected webhook: ${responseText}` : "Failed to create HeyReach webhook")
+    }
 }

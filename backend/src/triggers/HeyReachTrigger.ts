@@ -20,7 +20,8 @@ export class HeyReachTrigger implements Trigger<HeyReachInputConfigData> {
     }
 
     async addTriggerToAgent(tx: PrismaTransaction, agentTriggerId: string, trigger: HeyReachInputConfigData): Promise<void> {
-        const webhookUrl = await createHeyReachWebhook(tx, agentTriggerId, trigger.eventType, trigger.campaignIds)
+        // there is no return value from createHeyReachWebhook
+        await createHeyReachWebhook(tx, agentTriggerId, trigger.eventType, trigger.campaignIds)
         await tx.automation_hey_reach_configs.create({
             data: {
                 automation_input_id: agentTriggerId,
