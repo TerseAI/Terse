@@ -15,14 +15,27 @@ export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     timeoutMs: 24 * 60 * 60 * 1000
 }
 
+const CREATE_MAX_ATTEMPTS = 6
+const CREATE_RETRY_BASE_DELAY_MS = 150
+
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+
+const createRetryDelayMs = (attempt: number): number => {
+    const exponential = CREATE_RETRY_BASE_DELAY_MS * 2 ** attempt
+    const jitter = Math.floor(Math.random() * 100)
+    return Math.min(exponential + jitter, 2000)
+}
+
 export class ModalSandboxService implements SandboxService {
     private readonly modal: ModalClient
 
     constructor(modal?: ModalClient) {
-        this.modal = modal ?? new ModalClient({
-            tokenId: settings.modal.tokenId,
-            tokenSecret: settings.modal.tokenSecret
-        })
+        this.modal =
+            modal ??
+            new ModalClient({
+                tokenId: settings.modal.tokenId,
+                tokenSecret: settings.modal.tokenSecret
+            })
     }
 
     async getOrCreateApp(name: string): Promise<SandboxApp> {
@@ -70,194 +83,271 @@ export class ModalSandboxService implements SandboxService {
             throw new Error("App name is required")
         }
 
-        const canonicalSandboxName = `${app.name}__${uniqueName}`
-        const imageId = (image as ModalImage).imageId
+        const name = `${app.name}__${uniqueName}`
         const opStart = Date.now()
 
         logger.info("Modal sandbox: getOrCreate begin", {
             app: app.name,
-            name: canonicalSandboxName,
-            imageId,
+            name,
+            imageId: image.imageId,
             timeoutMs: params?.timeoutMs,
             idleTimeoutMs: params?.idleTimeoutMs
         })
 
-        // Phase 1: lookup. fromName throws NotFoundError when no sandbox by this name exists.
-        // Per Modal docs, fromName "only" returns running sandboxes — but we've observed in prod
-        // that it can return a sandbox whose poll() is non-null (recently terminated, name
-        // still registered). We treat any non-null poll() as "stale" and clean it up.
-        // Refs:
-        //   - https://modal.com/docs/guide/sandboxes (fromName + name-reuse semantics)
-        //   - https://modal.com/docs/reference/modal.Sandbox (poll() returns None while running)
-        try {
-            const lookupStart = Date.now()
-            const existing = await this.modal.sandboxes.fromName(app.name, canonicalSandboxName)
-            const status = await existing.poll()
-            const lookupDurationMs = Date.now() - lookupStart
+        const existing = await this.lookupLiveSandbox(app.name, name, opStart)
+        if (existing) {
+            return existing
+        }
 
-            if (status === null) {
+        // Create or recover a live sandbox. Handles Modal's stale-name window after terminate().
+        return this.createSandboxWithRetries(app, image, name, params, opStart)
+    }
+
+    /**
+     * fromName throws NotFoundError when no sandbox exists. Per Modal docs, fromName only returns
+     * running sandboxes and poll() is null while running — in practice both lag real state; a
+     * liveness exec is the reliable check (see sandbox_pool example). Refs:
+     * https://modal.com/docs/guide/sandboxes
+     * https://modal.com/docs/reference/modal.Sandbox
+     * https://modal.com/docs/examples/sandbox_pool
+     */
+    private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<Sandbox | null> {
+        const lookupStart = Date.now()
+
+        try {
+            const sandbox = await this.modal.sandboxes.fromName(appName, name)
+            const status = await sandbox.poll()
+
+            if (status === null && (await this.livenessProbe(sandbox, appName, name))) {
                 logger.info("Modal sandbox: reused existing", {
-                    app: app.name,
-                    name: canonicalSandboxName,
-                    sandboxId: existing.sandboxId,
-                    lookupDurationMs,
+                    app: appName,
+                    name,
+                    sandboxId: sandbox.sandboxId,
+                    lookupDurationMs: Date.now() - lookupStart,
                     totalDurationMs: Date.now() - opStart
                 })
-                return existing
+                return sandbox
             }
 
-            logger.info("Modal sandbox: stale, terminating before recreate", {
-                app: app.name,
-                name: canonicalSandboxName,
-                sandboxId: existing.sandboxId,
+            logger.info("Modal sandbox: stale existing sandbox found", {
+                app: appName,
+                name,
+                sandboxId: sandbox.sandboxId,
                 pollStatus: status,
-                lookupDurationMs
+                lookupDurationMs: Date.now() - lookupStart
             })
-            // Modal docs: terminate() is a no-op if the sandbox already finished — safe to call
-            // even when poll() shows it stopped. Helps free the registered name promptly.
-            // Ref: https://modal.com/docs/reference/modal.Sandbox#terminate
-            const terminateStart = Date.now()
-            try {
-                await existing.terminate()
-                logger.info("Modal sandbox: stale terminated", {
-                    app: app.name,
-                    name: canonicalSandboxName,
-                    sandboxId: existing.sandboxId,
-                    durationMs: Date.now() - terminateStart
-                })
-            } catch (terminateError) {
-                logger.warn("Modal sandbox: terminate of stale failed (continuing to create)", {
-                    app: app.name,
-                    name: canonicalSandboxName,
-                    sandboxId: existing.sandboxId,
-                    durationMs: Date.now() - terminateStart,
-                    ...extractErrorFields(terminateError)
-                })
-            }
+
+            await this.terminateStaleSandbox(sandbox, appName, name)
+            return null
         } catch (error) {
             if (error instanceof NotFoundError) {
                 logger.info("Modal sandbox: not found, will create", {
-                    app: app.name,
-                    name: canonicalSandboxName,
-                    lookupDurationMs: Date.now() - opStart
+                    app: appName,
+                    name,
+                    lookupDurationMs: Date.now() - lookupStart
                 })
-            } else {
-                logger.error("Modal sandbox: lookup failed", {
-                    app: app.name,
-                    name: canonicalSandboxName,
-                    lookupDurationMs: Date.now() - opStart,
-                    ...extractErrorFields(error)
-                })
-                throw error
+                return null
+            }
+
+            logger.error("Modal sandbox: lookup failed", {
+                app: appName,
+                name,
+                lookupDurationMs: Date.now() - lookupStart,
+                ...extractErrorFields(error)
+            })
+            throw error
+        }
+    }
+
+    /** terminate() is a no-op if the sandbox already finished (Modal docs). */
+    private async terminateStaleSandbox(sandbox: Sandbox, appName: string, name: string): Promise<void> {
+        const t0 = Date.now()
+
+        try {
+            await sandbox.terminate()
+            logger.info("Modal sandbox: stale terminated", {
+                app: appName,
+                name,
+                sandboxId: sandbox.sandboxId,
+                durationMs: Date.now() - t0
+            })
+        } catch (error) {
+            logger.warn("Modal sandbox: stale terminate failed, continuing", {
+                app: appName,
+                name,
+                sandboxId: sandbox.sandboxId,
+                durationMs: Date.now() - t0,
+                ...extractErrorFields(error)
+            })
+        }
+    }
+
+    private async createSandboxWithRetries(app: SandboxApp, image: SandboxImage, name: string, params: SandboxCreateParams | undefined, opStart: number): Promise<Sandbox> {
+        const imageRef = image as ModalImage
+
+        for (let attempt = 0; attempt < CREATE_MAX_ATTEMPTS; attempt++) {
+            try {
+                return await this.createSandboxOnce(app, image, name, params, attempt, opStart)
+            } catch (error) {
+                if (!(error instanceof AlreadyExistsError) || attempt === CREATE_MAX_ATTEMPTS - 1) {
+                    logger.error("Modal sandbox: create failed", {
+                        app: app.name,
+                        name,
+                        imageId: imageRef.imageId,
+                        attempt,
+                        ...extractErrorFields(error)
+                    })
+                    throw error
+                }
+
+                const recovered = await this.recoverFromCreateConflict(app.name!, name, attempt, opStart)
+                if (recovered) {
+                    return recovered
+                }
             }
         }
 
-        // Phase 2: create. Recurses once on AlreadyExistsError to recover from the concurrent-caller
-        // race (or from terminate() not yet having freed the name in Modal's registry).
-        return this.createSandbox(app, image, canonicalSandboxName, params, true, opStart)
+        throw new Error(`Modal sandbox: exhausted create attempts for ${name}`)
     }
 
-    private async createSandbox(
-        app: SandboxApp,
-        image: SandboxImage,
-        canonicalSandboxName: string,
-        params: SandboxCreateParams | undefined,
-        allowConflictRecovery: boolean,
-        opStart: number
-    ): Promise<Sandbox> {
-        if (!app.name) {
-            throw new Error("App name is required")
-        }
+    private async createSandboxOnce(app: SandboxApp, image: SandboxImage, name: string, params: SandboxCreateParams | undefined, attempt: number, opStart: number): Promise<Sandbox> {
         const appRef = app as ModalApp
         const imageRef = image as ModalImage
-        const imageId = imageRef.imageId
         const createStart = Date.now()
 
         logger.info("Modal sandbox: create begin", {
             app: app.name,
-            name: canonicalSandboxName,
-            imageId,
+            name,
+            imageId: imageRef.imageId,
             timeoutMs: params?.timeoutMs,
             idleTimeoutMs: params?.idleTimeoutMs,
-            allowConflictRecovery
+            attempt
+        })
+
+        const sandbox = await this.modal.sandboxes.create(appRef, imageRef, {
+            timeoutMs: params?.timeoutMs,
+            idleTimeoutMs: params?.idleTimeoutMs,
+            name
+        })
+
+        logger.info("Modal sandbox: created new", {
+            app: app.name,
+            name,
+            sandboxId: sandbox.sandboxId,
+            imageId: imageRef.imageId,
+            createDurationMs: Date.now() - createStart,
+            totalDurationMs: Date.now() - opStart
+        })
+
+        return sandbox
+    }
+
+    /**
+     * ALREADY_EXISTS from create: peer may hold a live named sandbox, or Modal's registry still
+     * lists a stale name after terminate(). Ref: libmodal sandbox.ts (AlreadyExistsError).
+     */
+    private async recoverFromCreateConflict(appName: string, name: string, attempt: number, opStart: number): Promise<Sandbox | null> {
+        const recoveryStart = Date.now()
+
+        logger.warn("Modal sandbox: name conflict on create, attempting recovery", {
+            app: appName,
+            name,
+            attempt
         })
 
         try {
-            const created = await this.modal.sandboxes.create(appRef, imageRef, {
-                timeoutMs: params?.timeoutMs,
-                idleTimeoutMs: params?.idleTimeoutMs,
-                name: canonicalSandboxName
-            })
-            logger.info("Modal sandbox: created new", {
-                app: app.name,
-                name: canonicalSandboxName,
-                sandboxId: created.sandboxId,
-                imageId,
-                createDurationMs: Date.now() - createStart,
-                totalDurationMs: Date.now() - opStart
-            })
-            return created
-        } catch (error) {
-            // AlreadyExistsError: the gRPC ALREADY_EXISTS code coming back from Modal.
-            // Refs:
-            //   - libmodal source: https://github.com/modal-labs/libmodal/blob/main/modal-js/src/sandbox.ts
-            //     (catches ClientError code === Status.ALREADY_EXISTS, throws AlreadyExistsError)
-            //   - exported from the public 'modal' package via modal-js/src/index.ts
-            if (allowConflictRecovery && error instanceof AlreadyExistsError) {
-                logger.warn("Modal sandbox: name conflict on create, attempting recovery", {
-                    app: app.name,
-                    name: canonicalSandboxName,
-                    createDurationMs: Date.now() - createStart,
-                    ...extractErrorFields(error)
+            const sandbox = await this.modal.sandboxes.fromName(appName, name)
+            const status = await sandbox.poll()
+
+            if (status === null && (await this.livenessProbe(sandbox, appName, name))) {
+                logger.info("Modal sandbox: conflict resolved by reusing live sandbox", {
+                    app: appName,
+                    name,
+                    sandboxId: sandbox.sandboxId,
+                    recoveryDurationMs: Date.now() - recoveryStart,
+                    totalDurationMs: Date.now() - opStart
                 })
-                const recoveryStart = Date.now()
-                try {
-                    const existing = await this.modal.sandboxes.fromName(app.name, canonicalSandboxName)
-                    const status = await existing.poll()
-                    if (status === null) {
-                        logger.info("Modal sandbox: conflict resolved by reusing peer-created sandbox", {
-                            app: app.name,
-                            name: canonicalSandboxName,
-                            sandboxId: existing.sandboxId,
-                            recoveryDurationMs: Date.now() - recoveryStart,
-                            totalDurationMs: Date.now() - opStart
-                        })
-                        return existing
-                    }
-                    logger.info("Modal sandbox: conflict held by stale sandbox, terminating before recreate", {
-                        app: app.name,
-                        name: canonicalSandboxName,
-                        sandboxId: existing.sandboxId,
-                        pollStatus: status
-                    })
-                    await existing.terminate().catch((terminateError: unknown) => {
-                        logger.warn("Modal sandbox: terminate during conflict recovery failed", {
-                            app: app.name,
-                            name: canonicalSandboxName,
-                            sandboxId: existing.sandboxId,
-                            ...extractErrorFields(terminateError)
-                        })
-                    })
-                } catch (recoveryLookupError) {
-                    logger.warn("Modal sandbox: recovery lookup failed, proceeding with single recreate attempt", {
-                        app: app.name,
-                        name: canonicalSandboxName,
-                        ...extractErrorFields(recoveryLookupError)
-                    })
-                }
-                // One non-recursive retry. allowConflictRecovery=false to ensure a second
-                // AlreadyExistsError surfaces to the caller instead of looping.
-                return this.createSandbox(app, image, canonicalSandboxName, params, false, opStart)
+                return sandbox
             }
-            logger.error("Modal sandbox: create failed", {
-                app: app.name,
-                name: canonicalSandboxName,
-                imageId,
-                createDurationMs: Date.now() - createStart,
-                allowConflictRecovery,
+
+            logger.info("Modal sandbox: conflict held by stale sandbox", {
+                app: appName,
+                name,
+                sandboxId: sandbox.sandboxId,
+                pollStatus: status
+            })
+
+            await this.terminateStaleSandbox(sandbox, appName, name)
+        } catch (error) {
+            logger.warn("Modal sandbox: recovery lookup failed, will retry create", {
+                app: appName,
+                name,
                 ...extractErrorFields(error)
             })
-            throw error
+        }
+
+        await this.waitBeforeRetry(appName, name, attempt)
+        return null
+    }
+
+    private async waitBeforeRetry(appName: string, name: string, attempt: number): Promise<void> {
+        const delayMs = createRetryDelayMs(attempt)
+
+        logger.info("Modal sandbox: waiting before recreate retry", {
+            app: appName,
+            name,
+            attempt,
+            nextAttempt: attempt + 1,
+            delayMs
+        })
+
+        await sleep(delayMs)
+    }
+
+    /**
+     * Confirms a sandbox is actually accepting work. Necessary because poll() and fromName both
+     * lag the real sandbox state by an eventual-consistency window — a sandbox that has been
+     * cancelled/terminated can still report poll() === null for several seconds, and exec() will
+     * then throw "Sandbox has already completed". The probe runs `true` (a Unix no-op available
+     * in every container image we use) and treats any throw or non-zero exit as a failed probe.
+     *
+     * Cost: ~50–150ms on a healthy sandbox. Acceptable given the alternative is letting a job
+     * land on a dead sandbox and fail.
+     *
+     * Modal's own pool example uses the same pattern:
+     *   https://modal.com/docs/examples/sandbox_pool
+     */
+    private async livenessProbe(sandbox: Sandbox, appName: string, name: string): Promise<boolean> {
+        const t0 = Date.now()
+        try {
+            const proc = await sandbox.exec(["true"], { stdout: "pipe", stderr: "pipe" })
+            const exitCode = await proc.wait()
+            if (exitCode === 0) {
+                logger.info("Modal sandbox: liveness probe ok", {
+                    app: appName,
+                    name,
+                    sandboxId: sandbox.sandboxId,
+                    probeDurationMs: Date.now() - t0
+                })
+                return true
+            }
+            logger.info("Modal sandbox: liveness probe non-zero exit, treating as stale", {
+                app: appName,
+                name,
+                sandboxId: sandbox.sandboxId,
+                probeExitCode: exitCode,
+                probeDurationMs: Date.now() - t0
+            })
+            return false
+        } catch (error) {
+            logger.info("Modal sandbox: liveness probe threw, treating as stale", {
+                app: appName,
+                name,
+                sandboxId: sandbox.sandboxId,
+                probeDurationMs: Date.now() - t0,
+                ...extractErrorFields(error)
+            })
+            return false
         }
     }
 }
