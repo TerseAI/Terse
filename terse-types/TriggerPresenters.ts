@@ -79,7 +79,8 @@ const TriggerPresenters = {
     },
     [IntegrationType.HEY_REACH]: {
         formatForAgent: formatHeyReachTrigger,
-        debug: (event: HeyReachTrigger): string => `HeyReach ${event.eventType}${event.lead?.linkedInId ? ` lead=${event.lead.linkedInId}` : ""}`,
+        debug: (event: HeyReachTrigger): string =>
+            `HeyReach ${event.eventType}${event.lead?.id != null ? ` lead=${event.lead.id}` : ""}`,
         display: formatHeyReachDisplay
     },
     [IntegrationType.WEBHOOK]: {
@@ -497,20 +498,23 @@ function formatWebMonitorTrigger(event: WebMonitorTrigger): string {
 function heyReachLeadFullName(event: HeyReachTrigger): string | null {
     const lead = event.lead
     if (!lead) return null
-    const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(" ").trim()
-    return fullName || lead.linkedInId || lead.id || null
+    const composed = [lead.first_name, lead.last_name].filter(Boolean).join(" ").trim() || lead.full_name?.trim() || ""
+    const idStr = lead.id != null ? String(lead.id) : null
+    return composed || idStr
 }
 
 function formatHeyReachTrigger(event: HeyReachTrigger): string {
     const lines = [`HeyReach Event: ${event.eventType}`, `Event ID: ${event.eventId}`, `Created At: ${event.createdAt}`]
     const leadName = heyReachLeadFullName(event)
     if (leadName) lines.push(`Lead: ${leadName}`)
-    if (event.lead?.profileUrl) lines.push(`LinkedIn URL: ${event.lead.profileUrl}`)
-    if (event.lead?.companyName) lines.push(`Company: ${event.lead.companyName}`)
+    if (event.lead?.profile_url) lines.push(`LinkedIn URL: ${event.lead.profile_url}`)
+    const company = event.lead?.company_name
+    if (company) lines.push(`Company: ${company}`)
     if (event.lead?.position) lines.push(`Position: ${event.lead.position}`)
     if (event.campaign) lines.push(`Campaign: ${event.campaign.name || event.campaign.id || "unknown"}`)
     if (event.linkedInAccount) {
-        const accountName = [event.linkedInAccount.firstName, event.linkedInAccount.lastName].filter(Boolean).join(" ").trim()
+        const acc = event.linkedInAccount
+        const accountName = [acc.first_name, acc.last_name].filter(Boolean).join(" ").trim() || acc.full_name?.trim()
         if (accountName) lines.push(`LinkedIn Account: ${accountName}`)
     }
     if ("messageBody" in event && event.messageBody) lines.push(`Message:\n${event.messageBody}`)

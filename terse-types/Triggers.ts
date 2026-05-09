@@ -536,50 +536,56 @@ export type WorkOSTrigger = z.infer<typeof workOSTriggerSchema>
 
 // MARK: HeyReach Triggers
 
-export const heyReachLeadSchema = z
-    .object({
-        id: z.string().optional(),
-        firstName: z.string().optional(),
-        lastName: z.string().optional(),
-        profileUrl: z.string().optional(),
-        linkedInId: z.string().optional(),
-        companyName: z.string().optional(),
-        position: z.string().optional(),
-        location: z.string().optional()
-    })
-    .passthrough()
+export const heyReachLeadSchema = z.object({
+    id: z.union([z.string(), z.number()]).optional(),
+    profile_url: z.string().optional(),
+    first_name: z.string().optional(),
+    last_name: z.string().optional(),
+    full_name: z.string().optional(),
+    location: z.string().optional(),
+    summary: z.string().optional(),
+    company_url: z.string().optional(),
+    company_name: z.string().optional(),
+    position: z.string().optional(),
+    about: z.string().optional(),
+    email_address: z.string().optional(),
+    enriched_email: z.string().nullable().optional(),
+    custom_email: z.string().nullable().optional(),
+    tags: z.array(z.unknown()).optional(),
+    lists: z.array(z.unknown()).optional()
+})
 export type HeyReachLead = z.infer<typeof heyReachLeadSchema>
 
-export const heyReachCampaignSchema = z
-    .object({
-        id: z.union([z.string(), z.number()]).optional(),
-        name: z.string().optional()
-    })
-    .passthrough()
+export const heyReachCampaignSchema = z.object({
+    id: z.union([z.string(), z.number()]).optional(),
+    name: z.string().optional(),
+    status: z.union([z.string(), z.null()]).optional()
+})
 export type HeyReachCampaign = z.infer<typeof heyReachCampaignSchema>
 
-export const heyReachLinkedInAccountSchema = z
-    .object({
-        id: z.union([z.string(), z.number()]).optional(),
-        firstName: z.string().optional(),
-        lastName: z.string().optional()
-    })
-    .passthrough()
+/** Sender / LinkedIn account as HeyReach sends it on webhooks (snake_case). */
+export const heyReachLinkedInAccountSchema = z.object({
+    id: z.union([z.string(), z.number()]).optional(),
+    first_name: z.string().optional(),
+    last_name: z.string().optional(),
+    full_name: z.string().optional(),
+    email_address: z.string().optional(),
+    profile_url: z.string().optional()
+})
 export type HeyReachLinkedInAccount = z.infer<typeof heyReachLinkedInAccountSchema>
 
-export const heyReachWebhookPayloadSchema = z
-    .object({
-        event: z.string(),
-        eventId: z.string().optional(),
-        timestamp: z.string().optional(),
-        lead: heyReachLeadSchema.optional(),
-        campaign: heyReachCampaignSchema.optional(),
-        linkedInAccount: heyReachLinkedInAccountSchema.optional(),
-        messageBody: z.string().optional(),
-        postUrl: z.string().optional(),
-        tags: z.array(z.string()).optional()
-    })
-    .passthrough()
+export const heyReachWebhookPayloadSchema = z.object({
+    event_type: z.string(),
+    correlation_id: z.string().optional(),
+    timestamp: z.string().optional(),
+    connection_message: z.string().optional(),
+    campaign: heyReachCampaignSchema.optional(),
+    sender: heyReachLinkedInAccountSchema.optional(),
+    lead: heyReachLeadSchema.optional(),
+    message_body: z.string().optional(),
+    post_url: z.string().optional(),
+    tags: z.array(z.unknown()).optional()
+})
 export type HeyReachWebhookPayload = z.infer<typeof heyReachWebhookPayloadSchema>
 
 const heyReachTriggerBaseSchema = baseTriggerSchema.extend({

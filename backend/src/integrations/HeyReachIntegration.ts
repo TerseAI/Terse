@@ -78,7 +78,7 @@ export class HeyReachIntegrationManager
             include: { automation: true }
         })
         if (!subscribedTrigger) {
-            logger.info("HeyReach webhook: no agent triggers subscribed, dropping", { integrationId, event: payload.event })
+            logger.info("HeyReach webhook: no agent triggers subscribed, dropping", { integrationId, event_type: payload.event_type })
             return
         }
 
@@ -96,7 +96,7 @@ export class HeyReachIntegrationManager
         const results = await processor.process()
         for (const result of results) {
             if (result.success) {
-                logger.info("HeyReach event processed", { integrationId, event: payload.event, agentId: result.agentConfig?.id })
+                logger.info("HeyReach event processed", { integrationId, event_type: payload.event_type, agentId: result.agentConfig?.id })
             }
         }
     }
@@ -236,7 +236,11 @@ export class HeyReachTriggerRuntime extends TriggerRuntime<HeyReachTrigger> {
 
     createTriggerMetadata(): RunHistoryTrigger {
         const lead = this.data.lead
-        const leadName = lead ? [lead.firstName, lead.lastName].filter(Boolean).join(" ").trim() || lead.linkedInId || lead.id : undefined
+        const leadName = lead
+            ? [lead.first_name, lead.last_name].filter(Boolean).join(" ").trim() ||
+              lead.full_name?.trim() ||
+              (lead.id != null ? String(lead.id) : undefined)
+            : undefined
         return {
             event: this.data.eventType,
             integration: IntegrationType.HEY_REACH,
@@ -259,32 +263,43 @@ function normalizeEventType(rawEvent: string): HeyReachEventType | null {
 }
 
 function buildHeyReachTrigger(payload: HeyReachWebhookPayload): HeyReachTrigger {
-    const eventType = normalizeEventType(payload.event)
+    const eventType = normalizeEventType(payload.event_type)
     if (!eventType) {
-        throw new Error(`Unsupported HeyReach event: ${payload.event}`)
+        throw new Error(`Unsupported HeyReach event: ${payload.event_type}`)
     }
 
     const base = {
         integrationType: IntegrationType.HEY_REACH as const,
         eventType,
-        eventId: payload.eventId ?? "",
+        eventId: payload.correlation_id ?? "",
         createdAt: payload.timestamp ?? new Date().toISOString(),
         lead: payload.lead as HeyReachTrigger["lead"],
         campaign: payload.campaign as HeyReachTrigger["campaign"],
-        linkedInAccount: payload.linkedInAccount as HeyReachTrigger["linkedInAccount"],
+        linkedInAccount: payload.sender as HeyReachTrigger["linkedInAccount"],
         rawPayload: payload as Record<string, unknown>
     }
+
+    const messageText =
+        typeof payload.message_body === "string"
+            ? payload.message_body
+            : typeof payload.connection_message === "string"
+              ? payload.connection_message
+              : undefined
 
     switch (eventType) {
         case HeyReachEventType.MESSAGE_SENT:
         case HeyReachEventType.MESSAGE_REPLY_RECEIVED:
         case HeyReachEventType.INMAIL_SENT:
         case HeyReachEventType.INMAIL_REPLY_RECEIVED:
-            return { ...base, eventType, messageBody: typeof payload.messageBody === "string" ? payload.messageBody : undefined }
+            return { ...base, eventType, messageBody: messageText }
         case HeyReachEventType.LIKED_POST:
-            return { ...base, eventType, postUrl: typeof payload.postUrl === "string" ? payload.postUrl : undefined }
+            return { ...base, eventType, postUrl: typeof payload.post_url === "string" ? payload.post_url : undefined }
         case HeyReachEventType.LEAD_TAG_UPDATED:
-            return { ...base, eventType, tags: Array.isArray(payload.tags) ? (payload.tags as string[]) : undefined }
+            return {
+                ...base,
+                eventType,
+                tags: Array.isArray(payload.tags) ? payload.tags.filter((t): t is string => typeof t === "string") : undefined
+            }
         default:
             return { ...base, eventType }
     }
