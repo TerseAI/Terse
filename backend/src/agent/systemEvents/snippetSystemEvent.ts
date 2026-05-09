@@ -104,7 +104,7 @@ function buildSnippetSystemEventPayload(input: SnippetSystemEventInput): Snippet
     }
 }
 
-export function buildSnippetSystemEventItem(input: SnippetSystemEventInput): AgentInputItem {
+function buildSnippetSystemEventItem(input: SnippetSystemEventInput): AgentInputItem {
     return snippetSystemEvent.createItem(buildSnippetSystemEventPayload(input))
 }
 

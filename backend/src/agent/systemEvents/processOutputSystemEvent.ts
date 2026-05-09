@@ -60,7 +60,7 @@ function buildProcessOutputPayload(input: ProcessOutputSystemEventInput): Proces
     }
 }
 
-export function buildProcessOutputSystemEventItem(input: ProcessOutputSystemEventInput): AgentInputItem {
+function buildProcessOutputSystemEventItem(input: ProcessOutputSystemEventInput): AgentInputItem {
     return processOutputSystemEvent.createItem(buildProcessOutputPayload(input))
 }
 

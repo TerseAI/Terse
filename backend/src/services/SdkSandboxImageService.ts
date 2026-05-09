@@ -24,7 +24,7 @@ const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
 const DEFAULT_CLEANUP_BATCH_SIZE = 50
 
-export interface PreparedSdkSandboxImages {
+interface PreparedSdkSandboxImages {
     runtime: SdkProjectRuntime
     dependencyHash: string
     dependencyImageId: string
@@ -32,7 +32,7 @@ export interface PreparedSdkSandboxImages {
     sourceImageId: string
 }
 
-export interface CleanupSdkSandboxImagesResult {
+interface CleanupSdkSandboxImagesResult {
     deletedSourceImages: number
     deletedDependencyImages: number
     failures: Array<{ kind: "source" | "dependency"; recordId: string; sandboxImageId: string; error: string }>

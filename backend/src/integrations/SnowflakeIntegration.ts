@@ -1,3 +1,4 @@
+import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "terse-types/Integrations"
 
 import logger from "../logger"
@@ -7,16 +8,7 @@ import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/S
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 
-import {
-    FormFieldDefinition,
-    FormIntegrationInstallation,
-    FormIntegrationSetup,
-    FormSubmissionInput,
-    FormSubmissionResult,
-    Integration,
-    createConnectedCliDisplayState,
-    createNotConnectedCliDisplayState
-} from "./abstract/Integration"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 
 export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegration, never, typeof SnowflakeIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.SNOWFLAKE> {
     constructor() {}

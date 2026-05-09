@@ -15,13 +15,6 @@ import SlackIntegrationCard from "./SlackIntegrationCard"
 import SnowflakeIntegrationCard from "./SnowflakeIntegrationCard"
 import WorkOSIntegrationCard from "./WorkOSIntegrationCard"
 
-export interface IntegrationCardProps {
-    className?: string
-    isActive?: boolean
-    stateToken?: string
-    compact?: boolean
-}
-
 function IntegrationCard({ integration, isActive = true, stateToken, compact = false }: { integration: IntegrationType; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const cardClassName = "min-w-sm max-w-sm"
 

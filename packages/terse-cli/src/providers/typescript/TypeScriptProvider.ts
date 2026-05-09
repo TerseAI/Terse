@@ -22,7 +22,7 @@ import { renderGeneratedCode } from "./templateEngine.js"
 
 const execAsync = promisify(exec)
 
-export class TypeScriptProvider implements LanguageProvider {
+class TypeScriptProvider implements LanguageProvider {
     readonly language = "typescript" as const
     readonly displayName = "TypeScript"
     readonly detectionMarkers = {

@@ -20,7 +20,7 @@ const SlackFetchOptionsSchema = z.object({
 
 // Combined fetch options schema for all integrations.
 // Use .nullable() for optional keys so OpenAI's strict schema (required array) is satisfied.
-export const FetchResourcesOptionsSchema = z
+const FetchResourcesOptionsSchema = z
     .object({
         notion: NotionFetchOptionsSchema.nullable(),
         slack: SlackFetchOptionsSchema.nullable()

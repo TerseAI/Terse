@@ -2,7 +2,7 @@ import { Agent, AgentInputItem, AgentOutputType, JsonSchemaDefinition, RunResult
 import type { Session as AgentMemorySession, ModelSettings } from "@openai/agents-core"
 import { AiSdkModel, aisdk } from "@openai/agents-extensions/ai-sdk"
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
-import { CONFIG_DETAILS, ConfigData } from "terse-types"
+import { CONFIG_DETAILS, ConfigData, Decision } from "terse-types"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { SdkAgentStreamEvent, User } from "terse-types"
@@ -117,7 +117,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return { loopResult }
     }
 
-    async resume(decision: "approve" | "reject", stepId: string, serializedState: string, interruptions: RunToolApprovalItem[], rejectionReason?: string): Promise<SdkAgentRunnerResult> {
+    async resume(decision: Decision, stepId: string, serializedState: string, interruptions: RunToolApprovalItem[], rejectionReason?: string): Promise<SdkAgentRunnerResult> {
         this.pendingApprovalState = { serializedState, interruptions }
 
         const loopResult = await super.resumeAgent({

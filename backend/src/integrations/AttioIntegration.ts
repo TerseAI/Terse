@@ -1,5 +1,6 @@
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
+import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
@@ -14,14 +15,7 @@ import { createOAuthStateToken } from "../utility/oauth"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import {
-    ConfigurationFieldDefinition,
-    Integration,
-    IntegrationWithResources,
-    OAuthIntegrationInstallation,
-    createConnectedCliDisplayState,
-    createNotConnectedCliDisplayState
-} from "./abstract/Integration"
+import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 
 export class AttioIntegrationManager implements Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject>, OAuthIntegrationInstallation<IntegrationType.ATTIO> {
     constructor() {}

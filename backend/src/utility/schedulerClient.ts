@@ -14,7 +14,7 @@ type PauseJobRequest = protos.google.cloud.scheduler.v1.IPauseJobRequest
 type ResumeJobRequest = protos.google.cloud.scheduler.v1.IResumeJobRequest
 type RunJobRequest = protos.google.cloud.scheduler.v1.IRunJobRequest
 
-export enum ScheduledJobState {
+enum ScheduledJobState {
     ENABLED = "ENABLED",
     PAUSED = "PAUSED",
     DISABLED = "DISABLED",
@@ -22,7 +22,7 @@ export enum ScheduledJobState {
     STATE_UNSPECIFIED = "STATE_UNSPECIFIED"
 }
 
-export interface ScheduledJob {
+interface ScheduledJob {
     id: string
     schedule: string
     url: string

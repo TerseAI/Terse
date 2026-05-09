@@ -40,7 +40,7 @@ export function getOutputConfigInclude() {
  * Returns the full include object for hydrating an agent with all relations.
  * Use this when fetching agents that need their full configuration (inputs and outputs).
  */
-export function getAgentHydrationInclude() {
+function getAgentHydrationInclude() {
     return {
         prompt: true,
         inputs: {

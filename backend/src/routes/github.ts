@@ -202,7 +202,7 @@ export async function resolveUserForGithubInstallation(installationId: number, u
 // Given an installation, we need to fetch all users that are associated with that installation.
 // This doesn't guarantee that they have an active input config, but it's a good start.
 // This is super inefficient, but it's a good start. We need to optimize this.
-export async function resolveUsersForGithubInstallation(installationId: number): Promise<import("../types/prisma").User[]> {
+async function resolveUsersForGithubInstallation(installationId: number): Promise<import("../types/prisma").User[]> {
     return db().$transaction(async tx => {
         // Get all of our github app users.
         const githubAppUsers = await tx.github_app_tokens.findMany()

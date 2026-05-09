@@ -19,5 +19,3 @@ export const webSearchTool = defineTool({
         })
     }
 })
-
-export const runHistoryWebSearchTool: TypedToolOptions<"web_search", SessionWithTracking<Session>> = webSearchTool
