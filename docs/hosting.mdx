@@ -31,6 +31,10 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
 
 Each execution runs in its own isolated [Modal](https://modal.com) sandbox with a **project-scoped**, short-lived API token that is removed when the run finishes (and may also carry an expiration time). Your code and credentials are never shared across runs or organizations.
 
+## Hosted execution reliability
+
+Terse may reuse a warm sandbox between runs. Before your handler runs, the platform verifies that the environment is actually ready; if a sandbox was terminated or left inconsistent, Terse replaces it and retries provisioning when things need a moment to settle. Your workflow code and the `terse-sdk` APIs you call from `onTrigger` stay the same—you do not add client-side retry logic for this.
+
 ## What gets uploaded
 
 The CLI respects standard ignore patterns. The following are always excluded:

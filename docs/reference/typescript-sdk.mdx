@@ -40,6 +40,8 @@ npm install terse-sdk zod
 
 - **Project-scoped tokens** are minted automatically inside hosted Modal sandboxes. They are limited to SDK **runtime** endpoints for that project (for example agent runs, tool execution, approvals, and session streams) and cannot stand in for a user token on organization or integration-management routes. Terse removes the sandbox token when the run completes.
 
+Hosted runs also benefit from platform-side checks on the execution environment before your code runs (including recovery when a sandbox was recycled), without any change to the exported SDK surface—your handlers still use `createJob`, `Terse`, `TerseAgent`, and the same env vars.
+
 - Tokens with an **expiration** stop working when they expire; the API responds with **401** and an expired-token message.
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.

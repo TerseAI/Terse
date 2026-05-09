@@ -176,7 +176,7 @@ terse deploy --entry-file src/server.ts
 
 **Deployment modes:**
 
-- Hosted: the CLI zips the current project directory, uploads it, and Terse hosts the workflow for you
+- Hosted: the CLI zips the current project directory, uploads it, and Terse hosts the workflow for you. Each trigger runs in an isolated runtime; Terse verifies the environment is healthy before your handler runs and retries transient provisioning issues automatically.
 - Self-hosted: the CLI reads `remoteServerUrl` from `terse.config.json` and configures Terse to call your own server instead of uploading source
 
 ## Build with workspace context
