@@ -12,7 +12,7 @@ import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { SDKAgent, project_deploys } from "../types/prisma"
 import { createSandboxToken } from "../utility/apiTokens"
 import { getActiveDeployForProject } from "../utility/projectHelper"
-import { extractErrorMessage } from "../utility/strings"
+import { extractErrorFields, extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
@@ -141,7 +141,7 @@ export class SdkJobExecutionService {
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
         } catch (error) {
             const errorMessage = extractErrorMessage(error)
-            logger.error("SDK job execution failed", { error, runId, agentId: agent.id, totalDuration: this.elapsed(executionStart) })
+            logger.error("SDK job execution failed", { error, ...extractErrorFields(error), runId, agentId: agent.id, totalDuration: this.elapsed(executionStart) })
 
             try {
                 await markRunFailed(runId, errorMessage, "agent")
