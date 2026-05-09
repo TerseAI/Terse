@@ -666,11 +666,14 @@ model automation_hey_reach_configs {
   id                  String   @id @default(cuid())
   automation_input_id String   @unique
   event_type          String
+  webhook_id          Int
   campaign_ids        String[] @default([])
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
   automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+
+  @@unique([automation_input_id, webhook_id])
 }
 
 // Webhook Trigger Configuration

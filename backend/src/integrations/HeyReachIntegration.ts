@@ -11,7 +11,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
 import {
@@ -106,17 +106,28 @@ export class HeyReachIntegrationManager
         await deleteSecretsBestEffort([{ integrationType: IntegrationType.HEY_REACH, recordId: integrationId, field: SecretField.ApiKey }])
     }
 
-    async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
-        if (agentTrigger.config_type !== InputConfigType.HEY_REACH_INPUT) return
-        const cfg = agentTrigger.hey_reach_config
-        if (!cfg?.event_type) {
-            logger.warn("HeyReach setup skipped: missing hey_reach_config", { inputId: agentTrigger.id })
-            return
-        }
-        await createHeyReachWebhook(integrationId, cfg.event_type as HeyReachEventType, cfg.campaign_ids ?? [])
-    }
+    async setupAgentTrigger(_integrationId: string, _agentTrigger: AgentTriggerWithConfigs): Promise<void> {}
 
-    async teardownAgentTrigger(_integrationId: string, _agentTrigger: AgentTriggerWithConfigs): Promise<void> {}
+    async teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
+        if (agentTrigger.config_type !== InputConfigType.HEY_REACH_INPUT) return
+        if (!agentTrigger.hey_reach_config?.webhook_id) return
+
+        const webhookId = agentTrigger.hey_reach_config.webhook_id
+
+        logger.info("HeyReach teardown: deactivating webhook", { webhookId, integrationId })
+        try {
+            await updateHeyReachWebhook(webhookId, integrationId, false)
+        } catch (error) {
+            logger.error("HeyReach teardown: failed to update webhook", { error, webhookId, integrationId })
+        }
+
+        logger.info("HeyReach teardown: deleting webhook", { webhookId, integrationId })
+        try {
+            await deleteHeyReachWebhook(webhookId, integrationId)
+        } catch (error) {
+            logger.error("HeyReach teardown: failed to delete webhook", { error, webhookId, integrationId })
+        }
+    }
 
     getFormFields(): FormFieldDefinition[] {
         return [
@@ -335,13 +346,17 @@ const heyReachWebhookRequestSchema = z.object({
     campaignIds: z.array(z.string()).optional()
 })
 
+const heyReachWebhookResponseSchema = z.object({
+    webhookId: z.number()
+})
+
 function clipHeyReachWebhookName(eventType: HeyReachEventType): string {
     const base = `T:${eventType}`
     return base.length <= HEYREACH_WEBHOOK_NAME_MAX_LEN ? base : base.slice(0, HEYREACH_WEBHOOK_NAME_MAX_LEN)
 }
 
-export async function createHeyReachWebhook(integrationId: string, eventType: HeyReachEventType, campaignIds: string[] = []) {
-    const heyReachRow = await db().hey_reach_integrations.findUnique({ where: { id: integrationId } })
+export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: string, integrationId: string, eventType: HeyReachEventType, campaignIds: string[] = []) {
+    const heyReachRow = await tx.hey_reach_integrations.findUnique({ where: { id: integrationId } })
     if (!heyReachRow) {
         throw new Error("HeyReach integration not found")
     }
@@ -361,9 +376,73 @@ export async function createHeyReachWebhook(integrationId: string, eventType: He
         body: JSON.stringify(requestBody)
     })
 
+    const data = heyReachWebhookResponseSchema.parse(await response.json())
+    if (!response.ok) {
+        logger.error("HeyReach CreateWebhook failed", { status: response.status, body: data, webhookName, eventType })
+        throw new Error(response.status === 400 ? `HeyReach rejected webhook: ${data}` : "Failed to create HeyReach webhook")
+    }
+
+    logger.info("HeyReach CreateWebhook succeeded", { webhookId: data.webhookId, webhookName, eventType })
+
+    return data.webhookId
+}
+
+async function deleteHeyReachWebhook(webhookId: number, integrationId: string) {
+    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
+    if (!apiKey) {
+        throw new Error("HeyReach API key not found")
+    }
+
+    const url = new URL(`${HEYREACH_API_BASE}/webhooks/DeleteWebhook`)
+    url.searchParams.set("webhookId", String(webhookId))
+
+    const response = await fetch(url.toString(), {
+        method: "DELETE",
+        headers: {
+            "X-API-KEY": apiKey,
+            "Content-Type": "application/json",
+            Accept: "text/plain"
+        }
+    })
+
     const responseText = await response.text()
     if (!response.ok) {
-        logger.error("HeyReach CreateWebhook failed", { status: response.status, body: responseText, webhookName, eventType })
-        throw new Error(response.status === 400 ? `HeyReach rejected webhook: ${responseText}` : "Failed to create HeyReach webhook")
+        logger.error("HeyReach DeleteWebhook failed", { status: response.status, body: responseText, webhookId })
+        throw new Error(response.status === 400 ? `HeyReach rejected webhook: ${responseText}` : "Failed to delete HeyReach webhook")
     }
+
+    logger.info("HeyReach DeleteWebhook succeeded", { webhookId })
+}
+
+const heyReachUpdateWebhookRequestSchema = z.object({
+    isActive: z.boolean()
+})
+
+async function updateHeyReachWebhook(webhookId: number, integrationId: string, isActive: boolean) {
+    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
+    if (!apiKey) {
+        throw new Error("HeyReach API key not found")
+    }
+
+    const url = new URL(`${HEYREACH_API_BASE}/webhooks/UpdateWebhook`)
+    url.searchParams.set("webhookId", String(webhookId))
+
+    const payload = heyReachUpdateWebhookRequestSchema.parse({ isActive })
+
+    const response = await fetch(url.toString(), {
+        method: "PATCH",
+        headers: {
+            "X-API-KEY": apiKey,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+
+    const responseText = await response.text()
+    if (!response.ok) {
+        logger.error("HeyReach DeleteWebhook failed", { status: response.status, body: responseText, webhookId })
+        throw new Error(response.status === 400 ? `HeyReach rejected webhook: ${responseText}` : "Failed to delete HeyReach webhook")
+    }
+
+    logger.info("HeyReach UpdateWebhook succeeded", { webhookId })
 }
