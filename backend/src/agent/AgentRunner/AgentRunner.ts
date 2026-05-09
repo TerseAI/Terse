@@ -59,7 +59,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         agent: AgentWithRelations,
         runContext: RunContext,
         maxTurns: number = 50,
-        billing: BillingService = billingServiceProxyForOrganization(session.user.organizationId)
+        billing: BillingService = billingServiceProxyForOrganization(session.user.organizationId, session.user.workosId)
     ) {
         super({
             runId: runContext.runId,

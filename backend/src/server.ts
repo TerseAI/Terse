@@ -20,7 +20,7 @@ import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
-import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingCatalog, getBillingContext } from "./routes/billing"
+import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingCatalog, getBillingContext, getBillingStatus, getBillingUsageBuckets } from "./routes/billing"
 import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
@@ -269,8 +269,16 @@ app.get(ApiRoutes.BILLING.CONTEXT, requireAuth([AuthKind.UserCookie, AuthKind.Us
     await getBillingContext(req, res)
 })
 
+app.get(ApiRoutes.BILLING.USAGE_BUCKETS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
+    await getBillingUsageBuckets(req, res)
+})
+
 app.get(ApiRoutes.BILLING.CATALOG, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
     await getBillingCatalog(req, res)
+})
+
+app.get(ApiRoutes.BILLING.STATUS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
+    await getBillingStatus(req, res)
 })
 
 // MARK: AUTH
