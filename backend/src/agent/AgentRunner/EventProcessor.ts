@@ -494,9 +494,7 @@ export class EventProcessor {
         const remoteServerUrl = agent.project.remote_server_url
         const signingSecret = agent.project.signing_secret
         if (!remoteServerUrl || !signingSecret) {
-            const reason = !remoteServerUrl
-                ? `Webhook agent "${agent.name}" is missing remote_server_url`
-                : `Webhook agent "${agent.name}" is missing signing_secret`
+            const reason = !remoteServerUrl ? `Webhook agent "${agent.name}" is missing remote_server_url` : `Webhook agent "${agent.name}" is missing signing_secret`
             await finalizeRunFailure(runId, classifyAgentError(new Error(reason)), this.user, agent)
             return new ProcessorResult(false, reason, agent, undefined, runId)
         }
