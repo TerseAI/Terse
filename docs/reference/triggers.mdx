@@ -115,6 +115,52 @@ triggers: [Triggers.gmail.onEmail()]
   - `data.attachments` - array of `{ filename, mimeType, data }`
 </Expandable>
 
+### HeyReach
+
+HeyReach fires when LinkedIn outreach events occur (messages, connection requests, campaign milestones, and more). Connect HeyReach under **Integrations** in the Terse app, then run **`terse generate`** so **`Triggers.heyReach`** and typed **`HeyReachCampaign`** constants appear in `src/terse.generated.ts`.
+
+Each helper maps to one **`HeyReachEventType`** value (also exported from **`terse-sdk`**). Use **`Triggers.heyReach.trigger({ eventType: HeyReachEventType.MESSAGE_REPLY_RECEIVED })`** when you want to pick the event type dynamically.
+
+| Trigger | Event type |
+| ------- | ---------- |
+| `Triggers.heyReach.onConnectionRequestSent()` | `HeyReachConnectionRequestSentTrigger` |
+| `Triggers.heyReach.onConnectionRequestAccepted()` | `HeyReachConnectionRequestAcceptedTrigger` |
+| `Triggers.heyReach.onMessageSent()` | `HeyReachMessageSentTrigger` |
+| `Triggers.heyReach.onMessageReplyReceived()` | `HeyReachMessageReplyReceivedTrigger` |
+| `Triggers.heyReach.onInmailSent()` | `HeyReachInmailSentTrigger` |
+| `Triggers.heyReach.onInmailReplyReceived()` | `HeyReachInmailReplyReceivedTrigger` |
+| `Triggers.heyReach.onFollowSent()` | `HeyReachFollowSentTrigger` |
+| `Triggers.heyReach.onLikedPost()` | `HeyReachLikedPostTrigger` |
+| `Triggers.heyReach.onViewedProfile()` | `HeyReachViewedProfileTrigger` |
+| `Triggers.heyReach.onCampaignCompleted()` | `HeyReachCampaignCompletedTrigger` |
+| `Triggers.heyReach.onLeadTagUpdated()` | `HeyReachLeadTagUpdatedTrigger` |
+
+**Config:** Pass **`campaigns`** with generated **`HeyReachCampaign`** instances to handle only those campaigns; omit it to receive events from all campaigns.
+
+<CodeGroup>
+```ts TypeScript
+import { Triggers } from "./terse.generated"
+
+triggers: [Triggers.heyReach.onMessageReplyReceived()]
+```
+</CodeGroup>
+
+<Expandable title="Event payload">
+
+Shared fields on HeyReach triggers:
+
+- `eventId`, `createdAt` — event metadata
+- `lead` — optional lead profile (`profile_url`, names, company, tags, and related fields)
+- `campaign` — optional `{ id, name, status }`
+- `linkedInAccount` — optional sender account metadata
+- `messageBody` — present on message-oriented events when HeyReach provides body text
+- `postUrl` — present on liked-post events
+- `tags` — present on lead tag updates
+
+Use **`HeyReachTrigger`** as the union type, or the specific trigger type that matches your helper.
+
+</Expandable>
+
 ### WorkOS
 
 | Trigger            | Event type      | Description           |

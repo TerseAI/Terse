@@ -89,7 +89,7 @@ If you only have one workflow, the CLI selects it automatically. If you have mor
 **How it works:**
 
 1. Loads your local workflow registry from the entry file
-2. Fetches sample events from Terse for integration triggers such as GitHub, Slack, or Attio, and **stored webhook payloads** when your workflow has already received HTTP traffic
+2. Fetches sample events from Terse for integration triggers such as GitHub, Slack, HeyReach, or Attio, and **stored webhook payloads** when your workflow has already received HTTP traffic
 3. Synthesizes local sample events for **cron** triggers (and other cases without stored samples)
 4. If you use a **webhook** trigger but **no deliveries are stored yet**, prints a **`curl`** example against your webhook URL instead of opening an empty picker—run **`terse deploy`** first so the CLI can show the URL, send a test POST, then run **`terse test`** again
 5. Prompts you to choose one sample event
@@ -308,7 +308,7 @@ terse generate
 | Category                    | Examples                                                                                       |
 | --------------------------- | ---------------------------------------------------------------------------------------------- |
 | Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Pipeline.NewDeals`                |
-| Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.slack.onMessage()`, `Triggers.schedule.cron()`, `Triggers.webhook.onRequest<BodyType>()` |
+| Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.slack.onMessage()`, `Triggers.heyReach.onMessageReplyReceived()`, `Triggers.schedule.cron()`, `Triggers.webhook.onRequest<BodyType>()` |
 | Skill constructors          | `Skills.github()`, `Skills.slack()`, `Skills.attio()`                                       |
 | Deterministic tool wrappers | `toolbox.slack.sendMessage()` (no `TerseAgent`, not limited by **skills**), `agent.tools.slack.sendMessage()` (same tools, limited by **skills**) |
 
