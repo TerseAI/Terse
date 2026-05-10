@@ -9,7 +9,6 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
@@ -443,8 +442,8 @@ async function updateHeyReachWebhook(webhookId: number, integrationId: string, i
 
     const responseText = await response.text()
     if (!response.ok) {
-        logger.error("HeyReach DeleteWebhook failed", { status: response.status, body: responseText, webhookId })
-        throw new Error(response.status === 400 ? `HeyReach rejected webhook: ${responseText}` : "Failed to delete HeyReach webhook")
+        logger.error("HeyReach UpdateWebhook failed", { status: response.status, body: responseText, webhookId })
+        throw new Error(response.status === 400 ? `HeyReach rejected webhook update: ${responseText}` : "Failed to update HeyReach webhook")
     }
 
     logger.info("HeyReach UpdateWebhook succeeded", { webhookId })
