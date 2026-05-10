@@ -15,3 +15,9 @@ export function buildWebhookUrl(webhookToken: string): string {
     const baseUrl = settings.urls.backendProxy ?? settings.urls.backend
     return `${baseUrl}${buildRoute(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, { webhookToken })}`
 }
+
+/** HeyReach registers one webhook URL per agent trigger (`automation_inputs.id`), not per integration. */
+export function buildHeyReachWebhookUrl(triggerId: string): string {
+    const baseUrl = settings.urls.backendProxy ?? settings.urls.backend
+    return `${baseUrl}/webhooks/heyreach/${triggerId}`
+}

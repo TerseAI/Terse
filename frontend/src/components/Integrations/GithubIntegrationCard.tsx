@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { FadeSwitch } from "../ui/fade-switch"
 import { Skeleton } from "../ui/skeleton"
 
-import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import CompactIntegrationRow from "./CompactIntegrationRow"
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 

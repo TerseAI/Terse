@@ -33,7 +33,7 @@ interface CachedSecret {
     expiresAt: number
 }
 
-export class SecretService {
+class SecretService {
     private cache = new Map<string, CachedSecret>()
     private secretManagerClient: SecretManagerClient | null = null
     private clientInitializationFailed = false
@@ -134,7 +134,7 @@ export class SecretService {
 
 let secretService: SecretService | null = null
 
-export function getSecretService(): SecretService {
+function getSecretService(): SecretService {
     if (!secretService) {
         secretService = new SecretService()
     }
@@ -149,11 +149,11 @@ export async function getSecret(integrationType: SecretIntegrationType, recordId
     return getSecretService().getSecret(integrationType, recordId, field)
 }
 
-export async function deleteSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<void> {
+async function deleteSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<void> {
     return getSecretService().deleteSecret(integrationType, recordId, field)
 }
 
-export function isGsmAvailable(): boolean {
+function isGsmAvailable(): boolean {
     return getSecretService().isGsmAvailable()
 }
 

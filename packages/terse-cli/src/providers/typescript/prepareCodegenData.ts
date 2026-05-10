@@ -28,7 +28,7 @@ type SectionContext<T> = {
     data?: T
 }
 
-export interface ResourceClassContext {
+interface ResourceClassContext {
     className: string
     constructorParams: string
     items: Array<{
@@ -37,7 +37,7 @@ export interface ResourceClassContext {
     }>
 }
 
-export interface GitHubSectionContext {
+interface GitHubSectionContext {
     id: string
     skillToolType: string
     owners: Array<{ name: string; staticName: string }>
@@ -52,55 +52,55 @@ export interface GitHubSectionContext {
     }>
 }
 
-export interface GmailSectionContext {
+interface GmailSectionContext {
     id: string
     skillToolType: string
 }
 
-export interface SlackSectionContext {
+interface SlackSectionContext {
     id: string
     skillToolType: string
     channelClass: ResourceClassContext
 }
 
-export interface LinearSectionContext {
+interface LinearSectionContext {
     id: string
     skillToolType: string
     teamClass: ResourceClassContext
     projectClass: ResourceClassContext
 }
 
-export interface NotionSectionContext {
+interface NotionSectionContext {
     id: string
     skillToolType: string
     databaseClass: ResourceClassContext
     pageClass: ResourceClassContext
 }
 
-export interface PosthogSectionContext {
+interface PosthogSectionContext {
     id: string
     skillToolType: string
     projectClass: ResourceClassContext
 }
 
-export interface DatadogSectionContext {
+interface DatadogSectionContext {
     id: string
     skillToolType: string
     indexClass: ResourceClassContext
 }
 
-export interface LaunchDarklySectionContext {
+interface LaunchDarklySectionContext {
     id: string
     skillToolType: string
     projectClass: ResourceClassContext
 }
 
-export interface WorkOSSectionContext {
+interface WorkOSSectionContext {
     id: string
     skillToolType: string
 }
 
-export interface AttioObjectContext {
+interface AttioObjectContext {
     staticName: string
     apiSlug: string
     singularNoun: string
@@ -109,48 +109,48 @@ export interface AttioObjectContext {
     inputValuesType: string
 }
 
-export interface AttioSectionContext {
+interface AttioSectionContext {
     id: string
     skillToolType: string
     objects: AttioObjectContext[]
 }
 
-export interface SnowflakeSectionContext {
+interface SnowflakeSectionContext {
     id: string
     skillToolType: string
 }
 
-export interface HeyReachSectionContext {
+interface HeyReachSectionContext {
     id: string
     campaignClass: ResourceClassContext
 }
 
-export interface ToolParamTypeContext {
+interface ToolParamTypeContext {
     description?: string
     typeName: string
     tsType: string
 }
 
-export interface ToolMethodContext {
+interface ToolMethodContext {
     description?: string
     generatedSignature: string
     runtimeLines: string[]
 }
 
-export interface ToolGroupContext {
+interface ToolGroupContext {
     key: string
     integrationType: string
     methods: ToolMethodContext[]
 }
 
-export interface ToolsSectionContext {
+interface ToolsSectionContext {
     attioPreludeLines: string[]
     paramTypes: ToolParamTypeContext[]
     githubRepoMappings: Array<{ name: string; fullName: string }>
     groups: ToolGroupContext[]
 }
 
-export interface SystemSectionContext {}
+interface SystemSectionContext {}
 
 export interface TemplateContext {
     imports: string[]
@@ -171,7 +171,7 @@ export interface TemplateContext {
     system: SystemSectionContext
 }
 
-export function toPascalCase(value: string): string {
+function toPascalCase(value: string): string {
     return value
         .replace(/[^a-zA-Z0-9]+/g, " ")
         .trim()
@@ -185,7 +185,7 @@ export function escapeString(value: string): string {
     return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 }
 
-export function toGeneratedIdentifier(raw: string, fallback: string): string {
+function toGeneratedIdentifier(raw: string, fallback: string): string {
     let name = toPascalCase(raw || fallback)
     if (!name) name = fallback
     if (/^\d/.test(name)) name = `_${name}`
@@ -263,7 +263,7 @@ function isProbablyAttioMultiValue(attr: AttioAttributeData): boolean {
     )
 }
 
-export function attioAttributeBaseType(attr: AttioAttributeData): string {
+function attioAttributeBaseType(attr: AttioAttributeData): string {
     const slug = (attr.api_slug || "").toLowerCase()
     const type = (attr.type || "").toLowerCase()
 
@@ -326,7 +326,7 @@ function renderStringLiteralUnion(values: string[]): string {
     return values.map(value => `"${escapeString(value)}"`).join(" | ")
 }
 
-export function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationType: string): string {
+function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationType: string): string {
     const toolNames = tools
         .filter(tool => toolIntegrationToIntegrationType(tool.integration.toLowerCase()) === integrationType)
         .filter(tool => !tool.isReadOnly || tool.supportsApproval)

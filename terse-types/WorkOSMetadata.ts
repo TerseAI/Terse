@@ -7,8 +7,15 @@ const booleanMetadataSchema = z
     .transform(value => value === true || value === "true")
 
 export const organizationMetadataSchema = z.object({
-    stripeCustomerId: z.string(),
+    subscriptionPurchaserUserId: z.string().optional(),
+    subscriptionId: z.string().optional(),
+    metronomeCustomerId: z.string().optional(),
     runExecutionBlocked: booleanMetadataSchema
 })
-
 export type OrganizationMetadata = z.infer<typeof organizationMetadataSchema>
+
+export const userMetadataSchema = z.object({
+    db_id: z.string().optional(),
+    stripeCustomerId: z.string().optional()
+})
+export type UserMetadata = z.infer<typeof userMetadataSchema>

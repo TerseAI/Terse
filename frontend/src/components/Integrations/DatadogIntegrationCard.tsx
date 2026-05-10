@@ -15,7 +15,7 @@ import { Label } from "../ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Skeleton } from "../ui/skeleton"
 
-import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import CompactIntegrationRow from "./CompactIntegrationRow"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"
 

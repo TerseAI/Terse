@@ -32,7 +32,7 @@ import { appendRunAction, createRunRecord, evaluateCompletedRun, finalizeRunStat
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
 
-export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
+class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
     success: boolean
     message: string
     agentConfig: PrismaAgent | null
@@ -374,7 +374,7 @@ export class EventProcessor {
             runId
         })
 
-        const billing = billingServiceProxyForOrganization(this.user.organizationId)
+        const billing = billingServiceProxyForOrganization(this.user.organizationId, this.user.workosId)
 
         // Create agent runner with the session and outputs
         const runContext: RunContext = { runId }
@@ -452,7 +452,7 @@ export class EventProcessor {
 
         logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
 
-        const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId)
+        const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId, this.user.workosId)
         await startBillingRun(billingForRunner, { organizationId: this.user.organizationId, runId })
 
         // Fire-and-forget: sandbox runs asynchronously

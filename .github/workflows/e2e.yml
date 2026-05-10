@@ -159,47 +159,6 @@ jobs:
                   TERSE_CLI_ENABLE_RUN: "1"
               run: terse run "Tell me a joke" --event-file ./src/sample-webhook-event.json
 
-            # ── E2E (Python) ────────────────────────────────────────────────────
-            # Same test flow but exercising the Python SDK + CLI codegen.
-            # TEMPORARILY DISABLED: Python SDK path is being reworked. Re-enable
-            # by removing the `if: false` guards below once the fixture is green.
-
-            - name: Install uv
-              if: false
-              uses: astral-sh/setup-uv@v6
-
-            - name: Set up Python
-              if: false
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.11"
-
-            - name: Install Python fixture dependencies
-              if: false
-              working-directory: packages/ci-test-fixture-python
-              run: uv sync
-
-            - name: Place job file for Python fixture
-              if: false
-              run: cp packages/ci-test-fixture-python/src/main.src packages/ci-test-fixture-python/src/main.py
-
-            - name: "[generate] Run codegen on Python CI test fixture"
-              if: false
-              working-directory: packages/ci-test-fixture-python
-              run: terse generate
-
-            - name: "[assert] Verify Python project type-checks"
-              if: false
-              working-directory: packages/ci-test-fixture-python
-              run: uv run ty check src/
-
-            - name: "[run] Execute Python CI test fixture"
-              if: false
-              working-directory: packages/ci-test-fixture-python
-              env:
-                  TERSE_CLI_ENABLE_RUN: "1"
-              run: terse run "Tell me a joke" --event-file ./src/sample-webhook-event.json
-
             # ── Cleanup ───────────────────────────────────────────────────────────
 
             - name: Upload logs on failure
@@ -209,5 +168,4 @@ jobs:
                   name: e2e-failure-logs
                   path: |
                       packages/ci-test-fixture/**/*.log
-                      packages/ci-test-fixture-python/**/*.log
                   retention-days: 7

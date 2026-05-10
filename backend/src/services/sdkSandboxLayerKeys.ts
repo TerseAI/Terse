@@ -4,7 +4,7 @@
  */
 import crypto from "crypto"
 
-export function hexHead(s: string, maxLen: number): string {
+function hexHead(s: string, maxLen: number): string {
     const hex = s.replace(/[^a-fA-F0-9]/g, "")
     return hex.slice(0, maxLen)
 }

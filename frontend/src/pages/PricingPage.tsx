@@ -1,4 +1,4 @@
-import { type ComponentProps, useState } from "react"
+import { type ComponentProps, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { motion } from "framer-motion"
@@ -108,6 +108,15 @@ export default function PricingPage() {
     }
 
     const showTopups = !authLoading && !catalogLoading && !catalogError && topUps.length > 0
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search)
+        if (!params.get("topup")) return
+
+        toast.success("Top-up complete")
+        invalidateBillingCaches()
+        window.history.replaceState({}, "", window.location.pathname)
+    }, [])
 
     const currentPlan = currentPlanKey ? (plans.find(p => p.key === currentPlanKey) ?? null) : null
     const freePlan = plans.find(p => p.key === PlanKey.FREE) ?? null

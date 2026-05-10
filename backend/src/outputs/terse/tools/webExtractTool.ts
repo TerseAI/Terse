@@ -16,5 +16,3 @@ export const webExtractTool = defineTool({
         })
     }
 })
-
-export const runHistoryWebExtractTool: TypedToolOptions<"web_extract", SessionWithTracking<Session>> = webExtractTool

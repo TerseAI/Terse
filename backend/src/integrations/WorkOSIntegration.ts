@@ -1,5 +1,7 @@
 import { InputConfigType } from "@prisma/client"
+import type { User as WorkOSSdkUser } from "@workos-inc/node"
 import { WorkOSTrigger, WorkOSWebhookPayload } from "terse-types"
+import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { ConfigData, ConfigType, WorkOSEventType, WorkOSInputConfigSchema } from "terse-types/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -7,28 +9,17 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
 import logger from "../logger"
-import { WorkOSUserResponse, getWorkOSUser } from "../outputs/workos/workosApiClient"
+import { getWorkOSUser } from "../outputs/workos/workosApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
-import {
-    FormFieldDefinition,
-    FormIntegrationInstallation,
-    FormIntegrationSetup,
-    FormSubmissionInput,
-    FormSubmissionResult,
-    Integration,
-    createConnectedCliDisplayState,
-    createNotConnectedCliDisplayState
-} from "./abstract/Integration"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]
-
-export type WorkOSEventName = WorkOSEventType
 
 export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, WorkOSWebhookRequest, typeof WorkOSIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.WORKOS> {
     integrationType: IntegrationType = IntegrationType.WORKOS
@@ -349,7 +340,7 @@ async function fetchWorkOSEvents(apiKey: string, eventTypes: string[], limit: nu
 }
 
 // Combined type for processWebhookEvent (single parameter per interface contract)
-export interface WorkOSWebhookRequest {
+interface WorkOSWebhookRequest {
     integrationId: string
     payload: WorkOSWebhookPayload
 }
@@ -518,24 +509,24 @@ function buildWorkOSUserFromPayload(data: Record<string, any>, eventType: string
     }
 }
 
-function mergeWorkOSUserIntoPayload(payload: WorkOSWebhookPayload, workosUser: WorkOSUserResponse): WorkOSWebhookPayload {
+function mergeWorkOSUserIntoPayload(payload: WorkOSWebhookPayload, workosUser: WorkOSSdkUser): WorkOSWebhookPayload {
     return {
         ...payload,
         data: {
             ...payload.data,
             email: workosUser.email,
-            first_name: workosUser.first_name,
-            last_name: workosUser.last_name,
-            email_verified: workosUser.email_verified,
-            profile_picture_url: workosUser.profile_picture_url,
+            first_name: workosUser.firstName,
+            last_name: workosUser.lastName,
+            email_verified: workosUser.emailVerified,
+            profile_picture_url: workosUser.profilePictureUrl,
             user: {
                 ...(getNestedRecord(payload.data.user) || {}),
                 id: workosUser.id,
                 email: workosUser.email,
-                first_name: workosUser.first_name,
-                last_name: workosUser.last_name,
-                email_verified: workosUser.email_verified,
-                profile_picture_url: workosUser.profile_picture_url
+                first_name: workosUser.firstName,
+                last_name: workosUser.lastName,
+                email_verified: workosUser.emailVerified,
+                profile_picture_url: workosUser.profilePictureUrl
             }
         }
     }

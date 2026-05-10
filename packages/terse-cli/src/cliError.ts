@@ -16,7 +16,7 @@ export class CliError extends Error {
     }
 }
 
-export type CliErrorOpts = {
+type CliErrorOpts = {
     exitCode?: ErrorCode
     actionRequired?: boolean
     url?: string
@@ -32,7 +32,7 @@ export function isCliError(err: unknown): err is CliError {
     return err instanceof CliError || (typeof err === "object" && err !== null && (err as { name?: string }).name === "CliError")
 }
 
-export function formatCliErrorText(err: CliError): string {
+function formatCliErrorText(err: CliError): string {
     const lines: string[] = []
     if (err.opts.actionRequired) {
         lines.push(chalk.yellow(`ACTION REQUIRED: ${err.message}`))
@@ -44,7 +44,7 @@ export function formatCliErrorText(err: CliError): string {
     return lines.join("\n") + "\n"
 }
 
-export function formatCliErrorJson(err: CliError): string {
+function formatCliErrorJson(err: CliError): string {
     const error: {
         code: string
         message: string

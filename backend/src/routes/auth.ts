@@ -1,7 +1,7 @@
 import { users as PrismaUser } from "@prisma/client"
-import { Organization } from "@workos-inc/node"
+import { User as WorkOSUser } from "@workos-inc/node"
 import { Request, Response } from "express"
-import { ApiRoutes, OrganizationMetadata, organizationMetadataSchema } from "terse-types"
+import { ApiRoutes, UserMetadata, userMetadataSchema } from "terse-types"
 import { Role, User } from "terse-types/types"
 
 import { settings } from "../config/settings"
@@ -31,7 +31,7 @@ const workosSessionCookieBaseOptions = {
     maxAge: ONE_DAY_MS
 }
 
-export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
+const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
 
 function getDirectWorkOSLoginUrl(): string {
     return workos.userManagement.getAuthorizationUrl({
@@ -284,13 +284,11 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
         isNewUser = true
     }
 
-    // Backfill WorkOS user metadata with our DB ID so future requests get it via JWT Template claims
+    // Important to set db_id, so JWT token includes claim
+    // of what db user is for fast lookups
     if (isNewUser || !workosUser.metadata?.db_id) {
         try {
-            await workos.userManagement.updateUser({
-                userId: workosUser.id,
-                metadata: { db_id: dbUser.id }
-            })
+            await setDefaultUserMetadata(workosUser.id, dbUser.id)
         } catch (error) {
             logger.warn("Failed to backfill WorkOS user metadata with db_id", { error: extractErrorMessage(error) })
         }
@@ -318,23 +316,22 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     return { user }
 }
 
-export async function setDefaultOrganizationMetadata(orgId: string, stripeCustomerId: string) {
-    const organization = await workos.organizations.updateOrganization({
-        organization: orgId,
-        metadata: {
-            stripeCustomerId: stripeCustomerId
-        }
+export async function setDefaultUserMetadata(workosUserId: string, dbUserId: string): Promise<UserWithMetadata> {
+    const metadata = userMetadataSchema.parse({
+        db_id: dbUserId
     })
-    return parseOrganizationMetadata(organization)
+    const user = await workos.userManagement.updateUser({
+        userId: workosUserId,
+        metadata
+    })
+    return {
+        ...user,
+        metadata: userMetadataSchema.parse(user.metadata)
+    }
 }
 
-function parseOrganizationMetadata(organization: Organization): WorkOsOrganizationWithMetadata {
-    const parsed = organizationMetadataSchema.parse(organization.metadata)
-    return { ...organization, metadata: parsed }
-}
-
-export type WorkOsOrganizationWithMetadata = Omit<Organization, "metadata"> & {
-    metadata: OrganizationMetadata
+export type UserWithMetadata = Omit<WorkOSUser, "metadata"> & {
+    metadata: UserMetadata
 }
 
 export interface WorkOSAuthContext {
@@ -349,5 +346,3 @@ export interface WorkOSAuthContext {
     organizationId?: string | null
     roles?: string[]
 }
-
-export default { me, login, loginUrl, logout, logoutUrl, getWorkOSWidgetToken, callback }

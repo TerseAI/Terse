@@ -8,7 +8,7 @@ import { CliError } from "./cliError.js"
 
 export const PROJECT_CONFIG_FILENAME = "terse.config.json"
 
-export function projectConfigPath(cwd: string = process.cwd()): string {
+function projectConfigPath(cwd: string = process.cwd()): string {
     return path.join(cwd, PROJECT_CONFIG_FILENAME)
 }
 

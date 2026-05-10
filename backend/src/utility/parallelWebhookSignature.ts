@@ -1,6 +1,6 @@
 import crypto from "node:crypto"
 
-export function computeParallelWebhookSignature(secret: string, webhookId: string, webhookTimestamp: string, rawBody: string | Buffer): string {
+function computeParallelWebhookSignature(secret: string, webhookId: string, webhookTimestamp: string, rawBody: string | Buffer): string {
     const payload = `${webhookId}.${webhookTimestamp}.${rawBody.toString()}`
     return crypto.createHmac("sha256", secret).update(payload).digest("base64")
 }

@@ -5,7 +5,7 @@ import logger from "../logger"
 
 import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
 
-export interface ClaudeCodeSandboxParams {
+interface ClaudeCodeSandboxParams {
     /** Identifier for logging */
     label: string
     /** Prompt to pass to Claude Code CLI via -p flag */
@@ -28,7 +28,7 @@ export interface ClaudeCodeSandboxParams {
     plugin?: { files: Record<string, string>; dir: string }
 }
 
-export interface ClaudeCodeSandboxResult {
+interface ClaudeCodeSandboxResult {
     /** Claude Code stdout */
     stdout: string
     /** Claude Code stderr */

@@ -35,7 +35,7 @@ import { RunHistoryStatus as SharedRunHistoryStatus } from "terse-types/RunHisto
 
 import { AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
 
-export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
+const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
     switch (integrationType) {
         case IntegrationType.GITHUB:
             return PrismaIntegrationType.GITHUB
@@ -74,7 +74,7 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
     }
 }
 
-export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationType: PrismaIntegrationType): IntegrationType => {
+const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationType: PrismaIntegrationType): IntegrationType => {
     switch (prismaIntegrationType) {
         case PrismaIntegrationType.GITHUB:
             return IntegrationType.GITHUB
@@ -441,7 +441,7 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
     }
 }
 
-export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigType): ConfigType => {
+const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigType): ConfigType => {
     switch (inputConfigType) {
         case InputConfigType.GMAIL:
             return ConfigType.GMAIL

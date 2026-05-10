@@ -254,9 +254,7 @@ export const PosthogIntegrationSchema = IntegrationInstanceSchema.extend({
 })
 export type PosthogIntegration = z.infer<typeof PosthogIntegrationSchema>
 
-export const HeyReachIntegrationSchema = IntegrationInstanceSchema.extend({
-    webhookUrl: z.string()
-})
+export const HeyReachIntegrationSchema = IntegrationInstanceSchema
 export type HeyReachIntegration = z.infer<typeof HeyReachIntegrationSchema>
 
 export const LaunchDarklyIntegrationSchema = IntegrationInstanceSchema.extend({

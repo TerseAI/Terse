@@ -10,7 +10,7 @@ import { useToolsThatRequireApprovals } from "../../hooks/api/useToolsThatRequir
 
 import { IconForConfigType } from "./components/Integration"
 
-export type AgentApprovalSettingsProps = {
+type AgentApprovalSettingsProps = {
     outputs: TransientAgentOutput[]
     toolApprovals: string[]
     onToolApprovalsChange: (toolApprovals: string[]) => void

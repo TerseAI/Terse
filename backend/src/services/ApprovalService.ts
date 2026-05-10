@@ -418,7 +418,7 @@ function resolveSlackApprovalStatus(approved: boolean, hardReject?: boolean, rej
     return SlackApprovalMessageStatus.REJECTED
 }
 
-export type ApprovalRequest = {
+type ApprovalRequest = {
     runId: string
     stepId: string
     approved: boolean
@@ -431,7 +431,7 @@ export type ApprovalRequest = {
     responseId?: string
 }
 
-export type ApprovalResult = {
+type ApprovalResult = {
     // 'completed' means the run finished after applying this approval decision.
     // 'awaiting_approval' means this approval decision was processed successfully, but the agent requested another approval (chained approvals).
     status: ApprovalProcessingStatus

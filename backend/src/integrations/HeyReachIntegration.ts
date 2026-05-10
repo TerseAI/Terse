@@ -1,28 +1,20 @@
 import { InputConfigType } from "@prisma/client"
 import { HeyReachEventType, HeyReachTrigger, HeyReachWebhookPayload } from "terse-types"
+import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { ConfigData, ConfigType } from "terse-types/Configs"
 import { HeyReachIntegration, HeyReachIntegrationMetadata, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
+import { buildHeyReachWebhookUrl } from "../utility/webhookUrl"
 import { getUserForOrg } from "../utility/workos"
 
-import {
-    FormFieldDefinition,
-    FormIntegrationInstallation,
-    FormIntegrationSetup,
-    FormSubmissionInput,
-    FormSubmissionResult,
-    Integration,
-    createConnectedCliDisplayState,
-    createNotConnectedCliDisplayState
-} from "./abstract/Integration"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 const HEYREACH_API_BASE = "https://api.heyreach.io/api/public"
@@ -63,10 +55,7 @@ export class HeyReachIntegrationManager
     }
 
     private enrichInstance(id: string): HeyReachIntegration {
-        return {
-            id,
-            webhookUrl: `${urls.backend}/webhooks/heyreach/${id}`
-        }
+        return { id }
     }
 
     async processWebhookEvent(request: HeyReachWebhookRequest): Promise<void> {
@@ -191,8 +180,7 @@ export class HeyReachIntegrationManager
                 success: true,
                 statusCode: 200,
                 data: {
-                    integrationId,
-                    webhookUrl: `${urls.backend}/webhooks/heyreach/${integrationId}`
+                    integrationId
                 }
             }
         } catch (error) {
@@ -369,7 +357,7 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
     }
 
     const webhookName = clipHeyReachWebhookName(eventType)
-    const webhookUrl = `${urls.backend}/webhooks/heyreach/${triggerId}`
+    const webhookUrl = buildHeyReachWebhookUrl(triggerId)
 
     const requestBody = heyReachWebhookRequestSchema.parse({ webhookName, webhookUrl, eventType, campaignIds })
     const response = await fetch(`${HEYREACH_API_BASE}/webhooks/CreateWebhook`, {

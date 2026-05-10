@@ -1,20 +1,20 @@
 const FALLBACK_VERSION = "0.1.11"
 
-export async function fetchNpmSdkVersion(): Promise<string> {
+async function fetchNpmSdkVersion(): Promise<string> {
     const res = await fetch("https://registry.npmjs.org/terse-sdk/latest")
     if (!res.ok) throw new Error(`npm registry returned ${res.status}`)
     const data = (await res.json()) as { version: string }
     return data.version
 }
 
-export async function fetchPypiSdkVersion(): Promise<string> {
+async function fetchPypiSdkVersion(): Promise<string> {
     const res = await fetch("https://pypi.org/pypi/terse-sdk/json")
     if (!res.ok) throw new Error(`PyPI returned ${res.status}`)
     const data = (await res.json()) as { info: { version: string } }
     return data.info.version
 }
 
-export async function fetchSdkVersion(language: "typescript" | "python"): Promise<string> {
+export async function fetchSdkVersion(language: "typescript"): Promise<string> {
     try {
         return language === "typescript" ? await fetchNpmSdkVersion() : await fetchPypiSdkVersion()
     } catch {
