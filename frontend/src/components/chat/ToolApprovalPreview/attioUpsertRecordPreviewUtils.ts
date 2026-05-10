@@ -61,13 +61,6 @@ export function extractRecords(parameters: AttioUpsertRecordParams | null): Arra
     return parsedRecords
 }
 
-export function buildEditedArguments(parameters: AttioUpsertRecordParams, records: Array<Record<string, unknown>>): string {
-    return JSON.stringify({
-        ...parameters,
-        records: JSON.stringify(records)
-    })
-}
-
 export function buildEditorColumns(records: Array<Record<string, unknown>>, attributes?: AttioAttribute[], matchingAttribute?: string): AttioEditorColumn[] {
     return buildColumnOrder(records, attributes, matchingAttribute).map(column => {
         const attribute = attributes?.find(item => item.api_slug === column)
@@ -116,48 +109,10 @@ export function buildValidationNotices(records: Array<Record<string, unknown>>, 
     return notices
 }
 
-export function areRecordsEqual(a: Array<Record<string, unknown>>, b: Array<Record<string, unknown>>): boolean {
-    return JSON.stringify(a) === JSON.stringify(b)
-}
-
 export function valueToEditString(value: unknown): string {
     if (Array.isArray(value)) return value.map(String).join(", ")
     if (typeof value === "object" && value !== null) return JSON.stringify(value)
     return String(value ?? "")
-}
-
-export function coerceEditedValue(originalValue: unknown, rawValue: string): unknown {
-    const trimmedValue = rawValue.trim()
-
-    if (Array.isArray(originalValue)) {
-        return trimmedValue.length === 0
-            ? []
-            : rawValue
-                  .split(",")
-                  .map(item => item.trim())
-                  .filter(Boolean)
-    }
-
-    if (typeof originalValue === "number") {
-        const numericValue = Number(trimmedValue)
-        return Number.isNaN(numericValue) ? rawValue : numericValue
-    }
-
-    if (typeof originalValue === "boolean") {
-        if (trimmedValue.toLowerCase() === "true") return true
-        if (trimmedValue.toLowerCase() === "false") return false
-        return rawValue
-    }
-
-    if (typeof originalValue === "object" && originalValue !== null) {
-        try {
-            return trimmedValue.length === 0 ? null : JSON.parse(rawValue)
-        } catch {
-            return rawValue
-        }
-    }
-
-    return rawValue
 }
 
 function buildColumnOrder(records: Array<Record<string, unknown>>, attributes?: AttioAttribute[], matchingAttribute?: string): string[] {

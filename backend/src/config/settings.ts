@@ -210,10 +210,10 @@ export const settings = {
 } as const
 
 // Export individual settings for convenience
-export const { jwt, database, openai, tavily, gemini, urls, nodeEnv, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
+export const { jwt, gemini, urls, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
 
 // Type exports
-export type Settings = typeof settings
+type Settings = typeof settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively

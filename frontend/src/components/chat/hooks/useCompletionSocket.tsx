@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { type ModelEvent, type ModelRequest } from "terse-types"
 
-export type ChatEventPayload = {
+type ChatEventPayload = {
     runHistoryModelEvent: ModelEvent
 }
 

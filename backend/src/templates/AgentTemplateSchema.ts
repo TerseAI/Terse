@@ -18,7 +18,7 @@ function asTemplateConfigSchema<T extends z.ZodObject<any>>(schema: T) {
     })
 }
 
-export const ConfigTemplateSchema = z.union(configDataSchema.options.map(schema => asTemplateConfigSchema(schema as z.ZodObject<any>)) as unknown as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]])
+const ConfigTemplateSchema = z.union(configDataSchema.options.map(schema => asTemplateConfigSchema(schema as z.ZodObject<any>)) as unknown as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]])
 
 const AgentPromptSchema = z
     .object({
@@ -41,7 +41,7 @@ const AgentOutputTemplateSchema = z
     })
     .strict()
 
-export const AgentTemplateSchema = z
+const AgentTemplateSchema = z
     .object({
         id: z.string().min(1, "Template id is required"),
         category: templateCategorySchema,
@@ -57,10 +57,10 @@ export const AgentTemplateSchema = z
     })
     .strict()
 
-export const AgentTemplatesSchema = z.array(AgentTemplateSchema).min(1, "At least one template is required")
+const AgentTemplatesSchema = z.array(AgentTemplateSchema).min(1, "At least one template is required")
 
-export type AgentTemplate = z.infer<typeof AgentTemplateSchema>
-export type ConfigTemplate = z.infer<typeof ConfigTemplateSchema>
+type AgentTemplate = z.infer<typeof AgentTemplateSchema>
+type ConfigTemplate = z.infer<typeof ConfigTemplateSchema>
 export type AgentTemplates = z.infer<typeof AgentTemplatesSchema>
 
 /**
@@ -70,7 +70,7 @@ export type AgentTemplates = z.infer<typeof AgentTemplatesSchema>
  * @param templates - The templates to validate
  * @throws {Error} If validation fails, with detailed error messages
  */
-export function parseTemplates(templates: unknown): AgentTemplates {
+function parseTemplates(templates: unknown): AgentTemplates {
     const result = AgentTemplatesSchema.safeParse(templates)
 
     if (!result.success) {

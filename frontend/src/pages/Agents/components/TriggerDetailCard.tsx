@@ -8,6 +8,7 @@ import type {
     FrequencyUnit,
     GitHubConfigData,
     GmailConfigData,
+    HeyReachInputConfigData,
     LaunchDarklyConfigData,
     LinearInputConfigData,
     PosthogConfigData,
@@ -21,6 +22,7 @@ import { getCronDescription } from "../../../components/ScheduleEditor"
 import ToolCallParameters from "../../../components/ToolCallParameters"
 import { useGithubIntegrations } from "../../../hooks/api/useGithubIntegrations"
 import { useGithubResources } from "../../../hooks/api/useGithubResources"
+import { useHeyReachCampaigns } from "../../../hooks/api/useHeyReachCampaigns"
 import { useLinearTeams } from "../../../hooks/api/useLinearTeams"
 import { useSlackUsers } from "../../../hooks/api/useSlackUsers"
 
@@ -59,6 +61,8 @@ export function TriggerDetailCard({ trigger }: { trigger: AgentTrigger }) {
             return <DatadogBody config={config} label={label} type={type} />
         case ConfigType.LAUNCHDARKLY:
             return <LaunchDarklyBody config={config} label={label} type={type} />
+        case ConfigType.HEY_REACH_INPUT:
+            return <HeyReachBody config={config} label={label} type={type} />
         default:
             return <Frame type={type} label={label} />
     }
@@ -252,6 +256,21 @@ function DatadogBody({ config, label, type }: { config: DatadogConfigData; label
     )
 }
 
+function HeyReachBody({ config, label, type }: { config: HeyReachInputConfigData; label: string; type: ConfigType }) {
+    const { campaigns } = useHeyReachCampaigns(config.integrationId)
+    const campaignIds = config.campaignIds ?? []
+    const campaignLabels = campaignIds.map(id => campaigns.find(c => c.id === id)?.name ?? id)
+
+    return (
+        <Frame type={type} label={label}>
+            <Field label="Event">
+                <Chips items={[formatHeyReachEvent(config.eventType)]} />
+            </Field>
+            <Field label="Campaigns">{campaignIds.length > 0 ? <Chips items={campaignLabels} /> : <span className="text-muted-foreground text-xs">All campaigns</span>}</Field>
+        </Frame>
+    )
+}
+
 function LaunchDarklyBody({ config, label, type }: { config: LaunchDarklyConfigData; label: string; type: ConfigType }) {
     return (
         <Frame type={type} label={label} summary={config.projectKey}>
@@ -369,4 +388,33 @@ function formatLinearEvent(type: string): string {
 function formatGmailEvent(type: string): string {
     if (type === "email.received") return "Email received"
     return type
+}
+
+function formatHeyReachEvent(type: string): string {
+    switch (type) {
+        case "CONNECTION_REQUEST_SENT":
+            return "Connection request sent"
+        case "CONNECTION_REQUEST_ACCEPTED":
+            return "Connection accepted"
+        case "MESSAGE_SENT":
+            return "Message sent"
+        case "MESSAGE_REPLY_RECEIVED":
+            return "Message reply"
+        case "INMAIL_SENT":
+            return "InMail sent"
+        case "INMAIL_REPLY_RECEIVED":
+            return "InMail reply"
+        case "FOLLOW_SENT":
+            return "Follow sent"
+        case "LIKED_POST":
+            return "Post liked"
+        case "VIEWED_PROFILE":
+            return "Profile viewed"
+        case "CAMPAIGN_COMPLETED":
+            return "Campaign completed"
+        case "LEAD_TAG_UPDATED":
+            return "Lead tag updated"
+        default:
+            return type
+    }
 }

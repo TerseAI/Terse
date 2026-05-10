@@ -18,6 +18,6 @@ export function generateWebhookSecret(length: number = 32): string {
  * @param length - Number of bytes to generate (default: 16, which produces 32 hex characters)
  * @returns Hex-encoded random string
  */
-export function generateWebhookPasscode(length: number = 16): string {
+function generateWebhookPasscode(length: number = 16): string {
     return crypto.randomBytes(length).toString("hex")
 }

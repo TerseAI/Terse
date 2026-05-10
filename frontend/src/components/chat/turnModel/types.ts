@@ -1,6 +1,6 @@
 import type { ChangedItem, ChatSnippet, SharedErrorContext } from "terse-types"
 
-export interface BaseUnit {
+interface BaseUnit {
     unitId: string
     timestamp: number
 }
@@ -10,7 +10,7 @@ export interface TextUnit extends BaseUnit {
     text: string
 }
 
-export type ToolCallStatus = "generating_params" | "running" | "waiting_approval" | "approved_running" | "rejected" | "completed" | "failed"
+type ToolCallStatus = "generating_params" | "running" | "waiting_approval" | "approved_running" | "rejected" | "completed" | "failed"
 
 export interface ToolCallUnit extends BaseUnit {
     kind: "tool_call"
@@ -30,7 +30,7 @@ export interface SnippetUnit extends BaseUnit {
     snippet: ChatSnippet
 }
 
-export interface ProcessOutputChunk {
+interface ProcessOutputChunk {
     stream: "stdout" | "stderr"
     content: string
     timestamp: number
@@ -56,7 +56,7 @@ export interface FilterResultUnit extends BaseUnit {
 
 export type TurnUnit = TextUnit | ToolCallUnit | SnippetUnit | ProcessOutputUnit | ThinkingUnit | FilterResultUnit
 
-export type TurnStatus = "generating" | "natural_stop" | "cancelled" | "failed"
+type TurnStatus = "generating" | "natural_stop" | "cancelled" | "failed"
 
 export interface Turn {
     id: string

@@ -7,13 +7,13 @@ import { Output, ToolboxEntry } from "../abstract/Output"
 
 import { webExtractTool } from "./tools/webExtractTool"
 import { webResearchTool } from "./tools/webResearchTool"
-import { runHistoryWebSearchTool } from "./tools/webSearchTool"
+import { webSearchTool } from "./tools/webSearchTool"
 
 export class WebOutput extends Output<WebConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: runHistoryWebSearchTool,
+                tool: webSearchTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Web Search"

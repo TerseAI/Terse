@@ -161,9 +161,3 @@ function extractWebhookData(req: Request): { emailAddress: string; historyId: nu
         return null
     }
 }
-
-export default {
-    gmailCallback,
-    deleteGmailIntegration,
-    handleGmailWebhook
-}

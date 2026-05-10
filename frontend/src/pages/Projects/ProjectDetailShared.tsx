@@ -23,7 +23,7 @@ import { useProjectMutations } from "../../hooks/api/useProject"
 import { cn } from "../../lib/utils"
 import { formatDuration, formatTimestamp } from "../../utility/timeUtils"
 
-export const DEPLOYS_PREVIEW_LIMIT = 5
+const DEPLOYS_PREVIEW_LIMIT = 5
 
 export function PageFrame({ children }: { children: React.ReactNode }) {
     return (

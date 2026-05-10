@@ -150,7 +150,7 @@ async function integrationHasInstances(integration: Integration<IntegrationInsta
     return (await integration.getInstancesForOrganization(organizationId)).length > 0
 }
 
-export async function getOrganizationActiveIntegrations(organizationId: string): Promise<IntegrationType[]> {
+async function getOrganizationActiveIntegrations(organizationId: string): Promise<IntegrationType[]> {
     const hasInstancesResults = await Promise.all(INTEGRATION_REGISTRY.map(integration => integrationHasInstances(integration, organizationId)))
 
     return INTEGRATION_REGISTRY.filter((_, index) => hasInstancesResults[index]).map(integration => integration.integrationType)

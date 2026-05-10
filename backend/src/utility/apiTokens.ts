@@ -9,7 +9,7 @@ export function hashToken(rawToken: string): string {
     return crypto.createHash("sha256").update(rawToken).digest("hex")
 }
 
-export function generateRawToken(): string {
+function generateRawToken(): string {
     return `terse_${crypto.randomBytes(32).toString("hex")}`
 }
 
@@ -65,7 +65,7 @@ export async function createProjectScopedToken(
     return { rawToken, tokenId: token.id }
 }
 
-export const SANDBOX_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
+const SANDBOX_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 
 export async function createSandboxToken(params: { userId: string; organizationId: string; projectId: string }): Promise<{ rawToken: string; tokenId: string }> {
     const rawToken = generateRawToken()

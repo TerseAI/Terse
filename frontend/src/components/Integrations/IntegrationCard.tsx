@@ -15,13 +15,6 @@ import SlackIntegrationCard from "./SlackIntegrationCard"
 import SnowflakeIntegrationCard from "./SnowflakeIntegrationCard"
 import WorkOSIntegrationCard from "./WorkOSIntegrationCard"
 
-export interface IntegrationCardProps {
-    className?: string
-    isActive?: boolean
-    stateToken?: string
-    compact?: boolean
-}
-
 function IntegrationCard({ integration, isActive = true, stateToken, compact = false }: { integration: IntegrationType; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const cardClassName = "min-w-sm max-w-sm"
 
@@ -53,6 +46,7 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <SnowflakeIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:
         case IntegrationType.WEBMONITOR:
+        case IntegrationType.HEY_REACH:
             return null
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing

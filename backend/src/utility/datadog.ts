@@ -37,7 +37,7 @@ export function getDatadogApiUrl(region: string): string {
  * @param region Region code (us, eu, us3, us5, ap1)
  * @returns App base URL (e.g., https://app.datadoghq.com)
  */
-export function getDatadogAppUrl(region: string): string {
+function getDatadogAppUrl(region: string): string {
     const site = getDatadogSite(region)
     if (site === "datadoghq.com") {
         return "https://app.datadoghq.com"

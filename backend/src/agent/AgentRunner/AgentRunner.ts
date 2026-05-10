@@ -4,7 +4,8 @@ import { RunHistoryActionType } from "@prisma/client"
 import { EntityType } from "terse-types"
 import { IntegrationType } from "terse-types"
 import { ChangeEventType, ChangedItem, ModelEvent } from "terse-types"
-import type { ConfigData, RunHistoryAction, TrackingParams, Trigger } from "terse-types"
+import { Decision } from "terse-types"
+import type { ConfigData, RunHistoryAction, TrackingParams } from "terse-types"
 
 import { settings } from "../../config/settings"
 import { Session } from "../../express"
@@ -58,7 +59,7 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         agent: AgentWithRelations,
         runContext: RunContext,
         maxTurns: number = 50,
-        billing: BillingService = billingServiceProxyForOrganization(session.user.organizationId)
+        billing: BillingService = billingServiceProxyForOrganization(session.user.organizationId, session.user.workosId)
     ) {
         super({
             runId: runContext.runId,
@@ -505,8 +506,6 @@ export enum AgentRunResultStatus {
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
     | { status: AgentRunResultStatus.COMPLETED; result: RunResult<T, AgentType>; endedWithToolFailure: boolean }
     | { status: AgentRunResultStatus.AWAITING_APPROVAL; state: RunState<T, AgentType>; interruptions: RunToolApprovalItem[] }
-
-export type Decision = "approve" | "reject"
 
 type ToolMetadata = {
     integration: IntegrationType

@@ -14,7 +14,7 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Skeleton } from "../ui/skeleton"
 
-import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import CompactIntegrationRow from "./CompactIntegrationRow"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"
 

@@ -7,7 +7,7 @@ import { gunzipSync, strFromU8, strToU8 } from "fflate"
 import logger from "../../../logger"
 
 // rrweb event types (from @rrweb/types)
-export enum EventType {
+enum EventType {
     DomContentLoaded = 0,
     Load = 1,
     FullSnapshot = 2,
@@ -17,7 +17,7 @@ export enum EventType {
     Plugin = 6
 }
 
-export enum IncrementalSource {
+enum IncrementalSource {
     Mutation = 0,
     MouseMove = 1,
     MouseInteraction = 2,
@@ -36,7 +36,7 @@ export enum IncrementalSource {
     AdoptedStyleSheet = 15
 }
 
-export enum MouseInteractions {
+enum MouseInteractions {
     MouseUp = 0,
     MouseDown = 1,
     Click = 2,
@@ -50,7 +50,7 @@ export enum MouseInteractions {
     TouchCancel = 10
 }
 
-export interface eventWithTime {
+interface eventWithTime {
     type: EventType
     data: any
     timestamp: number
@@ -61,7 +61,7 @@ interface CompressedEvent extends eventWithTime {
     cv: string // compression version
 }
 
-export interface SessionSnapshot {
+interface SessionSnapshot {
     source: string
     start_timestamp: string
     end_timestamp: string
@@ -79,7 +79,7 @@ interface RecordingSnapshot extends eventWithTime {
 /**
  * Summarized event types returned to the AI
  */
-export interface SummarizedEvent {
+interface SummarizedEvent {
     type: "click" | "input" | "scroll" | "console" | "network_error" | "navigation" | "custom" | "page_load" | "viewport_resize"
     timestamp: number
     relativeTime: number // seconds from session start
