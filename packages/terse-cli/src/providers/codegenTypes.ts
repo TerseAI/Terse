@@ -1,6 +1,6 @@
 import type { GithubIntegration } from "terse-types"
 
-export interface GitHubRepo {
+interface GitHubRepo {
     id: number
     name: string
     owner: string
@@ -17,40 +17,40 @@ export interface IntegrationInstanceData {
     displayName: string
 }
 
-export interface SlackChannelData {
+interface SlackChannelData {
     id: string
     name: string
 }
 
-export interface LinearTeamData {
+interface LinearTeamData {
     id: string
     name: string
     key: string
 }
 
-export interface LinearProjectData {
+interface LinearProjectData {
     id: string
     name: string
     description?: string
     teamId: string
 }
 
-export interface NotionResourceData {
+interface NotionResourceData {
     id: string
     title: string
     type: string
 }
 
-export interface PosthogProjectData {
+interface PosthogProjectData {
     id: string
     name: string
 }
 
-export interface DatadogIndexData {
+interface DatadogIndexData {
     name: string
 }
 
-export interface LaunchDarklyProjectData {
+interface LaunchDarklyProjectData {
     key: string
     name: string
 }
@@ -68,7 +68,7 @@ export interface AttioAttributeData {
     is_unique?: boolean
 }
 
-export interface AttioObjectData {
+interface AttioObjectData {
     api_slug: string
     singular_noun: string
     plural_noun?: string
@@ -105,6 +105,15 @@ export interface AttioInstanceData extends IntegrationInstanceData {
     objects: AttioObjectData[]
 }
 
+export interface HeyReachCampaignData {
+    id: string
+    name: string
+}
+
+export interface HeyReachInstanceData extends IntegrationInstanceData {
+    campaigns: HeyReachCampaignData[]
+}
+
 export interface ToolDefinition {
     name: string
     displayName: string
@@ -126,5 +135,6 @@ export interface CodegenInput {
     workos: IntegrationInstanceData[]
     attio: AttioInstanceData[]
     snowflake: SnowflakeInstanceData[]
+    heyreach: HeyReachInstanceData[]
     tools: ToolDefinition[]
 }

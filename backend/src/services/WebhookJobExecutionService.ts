@@ -13,7 +13,7 @@ import { buildSignatureHeaders } from "../utility/webhookHmac"
 
 import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from "./webhookJobHandshakeChallenge"
 
-export interface WebhookJobExecutionParams {
+interface WebhookJobExecutionParams {
     remoteServerUrl: string
     runId: string
     agent: SDKAgent

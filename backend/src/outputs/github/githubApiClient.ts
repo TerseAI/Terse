@@ -7,18 +7,6 @@ import { db } from "../../prismaClient"
 import { SecretField, getSecret } from "../../services/SecretService"
 
 /**
- * Configuration for GitHub KB session
- */
-export interface GitHubKBSessionConfig {
-    accessToken: string
-    repositories: {
-        id: number
-        fullName: string // owner/repo format
-        defaultBranch: string
-    }[]
-}
-
-/**
  * Creates an authenticated Octokit client
  */
 export function createGitHubClient(accessToken: string): Octokit {

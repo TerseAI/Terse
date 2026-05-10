@@ -7,6 +7,7 @@ import type {
     DatadogIntegration,
     GithubIntegration,
     GmailIntegration,
+    HeyReachIntegration,
     LaunchDarklyIntegration,
     LinearIntegration,
     NotionIntegration,
@@ -28,6 +29,7 @@ import {
     type CodegenInput,
     type DatadogInstanceData,
     type GitHubInstanceData,
+    type HeyReachInstanceData,
     type LaunchDarklyInstanceData,
     type LinearInstanceData,
     type NotionInstanceData,
@@ -108,6 +110,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         workos: [],
         attio: [],
         snowflake: [],
+        heyreach: [],
         tools: toolDefs
     }
 
@@ -300,6 +303,23 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         )
     }
 
+    if (has(IntegrationType.HEY_REACH)) {
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<HeyReachIntegration[]>(ApiRoutes.HEY_REACH.INTEGRATIONS, apiKey)
+                input.heyreach = await Promise.all(
+                    instances.map(async (inst): Promise<HeyReachInstanceData> => {
+                        const resp = await fetchWithAuth<{ campaigns: Array<{ id: string; name: string }> }>(
+                            `${ApiRoutes.HEY_REACH.CAMPAIGNS}?integrationId=${encodeURIComponent(inst.id)}`,
+                            apiKey
+                        ).catch(() => ({ campaigns: [] }))
+                        return { id: inst.id, displayName: inst.id, campaigns: resp.campaigns || [] }
+                    })
+                )
+            })
+        )
+    }
+
     await Promise.all(promises)
 
     const integrationCount =
@@ -312,7 +332,8 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
         input.datadog.length +
         input.launchdarkly.length +
         input.workos.length +
-        input.attio.length
+        input.attio.length +
+        input.heyreach.length
 
     s.message("Generating code")
 
@@ -368,6 +389,7 @@ function summarizeIntegrations(input: CodegenInput): string {
     if (input.workos.length > 0) parts.push(labelWithCount("WorkOS", input.workos.length))
     if (input.attio.length > 0) parts.push(labelWithCount("Attio", input.attio.length))
     if (input.snowflake.length > 0) parts.push(labelWithCount("Snowflake", input.snowflake.length))
+    if (input.heyreach.length > 0) parts.push(labelWithCount("HeyReach", input.heyreach.length))
 
     return formatSummaryList(parts, 10)
 }

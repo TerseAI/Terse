@@ -1,7 +1,18 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
-import { BillingCatalogResponse, BillingChangeResponse, BillingContextQuery, BillingContextResponse, BillingPeriod, BillingStripeRedirectResponse, PlanKey } from "terse-types"
+import {
+    BillingCatalogResponse,
+    BillingChangeResponse,
+    BillingContextQuery,
+    BillingContextResponse,
+    BillingPeriod,
+    BillingStatusResponse,
+    BillingStripeRedirectResponse,
+    BillingUsageBucketsQuery,
+    PlanKey,
+    type UsageResponse
+} from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
     AttioIntegration,
@@ -264,6 +275,11 @@ interface BackendService {
      * @param search - Optional search term to filter projects
      */
     getPosthogProjects(integrationId: string, search?: string): Promise<PosthogProjectsResponse>
+
+    /**
+     * Gets HeyReach campaigns for an integration
+     */
+    getHeyReachCampaigns(integrationId: string): Promise<{ campaigns: Array<{ id: string; name: string }> }>
 
     /**
      * Gets available channels for a Slack integration
@@ -587,6 +603,8 @@ interface BackendService {
     getAgentFileContent(agentId: string, fileId: string): Promise<AgentFileContentResponse>
 
     getBillingContext(params: BillingContextQuery): Promise<BillingContextResponse>
+    getBillingUsageBuckets(params: BillingUsageBucketsQuery): Promise<UsageResponse>
+    getBillingStatus(): Promise<BillingStatusResponse>
     getBillingCatalog(): Promise<BillingCatalogResponse>
     createCheckoutForPlan(planKey: PlanKey, period: BillingPeriod): Promise<BillingStripeRedirectResponse>
     createCheckoutForTopup(packCredits: number): Promise<BillingStripeRedirectResponse>
@@ -801,6 +819,13 @@ export const BackendProvider: BackendService = {
             params.append("search", search)
         }
         return axios.get<PosthogProjectsResponse>(`${backendBaseUrl}${ApiRoutes.POSTHOG.PROJECTS}?${params.toString()}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getHeyReachCampaigns: (integrationId: string) => {
+        const params = new URLSearchParams({ integrationId })
+        return axios
+            .get<{ campaigns: Array<{ id: string; name: string }> }>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.CAMPAIGNS}?${params.toString()}`, { withCredentials: true })
+            .then(response => response.data)
     },
 
     getSlackIntegrations: () => {
@@ -1223,6 +1248,9 @@ export const BackendProvider: BackendService = {
     },
     getBillingContext: (params: BillingContextQuery) =>
         axios.get<BillingContextResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CONTEXT}`, { withCredentials: true, params }).then(response => response.data),
+    getBillingUsageBuckets: (params: BillingUsageBucketsQuery) =>
+        axios.get<UsageResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.USAGE_BUCKETS}`, { withCredentials: true, params }).then(response => response.data),
+    getBillingStatus: () => axios.get<BillingStatusResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.STATUS}`, { withCredentials: true }).then(response => response.data),
     getBillingCatalog: () => axios.get<BillingCatalogResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CATALOG}`, { withCredentials: true }).then(response => response.data),
     createCheckoutForPlan: (planKey: PlanKey, period: BillingPeriod) =>
         axios

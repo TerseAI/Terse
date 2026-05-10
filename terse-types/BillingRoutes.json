@@ -1,6 +1,8 @@
 {
     "CATALOG": "/billing/catalog",
+    "STATUS": "/billing/status",
     "CONTEXT": "/billing/context",
+    "USAGE_BUCKETS": "/billing/usage-buckets",
     "CHECKOUT_SESSION": "/billing/checkout-session",
     "CHANGE": "/billing/change",
     "PORTAL_SESSION": "/billing/portal-session",

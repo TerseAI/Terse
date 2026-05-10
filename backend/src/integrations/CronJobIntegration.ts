@@ -1,5 +1,6 @@
 import { InputConfigType } from "@prisma/client"
 import { ApiRoutes, CronTrigger, buildRoute } from "terse-types"
+import { FormFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -12,10 +13,10 @@ import { AgentTriggerWithConfigs } from "../types/prisma"
 import { SchedulerClient, createSchedulerClient } from "../utility/schedulerClient"
 import { getUserForOrg } from "../utility/workos"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
-export interface ScheduleWebhookEvent {
+interface ScheduleWebhookEvent {
     inputId: string
     isManualTrigger?: boolean
     manualContext?: string
@@ -253,7 +254,7 @@ function isSchedulerJobNotFoundError(error: unknown): boolean {
     return typeof anyError.message === "string" && anyError.message.includes("NOT_FOUND")
 }
 
-export class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {
+class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {
     readonly integrationType = IntegrationType.CRON_JOB
     data: CronTrigger
 

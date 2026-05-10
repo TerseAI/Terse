@@ -5,7 +5,7 @@ import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export { SandboxStage }
 
-export type SdkProjectRuntime = "typescript" | "python"
+export type SdkProjectRuntime = "typescript"
 
 export interface SandboxCommandResult {
     exitCode: number
@@ -101,7 +101,7 @@ export async function runSandboxExecStage(context: SdkRuntimeExecutorContext, fn
     return result
 }
 
-export const SDK_SANDBOX_CODE_ZIP_PATH = "/tmp/code.zip"
-export const SDK_SANDBOX_PROJECT_DIR = "/tmp/project"
+const SDK_SANDBOX_CODE_ZIP_PATH = "/tmp/code.zip"
+const SDK_SANDBOX_PROJECT_DIR = "/tmp/project"
 export const SDK_SOURCE_IMAGE_PROJECT_DIR = "/opt/terse-sdk-run/project"
 export const SDK_SOURCE_IMAGE_CODE_ZIP_PATH = "/tmp/source-image-code.zip"

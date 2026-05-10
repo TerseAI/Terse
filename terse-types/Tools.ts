@@ -41,8 +41,6 @@ export const linearIssueAssigneeSchema = z.object({
     email: z.string().optional()
 })
 
-export const linearIssueTeamSchema = linearTeamSchema
-
 export const linearIssueProjectSchema = z.object({
     id: z.string(),
     name: z.string()
@@ -62,7 +60,7 @@ export const linearIssueSummarySchema = z.object({
 })
 
 export const linearIssueDetailSchema = linearIssueSummarySchema.extend({
-    team: linearIssueTeamSchema.nullable(),
+    team: linearTeamSchema.nullable(),
     project: linearIssueProjectSchema.nullable(),
     dueDate: dateLikeSchema.optional(),
     estimate: z.number().nullable().optional()
@@ -271,8 +269,6 @@ export const notionReadablePropertyValueSchema = z.union([
     notionLooseObjectSchema
 ])
 
-export const notionPageParentSchema = notionLooseObjectSchema
-
 export const notionPageBlockSchema: z.ZodType<{
     id: string
     type: string
@@ -337,7 +333,7 @@ export const notionPageQueryMetadataSchema = z.object({
     archived: z.boolean().optional(),
     icon: notionLooseObjectSchema.nullable().optional(),
     cover: notionLooseObjectSchema.nullable().optional(),
-    parent: notionPageParentSchema.optional(),
+    parent: notionLooseObjectSchema.optional(),
     created_by: notionUserReferenceSchema.optional(),
     last_edited_by: notionUserReferenceSchema.optional(),
     in_trash: z.boolean().optional()
@@ -703,7 +699,7 @@ export const slackReadConversationInputSchema = z.object({
 export const searchGitHubCodeInputSchema = z.object({
     repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
     query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
-    language: z.string().nullable().optional().describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
+    language: z.string().nullable().optional().describe('Filter by programming language (e.g., "typescript", "javascript"). Use null to search all languages.'),
     filename: z.string().nullable().optional().describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
     path: z.string().nullable().optional().describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
     perPage: z.number().int().describe("Number of results to return (default: 10, max: 100)"),

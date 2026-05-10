@@ -12,6 +12,8 @@ The `terse` CLI has one scaffold command and a shared workflow CLI.
 | ---------- | ------------------------------- | ----------------------------------------------------------------------------------- | ------------------------ |
 | TypeScript | `package.json`, `tsconfig.json` | `src/terse.jobs.ts` (falls back to `src/index.ts` when loading an existing project) | `src/terse.generated.ts` |
 
+The CLI scaffolds, generates helpers for, and runs **TypeScript workflows on Node.js** only. There is no Python project layout or Python SDK for workflows.
+
 `terse test` and `terse deploy` discover every workflow registered with `createJob()` in the entry file's module graph, including files reached by side-effect imports. Keep workflow `name` values unique.
 
 ## Getting started

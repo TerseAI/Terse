@@ -17,7 +17,7 @@ export enum LinearStateName {
     Canceled = "Canceled"
 }
 
-export interface Ticket {
+interface Ticket {
     id: string
     identifier: string
     title: string
@@ -51,11 +51,12 @@ export interface Ticket {
     updatedAt: string
 }
 
-export interface User {
+interface User {
     id: string
     name: string
     email: string
 }
+export { User as TicketSystemUser }
 
 export interface UserContext {
     userInfo: User
@@ -65,13 +66,13 @@ export interface UserContext {
     milestones: Milestone[]
 }
 
-export interface TicketState {
+interface TicketState {
     id: string
     name: string
 }
 
 // These are called Versions in Jira
-export interface Milestone {
+interface Milestone {
     id: string
     name: string
 }
@@ -85,20 +86,20 @@ export interface Organization {
     projects: Project[]
 }
 
-export type Project = {
+type Project = {
     id: string
     name: string
     description?: string
     updates: Update[]
 }
 
-export type Update = {
+type Update = {
     id: string
     title: string
     description?: string
 }
 
-export interface Comment {
+interface Comment {
     id: string
     authorId: string
     body: string
@@ -113,7 +114,7 @@ export interface Team {
     key: string
 }
 
-export interface CommitAssociation {
+interface CommitAssociation {
     sha: string
     message: string
     url: string
@@ -121,7 +122,7 @@ export interface CommitAssociation {
     branch?: string
 }
 
-export interface CreateTicketInput {
+interface CreateTicketInput {
     title: string
     teamId: string
     description?: string
@@ -143,7 +144,7 @@ export interface CreateTicketInput {
     issueType?: string // For Jira: Task, Bug, Story, Epic, etc.
 }
 
-export interface UpdateTicketInput {
+interface UpdateTicketInput {
     title: string
     teamId: string
     description?: string
@@ -164,6 +165,6 @@ export interface UpdateTicketInput {
     associatedCommits?: CommitAssociation[]
 }
 
-export interface TicketWebhookHandler {
+interface TicketWebhookHandler {
     (ticket: Ticket): void | Promise<void>
 }

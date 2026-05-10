@@ -30,12 +30,12 @@ export const listWorkOSUsersTool = defineSessionTool({
             const users = result.data.map(u => ({
                 id: u.id,
                 email: u.email,
-                emailVerified: u.email_verified,
-                firstName: u.first_name,
-                lastName: u.last_name,
-                profilePictureUrl: u.profile_picture_url,
-                createdAt: u.created_at,
-                updatedAt: u.updated_at
+                emailVerified: u.emailVerified,
+                firstName: u.firstName,
+                lastName: u.lastName,
+                profilePictureUrl: u.profilePictureUrl,
+                createdAt: u.createdAt,
+                updatedAt: u.updatedAt
             }))
 
             const filterDesc = [normalizedEmail && `email="${normalizedEmail}"`, normalizedOrgId && `org="${normalizedOrgId}"`].filter(Boolean).join(", ")
@@ -53,10 +53,10 @@ export const listWorkOSUsersTool = defineSessionTool({
                 success: true,
                 users,
                 pagination: {
-                    hasMore: !!result.list_metadata.after,
-                    after: result.list_metadata.after
+                    hasMore: !!result.listMetadata.after,
+                    after: result.listMetadata.after
                 },
-                message: `Found ${users.length} user(s)${filterDesc ? ` (${filterDesc})` : ""}${result.list_metadata.after ? " - more available via pagination" : ""}`,
+                message: `Found ${users.length} user(s)${filterDesc ? ` (${filterDesc})` : ""}${result.listMetadata.after ? " - more available via pagination" : ""}`,
                 actions: [action]
             }
         } catch (error: any) {

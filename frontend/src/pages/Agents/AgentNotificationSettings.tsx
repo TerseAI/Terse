@@ -13,7 +13,7 @@ import { Label } from "../../components/ui/label"
 import { NOTIFICATION_ACTION_OPTIONS } from "../../constants/notificationActions"
 import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations"
 
-export type AgentNotificationSettingsProps = {
+type AgentNotificationSettingsProps = {
     settings: AgentNotificationSettingsType
     agentCreator: User | undefined
     onChange: (settings: AgentNotificationSettingsType) => void

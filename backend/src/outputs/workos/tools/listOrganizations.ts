@@ -27,10 +27,10 @@ export const listWorkOSOrganizationsTool = defineSessionTool({
             const organizations = result.data.map(org => ({
                 id: org.id,
                 name: org.name,
-                externalId: org.external_id,
-                domains: org.domains ?? [],
-                createdAt: org.created_at,
-                updatedAt: org.updated_at
+                externalId: org.externalId,
+                domains: (org.domains ?? []).map(d => d.domain),
+                createdAt: org.createdAt,
+                updatedAt: org.updatedAt
             }))
 
             const action = {
@@ -46,10 +46,10 @@ export const listWorkOSOrganizationsTool = defineSessionTool({
                 success: true,
                 organizations,
                 pagination: {
-                    hasMore: !!result.list_metadata.after,
-                    after: result.list_metadata.after
+                    hasMore: !!result.listMetadata.after,
+                    after: result.listMetadata.after
                 },
-                message: `Found ${organizations.length} organization(s)${result.list_metadata.after ? " - more available via pagination" : ""}`,
+                message: `Found ${organizations.length} organization(s)${result.listMetadata.after ? " - more available via pagination" : ""}`,
                 actions: [action]
             }
         } catch (error: any) {

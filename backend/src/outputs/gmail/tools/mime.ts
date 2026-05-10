@@ -145,7 +145,7 @@ export function sanitizeCustomHeaders(customHeaders: Array<{ key: string; value:
     return sanitized
 }
 
-export function buildEmailContent(headers: string[], body?: string | null, htmlBody?: string | null): string {
+function buildEmailContent(headers: string[], body?: string | null, htmlBody?: string | null): string {
     const plainTextBody = body?.trim() ? body : null
     const htmlBodyContent = htmlBody?.trim() ? htmlBody : null
 

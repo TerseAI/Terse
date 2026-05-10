@@ -12,7 +12,8 @@ export function getInputConfigInclude() {
         time_trigger_config: true,
         workos_config: true,
         webhook_config: true,
-        webmonitor_config: true
+        webmonitor_config: true,
+        hey_reach_config: true
     } as const
 }
 
@@ -40,7 +41,7 @@ export function getOutputConfigInclude() {
  * Returns the full include object for hydrating an agent with all relations.
  * Use this when fetching agents that need their full configuration (inputs and outputs).
  */
-export function getAgentHydrationInclude() {
+function getAgentHydrationInclude() {
     return {
         prompt: true,
         inputs: {

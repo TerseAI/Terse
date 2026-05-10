@@ -3,13 +3,13 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { createProviderRegistry } from "ai"
 import { ModelReference, SUPPORTED_PROVIDERS, SupportedProvider } from "terse-types"
 
-export const DEFAULT_MODEL_REF = "openai:gpt-5.2"
+const DEFAULT_MODEL_REF = "openai:gpt-5.2"
 
-export function getDefaultModelRef(): string {
+function getDefaultModelRef(): string {
     return DEFAULT_MODEL_REF
 }
 
-export function listSupportedProviders(): readonly SupportedProvider[] {
+function listSupportedProviders(): readonly SupportedProvider[] {
     return SUPPORTED_PROVIDERS
 }
 

@@ -9,6 +9,8 @@ import {
     GmailConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
+    HeyReachEventType,
+    HeyReachInputConfig,
     ImageEditConfig,
     LaunchDarklyConfig,
     LinearEventType,
@@ -33,7 +35,7 @@ import { RunHistoryStatus as SharedRunHistoryStatus } from "terse-types/RunHisto
 
 import { AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
 
-export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
+const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
     switch (integrationType) {
         case IntegrationType.GITHUB:
             return PrismaIntegrationType.GITHUB
@@ -65,12 +67,14 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.WEBHOOK
         case IntegrationType.WEBMONITOR:
             return PrismaIntegrationType.WEBMONITOR
+        case IntegrationType.HEY_REACH:
+            return PrismaIntegrationType.HEY_REACH
         default:
             throw integrationType satisfies never
     }
 }
 
-export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationType: PrismaIntegrationType): IntegrationType => {
+const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationType: PrismaIntegrationType): IntegrationType => {
     switch (prismaIntegrationType) {
         case PrismaIntegrationType.GITHUB:
             return IntegrationType.GITHUB
@@ -104,6 +108,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.WEBHOOK
         case PrismaIntegrationType.WEBMONITOR:
             return IntegrationType.WEBMONITOR
+        case PrismaIntegrationType.HEY_REACH:
+            return IntegrationType.HEY_REACH
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -142,6 +148,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.WEBHOOK
         case IntegrationType.WEBMONITOR:
             return PrismaIntegrationType.WEBMONITOR
+        case IntegrationType.HEY_REACH:
+            return PrismaIntegrationType.HEY_REACH
         default:
             throw integrationType satisfies never
     }
@@ -182,6 +190,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.WEBHOOK
         case PrismaIntegrationType.WEBMONITOR:
             return IntegrationType.WEBMONITOR
+        case PrismaIntegrationType.HEY_REACH:
+            return IntegrationType.HEY_REACH
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -256,6 +266,10 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         return new WebMonitorConfig("", { number: 1, unit: "day" })
     }
 
+    if (channelInput.hey_reach_config) {
+        return new HeyReachInputConfig(integrationId, channelInput.hey_reach_config.event_type as HeyReachEventType, channelInput.hey_reach_config.campaign_ids || [])
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelInput.config_type) {
         case InputConfigType.GMAIL:
@@ -269,6 +283,7 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         case InputConfigType.WORKOS_INPUT:
         case InputConfigType.WEBHOOK_INPUT:
         case InputConfigType.WEBMONITOR:
+        case InputConfigType.HEY_REACH_INPUT:
             break
         default:
             throw channelInput.config_type satisfies never
@@ -397,6 +412,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.WEBHOOK_INPUT
         case ConfigType.WEBMONITOR:
             return InputConfigType.WEBMONITOR
+        case ConfigType.HEY_REACH_INPUT:
+            return InputConfigType.HEY_REACH_INPUT
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error("SLACK_OUTPUT is an output type, not an input type")
@@ -424,7 +441,7 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
     }
 }
 
-export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigType): ConfigType => {
+const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigType): ConfigType => {
     switch (inputConfigType) {
         case InputConfigType.GMAIL:
             return ConfigType.GMAIL
@@ -447,6 +464,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.WEBHOOK_INPUT
         case InputConfigType.WEBMONITOR:
             return ConfigType.WEBMONITOR
+        case InputConfigType.HEY_REACH_INPUT:
+            return ConfigType.HEY_REACH_INPUT
         default:
             throw inputConfigType satisfies never
     }

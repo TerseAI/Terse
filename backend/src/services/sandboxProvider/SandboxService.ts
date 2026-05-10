@@ -33,17 +33,17 @@ export interface Sandbox {
     snapshotFilesystem(): Promise<SandboxFileSystemSnapshot>
 }
 
-export interface ReadStream<R = any> extends ReadableStream<R> {
+interface ReadStream<R = any> extends ReadableStream<R> {
     readText(): Promise<string>
     readBytes(): Promise<Uint8Array>
 }
 
-export interface WriteStream<R = any> extends WritableStream<R> {
+interface WriteStream<R = any> extends WritableStream<R> {
     writeText(text: string): Promise<void>
     writeBytes(bytes: Uint8Array): Promise<void>
 }
 
-export interface ContainerProcess {
+interface ContainerProcess {
     get stdin(): WriteStream<string>
     get stdout(): ReadStream<string>
     get stderr(): ReadStream<string>
@@ -74,7 +74,7 @@ type SandboxCreateParams = {
     idleTimeoutMs?: number
 }
 
-export interface Secret {
+interface Secret {
     secretId: string
     name?: string
 }
@@ -82,13 +82,13 @@ export interface Secret {
 type StdioBehavior = "pipe" | "ignore"
 type StreamMode = "text" | "binary"
 
-export interface SandboxFile {
+interface SandboxFile {
     read(): Promise<Uint8Array>
     write(data: Uint8Array): Promise<void>
     flush(): Promise<void>
     close(): Promise<void>
 }
 
-export interface SandboxFileSystemSnapshot {
+interface SandboxFileSystemSnapshot {
     imageId: string
 }
