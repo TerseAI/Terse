@@ -20,7 +20,7 @@ import { getActiveSourceCodeGcsKeyForAutomation } from "../utility/projectHelper
 import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from "../utility/sdkZipReader"
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
-import { buildWebhookUrl } from "../utility/webhookUrl"
+import { buildHeyReachWebhookUrl, buildWebhookUrl } from "../utility/webhookUrl"
 
 function isUuidV4(s: string): boolean {
     return validateUuid(s) && uuidVersion(s) === 4
@@ -758,6 +758,9 @@ export async function deleteAgent(req: Request, res: Response) {
 export function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { metadata?: { webhookUrl: string } } {
     if (trigger.webhook_config) {
         return { metadata: { webhookUrl: buildWebhookUrl(trigger.webhook_config.webhook_token) } }
+    }
+    if (trigger.hey_reach_config) {
+        return { metadata: { webhookUrl: buildHeyReachWebhookUrl(trigger.id) } }
     }
     return {}
 }

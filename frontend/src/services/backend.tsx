@@ -277,6 +277,11 @@ interface BackendService {
     getPosthogProjects(integrationId: string, search?: string): Promise<PosthogProjectsResponse>
 
     /**
+     * Gets HeyReach campaigns for an integration
+     */
+    getHeyReachCampaigns(integrationId: string): Promise<{ campaigns: Array<{ id: string; name: string }> }>
+
+    /**
      * Gets available channels for a Slack integration
      */
     getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>
@@ -814,6 +819,13 @@ export const BackendProvider: BackendService = {
             params.append("search", search)
         }
         return axios.get<PosthogProjectsResponse>(`${backendBaseUrl}${ApiRoutes.POSTHOG.PROJECTS}?${params.toString()}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getHeyReachCampaigns: (integrationId: string) => {
+        const params = new URLSearchParams({ integrationId })
+        return axios
+            .get<{ campaigns: Array<{ id: string; name: string }> }>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.CAMPAIGNS}?${params.toString()}`, { withCredentials: true })
+            .then(response => response.data)
     },
 
     getSlackIntegrations: () => {
