@@ -74,6 +74,7 @@ type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
         workos_config: true
         webhook_config: true
         webmonitor_config: true
+        hey_reach_config: true
     }
 }>
 export type AgentTriggerWithConfigs = AutomationInputWithConfigs // Alias for rebranding (formerly ChannelInputWithConfigs)
@@ -120,6 +121,7 @@ type AutomationWithInputRelations = Prisma.automationsGetPayload<{
                 workos_config: true
                 webhook_config: true
                 webmonitor_config: true
+                hey_reach_config: true
             }
         }
     }

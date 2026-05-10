@@ -3,6 +3,7 @@ import * as z from "zod"
 // IMPORTANT: CHANGE THIS FOR NEW INTEGRATIONS. SHOULD MATCH PRISMA ENUM
 export enum IntegrationType {
     GITHUB = "github",
+    HEY_REACH = "hey_reach",
     GMAIL = "gmail",
     LINEAR = "linear",
     SLACK = "slack",
@@ -150,6 +151,14 @@ export const WebhookIntegrationMetadata = {
     isOutput: false
 } as const satisfies IntegrationDetails
 
+export const HeyReachIntegrationMetadata = {
+    type: IntegrationType.HEY_REACH,
+    name: "HeyReach",
+    description: "Trigger on HeyReach LinkedIn outreach events (replies, connections, campaign completions, etc.)",
+    isInput: true,
+    isOutput: false
+} as const satisfies IntegrationDetails
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails> // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -167,7 +176,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.ATTIO]: AttioIntegrationMetadata,
     [IntegrationType.SNOWFLAKE]: SnowflakeIntegrationMetadata,
     [IntegrationType.WEBHOOK]: WebhookIntegrationMetadata,
-    [IntegrationType.WEBMONITOR]: WebMonitorIntegrationMetadata
+    [IntegrationType.WEBMONITOR]: WebMonitorIntegrationMetadata,
+    [IntegrationType.HEY_REACH]: HeyReachIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -202,6 +212,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.SNOWFLAKE]: NoInstallationOptions
     [IntegrationType.WEBHOOK]: NoInstallationOptions
     [IntegrationType.WEBMONITOR]: NoInstallationOptions
+    [IntegrationType.HEY_REACH]: NoInstallationOptions
 }>
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T]
@@ -242,6 +253,9 @@ export const PosthogIntegrationSchema = IntegrationInstanceSchema.extend({
     orgName: z.string().optional()
 })
 export type PosthogIntegration = z.infer<typeof PosthogIntegrationSchema>
+
+export const HeyReachIntegrationSchema = IntegrationInstanceSchema
+export type HeyReachIntegration = z.infer<typeof HeyReachIntegrationSchema>
 
 export const LaunchDarklyIntegrationSchema = IntegrationInstanceSchema.extend({
     email: z.email().optional(),

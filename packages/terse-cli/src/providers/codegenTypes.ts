@@ -105,6 +105,15 @@ export interface AttioInstanceData extends IntegrationInstanceData {
     objects: AttioObjectData[]
 }
 
+export interface HeyReachCampaignData {
+    id: string
+    name: string
+}
+
+export interface HeyReachInstanceData extends IntegrationInstanceData {
+    campaigns: HeyReachCampaignData[]
+}
+
 export interface ToolDefinition {
     name: string
     displayName: string
@@ -126,5 +135,6 @@ export interface CodegenInput {
     workos: IntegrationInstanceData[]
     attio: AttioInstanceData[]
     snowflake: SnowflakeInstanceData[]
+    heyreach: HeyReachInstanceData[]
     tools: ToolDefinition[]
 }
