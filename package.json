@@ -8,10 +8,7 @@
         "format": "pnpm -r run format && pnpm --dir terse-probot-app run format",
         "format:check": "pnpm -r run format:check && pnpm --dir terse-probot-app run format:check",
         "install-global": "pnpm -r --filter terse-sdk --filter terse-cli run install-global",
-        "publish:npm": "bash scripts/publish.sh",
-        "test:add-org": "pnpm --filter backend run test:add-org",
-        "test:set-credits": "pnpm --filter backend run test:set-credits",
-        "test:setup-job": "node ./scripts/test-setup-job.mjs"
+        "publish:npm": "bash scripts/publish.sh"
     },
     "devDependencies": {
         "@trivago/prettier-plugin-sort-imports": "^6.0.2",
