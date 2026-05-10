@@ -21,6 +21,8 @@
         "test:processor": "tsx src/testing/testEventProcessor.ts",
         "test:processor:quick": "tsx src/testing/quickProcessorTest.ts",
         "test:seed-run-history": "tsx src/testing/seedRunHistory.ts",
+        "test:add-org": "node ./scripts/test-add-org.mjs",
+        "test:set-credits": "node ./scripts/test-set-credits.mjs",
         "db:generate": "prisma generate",
         "db:push": "prisma db push",
         "db:studio": "prisma studio",
