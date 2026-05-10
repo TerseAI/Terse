@@ -7,7 +7,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import logger from "../logger"
 import { db } from "../prismaClient"
 
-const webhookParamsSchema = z.object({ integrationId: z.string() })
+const webhookParamsSchema = z.object({ triggerId: z.string() })
 
 export async function getHeyReachIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -75,15 +75,18 @@ export async function getHeyReachCampaigns(req: Request, res: Response) {
 }
 
 export async function handleHeyReachWebhook(req: Request, res: Response) {
-    const { integrationId } = webhookParamsSchema.parse(req.params)
+    const { triggerId } = webhookParamsSchema.parse(req.params)
 
     try {
-        const integration = await db().hey_reach_integrations.findUnique({ where: { id: integrationId } })
-        if (!integration) {
-            logger.warn("HeyReach webhook received for unknown integration", { integrationId })
-            res.status(404).json({ error: "Integration not found" })
+        const trigger = await db().automation_inputs.findUnique({ where: { id: triggerId } })
+        if (!trigger) {
+            logger.warn("HeyReach webhook received for unknown trigger", { triggerId })
+            res.status(404).json({ error: "Trigger not found" })
             return
         }
+
+        const integrationId = trigger.integration_id
+        logger.info("HeyReach webhook received: triggerId", { triggerId })
 
         const parsed = heyReachWebhookPayloadSchema.safeParse(req.body)
         if (!parsed.success) {
@@ -96,11 +99,11 @@ export async function handleHeyReachWebhook(req: Request, res: Response) {
         res.status(200).json({ received: true })
 
         const manager = new HeyReachIntegrationManager()
-        manager.processWebhookEvent({ integrationId, payload }).catch(error => {
-            logger.error("Error processing HeyReach webhook", { error, integrationId })
+        manager.processWebhookEvent({ triggerId, payload }).catch(error => {
+            logger.error("Error processing HeyReach webhook", { error, triggerId })
         })
     } catch (error) {
-        logger.error("HeyReach webhook handler failed", { error, integrationId })
+        logger.error("HeyReach webhook handler failed", { error, triggerId })
         if (!res.headersSent) {
             res.status(500).json({ error: "Failed to process webhook" })
         }

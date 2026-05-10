@@ -79,8 +79,7 @@ const TriggerPresenters = {
     },
     [IntegrationType.HEY_REACH]: {
         formatForAgent: formatHeyReachTrigger,
-        debug: (event: HeyReachTrigger): string =>
-            `HeyReach ${event.eventType}${event.lead?.id != null ? ` lead=${event.lead.id}` : ""}`,
+        debug: (event: HeyReachTrigger): string => `HeyReach ${event.eventType}${event.lead?.id != null ? ` lead=${event.lead.id}` : ""}`,
         display: formatHeyReachDisplay
     },
     [IntegrationType.WEBHOOK]: {

@@ -29,7 +29,7 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 const HEYREACH_API_BASE = "https://api.heyreach.io/api/public"
 
 export interface HeyReachWebhookRequest {
-    integrationId: string
+    triggerId: string
     payload: HeyReachWebhookPayload
 }
 
@@ -71,14 +71,14 @@ export class HeyReachIntegrationManager
     }
 
     async processWebhookEvent(request: HeyReachWebhookRequest): Promise<void> {
-        const { integrationId, payload } = request
+        const { triggerId, payload } = request
 
         const subscribedTrigger = await db().automation_inputs.findFirst({
-            where: { integration_id: integrationId, config_type: InputConfigType.HEY_REACH_INPUT },
+            where: { id: triggerId, config_type: InputConfigType.HEY_REACH_INPUT },
             include: { automation: true }
         })
         if (!subscribedTrigger) {
-            logger.info("HeyReach webhook: no agent triggers subscribed, dropping", { integrationId, event_type: payload.event_type })
+            logger.info("HeyReach webhook: no agent triggers subscribed, dropping", { triggerId, event_type: payload.event_type })
             return
         }
 
@@ -91,12 +91,12 @@ export class HeyReachIntegrationManager
             return
         }
 
-        const event = new HeyReachTriggerRuntime(payload, integrationId)
+        const event = new HeyReachTriggerRuntime(payload, subscribedTrigger.integration_id)
         const processor = new EventProcessor(event, user)
         const results = await processor.process()
         for (const result of results) {
             if (result.success) {
-                logger.info("HeyReach event processed", { integrationId, event_type: payload.event_type, agentId: result.agentConfig?.id })
+                logger.info("HeyReach event processed", { integrationId: subscribedTrigger.integration_id, event_type: payload.event_type, agentId: result.agentConfig?.id })
             }
         }
     }
@@ -146,10 +146,7 @@ export class HeyReachIntegrationManager
         return {
             title: "Connect HeyReach",
             url: "https://app.heyreach.io/app/integrations/public-api/api",
-            instructions: [
-                "Generate an API key in HeyReach under Integrations & API.",
-                "After saving, use the webhook URL Terse returns to create a webhook in HeyReach for the events you want to listen to."
-            ]
+            instructions: ["Generate an API key in HeyReach under Integrations & API."]
         }
     }
 
@@ -236,11 +233,7 @@ export class HeyReachTriggerRuntime extends TriggerRuntime<HeyReachTrigger> {
 
     createTriggerMetadata(): RunHistoryTrigger {
         const lead = this.data.lead
-        const leadName = lead
-            ? [lead.first_name, lead.last_name].filter(Boolean).join(" ").trim() ||
-              lead.full_name?.trim() ||
-              (lead.id != null ? String(lead.id) : undefined)
-            : undefined
+        const leadName = lead ? [lead.first_name, lead.last_name].filter(Boolean).join(" ").trim() || lead.full_name?.trim() || (lead.id != null ? String(lead.id) : undefined) : undefined
         return {
             event: this.data.eventType,
             integration: IntegrationType.HEY_REACH,
@@ -279,12 +272,7 @@ function buildHeyReachTrigger(payload: HeyReachWebhookPayload): HeyReachTrigger 
         rawPayload: payload as Record<string, unknown>
     }
 
-    const messageText =
-        typeof payload.message_body === "string"
-            ? payload.message_body
-            : typeof payload.connection_message === "string"
-              ? payload.connection_message
-              : undefined
+    const messageText = typeof payload.message_body === "string" ? payload.message_body : typeof payload.connection_message === "string" ? payload.connection_message : undefined
 
     switch (eventType) {
         case HeyReachEventType.MESSAGE_SENT:
@@ -382,7 +370,7 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
     }
 
     const webhookName = clipHeyReachWebhookName(eventType)
-    const webhookUrl = `${urls.backend}/webhooks/heyreach/${integrationId}`
+    const webhookUrl = `${urls.backend}/webhooks/heyreach/${triggerId}`
 
     const requestBody = heyReachWebhookRequestSchema.parse({ webhookName, webhookUrl, eventType, campaignIds })
     const response = await fetch(`${HEYREACH_API_BASE}/webhooks/CreateWebhook`, {
