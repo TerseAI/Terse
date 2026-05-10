@@ -526,13 +526,9 @@ async function getAccessibleRunRecord(runId: string, organizationId: string | un
     return runRecord
 }
 
-/**
- * Finalize a failed run end-to-end: mark failed, invalidate caches, emit live error event,
- * and notify the user via their configured destination (Slack/email).
- * All side effects are best-effort; failures are logged and never rethrown.
- */
 export async function finalizeRunFailure(runId: string, classified: ClassifiedError, user: User, agent: Agent): Promise<void> {
-    await markRunFailedAndInvalidate(runId, classified, user.organizationId, agent.id)
+    const transitioned = await markRunFailedAndInvalidate(runId, classified, user.organizationId, agent.id)
+    if (!transitioned) return
     try {
         await new NotificationManager(user, agent).notifyRunFailure(runId, classified.message)
     } catch (notificationError) {
@@ -540,13 +536,11 @@ export async function finalizeRunFailure(runId: string, classified: ClassifiedEr
     }
 }
 
-/**
- * Mark run as failed, append a raw error system event for model memory, emit a live RunError, and invalidate related caches.
- * Logs on failure; does not rethrow.
- */
-export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<void> {
+export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<boolean> {
     try {
-        await markRunFailed(runId, classified.message, "agent")
+        const transitioned = await markRunFailed(runId, classified.message, "agent")
+        if (!transitioned) return false
+
         await appendRunHistoryErrorSystemEvent(runId, classified)
 
         if (io && organizationId) {
@@ -566,8 +560,10 @@ export async function markRunFailedAndInvalidate(runId: string, classified: Clas
         if (organizationId) {
             invalidateRunAndChatHistory(organizationId, agentId, runId)
         }
+        return true
     } catch (e) {
         logger.error("Failed to mark run as failed and invalidate cache", { error: e, runId })
+        return false
     }
 }
 
