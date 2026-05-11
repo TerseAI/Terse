@@ -116,7 +116,7 @@ export async function getSnowflakeCredentials(integrationId: string, organizatio
     }
 }
 
-export function createSnowflakeConnection(credentials: SnowflakeCredentials): snowflake.Connection {
+function createSnowflakeConnection(credentials: SnowflakeCredentials): snowflake.Connection {
     const normalizedPrivateKey = normalizeSnowflakePrivateKey(credentials.privateKey, credentials.passphrase)
     const connectionOptions: snowflake.ConnectionOptions = {
         account: credentials.accountIdentifier,
@@ -132,7 +132,7 @@ export function createSnowflakeConnection(credentials: SnowflakeCredentials): sn
     return snowflake.createConnection(connectionOptions)
 }
 
-export function connectAsync(connection: snowflake.Connection): Promise<snowflake.Connection> {
+function connectAsync(connection: snowflake.Connection): Promise<snowflake.Connection> {
     return new Promise((resolve, reject) => {
         connection.connect((err, conn) => {
             if (err) {
@@ -150,7 +150,7 @@ export interface QueryResult {
     rowCount: number
 }
 
-export function executeQuery(connection: snowflake.Connection, sql: string): Promise<QueryResult> {
+function executeQuery(connection: snowflake.Connection, sql: string): Promise<QueryResult> {
     return new Promise((resolve, reject) => {
         connection.execute({
             sqlText: sql,

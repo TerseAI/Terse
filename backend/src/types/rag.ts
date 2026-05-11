@@ -10,11 +10,11 @@ import type { WorkOSTriggerRuntime } from "../integrations/WorkOSIntegration"
 import logger from "../logger"
 import type { IdentifiableRunHistoryRawEvent } from "../rag/runHistoryRag/hydrator"
 
-export function isHydratorType(value: string): value is HydratorType {
+function isHydratorType(value: string): value is HydratorType {
     return hydratorTypeEnum.safeParse(value).success
 }
 
-export function parseHydratorType(value: string): HydratorType | undefined {
+function parseHydratorType(value: string): HydratorType | undefined {
     return isHydratorType(value) ? value : undefined
 }
 
@@ -40,10 +40,10 @@ export enum RAGNamespace {
     RUN_HISTORY_MEMORY = "run_history_memory"
 }
 
-export type NamespaceToHydratorTypes = {
+type NamespaceToHydratorTypes = {
     [RAGNamespace.RUN_HISTORY_MEMORY]: "run_history_raw_event"
 }
 
-export type NamespaceToHydratorType = {
+type NamespaceToHydratorType = {
     [N in RAGNamespace]: HydratorTypeMap[NamespaceToHydratorTypes[N]]
 }

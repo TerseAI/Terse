@@ -8,13 +8,13 @@ import { Output, defineToolboxEntry } from "../abstract/Output"
 import { validateWebCapabilityACL } from "./acl"
 import { webExtractTool } from "./tools/webExtractTool"
 import { webResearchTool } from "./tools/webResearchTool"
-import { runHistoryWebSearchTool } from "./tools/webSearchTool"
+import { webSearchTool } from "./tools/webSearchTool"
 
 export class WebOutput extends Output<WebConfig> {
     constructor() {
         const toolbox = [
             defineToolboxEntry({
-                tool: runHistoryWebSearchTool,
+                tool: webSearchTool,
                 isReadOnly: true,
                 integration: IntegrationType.TERSE,
                 displayName: "Web Search",

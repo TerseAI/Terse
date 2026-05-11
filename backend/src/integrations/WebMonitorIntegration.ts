@@ -9,6 +9,7 @@ import {
     WebMonitorTrigger,
     buildRoute
 } from "terse-types"
+import { FormFieldDefinition } from "terse-types"
 import { ConfigData, ConfigType, FrequencyUnit, WebMonitorOutputSchema } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { IntegrationInstance, IntegrationType, WebMonitorIntegrationMetadata } from "terse-types/Integrations"
@@ -22,7 +23,7 @@ import { Identifiable } from "../rag/Hydrator"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
-import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class WebMonitorIntegrationManager
@@ -288,7 +289,7 @@ export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<u
     }
 }
 
-export interface WebMonitorWebhookPayload {
+interface WebMonitorWebhookPayload {
     inputId: string
     rawBody: string | Buffer
     parsedJson: ParallelMonitorDetectedWebhookPayload

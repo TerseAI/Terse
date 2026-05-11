@@ -1,5 +1,6 @@
 import { GithubTrigger } from "./GithubTrigger"
 import { GmailTrigger } from "./GmailTrigger"
+import { HeyReachTrigger } from "./HeyReachTrigger"
 import { LinearTrigger } from "./LinearTrigger"
 import { ScheduleTrigger } from "./ScheduleTrigger"
 import { SlackTrigger } from "./SlackTrigger"
@@ -16,5 +17,6 @@ export const TRIGGER_REGISTRY: Trigger<any>[] = [
     new ScheduleTrigger(),
     new WebMonitorTrigger(),
     new WorkOSTrigger(),
-    new WebhookTrigger()
+    new WebhookTrigger(),
+    new HeyReachTrigger()
 ]

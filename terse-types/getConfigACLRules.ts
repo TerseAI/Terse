@@ -347,6 +347,7 @@ export function getConfigACLRules(config: ConfigData): ACLRule[] {
         case ConfigType.TIME_TRIGGER:
         case ConfigType.WEBHOOK_INPUT:
         case ConfigType.WEBMONITOR:
+        case ConfigType.HEY_REACH_INPUT:
             return []
         case ConfigType.SLACK:
             return getSlackInputConfigACLRules(config)

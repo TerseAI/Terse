@@ -11,6 +11,10 @@ Terse workflows combine two sources:
 
 After `terse generate`, integration trigger builders and skill factories are grouped under top-level **`Triggers`** and **`Skills`** objects (for example `Triggers.github.onPROpened(...)`, `Skills.slack({ channel: ... })`). System-style helpers live there too: `Triggers.schedule.cron(...)`, `Triggers.webhook.onRequest()`, and `Triggers.webMonitor.onEvent(...)`. Prefer these namespaces instead of older per-integration root exports such as `GitHub.*`, `Slack.*`, or `Schedule.*` / `Webhook.*`.
 
+<Note>
+    Hosted workflow runs use the **Node.js** runtime (`terse-sdk` and your generated `src/terse.generated.ts`). Terse does **not** ship a Python runtime or Python workflow SDK.
+</Note>
+
 ## Core SDK imports
 
 Import these from `terse-sdk`:
@@ -18,6 +22,7 @@ Import these from `terse-sdk`:
 - `createJob`: registers a workflow (call at module top level or from imported modules)
 - `CreateJobParameters`: the object shape passed to `createJob`
 - `Terse`: client for `handleTrigger` when you self-host the webhook endpoint
+- `TERSE_JOB_WEBHOOK_TRIGGER_PATH`: mount this path on your HTTP server when wiring `handleTrigger` (matches what the Terse backend calls)
 - `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`
 - `EventType`: enum for values on streamed `TerseAgent` results
 - `Trigger`: the base event interface

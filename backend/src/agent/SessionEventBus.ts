@@ -3,7 +3,7 @@ import { SdkAgentStreamEvent } from "terse-types/types"
 import { EventEmitterTaskQueue } from "../tasks/abstract/eventEmitterTasks"
 import { Task } from "../tasks/abstract/tasks"
 
-export interface SessionEventTask extends Task {
+interface SessionEventTask extends Task {
     event: SdkAgentStreamEvent
 }
 

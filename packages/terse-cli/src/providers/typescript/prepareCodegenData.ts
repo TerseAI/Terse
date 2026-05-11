@@ -6,6 +6,7 @@ import type {
     CodegenInput,
     DatadogInstanceData,
     GitHubInstanceData,
+    HeyReachInstanceData,
     IntegrationInstanceData,
     LaunchDarklyInstanceData,
     LinearInstanceData,
@@ -27,7 +28,7 @@ type SectionContext<T> = {
     data?: T
 }
 
-export interface ResourceClassContext {
+interface ResourceClassContext {
     className: string
     constructorParams: string
     items: Array<{
@@ -36,7 +37,7 @@ export interface ResourceClassContext {
     }>
 }
 
-export interface GitHubSectionContext {
+interface GitHubSectionContext {
     id: string
     skillToolType: string
     owners: Array<{ name: string; staticName: string }>
@@ -51,55 +52,55 @@ export interface GitHubSectionContext {
     }>
 }
 
-export interface GmailSectionContext {
+interface GmailSectionContext {
     id: string
     skillToolType: string
 }
 
-export interface SlackSectionContext {
+interface SlackSectionContext {
     id: string
     skillToolType: string
     channelClass: ResourceClassContext
 }
 
-export interface LinearSectionContext {
+interface LinearSectionContext {
     id: string
     skillToolType: string
     teamClass: ResourceClassContext
     projectClass: ResourceClassContext
 }
 
-export interface NotionSectionContext {
+interface NotionSectionContext {
     id: string
     skillToolType: string
     databaseClass: ResourceClassContext
     pageClass: ResourceClassContext
 }
 
-export interface PosthogSectionContext {
+interface PosthogSectionContext {
     id: string
     skillToolType: string
     projectClass: ResourceClassContext
 }
 
-export interface DatadogSectionContext {
+interface DatadogSectionContext {
     id: string
     skillToolType: string
     indexClass: ResourceClassContext
 }
 
-export interface LaunchDarklySectionContext {
+interface LaunchDarklySectionContext {
     id: string
     skillToolType: string
     projectClass: ResourceClassContext
 }
 
-export interface WorkOSSectionContext {
+interface WorkOSSectionContext {
     id: string
     skillToolType: string
 }
 
-export interface AttioObjectContext {
+interface AttioObjectContext {
     staticName: string
     apiSlug: string
     singularNoun: string
@@ -108,43 +109,48 @@ export interface AttioObjectContext {
     inputValuesType: string
 }
 
-export interface AttioSectionContext {
+interface AttioSectionContext {
     id: string
     skillToolType: string
     objects: AttioObjectContext[]
 }
 
-export interface SnowflakeSectionContext {
+interface SnowflakeSectionContext {
     id: string
     skillToolType: string
 }
 
-export interface ToolParamTypeContext {
+interface HeyReachSectionContext {
+    id: string
+    campaignClass: ResourceClassContext
+}
+
+interface ToolParamTypeContext {
     description?: string
     typeName: string
     tsType: string
 }
 
-export interface ToolMethodContext {
+interface ToolMethodContext {
     description?: string
     generatedSignature: string
     runtimeLines: string[]
 }
 
-export interface ToolGroupContext {
+interface ToolGroupContext {
     key: string
     integrationType: string
     methods: ToolMethodContext[]
 }
 
-export interface ToolsSectionContext {
+interface ToolsSectionContext {
     attioPreludeLines: string[]
     paramTypes: ToolParamTypeContext[]
     githubRepoMappings: Array<{ name: string; fullName: string }>
     groups: ToolGroupContext[]
 }
 
-export interface SystemSectionContext {}
+interface SystemSectionContext {}
 
 export interface TemplateContext {
     imports: string[]
@@ -160,11 +166,12 @@ export interface TemplateContext {
     workos?: WorkOSSectionContext
     attio?: AttioSectionContext
     snowflake?: SnowflakeSectionContext
+    heyreach?: HeyReachSectionContext
     tools?: ToolsSectionContext
     system: SystemSectionContext
 }
 
-export function toPascalCase(value: string): string {
+function toPascalCase(value: string): string {
     return value
         .replace(/[^a-zA-Z0-9]+/g, " ")
         .trim()
@@ -178,7 +185,7 @@ export function escapeString(value: string): string {
     return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 }
 
-export function toGeneratedIdentifier(raw: string, fallback: string): string {
+function toGeneratedIdentifier(raw: string, fallback: string): string {
     let name = toPascalCase(raw || fallback)
     if (!name) name = fallback
     if (/^\d/.test(name)) name = `_${name}`
@@ -256,7 +263,7 @@ function isProbablyAttioMultiValue(attr: AttioAttributeData): boolean {
     )
 }
 
-export function attioAttributeBaseType(attr: AttioAttributeData): string {
+function attioAttributeBaseType(attr: AttioAttributeData): string {
     const slug = (attr.api_slug || "").toLowerCase()
     const type = (attr.type || "").toLowerCase()
 
@@ -319,7 +326,7 @@ function renderStringLiteralUnion(values: string[]): string {
     return values.map(value => `"${escapeString(value)}"`).join(" | ")
 }
 
-export function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationType: string): string {
+function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationType: string): string {
     const toolNames = tools
         .filter(tool => toolIntegrationToIntegrationType(tool.integration.toLowerCase()) === integrationType)
         .filter(tool => !tool.isReadOnly || tool.supportsApproval)
@@ -627,6 +634,42 @@ function prepareSnowflakeSection(instances: SnowflakeInstanceData[], tools: Tool
         id: instances[0].id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "snowflake")
     })
+}
+
+function prepareHeyReachSection(instances: HeyReachInstanceData[]): SectionContext<HeyReachSectionContext> {
+    if (instances.length === 0) return sectionData([])
+    const inst = instances[0]
+    return sectionData(
+        [
+            "HeyReachInputConfig",
+            "HeyReachEventType",
+            "TypedTrigger",
+            "HeyReachTrigger",
+            "HeyReachConnectionRequestSentTrigger",
+            "HeyReachConnectionRequestAcceptedTrigger",
+            "HeyReachMessageSentTrigger",
+            "HeyReachMessageReplyReceivedTrigger",
+            "HeyReachInmailSentTrigger",
+            "HeyReachInmailReplyReceivedTrigger",
+            "HeyReachFollowSentTrigger",
+            "HeyReachLikedPostTrigger",
+            "HeyReachViewedProfileTrigger",
+            "HeyReachCampaignCompletedTrigger",
+            "HeyReachLeadTagUpdatedTrigger"
+        ],
+        {
+            id: inst.id,
+            campaignClass: buildResourceClassContext(
+                "HeyReachCampaign",
+                [
+                    { classField: "campaignId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" }
+                ],
+                "name",
+                inst.campaigns
+            )
+        }
+    )
 }
 
 function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionContext<ToolsSectionContext> {
@@ -1036,10 +1079,11 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const workos = prepareWorkOSSection(input.workos, input.tools)
     const attio = prepareAttioSection(input.attio, input.tools)
     const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
+    const heyreach = prepareHeyReachSection(input.heyreach)
     const tools = prepareToolsSection(input.tools, input)
     const system = prepareSystemSection()
 
-    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, tools, system]
+    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
 
     for (const section of sections) {
         section.imports.forEach(value => allImports.add(value))
@@ -1061,6 +1105,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         workos: workos.data,
         attio: attio.data,
         snowflake: snowflake.data,
+        heyreach: heyreach.data,
         tools: tools.data,
         system: system.data!
     }

@@ -11,7 +11,7 @@ import { BackendProvider } from "@/services/backend"
 import { Card, CardContent } from "../ui/card"
 import { Skeleton } from "../ui/skeleton"
 
-import { CompactIntegrationRow } from "./CompactIntegrationRow"
+import CompactIntegrationRow from "./CompactIntegrationRow"
 import { CountDisplay } from "./helpers/CountDisplay"
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"

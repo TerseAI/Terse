@@ -16,13 +16,14 @@ import {
     BillingRecordLlmResponse,
     BillingRoutes,
     BillingRunGateRequestBody,
+    BillingStatusResponse,
     BillingStripeRedirectResponse,
+    BillingUsageBucketsQuery,
     CreditGateDeniedError,
-    GetOrCreateCustomerRequestBody,
-    GetOrCreateCustomerResponse,
     PlanKey,
     RunGateDecision,
     type TerseBillingJwtClaims,
+    type UsageResponse,
     billingChargeRunBaseResponseSchema,
     billingRecordLlmResponseSchema,
     parseBillingForbiddenJson
@@ -35,22 +36,23 @@ import { signTerseBillingJwt } from "./billingJwt"
 
 const BILLING_REQUEST_TIMEOUT_MS = 15_000
 
-export class BillingNoBackendError extends Error {
+class BillingNoBackendError extends Error {
     constructor() {
         super("Billing backend URL is not configured")
         this.name = "BillingNoBackendError"
     }
 }
 
-export type BillingProxyAuth = TerseBillingJwtClaims
+type BillingProxyAuth = TerseBillingJwtClaims
 
 export interface BillingService {
     createCheckoutSession(body: BillingCheckoutRequestBody): Promise<BillingStripeRedirectResponse>
     createBillingPortalSession(body?: BillingPortalSessionRequestBody): Promise<BillingStripeRedirectResponse>
     changeBillingSubscription(body: BillingChangeRequestBody): Promise<BillingChangeResponse>
     getBillingCatalog(): Promise<BillingCatalogResponse>
+    getBillingStatus(): Promise<BillingStatusResponse>
     getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse>
-    getOrCreateCustomer(body?: GetOrCreateCustomerRequestBody): Promise<GetOrCreateCustomerResponse>
+    getBillingUsageBuckets(query: BillingUsageBucketsQuery): Promise<UsageResponse>
     checkRunGate(body: BillingRunGateRequestBody): Promise<RunGateDecision>
     chargeRunBase(body: BillingChargeRunBaseBody): Promise<BillingChargeRunBaseResponse>
     recordLLMCall(body: BillingRecordLlmBody): Promise<BillingRecordLlmResponse>
@@ -63,12 +65,13 @@ export function billingServiceProxyForRequest(req: Request): BillingService {
         throw new Error("Billing requires an authenticated session with organizationId")
     }
     return billingServiceForOrganizationAuth({
-        organizationId: user.organizationId
+        organizationId: user.organizationId,
+        userId: user.workosId
     })
 }
 
-export function billingServiceProxyForOrganization(organizationId: string): BillingService {
-    return billingServiceForOrganizationAuth({ organizationId })
+export function billingServiceProxyForOrganization(organizationId: string, userId: string): BillingService {
+    return billingServiceForOrganizationAuth({ organizationId, userId: userId })
 }
 
 function billingServiceForOrganizationAuth(auth: BillingProxyAuth): BillingService {
@@ -81,7 +84,7 @@ function billingServiceForOrganizationAuth(auth: BillingProxyAuth): BillingServi
     return new BillingServiceProxy(url, auth)
 }
 
-export class BillingNoOpService implements BillingService {
+class BillingNoOpService implements BillingService {
     async createCheckoutSession(): Promise<BillingStripeRedirectResponse> {
         return { url: settings.urls.frontend }
     }
@@ -111,6 +114,16 @@ export class BillingNoOpService implements BillingService {
         }
     }
 
+    async getBillingStatus(): Promise<BillingStatusResponse> {
+        return {
+            billingEnabled: settings.billing.enabled,
+            hasStripeCustomer: false,
+            hasActivePaidSubscription: false,
+            canManageBilling: false,
+            planKey: PlanKey.FREE
+        }
+    }
+
     async getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
         const start = query.start ?? DateTime.now().setZone(query.timezone).minus({ days: 30 }).startOf("day").toJSDate()
         const end = query.end ?? DateTime.now().setZone(query.timezone).plus({ days: 1 }).startOf("day").toJSDate()
@@ -128,15 +141,12 @@ export class BillingNoOpService implements BillingService {
                 hardCap: 0,
                 canBuyTopups: false,
                 scheduledChange: null
-            },
-            usage: {
-                buckets: []
             }
         }
     }
 
-    async getOrCreateCustomer(): Promise<GetOrCreateCustomerResponse> {
-        return { customerId: "" }
+    async getBillingUsageBuckets(_query: BillingUsageBucketsQuery): Promise<UsageResponse> {
+        return { buckets: [] }
     }
 
     async checkRunGate(): Promise<RunGateDecision> {
@@ -248,6 +258,10 @@ export class BillingServiceProxy implements BillingService {
         return this.jsonRequest<BillingCatalogResponse>(BillingRoutes.CATALOG, { method: "GET" })
     }
 
+    getBillingStatus(): Promise<BillingStatusResponse> {
+        return this.jsonRequest<BillingStatusResponse>(BillingRoutes.STATUS, { method: "GET" })
+    }
+
     getBillingContext(query: BillingContextQuery): Promise<BillingContextResponse> {
         const params = new URLSearchParams()
         if (query.start != null) params.set("start", query.start.toISOString())
@@ -257,11 +271,13 @@ export class BillingServiceProxy implements BillingService {
         return this.jsonRequest<BillingContextResponse>(`${BillingRoutes.CONTEXT}${qs ? `?${qs}` : ""}`, { method: "GET" })
     }
 
-    async getOrCreateCustomer(body?: GetOrCreateCustomerRequestBody): Promise<GetOrCreateCustomerResponse> {
-        return this.jsonRequest<GetOrCreateCustomerResponse>(BillingRoutes.CUSTOMER, {
-            method: "POST",
-            body: JSON.stringify(body ?? {})
-        })
+    getBillingUsageBuckets(query: BillingUsageBucketsQuery): Promise<UsageResponse> {
+        const params = new URLSearchParams()
+        if (query.start != null) params.set("start", query.start.toISOString())
+        if (query.end != null) params.set("end", query.end.toISOString())
+        params.set("timezone", query.timezone)
+        const qs = params.toString()
+        return this.jsonRequest<UsageResponse>(`${BillingRoutes.USAGE_BUCKETS}${qs ? `?${qs}` : ""}`, { method: "GET" })
     }
 
     async checkRunGate(body: BillingRunGateRequestBody): Promise<RunGateDecision> {

@@ -3,12 +3,13 @@ import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
 
 import { StreamEventEmitter } from "../agent/AgentRunner/StreamProcessor"
-import { attachProjectDeployToRun, finalizeRunStatus, markRunFailed } from "../agent/AgentRunner/runHistory"
+import { attachProjectDeployToRun, finalizeRunStatus } from "../agent/AgentRunner/runHistory"
+import { classifyAgentError } from "../agent/agentErrorUtils"
 import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../agent/systemEvents/processOutputSystemEvent"
 import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
+import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../realtimeSocket"
 import { SDKAgent, project_deploys } from "../types/prisma"
 import { createSandboxToken } from "../utility/apiTokens"
 import { getActiveDeployForProject } from "../utility/projectHelper"
@@ -22,7 +23,7 @@ import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExec
 import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
-export interface SdkJobExecutionParams {
+interface SdkJobExecutionParams {
     gcsKey: string
     runId: string
     agent: SDKAgent
@@ -130,25 +131,24 @@ export class SdkJobExecutionService {
 
             if (result.exitCode === 0) {
                 await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
                 logger.info("SDK sandbox: terse run completed", { runId, agentId: agent.id, runtime: executor.runtime })
             } else {
                 const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
-                await markRunFailed(runId, errorMsg, "agent")
+                await finalizeRunFailure(runId, classifyAgentError(new Error(errorMsg)), user, agent)
                 logger.error("SDK sandbox: terse run failed", { runId, agentId: agent.id, exitCode: result.exitCode, runtime: executor.runtime })
             }
 
-            emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
         } catch (error) {
-            const errorMessage = extractErrorMessage(error)
-            logger.error("SDK job execution failed", { error, runId, agentId: agent.id, totalDuration: this.elapsed(executionStart) })
+            logger.error("SDK job execution failed", {
+                error,
+                runId,
+                agentId: agent.id,
+                totalDuration: this.elapsed(executionStart)
+            })
 
-            try {
-                await markRunFailed(runId, errorMessage, "agent")
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
-            } catch (persistError) {
-                logger.error("Failed to mark run as failed after SDK execution error", { error: persistError, runId })
-            }
+            await finalizeRunFailure(runId, classifyAgentError(error), user, agent)
         } finally {
             this.emitSandboxNaturalStop()
             if (sandboxTokenId) {
@@ -549,7 +549,7 @@ export class SdkJobExecutionService {
     }
 
     private parseRuntime(runtime: string): SdkProjectRuntime {
-        if (runtime === "typescript" || runtime === "python") {
+        if (runtime === "typescript") {
             return runtime
         }
 

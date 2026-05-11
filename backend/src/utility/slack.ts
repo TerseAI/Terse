@@ -124,7 +124,7 @@ export async function resolveSlackChannelIdForDestination(userSlackIntegrationId
     }
 }
 
-export async function getSlackClient(userSlackIntegrationId: string): Promise<WebClient | null> {
+async function getSlackClient(userSlackIntegrationId: string): Promise<WebClient | null> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
             id: userSlackIntegrationId

@@ -5,7 +5,7 @@ import { StatsInterval, StatsResponse } from "terse-types/types"
 import { BackendProvider } from "@/services/backend"
 import { getUserTimezone } from "@/utility/timezone"
 
-export type UseStatsReturn = {
+type UseStatsReturn = {
     stats: StatsResponse | null
     isLoading: boolean
     isError: Error | null

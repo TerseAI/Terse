@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-export function getCliPackageRoot(): string {
+function getCliPackageRoot(): string {
     return path.resolve(__dirname, "..", "..")
 }
 
@@ -27,7 +27,7 @@ export function renderTemplate(relativePath: string, context: Record<string, unk
     return handlebars.compile(source, { noEscape: true })(context)
 }
 
-export function readTemplateDir(relativePath: string): string[] {
+function readTemplateDir(relativePath: string): string[] {
     const dir = path.join(getTemplatesRoot(), relativePath)
     if (!fs.existsSync(dir)) return []
     return fs.readdirSync(dir).sort()

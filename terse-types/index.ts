@@ -7,6 +7,8 @@ export * from "./DonatedState"
 export * from "./getConfigACLRules"
 export * from "./Entities"
 export * from "./FrontendRoutesBuilder"
+export * from "./Entities"
+export * from "./Decision"
 export * from "./Integrations"
 export * from "./InvalidationKeys"
 export * from "./JsonSchemaUtils"
@@ -15,28 +17,13 @@ export * from "./Notifications"
 export * from "./RunHistoryTypes"
 export * from "./SentNotifications"
 export * from "./SlackTypes"
-export * from "./OrganizationMetadata"
+export * from "./WorkOSMetadata"
 export * from "./SocketEvents"
 export * from "./Survey"
 export * from "./Tools"
 export * from "./Billing"
 export * from "./ModelRegistry"
-export {
-    Comment,
-    CreateTicketInput,
-    LinearStateName,
-    Milestone,
-    Organization,
-    Project,
-    Team,
-    Ticket,
-    TicketState,
-    TicketSystemType,
-    TicketWebhookHandler,
-    Update,
-    UpdateTicketInput,
-    UserContext
-} from "./TicketSystem"
+export * from "./TicketSystem"
 export * from "./ToolDisplayUtils"
 export * from "./Triggers"
 export * from "./ToolsTypes"

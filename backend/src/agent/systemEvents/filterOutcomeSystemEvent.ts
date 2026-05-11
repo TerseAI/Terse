@@ -70,7 +70,7 @@ function buildPayload(input: FilterOutcomeSystemEventInput): FilterOutcomeSystem
     }
 }
 
-export function buildFilterOutcomeSystemEventItem(input: FilterOutcomeSystemEventInput): AgentInputItem {
+function buildFilterOutcomeSystemEventItem(input: FilterOutcomeSystemEventInput): AgentInputItem {
     return filterOutcomeSystemEvent.createItem(buildPayload(input))
 }
 

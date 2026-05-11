@@ -136,7 +136,7 @@ export const getSlackUsers = async (req: Request, res: Response) => {
     }
 }
 
-export async function handleSlackInteraction(req: Request, res: Response) {
+async function handleSlackInteraction(req: Request, res: Response) {
     res.sendStatus(200)
     return
 }
@@ -168,7 +168,7 @@ async function openChat(accessToken: string, authedUserId: string) {
 /**
  * Slack OAuth response interface
  */
-export interface SlackOAuthResponse {
+interface SlackOAuthResponse {
     ok: boolean
     access_token: string
     token_type: string

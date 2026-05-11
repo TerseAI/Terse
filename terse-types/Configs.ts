@@ -23,7 +23,8 @@ export enum ConfigType {
     ATTIO_OUTPUT = "attio_output",
     SNOWFLAKE_OUTPUT = "snowflake_output",
     WEBHOOK_INPUT = "webhook_input",
-    WEBMONITOR = "webmonitor"
+    WEBMONITOR = "webmonitor",
+    HEY_REACH_INPUT = "hey_reach_input"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -230,6 +231,15 @@ export const WebMonitorConfigMetadata = {
     isOutput: false
 } as const satisfies ConfigDetails
 
+export const HeyReachInputConfigMetadata = {
+    configType: ConfigType.HEY_REACH_INPUT,
+    name: "HeyReach",
+    description: "Trigger on HeyReach LinkedIn outreach events",
+    integrationType: IntegrationType.HEY_REACH,
+    isInput: true,
+    isOutput: false
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -253,7 +263,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
-    [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata
+    [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata,
+    [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -289,6 +300,22 @@ export const GmailEventType = {
 } as const
 export const gmailEventTypeSchema = z.enum(GmailEventType)
 export type GmailEventType = z.infer<typeof gmailEventTypeSchema>
+
+export const HeyReachEventType = {
+    CONNECTION_REQUEST_SENT: "CONNECTION_REQUEST_SENT",
+    CONNECTION_REQUEST_ACCEPTED: "CONNECTION_REQUEST_ACCEPTED",
+    MESSAGE_SENT: "MESSAGE_SENT",
+    MESSAGE_REPLY_RECEIVED: "MESSAGE_REPLY_RECEIVED",
+    INMAIL_SENT: "INMAIL_SENT",
+    INMAIL_REPLY_RECEIVED: "INMAIL_REPLY_RECEIVED",
+    FOLLOW_SENT: "FOLLOW_SENT",
+    LIKED_POST: "LIKED_POST",
+    VIEWED_PROFILE: "VIEWED_PROFILE",
+    CAMPAIGN_COMPLETED: "CAMPAIGN_COMPLETED",
+    LEAD_TAG_UPDATED: "LEAD_TAG_UPDATED"
+} as const
+export const heyReachEventTypeSchema = z.enum(HeyReachEventType)
+export type HeyReachEventType = z.infer<typeof heyReachEventTypeSchema>
 
 export const WorkOSEventType = {
     USER_CREATED: "user.created",
@@ -668,6 +695,35 @@ export const GitHubSkillConfigSchema = ConfigInstanceSchema.extend({
     repositoryIds: z.array(z.number().int())
 })
 export type GitHubSkillConfigData = z.infer<typeof GitHubSkillConfigSchema>
+
+export const HeyReachInputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.HEY_REACH),
+    configType: z.literal(ConfigType.HEY_REACH_INPUT),
+    eventType: heyReachEventTypeSchema,
+    campaignIds: z.array(z.string()).default([])
+})
+export type HeyReachInputConfigData = z.infer<typeof HeyReachInputConfigSchema>
+export type HeyReachInputConfigInstance = HeyReachInputConfigData & ConfigBehavior
+
+export class HeyReachInputConfig extends BaseConfigInstance<IntegrationType.HEY_REACH, ConfigType.HEY_REACH_INPUT> implements HeyReachInputConfigInstance {
+    constructor(
+        integrationId: string,
+        public eventType: HeyReachEventType,
+        public campaignIds: string[] = []
+    ) {
+        super(integrationId, IntegrationType.HEY_REACH, ConfigType.HEY_REACH_INPUT)
+    }
+
+    isComplete(): boolean {
+        return !!this.eventType
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: HeyReach Events`, `Integration ID: ${this.integrationId}`, `Listening for: ${this.eventType}`]
+        if (this.campaignIds.length > 0) parts.push(`Campaigns: ${this.campaignIds.join(", ")}`)
+        return parts.join("\n")
+    }
+}
 
 export const PosthogConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.POSTHOG),
@@ -1078,7 +1134,8 @@ export const configDataSchema = z.union([
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
     WebhookInputConfigSchema,
-    WebMonitorConfigSchema
+    WebMonitorConfigSchema,
+    HeyReachInputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1091,7 +1148,8 @@ export const triggerConfigDataSchema = z.union([
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
     WebhookInputConfigSchema,
-    WebMonitorConfigSchema
+    WebMonitorConfigSchema,
+    HeyReachInputConfigSchema
 ])
 export type TriggerConfigData = z.infer<typeof triggerConfigDataSchema>
 
@@ -1152,6 +1210,8 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
             return !!(config.projectKey && config.environmentKeys.length > 0)
         case ConfigType.WORKOS_INPUT:
             return config.eventTypes.length > 0
+        case ConfigType.HEY_REACH_INPUT:
+            return !!config.eventType
         case ConfigType.ATTIO_OUTPUT:
             return !!config.objectSlug
         default:
@@ -1258,6 +1318,11 @@ export function formatConfigForAgent(config: ConfigData): string {
             return "Type: Image Edit"
         case ConfigType.WORKOS_INPUT:
             return `Type: WorkOS Events\nListening for: ${config.eventTypes.join(", ")}`
+        case ConfigType.HEY_REACH_INPUT: {
+            const parts = [`Type: HeyReach Events`, `Integration ID: ${config.integrationId}`, `Listening for: ${config.eventType}`]
+            if (config.campaignIds.length > 0) parts.push(`Campaigns: ${config.campaignIds.join(", ")}`)
+            return parts.join("\n")
+        }
         case ConfigType.WORKOS_OUTPUT:
             return `Type: WorkOS Skill\nIntegration ID: ${config.integrationId}`
         case ConfigType.ATTIO_OUTPUT: {
@@ -1307,6 +1372,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.SNOWFLAKE_OUTPUT]: typeof SnowflakeOutputConfig
     [ConfigType.WEBHOOK_INPUT]: typeof WebhookInputConfig
     [ConfigType.WEBMONITOR]: typeof WebMonitorConfig
+    [ConfigType.HEY_REACH_INPUT]: typeof HeyReachInputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1330,5 +1396,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
-    [ConfigType.WEBMONITOR]: WebMonitorConfig
+    [ConfigType.WEBMONITOR]: WebMonitorConfig,
+    [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig
 } as const satisfies ConfigMetadataMap

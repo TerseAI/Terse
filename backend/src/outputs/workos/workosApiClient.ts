@@ -1,5 +1,6 @@
+import { type Organization, type User, WorkOS } from "@workos-inc/node"
 import { IntegrationType } from "terse-types"
-import { User } from "terse-types"
+import { User as TerseUser } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
@@ -9,7 +10,7 @@ import { SecretField, getSecret } from "../../services/SecretService"
  * Get the WorkOS API key for a given integration, validating that
  * the integration belongs to the user's organization.
  */
-export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user: User): Promise<string | null> {
+export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user: TerseUser): Promise<string | null> {
     const integration = await db().workos_integrations.findUnique({
         where: { id: integrationId }
     })
@@ -27,113 +28,66 @@ export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user
     return await getSecret(IntegrationType.WORKOS, integration.id, SecretField.ApiKey)
 }
 
-export interface WorkOSUserResponse {
-    id: string
-    email: string
-    email_verified: boolean
-    first_name: string | null
-    last_name: string | null
-    profile_picture_url: string | null
-    created_at: string
-    updated_at: string
+function workosForApiKey(apiKey: string): WorkOS {
+    return new WorkOS({ apiKey })
 }
 
-export interface WorkOSListUsersResponse {
-    data: WorkOSUserResponse[]
-    list_metadata: {
-        after: string | null
-        before: string | null
-    }
+export type WorkOSUsersListPage = {
+    data: User[]
+    listMetadata: { after: string | null; before: string | null }
 }
 
-export interface WorkOSOrganizationResponse {
-    id: string
-    name: string
-    external_id: string | null
-    domains?: string[]
-    created_at: string
-    updated_at: string
-}
-
-export interface WorkOSListOrganizationsResponse {
-    data: WorkOSOrganizationResponse[]
-    list_metadata: {
-        after: string | null
-        before: string | null
-    }
+export type WorkOSOrganizationsListPage = {
+    data: Organization[]
+    listMetadata: { after: string | null; before: string | null }
 }
 
 /**
  * List users from the customer's WorkOS account using their API key.
  */
-export async function listWorkOSUsers(apiKey: string, options: { limit?: number; after?: string; before?: string; email?: string; organizationId?: string } = {}): Promise<WorkOSListUsersResponse> {
-    const params = new URLSearchParams()
-    if (options.limit) params.set("limit", String(Math.min(options.limit, 100)))
-    if (options.after) params.set("after", options.after)
-    if (options.before) params.set("before", options.before)
-    if (options.email) params.set("email", options.email)
-    if (options.organizationId) params.set("organization_id", options.organizationId)
-
-    const response = await fetch(`https://api.workos.com/user_management/users?${params.toString()}`, {
-        method: "GET",
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-        }
+export async function listWorkOSUsers(apiKey: string, options: { limit?: number; after?: string; before?: string; email?: string; organizationId?: string } = {}): Promise<WorkOSUsersListPage> {
+    const workos = workosForApiKey(apiKey)
+    const page = await workos.userManagement.listUsers({
+        limit: options.limit !== undefined ? Math.min(options.limit, 100) : undefined,
+        after: options.after ?? undefined,
+        before: options.before ?? undefined,
+        email: options.email,
+        organizationId: options.organizationId
     })
 
-    if (!response.ok) {
-        const errorText = await response.text()
-        logger.error("Failed to list WorkOS users", { status: response.status, error: errorText })
-        throw new Error(`WorkOS users API returned ${response.status}: ${errorText}`)
+    return {
+        data: page.data,
+        listMetadata: {
+            after: page.listMetadata.after ?? null,
+            before: page.listMetadata.before ?? null
+        }
     }
-
-    return (await response.json()) as WorkOSListUsersResponse
 }
 
 /**
  * List organizations from the customer's WorkOS account using their API key.
  */
-export async function listWorkOSOrganizations(apiKey: string, options: { limit?: number; after?: string; before?: string } = {}): Promise<WorkOSListOrganizationsResponse> {
-    const params = new URLSearchParams()
-    if (options.limit) params.set("limit", String(Math.min(options.limit, 100)))
-    if (options.after) params.set("after", options.after)
-    if (options.before) params.set("before", options.before)
-
-    const response = await fetch(`https://api.workos.com/organizations?${params.toString()}`, {
-        method: "GET",
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-        }
+export async function listWorkOSOrganizations(apiKey: string, options: { limit?: number; after?: string; before?: string } = {}): Promise<WorkOSOrganizationsListPage> {
+    const workos = workosForApiKey(apiKey)
+    const page = await workos.organizations.listOrganizations({
+        limit: options.limit !== undefined ? Math.min(options.limit, 100) : undefined,
+        after: options.after ?? undefined,
+        before: options.before ?? undefined
     })
 
-    if (!response.ok) {
-        const errorText = await response.text()
-        logger.error("Failed to list WorkOS organizations", { status: response.status, error: errorText })
-        throw new Error(`WorkOS organizations API returned ${response.status}: ${errorText}`)
+    return {
+        data: page.data,
+        listMetadata: {
+            after: page.listMetadata.after ?? null,
+            before: page.listMetadata.before ?? null
+        }
     }
-
-    return (await response.json()) as WorkOSListOrganizationsResponse
 }
 
 /**
  * Get a single user by ID from the customer's WorkOS account.
  */
-export async function getWorkOSUser(apiKey: string, userId: string): Promise<WorkOSUserResponse> {
-    const response = await fetch(`https://api.workos.com/user_management/users/${userId}`, {
-        method: "GET",
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-        }
-    })
-
-    if (!response.ok) {
-        const errorText = await response.text()
-        logger.error("Failed to get WorkOS user", { status: response.status, error: errorText, userId })
-        throw new Error(`WorkOS user API returned ${response.status}: ${errorText}`)
-    }
-
-    return (await response.json()) as WorkOSUserResponse
+export async function getWorkOSUser(apiKey: string, userId: string): Promise<User> {
+    const workos = workosForApiKey(apiKey)
+    return workos.userManagement.getUser(userId)
 }

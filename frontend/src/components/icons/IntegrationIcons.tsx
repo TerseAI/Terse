@@ -99,3 +99,7 @@ export function WorkOSIcon() {
         </svg>
     )
 }
+
+export function HeyReachIcon() {
+    return <img src="/HeyReach.png" alt="HeyReach" className="w-full h-full object-contain" />
+}

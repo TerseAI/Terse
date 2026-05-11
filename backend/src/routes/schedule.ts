@@ -20,7 +20,7 @@ import { getUserForOrg } from "../utility/workos"
 
 import { fetchEventFromRunId } from "./sdkRunTriggerEvent"
 
-export interface ManualTriggerRequest {
+interface ManualTriggerRequest {
     context?: string
 }
 

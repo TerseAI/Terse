@@ -7,7 +7,7 @@ import RunHistoryChatDrawer from "@/components/RunHistory/RunHistoryChatDrawer"
 
 const RUN_ID_PARAM = "runId"
 
-export type DrawerConfig = {
+type DrawerConfig = {
     runs: RunHistoryRecord[]
     initialRunIndex: number
     isInitialOpen?: boolean

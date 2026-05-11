@@ -5,7 +5,7 @@ import type { AgentFileContentResponse } from "terse-types/types"
 import { decodeArchiveFileText } from "../../lib/decodeArchiveFile"
 import { BackendProvider } from "../../services/backend"
 
-export type ProjectSourceEditorStatus = "idle" | "loading" | "ready" | "error"
+type ProjectSourceEditorStatus = "idle" | "loading" | "ready" | "error"
 
 export type ProjectSourceEditorContentResult = {
     displayContent: string

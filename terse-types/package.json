@@ -1,6 +1,6 @@
 {
     "name": "terse-types",
-    "version": "0.0.29",
+    "version": "0.0.32",
     "type": "module",
     "description": "Shared Terse TypeScript types, enums, constants, and helpers.",
     "main": "./dist/index.js",
@@ -22,10 +22,8 @@
     "scripts": {
         "build": "tsc -p tsconfig.build.json && node --input-type=module -e \"import { fix } from 'tsc-esm-fix'; await fix({ cwd: process.cwd(), target: ['dist'], ext: '.js' })\"",
         "check:schema": "node --import tsx scripts/check-schema-compat.ts",
-        "build:json-schema": "node --import tsx scripts/export-json-schema.ts",
         "clean": "rm -rf dist",
         "dev": "node ../scripts/tsc-watch-and-fix.mjs tsconfig.build.json dist",
-        "dev:python-types": "node scripts/dev-with-codegen.mjs",
         "format": "pnpm exec prettier --config ../.prettierrc --write \"*.{ts,json}\"",
         "format:check": "pnpm exec prettier --config ../.prettierrc --check \"*.{ts,json}\""
     },
@@ -44,7 +42,6 @@
         "typescript": "^5.8.3"
     },
     "dependencies": {
-        "@slack/types": "^2.20.1",
         "@slack/web-api": "^7.15.0",
         "zod": "4.3.6"
     }

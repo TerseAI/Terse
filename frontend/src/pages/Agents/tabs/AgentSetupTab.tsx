@@ -30,7 +30,7 @@ import { AddTriggerModal } from "../components/AddTriggerModal"
 import { InstructionsEditor } from "../components/InstructionsEditor"
 import { IconForConfigType } from "../components/Integration"
 
-export type SetupSection = "triggers" | "prompt" | "skills" | "alerts"
+type SetupSection = "triggers" | "prompt" | "skills" | "alerts"
 export type AgentSetupTabProps = {
     agentId: string | null
     name: string | null

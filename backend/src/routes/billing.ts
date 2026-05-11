@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { billingChangeRequestBodySchema, billingCheckoutRequestBodySchema, billingContextQuerySchema, billingPortalSessionRequestBodySchema } from "terse-types"
+import { billingChangeRequestBodySchema, billingCheckoutRequestBodySchema, billingContextQuerySchema, billingPortalSessionRequestBodySchema, billingUsageBucketsQuerySchema } from "terse-types"
 
 import { settings } from "../config/settings"
 import { BillingServiceProxy, billingServiceProxyForRequest } from "../services/BillingService"
@@ -27,6 +27,11 @@ export async function getBillingCatalog(req: Request, res: Response) {
     await BillingServiceProxy.respondJson(res, billingService.getBillingCatalog())
 }
 
+export async function getBillingStatus(req: Request, res: Response) {
+    const billingService = billingServiceProxyForRequest(req)
+    await BillingServiceProxy.respondJson(res, billingService.getBillingStatus())
+}
+
 export async function getBillingContext(req: Request, res: Response) {
     const parsed = billingContextQuerySchema.safeParse({
         start: req.query.start,
@@ -39,4 +44,17 @@ export async function getBillingContext(req: Request, res: Response) {
     const billingService = billingServiceProxyForRequest(req)
     const withAvailability = billingService.getBillingContext(parsed.data)
     await BillingServiceProxy.respondJson(res, withAvailability)
+}
+
+export async function getBillingUsageBuckets(req: Request, res: Response) {
+    const parsed = billingUsageBucketsQuerySchema.safeParse({
+        start: req.query.start,
+        end: req.query.end,
+        timezone: req.query.timezone
+    })
+    if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.message })
+    }
+    const billingService = billingServiceProxyForRequest(req)
+    await BillingServiceProxy.respondJson(res, billingService.getBillingUsageBuckets(parsed.data))
 }

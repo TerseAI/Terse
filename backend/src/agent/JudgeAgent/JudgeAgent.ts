@@ -2,7 +2,7 @@ import { z } from "zod"
 
 export const MAX_IMPROVEMENTS_PER_AGENT = 4
 
-export const JudgeAgentOutput = z.object({
+const JudgeAgentOutput = z.object({
     title: z.string(),
     summary: z.string(),
     improvements: z.array(

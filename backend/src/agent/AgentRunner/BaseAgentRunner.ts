@@ -1,7 +1,7 @@
 import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunStreamEvent, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
 import type { Session as AgentMemorySession, CallModelInputFilter, GuardrailFunctionOutput, InputGuardrail, InputGuardrailFunctionArgs, ModelSettings } from "@openai/agents-core"
 import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
-import { ConfigData, completedEventUsageSchema } from "terse-types"
+import { ConfigData, Decision, completedEventUsageSchema } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { BillingError, CompletedEventUsage, ModelReference } from "terse-types"
@@ -106,7 +106,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     async resumeAgent(params: {
-        decision: "approve" | "reject"
+        decision: Decision
         stepId: string
         settings: RunExecutionSettings<TSession, TAgent>
         rejectionReason?: string
@@ -372,7 +372,7 @@ export type AgentInitializationParams<TSession extends AppSession> = {
 }
 
 export type ApprovalDecision = {
-    decision: "approve" | "reject"
+    decision: Decision
     rejectionReason?: string
     responseId: string
 }

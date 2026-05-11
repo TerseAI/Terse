@@ -10,7 +10,7 @@ import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
-import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, markRunFailedAndInvalidate } from "../../realtimeSocket"
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../realtimeSocket"
 import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
@@ -32,7 +32,7 @@ import { appendRunAction, createRunRecord, evaluateCompletedRun, finalizeRunStat
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
 
-export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
+class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
     success: boolean
     message: string
     agentConfig: PrismaAgent | null
@@ -374,7 +374,7 @@ export class EventProcessor {
             runId
         })
 
-        const billing = billingServiceProxyForOrganization(this.user.organizationId)
+        const billing = billingServiceProxyForOrganization(this.user.organizationId, this.user.workosId)
 
         // Create agent runner with the session and outputs
         const runContext: RunContext = { runId }
@@ -415,8 +415,7 @@ export class EventProcessor {
                 agentName: agent.name,
                 runId
             })
-            await markRunFailedAndInvalidate(runId, classified, this.user.organizationId, agent.id)
-            await this.notifyRunFailure(agent, runId, classified.message)
+            await finalizeRunFailure(runId, classified, this.user, agent)
             throw error
         }
 
@@ -443,17 +442,25 @@ export class EventProcessor {
 
     private async processSdkAgent(agent: SDKAgent, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
-        const activeDeploy = await getActiveDeployForProject(agent.project.id)
 
-        const gcsKey = activeDeploy?.sdk_source_image_id
-        if (!gcsKey) {
-            throw new Error(`SDK agent "${agent.name}" is missing source_code_gcs_key`)
+        let gcsKey: string
+        try {
+            const activeDeploy = await getActiveDeployForProject(agent.project.id)
+            const resolvedGcsKey = activeDeploy?.sdk_source_image_id
+            if (!resolvedGcsKey) {
+                throw new Error(`SDK agent "${agent.name}" is missing source_code_gcs_key`)
+            }
+            gcsKey = resolvedGcsKey
+
+            logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
+
+            const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId, this.user.workosId)
+            await startBillingRun(billingForRunner, { organizationId: this.user.organizationId, runId })
+        } catch (error) {
+            logger.error(`SDK sandbox failed to start for agent "${agent.name}"`, { error, runId, agentId: agent.id })
+            await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
+            return new ProcessorResult(false, error instanceof Error ? error.message : "SDK job failed to start", agent, undefined, runId)
         }
-
-        logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
-
-        const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId)
-        await startBillingRun(billingForRunner, { organizationId: this.user.organizationId, runId })
 
         // Fire-and-forget: sandbox runs asynchronously
         const service = new SdkJobExecutionService()
@@ -467,12 +474,13 @@ export class EventProcessor {
                 user: this.user,
                 jobName: agent.name
             })
-            .catch(error => {
+            .catch(async error => {
                 logger.error(`SDK sandbox execution failed for agent "${agent.name}"`, {
                     error,
                     runId,
                     agentId: agent.id
                 })
+                await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
             })
 
         return new ProcessorResult(true, "SDK job execution started", agent, undefined, runId)
@@ -484,13 +492,11 @@ export class EventProcessor {
         const event = this.inputEvent.getSerializedEvent()
 
         const remoteServerUrl = agent.project.remote_server_url
-        if (!remoteServerUrl) {
-            throw new Error(`Webhook agent "${agent.name}" is missing remote_server_url`)
-        }
-
         const signingSecret = agent.project.signing_secret
-        if (!signingSecret) {
-            throw new Error(`Webhook agent "${agent.name}" is missing signing_secret`)
+        if (!remoteServerUrl || !signingSecret) {
+            const reason = !remoteServerUrl ? `Webhook agent "${agent.name}" is missing remote_server_url` : `Webhook agent "${agent.name}" is missing signing_secret`
+            await finalizeRunFailure(runId, classifyAgentError(new Error(reason)), this.user, agent)
+            return new ProcessorResult(false, reason, agent, undefined, runId)
         }
 
         logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, remoteServerUrl })
@@ -508,12 +514,13 @@ export class EventProcessor {
                 jobName: agent.name,
                 signingSecret
             })
-            .catch(error => {
+            .catch(async error => {
                 logger.error(`Webhook job execution failed for agent "${agent.name}"`, {
                     error,
                     runId,
                     agentId: agent.id
                 })
+                await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
             })
 
         return new ProcessorResult(true, "Webhook job execution started", agent, undefined, runId)

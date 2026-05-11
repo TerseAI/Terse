@@ -4,7 +4,8 @@ import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 import { LinearTrigger, LinearWebhookPayload } from "terse-types"
-import { ConfigData, ConfigType, LinearEventType } from "terse-types/Configs"
+import { ConfigurationFieldDefinition } from "terse-types"
+import { ConfigData, ConfigType } from "terse-types/Configs"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -26,14 +27,7 @@ import { getUserForOrg } from "../utility/workos"
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import {
-    ConfigurationFieldDefinition,
-    Integration,
-    IntegrationWithResources,
-    OAuthIntegrationInstallation,
-    createConnectedCliDisplayState,
-    createNotConnectedCliDisplayState
-} from "./abstract/Integration"
+import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class LinearIntegrationManager

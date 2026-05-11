@@ -191,6 +191,15 @@ model posthog_integrations {
   @@index([organization_id])
 }
 
+model hey_reach_integrations {
+  id              String   @id @default(cuid())
+  organization_id String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([organization_id])
+}
+
 // LaunchDarkly Integration
 model launchdarkly_integrations {
   id              String   @id @default(cuid())
@@ -430,6 +439,7 @@ model automation_inputs {
   attio_config        automation_attio_configs?
   webhook_config      automation_webhook_configs?
   webmonitor_config   automation_webmonitor_configs?
+  hey_reach_config    automation_hey_reach_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -651,6 +661,21 @@ model automation_workos_configs {
   automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
 }
 
+// HeyReach Trigger Configuration
+model automation_hey_reach_configs {
+  id                  String   @id @default(cuid())
+  automation_input_id String   @unique
+  event_type          String
+  webhook_id          Int
+  campaign_ids        String[] @default([])
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+
+  @@unique([automation_input_id, webhook_id])
+}
+
 // Webhook Trigger Configuration
 model automation_webhook_configs {
   id                  String @id @default(cuid())
@@ -720,6 +745,7 @@ enum IntegrationType {
   SNOWFLAKE
   WEBHOOK
   WEBMONITOR
+  HEY_REACH
 }
 
 enum InputConfigType {
@@ -734,6 +760,7 @@ enum InputConfigType {
   WORKOS_INPUT
   WEBHOOK_INPUT
   WEBMONITOR
+  HEY_REACH_INPUT
 }
 
 enum OutputConfigType {
