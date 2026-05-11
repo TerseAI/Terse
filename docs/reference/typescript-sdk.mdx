@@ -107,6 +107,10 @@ const terse = new Terse()
 
 Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI. The same context applies to **`TerseAgent.executeTool`** and to generated **`toolbox`** calls.
 
+<Note>
+**TerseAgent** maps SSE **`error`** events to thrown exceptions (for example billing blocks, credit limits, or agent failures). Handle them like any other error in your workflow code. Activity updates and workflow notifications configured for **errors** apply once Terse records a final run outcome; they are not tied to every failure that appears only on the agent stream.
+</Note>
+
 ### `run(userMessage)`
 
 Streams the model run. Returns an async iterable of result objects (`TextResult`, `FinalOutputResult`, tool events, and so on).
