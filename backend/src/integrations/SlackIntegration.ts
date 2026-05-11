@@ -917,8 +917,6 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
         cursor = res.response_metadata?.next_cursor
     } while (cursor)
 
-    console.log("Slack users", users)
-
     return { users }
 }
 

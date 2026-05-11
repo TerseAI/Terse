@@ -16,7 +16,7 @@ type SlackTokenSource = {
  * This is in a separate file to avoid circular dependencies with SlackIntegration.ts
  */
 export async function resolveSlackAccessToken(integration: SlackTokenSource): Promise<string | null> {
-    if (integration.is_bot_user === true) {
+    if (integration.is_bot_user) {
         return await getSecret(IntegrationType.SLACK, integration.slack_integration.id, SecretField.AccessToken)
     }
 
