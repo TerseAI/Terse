@@ -34,6 +34,15 @@ export class SlackChannel {
     static AllTerseInc = new SlackChannel("C01DEF9012", "all-terse-inc")
 }
 
+export class SlackUser {
+    constructor(
+        public readonly userId: string,
+        public readonly name: string
+    ) {}
+
+    static OnCall = new SlackUser("U08XYZ1234", "on-call")
+}
+
 export class GithubOwner {
     constructor(public readonly name: string) {}
 
@@ -113,8 +122,12 @@ The same file exports **`toolbox`**: identical typed namespaces, but callable **
 ```ts src/terse.generated.ts
 export type GeneratedTools = {
     slack: {
-        /** Send a message to a Slack channel */
-        sendMessage(args: { channelId: string; message: string }): Promise<{ message_ts: string; channel_id: string }>
+        /** Send to a channel, existing DM (`channelId`), or member DM (`slackUserId`). */
+        sendMessage(args: {
+            message: string
+            channelId?: string | null
+            slackUserId?: string | null
+        }): Promise<{ message_ts: string; channel_id: string }>
         /** Update an existing message in place */
         updateMessage(args: { channelId: string; ts: string; message: string }): Promise<SlackMessageResult>
     }
@@ -183,7 +196,7 @@ The generated SDK is the difference between an agent that guesses and an agent t
 - **The workspace is the prompt.** Cursor, Claude Code, Windsurf, and Codex see every real channel, repo, and list as an exported symbol. They don't need to ask you "which channel should this post to?" — they pick the one that exists.
 - **No copy-pasted UUIDs.** Agents are notoriously bad at preserving long opaque strings across tool calls. With resource constants, there's nothing to copy.
 - **Hallucinations stop compiling.** If an agent invents `SlackChannel.SalesTeam` or `Repos.TerseAI.Website`, the TypeScript compiler rejects the build. `terse deploy` refuses to ship code that doesn't type-check. There is no path to production for a made-up resource.
-- **Tool parameters are typed end-to-end.** `agent.tools.slack.sendMessage` takes `{ channelId: string; message: string }`. An agent can't accidentally pass `channel_name` or forget `message` — the signature is enforced.
+- **Tool parameters are typed end-to-end.** `agent.tools.slack.sendMessage` requires `message` plus either `channelId` or `slackUserId` (or both; `channelId` wins). An agent can't accidentally pass `channel_name` or forget `message` — the signature is enforced.
 - **The agent can read the same file you do.** Point your coding assistant at `src/terse.generated.ts` and it instantly has a complete map of the integrations, resources, and tools available in your workspace. No documentation gap.
 
 The net effect: coding agents ship working workflows on the first try, without a human looping through "here is the channel ID, here is the list ID, here is the repo name" every time.
