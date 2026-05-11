@@ -437,6 +437,7 @@ model automation_inputs {
   time_trigger_config automation_time_trigger_configs?
   workos_config       automation_workos_configs?
   attio_config        automation_attio_configs?
+  attio_input_config  automation_attio_input_configs?
   webhook_config      automation_webhook_configs?
   webmonitor_config   automation_webmonitor_configs?
   hey_reach_config    automation_hey_reach_configs?
@@ -676,6 +677,21 @@ model automation_hey_reach_configs {
   @@unique([automation_input_id, webhook_id])
 }
 
+// Attio Trigger Configuration
+// Subscriptions are not persisted: Attio is the source of truth.
+// The backend hydrates them via GET /v2/webhooks/:webhook_id at read time.
+model automation_attio_input_configs {
+  id                  String   @id @default(cuid())
+  automation_input_id String   @unique
+  webhook_id          String // Attio webhook UUID from POST /v2/webhooks
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+
+  @@unique([automation_input_id, webhook_id])
+}
+
 // Webhook Trigger Configuration
 model automation_webhook_configs {
   id                  String @id @default(cuid())
@@ -758,6 +774,7 @@ enum InputConfigType {
   POSTHOG
   TIME_TRIGGER
   WORKOS_INPUT
+  ATTIO_INPUT
   WEBHOOK_INPUT
   WEBMONITOR
   HEY_REACH_INPUT

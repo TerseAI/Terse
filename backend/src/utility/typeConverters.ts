@@ -436,6 +436,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("ATTIO_OUTPUT is an output type, not an input type")
         case ConfigType.SNOWFLAKE_OUTPUT:
             throw new Error("SNOWFLAKE_OUTPUT is an output type, not an input type")
+        case ConfigType.ATTIO_INPUT:
+            throw new Error("ATTIO_INPUT is an input type, not an output type")
         default:
             throw configType satisfies never
     }

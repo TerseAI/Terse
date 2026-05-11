@@ -18,7 +18,15 @@ import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
 import { debugTrigger as debugTriggerWithPresenter, displayTrigger as displayTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"
 
-const providerTriggerTypeSchema = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema, heyReachEventTypeSchema, attioEventTypeSchema])
+const providerTriggerTypeSchema = z.union([
+    slackEventTypeSchema,
+    gitHubEventTypeSchema,
+    linearEventTypeSchema,
+    gmailEventTypeSchema,
+    workOSEventTypeSchema,
+    heyReachEventTypeSchema,
+    attioEventTypeSchema
+])
 
 const TriggerHeaderSchema = z.object({
     integrationType: integrationTypeEnum,

@@ -1,5 +1,18 @@
 import { IntegrationType } from "./Integrations"
-import type { AttioTrigger, CronTrigger, GithubTrigger, GmailTrigger, HeyReachTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebMonitorTrigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
+import type {
+    AttioTrigger,
+    CronTrigger,
+    GithubTrigger,
+    GmailTrigger,
+    HeyReachTrigger,
+    LinearTrigger,
+    ManualSampleTrigger,
+    SlackTrigger,
+    Trigger,
+    WebMonitorTrigger,
+    WebhookTrigger,
+    WorkOSTrigger
+} from "./Triggers"
 
 interface TriggerPresenter<TEvent extends Trigger> {
     formatForAgent(event: TEvent): string
