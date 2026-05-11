@@ -1,5 +1,5 @@
 import { IntegrationType } from "./Integrations"
-import type { CronTrigger, GithubTrigger, GmailTrigger, HeyReachTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebMonitorTrigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
+import type { AttioTrigger, CronTrigger, GithubTrigger, GmailTrigger, HeyReachTrigger, LinearTrigger, ManualSampleTrigger, SlackTrigger, Trigger, WebMonitorTrigger, WebhookTrigger, WorkOSTrigger } from "./Triggers"
 
 interface TriggerPresenter<TEvent extends Trigger> {
     formatForAgent(event: TEvent): string
@@ -82,6 +82,11 @@ const TriggerPresenters = {
         debug: (event: HeyReachTrigger): string => `HeyReach ${event.eventType}${event.lead?.id != null ? ` lead=${event.lead.id}` : ""}`,
         display: formatHeyReachDisplay
     },
+    [IntegrationType.ATTIO]: {
+        formatForAgent: formatAttioTrigger,
+        debug: (event: AttioTrigger): string => `Attio ${event.eventType}${event.objectSlug ? ` object=${event.objectSlug}` : ""}`,
+        display: formatAttioDisplay
+    },
     [IntegrationType.WEBHOOK]: {
         formatForAgent: formatWebhookTrigger,
         debug: (event: WebhookTrigger): string => `Webhook Trigger (${event.method})`,
@@ -113,6 +118,8 @@ function dispatchPresenter(event: IntegrationTrigger, method: keyof TriggerPrese
             return TriggerPresenters[IntegrationType.WORKOS][method](event)
         case IntegrationType.HEY_REACH:
             return TriggerPresenters[IntegrationType.HEY_REACH][method](event)
+        case IntegrationType.ATTIO:
+            return TriggerPresenters[IntegrationType.ATTIO][method](event)
         case IntegrationType.WEBHOOK:
             return TriggerPresenters[IntegrationType.WEBHOOK][method](event)
         case IntegrationType.CRON_JOB:
@@ -529,6 +536,45 @@ function humanizeHeyReachEventType(eventType: string): string {
         .filter(Boolean)
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(" ")
+}
+
+function attioResourceLabel(event: AttioTrigger): string | null {
+    const ids = event.resourceIds
+    if (ids.record_id) return `${event.objectSlug ?? "record"} ${ids.record_id}`
+    if (ids.entry_id) return `list entry ${ids.entry_id}`
+    if (ids.list_id) return `list ${ids.list_id}`
+    if (ids.note_id) return `note ${ids.note_id}`
+    if (ids.task_id) return `task ${ids.task_id}`
+    if (ids.comment_id) return `comment ${ids.comment_id}`
+    if (ids.call_recording_id) return `call recording ${ids.call_recording_id}`
+    if (ids.workspace_member_id) return `workspace member ${ids.workspace_member_id}`
+    if (ids.attribute_id) return `attribute ${ids.attribute_id}`
+    return null
+}
+
+function humanizeAttioEventType(eventType: string): string {
+    return eventType
+        .replace(/[-.]/g, " ")
+        .split(" ")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(" ")
+}
+
+function formatAttioTrigger(event: AttioTrigger): string {
+    const lines = [`Attio Event: ${event.eventType}`, `Event ID: ${event.eventId}`, `Created At: ${event.createdAt}`, `Workspace ID: ${event.workspaceId}`]
+    if (event.objectSlug) lines.push(`Object: ${event.objectSlug}`)
+    const resource = attioResourceLabel(event)
+    if (resource) lines.push(`Resource: ${resource}`)
+    if (event.actor.type) lines.push(`Actor: ${event.actor.type}${event.actor.id ? ` (${event.actor.id})` : ""}`)
+    lines.push(`\nFull Event:\n${JSON.stringify(event.rawEvent, null, 2)}`)
+    return lines.join("\n")
+}
+
+function formatAttioDisplay(event: AttioTrigger): TriggerDisplay {
+    const subtitle = humanizeAttioEventType(event.eventType)
+    const resource = attioResourceLabel(event)
+    return { title: resource ?? "Attio event", subtitle }
 }
 
 function formatHeyReachDisplay(event: HeyReachTrigger): TriggerDisplay {

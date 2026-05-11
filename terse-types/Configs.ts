@@ -20,6 +20,7 @@ export enum ConfigType {
     IMAGE_EDIT = "image_edit",
     WORKOS_INPUT = "workos_input",
     WORKOS_OUTPUT = "workos_output",
+    ATTIO_INPUT = "attio_input",
     ATTIO_OUTPUT = "attio_output",
     SNOWFLAKE_OUTPUT = "snowflake_output",
     WEBHOOK_INPUT = "webhook_input",
@@ -195,6 +196,15 @@ export const WorkOSOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const AttioInputConfigMetadata = {
+    configType: ConfigType.ATTIO_INPUT,
+    name: "Attio",
+    description: "Trigger on Attio record events (created, updated, deleted)",
+    integrationType: IntegrationType.ATTIO,
+    isInput: true,
+    isOutput: false
+} as const satisfies ConfigDetails
+
 export const AttioOutputConfigMetadata = {
     configType: ConfigType.ATTIO_OUTPUT,
     name: "Attio",
@@ -260,6 +270,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.IMAGE_EDIT]: ImageEditConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
+    [ConfigType.ATTIO_INPUT]: AttioInputConfigMetadata,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
@@ -316,6 +327,38 @@ export const HeyReachEventType = {
 } as const
 export const heyReachEventTypeSchema = z.enum(HeyReachEventType)
 export type HeyReachEventType = z.infer<typeof heyReachEventTypeSchema>
+
+export const AttioEventType = {
+    CALL_RECORDING_CREATED: "call-recording.created",
+    COMMENT_CREATED: "comment.created",
+    COMMENT_RESOLVED: "comment.resolved",
+    COMMENT_UNRESOLVED: "comment.unresolved",
+    COMMENT_DELETED: "comment.deleted",
+    LIST_CREATED: "list.created",
+    LIST_UPDATED: "list.updated",
+    LIST_DELETED: "list.deleted",
+    LIST_ATTRIBUTE_CREATED: "list-attribute.created",
+    LIST_ATTRIBUTE_UPDATED: "list-attribute.updated",
+    LIST_ENTRY_CREATED: "list-entry.created",
+    LIST_ENTRY_UPDATED: "list-entry.updated",
+    LIST_ENTRY_DELETED: "list-entry.deleted",
+    OBJECT_ATTRIBUTE_CREATED: "object-attribute.created",
+    OBJECT_ATTRIBUTE_UPDATED: "object-attribute.updated",
+    NOTE_CREATED: "note.created",
+    NOTE_CONTENT_UPDATED: "note-content.updated",
+    NOTE_UPDATED: "note.updated",
+    NOTE_DELETED: "note.deleted",
+    RECORD_CREATED: "record.created",
+    RECORD_MERGED: "record.merged",
+    RECORD_UPDATED: "record.updated",
+    RECORD_DELETED: "record.deleted",
+    TASK_CREATED: "task.created",
+    TASK_UPDATED: "task.updated",
+    TASK_DELETED: "task.deleted",
+    WORKSPACE_MEMBER_CREATED: "workspace-member.created"
+} as const
+export const attioEventTypeSchema = z.enum(AttioEventType)
+export type AttioEventType = z.infer<typeof attioEventTypeSchema>
 
 export const WorkOSEventType = {
     USER_CREATED: "user.created",
@@ -930,6 +973,40 @@ export class WorkOSOutputConfig extends BaseConfigInstance<IntegrationType.WORKO
     }
 }
 
+export const attioSubscriptionSchema = z.object({
+    eventType: attioEventTypeSchema
+})
+export type AttioSubscription = z.infer<typeof attioSubscriptionSchema>
+
+export const AttioInputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.ATTIO),
+    configType: z.literal(ConfigType.ATTIO_INPUT),
+    subscriptions: z.array(attioSubscriptionSchema).default([])
+})
+export type AttioInputConfigData = z.infer<typeof AttioInputConfigSchema>
+export type AttioInputConfigInstance = AttioInputConfigData & ConfigBehavior
+
+export class AttioInputConfig extends BaseConfigInstance<IntegrationType.ATTIO, ConfigType.ATTIO_INPUT> implements AttioInputConfigInstance {
+    constructor(
+        integrationId: string,
+        public subscriptions: AttioSubscription[] = []
+    ) {
+        super(integrationId, IntegrationType.ATTIO, ConfigType.ATTIO_INPUT)
+    }
+
+    isComplete(): boolean {
+        return this.subscriptions.length > 0
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Attio Events`, `Integration ID: ${this.integrationId}`]
+        for (const sub of this.subscriptions) {
+            parts.push(`- ${sub.eventType}`)
+        }
+        return parts.join("\n")
+    }
+}
+
 export const AttioOutputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.ATTIO),
     configType: z.literal(ConfigType.ATTIO_OUTPUT),
@@ -1113,6 +1190,7 @@ export const configDataSchema = z.union([
     ImageEditConfigSchema,
     WorkOSInputConfigSchema,
     WorkOSOutputConfigSchema,
+    AttioInputConfigSchema,
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
     WebhookInputConfigSchema,
@@ -1129,6 +1207,7 @@ export const triggerConfigDataSchema = z.union([
     GitHubConfigSchema,
     TimeTriggerConfigSchema,
     WorkOSInputConfigSchema,
+    AttioInputConfigSchema,
     WebhookInputConfigSchema,
     WebMonitorConfigSchema,
     HeyReachInputConfigSchema
@@ -1194,6 +1273,8 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
             return config.eventTypes.length > 0
         case ConfigType.HEY_REACH_INPUT:
             return !!config.eventType
+        case ConfigType.ATTIO_INPUT:
+            return config.subscriptions.length > 0
         case ConfigType.ATTIO_OUTPUT:
             return !!config.objectSlug
         default:
@@ -1307,6 +1388,11 @@ export function formatConfigForAgent(config: ConfigData): string {
         }
         case ConfigType.WORKOS_OUTPUT:
             return `Type: WorkOS Skill\nIntegration ID: ${config.integrationId}`
+        case ConfigType.ATTIO_INPUT: {
+            const parts = [`Type: Attio Events`, `Integration ID: ${config.integrationId}`]
+            for (const sub of config.subscriptions) parts.push(`- ${sub.eventType}`)
+            return parts.join("\n")
+        }
         case ConfigType.ATTIO_OUTPUT: {
             const parts = [`Type: Attio Output`, `Integration ID: ${config.integrationId}`]
             if (config.objectSlug) parts.push(`Object: ${config.objectSlug}`)
@@ -1350,6 +1436,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.IMAGE_EDIT]: typeof ImageEditConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
     [ConfigType.WORKOS_OUTPUT]: typeof WorkOSOutputConfig
+    [ConfigType.ATTIO_INPUT]: typeof AttioInputConfig
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
     [ConfigType.SNOWFLAKE_OUTPUT]: typeof SnowflakeOutputConfig
     [ConfigType.WEBHOOK_INPUT]: typeof WebhookInputConfig
@@ -1375,6 +1462,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.IMAGE_EDIT]: ImageEditConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
+    [ConfigType.ATTIO_INPUT]: AttioInputConfig,
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
