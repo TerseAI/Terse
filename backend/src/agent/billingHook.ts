@@ -1,5 +1,4 @@
 import type { CallModelInputFilterArgs, ModelInputData } from "@openai/agents-core"
-import { CreditGateDeniedError, type RunGateDenyReason } from "terse-types"
 
 import type { Session } from "../express"
 import { billingServiceProxyForOrganization } from "../services/BillingService"
@@ -13,9 +12,9 @@ export async function billingHook<TSession extends SessionWithTracking<Session>>
     }
     const organizationId = args.context.user.organizationId
 
-    const denyReason = await getBillingOverageReason(organizationId, args.context.user.workosId)
-    if (denyReason !== null) {
-        throw new CreditGateDeniedError(denyReason)
+    const shouldBlock = await isBillingOver(organizationId, args.context.user.workosId)
+    if (shouldBlock) {
+        throw new Error("Billing overage")
     }
     return args.modelData
 }
@@ -25,21 +24,21 @@ export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking
     runInParallel: false,
     execute: async ({ context }) => {
         const organizationId = context.context.user.organizationId
-        const denyReason = await getBillingOverageReason(organizationId, context.context.user.workosId)
+        const shouldBlock = await isBillingOver(organizationId, context.context.user.workosId)
         return {
-            outputInfo: { reason: denyReason ?? "OK" },
-            tripwireTriggered: denyReason !== null
+            outputInfo: { reason: shouldBlock ? "Billing overage" : "OK" },
+            tripwireTriggered: shouldBlock
         }
     }
 }
 
-export async function getBillingOverageReason(organizationId: string, workosUserId: string): Promise<RunGateDenyReason | null> {
+export async function isBillingOver(organizationId: string, workosUserId: string): Promise<boolean> {
     const billing = billingServiceProxyForOrganization(organizationId, workosUserId)
     const gate = await billing.checkRunGate({ organizationId, breakCache: false })
     if (!gate.allow) {
         // Signal to all agents we are stopping.
         requestOrgCancellation(organizationId, CancelReason.BILLING_OVERAGE)
-        return gate.reason
+        return true
     }
-    return null
+    return false
 }

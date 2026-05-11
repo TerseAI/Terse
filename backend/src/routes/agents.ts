@@ -409,9 +409,7 @@ async function updateAgentForUser(userId: string, organizationId: string, agentI
             }
         }
 
-        if (notificationSettings !== undefined) {
-            await upsertNotificationSettings(tx, agentId, userId, notificationSettings)
-        }
+        await upsertNotificationSettings(tx, agentId, userId, notificationSettings ?? null)
 
         // Update tool approvals if provided
         if (toolApprovals !== undefined) {
