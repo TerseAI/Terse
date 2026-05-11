@@ -1,12 +1,13 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { KnownBlock, WebClient } from "@slack/web-api"
+import { KnownBlock } from "@slack/web-api"
 import { IntegrationType } from "terse-types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse-types"
 
+import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
-import { SecretField, getSecret } from "../../../services/SecretService"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { resolveSlackChannelIdForDestination } from "../../../utility/slack"
 import { isValidEpochTimestamp } from "../../../utility/strings"
 
 /**
@@ -15,8 +16,8 @@ import { isValidEpochTimestamp } from "../../../utility/strings"
  */
 export const slackSendMessageTool = defineSessionTool({
     name: "slack_send_message",
-    description: `Send message to a Slack channel or DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). Use a channel ID from the configured output destinations (channels and DM channel IDs for configured users).`,
-    execute: async ({ integrationId, channelId, message, thread_ts, blocks: blocksJson }, runContext) => {
+    description: `Send message to a Slack channel or DM. Provide channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). If both are set, channelId is used.`,
+    execute: async ({ integrationId, channelId, slackUserId, message, thread_ts, blocks: blocksJson }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
         }
@@ -59,20 +60,21 @@ export const slackSendMessageTool = defineSessionTool({
                 throw new Error(`Slack integration not found: ${integrationId}`)
             }
 
-            // Use the selected integration's token (user token if present, else bot token)
-            const userToken = await getSecret(IntegrationType.SLACK, userSlackIntegration.id, SecretField.AuthedUserAccessToken)
-            const botToken = await getSecret(IntegrationType.SLACK, userSlackIntegration.slack_integration.id, SecretField.AccessToken)
-            const token = userToken || botToken
-            if (!token) {
-                throw new Error(`Slack integration has no access token: ${integrationId}`)
+            const resolvedChannelId = await resolveSlackChannelIdForDestination(integrationId, channelId ?? null, slackUserId ?? null)
+            if (!resolvedChannelId) {
+                throw new Error(
+                    slackUserId
+                        ? `Could not open or resolve a DM for Slack user ${slackUserId}. Check scopes (im:write, chat:write) and that the member is in this workspace.`
+                        : "Could not resolve a destination channel. Provide a valid channelId or slackUserId."
+                )
             }
 
-            const client = new WebClient(token)
+            const client = await initializeSlackWebClient(userSlackIntegration)
 
             // Get channel name from API
-            let channelName = channelId // fallback to channelId
+            let channelName = resolvedChannelId // fallback to id
             try {
-                const channelInfo = await client.conversations.info({ channel: channelId })
+                const channelInfo = await client.conversations.info({ channel: resolvedChannelId })
                 if (channelInfo.channel) {
                     const channel = channelInfo.channel as { name?: string; is_im?: boolean; user?: string }
                     if (channel.is_im && channel.user) {
@@ -91,8 +93,8 @@ export const slackSendMessageTool = defineSessionTool({
                     }
                 }
             } catch (error) {
-                logger.warn("Failed to fetch Slack channel info for channel name", { error, channelId })
-                // Keep channelName as channelId fallback
+                logger.warn("Failed to fetch Slack channel info for channel name", { error, channelId: resolvedChannelId })
+                // Keep channelName as resolvedChannelId fallback
             }
 
             let validThreadTs
@@ -107,7 +109,7 @@ export const slackSendMessageTool = defineSessionTool({
             }
 
             const result = await client.chat.postMessage({
-                channel: channelId,
+                channel: resolvedChannelId,
                 text: message,
                 blocks: blocks,
                 thread_ts: validThreadTs,
@@ -140,7 +142,7 @@ export const slackSendMessageTool = defineSessionTool({
                 } catch (permalinkError) {
                     logger.warn("[Slack Output] Failed to fetch Slack permalink for sent message", {
                         permalinkError,
-                        channelId,
+                        channelId: resolvedChannelId,
                         messageTs: result.ts
                     })
                 }
@@ -162,7 +164,8 @@ export const slackSendMessageTool = defineSessionTool({
             })
 
             logger.info(`[Slack Output] Message sent to ${channelName}`, {
-                channelId,
+                channelId: resolvedChannelId,
+                slackUserId,
                 messageTs: result.ts,
                 threadTs: thread_ts,
                 hasBlocks: !!blocks,
@@ -181,7 +184,8 @@ export const slackSendMessageTool = defineSessionTool({
         } catch (error: any) {
             logger.error(`[Slack Output] Failed to send message`, {
                 error,
-                channelId
+                channelId,
+                slackUserId
             })
 
             // Provide helpful error messages

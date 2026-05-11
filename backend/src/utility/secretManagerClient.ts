@@ -12,7 +12,7 @@ const SECRET_MANAGER_MAX_REQUESTS_PER_MINUTE = SECRET_MANAGER_REQUESTS_PER_MINUT
 const SECRET_MANAGER_MIN_INTERVAL_MS = Math.ceil(60_000 / SECRET_MANAGER_MAX_REQUESTS_PER_MINUTE)
 
 interface GrpcError {
-    code?: number
+    code?: number | string
     message?: string
 }
 
@@ -21,7 +21,11 @@ function isGrpcError(error: unknown): error is GrpcError {
 }
 
 export function isSecretManagerNotFoundError(error: unknown): boolean {
-    return isGrpcError(error) && error.code === GRPC_NOT_FOUND
+    if (!isGrpcError(error)) {
+        return false
+    }
+    // gRPC NOT_FOUND is 5; some client layers stringify the code.
+    return error.code === GRPC_NOT_FOUND || error.code === "5"
 }
 
 type SecretVersionCleanupReport = {
