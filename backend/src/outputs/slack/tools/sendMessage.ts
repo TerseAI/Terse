@@ -60,14 +60,11 @@ export const slackSendMessageTool = defineSessionTool({
                 throw new Error(`Slack integration not found: ${integrationId}`)
             }
 
-            const trimmedChannelId = channelId != null && String(channelId).trim().length > 0 ? String(channelId).trim() : null
-            const trimmedSlackUserId = slackUserId != null && String(slackUserId).trim().length > 0 ? String(slackUserId).trim() : null
-
-            const resolvedChannelId = await resolveSlackChannelIdForDestination(integrationId, trimmedChannelId, trimmedSlackUserId)
+            const resolvedChannelId = await resolveSlackChannelIdForDestination(integrationId, channelId ?? null, slackUserId ?? null)
             if (!resolvedChannelId) {
                 throw new Error(
-                    trimmedSlackUserId
-                        ? `Could not open or resolve a DM for Slack user ${trimmedSlackUserId}. Check scopes (im:write, chat:write) and that the member is in this workspace.`
+                    slackUserId
+                        ? `Could not open or resolve a DM for Slack user ${slackUserId}. Check scopes (im:write, chat:write) and that the member is in this workspace.`
                         : "Could not resolve a destination channel. Provide a valid channelId or slackUserId."
                 )
             }
@@ -168,7 +165,7 @@ export const slackSendMessageTool = defineSessionTool({
 
             logger.info(`[Slack Output] Message sent to ${channelName}`, {
                 channelId: resolvedChannelId,
-                slackUserId: trimmedSlackUserId,
+                slackUserId,
                 messageTs: result.ts,
                 threadTs: thread_ts,
                 hasBlocks: !!blocks,

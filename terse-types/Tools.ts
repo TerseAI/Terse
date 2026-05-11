@@ -681,9 +681,7 @@ export const slackSendMessageInputSchema = z
         blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
     })
     .superRefine((data, ctx) => {
-        const hasChannel = data.channelId != null && String(data.channelId).trim().length > 0
-        const hasUser = data.slackUserId != null && String(data.slackUserId).trim().length > 0
-        if (!hasChannel && !hasUser) {
+        if (!data.channelId && !data.slackUserId) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "Provide channelId (channel or existing DM) or slackUserId (workspace member to DM)."
