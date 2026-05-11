@@ -7,6 +7,7 @@ import { ConfigData } from "terse-types"
 import { SendModelRequest, ToolApprovalResponse } from "terse-types"
 import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "terse-types"
 import { SocketEvents, SocketRooms } from "terse-types"
+import { User } from "terse-types/types"
 
 import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "./agent/AgentRunner/SdkAgentRunner"
@@ -26,7 +27,7 @@ import { db } from "./prismaClient"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { billingServiceProxyForOrganization } from "./services/BillingService"
 import { invalidateRunAndChatHistory } from "./services/CacheInvalidationService"
-import { AgentWithRelations } from "./types/prisma"
+import { Agent, AgentWithRelations } from "./types/prisma"
 import { isCorsOriginAllowed } from "./utility/corsOrigins"
 import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
 import { randomString } from "./utility/strings"
@@ -367,8 +368,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
 
                 const classified = classifyAgentError(error)
                 logger.error(`[agent:chat:message] Error running agent: ${classified.message}`, { error, runId, agentId: agent.id, userId })
-                await markRunFailedAndInvalidate(runId, classified, organizationIdForRun, agent.id)
-                await notifyRunFailure(notificationManager, runId, classified.message, agent.id, userId)
+                await finalizeRunFailure(runId, classified, user, agent)
                 return
             }
 
@@ -526,13 +526,21 @@ async function getAccessibleRunRecord(runId: string, organizationId: string | un
     return runRecord
 }
 
-/**
- * Mark run as failed, append a raw error system event for model memory, emit a live RunError, and invalidate related caches.
- * Logs on failure; does not rethrow.
- */
-export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<void> {
+export async function finalizeRunFailure(runId: string, classified: ClassifiedError, user: User, agent: Agent): Promise<void> {
+    const transitioned = await markRunFailedAndInvalidate(runId, classified, user.organizationId, agent.id)
+    if (!transitioned) return
     try {
-        await markRunFailed(runId, classified.message, "agent")
+        await new NotificationManager(user, agent).notifyRunFailure(runId, classified.message)
+    } catch (notificationError) {
+        logger.error("Failed to send run failure notification", { error: notificationError, runId, agentId: agent.id })
+    }
+}
+
+export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<boolean> {
+    try {
+        const transitioned = await markRunFailed(runId, classified.message, "agent")
+        if (!transitioned) return false
+
         await appendRunHistoryErrorSystemEvent(runId, classified)
 
         if (io && organizationId) {
@@ -552,8 +560,10 @@ export async function markRunFailedAndInvalidate(runId: string, classified: Clas
         if (organizationId) {
             invalidateRunAndChatHistory(organizationId, agentId, runId)
         }
+        return true
     } catch (e) {
         logger.error("Failed to mark run as failed and invalidate cache", { error: e, runId })
+        return false
     }
 }
 

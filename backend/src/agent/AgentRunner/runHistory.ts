@@ -135,20 +135,24 @@ export async function markRunInProgress(runId: string): Promise<void> {
 
 export type FailureStage = "filter" | "agent"
 
-export async function markRunFailed(runId: string, errorMessage: string, stage?: FailureStage): Promise<void> {
+export async function markRunFailed(runId: string, errorMessage: string, stage?: FailureStage): Promise<boolean> {
     const prisma = db()
 
     // Prefix error message with failure stage for easy identification
     const prefixedMessage = stage ? `[${stage.toUpperCase()}_ERROR] ${errorMessage}` : errorMessage
 
-    await prisma.run_history_records.update({
-        where: { id: runId },
+    const result = await prisma.run_history_records.updateMany({
+        where: {
+            id: runId,
+            status: { in: [RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL] }
+        },
         data: {
             status: RunHistoryStatus.FAILED,
             decision_action: "processed",
             decision_reason: prefixedMessage
         }
     })
+    return result.count > 0
 }
 
 export async function markRunCancelled(runId: string, reason: string = CancelReason.USER_CANCELLED): Promise<void> {
