@@ -61,6 +61,7 @@ interface SlackSectionContext {
     id: string
     skillToolType: string
     channelClass: ResourceClassContext
+    userClass: ResourceClassContext
 }
 
 interface LinearSectionContext {
@@ -428,6 +429,15 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
                 ],
                 "name",
                 inst.channels
+            ),
+            userClass: buildResourceClassContext(
+                "SlackUser",
+                [
+                    { classField: "userId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" }
+                ],
+                "name",
+                inst.users
             )
         }
     )

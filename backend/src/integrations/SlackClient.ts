@@ -5,6 +5,7 @@ import { SecretField, getSecret } from "../services/SecretService"
 
 type SlackTokenSource = {
     id: string
+    is_bot_user: boolean
     slack_integration: {
         id: string
     }
@@ -15,6 +16,10 @@ type SlackTokenSource = {
  * This is in a separate file to avoid circular dependencies with SlackIntegration.ts
  */
 export async function resolveSlackAccessToken(integration: SlackTokenSource): Promise<string | null> {
+    if (integration.is_bot_user === true) {
+        return await getSecret(IntegrationType.SLACK, integration.slack_integration.id, SecretField.AccessToken)
+    }
+
     const userToken = await getSecret(IntegrationType.SLACK, integration.id, SecretField.AuthedUserAccessToken)
     if (userToken) {
         return userToken

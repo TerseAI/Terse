@@ -467,10 +467,12 @@ app.get(ApiRoutes.SLACK.OAUTH_CALLBACK, async (req, res) => {
 })
 
 app.get(ApiRoutes.SLACK.CHANNELS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    console.log("Slack channels request")
     getSlackChannels(req, res)
 })
 
 app.get(ApiRoutes.SLACK.USERS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    console.log("Slack users request")
     await getSlackUsers(req, res)
 })
 
