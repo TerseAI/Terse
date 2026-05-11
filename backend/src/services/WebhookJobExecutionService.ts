@@ -3,11 +3,10 @@ import type { ChatSnippet, WebhookFailureStage } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { SdkJobServerCheckStep, User, webhookJobTriggerResponseSchema } from "terse-types/types"
 
-import { finalizeRunStatus, markRunSkipped } from "../agent/AgentRunner/runHistory"
-import { classifyAgentError } from "../agent/agentErrorUtils"
+import { finalizeRunStatus, markRunFailed, markRunSkipped } from "../agent/AgentRunner/runHistory"
 import { emitAndPersistSnippetEvent } from "../agent/systemEvents/emitAndPersistSnippetEvent"
 import logger from "../logger"
-import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../realtimeSocket"
+import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { SDKAgent } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 import { buildSignatureHeaders } from "../utility/webhookHmac"
@@ -27,7 +26,7 @@ interface WebhookJobExecutionParams {
 
 export class WebhookJobExecutionService {
     async execute(params: WebhookJobExecutionParams): Promise<void> {
-        const { remoteServerUrl, runId, agent, orgId, user, event, jobName, signingSecret } = params
+        const { remoteServerUrl, runId, agent, orgId, event, jobName, signingSecret } = params
 
         // Tracks the most recently entered stage so the unhandled-error catch block at the bottom
         // can attribute thrown exceptions to the right stage in the run-history snippet.
@@ -50,7 +49,8 @@ export class WebhookJobExecutionService {
                     step: challenge.step,
                     httpStatus: challenge.httpStatus
                 })
-                await finalizeRunFailure(runId, classifyAgentError(new Error(challenge.message)), user, agent)
+                await markRunFailed(runId, challenge.message, "agent")
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
                 logger.error("Webhook job: handshake failed", {
                     runId,
                     agentId: agent.id,
@@ -96,7 +96,8 @@ export class WebhookJobExecutionService {
                     httpStatus: deliverResponse.status,
                     bodySnippet: detail || undefined
                 })
-                await finalizeRunFailure(runId, classifyAgentError(new Error(`${failureMessage}: ${detail}`)), user, agent)
+                await markRunFailed(runId, `${failureMessage}: ${detail}`, "agent")
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
                 logger.error("Webhook job: delivery non-2xx", { runId, agentId: agent.id, status: deliverResponse.status, detail })
                 return
             }
@@ -138,7 +139,8 @@ export class WebhookJobExecutionService {
                     message: errorMessage,
                     triggerUrl: knownTriggerUrl
                 })
-                await finalizeRunFailure(runId, classifyAgentError(error), user, agent)
+                await markRunFailed(runId, errorMessage, "agent")
+                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
             } catch (e) {
                 logger.error("Failed to mark webhook run as failed", { error: e, runId })
             }

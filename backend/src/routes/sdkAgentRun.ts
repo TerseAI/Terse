@@ -9,10 +9,7 @@ import { z } from "zod"
 import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
-import { classifyAgentError } from "../agent/agentErrorUtils"
 import logger from "../logger"
-import { db } from "../prismaClient"
-import { finalizeRunFailure } from "../realtimeSocket"
 import { type BillingService, billingServiceProxyForOrganization } from "../services/BillingService"
 import { extractErrorMessage } from "../utility/strings"
 
@@ -93,10 +90,6 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
         finishSseStream(res, send, result, sdkRunner)
     } catch (error) {
-        if (isProductionRun && sandboxRunId) {
-            await finalizeFailedProductionRun(sandboxRunId, user, error)
-        }
-
         if (error instanceof CreditGateDeniedError) {
             send({ type: "error", message: error.message })
             send({ type: "done" })
@@ -113,19 +106,6 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         send({ type: "error", message })
         send({ type: "done" })
         res.end()
-    }
-}
-
-async function finalizeFailedProductionRun(runId: string, user: User, error: unknown): Promise<void> {
-    try {
-        const record = await db().run_history_records.findUnique({
-            where: { id: runId },
-            select: { automation: true }
-        })
-        if (!record?.automation) return
-        await finalizeRunFailure(runId, classifyAgentError(error), user, record.automation)
-    } catch (markErr) {
-        logger.error("Failed to finalize failed SDK production run", { error: markErr, runId })
     }
 }
 
