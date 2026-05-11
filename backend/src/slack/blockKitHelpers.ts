@@ -314,15 +314,20 @@ export function createRunFailureNotificationMessage(options: {
         tier === "paused"
             ? `We paused this agent after ${options.failureState.consecutiveFailures} consecutive failures.`
             : tier === "warning"
-                ? "This run failed again. One more failure and we'll pause this agent."
-                : "This run ended with an error and needs attention."
+              ? "This run failed again. One more failure and we'll pause this agent."
+              : "This run ended with an error and needs attention."
 
     blocks.push(...createHeaderBlock(headerTitle, headerSubtitle))
     blocks.push(createMetaBlock("Agent", options.agentName))
     blocks.push(createMetaBlock("Notification For", tier === "paused" ? "Agent auto-paused" : "A run failed."))
 
     if (tier === "paused") {
-        blocks.push(createMetaBlock("Agent Paused", `Terse paused *${options.agentName}* after ${options.failureState.consecutiveFailures} consecutive failures so you don't keep getting these messages. Re-enable it from the agent settings once you've fixed the issue.`))
+        blocks.push(
+            createMetaBlock(
+                "Agent Paused",
+                `Terse paused *${options.agentName}* after ${options.failureState.consecutiveFailures} consecutive failures so you don't keep getting these messages. Re-enable it from the agent settings once you've fixed the issue.`
+            )
+        )
     } else if (tier === "warning") {
         blocks.push(createMetaBlock("Warning", `This is ${options.failureState.consecutiveFailures} failures in a row. If the next run also fails, we'll pause this agent automatically.`))
     }

@@ -175,8 +175,8 @@ export function formatRunFailureNotificationMessage(context: RunFailureNotificat
         context.failureState.tier === "paused"
             ? `Terse paused agent ${context.agentName} after ${context.failureState.consecutiveFailures} consecutive failures`
             : context.failureState.tier === "warning"
-                ? `Run failed in ${context.agentName} (${context.failureState.consecutiveFailures} in a row — one more will pause it)`
-                : `Run failed in ${context.agentName}: ${errorSummary}`
+              ? `Run failed in ${context.agentName} (${context.failureState.consecutiveFailures} in a row — one more will pause it)`
+              : `Run failed in ${context.agentName}: ${errorSummary}`
 
     const blocks = createRunFailureNotificationMessage({
         agentName: context.agentName,

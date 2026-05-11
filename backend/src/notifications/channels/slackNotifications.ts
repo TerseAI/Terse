@@ -49,7 +49,13 @@ export async function sendSlackApprovalRequest(notificationDestination: UserNoti
     return result.permalink
 }
 
-export async function sendSlackRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string, failureState: FailureState): Promise<string | undefined> {
+export async function sendSlackRunFailure(
+    notificationDestination: UserNotificationDestination,
+    agent: Agent,
+    runId: string,
+    errorMessage: string,
+    failureState: FailureState
+): Promise<string | undefined> {
     if (!notificationDestination.slack_integration_id) {
         logger.debug(`[notifySlackRunFailure] No Slack integration ID found. Skipping.`)
         return undefined

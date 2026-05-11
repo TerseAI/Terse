@@ -89,8 +89,8 @@ export async function sendEmailRunFailure(notificationDestination: UserNotificat
         failureState.tier === "paused"
             ? `Terse Agent paused: ${agent.name}`
             : failureState.tier === "warning"
-                ? `Repeated error with Terse Agent: ${agent.name}`
-                : `Error with Terse Agent: ${agent.name}`
+              ? `Repeated error with Terse Agent: ${agent.name}`
+              : `Error with Terse Agent: ${agent.name}`
 
     await resend.emails.send({
         from: fromEmail,
