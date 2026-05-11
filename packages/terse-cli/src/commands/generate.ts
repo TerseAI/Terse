@@ -149,10 +149,18 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                 const instances = await fetchWithAuth<SlackIntegration[]>(ApiRoutes.SLACK.INTEGRATIONS, apiKey)
                 input.slack = await Promise.all(
                     instances.map(async (inst): Promise<SlackInstanceData> => {
-                        const resp = await fetchWithAuth<{ channels: Array<{ id: string; name: string }> }>(`${ApiRoutes.SLACK.CHANNELS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(
-                            () => ({ channels: [] })
-                        )
-                        return { id: inst.id, displayName: inst.teamName || inst.id, channels: resp.channels || [] }
+                        const [channelsResp, usersResp] = await Promise.all([
+                            fetchWithAuth<{ channels: Array<{ id: string; name: string }> }>(`${ApiRoutes.SLACK.CHANNELS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(() => ({
+                                channels: []
+                            })),
+                            fetchWithAuth<{ users: Array<{ id: string; name: string }> }>(`${ApiRoutes.SLACK.USERS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(() => ({ users: [] }))
+                        ])
+                        return {
+                            id: inst.id,
+                            displayName: inst.teamName || inst.id,
+                            channels: channelsResp.channels || [],
+                            users: usersResp.users || []
+                        }
                     })
                 )
             })
