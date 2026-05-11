@@ -165,6 +165,12 @@ await TerseAgent.executeTool("slack_send_message", {
 
 Use `TerseAgent.executeTool` when you want guaranteed execution of a specific tool by name (for example when the name is only known at runtime).
 
+## Billing gates and failed runs
+
+When a hosted **`TerseAgent`** run is blocked by your organization's **credit gate**, Terse records the run as **failed** in Activity and closes the stream with an **`error`** event. **`TerseAgent.run`** and **`runAndWait`** surface that as a thrown error whose message reflects the deny reason (for example exhausted credits versus subscription status), instead of leaving the run stuck **in progress**. Misconfigured webhook or SDK-triggered runs that fail during startup follow the same pattern: they end as **failed** rather than hanging open.
+
+If you integrate with Terse over HTTP outside the helpers in `terse-sdk`, **`CreditGateDeniedError`**, **`BillingError`**, and **`RunGateDenyReason`** are exported from **`terse-types`** (a dependency of `terse-sdk`).
+
 ## `toolbox.*` (generated)
 
 `terse generate` writes a **`toolbox`** export in `src/terse.generated.ts` with the same typed namespaces as `agent.tools.*`. Import **`toolbox`** to call integration tools deterministically **without** constructing a `TerseAgent` and without listing integrations in **`skills`**.
