@@ -117,8 +117,8 @@ export type FailureState = {
 // pre-threshold value and skip the pause.
 export async function recordAgentFailureAndMaybePause(agentId: string): Promise<FailureState> {
     const prisma = db()
-    const tx = await prisma.$transaction(async tx => {
-        const updated = await prisma.automations.update({
+    return await prisma.$transaction(async tx => {
+        const updated = await tx.automations.update({
             where: { id: agentId },
             data: { consecutive_failures: { increment: 1 } },
             select: { consecutive_failures: true, is_active: true }
@@ -128,7 +128,7 @@ export async function recordAgentFailureAndMaybePause(agentId: string): Promise<
         let wasPaused = false
 
         if (count >= PAUSE_THRESHOLD && updated.is_active) {
-            await prisma.automations.update({
+            await tx.automations.update({
                 where: { id: agentId },
                 data: { is_active: false }
             })
@@ -138,7 +138,6 @@ export async function recordAgentFailureAndMaybePause(agentId: string): Promise<
         const tier: FailureTier = count >= PAUSE_THRESHOLD ? "paused" : count === PAUSE_THRESHOLD - 1 ? "warning" : "first"
         return { consecutiveFailures: count, tier, wasPaused }
     })
-    return tx
 }
 
 export async function attachProjectDeployToRun(runId: string, projectDeployId: string): Promise<void> {
