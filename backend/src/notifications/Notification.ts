@@ -3,6 +3,7 @@ import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
 
+import { recordAgentFailureAndMaybePause } from "../agent/AgentRunner/runHistory"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
@@ -117,6 +118,16 @@ export class NotificationManager {
     }
 
     async notifyRunFailure(runId: string, errorMessage: string) {
+        // Record the failure (and possibly auto-pause) regardless of notification
+        // permissions — the pause must trigger even if the user opted out of emails.
+        let failureState
+        try {
+            failureState = await recordAgentFailureAndMaybePause(this.agent.id)
+        } catch (error) {
+            logger.error("Failed to record agent failure for auto-pause", { error, runId, agentId: this.agent.id })
+            failureState = { consecutiveFailures: 1, tier: "first" as const, wasPaused: false }
+        }
+
         const isPermitted = await this.isNotificationPermitted(RunHistoryActionType.error)
         if (!isPermitted) {
             return
@@ -129,10 +140,10 @@ export class NotificationManager {
         try {
             switch (notificationDestination.destination_type) {
                 case NotificationDestinationType.SLACK:
-                    notificationUrl = await sendSlackRunFailure(notificationDestination, this.agent, runId, errorMessage)
+                    notificationUrl = await sendSlackRunFailure(notificationDestination, this.agent, runId, errorMessage, failureState)
                     break
                 case NotificationDestinationType.EMAIL:
-                    await sendEmailRunFailure(notificationDestination, this.agent, runId, errorMessage)
+                    await sendEmailRunFailure(notificationDestination, this.agent, runId, errorMessage, failureState)
                     break
             }
         } catch (error) {

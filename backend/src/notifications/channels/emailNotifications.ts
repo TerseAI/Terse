@@ -6,6 +6,7 @@ import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 import { fileURLToPath } from "url"
 
+import { FailureState } from "../../agent/AgentRunner/runHistory"
 import { settings } from "../../config/settings"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
 import { loadTemplate } from "../emails/templating"
@@ -78,17 +79,35 @@ export async function sendEmailApprovalRequest(notificationDestination: UserNoti
     })
 }
 
-export async function sendEmailRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string) {
+export async function sendEmailRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string, failureState: FailureState) {
     const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agent.id, runId })}` : undefined
     const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 
+    const subject =
+        failureState.tier === "paused"
+            ? `Terse Agent paused: ${agent.name}`
+            : failureState.tier === "warning"
+                ? `Repeated error with Terse Agent: ${agent.name}`
+                : `Error with Terse Agent: ${agent.name}`
+
     await resend.emails.send({
         from: fromEmail,
         to: notificationDestination.email_address || "",
-        subject: "Error with Terse Agent: " + agent.name,
-        html: await loadTemplate("runHistoryError.html", { agent, runId, errorMessage, runUrl, logoSrc: branding.logoSrc, agentSettingsUrl, notificationSettingsUrl }),
+        subject,
+        html: await loadTemplate("runHistoryError.html", {
+            agent,
+            runId,
+            errorMessage,
+            runUrl,
+            logoSrc: branding.logoSrc,
+            agentSettingsUrl,
+            notificationSettingsUrl,
+            failureState,
+            isWarning: failureState.tier === "warning",
+            isPaused: failureState.tier === "paused"
+        }),
         attachments: branding.attachments
     })
 }

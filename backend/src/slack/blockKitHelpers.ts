@@ -299,15 +299,45 @@ export function createNotificationMessage(options: { agentName: string; notifica
 /**
  * Creates a run failure notification message.
  */
-export function createRunFailureNotificationMessage(options: { agentName: string; errorSummary: string; runHistoryLink?: string }): KnownBlock[] {
+export function createRunFailureNotificationMessage(options: {
+    agentName: string
+    errorSummary: string
+    runHistoryLink?: string
+    agentSettingsLink?: string
+    failureState: { consecutiveFailures: number; tier: "first" | "warning" | "paused"; wasPaused: boolean }
+}): KnownBlock[] {
     const blocks: KnownBlock[] = []
 
-    blocks.push(...createHeaderBlock("Run Failed", "This run ended with an error and needs attention."))
+    const tier = options.failureState.tier
+    const headerTitle = tier === "paused" ? "Agent Paused" : "Run Failed"
+    const headerSubtitle =
+        tier === "paused"
+            ? `We paused this agent after ${options.failureState.consecutiveFailures} consecutive failures.`
+            : tier === "warning"
+                ? "This run failed again. One more failure and we'll pause this agent."
+                : "This run ended with an error and needs attention."
+
+    blocks.push(...createHeaderBlock(headerTitle, headerSubtitle))
     blocks.push(createMetaBlock("Agent", options.agentName))
-    blocks.push(createMetaBlock("Notification For", "A run failed."))
+    blocks.push(createMetaBlock("Notification For", tier === "paused" ? "Agent auto-paused" : "A run failed."))
+
+    if (tier === "paused") {
+        blocks.push(createMetaBlock("Agent Paused", `Terse paused *${options.agentName}* after ${options.failureState.consecutiveFailures} consecutive failures so you don't keep getting these messages. Re-enable it from the agent settings once you've fixed the issue.`))
+    } else if (tier === "warning") {
+        blocks.push(createMetaBlock("Warning", `This is ${options.failureState.consecutiveFailures} failures in a row. If the next run also fails, we'll pause this agent automatically.`))
+    }
+
     blocks.push(createMetaBlock("Error", options.errorSummary))
 
-    if (options.runHistoryLink) {
+    if (tier === "paused" && options.agentSettingsLink) {
+        blocks.push(
+            createActionBlock([
+                createButton("Open agent settings", "view_agent_settings", {
+                    url: options.agentSettingsLink
+                })
+            ])
+        )
+    } else if (options.runHistoryLink) {
         blocks.push(
             createActionBlock([
                 createButton("Open run history", "view_run_history", {

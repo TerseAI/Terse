@@ -3,6 +3,7 @@ import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
+import { FailureState } from "../agent/AgentRunner/runHistory"
 import { settings } from "../config/settings"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "../integrations/SlackClient"
 import logger from "../logger"
@@ -24,6 +25,7 @@ export interface RunFailureNotificationContext {
     agentName: string
     runId: string
     errorMessage: string
+    failureState: FailureState
 }
 
 export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<{ success: boolean; permalink?: string }> {
@@ -166,13 +168,22 @@ export function formatNotificationMessage(runAction: RunHistoryAction, context: 
 
 export function formatRunFailureNotificationMessage(context: RunFailureNotificationContext): SlackMessage {
     const runHistoryLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: context.agentId, runId: context.runId })}` : undefined
+    const agentSettingsLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: context.agentId })}` : undefined
     const errorSummary = context.errorMessage.length > 300 ? `${context.errorMessage.slice(0, 297)}...` : context.errorMessage
-    const text = `Run failed in ${context.agentName}: ${errorSummary}`
+
+    const text =
+        context.failureState.tier === "paused"
+            ? `Terse paused agent ${context.agentName} after ${context.failureState.consecutiveFailures} consecutive failures`
+            : context.failureState.tier === "warning"
+                ? `Run failed in ${context.agentName} (${context.failureState.consecutiveFailures} in a row — one more will pause it)`
+                : `Run failed in ${context.agentName}: ${errorSummary}`
 
     const blocks = createRunFailureNotificationMessage({
         agentName: context.agentName,
         errorSummary,
-        runHistoryLink
+        runHistoryLink,
+        agentSettingsLink,
+        failureState: context.failureState
     })
 
     return { text, blocks }

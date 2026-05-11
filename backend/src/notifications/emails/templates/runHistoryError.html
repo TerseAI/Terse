@@ -111,6 +111,27 @@
                 word-break: break-word;
             }
 
+            .warning-block {
+                margin: 0;
+                padding: 12px 14px;
+                border: 1px solid #fde68a;
+                border-radius: 10px;
+                background: #fffbeb;
+            }
+
+            .warning-text {
+                margin: 0;
+                font-size: 13px;
+                line-height: 1.5;
+                color: #92400e;
+                word-break: break-word;
+            }
+
+            .warning-block + .error-block,
+            .error-block + .error-block {
+                margin-top: 14px;
+            }
+
             .error-block + .button {
                 margin-top: 14px;
             }
@@ -157,8 +178,8 @@
                                     class="logo"
                                     style="display: block; margin: 0 0 12px; width: 24px; height: 24px"
                                 />
-                                <h1 class="title">Run Failed</h1>
-                                <p class="subtitle">This run ended with an error and needs attention.</p>
+                                <h1 class="title">{{#if isPaused}}Agent Paused{{else}}Run Failed{{/if}}</h1>
+                                <p class="subtitle">{{#if isPaused}}We paused this agent after {{failureState.consecutiveFailures}} consecutive failures.{{else if isWarning}}This run failed again. One more failure and we'll pause this agent.{{else}}This run ended with an error and needs attention.{{/if}}</p>
                             </td>
                         </tr>
                         <tr>
@@ -170,16 +191,34 @@
 
                                 <div class="meta">
                                     <p class="label">Notification For</p>
-                                    <p class="value">A run failed.</p>
+                                    <p class="value">{{#if isPaused}}Agent auto-paused{{else}}A run failed.{{/if}}</p>
                                 </div>
+
+                                {{#if isPaused}}
+                                <div class="error-block">
+                                    <p class="label" style="color: #7f1d1d; margin-bottom: 6px">Agent Paused</p>
+                                    <p class="error-text">Terse paused <strong>{{agent.name}}</strong> after {{failureState.consecutiveFailures}} consecutive failures so you don't keep getting these emails. Re-enable it from the agent settings once you've fixed the issue.</p>
+                                </div>
+                                {{else if isWarning}}
+                                <div class="warning-block">
+                                    <p class="label" style="color: #92400e; margin-bottom: 6px">Warning</p>
+                                    <p class="warning-text">This is {{failureState.consecutiveFailures}} failures in a row. If the next run also fails, we'll pause this agent automatically.</p>
+                                </div>
+                                {{/if}}
 
                                 <div class="error-block">
                                     <p class="label" style="color: #7f1d1d; margin-bottom: 6px">Error</p>
                                     <p class="error-text">{{#if errorMessage}}{{errorMessage}}{{else}}No error details available.{{/if}}</p>
                                 </div>
 
-                                {{#if runUrl}}
-                                <a href="{{runUrl}}" class="button">Open run history</a>
+                                {{#if isPaused}}
+                                    {{#if agentSettingsUrl}}
+                                    <a href="{{agentSettingsUrl}}" class="button">Open agent settings</a>
+                                    {{/if}}
+                                {{else}}
+                                    {{#if runUrl}}
+                                    <a href="{{runUrl}}" class="button">Open run history</a>
+                                    {{/if}}
                                 {{/if}}
                             </td>
                         </tr>

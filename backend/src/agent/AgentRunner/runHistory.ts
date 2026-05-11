@@ -85,10 +85,57 @@ export async function markRunProcessed(runId: string, reason?: string): Promise<
 
 export async function finalizeRunStatus(runId: string, status: CompletedRunStatus): Promise<void> {
     const prisma = db()
-    await prisma.run_history_records.update({
+    const updated = await prisma.run_history_records.update({
         where: { id: runId },
-        data: { status }
+        data: { status },
+        select: { automation_id: true }
     })
+    if (status === RunHistoryStatus.SUCCESS) {
+        try {
+            await prisma.automations.update({
+                where: { id: updated.automation_id },
+                data: { consecutive_failures: 0 }
+            })
+        } catch (error) {
+            logger.warn("Failed to reset consecutive_failures on success", { error, runId, agentId: updated.automation_id })
+        }
+    }
+}
+
+export type FailureTier = "first" | "warning" | "paused"
+export const PAUSE_THRESHOLD = 3
+
+export type FailureState = {
+    consecutiveFailures: number
+    tier: FailureTier
+    wasPaused: boolean
+}
+
+// Atomically increments the agent's consecutive_failures counter and auto-pauses
+// the agent (is_active = false) when it crosses PAUSE_THRESHOLD. The atomic
+// increment is important: parallel failures could otherwise both observe a
+// pre-threshold value and skip the pause.
+export async function recordAgentFailureAndMaybePause(agentId: string): Promise<FailureState> {
+    const prisma = db()
+    const updated = await prisma.automations.update({
+        where: { id: agentId },
+        data: { consecutive_failures: { increment: 1 } },
+        select: { consecutive_failures: true, is_active: true }
+    })
+
+    const count = updated.consecutive_failures
+    let wasPaused = false
+
+    if (count >= PAUSE_THRESHOLD && updated.is_active) {
+        await prisma.automations.update({
+            where: { id: agentId },
+            data: { is_active: false }
+        })
+        wasPaused = true
+    }
+
+    const tier: FailureTier = count >= PAUSE_THRESHOLD ? "paused" : count === PAUSE_THRESHOLD - 1 ? "warning" : "first"
+    return { consecutiveFailures: count, tier, wasPaused }
 }
 
 export async function attachProjectDeployToRun(runId: string, projectDeployId: string): Promise<void> {
