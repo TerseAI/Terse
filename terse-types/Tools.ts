@@ -661,19 +661,35 @@ export const linearGetUsersInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Linear integration to use.")
 })
 
-export const slackSendMessageInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Slack workspace to use."),
-    channelId: z.string().describe("Slack channel or DM channel ID from the configured output destinations."),
-    message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
-    thread_ts: z
-        .string()
-        .nullable()
-        .optional()
-        .describe(
-            "Thread timestamp to reply to existing thread. If sending a message to a thread, this should be the timestamp of the thread to reply to. If sending an unthreaded message, this should be set to null."
-        ),
-    blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
-})
+export const slackSendMessageInputSchema = z
+    .object({
+        integrationId: z.string().describe("The integration ID of the Slack workspace to use."),
+        channelId: z.string().nullable().optional().describe("Slack channel ID (C…/G…) or existing DM channel ID (D…). Omit when sending via slackUserId (opens DM if needed)."),
+        slackUserId: z
+            .string()
+            .nullable()
+            .optional()
+            .describe("Slack member ID (U…) to send a direct message. The workspace opens the DM conversation if one does not exist yet. Omit when sending to channelId."),
+        message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
+        thread_ts: z
+            .string()
+            .nullable()
+            .optional()
+            .describe(
+                "Thread timestamp to reply to existing thread. If sending a message to a thread, this should be the timestamp of the thread to reply to. If sending an unthreaded message, this should be set to null."
+            ),
+        blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
+    })
+    .superRefine((data, ctx) => {
+        const hasChannel = data.channelId != null && String(data.channelId).trim().length > 0
+        const hasUser = data.slackUserId != null && String(data.slackUserId).trim().length > 0
+        if (!hasChannel && !hasUser) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Provide channelId (channel or existing DM) or slackUserId (workspace member to DM)."
+            })
+        }
+    })
 
 export const slackListChannelsTypesSchema = z.enum(["public", "private", "im", "mpim", "all"])
 
