@@ -24,10 +24,6 @@ export abstract class Output<TConfig extends ConfigData> {
 
     abstract addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: TConfig): Promise<void>
 
-    /**
-     * Returns system instructions. When useDummyConfig is true, uses a minimal dummy config
-     * instead of this.configs—useful for capability lookup where no real configs exist.
-     */
     getSystemInstructions(): string {
         const configs = this.configs
         return this.getSystemInstructionsForConfigs(configs)

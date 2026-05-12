@@ -9,13 +9,13 @@ import { Output, ToolboxEntry } from "./Output"
 
 export function createToolACLGuardrail<TConfig extends ConfigData>(entry: ToolboxEntry<TConfig>, output: Output<TConfig>): ToolInputGuardrailDefinition<SessionWithTracking<Session>> {
     const validate = entry.validateACL
-    const toolName = entry.tool.name ?? ""
+    const toolName = entry.tool.name
 
     return defineToolInputGuardrail<SessionWithTracking<Session>>({
         name: `acl:${toolName}`,
         run: async ({ context, toolCall }) => {
             try {
-                const args = JSON.parse(toolCall.arguments) as ToolInputByName[ToolName]
+                const args = JSON.parse(toolCall.arguments)
                 const result = await validate({
                     args,
                     configs: output.configs,
