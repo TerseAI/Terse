@@ -23,7 +23,7 @@ import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMem
 import { resolveLanguageModel } from "../modelRegistry"
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
-import { buildUserMessage, buildUserMessageFromContent } from "../userMessage"
+import { buildUserMessageFromContent } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, SessionWithTracking } from "./BaseAgentRunner"
 import { persistRunAction } from "./EventProcessor"
@@ -282,20 +282,23 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
         })
     }
 
-    private chooseModel(): AiSdkModel {
-        const defaultModel = settings.aisdk.default
-        const resolved = resolveLanguageModel(defaultModel)
-        return aisdk(resolved.model)
+    private resolveModel(): { model: AiSdkModel; providerData: Record<string, unknown> } {
+        const resolved = resolveLanguageModel(settings.aisdk.default)
+        return { model: aisdk(resolved.model), providerData: resolved.providerData }
     }
 
-    private getModelSettings() {
-        return builderProviderDataModelSettings({
+    private buildModelSettings(providerData: Record<string, unknown>) {
+        const base = builderProviderDataModelSettings({
             agentId: this.agentConfig.id,
             agentType: AgentType.AGENT_RUNNER,
             runId: this.runContext.runId,
             user: this.session.user,
             env: settings.nodeEnv
         })
+        return {
+            ...base,
+            providerData: { ...base.providerData, ...providerData }
+        }
     }
 
     private getToolContext(): SessionWithTracking<T> {
@@ -467,14 +470,15 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             agent: this.agentConfig,
             outputs: this.outputs
         }
+        const { model, providerData } = this.resolveModel()
 
         return {
             name: "Automation Agent",
             systemPromptDeps: deps as SystemPromptBuilderDependencies<SessionWithTracking<T>, ConfigData>,
             runContext: this.runContext,
-            model: this.chooseModel(),
+            model,
             tools: this.tools,
-            modelSettings: this.getModelSettings()
+            modelSettings: this.buildModelSettings(providerData)
         }
     }
 
