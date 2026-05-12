@@ -107,6 +107,10 @@ const terse = new Terse()
 
 Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI. The same context applies to **`TerseAgent.executeTool`** and to generated **`toolbox`** calls.
 
+<Note>
+Hosted agent runs—production executions and **`terse test`** runs that call **`TerseAgent.run`** / **`runAndWait`** against the Terse API—use your workspace model settings. When that model is served by **Anthropic**, Terse enables Anthropic prompt caching on the server for eligible prompt prefixes. You do not add SDK fields for this; it is handled when the request is processed.
+</Note>
+
 ### `run(userMessage)`
 
 Streams the model run. Returns an async iterable of result objects (`TextResult`, `FinalOutputResult`, tool events, and so on).
