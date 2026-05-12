@@ -6,7 +6,7 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 const SLACK_TYPES_MAP: Record<string, string> = {
     public: "public_channel",
@@ -122,4 +122,4 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
     }
 })
 
-export const validateSlackListChannels: ToolACLValidator<"slack_list_channels", SlackOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateSlackListChannels: ToolACLValidator<"slack_list_channels", SlackOutputConfig> = () => ({ ok: true })

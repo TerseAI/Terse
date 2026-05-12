@@ -6,7 +6,7 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { verifyNotionDatabaseInScope, verifyNotionPageInScope } from "../../../utility/notionAcl"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionCreateOrUpdateDatabaseRowTool = defineSessionTool({
     name: "notion_create_or_update_database_row",
@@ -112,8 +112,6 @@ Use notion_get_schema first to understand property names and types. Use notion_q
 })
 
 export const validateNotionCreateOrUpdateDatabaseRow: ToolACLValidator<"notion_create_or_update_database_row", NotionConfig> = async ({ args, configs }) => {
-    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
-    if (!idCheck.ok) return idCheck
     const dbCheck = await verifyNotionDatabaseInScope(args.integrationId, args.databaseId, configs)
     if (!dbCheck.ok) return dbCheck
     if (args.page_id) return verifyNotionPageInScope(args.integrationId, args.page_id, configs)

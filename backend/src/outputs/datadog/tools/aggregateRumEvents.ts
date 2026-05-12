@@ -9,7 +9,7 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.
@@ -290,4 +290,4 @@ export const aggregateRumEventsTool = defineSessionTool({
     }
 })
 
-export const validateAggregateRumEvents: ToolACLValidator<"aggregateRumEvents", DatadogConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateAggregateRumEvents: ToolACLValidator<"aggregateRumEvents", DatadogConfig> = ({ args, configs }) => ({ ok: true })

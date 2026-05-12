@@ -5,7 +5,7 @@ import type { AttioRecord } from "terse-types"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
-import { ToolACLValidator, findConfigsByIntegrationId, requireValueInAnyConfig, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator, findConfigsByIntegrationId, requireValueInAnyConfig } from "../../abstract/acl"
 
 export const attioQueryRecordsTool = defineSessionTool({
     name: "attio_query_records",
@@ -83,8 +83,6 @@ Filter syntax uses shorthand or verbose form:
 export const validateAttioQueryRecords: ToolACLValidator<"attio_query_records", AttioOutputConfig> = ({ args, configs }) => validateAttioObjectSlug(args.integrationId, args.objectSlug, configs)
 
 export const validateAttioObjectSlug = (integrationId: string, objectSlug: string, configs: AttioOutputConfig[]) => {
-    const idCheck = verifyIntegrationIdExists(integrationId, configs)
-    if (!idCheck.ok) return idCheck
     // If no config narrows objectSlug, allow.
     const matching = findConfigsByIntegrationId(integrationId, configs)
     const narrowing = matching.filter(c => c.objectSlug)

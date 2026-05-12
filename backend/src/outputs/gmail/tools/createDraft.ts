@@ -7,7 +7,7 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { SecretField, getSecret } from "../../../services/SecretService"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders } from "./mime"
 
@@ -234,4 +234,4 @@ export const gmailCreateDraftTool = defineSessionTool({
     }
 })
 
-export const validateGmailCreateDraft: ToolACLValidator<"gmail_create_draft", GmailDraftOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateGmailCreateDraft: ToolACLValidator<"gmail_create_draft", GmailDraftOutputConfig> = () => ({ ok: true })

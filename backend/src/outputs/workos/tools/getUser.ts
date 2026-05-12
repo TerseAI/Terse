@@ -3,7 +3,7 @@ import { IntegrationType, WorkOSOutputConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 import { getWorkOSApiKeyByIntegrationId, getWorkOSUser } from "../workosApiClient"
 
 export const getWorkOSUserTool = defineSessionTool({
@@ -58,4 +58,4 @@ export const getWorkOSUserTool = defineSessionTool({
     }
 })
 
-export const validateGetWorkOSUser: ToolACLValidator<"getWorkOSUser", WorkOSOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateGetWorkOSUser: ToolACLValidator<"getWorkOSUser", WorkOSOutputConfig> = ({ args, configs }) => ({ ok: true })

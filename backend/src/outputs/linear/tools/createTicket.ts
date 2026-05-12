@@ -7,7 +7,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
 
 export const linearCreateTicketTool = defineSessionTool({
     name: "linear_create_ticket",
@@ -80,8 +80,6 @@ export const linearCreateTicketTool = defineSessionTool({
 })
 
 export const validateLinearCreateTicket: ToolACLValidator<"linear_create_ticket", LinearOutputConfig> = ({ args, configs }) => {
-    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
-    if (!idCheck.ok) return idCheck
     const matching = findConfigsByIntegrationId(args.integrationId, configs)
     const accepts = matching.some(c => {
         if (c.teamId && args.ticket.teamId !== c.teamId) return false

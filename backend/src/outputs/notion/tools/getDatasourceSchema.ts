@@ -6,7 +6,7 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { verifyNotionDatabaseInScope } from "../../../utility/notionAcl"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 // Helper function to build property schema with format examples
 function buildPropertySchema(propertyName: string, propertyConfig: any): any {
@@ -117,7 +117,5 @@ The schema information returned by this tool should be used to properly format p
 })
 
 export const validateNotionGetSchema: ToolACLValidator<"notion_get_schema", NotionConfig> = async ({ args, configs }) => {
-    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
-    if (!idCheck.ok) return idCheck
     return verifyNotionDatabaseInScope(args.integrationId, args.databaseId, configs)
 }

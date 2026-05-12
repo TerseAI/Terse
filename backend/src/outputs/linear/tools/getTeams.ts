@@ -6,7 +6,7 @@ import logger from "../../../logger"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 export const linearGetTeamsTool = defineSessionTool({
     name: "linear_get_teams",
@@ -45,4 +45,4 @@ export const linearGetTeamsTool = defineSessionTool({
     }
 })
 
-export const validateLinearGetTeams: ToolACLValidator<"linear_get_teams", LinearOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateLinearGetTeams: ToolACLValidator<"linear_get_teams", LinearOutputConfig> = () => ({ ok: true })

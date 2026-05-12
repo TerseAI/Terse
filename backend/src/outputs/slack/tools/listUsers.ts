@@ -5,7 +5,7 @@ import { fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegr
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 export const slackListUsersTool = defineSessionTool({
     name: "slack_list_users",
@@ -55,4 +55,4 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
     }
 })
 
-export const validateSlackListUsers: ToolACLValidator<"slack_list_users", SlackOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateSlackListUsers: ToolACLValidator<"slack_list_users", SlackOutputConfig> = () => ({ ok: true })

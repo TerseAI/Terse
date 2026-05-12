@@ -9,7 +9,7 @@ import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { resolveSlackChannelIdForDestination } from "../../../utility/slack"
 import { isValidEpochTimestamp } from "../../../utility/strings"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -207,8 +207,6 @@ export const validateSlackSendMessage: ToolACLValidator<"slack_send_message", Sl
     validateSlackChannelOrUser(args.integrationId, args.channelId, args.slackUserId, configs)
 
 export const validateSlackChannelOrUser = (integrationId: string, channelId: string | null | undefined, slackUserId: string | null | undefined, configs: SlackOutputConfig[]) => {
-    const idCheck = verifyIntegrationIdExists(integrationId, configs)
-    if (!idCheck.ok) return idCheck
     const matching = findConfigsByIntegrationId(integrationId, configs)
     const allowedChannelIds = matching.map(c => c.channelId).filter((id): id is string => !!id)
     const allowedUserIds = Array.from(new Set(matching.flatMap(c => c.userIds ?? [])))

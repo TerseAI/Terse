@@ -7,7 +7,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 export const linearSearchTicketTool = defineSessionTool({
     name: "linear_search_ticket",
@@ -154,4 +154,4 @@ export const linearSearchTicketTool = defineSessionTool({
     }
 })
 
-export const validateLinearSearchTicket: ToolACLValidator<"linear_search_ticket", LinearOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateLinearSearchTicket: ToolACLValidator<"linear_search_ticket", LinearOutputConfig> = () => ({ ok: true })

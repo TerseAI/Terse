@@ -5,7 +5,7 @@ import type { AttioAttribute, AttioObject } from "terse-types"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 export const attioListObjectsTool = defineSessionTool({
     name: "attio_list_objects",
@@ -72,4 +72,4 @@ export const attioListObjectsTool = defineSessionTool({
     }
 })
 
-export const validateAttioListObjects: ToolACLValidator<"attio_list_objects", AttioOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateAttioListObjects: ToolACLValidator<"attio_list_objects", AttioOutputConfig> = () => ({ ok: true })

@@ -3,7 +3,7 @@ import { IntegrationType, PosthogConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, requireValueInAnyConfig, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator, requireValueInAnyConfig } from "../../abstract/acl"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 
 /**
@@ -226,8 +226,6 @@ export const searchLogsTool = defineSessionTool({
 export const validateSearchPosthogLogs: ToolACLValidator<"searchPosthogLogs", PosthogConfig> = ({ args, configs }) => validatePosthogArgs(args.integrationId, args.projectId, configs)
 
 export const validatePosthogArgs = (integrationId: string, projectId: string, configs: PosthogConfig[]) => {
-    const idCheck = verifyIntegrationIdExists(integrationId, configs)
-    if (!idCheck.ok) return idCheck
     return requireValueInAnyConfig({
         integrationId,
         configs,

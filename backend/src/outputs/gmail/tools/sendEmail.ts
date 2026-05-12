@@ -7,7 +7,7 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { SecretField, getSecret } from "../../../services/SecretService"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders } from "./mime"
 
@@ -243,4 +243,4 @@ export const gmailSendEmailTool = defineSessionTool({
     }
 })
 
-export const validateGmailSendEmail: ToolACLValidator<"gmail_send_email", GmailOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateGmailSendEmail: ToolACLValidator<"gmail_send_email", GmailOutputConfig> = () => ({ ok: true })

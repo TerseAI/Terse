@@ -6,7 +6,7 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { verifyNotionPageInScope } from "../../../utility/notionAcl"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {
@@ -334,7 +334,5 @@ This tool returns the current state of the page including all properties, metada
 })
 
 export const validateNotionQueryPage: ToolACLValidator<"notion_query_page", NotionConfig> = async ({ args, configs }) => {
-    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
-    if (!idCheck.ok) return idCheck
     return verifyNotionPageInScope(args.integrationId, args.pageId, configs)
 }

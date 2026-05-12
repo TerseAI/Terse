@@ -6,7 +6,7 @@ import { getNotionAccessTokenForOrganization } from "../../../integrations/Notio
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionListUsersTool = defineSessionTool({
     name: "notion_list_users",
@@ -76,4 +76,4 @@ Use the returned user IDs in people property format:
     }
 })
 
-export const validateNotionListUsers: ToolACLValidator<"notion_list_users", NotionConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateNotionListUsers: ToolACLValidator<"notion_list_users", NotionConfig> = () => ({ ok: true })

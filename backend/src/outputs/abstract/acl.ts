@@ -1,5 +1,5 @@
 import { RunContext, ToolGuardrailFunctionOutputFactory, ToolInputGuardrailDefinition, defineToolInputGuardrail } from "@openai/agents-core"
-import { ConfigData, ToolInputByName, ToolName } from "terse-types"
+import { ConfigData, ToolInputByName, ToolName, toolsWithIntegrationId } from "terse-types"
 
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../express"
@@ -16,6 +16,8 @@ export function createToolACLGuardrail<TConfig extends ConfigData>(entry: Toolbo
         run: async ({ context, toolCall }) => {
             try {
                 const args = JSON.parse(toolCall.arguments)
+                const idRejection = checkIntegrationIdGuardrail(args, output.configs, toolName)
+                if (idRejection) return idRejection
                 const result = await validate({
                     args,
                     configs: output.configs,
@@ -33,6 +35,19 @@ export function createToolACLGuardrail<TConfig extends ConfigData>(entry: Toolbo
             }
         }
     })
+}
+
+function isToolWithIntegrationId(toolName: string): toolName is ToolNameWithIntegrationId {
+    return toolsWithIntegrationId.has(toolName as ToolName)
+}
+
+function checkIntegrationIdGuardrail(args: unknown, configs: ConfigData[], toolName: string) {
+    if (!isToolWithIntegrationId(toolName)) return null
+    const { integrationId } = args as ToolInputByName[ToolNameWithIntegrationId]
+    const idCheck = verifyIntegrationIdExists(integrationId, configs)
+    if (idCheck.ok) return null
+    logger.info(`[ACL] Unknown integrationId for ${toolName}`, { message: idCheck.message })
+    return ToolGuardrailFunctionOutputFactory.rejectContent(idCheck.message)
 }
 
 export function requireValueInAnyConfig<T extends ConfigData>(args: {
@@ -100,6 +115,10 @@ export function listIntegrationIds(configs: readonly ConfigData[]): string[] {
 export type ToolACLValidator<TName extends ToolName, TConfig extends ConfigData> = (params: ToolACLValidatorParams<TName, TConfig>) => Promise<ToolACLValidationResult> | ToolACLValidationResult
 
 export type ToolACLValidationResult = { ok: true } | { ok: false; message: string }
+
+export type ToolNameWithIntegrationId = {
+    [K in ToolName]: ToolInputByName[K] extends { integrationId: string } ? K : never
+}[ToolName]
 
 export interface ToolACLValidatorParams<TName extends ToolName, TConfig extends ConfigData> {
     args: ToolInputByName[TName]

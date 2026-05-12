@@ -8,7 +8,7 @@ import { defineSessionTool } from "../../../tools/toolUtils"
 import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../utility/notion"
 import { verifyNotionPageInScope } from "../../../utility/notionAcl"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionModifyBlocksTool = defineSessionTool({
     name: "notion_modify_blocks",
@@ -285,7 +285,5 @@ Error recovery: If Notion returns an error that suggests JSON/body/validation in
 })
 
 export const validateNotionModifyBlocks: ToolACLValidator<"notion_modify_blocks", NotionConfig> = async ({ args, configs }) => {
-    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
-    if (!idCheck.ok) return idCheck
     return verifyNotionPageInScope(args.integrationId, args.pageId, configs)
 }

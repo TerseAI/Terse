@@ -9,7 +9,7 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { getDatadogRumDeepLink, getDatadogSite, parseDatadogTimeString } from "../../../utility/datadog"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 /**
  * Tool for listing Datadog RUM events using the simple GET endpoint.
@@ -326,4 +326,4 @@ export const listRumEventsTool = defineSessionTool({
     }
 })
 
-export const validateListRumEvents: ToolACLValidator<"listRumEvents", DatadogConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateListRumEvents: ToolACLValidator<"listRumEvents", DatadogConfig> = ({ args, configs }) => ({ ok: true })

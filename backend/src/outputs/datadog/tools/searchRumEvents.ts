@@ -9,7 +9,7 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 /**
  * Tool for querying Datadog RUM events with flexible filtering options.
@@ -294,4 +294,4 @@ export const searchRumEventsTool = defineSessionTool({
     }
 })
 
-export const validateSearchRumEvents: ToolACLValidator<"searchRumEvents", DatadogConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateSearchRumEvents: ToolACLValidator<"searchRumEvents", DatadogConfig> = ({ args, configs }) => ({ ok: true })

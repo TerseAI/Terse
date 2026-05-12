@@ -7,7 +7,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
 import { verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearUpdateTicketTool = defineSessionTool({
@@ -87,9 +87,6 @@ export const linearUpdateTicketTool = defineSessionTool({
 })
 
 export const validateLinearUpdateTicket: ToolACLValidator<"linear_update_ticket", LinearOutputConfig> = async ({ args, configs, runContext }) => {
-    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
-    if (!idCheck.ok) return idCheck
-
     const issueScopeCheck = await verifyLinearIssueInScope({ integrationId: args.integrationId, issueId: args.issueId, configs, runContext })
     if (!issueScopeCheck.ok) return issueScopeCheck
 

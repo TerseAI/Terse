@@ -3,7 +3,7 @@ import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../../outputs/abstract/acl"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../../outputs/abstract/acl"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
@@ -48,8 +48,6 @@ export const linearGetStatesTool = defineSessionTool({
 export const validateLinearGetStates: ToolACLValidator<"linear_get_states", LinearOutputConfig> = ({ args, configs }) => validateLinearOptionalTeam(args.integrationId, args.teamId, configs)
 
 export const validateLinearOptionalTeam = (integrationId: string, teamId: string | null | undefined, configs: LinearOutputConfig[]) => {
-    const idCheck = verifyIntegrationIdExists(integrationId, configs)
-    if (!idCheck.ok) return idCheck
     if (!teamId) return { ok: true as const }
     const matching = findConfigsByIntegrationId(integrationId, configs)
     const narrowing = matching.filter(c => c.teamId)

@@ -2,7 +2,7 @@ import { IntegrationType, LaunchDarklyConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, requireAllInAllowedList, requireInAllowedList, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
 export const listLaunchDarklyFlagsTool = defineSessionTool({
@@ -249,8 +249,6 @@ export const validateLaunchDarklyArgs = (
     environmentKey: string | null | undefined,
     configs: LaunchDarklyConfig[]
 ) => {
-    const idCheck = verifyIntegrationIdExists(integrationId, configs)
-    if (!idCheck.ok) return idCheck
     const matching = findConfigsByIntegrationId(integrationId, configs)
     const configsForProject = matching.filter(c => c.projectKey === projectKey)
     if (configsForProject.length === 0) {

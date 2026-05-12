@@ -3,7 +3,7 @@ import { IntegrationType, SnowflakeOutputConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { ToolACLValidator } from "../../abstract/acl"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
 
 export const snowflakeExecuteQueryTool = defineSessionTool({
@@ -46,4 +46,4 @@ export const snowflakeExecuteQueryTool = defineSessionTool({
     }
 })
 
-export const validateSnowflakeExecuteQuery: ToolACLValidator<"snowflakeExecuteQuery", SnowflakeOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateSnowflakeExecuteQuery: ToolACLValidator<"snowflakeExecuteQuery", SnowflakeOutputConfig> = ({ args, configs }) => ({ ok: true })
