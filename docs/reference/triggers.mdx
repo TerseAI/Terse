@@ -75,19 +75,48 @@ triggers: [Triggers.slack.onMessage({ channel: SlackChannel.Engineering })]
 | ------------------------- | ------------- | ------------------- |
 | `Triggers.linear.onIssueCreated()` | `LinearIssueCreatedTrigger` | An issue is created |
 | `Triggers.linear.onIssueUpdated()` | `LinearIssueUpdatedTrigger` | An issue is updated |
+| `Triggers.linear.onComment()` | `LinearCommentCreatedTrigger` | A comment is created on an issue |
+| `Triggers.linear.trigger({ eventTypes })` | `LinearTrigger` | One or more Linear event types you choose (see `LinearEventType` in `terse-sdk`) |
 
-**Config:** Optionally scoped to a team and/or project using generated `LinearTeam` / `LinearProject` constants (same pattern as `SlackChannel` for Slack).
+**Config:** Optionally scoped to a team and/or project using generated `LinearTeam` / `LinearProject` constants (same pattern as `SlackChannel` for Slack). For **`trigger()`**, pass **`eventTypes`** using **`LinearEventType`** from **`terse-sdk`** (for example **`LinearEventType.ISSUE_CREATED`**, **`LinearEventType.COMMENT_CREATED`**).
+
+<Note>
+    Terse verifies Linear webhook signatures before your workflow runs, including when Linear retries deliveries.
+</Note>
 
 <CodeGroup>
 ```ts TypeScript
 triggers: [Triggers.linear.onIssueCreated({ team: LinearTeam.Engineering, project: LinearProject.Backend })]
 ```
+```ts Comment trigger
+triggers: [Triggers.linear.onComment({ team: LinearTeam.Engineering })]
+```
+```ts Multiple event types
+import { LinearEventType } from "terse-sdk"
+
+triggers: [
+    Triggers.linear.trigger({
+        team: LinearTeam.Engineering,
+        eventTypes: [LinearEventType.ISSUE_UPDATED, LinearEventType.COMMENT_CREATED]
+    })
+]
+```
 </CodeGroup>
 
 <Expandable title="Event payload">
-  - `data.action` - `"created"` or `"updated"`
-  - `data.actor` - `{ name, email }`
-  - `data.data` - issue details: `{ id, identifier, title, description, priorityLabel, state, team, assignee, labels, url }`
+
+Issue triggers (`LinearIssueCreatedTrigger`, `LinearIssueUpdatedTrigger`) include:
+
+- `eventType` — `issue.created` or `issue.updated`
+- `action`, `type`, `actor`, `createdAt`, `organizationId`, `webhookTimestamp`, `webhookId`, optional `url`
+- `data` — issue details: `{ id, identifier, title, description, priorityLabel, state, team, assignee, labels, url, ... }`
+
+Comment trigger (`LinearCommentCreatedTrigger`) includes:
+
+- `eventType` — `comment.created`
+- the same top-level metadata fields as issue triggers
+- `data` — comment fields from Linear, including `id`, `body`, and `issueId` for the parent issue
+
 </Expandable>
 
 ### Attio
