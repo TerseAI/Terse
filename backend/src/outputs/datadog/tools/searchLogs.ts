@@ -1,7 +1,6 @@
 import { client, v2 } from "@datadog/datadog-api-client"
 import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { ToolACLValidator, requireAllValuesInAnyConfig, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { DatadogConfig, IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -10,6 +9,7 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { getDatadogLogsDeepLink, getDatadogSite } from "../../../utility/datadog"
+import { ToolACLValidator, requireAllValuesInAnyConfig, verifyIntegrationIdExists } from "../../abstract/acl"
 
 /**
  * Tool for querying Datadog logs with flexible filtering options.

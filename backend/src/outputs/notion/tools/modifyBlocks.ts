@@ -1,5 +1,4 @@
 import { Client } from "@notionhq/client"
-import { ToolACLValidator, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { ConfigType } from "terse-types"
 import { IntegrationType, NotionConfig } from "terse-types"
 
@@ -9,6 +8,7 @@ import { defineSessionTool } from "../../../tools/toolUtils"
 import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../utility/notion"
 import { verifyNotionPageInScope } from "../../../utility/notionAcl"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
 
 export const notionModifyBlocksTool = defineSessionTool({
     name: "notion_modify_blocks",

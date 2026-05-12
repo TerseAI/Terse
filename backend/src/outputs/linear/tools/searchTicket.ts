@@ -1,13 +1,13 @@
 import { LinearClient } from "@linear/sdk"
 import type { IssueFilter, IssuesQueryVariables, PaginationOrderBy as PaginationOrderByType, SearchIssuesQueryVariables } from "@linear/sdk/dist/_generated_documents"
 import { RunHistoryActionType } from "@prisma/client"
-import { ToolACLValidator, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
 
 export const linearSearchTicketTool = defineSessionTool({
     name: "linear_search_ticket",

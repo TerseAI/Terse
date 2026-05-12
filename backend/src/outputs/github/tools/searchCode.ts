@@ -1,6 +1,5 @@
 import type { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { ToolACLValidator, requireAllInAllowedList, requireInAllowedList } from "src/outputs/abstract/acl"
 import { GitHubConfig, IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
@@ -9,6 +8,7 @@ import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { createGitHubClient, getAllowedRepoNamesForConfigs, getGitHubAccessToken, searchCode } from "../githubApiClient"
+import { ToolACLValidator, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
 
 /**
  * Tool for semantic code search in GitHub repositories.

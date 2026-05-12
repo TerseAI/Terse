@@ -1,5 +1,4 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { ToolACLValidator, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, SlackOutputConfig } from "terse-types"
 
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
@@ -7,6 +6,7 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
 
 const SLACK_TYPES_MAP: Record<string, string> = {
     public: "public_channel",

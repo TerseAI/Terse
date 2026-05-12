@@ -1,11 +1,11 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { ToolACLValidator, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { AttioOutputConfig, IntegrationType } from "terse-types"
 import type { AttioAttribute, AttioObject } from "terse-types"
 
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
 
 export const attioListObjectsTool = defineSessionTool({
     name: "attio_list_objects",

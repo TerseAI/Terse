@@ -1,6 +1,5 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { KnownBlock } from "@slack/web-api"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, SlackOutputConfig } from "terse-types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse-types"
 
@@ -10,6 +9,7 @@ import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { resolveSlackChannelIdForDestination } from "../../../utility/slack"
 import { isValidEpochTimestamp } from "../../../utility/strings"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../abstract/acl"
 
 /**
  * Tool for sending messages to Slack channels or DMs.
