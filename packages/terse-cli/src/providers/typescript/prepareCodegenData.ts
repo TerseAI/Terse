@@ -631,11 +631,48 @@ function buildGeneratedAttioObjects(instances: AttioInstanceData[]): Array<Attio
 
 function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefinition[]): SectionContext<AttioSectionContext> {
     if (instances.length === 0) return sectionData([])
-    return sectionData(["AttioOutputConfig", "TypedSkill"], {
-        id: instances[0].id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
-        objects: buildGeneratedAttioObjects(instances)
-    })
+    return sectionData(
+        [
+            "AttioOutputConfig",
+            "TypedSkill",
+            "AttioInputConfig",
+            "AttioEventType",
+            "TypedTrigger",
+            "AttioTrigger",
+            "AttioCallRecordingCreatedTrigger",
+            "AttioCommentCreatedTrigger",
+            "AttioCommentResolvedTrigger",
+            "AttioCommentUnresolvedTrigger",
+            "AttioCommentDeletedTrigger",
+            "AttioListCreatedTrigger",
+            "AttioListUpdatedTrigger",
+            "AttioListDeletedTrigger",
+            "AttioListAttributeCreatedTrigger",
+            "AttioListAttributeUpdatedTrigger",
+            "AttioListEntryCreatedTrigger",
+            "AttioListEntryUpdatedTrigger",
+            "AttioListEntryDeletedTrigger",
+            "AttioObjectAttributeCreatedTrigger",
+            "AttioObjectAttributeUpdatedTrigger",
+            "AttioNoteCreatedTrigger",
+            "AttioNoteContentUpdatedTrigger",
+            "AttioNoteUpdatedTrigger",
+            "AttioNoteDeletedTrigger",
+            "AttioRecordCreatedTrigger",
+            "AttioRecordMergedTrigger",
+            "AttioRecordUpdatedTrigger",
+            "AttioRecordDeletedTrigger",
+            "AttioTaskCreatedTrigger",
+            "AttioTaskUpdatedTrigger",
+            "AttioTaskDeletedTrigger",
+            "AttioWorkspaceMemberCreatedTrigger"
+        ],
+        {
+            id: instances[0].id,
+            skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
+            objects: buildGeneratedAttioObjects(instances)
+        }
+    )
 }
 
 function prepareSnowflakeSection(instances: SnowflakeInstanceData[], tools: ToolDefinition[]): SectionContext<SnowflakeSectionContext> {

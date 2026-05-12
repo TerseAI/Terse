@@ -14,8 +14,8 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
-import { buildAttioWebhookUrl } from "../utility/webhookUrl"
 import { createOAuthStateToken } from "../utility/oauth"
+import { buildAttioWebhookUrl } from "../utility/webhookUrl"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -400,7 +400,13 @@ export class AttioTriggerRuntime extends TriggerRuntime<AttioTrigger> {
             integration: IntegrationType.ATTIO,
             source: "Attio",
             title: humanizeAttioEventType(this.data.eventType),
-            subheader: this.data.resourceIds.record_id ?? this.data.resourceIds.entry_id ?? this.data.resourceIds.note_id ?? this.data.resourceIds.task_id ?? this.data.resourceIds.comment_id ?? this.data.workspaceId
+            subheader:
+                this.data.resourceIds.record_id ??
+                this.data.resourceIds.entry_id ??
+                this.data.resourceIds.note_id ??
+                this.data.resourceIds.task_id ??
+                this.data.resourceIds.comment_id ??
+                this.data.workspaceId
         }
     }
 }

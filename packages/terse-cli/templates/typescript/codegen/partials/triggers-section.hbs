@@ -147,6 +147,122 @@ export const Triggers = {
         },
     },
 {{/if}}
+{{#if attio}}
+    attio: {
+        /** Trigger when a call recording is created */
+        onCallRecordingCreated(): TypedTrigger<AttioCallRecordingCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.CALL_RECORDING_CREATED }])
+        },
+        /** Trigger when a comment is created */
+        onCommentCreated(): TypedTrigger<AttioCommentCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.COMMENT_CREATED }])
+        },
+        /** Trigger when a comment is resolved */
+        onCommentResolved(): TypedTrigger<AttioCommentResolvedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.COMMENT_RESOLVED }])
+        },
+        /** Trigger when a comment is unresolved */
+        onCommentUnresolved(): TypedTrigger<AttioCommentUnresolvedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.COMMENT_UNRESOLVED }])
+        },
+        /** Trigger when a comment is deleted */
+        onCommentDeleted(): TypedTrigger<AttioCommentDeletedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.COMMENT_DELETED }])
+        },
+        /** Trigger when a list is created */
+        onListCreated(): TypedTrigger<AttioListCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.LIST_CREATED }])
+        },
+        /** Trigger when a list is updated */
+        onListUpdated(): TypedTrigger<AttioListUpdatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.LIST_UPDATED }])
+        },
+        /** Trigger when a list is deleted */
+        onListDeleted(): TypedTrigger<AttioListDeletedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.LIST_DELETED }])
+        },
+        /** Trigger when a list attribute is created */
+        onListAttributeCreated(): TypedTrigger<AttioListAttributeCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.LIST_ATTRIBUTE_CREATED }])
+        },
+        /** Trigger when a list attribute is updated */
+        onListAttributeUpdated(): TypedTrigger<AttioListAttributeUpdatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.LIST_ATTRIBUTE_UPDATED }])
+        },
+        /** Trigger when a list entry is created */
+        onListEntryCreated(): TypedTrigger<AttioListEntryCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.LIST_ENTRY_CREATED }])
+        },
+        /** Trigger when a list entry is updated */
+        onListEntryUpdated(): TypedTrigger<AttioListEntryUpdatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.LIST_ENTRY_UPDATED }])
+        },
+        /** Trigger when a list entry is deleted */
+        onListEntryDeleted(): TypedTrigger<AttioListEntryDeletedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.LIST_ENTRY_DELETED }])
+        },
+        /** Trigger when an object attribute is created */
+        onObjectAttributeCreated(): TypedTrigger<AttioObjectAttributeCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.OBJECT_ATTRIBUTE_CREATED }])
+        },
+        /** Trigger when an object attribute is updated */
+        onObjectAttributeUpdated(): TypedTrigger<AttioObjectAttributeUpdatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.OBJECT_ATTRIBUTE_UPDATED }])
+        },
+        /** Trigger when a note is created */
+        onNoteCreated(): TypedTrigger<AttioNoteCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.NOTE_CREATED }])
+        },
+        /** Trigger when a note's content is updated */
+        onNoteContentUpdated(): TypedTrigger<AttioNoteContentUpdatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.NOTE_CONTENT_UPDATED }])
+        },
+        /** Trigger when a note is updated */
+        onNoteUpdated(): TypedTrigger<AttioNoteUpdatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.NOTE_UPDATED }])
+        },
+        /** Trigger when a note is deleted */
+        onNoteDeleted(): TypedTrigger<AttioNoteDeletedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.NOTE_DELETED }])
+        },
+        /** Trigger when a record is created */
+        onRecordCreated(): TypedTrigger<AttioRecordCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.RECORD_CREATED }])
+        },
+        /** Trigger when records are merged */
+        onRecordMerged(): TypedTrigger<AttioRecordMergedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.RECORD_MERGED }])
+        },
+        /** Trigger when a record is updated */
+        onRecordUpdated(): TypedTrigger<AttioRecordUpdatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.RECORD_UPDATED }])
+        },
+        /** Trigger when a record is deleted */
+        onRecordDeleted(): TypedTrigger<AttioRecordDeletedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.RECORD_DELETED }])
+        },
+        /** Trigger when a task is created */
+        onTaskCreated(): TypedTrigger<AttioTaskCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.TASK_CREATED }])
+        },
+        /** Trigger when a task is updated */
+        onTaskUpdated(): TypedTrigger<AttioTaskUpdatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.TASK_UPDATED }])
+        },
+        /** Trigger when a task is deleted */
+        onTaskDeleted(): TypedTrigger<AttioTaskDeletedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.TASK_DELETED }])
+        },
+        /** Trigger when a workspace member is added */
+        onWorkspaceMemberCreated(): TypedTrigger<AttioWorkspaceMemberCreatedTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.WORKSPACE_MEMBER_CREATED }])
+        },
+        /** Trigger on one or more Attio event types */
+        trigger(opts: { eventTypes: AttioEventType[] }): TypedTrigger<AttioTrigger> {
+            return new AttioInputConfig("{{escape attio.id}}", opts.eventTypes.map(eventType => ({ eventType })))
+        },
+    },
+{{/if}}
 {{#if workos}}
     workOS: {
         /** Trigger on user creation */

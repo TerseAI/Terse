@@ -11,6 +11,34 @@ import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, stripZodJsonS
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
+    AttioCallRecordingCreatedTrigger as _RawAttioCallRecordingCreatedTrigger,
+    AttioCommentCreatedTrigger as _RawAttioCommentCreatedTrigger,
+    AttioCommentDeletedTrigger as _RawAttioCommentDeletedTrigger,
+    AttioCommentResolvedTrigger as _RawAttioCommentResolvedTrigger,
+    AttioCommentUnresolvedTrigger as _RawAttioCommentUnresolvedTrigger,
+    AttioListAttributeCreatedTrigger as _RawAttioListAttributeCreatedTrigger,
+    AttioListAttributeUpdatedTrigger as _RawAttioListAttributeUpdatedTrigger,
+    AttioListCreatedTrigger as _RawAttioListCreatedTrigger,
+    AttioListDeletedTrigger as _RawAttioListDeletedTrigger,
+    AttioListEntryCreatedTrigger as _RawAttioListEntryCreatedTrigger,
+    AttioListEntryDeletedTrigger as _RawAttioListEntryDeletedTrigger,
+    AttioListEntryUpdatedTrigger as _RawAttioListEntryUpdatedTrigger,
+    AttioListUpdatedTrigger as _RawAttioListUpdatedTrigger,
+    AttioNoteContentUpdatedTrigger as _RawAttioNoteContentUpdatedTrigger,
+    AttioNoteCreatedTrigger as _RawAttioNoteCreatedTrigger,
+    AttioNoteDeletedTrigger as _RawAttioNoteDeletedTrigger,
+    AttioNoteUpdatedTrigger as _RawAttioNoteUpdatedTrigger,
+    AttioObjectAttributeCreatedTrigger as _RawAttioObjectAttributeCreatedTrigger,
+    AttioObjectAttributeUpdatedTrigger as _RawAttioObjectAttributeUpdatedTrigger,
+    AttioRecordCreatedTrigger as _RawAttioRecordCreatedTrigger,
+    AttioRecordDeletedTrigger as _RawAttioRecordDeletedTrigger,
+    AttioRecordMergedTrigger as _RawAttioRecordMergedTrigger,
+    AttioRecordUpdatedTrigger as _RawAttioRecordUpdatedTrigger,
+    AttioTaskCreatedTrigger as _RawAttioTaskCreatedTrigger,
+    AttioTaskDeletedTrigger as _RawAttioTaskDeletedTrigger,
+    AttioTaskUpdatedTrigger as _RawAttioTaskUpdatedTrigger,
+    AttioTrigger as _RawAttioTrigger,
+    AttioWorkspaceMemberCreatedTrigger as _RawAttioWorkspaceMemberCreatedTrigger,
     CronTrigger as _RawCronTrigger,
     GithubPRClosedTrigger as _RawGithubPRClosedTrigger,
     GithubPRMergedTrigger as _RawGithubPRMergedTrigger,
@@ -110,6 +138,7 @@ export {
     ImageEditConfig,
     WorkOSInputConfig,
     WorkOSOutputConfig,
+    AttioInputConfig,
     AttioOutputConfig,
     SnowflakeOutputConfig,
     WebhookInputConfig,
@@ -121,11 +150,40 @@ export {
     GmailEventType,
     WorkOSEventType,
     HeyReachEventType,
+    AttioEventType,
     debugTrigger,
     formatTriggerForAgent
 } from "terse-types"
 
 export type Trigger = SDKTrigger<_RawTrigger>
+export type AttioCallRecordingCreatedTrigger = SDKTrigger<_RawAttioCallRecordingCreatedTrigger>
+export type AttioCommentCreatedTrigger = SDKTrigger<_RawAttioCommentCreatedTrigger>
+export type AttioCommentResolvedTrigger = SDKTrigger<_RawAttioCommentResolvedTrigger>
+export type AttioCommentUnresolvedTrigger = SDKTrigger<_RawAttioCommentUnresolvedTrigger>
+export type AttioCommentDeletedTrigger = SDKTrigger<_RawAttioCommentDeletedTrigger>
+export type AttioListCreatedTrigger = SDKTrigger<_RawAttioListCreatedTrigger>
+export type AttioListUpdatedTrigger = SDKTrigger<_RawAttioListUpdatedTrigger>
+export type AttioListDeletedTrigger = SDKTrigger<_RawAttioListDeletedTrigger>
+export type AttioListAttributeCreatedTrigger = SDKTrigger<_RawAttioListAttributeCreatedTrigger>
+export type AttioListAttributeUpdatedTrigger = SDKTrigger<_RawAttioListAttributeUpdatedTrigger>
+export type AttioListEntryCreatedTrigger = SDKTrigger<_RawAttioListEntryCreatedTrigger>
+export type AttioListEntryUpdatedTrigger = SDKTrigger<_RawAttioListEntryUpdatedTrigger>
+export type AttioListEntryDeletedTrigger = SDKTrigger<_RawAttioListEntryDeletedTrigger>
+export type AttioObjectAttributeCreatedTrigger = SDKTrigger<_RawAttioObjectAttributeCreatedTrigger>
+export type AttioObjectAttributeUpdatedTrigger = SDKTrigger<_RawAttioObjectAttributeUpdatedTrigger>
+export type AttioNoteCreatedTrigger = SDKTrigger<_RawAttioNoteCreatedTrigger>
+export type AttioNoteContentUpdatedTrigger = SDKTrigger<_RawAttioNoteContentUpdatedTrigger>
+export type AttioNoteUpdatedTrigger = SDKTrigger<_RawAttioNoteUpdatedTrigger>
+export type AttioNoteDeletedTrigger = SDKTrigger<_RawAttioNoteDeletedTrigger>
+export type AttioRecordCreatedTrigger = SDKTrigger<_RawAttioRecordCreatedTrigger>
+export type AttioRecordMergedTrigger = SDKTrigger<_RawAttioRecordMergedTrigger>
+export type AttioRecordUpdatedTrigger = SDKTrigger<_RawAttioRecordUpdatedTrigger>
+export type AttioRecordDeletedTrigger = SDKTrigger<_RawAttioRecordDeletedTrigger>
+export type AttioTaskCreatedTrigger = SDKTrigger<_RawAttioTaskCreatedTrigger>
+export type AttioTaskUpdatedTrigger = SDKTrigger<_RawAttioTaskUpdatedTrigger>
+export type AttioTaskDeletedTrigger = SDKTrigger<_RawAttioTaskDeletedTrigger>
+export type AttioWorkspaceMemberCreatedTrigger = SDKTrigger<_RawAttioWorkspaceMemberCreatedTrigger>
+export type AttioTrigger = SDKTrigger<_RawAttioTrigger>
 export type CronTrigger = SDKTrigger<_RawCronTrigger>
 export type GithubPRClosedTrigger = SDKTrigger<_RawGithubPRClosedTrigger>
 export type GithubPROpenedTrigger = SDKTrigger<_RawGithubPROpenedTrigger>
