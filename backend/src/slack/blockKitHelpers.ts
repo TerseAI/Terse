@@ -310,13 +310,19 @@ export function createRunFailureNotificationMessage(options: {
 
     const tier = options.failureState.tier
     const headerTitle = tier === "paused" ? "Agent Paused" : "Run Failed"
-    const headerSubtitle =
-        tier === "paused"
-            ? `We paused this agent after ${options.failureState.consecutiveFailures} consecutive failures.`
-            : tier === "warning"
-              ? "This run failed again. One more failure and we'll pause this agent."
-              : "This run ended with an error and needs attention."
 
+    let headerSubtitle: string
+    switch (tier) {
+        case "paused":
+            headerSubtitle = `We paused this agent after ${options.failureState.consecutiveFailures} consecutive failures.`
+            break
+        case "warning":
+            headerSubtitle = "This run failed again. One more failure and we'll pause this agent."
+            break
+        default:
+            headerSubtitle = "This run ended with an error and needs attention."
+            break
+    }
     blocks.push(...createHeaderBlock(headerTitle, headerSubtitle))
     blocks.push(createMetaBlock("Agent", options.agentName))
     blocks.push(createMetaBlock("Notification For", tier === "paused" ? "Agent auto-paused" : "A run failed."))

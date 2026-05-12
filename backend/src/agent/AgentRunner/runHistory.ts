@@ -134,8 +134,14 @@ export async function recordAgentFailureAndMaybePause(agentId: string): Promise<
             })
             wasPaused = true
         }
-
-        const tier: FailureTier = count >= PAUSE_THRESHOLD ? "paused" : count === PAUSE_THRESHOLD - 1 ? "warning" : "first"
+        let tier: FailureTier
+        if (count >= PAUSE_THRESHOLD) {
+            tier = "paused"
+        } else if (count === PAUSE_THRESHOLD - 1) {
+            tier = "warning"
+        } else {
+            tier = "first"
+        }
         return { consecutiveFailures: count, tier, wasPaused }
     })
 }

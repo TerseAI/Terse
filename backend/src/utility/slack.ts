@@ -170,13 +170,18 @@ export function formatRunFailureNotificationMessage(context: RunFailureNotificat
     const runHistoryLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: context.agentId, runId: context.runId })}` : undefined
     const agentSettingsLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: context.agentId })}` : undefined
     const errorSummary = context.errorMessage.length > 300 ? `${context.errorMessage.slice(0, 297)}...` : context.errorMessage
-
-    const text =
-        context.failureState.tier === "paused"
-            ? `Terse paused agent ${context.agentName} after ${context.failureState.consecutiveFailures} consecutive failures`
-            : context.failureState.tier === "warning"
-              ? `Run failed in ${context.agentName} (${context.failureState.consecutiveFailures} in a row — one more will pause it)`
-              : `Run failed in ${context.agentName}: ${errorSummary}`
+    let text: string
+    switch (context.failureState.tier) {
+        case "paused":
+            text = `Terse paused agent ${context.agentName} after ${context.failureState.consecutiveFailures} consecutive failures`
+            break
+        case "warning":
+            text = `Run failed in ${context.agentName} (${context.failureState.consecutiveFailures} in a row — one more will pause it)`
+            break
+        default:
+            text = `Run failed in ${context.agentName}: ${errorSummary}`
+            break
+    }
 
     const blocks = createRunFailureNotificationMessage({
         agentName: context.agentName,

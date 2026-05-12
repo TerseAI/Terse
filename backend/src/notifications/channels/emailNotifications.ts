@@ -85,12 +85,18 @@ export async function sendEmailRunFailure(notificationDestination: UserNotificat
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 
-    const subject =
-        failureState.tier === "paused"
-            ? `Terse Agent paused: ${agent.name}`
-            : failureState.tier === "warning"
-              ? `Repeated error with Terse Agent: ${agent.name}`
-              : `Error with Terse Agent: ${agent.name}`
+    let subject: string
+    switch (failureState.tier) {
+        case "paused":
+            subject = `Terse Agent paused: ${agent.name}`
+            break
+        case "warning":
+            subject = `Repeated error with Terse Agent: ${agent.name}`
+            break
+        default:
+            subject = `Error with Terse Agent: ${agent.name}`
+            break
+    }
 
     await resend.emails.send({
         from: fromEmail,
