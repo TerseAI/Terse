@@ -1,7 +1,7 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { AttioSubscription, AttioTrigger, AttioWebhookEvent, AttioWebhookPayload, ConfigurationFieldDefinition } from "terse-types"
+import { AttioSubscription, AttioTrigger, AttioWebhookEvent, AttioWebhookPayload, ConfigurationFieldDefinition, attioEventTypeSchema } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -456,6 +456,35 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
 
     logger.info("Attio CreateWebhook succeeded", { webhookId, triggerId })
     return webhookId
+}
+
+const attioGetWebhookResponseSchema = z.object({
+    data: z.object({
+        subscriptions: z.array(
+            z.object({
+                event_type: attioEventTypeSchema
+            })
+        )
+    })
+})
+
+export async function fetchAttioWebhookSubscriptions(integrationId: string, webhookId: string): Promise<AttioSubscription[]> {
+    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
+    if (!accessToken) {
+        throw new Error("Attio access token not found")
+    }
+
+    const response = await fetch(`${ATTIO_API_BASE}/webhooks/${encodeURIComponent(webhookId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+    })
+
+    if (!response.ok) {
+        const text = await response.text()
+        throw new Error(`Attio GetWebhook failed: ${response.status} ${text}`)
+    }
+
+    const parsed = attioGetWebhookResponseSchema.parse(await response.json())
+    return parsed.data.subscriptions.map(s => ({ eventType: s.event_type }))
 }
 
 async function deleteAttioWebhook(webhookId: string, integrationId: string): Promise<void> {
