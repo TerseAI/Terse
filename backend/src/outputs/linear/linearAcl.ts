@@ -44,11 +44,6 @@ function scopeMatches(issue: LinearIssueScope, config: LinearOutputConfig): bool
     return true
 }
 
-/**
- * Verify that the issue identified by `issueId` lives within at least one of the configured (team, project) scopes
- * for any config sharing `integrationId`. Returns ok if no config narrows scope. Fetches the issue on every call —
- * no caching, so each validator invocation hits the Linear API.
- */
 export async function verifyLinearIssueInScope(args: {
     integrationId: string
     issueId: string
