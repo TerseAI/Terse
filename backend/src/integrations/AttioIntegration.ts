@@ -1,21 +1,32 @@
+import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { ConfigurationFieldDefinition } from "terse-types"
+import { AttioSubscription, AttioTrigger, AttioWebhookEvent, AttioWebhookPayload, ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
+import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
+import { z } from "zod"
 
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
+import { buildAttioWebhookUrl } from "../utility/webhookUrl"
 import { createOAuthStateToken } from "../utility/oauth"
+import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import { TriggerRuntime } from "./abstract/TriggerRuntime"
+
+const ATTIO_API_BASE = "https://api.attio.com/v2"
+
+export type AttioWebhookRequest = { triggerId: string; payload: AttioWebhookPayload; idempotencyKey: string }
 
 export class AttioIntegrationManager implements Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject>, OAuthIntegrationInstallation<IntegrationType.ATTIO> {
     constructor() {}
@@ -123,8 +134,43 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         )
     }
 
-    async processWebhookEvent(event: never): Promise<void> {
-        throw new Error("Attio webhooks are not processed through this integration manager")
+    async processWebhookEvent(request: AttioWebhookRequest): Promise<void> {
+        const { triggerId, payload, idempotencyKey } = request
+
+        const subscribedTrigger = await db().automation_inputs.findFirst({
+            where: { id: triggerId, config_type: InputConfigType.ATTIO_INPUT },
+            include: { automation: true }
+        })
+        if (!subscribedTrigger) {
+            logger.info("Attio webhook: trigger not found", { triggerId })
+            return
+        }
+
+        const user = await getUserForOrg(subscribedTrigger.automation.user_id, subscribedTrigger.automation.organization_id)
+        if (!user) {
+            logger.warn("Attio webhook: user not found", {
+                userId: subscribedTrigger.automation.user_id,
+                organizationId: subscribedTrigger.automation.organization_id
+            })
+            return
+        }
+
+        for (let i = 0; i < payload.events.length; i++) {
+            const event = payload.events[i]
+            const perEventId = payload.events.length > 1 ? `${idempotencyKey}-${i}` : idempotencyKey
+            const runtime = new AttioTriggerRuntime(event, subscribedTrigger.integration_id, perEventId)
+            const processor = new EventProcessor(runtime, user)
+            const results = await processor.process()
+            for (const result of results) {
+                if (result.success) {
+                    logger.info("Attio event processed", {
+                        integrationId: subscribedTrigger.integration_id,
+                        eventType: event.event_type,
+                        agentId: result.agentConfig?.id
+                    })
+                }
+            }
+        }
     }
 
     async getInstallationUrl(
@@ -269,12 +315,23 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             })
     }
 
-    async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
-        // Attio is output-only, no trigger setup needed
+    async setupAgentTrigger(_integrationId: string, _automationInput: AgentTriggerWithConfigs): Promise<void> {
+        // Webhook is created during AttioTrigger.addTriggerToAgent (inside the trigger transaction).
     }
 
     async teardownAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
-        // Attio is output-only, no trigger teardown needed
+        if (automationInput.config_type !== InputConfigType.ATTIO_INPUT) return
+        const webhookId = automationInput.attio_input_config?.webhook_id
+        if (!webhookId) return
+
+        logger.info("Attio teardown: deleting webhook", { webhookId, integrationId, triggerId: automationInput.id })
+        try {
+            await deleteAttioWebhook(webhookId, integrationId)
+        } catch (error) {
+            logger.error("Attio teardown: failed to delete webhook", { error, webhookId, integrationId })
+        }
+
+        await deleteSecretsBestEffort([{ integrationType: IntegrationType.ATTIO, recordId: automationInput.id, field: SecretField.WebhookSecret }])
     }
 
     async refreshToken(integrationId: string): Promise<boolean> {
@@ -317,4 +374,128 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             return null
         }
     }
+}
+
+export class AttioTriggerRuntime extends TriggerRuntime<AttioTrigger> {
+    readonly integrationType = IntegrationType.ATTIO
+    data: AttioTrigger
+    private integrationId: string
+
+    constructor(event: AttioWebhookEvent, integrationId: string, eventId: string) {
+        super()
+        this.data = buildAttioTrigger(event, eventId)
+        this.integrationId = integrationId
+    }
+
+    matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
+        if (agentTrigger.config_type !== InputConfigType.ATTIO_INPUT) return false
+        if (agentTrigger.integration_id !== this.integrationId) return false
+        // Attio filters via subscriptions server-side: any event we receive is one we subscribed to.
+        return true
+    }
+
+    createTriggerMetadata(): RunHistoryTrigger {
+        return {
+            event: this.data.eventType,
+            integration: IntegrationType.ATTIO,
+            source: "Attio",
+            title: humanizeAttioEventType(this.data.eventType),
+            subheader: this.data.resourceIds.record_id ?? this.data.resourceIds.entry_id ?? this.data.resourceIds.note_id ?? this.data.resourceIds.task_id ?? this.data.resourceIds.comment_id ?? this.data.workspaceId
+        }
+    }
+}
+
+const attioCreateWebhookResponseSchema = z.object({
+    data: z.object({
+        id: z.object({
+            workspace_id: z.string(),
+            webhook_id: z.string()
+        }),
+        secret: z.string()
+    })
+})
+
+export async function createAttioWebhook(tx: PrismaTransaction, triggerId: string, integrationId: string, subscriptions: AttioSubscription[]): Promise<string> {
+    if (subscriptions.length === 0) {
+        throw new Error("Attio webhook requires at least one subscription")
+    }
+
+    const attioRow = await tx.attio_integrations.findUnique({ where: { id: integrationId } })
+    if (!attioRow) {
+        throw new Error("Attio integration not found")
+    }
+
+    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
+    if (!accessToken) {
+        throw new Error("Attio access token not found")
+    }
+
+    const requestBody = {
+        data: {
+            target_url: buildAttioWebhookUrl(triggerId),
+            subscriptions: subscriptions.map(sub => ({ event_type: sub.eventType, filter: null }))
+        }
+    }
+
+    const response = await fetch(`${ATTIO_API_BASE}/webhooks`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+    })
+
+    const raw = await response.json()
+    if (!response.ok) {
+        logger.error("Attio CreateWebhook failed", { status: response.status, body: raw, triggerId })
+        throw new Error(`Attio rejected webhook: ${JSON.stringify(raw)}`)
+    }
+
+    const parsed = attioCreateWebhookResponseSchema.parse(raw)
+    const webhookId = parsed.data.id.webhook_id
+
+    await storeSecret(IntegrationType.ATTIO, triggerId, SecretField.WebhookSecret, parsed.data.secret)
+
+    logger.info("Attio CreateWebhook succeeded", { webhookId, triggerId })
+    return webhookId
+}
+
+async function deleteAttioWebhook(webhookId: string, integrationId: string): Promise<void> {
+    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
+    if (!accessToken) {
+        throw new Error("Attio access token not found")
+    }
+
+    const response = await fetch(`${ATTIO_API_BASE}/webhooks/${encodeURIComponent(webhookId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` }
+    })
+
+    if (!response.ok && response.status !== 404) {
+        const text = await response.text()
+        logger.error("Attio DeleteWebhook failed", { status: response.status, body: text, webhookId })
+        throw new Error(`Failed to delete Attio webhook: ${text}`)
+    }
+
+    logger.info("Attio DeleteWebhook succeeded", { webhookId })
+}
+
+function buildAttioTrigger(event: AttioWebhookEvent, eventId: string): AttioTrigger {
+    return {
+        integrationType: IntegrationType.ATTIO,
+        eventType: event.event_type,
+        eventId,
+        createdAt: new Date().toISOString(),
+        workspaceId: event.id.workspace_id,
+        resourceIds: event.id,
+        actor: event.actor,
+        rawEvent: event as unknown as Record<string, unknown>
+    } as AttioTrigger
+}
+
+function humanizeAttioEventType(eventType: string): string {
+    return eventType
+        .replace(/[-.]/g, " ")
+        .split(" ")
+        .filter(Boolean)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ")
 }

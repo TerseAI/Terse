@@ -11,6 +11,7 @@ export function getInputConfigInclude() {
         gmail_config: true,
         time_trigger_config: true,
         workos_config: true,
+        attio_input_config: true,
         webhook_config: true,
         webmonitor_config: true,
         hey_reach_config: true
