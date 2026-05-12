@@ -319,6 +319,9 @@ TypeScript projects also get **`Triggers.webhook`** from `src/terse.generated.ts
 Run `terse generate` again after you connect or disconnect an integration, after resources change inside a connected workspace, or after you upgrade `terse-cli`.
 
 ## Observability
+
+**Consecutive failures on Terse:** When a **deployed** workflow fails on Terse repeatedly, the platform tracks consecutive **Failed** runs. After **three** in a row, Terse automatically disables that workflow until you turn it back **on** under **Workflows**. A successful hosted run resets the streak. Run-failure notifications (when you have **error** notifications enabled) use escalating copy—first failure, warning, then paused—with a link to workflow settings. Local **`terse test`** runs do not update this hosted counter.
+
 ### `terse listen [job-name]`
 
 Streams live trigger events for a deployed workflow and executes the matching local workflow on your machine.

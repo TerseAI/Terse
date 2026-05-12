@@ -31,6 +31,12 @@ Import these from `terse-sdk`:
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 - `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
 
+## Consecutive run failures (hosted)
+
+For workflows **running on Terse** (hosted Modal or your self-hosted server after deploy), each run that ends in **Failed** increments a consecutive-failure counter for that workflow. After **three** failures in a row, Terse automatically turns the workflow **off** so it stops receiving triggers until you fix the underlying issue and turn it back **on** from **Workflows** in the Terse app. A **successful** hosted run resets the counter to zero, and turning the workflow back **on** also resets it.
+
+If you receive **error** run-failure notifications (Slack or email), the copy reflects where you are in that sequence: first failure, a warning on the second consecutive failure, then a notice when Terse has paused the workflow, with a link to workflow settings.
+
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
 ```bash
