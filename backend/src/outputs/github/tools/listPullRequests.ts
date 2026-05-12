@@ -1,10 +1,13 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator } from "../../abstract/Output"
 import { createGitHubClient, getGitHubAccessToken, listPullRequests, parseRepoFullName } from "../githubApiClient"
+
+import { validateGitHubRepository } from "./searchCode"
 
 // Helper functions
 const normalizePerPage = (perPage?: number): number => Math.min(perPage || 20, 100)
@@ -162,3 +165,5 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         }
     }
 })
+
+export const validateListGitHubPullRequests: ToolACLValidator<"listGitHubPullRequests", GitHubConfig> = ({ args, configs, runContext }) => validateGitHubRepository(args.repository, configs, runContext)

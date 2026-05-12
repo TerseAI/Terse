@@ -87,3 +87,13 @@ export const doesIntegrationIdExist = (integrationId: string, configs: ConfigDat
 export const verifyIntegrationIdExists = (integrationId: string, configs: ConfigData[]): ToolACLValidationResult => {
     return doesIntegrationIdExist(integrationId, configs) ? { ok: true } : denyToolACL(`Integration ID ${integrationId} not found`)
 }
+
+export const findConfigByIntegrationId = <TConfig extends ConfigData>(integrationId: string, configs: TConfig[]): TConfig | undefined => configs.find(c => c.integrationId === integrationId)
+
+export const requireInAllowedList = (value: string | null | undefined, allowed: readonly string[], label: string): ToolACLValidationResult =>
+    value && allowed.includes(value) ? { ok: true } : denyToolACL(`${label} ${value ?? "(missing)"} is not in the allowed list: ${allowed.join(", ") || "(none)"}`)
+
+export const requireAllInAllowedList = (values: readonly string[] | null | undefined, allowed: readonly string[], label: string): ToolACLValidationResult => {
+    const offenders = (values ?? []).filter(v => !allowed.includes(v))
+    return offenders.length === 0 ? { ok: true } : denyToolACL(`${label} not in allowed list: ${offenders.join(", ")}`)
+}

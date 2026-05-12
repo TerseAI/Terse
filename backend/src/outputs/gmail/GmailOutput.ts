@@ -1,13 +1,11 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { GmailOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { gmailSendEmailTool } from "./tools/sendEmail"
+import { gmailSendEmailTool, validateGmailSendEmail } from "./tools/sendEmail"
 
 export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
@@ -84,6 +82,3 @@ USER-FACING RESPONSE STYLE:
 - If the user explicitly asks for technical/debug details, you may provide those details.
 `.trim()
 
-type GmailACL<TName extends ToolName> = ToolACLValidator<TName, GmailOutputConfig>
-
-const validateGmailSendEmail: GmailACL<"gmail_send_email"> = _params => ({ ok: true as const })

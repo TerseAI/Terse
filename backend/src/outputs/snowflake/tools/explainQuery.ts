@@ -1,8 +1,9 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, SnowflakeOutputConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
 
 export const snowflakeExplainQueryTool = defineSessionTool({
@@ -45,3 +46,5 @@ export const snowflakeExplainQueryTool = defineSessionTool({
         }
     }
 })
+
+export const validateSnowflakeExplainQuery: ToolACLValidator<"snowflakeExplainQuery", SnowflakeOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)

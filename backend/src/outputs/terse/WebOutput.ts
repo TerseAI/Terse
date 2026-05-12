@@ -1,14 +1,13 @@
 import { OutputConfigType } from "@prisma/client"
 import { WebConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { webExtractTool } from "./tools/webExtractTool"
-import { webResearchTool } from "./tools/webResearchTool"
-import { webSearchTool } from "./tools/webSearchTool"
+import { validateWebExtract, webExtractTool } from "./tools/webExtractTool"
+import { validateWebResearch, webResearchTool } from "./tools/webResearchTool"
+import { validateWebSearch, webSearchTool } from "./tools/webSearchTool"
 
 export class WebOutput extends Output<WebConfig> {
     constructor() {
@@ -34,8 +33,3 @@ export class WebOutput extends Output<WebConfig> {
     }
 }
 
-type WebACL<TName extends ToolName> = ToolACLValidator<TName, WebConfig>
-
-const validateWebSearch: WebACL<"web_search"> = _params => ({ ok: true as const })
-const validateWebExtract: WebACL<"web_extract"> = _params => ({ ok: true as const })
-const validateWebResearch: WebACL<"web_research"> = _params => ({ ok: true as const })

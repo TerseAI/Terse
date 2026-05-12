@@ -1,12 +1,13 @@
 import { LinearClient } from "@linear/sdk"
 import { IssueCreateInput } from "@linear/sdk/dist/_generated_documents"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearCreateTicketTool = defineSessionTool({
     name: "linear_create_ticket",
@@ -77,3 +78,16 @@ export const linearCreateTicketTool = defineSessionTool({
         }
     }
 })
+
+export const validateLinearCreateTicket: ToolACLValidator<"linear_create_ticket", LinearOutputConfig> = ({ args, configs }) => {
+    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(args.integrationId, configs)!
+    if (config.teamId && args.ticket.teamId !== config.teamId) {
+        return denyToolACL(`Linear teamId ${args.ticket.teamId} does not match the configured team ${config.teamId}.`)
+    }
+    if (config.projectId && args.ticket.projectId && args.ticket.projectId !== config.projectId) {
+        return denyToolACL(`Linear projectId ${args.ticket.projectId} does not match the configured project ${config.projectId}.`)
+    }
+    return { ok: true }
+}

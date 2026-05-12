@@ -1,5 +1,8 @@
+import { WebConfig } from "terse-types"
+
 import { getWebSearchService } from "../../../services/webSearch"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator } from "../../abstract/Output"
 
 export const webResearchTool = defineSessionTool({
     name: "web_research",
@@ -17,3 +20,5 @@ export const webResearchTool = defineSessionTool({
         }
     }
 })
+
+export const validateWebResearch: ToolACLValidator<"web_research", WebConfig> = () => ({ ok: true })

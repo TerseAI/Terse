@@ -1,8 +1,9 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, PosthogConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 
 /**
@@ -221,3 +222,15 @@ export const searchLogsTool = defineSessionTool({
         }
     }
 })
+
+export const validateSearchPosthogLogs: ToolACLValidator<"searchPosthogLogs", PosthogConfig> = ({ args, configs }) => validatePosthogArgs(args.integrationId, args.projectId, configs)
+
+export const validatePosthogArgs = (integrationId: string, projectId: string, configs: PosthogConfig[]) => {
+    const idCheck = verifyIntegrationIdExists(integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(integrationId, configs)!
+    if (projectId !== config.projectId) {
+        return denyToolACL(`PostHog projectId ${projectId} does not match the configured project ${config.projectId}.`)
+    }
+    return { ok: true as const }
+}

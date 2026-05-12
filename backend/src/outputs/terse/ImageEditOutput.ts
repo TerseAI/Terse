@@ -1,12 +1,11 @@
 import { OutputConfigType } from "@prisma/client"
 import { ImageEditConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { imageEditTool } from "./tools/editImage"
+import { imageEditTool, validateImageEdit } from "./tools/editImage"
 
 export class ImageEditOutput extends Output<ImageEditConfig> {
     constructor() {
@@ -28,6 +27,3 @@ export class ImageEditOutput extends Output<ImageEditConfig> {
     }
 }
 
-type ImageEditACL<TName extends ToolName> = ToolACLValidator<TName, ImageEditConfig>
-
-const validateImageEdit: ImageEditACL<"image_edit"> = _params => ({ ok: true as const })

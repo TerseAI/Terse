@@ -1,15 +1,13 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { LaunchDarklyConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
-import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags"
+import { getLaunchDarklyFlagDetailsTool, validateGetLaunchDarklyFlagDetails } from "./tools/getFeatureFlagDetails"
+import { listLaunchDarklyFlagsTool, validateListLaunchDarklyFlags } from "./tools/listFeatureFlags"
 
 export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
     constructor() {
@@ -63,7 +61,3 @@ export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
     }
 }
 
-type LaunchDarklyACL<TName extends ToolName> = ToolACLValidator<TName, LaunchDarklyConfig>
-
-const validateListLaunchDarklyFlags: LaunchDarklyACL<"listLaunchDarklyFlags"> = _params => ({ ok: true as const })
-const validateGetLaunchDarklyFlagDetails: LaunchDarklyACL<"getLaunchDarklyFlagDetails"> = _params => ({ ok: true as const })

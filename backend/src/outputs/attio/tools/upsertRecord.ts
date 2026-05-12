@@ -1,11 +1,14 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { AttioOutputConfig, IntegrationType } from "terse-types"
 import type { AttioAttribute, AttioRecord } from "terse-types"
 import { z } from "zod"
 
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator } from "../../abstract/Output"
+
+import { validateAttioObjectSlug } from "./queryRecords"
 
 const attioScalarValue = z.union([z.string(), z.number(), z.boolean(), z.null()])
 const attioStructuredValue = z.object({}).catchall(z.union([attioScalarValue, z.array(attioScalarValue)]))
@@ -106,6 +109,8 @@ export const attioUpsertRecordTool = defineSessionTool({
         }
     }
 })
+
+export const validateAttioUpsertRecord: ToolACLValidator<"attio_upsert_record", AttioOutputConfig> = ({ args, configs }) => validateAttioObjectSlug(args.integrationId, args.objectSlug, configs)
 
 type AttioApiError = {
     code?: string

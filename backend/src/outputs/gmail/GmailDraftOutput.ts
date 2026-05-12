@@ -1,11 +1,11 @@
 import { OutputConfigType } from "@prisma/client"
-import { GmailDraftOutputConfig, ToolName } from "terse-types"
+import { GmailDraftOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { gmailCreateDraftTool } from "./tools/createDraft"
+import { gmailCreateDraftTool, validateGmailCreateDraft } from "./tools/createDraft"
 
 export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
     constructor() {
@@ -84,6 +84,3 @@ USER-FACING RESPONSE STYLE:
 - If the user explicitly asks for technical/debug details, you may provide those details.
 `.trim()
 
-type GmailDraftACL<TName extends ToolName> = ToolACLValidator<TName, GmailDraftOutputConfig>
-
-const validateGmailCreateDraft: GmailDraftACL<"gmail_create_draft"> = _params => ({ ok: true as const })

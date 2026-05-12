@@ -1,6 +1,6 @@
 import { Agent, AgentInputItem, AgentOutputType } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { GitHubConfig, IntegrationType } from "terse-types"
 
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../../../agent/runner"
 import { buildUserMessage } from "../../../agent/userMessage"
@@ -8,7 +8,10 @@ import { settings } from "../../../config/settings"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator } from "../../abstract/Output"
 import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepoFullName } from "../githubApiClient"
+
+import { validateGitHubRepository } from "./searchCode"
 
 /**
  * Tool for summarizing pull request diffs using a compact sub-agent.
@@ -274,6 +277,9 @@ You can optionally provide high-level context about what you're looking for in t
         }
     }
 })
+
+export const validateSummarizeGitHubPullRequestDiff: ToolACLValidator<"summarizeGitHubPullRequestDiff", GitHubConfig> = ({ args, configs, runContext }) =>
+    validateGitHubRepository(args.repository, configs, runContext)
 
 function buildSummarizerSystemPrompt(context?: string): string {
     return `You are a code review assistant specialized in analyzing and summarizing pull request diffs.

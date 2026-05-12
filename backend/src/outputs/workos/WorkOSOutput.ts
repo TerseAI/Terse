@@ -1,14 +1,13 @@
 import { OutputConfigType } from "@prisma/client"
 import { WorkOSOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
-import { Output, ToolACLValidator, defineToolEntry } from "../../outputs/abstract/Output"
+import { Output, defineToolEntry } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
 
-import { getWorkOSUserTool } from "./tools/getUser"
-import { listWorkOSOrganizationsTool } from "./tools/listOrganizations"
-import { listWorkOSUsersTool } from "./tools/listUsers"
+import { getWorkOSUserTool, validateGetWorkOSUser } from "./tools/getUser"
+import { listWorkOSOrganizationsTool, validateListWorkOSOrganizations } from "./tools/listOrganizations"
+import { listWorkOSUsersTool, validateListWorkOSUsers } from "./tools/listUsers"
 
 export class WorkOSOutput extends Output<WorkOSOutputConfig> {
     constructor() {
@@ -57,8 +56,3 @@ export class WorkOSOutput extends Output<WorkOSOutputConfig> {
     }
 }
 
-type WorkOSACL<TName extends ToolName> = ToolACLValidator<TName, WorkOSOutputConfig>
-
-const validateListWorkOSUsers: WorkOSACL<"listWorkOSUsers"> = _params => ({ ok: true as const })
-const validateListWorkOSOrganizations: WorkOSACL<"listWorkOSOrganizations"> = _params => ({ ok: true as const })
-const validateGetWorkOSUser: WorkOSACL<"getWorkOSUser"> = _params => ({ ok: true as const })

@@ -1,10 +1,12 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { verifyNotionPageInScope } from "../../../utility/notionAcl"
+import { ToolACLValidator, findConfigByIntegrationId, requireInAllowedList, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const notionCreateOrUpdateDatabaseRowTool = defineSessionTool({
     name: "notion_create_or_update_database_row",
@@ -108,3 +110,13 @@ Use notion_get_schema first to understand property names and types. Use notion_q
         }
     }
 })
+
+export const validateNotionCreateOrUpdateDatabaseRow: ToolACLValidator<"notion_create_or_update_database_row", NotionConfig> = async ({ args, configs }) => {
+    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(args.integrationId, configs)!
+    const dbCheck = requireInAllowedList(args.databaseId, config.databaseIds ?? [], "databaseId")
+    if (!dbCheck.ok) return dbCheck
+    if (args.page_id) return verifyNotionPageInScope(args.integrationId, args.page_id, config)
+    return { ok: true }
+}

@@ -1,6 +1,6 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { KnownBlock } from "@slack/web-api"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, SlackOutputConfig } from "terse-types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse-types"
 
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
@@ -9,6 +9,7 @@ import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { resolveSlackChannelIdForDestination } from "../../../utility/slack"
 import { isValidEpochTimestamp } from "../../../utility/strings"
+import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -201,3 +202,32 @@ export const slackSendMessageTool = defineSessionTool({
         }
     }
 })
+
+export const validateSlackSendMessage: ToolACLValidator<"slack_send_message", SlackOutputConfig> = ({ args, configs }) => validateSlackChannelOrUser(args.integrationId, args.channelId, args.slackUserId, configs)
+
+export const validateSlackChannelOrUser = (
+    integrationId: string,
+    channelId: string | null | undefined,
+    slackUserId: string | null | undefined,
+    configs: SlackOutputConfig[]
+) => {
+    const idCheck = verifyIntegrationIdExists(integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(integrationId, configs)!
+    const listensToDms = config.listenToUserDms === true
+    const userIds = config.userIds ?? []
+
+    if (channelId) {
+        if (config.channelId && channelId === config.channelId) return { ok: true as const }
+        if (listensToDms && channelId.startsWith("D")) return { ok: true as const }
+        return denyToolACL(`Slack channelId ${channelId} is not allowed. Configured channel: ${config.channelId ?? "(none)"}; DM scope: ${listensToDms ? "yes" : "no"}.`)
+    }
+
+    if (slackUserId) {
+        if (listensToDms) return { ok: true as const }
+        if (userIds.includes(slackUserId)) return { ok: true as const }
+        return denyToolACL(`Slack slackUserId ${slackUserId} is not in the allowed users (${userIds.join(", ") || "(none)"}) and DM scope is not enabled.`)
+    }
+
+    return denyToolACL("Slack call requires either channelId or slackUserId.")
+}

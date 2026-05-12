@@ -1,14 +1,14 @@
 import { OutputConfigType } from "@prisma/client"
-import { AttioOutputConfig, ToolName } from "terse-types"
+import { AttioOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { attioListObjectsTool } from "./tools/listObjects"
-import { attioQueryRecordsTool } from "./tools/queryRecords"
-import { attioUpsertRecordTool } from "./tools/upsertRecord"
+import { attioListObjectsTool, validateAttioListObjects } from "./tools/listObjects"
+import { attioQueryRecordsTool, validateAttioQueryRecords } from "./tools/queryRecords"
+import { attioUpsertRecordTool, validateAttioUpsertRecord } from "./tools/upsertRecord"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
@@ -77,16 +77,3 @@ export class AttioOutput extends Output<AttioOutputConfig> {
     }
 }
 
-type AttioACL<TName extends ToolName> = ToolACLValidator<TName, AttioOutputConfig>
-
-const validateAttioListObjects: AttioACL<"attio_list_objects"> = _params => {
-    return { ok: true }
-}
-
-const validateAttioQueryRecords: AttioACL<"attio_query_records"> = _params => {
-    return { ok: true }
-}
-
-const validateAttioUpsertRecord: AttioACL<"attio_upsert_record"> = _params => {
-    return { ok: true }
-}

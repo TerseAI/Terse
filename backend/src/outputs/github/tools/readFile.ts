@@ -1,10 +1,13 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator } from "../../abstract/Output"
 import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFullName } from "../githubApiClient"
+
+import { validateGitHubRepository } from "./searchCode"
 
 /**
  * Tool for reading file contents from GitHub repositories.
@@ -152,3 +155,5 @@ Note: This reads from the default branch (main/master). Large files may be trunc
         }
     }
 })
+
+export const validateReadGitHubFile: ToolACLValidator<"readGitHubFile", GitHubConfig> = ({ args, configs, runContext }) => validateGitHubRepository(args.repository, configs, runContext)

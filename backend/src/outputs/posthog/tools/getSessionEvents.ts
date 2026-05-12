@@ -1,11 +1,13 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, PosthogConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator } from "../../abstract/Output"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 
 import { PostHogSessionService, SessionEventsResult } from "./eventDecoder"
+import { validatePosthogArgs } from "./searchLogs"
 
 /**
  * Tool for fetching and decoding PostHog session replay events.
@@ -102,3 +104,5 @@ export const getSessionEventsTool = defineSessionTool({
         }
     }
 })
+
+export const validateGetPosthogSessionEvents: ToolACLValidator<"getPosthogSessionEvents", PosthogConfig> = ({ args, configs }) => validatePosthogArgs(args.integrationId, args.projectId, configs)

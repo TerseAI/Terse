@@ -1,12 +1,13 @@
 import { LinearClient } from "@linear/sdk"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LinearOutputConfig } from "terse-types"
 import { validate as isValidUuid } from "uuid"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearReadTicketTool = defineSessionTool({
     name: "linear_read_ticket",
@@ -102,3 +103,5 @@ Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this afte
         }
     }
 })
+
+export const validateLinearReadTicket: ToolACLValidator<"linear_read_ticket", LinearOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)

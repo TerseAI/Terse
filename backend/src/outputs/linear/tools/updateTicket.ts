@@ -1,12 +1,13 @@
 import { LinearClient } from "@linear/sdk"
 import { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearUpdateTicketTool = defineSessionTool({
     name: "linear_update_ticket",
@@ -83,3 +84,5 @@ export const linearUpdateTicketTool = defineSessionTool({
         }
     }
 })
+
+export const validateLinearUpdateTicket: ToolACLValidator<"linear_update_ticket", LinearOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)

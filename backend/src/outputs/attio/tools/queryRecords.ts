@@ -1,10 +1,11 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { AttioOutputConfig, IntegrationType } from "terse-types"
 import type { AttioRecord } from "terse-types"
 
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
+import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const attioQueryRecordsTool = defineSessionTool({
     name: "attio_query_records",
@@ -78,3 +79,15 @@ Filter syntax uses shorthand or verbose form:
         }
     }
 })
+
+export const validateAttioQueryRecords: ToolACLValidator<"attio_query_records", AttioOutputConfig> = ({ args, configs }) => validateAttioObjectSlug(args.integrationId, args.objectSlug, configs)
+
+export const validateAttioObjectSlug = (integrationId: string, objectSlug: string, configs: AttioOutputConfig[]) => {
+    const idCheck = verifyIntegrationIdExists(integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(integrationId, configs)!
+    if (config.objectSlug && objectSlug !== config.objectSlug) {
+        return denyToolACL(`Attio objectSlug ${objectSlug} does not match the configured object ${config.objectSlug}.`)
+    }
+    return { ok: true as const }
+}

@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearGetStatesTool = defineSessionTool({
     name: "linear_get_states",
@@ -43,3 +44,15 @@ export const linearGetStatesTool = defineSessionTool({
         }
     }
 })
+
+export const validateLinearGetStates: ToolACLValidator<"linear_get_states", LinearOutputConfig> = ({ args, configs }) => validateLinearOptionalTeam(args.integrationId, args.teamId, configs)
+
+export const validateLinearOptionalTeam = (integrationId: string, teamId: string | null | undefined, configs: LinearOutputConfig[]) => {
+    const idCheck = verifyIntegrationIdExists(integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(integrationId, configs)!
+    if (config.teamId && teamId && teamId !== config.teamId) {
+        return denyToolACL(`Linear teamId ${teamId} does not match the configured team ${config.teamId}.`)
+    }
+    return { ok: true as const }
+}

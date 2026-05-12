@@ -1,11 +1,12 @@
 import { Client } from "@notionhq/client"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const notionListUsersTool = defineSessionTool({
     name: "notion_list_users",
@@ -74,3 +75,5 @@ Use the returned user IDs in people property format:
         }
     }
 })
+
+export const validateNotionListUsers: ToolACLValidator<"notion_list_users", NotionConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)

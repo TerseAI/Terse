@@ -1,21 +1,20 @@
 import { OutputConfigType } from "@prisma/client"
 import { GitHubConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, RuntimeSystemInstructionsContext, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, RuntimeSystemInstructionsContext, defineToolEntry } from "../abstract/Output"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
-import { grepGitHubCodeTool } from "./tools/grepCode"
-import { listGitHubCommitsTool } from "./tools/listCommits"
-import { listGitHubDirectoryTool } from "./tools/listDirectory"
-import { listGitHubPullRequestsTool } from "./tools/listPullRequests"
-import { readGitHubFileTool } from "./tools/readFile"
-import { searchGitHubCodeTool } from "./tools/searchCode"
-import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequestDiff"
+import { grepGitHubCodeTool, validateGrepGitHubCode } from "./tools/grepCode"
+import { listGitHubCommitsTool, validateListGitHubCommits } from "./tools/listCommits"
+import { listGitHubDirectoryTool, validateListGitHubDirectory } from "./tools/listDirectory"
+import { listGitHubPullRequestsTool, validateListGitHubPullRequests } from "./tools/listPullRequests"
+import { readGitHubFileTool, validateReadGitHubFile } from "./tools/readFile"
+import { searchGitHubCodeTool, validateSearchGitHubCode } from "./tools/searchCode"
+import { summarizeGitHubPullRequestDiffTool, validateSummarizeGitHubPullRequestDiff } from "./tools/summarizePullRequestDiff"
 
 export class GithubSkillOutput extends Output<GitHubConfig> {
     constructor() {
@@ -107,12 +106,3 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
     }
 }
 
-type GitHubACL<TName extends ToolName> = ToolACLValidator<TName, GitHubConfig>
-
-const validateSearchGitHubCode: GitHubACL<"searchGitHubCode"> = _params => ({ ok: true as const })
-const validateGrepGitHubCode: GitHubACL<"grepGitHubCode"> = _params => ({ ok: true as const })
-const validateReadGitHubFile: GitHubACL<"readGitHubFile"> = _params => ({ ok: true as const })
-const validateListGitHubDirectory: GitHubACL<"listGitHubDirectory"> = _params => ({ ok: true as const })
-const validateListGitHubPullRequests: GitHubACL<"listGitHubPullRequests"> = _params => ({ ok: true as const })
-const validateListGitHubCommits: GitHubACL<"listGitHubCommits"> = _params => ({ ok: true as const })
-const validateSummarizeGitHubPullRequestDiff: GitHubACL<"summarizeGitHubPullRequestDiff"> = _params => ({ ok: true as const })

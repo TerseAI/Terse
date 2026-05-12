@@ -1,11 +1,12 @@
 import { LinearClient } from "@linear/sdk"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearAddCommentTool = defineSessionTool({
     name: "linear_add_comment",
@@ -58,3 +59,5 @@ export const linearAddCommentTool = defineSessionTool({
         }
     }
 })
+
+export const validateLinearAddComment: ToolACLValidator<"linear_add_comment", LinearOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)

@@ -1,7 +1,8 @@
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LaunchDarklyConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator, findConfigByIntegrationId, requireAllInAllowedList, requireInAllowedList, verifyIntegrationIdExists } from "../../abstract/Output"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
 export const listLaunchDarklyFlagsTool = defineSessionTool({
@@ -237,3 +238,26 @@ export const listLaunchDarklyFlagsTool = defineSessionTool({
         }
     }
 })
+
+export const validateListLaunchDarklyFlags: ToolACLValidator<"listLaunchDarklyFlags", LaunchDarklyConfig> = ({ args, configs }) => validateLaunchDarklyArgs(args.integrationId, args.projectKey, args.environmentKeys, null, configs)
+
+export const validateLaunchDarklyArgs = (
+    integrationId: string,
+    projectKey: string,
+    environmentKeys: readonly string[] | null | undefined,
+    environmentKey: string | null | undefined,
+    configs: LaunchDarklyConfig[]
+) => {
+    const idCheck = verifyIntegrationIdExists(integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(integrationId, configs)!
+    if (projectKey !== config.projectKey) {
+        return { ok: false as const, message: `LaunchDarkly projectKey ${projectKey} does not match the configured project ${config.projectKey}.` }
+    }
+    const envCheck = requireAllInAllowedList(environmentKeys, config.environmentKeys ?? [], "environmentKeys")
+    if (!envCheck.ok) return envCheck
+    if (environmentKey) {
+        return requireInAllowedList(environmentKey, config.environmentKeys ?? [], "environmentKey")
+    }
+    return { ok: true as const }
+}

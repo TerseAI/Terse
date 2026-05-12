@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest"
 import { DateTime } from "luxon"
-import { IntegrationType } from "terse-types"
+import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
@@ -73,6 +73,25 @@ export async function getRepositoryNamesByIds(client: Octokit, repositoryIds: nu
     )
 
     return new Map(pairs.filter((pair): pair is readonly [number, string] => pair !== null))
+}
+
+const repoNameCache = new Map<string, Promise<Set<string>>>()
+
+export async function getAllowedRepoNamesForConfigs(configs: GitHubConfig[], userId: string): Promise<Set<string>> {
+    const ids = Array.from(new Set(configs.flatMap(c => c.repositoryIds ?? []))).sort((a, b) => a - b)
+    const key = `${userId}:${ids.join(",")}`
+    let cached = repoNameCache.get(key)
+    if (!cached) {
+        cached = (async () => {
+            const token = await getGitHubAccessToken(userId)
+            if (!token) return new Set<string>()
+            const client = createGitHubClient(token)
+            const map = await getRepositoryNamesByIds(client, ids)
+            return new Set(map.values())
+        })()
+        repoNameCache.set(key, cached)
+    }
+    return cached
 }
 
 /**

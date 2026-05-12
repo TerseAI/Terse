@@ -1,10 +1,13 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator } from "../../abstract/Output"
 import { createGitHubClient, getBranch, getGitHubAccessToken, getRepositoryInfo, getTree, listDirectory, parseRepoFullName } from "../githubApiClient"
+
+import { validateGitHubRepository } from "./searchCode"
 
 /**
  * Tool for listing directory contents in GitHub repositories.
@@ -222,3 +225,5 @@ Start with the root directory (empty path) to see the top-level structure, then 
         }
     }
 })
+
+export const validateListGitHubDirectory: ToolACLValidator<"listGitHubDirectory", GitHubConfig> = ({ args, configs, runContext }) => validateGitHubRepository(args.repository, configs, runContext)

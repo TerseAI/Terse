@@ -1,9 +1,11 @@
 import { Client } from "@notionhq/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { verifyNotionPageInScope } from "../../../utility/notionAcl"
+import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 const VALID_PAGE_ID_MIN_LENGTH = 30
 
@@ -101,3 +103,12 @@ export const notionCreateOrUpdatePageTool = defineSessionTool({
         }
     }
 })
+
+export const validateNotionCreateOrUpdatePage: ToolACLValidator<"notion_create_or_update_page", NotionConfig> = async ({ args, configs }) => {
+    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(args.integrationId, configs)!
+    if (args.page_id) return verifyNotionPageInScope(args.integrationId, args.page_id, config)
+    if (args.parentPageId) return verifyNotionPageInScope(args.integrationId, args.parentPageId, config)
+    return denyToolACL("notion_create_or_update_page requires either page_id (update) or parentPageId (create).")
+}

@@ -1,10 +1,11 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator, findConfigByIntegrationId, requireInAllowedList, verifyIntegrationIdExists } from "../../abstract/Output"
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {
@@ -204,3 +205,10 @@ NOTE: This tool does NOT return the database schema. Use notion_get_schema if yo
         }
     }
 })
+
+export const validateNotionQueryDatabase: ToolACLValidator<"notion_query_database", NotionConfig> = ({ args, configs }) => {
+    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    const config = findConfigByIntegrationId(args.integrationId, configs)!
+    return requireInAllowedList(args.databaseId, config.databaseIds ?? [], "databaseId")
+}

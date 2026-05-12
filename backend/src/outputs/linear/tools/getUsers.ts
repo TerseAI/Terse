@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearGetUsersTool = defineSessionTool({
     name: "linear_get_users",
@@ -43,3 +44,5 @@ export const linearGetUsersTool = defineSessionTool({
         }
     }
 })
+
+export const validateLinearGetUsers: ToolACLValidator<"linear_get_users", LinearOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)

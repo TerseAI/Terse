@@ -1,12 +1,13 @@
 import { gmail as createGmailClient } from "@googleapis/gmail"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { GmailDraftOutputConfig, IntegrationType } from "terse-types"
 
 import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/GmailIntegration"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { SecretField, getSecret } from "../../../services/SecretService"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders } from "./mime"
 
@@ -232,3 +233,5 @@ export const gmailCreateDraftTool = defineSessionTool({
         }
     }
 })
+
+export const validateGmailCreateDraft: ToolACLValidator<"gmail_create_draft", GmailDraftOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)

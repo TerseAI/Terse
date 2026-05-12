@@ -1,10 +1,12 @@
 import { GoogleGenAI } from "@google/genai"
 import axios from "axios"
+import { ImageEditConfig } from "terse-types"
 
 import { gemini } from "../../../config/settings"
 import logger from "../../../logger"
 import { assertInternalGcsBucketUrl, buildImageEditKey, ensureStoredWithMetadata } from "../../../services/FileStorageService"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator } from "../../abstract/Output"
 
 export const imageEditTool = defineSessionTool({
     name: "image_edit",
@@ -67,3 +69,5 @@ export const imageEditTool = defineSessionTool({
         }
     }
 })
+
+export const validateImageEdit: ToolACLValidator<"image_edit", ImageEditConfig> = () => ({ ok: true })

@@ -1,23 +1,21 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { LinearOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { linearAddCommentTool } from "./tools/addComment"
-import { linearCreateTicketTool } from "./tools/createTicket"
-import { linearGetLabelsTool } from "./tools/getLabels"
-import { linearGetProjectsTool } from "./tools/getProjects"
-import { linearGetStatesTool } from "./tools/getStates"
-import { linearGetTeamsTool } from "./tools/getTeams"
-import { linearGetUsersTool } from "./tools/getUsers"
-import { linearReadTicketTool } from "./tools/readTicket"
-import { linearSearchTicketTool } from "./tools/searchTicket"
-import { linearUpdateTicketTool } from "./tools/updateTicket"
+import { linearAddCommentTool, validateLinearAddComment } from "./tools/addComment"
+import { linearCreateTicketTool, validateLinearCreateTicket } from "./tools/createTicket"
+import { linearGetLabelsTool, validateLinearGetLabels } from "./tools/getLabels"
+import { linearGetProjectsTool, validateLinearGetProjects } from "./tools/getProjects"
+import { linearGetStatesTool, validateLinearGetStates } from "./tools/getStates"
+import { linearGetTeamsTool, validateLinearGetTeams } from "./tools/getTeams"
+import { linearGetUsersTool, validateLinearGetUsers } from "./tools/getUsers"
+import { linearReadTicketTool, validateLinearReadTicket } from "./tools/readTicket"
+import { linearSearchTicketTool, validateLinearSearchTicket } from "./tools/searchTicket"
+import { linearUpdateTicketTool, validateLinearUpdateTicket } from "./tools/updateTicket"
 
 export class LinearTicketOutput extends Output<LinearOutputConfig> {
     constructor() {
@@ -85,15 +83,3 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
     }
 }
 
-type LinearACL<TName extends ToolName> = ToolACLValidator<TName, LinearOutputConfig>
-
-const validateLinearSearchTicket: LinearACL<"linear_search_ticket"> = _params => ({ ok: true as const })
-const validateLinearGetTeams: LinearACL<"linear_get_teams"> = _params => ({ ok: true as const })
-const validateLinearGetStates: LinearACL<"linear_get_states"> = _params => ({ ok: true as const })
-const validateLinearGetLabels: LinearACL<"linear_get_labels"> = _params => ({ ok: true as const })
-const validateLinearGetProjects: LinearACL<"linear_get_projects"> = _params => ({ ok: true as const })
-const validateLinearGetUsers: LinearACL<"linear_get_users"> = _params => ({ ok: true as const })
-const validateLinearCreateTicket: LinearACL<"linear_create_ticket"> = _params => ({ ok: true as const })
-const validateLinearUpdateTicket: LinearACL<"linear_update_ticket"> = _params => ({ ok: true as const })
-const validateLinearAddComment: LinearACL<"linear_add_comment"> = _params => ({ ok: true as const })
-const validateLinearReadTicket: LinearACL<"linear_read_ticket"> = _params => ({ ok: true as const })

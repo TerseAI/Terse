@@ -1,13 +1,12 @@
 import { OutputConfigType } from "@prisma/client"
 import { SnowflakeOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry, verifyIntegrationIdExists } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { snowflakeExecuteQueryTool } from "./tools/executeQuery"
-import { snowflakeExplainQueryTool } from "./tools/explainQuery"
+import { snowflakeExecuteQueryTool, validateSnowflakeExecuteQuery } from "./tools/executeQuery"
+import { snowflakeExplainQueryTool, validateSnowflakeExplainQuery } from "./tools/explainQuery"
 
 export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     constructor() {
@@ -63,11 +62,3 @@ export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     }
 }
 
-type SnowflakeACL<TName extends ToolName> = ToolACLValidator<TName, SnowflakeOutputConfig>
-
-const validateSnowflakeExplainQuery: SnowflakeACL<"snowflakeExplainQuery"> = ({ args, configs }) => {
-    return verifyIntegrationIdExists(args.integrationId, configs)
-}
-const validateSnowflakeExecuteQuery: SnowflakeACL<"snowflakeExecuteQuery"> = ({ args, configs }) => {
-    return verifyIntegrationIdExists(args.integrationId, configs)
-}

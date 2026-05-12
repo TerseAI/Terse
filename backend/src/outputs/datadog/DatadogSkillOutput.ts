@@ -1,16 +1,15 @@
 import { OutputConfigType } from "@prisma/client"
 import { DatadogConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
-import { listRumEventsTool } from "./tools/listRumEvents"
-import { searchDatadogLogsTool } from "./tools/searchLogs"
-import { searchRumEventsTool } from "./tools/searchRumEvents"
+import { aggregateRumEventsTool, validateAggregateRumEvents } from "./tools/aggregateRumEvents"
+import { listRumEventsTool, validateListRumEvents } from "./tools/listRumEvents"
+import { searchDatadogLogsTool, validateSearchDatadogLogs } from "./tools/searchLogs"
+import { searchRumEventsTool, validateSearchRumEvents } from "./tools/searchRumEvents"
 
 export class DatadogSkillOutput extends Output<DatadogConfig> {
     constructor() {
@@ -65,9 +64,3 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
     }
 }
 
-type DatadogACL<TName extends ToolName> = ToolACLValidator<TName, DatadogConfig>
-
-const validateSearchDatadogLogs: DatadogACL<"searchDatadogLogs"> = _params => ({ ok: true as const })
-const validateListRumEvents: DatadogACL<"listRumEvents"> = _params => ({ ok: true as const })
-const validateSearchRumEvents: DatadogACL<"searchRumEvents"> = _params => ({ ok: true as const })
-const validateAggregateRumEvents: DatadogACL<"aggregateRumEvents"> = _params => ({ ok: true as const })

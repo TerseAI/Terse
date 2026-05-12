@@ -1,17 +1,15 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { PosthogConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
-import { ToolName } from "terse-types"
 
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
+import { Output, defineToolEntry } from "../abstract/Output"
 
-import { getSessionEventsTool } from "./tools/getSessionEvents"
-import { searchEventsTool } from "./tools/searchEvents"
-import { searchLogsTool } from "./tools/searchLogs"
-import { searchSessionsTool } from "./tools/searchSessions"
+import { getSessionEventsTool, validateGetPosthogSessionEvents } from "./tools/getSessionEvents"
+import { searchEventsTool, validateSearchPosthogEvents } from "./tools/searchEvents"
+import { searchLogsTool, validateSearchPosthogLogs } from "./tools/searchLogs"
+import { searchSessionsTool, validateSearchPosthogSessions } from "./tools/searchSessions"
 
 export class PosthogSkillOutput extends Output<PosthogConfig> {
     constructor() {
@@ -65,9 +63,3 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
     }
 }
 
-type PosthogACL<TName extends ToolName> = ToolACLValidator<TName, PosthogConfig>
-
-const validateSearchPosthogLogs: PosthogACL<"searchPosthogLogs"> = _params => ({ ok: true as const })
-const validateSearchPosthogSessions: PosthogACL<"searchPosthogSessions"> = _params => ({ ok: true as const })
-const validateGetPosthogSessionEvents: PosthogACL<"getPosthogSessionEvents"> = _params => ({ ok: true as const })
-const validateSearchPosthogEvents: PosthogACL<"searchPosthogEvents"> = _params => ({ ok: true as const })
