@@ -51,7 +51,10 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
                     return []
                 }
 
-                const appInstallations = await getAppInstallationsForUser(accessToken)
+                const appInstallations = await getAppInstallationsForUser(accessToken, {
+                    userId: oa.user_id,
+                    tokenId: oa.id
+                })
                 return appInstallations.installations.map(ai => ({
                     id: ai.id.toString(),
                     installation_id: ai.id,
@@ -344,7 +347,10 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         if (!accessToken) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
-        const userInstallations = await getAppInstallationsForUser(accessToken)
+        const userInstallations = await getAppInstallationsForUser(accessToken, {
+            userId,
+            installationId: installationIdNum
+        })
         if (!userInstallations.installations.some(inst => inst.id === installationIdNum)) {
             throw new Error("Installation not found or access denied.")
         }
@@ -563,7 +569,13 @@ async function exchangeCodeForAccessToken(
     }
 }
 
-export async function getAppInstallationsForUser(oAuthToken: string): Promise<GithubAppInstallationResponse> {
+export type GithubInstallationsContext = {
+    userId: string
+    tokenId?: string
+    installationId?: number
+}
+
+export async function getAppInstallationsForUser(oAuthToken: string, context: GithubInstallationsContext): Promise<GithubAppInstallationResponse> {
     try {
         const allInstallations: GithubAppInstallation[] = []
         let page = 1
@@ -596,7 +608,13 @@ export async function getAppInstallationsForUser(oAuthToken: string): Promise<Gi
             installations: allInstallations
         }
     } catch (error) {
-        logger.error("Error getting app installations for user", { error })
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined
+        const logFields = { ...context, status, error }
+        if (status === 401) {
+            logger.warn("GitHub app installations fetch returned 401 (token likely revoked)", logFields)
+        } else {
+            logger.error("Error getting app installations for user", logFields)
+        }
         return { total_count: 0, installations: [] }
     }
 }
@@ -645,7 +663,11 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
                     }
                 }
 
-                const installations = await getAppInstallationsForUser(accessToken)
+                const installations = await getAppInstallationsForUser(accessToken, {
+                    userId: user.user_id,
+                    tokenId: user.id,
+                    installationId
+                })
                 return {
                     userId: user.user_id,
                     installations: installations.installations
@@ -698,8 +720,12 @@ export async function validateGithubRepositoryIds({ userId, integrationId, repos
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }
 
-    const installations = await getAppInstallationsForUser(resolvedAccessToken)
     const integrationInstallationId = Number(integrationId)
+    const installations = await getAppInstallationsForUser(resolvedAccessToken, {
+        userId,
+        tokenId: accessToken.id,
+        installationId: Number.isNaN(integrationInstallationId) ? undefined : integrationInstallationId
+    })
     const targetInstallation = installations.installations.find(installation => (!Number.isNaN(integrationInstallationId) ? installation.id === integrationInstallationId : false))
 
     if (!targetInstallation) {

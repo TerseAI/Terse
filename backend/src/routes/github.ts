@@ -126,7 +126,11 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
             continue
         }
 
-        const installations = await getAppInstallationsForUser(accessToken)
+        const installations = await getAppInstallationsForUser(accessToken, {
+            userId: token.user_id,
+            tokenId: token.id,
+            installationId: Number(installationId)
+        })
         const installation = installations.installations.find(i => i.id === Number(installationId))
         if (installation) {
             targetInstallation = installation
@@ -218,7 +222,11 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
                     }
                 }
 
-                const installations = await getAppInstallationsForUser(accessToken)
+                const installations = await getAppInstallationsForUser(accessToken, {
+                    userId: user.user_id,
+                    tokenId: user.id,
+                    installationId
+                })
                 return {
                     userId: user.user_id,
                     installations: installations.installations

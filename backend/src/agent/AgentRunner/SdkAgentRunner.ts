@@ -300,7 +300,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             systemPromptDeps: deps,
             runContext: { runId: this.sdkRunId } as RunContext,
             model: aisdk(resolved.model),
-            tools: this.tools
+            tools: this.tools,
+            modelSettings: { providerData: resolved.providerData }
         }
     }
 
