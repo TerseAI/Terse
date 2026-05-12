@@ -1,5 +1,6 @@
 import { RunHistoryAction } from "terse-types"
 
+import { FailureState } from "../../agent/AgentRunner/runHistory"
 import logger from "../../logger"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
 import { formatNotificationMessage, formatRunFailureNotificationMessage, resolveSlackChannelIdForDestination, sendSlackApprovalMessage, sendSlackMessage } from "../../utility/slack"
@@ -48,7 +49,13 @@ export async function sendSlackApprovalRequest(notificationDestination: UserNoti
     return result.permalink
 }
 
-export async function sendSlackRunFailure(notificationDestination: UserNotificationDestination, agent: Agent, runId: string, errorMessage: string): Promise<string | undefined> {
+export async function sendSlackRunFailure(
+    notificationDestination: UserNotificationDestination,
+    agent: Agent,
+    runId: string,
+    errorMessage: string,
+    failureState: FailureState
+): Promise<string | undefined> {
     if (!notificationDestination.slack_integration_id) {
         logger.debug(`[notifySlackRunFailure] No Slack integration ID found. Skipping.`)
         return undefined
@@ -65,7 +72,8 @@ export async function sendSlackRunFailure(notificationDestination: UserNotificat
         agentId: agent.id,
         agentName: agent.name,
         runId,
-        errorMessage
+        errorMessage,
+        failureState
     })
 
     const result = await sendSlackMessage(notificationDestination.slack_integration_id, targetChannelId, message)
