@@ -304,6 +304,7 @@ model automations {
   improvements_enabled Boolean          @default(true)
   require_approval     Boolean          @default(false)
   source               AutomationSource @default(WEB_UI)
+  consecutive_failures Int              @default(0)
   created_at           DateTime         @default(now())
   updated_at           DateTime         @updatedAt
 
