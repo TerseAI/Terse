@@ -49,10 +49,6 @@ export class NotionOutput extends Output<NotionConfig> {
         super(OutputConfigType.NOTION, toolbox)
     }
 
-    protected getDummyConfigForCapability(): NotionConfig {
-        return new NotionConfig("example", ["example-db-id"], ["Example DB"], ["example-page-id"], ["Example Page"])
-    }
-
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
         const hasDb = (output.databaseIds?.length ?? 0) > 0
         const hasPage = (output.pageIds?.length ?? 0) > 0
