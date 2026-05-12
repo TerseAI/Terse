@@ -2,7 +2,7 @@ import { IntegrationType, LaunchDarklyConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, findConfigByIntegrationId, requireAllInAllowedList, requireInAllowedList, verifyIntegrationIdExists } from "../../abstract/Output"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, requireAllInAllowedList, requireInAllowedList, verifyIntegrationIdExists } from "../../abstract/Output"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
 export const listLaunchDarklyFlagsTool = defineSessionTool({
@@ -250,14 +250,17 @@ export const validateLaunchDarklyArgs = (
 ) => {
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (!idCheck.ok) return idCheck
-    const config = findConfigByIntegrationId(integrationId, configs)!
-    if (projectKey !== config.projectKey) {
-        return { ok: false as const, message: `LaunchDarkly projectKey ${projectKey} does not match the configured project ${config.projectKey}.` }
+    const matching = findConfigsByIntegrationId(integrationId, configs)
+    const configsForProject = matching.filter(c => c.projectKey === projectKey)
+    if (configsForProject.length === 0) {
+        const allowed = Array.from(new Set(matching.map(c => c.projectKey))).join(", ") || "(none)"
+        return denyToolACL(`LaunchDarkly projectKey "${projectKey}" is not configured for integration "${integrationId}". Allowed: ${allowed}.`)
     }
-    const envCheck = requireAllInAllowedList(environmentKeys, config.environmentKeys ?? [], "environmentKeys")
+    const allowedEnvs = Array.from(new Set(configsForProject.flatMap(c => c.environmentKeys ?? [])))
+    const envCheck = requireAllInAllowedList(environmentKeys, allowedEnvs, `environmentKeys for integration "${integrationId}" project "${projectKey}"`)
     if (!envCheck.ok) return envCheck
     if (environmentKey) {
-        return requireInAllowedList(environmentKey, config.environmentKeys ?? [], "environmentKey")
+        return requireInAllowedList(environmentKey, allowedEnvs, `environmentKey for integration "${integrationId}" project "${projectKey}"`)
     }
     return { ok: true as const }
 }

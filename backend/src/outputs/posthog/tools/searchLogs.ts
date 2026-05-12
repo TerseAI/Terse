@@ -3,7 +3,7 @@ import { IntegrationType, PosthogConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
+import { ToolACLValidator, requireValueInAnyConfig, verifyIntegrationIdExists } from "../../abstract/Output"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 
 /**
@@ -228,9 +228,11 @@ export const validateSearchPosthogLogs: ToolACLValidator<"searchPosthogLogs", Po
 export const validatePosthogArgs = (integrationId: string, projectId: string, configs: PosthogConfig[]) => {
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (!idCheck.ok) return idCheck
-    const config = findConfigByIntegrationId(integrationId, configs)!
-    if (projectId !== config.projectId) {
-        return denyToolACL(`PostHog projectId ${projectId} does not match the configured project ${config.projectId}.`)
-    }
-    return { ok: true as const }
+    return requireValueInAnyConfig({
+        integrationId,
+        configs,
+        label: "projectId",
+        pickAllowed: c => [c.projectId],
+        value: projectId
+    })
 }

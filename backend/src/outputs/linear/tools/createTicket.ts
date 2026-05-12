@@ -7,7 +7,7 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearCreateTicketTool = defineSessionTool({
     name: "linear_create_ticket",
@@ -82,12 +82,22 @@ export const linearCreateTicketTool = defineSessionTool({
 export const validateLinearCreateTicket: ToolACLValidator<"linear_create_ticket", LinearOutputConfig> = ({ args, configs }) => {
     const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
     if (!idCheck.ok) return idCheck
-    const config = findConfigByIntegrationId(args.integrationId, configs)!
-    if (config.teamId && args.ticket.teamId !== config.teamId) {
-        return denyToolACL(`Linear teamId ${args.ticket.teamId} does not match the configured team ${config.teamId}.`)
-    }
-    if (config.projectId && args.ticket.projectId && args.ticket.projectId !== config.projectId) {
-        return denyToolACL(`Linear projectId ${args.ticket.projectId} does not match the configured project ${config.projectId}.`)
-    }
-    return { ok: true }
+    const matching = findConfigsByIntegrationId(args.integrationId, configs)
+    const accepts = matching.some(c => {
+        if (c.teamId && args.ticket.teamId !== c.teamId) return false
+        if (c.projectId && args.ticket.projectId && args.ticket.projectId !== c.projectId) return false
+        return true
+    })
+    if (accepts) return { ok: true }
+    const scopes = matching
+        .map(c => {
+            const parts: string[] = []
+            if (c.teamId) parts.push(`teamId=${c.teamId}`)
+            if (c.projectId) parts.push(`projectId=${c.projectId}`)
+            return parts.length ? `{${parts.join(", ")}}` : "{workspace-wide}"
+        })
+        .join(", ")
+    return denyToolACL(
+        `Linear ticket scope (teamId=${args.ticket.teamId}, projectId=${args.ticket.projectId ?? "(none)"}) does not match any configured scope for integration "${args.integrationId}". Allowed: ${scopes}.`
+    )
 }

@@ -9,7 +9,7 @@ import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { resolveSlackChannelIdForDestination } from "../../../utility/slack"
 import { isValidEpochTimestamp } from "../../../utility/strings"
-import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -213,20 +213,25 @@ export const validateSlackChannelOrUser = (
 ) => {
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (!idCheck.ok) return idCheck
-    const config = findConfigByIntegrationId(integrationId, configs)!
-    const listensToDms = config.listenToUserDms === true
-    const userIds = config.userIds ?? []
+    const matching = findConfigsByIntegrationId(integrationId, configs)
+    const allowedChannelIds = matching.map(c => c.channelId).filter((id): id is string => !!id)
+    const allowedUserIds = Array.from(new Set(matching.flatMap(c => c.userIds ?? [])))
+    const anyListensToDms = matching.some(c => c.listenToUserDms === true)
 
     if (channelId) {
-        if (config.channelId && channelId === config.channelId) return { ok: true as const }
-        if (listensToDms && channelId.startsWith("D")) return { ok: true as const }
-        return denyToolACL(`Slack channelId ${channelId} is not allowed. Configured channel: ${config.channelId ?? "(none)"}; DM scope: ${listensToDms ? "yes" : "no"}.`)
+        if (allowedChannelIds.includes(channelId)) return { ok: true as const }
+        if (anyListensToDms && channelId.startsWith("D")) return { ok: true as const }
+        return denyToolACL(
+            `Slack channelId "${channelId}" is not allowed for integration "${integrationId}". Configured channels: ${allowedChannelIds.join(", ") || "(none)"}; DM scope: ${anyListensToDms ? "yes (D… channels accepted)" : "no"}.`
+        )
     }
 
     if (slackUserId) {
-        if (listensToDms) return { ok: true as const }
-        if (userIds.includes(slackUserId)) return { ok: true as const }
-        return denyToolACL(`Slack slackUserId ${slackUserId} is not in the allowed users (${userIds.join(", ") || "(none)"}) and DM scope is not enabled.`)
+        if (anyListensToDms) return { ok: true as const }
+        if (allowedUserIds.includes(slackUserId)) return { ok: true as const }
+        return denyToolACL(
+            `Slack slackUserId "${slackUserId}" is not in the configured users for integration "${integrationId}" (${allowedUserIds.join(", ") || "(none)"}) and DM scope is not enabled.`
+        )
     }
 
     return denyToolACL("Slack call requires either channelId or slackUserId.")

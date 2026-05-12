@@ -6,7 +6,7 @@ import logger from "../../../logger"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearGetStatesTool = defineSessionTool({
     name: "linear_get_states",
@@ -50,9 +50,11 @@ export const validateLinearGetStates: ToolACLValidator<"linear_get_states", Line
 export const validateLinearOptionalTeam = (integrationId: string, teamId: string | null | undefined, configs: LinearOutputConfig[]) => {
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (!idCheck.ok) return idCheck
-    const config = findConfigByIntegrationId(integrationId, configs)!
-    if (config.teamId && teamId && teamId !== config.teamId) {
-        return denyToolACL(`Linear teamId ${teamId} does not match the configured team ${config.teamId}.`)
-    }
-    return { ok: true as const }
+    if (!teamId) return { ok: true as const }
+    const matching = findConfigsByIntegrationId(integrationId, configs)
+    const narrowing = matching.filter(c => c.teamId)
+    if (narrowing.length === 0) return { ok: true as const }
+    if (narrowing.some(c => c.teamId === teamId)) return { ok: true as const }
+    const allowed = narrowing.map(c => c.teamId).join(", ") || "(none)"
+    return denyToolACL(`Linear teamId "${teamId}" is not in the configured teams for integration "${integrationId}": ${allowed}.`)
 }

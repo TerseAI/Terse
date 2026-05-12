@@ -8,6 +8,7 @@ import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
+import { verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearReadTicketTool = defineSessionTool({
     name: "linear_read_ticket",
@@ -104,4 +105,8 @@ Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this afte
     }
 })
 
-export const validateLinearReadTicket: ToolACLValidator<"linear_read_ticket", LinearOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateLinearReadTicket: ToolACLValidator<"linear_read_ticket", LinearOutputConfig> = async ({ args, configs, runContext }) => {
+    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    return verifyLinearIssueInScope({ integrationId: args.integrationId, issueId: args.issueId, configs, runContext })
+}

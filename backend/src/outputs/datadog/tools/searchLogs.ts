@@ -9,7 +9,7 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { getDatadogLogsDeepLink, getDatadogSite } from "../../../utility/datadog"
-import { ToolACLValidator, findConfigByIntegrationId, requireAllInAllowedList, verifyIntegrationIdExists } from "../../abstract/Output"
+import { ToolACLValidator, requireAllValuesInAnyConfig, verifyIntegrationIdExists } from "../../abstract/Output"
 
 /**
  * Tool for querying Datadog logs with flexible filtering options.
@@ -243,6 +243,11 @@ export const validateDatadogIndexes = (integrationId: string, indexes: readonly 
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (!idCheck.ok) return idCheck
     if (!indexes || indexes.length === 0) return { ok: true as const }
-    const config = findConfigByIntegrationId(integrationId, configs)!
-    return requireAllInAllowedList(indexes, config.defaultIndexes ?? [], "indexes")
+    return requireAllValuesInAnyConfig({
+        integrationId,
+        configs,
+        label: "indexes",
+        pickAllowed: c => c.defaultIndexes,
+        values: indexes
+    })
 }

@@ -7,6 +7,7 @@ import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
+import { verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearAddCommentTool = defineSessionTool({
     name: "linear_add_comment",
@@ -60,4 +61,8 @@ export const linearAddCommentTool = defineSessionTool({
     }
 })
 
-export const validateLinearAddComment: ToolACLValidator<"linear_add_comment", LinearOutputConfig> = ({ args, configs }) => verifyIntegrationIdExists(args.integrationId, configs)
+export const validateLinearAddComment: ToolACLValidator<"linear_add_comment", LinearOutputConfig> = async ({ args, configs, runContext }) => {
+    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
+    if (!idCheck.ok) return idCheck
+    return verifyLinearIssueInScope({ integrationId: args.integrationId, issueId: args.issueId, configs, runContext })
+}

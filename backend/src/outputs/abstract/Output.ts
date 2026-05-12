@@ -84,16 +84,51 @@ export const doesIntegrationIdExist = (integrationId: string, configs: ConfigDat
     return !!config
 }
 
+export const listIntegrationIds = (configs: readonly ConfigData[]): string[] => Array.from(new Set(configs.map(c => c.integrationId)))
+
 export const verifyIntegrationIdExists = (integrationId: string, configs: ConfigData[]): ToolACLValidationResult => {
-    return doesIntegrationIdExist(integrationId, configs) ? { ok: true } : denyToolACL(`Integration ID ${integrationId} not found`)
+    if (doesIntegrationIdExist(integrationId, configs)) return { ok: true }
+    const known = listIntegrationIds(configs).join(", ") || "(none)"
+    return denyToolACL(`Integration ID "${integrationId}" not found. Configured integrations: ${known}.`)
 }
 
 export const findConfigByIntegrationId = <TConfig extends ConfigData>(integrationId: string, configs: TConfig[]): TConfig | undefined => configs.find(c => c.integrationId === integrationId)
+
+export const findConfigsByIntegrationId = <TConfig extends ConfigData>(integrationId: string, configs: TConfig[]): TConfig[] => configs.filter(c => c.integrationId === integrationId)
 
 export const requireInAllowedList = (value: string | null | undefined, allowed: readonly string[], label: string): ToolACLValidationResult =>
     value && allowed.includes(value) ? { ok: true } : denyToolACL(`${label} ${value ?? "(missing)"} is not in the allowed list: ${allowed.join(", ") || "(none)"}`)
 
 export const requireAllInAllowedList = (values: readonly string[] | null | undefined, allowed: readonly string[], label: string): ToolACLValidationResult => {
     const offenders = (values ?? []).filter(v => !allowed.includes(v))
-    return offenders.length === 0 ? { ok: true } : denyToolACL(`${label} not in allowed list: ${offenders.join(", ")}`)
+    return offenders.length === 0 ? { ok: true } : denyToolACL(`${label} not in allowed list (${offenders.join(", ")}). Allowed: ${allowed.join(", ") || "(none)"}.`)
+}
+
+/**
+ * Multi-config aware: checks that `value` matches at least one allowed entry across every config sharing `integrationId`.
+ * The allowed list is the union of `pickAllowed(config)` for all matching configs.
+ */
+export function requireValueInAnyConfig<T extends ConfigData>(args: {
+    integrationId: string
+    configs: T[]
+    label: string
+    pickAllowed: (config: T) => readonly string[] | null | undefined
+    value: string | null | undefined
+}): ToolACLValidationResult {
+    const matchingConfigs = findConfigsByIntegrationId(args.integrationId, args.configs)
+    const allowed = Array.from(new Set(matchingConfigs.flatMap(c => args.pickAllowed(c) ?? [])))
+    return requireInAllowedList(args.value, allowed, `${args.label} for integration "${args.integrationId}"`)
+}
+
+/** Multi-config aware: every value in `values` must appear in the union of `pickAllowed(config)` across configs sharing `integrationId`. */
+export function requireAllValuesInAnyConfig<T extends ConfigData>(args: {
+    integrationId: string
+    configs: T[]
+    label: string
+    pickAllowed: (config: T) => readonly string[] | null | undefined
+    values: readonly string[] | null | undefined
+}): ToolACLValidationResult {
+    const matchingConfigs = findConfigsByIntegrationId(args.integrationId, args.configs)
+    const allowed = Array.from(new Set(matchingConfigs.flatMap(c => args.pickAllowed(c) ?? [])))
+    return requireAllInAllowedList(args.values, allowed, `${args.label} for integration "${args.integrationId}"`)
 }

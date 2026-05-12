@@ -5,7 +5,7 @@ import type { AttioRecord } from "terse-types"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
-import { ToolACLValidator, denyToolACL, findConfigByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
+import { ToolACLValidator, findConfigsByIntegrationId, requireValueInAnyConfig, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const attioQueryRecordsTool = defineSessionTool({
     name: "attio_query_records",
@@ -85,9 +85,15 @@ export const validateAttioQueryRecords: ToolACLValidator<"attio_query_records", 
 export const validateAttioObjectSlug = (integrationId: string, objectSlug: string, configs: AttioOutputConfig[]) => {
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (!idCheck.ok) return idCheck
-    const config = findConfigByIntegrationId(integrationId, configs)!
-    if (config.objectSlug && objectSlug !== config.objectSlug) {
-        return denyToolACL(`Attio objectSlug ${objectSlug} does not match the configured object ${config.objectSlug}.`)
-    }
-    return { ok: true as const }
+    // If no config narrows objectSlug, allow.
+    const matching = findConfigsByIntegrationId(integrationId, configs)
+    const narrowing = matching.filter(c => c.objectSlug)
+    if (narrowing.length === 0) return { ok: true as const }
+    return requireValueInAnyConfig({
+        integrationId,
+        configs,
+        label: "objectSlug",
+        pickAllowed: c => (c.objectSlug ? [c.objectSlug] : []),
+        value: objectSlug
+    })
 }
