@@ -7,8 +7,8 @@ import { Session } from "../../../express"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { createGitHubClient, getAllowedRepoNamesForConfigs, getGitHubAccessToken, searchCode } from "../githubApiClient"
 import { ToolACLValidator, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
+import { createGitHubClient, getAllowedRepoNamesForConfigs, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
 /**
  * Tool for semantic code search in GitHub repositories.

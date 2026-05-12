@@ -4,8 +4,8 @@ import { GitHubConfig, IntegrationType } from "terse-types"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 import { ToolACLValidator } from "../../abstract/acl"
+import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
 import { validateGitHubRepositoryNames } from "./searchCode"
 

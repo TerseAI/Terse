@@ -6,8 +6,8 @@ import { getLinearAccessTokenForOrganization } from "../../../integrations/Linea
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { verifyLinearIssueInScope } from "../linearAcl"
 import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
+import { verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearAddCommentTool = defineSessionTool({
     name: "linear_add_comment",
