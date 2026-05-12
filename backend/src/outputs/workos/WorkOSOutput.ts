@@ -4,7 +4,6 @@ import { IntegrationType } from "terse-types"
 
 import { Output } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolEntry } from "../abstract/Output"
 
 import { getWorkOSUserTool, validateGetWorkOSUser } from "./tools/getUser"
 import { listWorkOSOrganizationsTool, validateListWorkOSOrganizations } from "./tools/listOrganizations"
@@ -12,18 +11,13 @@ import { listWorkOSUsersTool, validateListWorkOSUsers } from "./tools/listUsers"
 
 export class WorkOSOutput extends Output<WorkOSOutputConfig> {
     constructor() {
-        const t = defineToolEntry<WorkOSOutputConfig>()
         const toolbox = [
-            t({ tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users", validateACL: validateListWorkOSUsers }),
-            t({ tool: listWorkOSOrganizationsTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List organizations", validateACL: validateListWorkOSOrganizations }),
-            t({ tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user", validateACL: validateGetWorkOSUser })
+            { tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users", validateACL: validateListWorkOSUsers },
+            { tool: listWorkOSOrganizationsTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List organizations", validateACL: validateListWorkOSOrganizations },
+            { tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user", validateACL: validateGetWorkOSUser }
         ]
 
         super(OutputConfigType.WORKOS, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): WorkOSOutputConfig {
-        return new WorkOSOutputConfig("example")
     }
 
     async validateConfig(output: WorkOSOutputConfig, _userId: string): Promise<void> {}

@@ -5,7 +5,6 @@ import { IntegrationType } from "terse-types"
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/Output"
 
 import { slackListChannelsTool, validateSlackListChannels } from "./tools/listChannels"
 import { slackListUsersTool, validateSlackListUsers } from "./tools/listUsers"
@@ -14,18 +13,13 @@ import { slackSendMessageTool, validateSlackSendMessage } from "./tools/sendMess
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
-        const t = defineToolEntry<SlackOutputConfig>()
         const toolbox = [
-            t({ tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message", validateACL: validateSlackSendMessage }),
-            t({ tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users", validateACL: validateSlackListUsers }),
-            t({ tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels", validateACL: validateSlackListChannels }),
-            t({ tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation })
+            { tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message", validateACL: validateSlackSendMessage },
+            { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users", validateACL: validateSlackListUsers },
+            { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels", validateACL: validateSlackListChannels },
+            { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation }
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): SlackOutputConfig {
-        return new SlackOutputConfig("example", "C123", "Example Channel", [])
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {

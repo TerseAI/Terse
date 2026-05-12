@@ -7,7 +7,7 @@ import logger from "../../logger"
 
 import { Output, ToolboxEntry } from "./Output"
 
-export function createToolACLGuardrail<TConfig extends ConfigData>(entry: ToolboxEntry<ToolName, TConfig>, output: Output<TConfig>): ToolInputGuardrailDefinition<SessionWithTracking<Session>> {
+export function createToolACLGuardrail<TConfig extends ConfigData>(entry: ToolboxEntry<TConfig>, output: Output<TConfig>): ToolInputGuardrailDefinition<SessionWithTracking<Session>> {
     const validate = entry.validateACL
     const toolName = entry.tool.name ?? ""
 
@@ -64,12 +64,18 @@ export function findConfigsByIntegrationId<TConfig extends ConfigData>(integrati
 }
 
 export function requireInAllowedList(value: string | null | undefined, allowed: readonly string[], label: string): ToolACLValidationResult {
-    return value && allowed.includes(value) ? { ok: true } : denyToolACL(`${label} ${value ?? "(missing)"} is not in the allowed list: ${allowed.join(", ") || "(none)"}`)
+    if (value && allowed.includes(value)) {
+        return { ok: true }
+    }
+    return denyToolACL(`${label} ${value ?? "(missing)"} is not in the allowed list: ${allowed.join(", ")}`)
 }
 
 export function requireAllInAllowedList(values: readonly string[] | null | undefined, allowed: readonly string[], label: string): ToolACLValidationResult {
     const offenders = (values ?? []).filter(v => !allowed.includes(v))
-    return offenders.length === 0 ? { ok: true } : denyToolACL(`${label} not in allowed list (${offenders.join(", ")}). Allowed: ${allowed.join(", ") || "(none)"}.`)
+    if (offenders.length === 0) {
+        return { ok: true }
+    }
+    return denyToolACL(`${label} not in allowed list (${offenders.join(", ")}). Allowed: ${allowed.join(", ")}.`)
 }
 
 export function denyToolACL(message: string): ToolACLValidationResult {
@@ -98,5 +104,5 @@ export type ToolACLValidationResult = { ok: true } | { ok: false; message: strin
 export interface ToolACLValidatorParams<TName extends ToolName, TConfig extends ConfigData> {
     args: ToolInputByName[TName]
     configs: TConfig[]
-    runContext?: RunContext<SessionWithTracking<Session>>
+    runContext: RunContext<SessionWithTracking<Session>>
 }

@@ -1,10 +1,10 @@
 import { OutputConfigType } from "@prisma/client"
-import { AttioOutputConfig } from "terse-types"
+import { AttioOutputConfig, AttioOutputConfigData } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
 
 import { attioListObjectsTool, validateAttioListObjects } from "./tools/listObjects"
 import { attioQueryRecordsTool, validateAttioQueryRecords } from "./tools/queryRecords"
@@ -12,17 +12,12 @@ import { attioUpsertRecordTool, validateAttioUpsertRecord } from "./tools/upsert
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
-        const t = defineToolEntry<AttioOutputConfig>()
         const toolbox = [
-            t({ tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: validateAttioListObjects }),
-            t({ tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records", validateACL: validateAttioQueryRecords }),
-            t({ tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record", validateACL: validateAttioUpsertRecord })
+            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: validateAttioListObjects },
+            { tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records", validateACL: validateAttioQueryRecords },
+            { tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record", validateACL: validateAttioUpsertRecord }
         ]
         super(OutputConfigType.ATTIO, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): AttioOutputConfig {
-        return new AttioOutputConfig("example", "people")
     }
 
     async validateConfig(output: AttioOutputConfig, _userId: string): Promise<void> {

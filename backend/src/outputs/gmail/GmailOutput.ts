@@ -4,19 +4,13 @@ import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/Output"
 
 import { gmailSendEmailTool, validateGmailSendEmail } from "./tools/sendEmail"
 
 export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
-        const t = defineToolEntry<GmailOutputConfig>()
-        const toolbox = [t({ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email", validateACL: validateGmailSendEmail })]
+        const toolbox = [{ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email", validateACL: validateGmailSendEmail }]
         super(OutputConfigType.GMAIL, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): GmailOutputConfig {
-        return new GmailOutputConfig("example")
     }
 
     async validateConfig(output: GmailOutputConfig, _userId: string): Promise<void> {}

@@ -5,7 +5,6 @@ import { IntegrationType } from "terse-types"
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/Output"
 
 import {
     notionCreateOrUpdateDatabaseRowTool,
@@ -26,27 +25,26 @@ import {
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
-        const t = defineToolEntry<NotionConfig>()
         const toolbox = [
-            t({ tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema", validateACL: validateNotionGetSchema }),
-            t({ tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database", validateACL: validateNotionQueryDatabase }),
-            t({
+            { tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema", validateACL: validateNotionGetSchema },
+            { tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database", validateACL: validateNotionQueryDatabase },
+            {
                 tool: notionCreateOrUpdateDatabaseRowTool,
                 isReadOnly: false,
                 integration: IntegrationType.NOTION,
                 displayName: "Create or update database row",
                 validateACL: validateNotionCreateOrUpdateDatabaseRow
-            }),
-            t({
+            },
+            {
                 tool: notionCreateOrUpdatePageTool,
                 isReadOnly: false,
                 integration: IntegrationType.NOTION,
                 displayName: "Create or update page (standalone)",
                 validateACL: validateNotionCreateOrUpdatePage
-            }),
-            t({ tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page", validateACL: validateNotionQueryPage }),
-            t({ tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks", validateACL: validateNotionModifyBlocks }),
-            t({ tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users", validateACL: validateNotionListUsers })
+            },
+            { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page", validateACL: validateNotionQueryPage },
+            { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks", validateACL: validateNotionModifyBlocks },
+            { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users", validateACL: validateNotionListUsers }
         ]
         super(OutputConfigType.NOTION, toolbox)
     }

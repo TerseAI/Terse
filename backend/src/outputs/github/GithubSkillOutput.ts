@@ -6,7 +6,6 @@ import { validateGithubRepositoryIds } from "../../integrations/GithubIntegratio
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/Output"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
 import { grepGitHubCodeTool, validateGrepGitHubCode } from "./tools/grepCode"
@@ -19,21 +18,14 @@ import { summarizeGitHubPullRequestDiffTool, validateSummarizeGitHubPullRequestD
 
 export class GithubSkillOutput extends Output<GitHubConfig> {
     constructor() {
-        const t = defineToolEntry<GitHubConfig>()
         const toolbox = [
-            t({ tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code", validateACL: validateSearchGitHubCode }),
-            t({ tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code", validateACL: validateGrepGitHubCode }),
-            t({ tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file", validateACL: validateReadGitHubFile }),
-            t({ tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory", validateACL: validateListGitHubDirectory }),
-            t({ tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests", validateACL: validateListGitHubPullRequests }),
-            t({ tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits", validateACL: validateListGitHubCommits }),
-            t({
-                tool: summarizeGitHubPullRequestDiffTool,
-                isReadOnly: true,
-                integration: IntegrationType.GITHUB,
-                displayName: "Summarize PR diff",
-                validateACL: validateSummarizeGitHubPullRequestDiff
-            })
+            { tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code", validateACL: validateSearchGitHubCode },
+            { tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code", validateACL: validateGrepGitHubCode },
+            { tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file", validateACL: validateReadGitHubFile },
+            { tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory", validateACL: validateListGitHubDirectory },
+            { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests", validateACL: validateListGitHubPullRequests },
+            { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits", validateACL: validateListGitHubCommits },
+            { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff", validateACL: validateSummarizeGitHubPullRequestDiff }
         ]
 
         super(OutputConfigType.GITHUB, toolbox)
@@ -56,10 +48,6 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
                 repository_ids: output.repositoryIds
             }
         })
-    }
-
-    protected getDummyConfigForCapability(): GitHubConfig {
-        return new GitHubConfig("example", [0])
     }
 
     async getRuntimeSystemInstructions(context: RuntimeSystemInstructionsContext): Promise<string> {

@@ -4,31 +4,25 @@ import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/Output"
 
 import { snowflakeExecuteQueryTool, validateSnowflakeExecuteQuery } from "./tools/executeQuery"
 import { snowflakeExplainQueryTool, validateSnowflakeExplainQuery } from "./tools/explainQuery"
 
 export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     constructor() {
-        const t = defineToolEntry<SnowflakeOutputConfig>()
         const toolbox = [
-            t({ tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query", validateACL: validateSnowflakeExplainQuery }),
-            t({
+            { tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query", validateACL: validateSnowflakeExplainQuery },
+            {
                 tool: snowflakeExecuteQueryTool,
                 isReadOnly: true,
                 supportsApproval: true,
                 integration: IntegrationType.SNOWFLAKE,
                 displayName: "Execute query",
                 validateACL: validateSnowflakeExecuteQuery
-            })
+            }
         ]
 
         super(OutputConfigType.SNOWFLAKE, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): SnowflakeOutputConfig {
-        return new SnowflakeOutputConfig("example")
     }
 
     async validateConfig(output: SnowflakeOutputConfig, _userId: string): Promise<void> {}

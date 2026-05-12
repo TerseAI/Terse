@@ -11,12 +11,13 @@ import { ToolACLValidationResult, ToolACLValidatorParams } from "./acl"
 
 export abstract class Output<TConfig extends ConfigData> {
     integration: OutputConfigType
-    readonly toolbox: readonly ToolboxEntry<ToolName, TConfig>[]
+    readonly toolbox: readonly ToolboxEntry<TConfig>[]
     configs: TConfig[] = []
 
-    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry<ToolName, TConfig>[]) {
+    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntryInput<TConfig>[]) {
         this.integration = integration
-        this.toolbox = toolbox
+        // Widen each per-tool narrow entry to a more general type for consumers.
+        this.toolbox = toolbox as readonly ToolboxEntry<TConfig>[]
     }
 
     abstract validateConfig(output: TConfig, userId: string): Promise<void>
@@ -27,13 +28,10 @@ export abstract class Output<TConfig extends ConfigData> {
      * Returns system instructions. When useDummyConfig is true, uses a minimal dummy config
      * instead of this.configs—useful for capability lookup where no real configs exist.
      */
-    getSystemInstructions(useDummyConfig = false): string {
-        const configs = useDummyConfig ? [this.getDummyConfigForCapability()] : this.configs
+    getSystemInstructions(): string {
+        const configs = this.configs
         return this.getSystemInstructionsForConfigs(configs)
     }
-
-    /** Minimal dummy config for generating system instructions when no real configs exist. */
-    protected abstract getDummyConfigForCapability(): TConfig
 
     /**
      * Protected method that subclasses implement to generate system instructions.
@@ -48,19 +46,25 @@ export abstract class Output<TConfig extends ConfigData> {
     }
 }
 
-export interface ToolboxEntry<TName extends ToolName, TConfig extends ConfigData> {
-    tool: TypedToolOptions<TName, SessionWithTracking<Session>>
+export type ToolboxEntryInput<TConfig extends ConfigData> = {
+    [TName in ToolName]: {
+        tool: TypedToolOptions<TName, SessionWithTracking<Session>>
+        isReadOnly: boolean
+        integration: IntegrationType
+        displayName: string
+        supportsApproval?: boolean
+        validateACL: (params: ToolACLValidatorParams<TName, TConfig>) => Promise<ToolACLValidationResult> | ToolACLValidationResult
+    }
+}[ToolName]
+
+export interface ToolboxEntry<TConfig extends ConfigData> {
+    tool: TypedToolOptions<ToolName, SessionWithTracking<Session>>
     isReadOnly: boolean
     integration: IntegrationType
     displayName: string
     supportsApproval?: boolean
-    validateACL(params: ToolACLValidatorParams<TName, TConfig>): Promise<ToolACLValidationResult> | ToolACLValidationResult
+    validateACL(params: ToolACLValidatorParams<ToolName, TConfig>): Promise<ToolACLValidationResult> | ToolACLValidationResult
 }
-
-export const defineToolEntry =
-    <TConfig extends ConfigData>() =>
-    <TName extends ToolName>(entry: ToolboxEntry<TName, TConfig>): ToolboxEntry<ToolName, TConfig> =>
-        entry as unknown as ToolboxEntry<ToolName, TConfig>
 
 export interface RuntimeSystemInstructionsContext {
     userId: string
