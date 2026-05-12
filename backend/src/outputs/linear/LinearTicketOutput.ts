@@ -5,7 +5,7 @@ import { IntegrationType } from "terse-types"
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/acl"
+import { defineToolEntry } from "../abstract/Output"
 
 import { linearAddCommentTool, validateLinearAddComment } from "./tools/addComment"
 import { linearCreateTicketTool, validateLinearCreateTicket } from "./tools/createTicket"

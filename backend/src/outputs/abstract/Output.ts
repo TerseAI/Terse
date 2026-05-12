@@ -57,6 +57,11 @@ export interface ToolboxEntry<TName extends ToolName, TConfig extends ConfigData
     validateACL(params: ToolACLValidatorParams<TName, TConfig>): Promise<ToolACLValidationResult> | ToolACLValidationResult
 }
 
+export const defineToolEntry =
+    <TConfig extends ConfigData>() =>
+    <TName extends ToolName>(entry: ToolboxEntry<TName, TConfig>): ToolboxEntry<ToolName, TConfig> =>
+        entry as unknown as ToolboxEntry<ToolName, TConfig>
+
 export interface RuntimeSystemInstructionsContext {
     userId: string
 }

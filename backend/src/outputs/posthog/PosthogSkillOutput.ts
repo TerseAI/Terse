@@ -5,7 +5,7 @@ import { IntegrationType } from "terse-types"
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/acl"
+import { defineToolEntry } from "../abstract/Output"
 
 import { getSessionEventsTool, validateGetPosthogSessionEvents } from "./tools/getSessionEvents"
 import { searchEventsTool, validateSearchPosthogEvents } from "./tools/searchEvents"

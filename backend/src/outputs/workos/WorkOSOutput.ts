@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { Output } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
-import { defineToolEntry } from "../abstract/acl"
+import { defineToolEntry } from "../abstract/Output"
 
 import { getWorkOSUserTool, validateGetWorkOSUser } from "./tools/getUser"
 import { listWorkOSOrganizationsTool, validateListWorkOSOrganizations } from "./tools/listOrganizations"

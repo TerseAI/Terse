@@ -5,7 +5,7 @@ import { IntegrationType } from "terse-types"
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/acl"
+import { defineToolEntry } from "../abstract/Output"
 
 import { slackListChannelsTool, validateSlackListChannels } from "./tools/listChannels"
 import { slackListUsersTool, validateSlackListUsers } from "./tools/listUsers"

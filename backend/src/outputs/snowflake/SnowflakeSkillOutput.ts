@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/acl"
+import { defineToolEntry } from "../abstract/Output"
 
 import { snowflakeExecuteQueryTool, validateSnowflakeExecuteQuery } from "./tools/executeQuery"
 import { snowflakeExplainQueryTool, validateSnowflakeExplainQuery } from "./tools/explainQuery"

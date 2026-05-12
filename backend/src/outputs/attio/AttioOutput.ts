@@ -4,8 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/acl"
+import { Output, defineToolEntry } from "../abstract/Output"
 
 import { attioListObjectsTool, validateAttioListObjects } from "./tools/listObjects"
 import { attioQueryRecordsTool, validateAttioQueryRecords } from "./tools/queryRecords"

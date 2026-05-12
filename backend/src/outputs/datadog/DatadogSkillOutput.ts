@@ -5,7 +5,7 @@ import { IntegrationType } from "terse-types"
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/acl"
+import { defineToolEntry } from "../abstract/Output"
 
 import { aggregateRumEventsTool, validateAggregateRumEvents } from "./tools/aggregateRumEvents"
 import { listRumEventsTool, validateListRumEvents } from "./tools/listRumEvents"

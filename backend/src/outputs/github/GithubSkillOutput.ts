@@ -6,7 +6,7 @@ import { validateGithubRepositoryIds } from "../../integrations/GithubIntegratio
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
-import { defineToolEntry } from "../abstract/acl"
+import { defineToolEntry } from "../abstract/Output"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
 import { grepGitHubCodeTool, validateGrepGitHubCode } from "./tools/grepCode"

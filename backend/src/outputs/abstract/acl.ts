@@ -7,13 +7,8 @@ import logger from "../../logger"
 
 import { Output, ToolboxEntry } from "./Output"
 
-export function createToolACLGuardrail<TConfig extends ConfigData>(
-    entry: ToolboxEntry<ToolName, TConfig>,
-    output: Output<TConfig>
-): ToolInputGuardrailDefinition<SessionWithTracking<Session>> | undefined {
+export function createToolACLGuardrail<TConfig extends ConfigData>(entry: ToolboxEntry<ToolName, TConfig>, output: Output<TConfig>): ToolInputGuardrailDefinition<SessionWithTracking<Session>> {
     const validate = entry.validateACL
-    if (!validate) return undefined
-
     const toolName = entry.tool.name ?? ""
 
     return defineToolInputGuardrail<SessionWithTracking<Session>>({
@@ -40,18 +35,6 @@ export function createToolACLGuardrail<TConfig extends ConfigData>(
     })
 }
 
-export function requireAllValuesInAnyConfig<T extends ConfigData>(args: {
-    integrationId: string
-    configs: T[]
-    label: string
-    pickAllowed: (config: T) => readonly string[] | null | undefined
-    values: readonly string[] | null | undefined
-}): ToolACLValidationResult {
-    const matchingConfigs = findConfigsByIntegrationId(args.integrationId, args.configs)
-    const allowed = Array.from(new Set(matchingConfigs.flatMap(c => args.pickAllowed(c) ?? [])))
-    return requireAllInAllowedList(args.values, allowed, `${args.label} for integration "${args.integrationId}"`)
-}
-
 export function requireValueInAnyConfig<T extends ConfigData>(args: {
     integrationId: string
     configs: T[]
@@ -62,6 +45,18 @@ export function requireValueInAnyConfig<T extends ConfigData>(args: {
     const matchingConfigs = findConfigsByIntegrationId(args.integrationId, args.configs)
     const allowed = Array.from(new Set(matchingConfigs.flatMap(c => args.pickAllowed(c) ?? [])))
     return requireInAllowedList(args.value, allowed, `${args.label} for integration "${args.integrationId}"`)
+}
+
+export function requireAllValuesInAnyConfig<T extends ConfigData>(args: {
+    integrationId: string
+    configs: T[]
+    label: string
+    pickAllowed: (config: T) => readonly string[] | null | undefined
+    values: readonly string[] | null | undefined
+}): ToolACLValidationResult {
+    const matchingConfigs = findConfigsByIntegrationId(args.integrationId, args.configs)
+    const allowed = Array.from(new Set(matchingConfigs.flatMap(c => args.pickAllowed(c) ?? [])))
+    return requireAllInAllowedList(args.values, allowed, `${args.label} for integration "${args.integrationId}"`)
 }
 
 export function findConfigsByIntegrationId<TConfig extends ConfigData>(integrationId: string, configs: TConfig[]): TConfig[] {
@@ -105,8 +100,3 @@ export interface ToolACLValidatorParams<TName extends ToolName, TConfig extends 
     configs: TConfig[]
     runContext?: RunContext<SessionWithTracking<Session>>
 }
-
-export const defineToolEntry =
-    <TConfig extends ConfigData>() =>
-    <TName extends ToolName>(entry: ToolboxEntry<TName, TConfig>): ToolboxEntry<ToolName, TConfig> =>
-        entry as unknown as ToolboxEntry<ToolName, TConfig> // MARK: - ACL Guardrail
