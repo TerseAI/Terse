@@ -1,11 +1,12 @@
 import { OutputConfigType } from "@prisma/client"
 import { GitHubConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, RuntimeSystemInstructionsContext, ToolboxEntry } from "../abstract/Output"
+import { Output, RuntimeSystemInstructionsContext, ToolACLValidator, defineToolEntry } from "../abstract/Output"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
 import { grepGitHubCodeTool } from "./tools/grepCode"
@@ -18,14 +19,21 @@ import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequest
 
 export class GithubSkillOutput extends Output<GitHubConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code" },
-            { tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code" },
-            { tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file" },
-            { tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory" },
-            { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests" },
-            { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits" },
-            { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" }
+        const t = defineToolEntry<GitHubConfig>()
+        const toolbox = [
+            t({ tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code", validateACL: validateSearchGitHubCode }),
+            t({ tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code", validateACL: validateGrepGitHubCode }),
+            t({ tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file", validateACL: validateReadGitHubFile }),
+            t({ tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory", validateACL: validateListGitHubDirectory }),
+            t({ tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests", validateACL: validateListGitHubPullRequests }),
+            t({ tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits", validateACL: validateListGitHubCommits }),
+            t({
+                tool: summarizeGitHubPullRequestDiffTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB,
+                displayName: "Summarize PR diff",
+                validateACL: validateSummarizeGitHubPullRequestDiff
+            })
         ]
 
         super(OutputConfigType.GITHUB, toolbox)
@@ -98,3 +106,13 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
         return lines.join("\n")
     }
 }
+
+type GitHubACL<TName extends ToolName> = ToolACLValidator<TName, GitHubConfig>
+
+const validateSearchGitHubCode: GitHubACL<"searchGitHubCode"> = _params => ({ ok: true as const })
+const validateGrepGitHubCode: GitHubACL<"grepGitHubCode"> = _params => ({ ok: true as const })
+const validateReadGitHubFile: GitHubACL<"readGitHubFile"> = _params => ({ ok: true as const })
+const validateListGitHubDirectory: GitHubACL<"listGitHubDirectory"> = _params => ({ ok: true as const })
+const validateListGitHubPullRequests: GitHubACL<"listGitHubPullRequests"> = _params => ({ ok: true as const })
+const validateListGitHubCommits: GitHubACL<"listGitHubCommits"> = _params => ({ ok: true as const })
+const validateSummarizeGitHubPullRequestDiff: GitHubACL<"summarizeGitHubPullRequestDiff"> = _params => ({ ok: true as const })

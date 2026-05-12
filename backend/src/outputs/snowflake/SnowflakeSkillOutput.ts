@@ -1,19 +1,27 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { SnowflakeOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry, verifyIntegrationIdExists } from "../abstract/Output"
 
 import { snowflakeExecuteQueryTool } from "./tools/executeQuery"
 import { snowflakeExplainQueryTool } from "./tools/explainQuery"
 
 export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query" },
-            { tool: snowflakeExecuteQueryTool, isReadOnly: true, supportsApproval: true, integration: IntegrationType.SNOWFLAKE, displayName: "Execute query" }
+        const t = defineToolEntry<SnowflakeOutputConfig>()
+        const toolbox = [
+            t({ tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query", validateACL: validateSnowflakeExplainQuery }),
+            t({
+                tool: snowflakeExecuteQueryTool,
+                isReadOnly: true,
+                supportsApproval: true,
+                integration: IntegrationType.SNOWFLAKE,
+                displayName: "Execute query",
+                validateACL: validateSnowflakeExecuteQuery
+            })
         ]
 
         super(OutputConfigType.SNOWFLAKE, toolbox)
@@ -53,4 +61,13 @@ export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
 
         return sections.join("\n")
     }
+}
+
+type SnowflakeACL<TName extends ToolName> = ToolACLValidator<TName, SnowflakeOutputConfig>
+
+const validateSnowflakeExplainQuery: SnowflakeACL<"snowflakeExplainQuery"> = ({ args, configs }) => {
+    return verifyIntegrationIdExists(args.integrationId, configs)
+}
+const validateSnowflakeExecuteQuery: SnowflakeACL<"snowflakeExecuteQuery"> = ({ args, configs }) => {
+    return verifyIntegrationIdExists(args.integrationId, configs)
 }

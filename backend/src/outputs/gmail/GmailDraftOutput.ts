@@ -1,15 +1,16 @@
 import { OutputConfigType } from "@prisma/client"
-import { GmailDraftOutputConfig } from "terse-types"
+import { GmailDraftOutputConfig, ToolName } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
 
 import { gmailCreateDraftTool } from "./tools/createDraft"
 
 export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: gmailCreateDraftTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft" }]
+        const t = defineToolEntry<GmailDraftOutputConfig>()
+        const toolbox = [t({ tool: gmailCreateDraftTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft", validateACL: validateGmailCreateDraft })]
         super(OutputConfigType.GMAIL_DRAFT, toolbox)
     }
 
@@ -82,3 +83,7 @@ USER-FACING RESPONSE STYLE:
 - Do NOT mention low-level implementation details unless explicitly asked (for example: CID/content-id, MIME/base64 internals, replacement image URLs, attachment plumbing).
 - If the user explicitly asks for technical/debug details, you may provide those details.
 `.trim()
+
+type GmailDraftACL<TName extends ToolName> = ToolACLValidator<TName, GmailDraftOutputConfig>
+
+const validateGmailCreateDraft: GmailDraftACL<"gmail_create_draft"> = _params => ({ ok: true as const })

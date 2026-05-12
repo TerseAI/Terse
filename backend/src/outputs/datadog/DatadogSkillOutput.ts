@@ -1,10 +1,11 @@
 import { OutputConfigType } from "@prisma/client"
 import { DatadogConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
 
 import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
 import { listRumEventsTool } from "./tools/listRumEvents"
@@ -13,11 +14,12 @@ import { searchRumEventsTool } from "./tools/searchRumEvents"
 
 export class DatadogSkillOutput extends Output<DatadogConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: searchDatadogLogsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs" },
-            { tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events" },
-            { tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events" },
-            { tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events" }
+        const t = defineToolEntry<DatadogConfig>()
+        const toolbox = [
+            t({ tool: searchDatadogLogsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs", validateACL: validateSearchDatadogLogs }),
+            t({ tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events", validateACL: validateListRumEvents }),
+            t({ tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events", validateACL: validateSearchRumEvents }),
+            t({ tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events", validateACL: validateAggregateRumEvents })
         ]
 
         super(OutputConfigType.DATADOG, toolbox)
@@ -62,3 +64,10 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
         return sections.join("\n")
     }
 }
+
+type DatadogACL<TName extends ToolName> = ToolACLValidator<TName, DatadogConfig>
+
+const validateSearchDatadogLogs: DatadogACL<"searchDatadogLogs"> = _params => ({ ok: true as const })
+const validateListRumEvents: DatadogACL<"listRumEvents"> = _params => ({ ok: true as const })
+const validateSearchRumEvents: DatadogACL<"searchRumEvents"> = _params => ({ ok: true as const })
+const validateAggregateRumEvents: DatadogACL<"aggregateRumEvents"> = _params => ({ ok: true as const })

@@ -1,5 +1,6 @@
+import { RunContext } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
-import { ConfigData } from "terse-types"
+import { ConfigData, ToolInputByName, ToolName } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
@@ -7,25 +8,12 @@ import { Session } from "../../express"
 import { TypedToolOptions } from "../../tools/toolUtils"
 import { PrismaTransaction } from "../../types/prisma"
 
-export interface ToolboxEntry {
-    tool: TypedToolOptions<any, SessionWithTracking<Session>>
-    isReadOnly: boolean
-    integration: IntegrationType
-    displayName: string
-    /** If true, this tool can be selected for approval even though it is read-only. TODO: extend approval tool support for all tools  */
-    supportsApproval?: boolean
-}
-
-export interface RuntimeSystemInstructionsContext {
-    userId: string
-}
-
 export abstract class Output<TConfig extends ConfigData> {
     integration: OutputConfigType
-    readonly toolbox: readonly ToolboxEntry[]
+    readonly toolbox: readonly ToolboxEntry<ToolName, TConfig>[]
     configs: TConfig[] = []
 
-    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
+    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry<ToolName, TConfig>[]) {
         this.integration = integration
         this.toolbox = toolbox
     }
@@ -57,4 +45,45 @@ export abstract class Output<TConfig extends ConfigData> {
     async getRuntimeSystemInstructions(_context: RuntimeSystemInstructionsContext): Promise<string> {
         return this.getSystemInstructions()
     }
+}
+
+export interface ToolboxEntry<TName extends ToolName, TConfig extends ConfigData> {
+    tool: TypedToolOptions<TName, SessionWithTracking<Session>>
+    isReadOnly: boolean
+    integration: IntegrationType
+    displayName: string
+    supportsApproval?: boolean
+    validateACL(params: ToolACLValidatorParams<TName, TConfig>): Promise<ToolACLValidationResult> | ToolACLValidationResult
+}
+
+export interface ToolACLValidatorParams<TName extends ToolName, TConfig extends ConfigData> {
+    args: ToolInputByName[TName]
+    configs: TConfig[]
+    runContext?: RunContext<SessionWithTracking<Session>>
+}
+
+export interface RuntimeSystemInstructionsContext {
+    userId: string
+}
+
+export type ToolACLValidator<TName extends ToolName, TConfig extends ConfigData> = (params: ToolACLValidatorParams<TName, TConfig>) => Promise<ToolACLValidationResult> | ToolACLValidationResult
+
+export function denyToolACL(message: string): ToolACLValidationResult {
+    return { ok: false, message }
+}
+
+export type ToolACLValidationResult = { ok: true } | { ok: false; message: string }
+
+export const defineToolEntry =
+    <TConfig extends ConfigData>() =>
+    <TName extends ToolName>(entry: ToolboxEntry<TName, TConfig>): ToolboxEntry<ToolName, TConfig> =>
+        entry as unknown as ToolboxEntry<ToolName, TConfig>
+
+export const doesIntegrationIdExist = (integrationId: string, configs: ConfigData[]): boolean => {
+    const config = configs.find(config => config.integrationId === integrationId)
+    return !!config
+}
+
+export const verifyIntegrationIdExists = (integrationId: string, configs: ConfigData[]): ToolACLValidationResult => {
+    return doesIntegrationIdExist(integrationId, configs) ? { ok: true } : denyToolACL(`Integration ID ${integrationId} not found`)
 }

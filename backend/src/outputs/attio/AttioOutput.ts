@@ -1,10 +1,10 @@
 import { OutputConfigType } from "@prisma/client"
-import { AttioOutputConfig } from "terse-types"
+import { AttioOutputConfig, ToolName } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
 
 import { attioListObjectsTool } from "./tools/listObjects"
 import { attioQueryRecordsTool } from "./tools/queryRecords"
@@ -12,10 +12,11 @@ import { attioUpsertRecordTool } from "./tools/upsertRecord"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects" },
-            { tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records" },
-            { tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
+        const t = defineToolEntry<AttioOutputConfig>()
+        const toolbox = [
+            t({ tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: validateAttioListObjects }),
+            t({ tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records", validateACL: validateAttioQueryRecords }),
+            t({ tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record", validateACL: validateAttioUpsertRecord })
         ]
         super(OutputConfigType.ATTIO, toolbox)
     }
@@ -74,4 +75,18 @@ export class AttioOutput extends Output<AttioOutputConfig> {
 
         return sections.join("\n")
     }
+}
+
+type AttioACL<TName extends ToolName> = ToolACLValidator<TName, AttioOutputConfig>
+
+const validateAttioListObjects: AttioACL<"attio_list_objects"> = _params => {
+    return { ok: true }
+}
+
+const validateAttioQueryRecords: AttioACL<"attio_query_records"> = _params => {
+    return { ok: true }
+}
+
+const validateAttioUpsertRecord: AttioACL<"attio_upsert_record"> = _params => {
+    return { ok: true }
 }

@@ -2,10 +2,11 @@ import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { PosthogConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
 
 import { getSessionEventsTool } from "./tools/getSessionEvents"
 import { searchEventsTool } from "./tools/searchEvents"
@@ -14,11 +15,12 @@ import { searchSessionsTool } from "./tools/searchSessions"
 
 export class PosthogSkillOutput extends Output<PosthogConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: searchLogsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs" },
-            { tool: searchSessionsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions" },
-            { tool: getSessionEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events" },
-            { tool: searchEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events" }
+        const t = defineToolEntry<PosthogConfig>()
+        const toolbox = [
+            t({ tool: searchLogsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs", validateACL: validateSearchPosthogLogs }),
+            t({ tool: searchSessionsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions", validateACL: validateSearchPosthogSessions }),
+            t({ tool: getSessionEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events", validateACL: validateGetPosthogSessionEvents }),
+            t({ tool: searchEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events", validateACL: validateSearchPosthogEvents })
         ]
 
         super(OutputConfigType.POSTHOG, toolbox)
@@ -62,3 +64,10 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         return sections.join("\n")
     }
 }
+
+type PosthogACL<TName extends ToolName> = ToolACLValidator<TName, PosthogConfig>
+
+const validateSearchPosthogLogs: PosthogACL<"searchPosthogLogs"> = _params => ({ ok: true as const })
+const validateSearchPosthogSessions: PosthogACL<"searchPosthogSessions"> = _params => ({ ok: true as const })
+const validateGetPosthogSessionEvents: PosthogACL<"getPosthogSessionEvents"> = _params => ({ ok: true as const })
+const validateSearchPosthogEvents: PosthogACL<"searchPosthogEvents"> = _params => ({ ok: true as const })

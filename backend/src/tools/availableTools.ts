@@ -7,7 +7,7 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
 
 type CollectedEntry = {
-    entry: ToolboxEntry
+    entry: ToolboxEntry<any, any>
     source: TerseToolSource
     configType: ConfigType
 }

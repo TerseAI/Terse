@@ -16,7 +16,7 @@ import { Output } from "../../outputs/abstract/Output"
 import { BillingService, billingServiceProxyForOrganization } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { FileCategory, StoredFile } from "../../services/FileStorageService"
-import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
+import { createNeedsApprovalFunction, createToolACLGuardrail, formatError } from "../../tools/toolUtils"
 import { AgentWithRelations } from "../../types/prisma"
 import { UserFormatter } from "../../utility/UserFormatter"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
@@ -72,10 +72,12 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
 
         outputs.forEach(output => {
             output.toolbox.forEach(entry => {
+                const aclGuardrail = createToolACLGuardrail(entry, output)
                 const toolOptions = {
                     ...entry.tool,
                     needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
-                    errorFunction: formatError
+                    errorFunction: formatError,
+                    ...(aclGuardrail ? { inputGuardrails: [aclGuardrail] } : {})
                 }
                 const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
                 toolsMap.set(toolEntry.name, toolEntry)

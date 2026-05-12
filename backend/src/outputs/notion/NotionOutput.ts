@@ -2,10 +2,11 @@ import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { NotionConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
 
 import {
     notionCreateOrUpdateDatabaseRowTool,
@@ -19,14 +20,27 @@ import {
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
-            { tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
-            { tool: notionCreateOrUpdateDatabaseRowTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update database row" },
-            { tool: notionCreateOrUpdatePageTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
-            { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
-            { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
-            { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
+        const t = defineToolEntry<NotionConfig>()
+        const toolbox = [
+            t({ tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema", validateACL: validateNotionGetSchema }),
+            t({ tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database", validateACL: validateNotionQueryDatabase }),
+            t({
+                tool: notionCreateOrUpdateDatabaseRowTool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Create or update database row",
+                validateACL: validateNotionCreateOrUpdateDatabaseRow
+            }),
+            t({
+                tool: notionCreateOrUpdatePageTool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Create or update page (standalone)",
+                validateACL: validateNotionCreateOrUpdatePage
+            }),
+            t({ tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page", validateACL: validateNotionQueryPage }),
+            t({ tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks", validateACL: validateNotionModifyBlocks }),
+            t({ tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users", validateACL: validateNotionListUsers })
         ]
         super(OutputConfigType.NOTION, toolbox)
     }
@@ -122,3 +136,13 @@ PEOPLE & RELATION PROPERTIES:
 const NOTION_FOOTER_INSTRUCTIONS = `
 TERSE FOOTER (when updating page content): Ensure a **Terse Footer** at the very bottom of the page after any update. Default: divider block + heading_3 with "Updated by Terse 🫶 • Last sync: <Mon D, YYYY>" (Terse as link to https://useterse.ai). If the user specifies a custom footer in USER_INSTRUCTIONS, use that instead. Update an existing footer rather than duplicating.
 `.trim()
+
+type NotionACL<TName extends ToolName> = ToolACLValidator<TName, NotionConfig>
+
+const validateNotionGetSchema: NotionACL<"notion_get_schema"> = _params => ({ ok: true as const })
+const validateNotionQueryDatabase: NotionACL<"notion_query_database"> = _params => ({ ok: true as const })
+const validateNotionCreateOrUpdateDatabaseRow: NotionACL<"notion_create_or_update_database_row"> = _params => ({ ok: true as const })
+const validateNotionCreateOrUpdatePage: NotionACL<"notion_create_or_update_page"> = _params => ({ ok: true as const })
+const validateNotionQueryPage: NotionACL<"notion_query_page"> = _params => ({ ok: true as const })
+const validateNotionModifyBlocks: NotionACL<"notion_modify_blocks"> = _params => ({ ok: true as const })
+const validateNotionListUsers: NotionACL<"notion_list_users"> = _params => ({ ok: true as const })

@@ -2,15 +2,17 @@ import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { GmailOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
 
 import { gmailSendEmailTool } from "./tools/sendEmail"
 
 export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email" }]
+        const t = defineToolEntry<GmailOutputConfig>()
+        const toolbox = [t({ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email", validateACL: validateGmailSendEmail })]
         super(OutputConfigType.GMAIL, toolbox)
     }
 
@@ -81,3 +83,7 @@ USER-FACING RESPONSE STYLE:
 - Do NOT mention low-level implementation details unless explicitly asked (for example: CID/content-id, MIME/base64 internals, replacement image URLs, attachment plumbing).
 - If the user explicitly asks for technical/debug details, you may provide those details.
 `.trim()
+
+type GmailACL<TName extends ToolName> = ToolACLValidator<TName, GmailOutputConfig>
+
+const validateGmailSendEmail: GmailACL<"gmail_send_email"> = _params => ({ ok: true as const })

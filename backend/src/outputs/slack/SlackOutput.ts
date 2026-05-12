@@ -1,10 +1,11 @@
 import { OutputConfigType } from "@prisma/client"
 import { SlackOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry } from "../abstract/Output"
 
 import { slackListChannelsTool } from "./tools/listChannels"
 import { slackListUsersTool } from "./tools/listUsers"
@@ -13,11 +14,12 @@ import { slackSendMessageTool } from "./tools/sendMessage"
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message" },
-            { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users" },
-            { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels" },
-            { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation" }
+        const t = defineToolEntry<SlackOutputConfig>()
+        const toolbox = [
+            t({ tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message", validateACL: validateSlackSendMessage }),
+            t({ tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users", validateACL: validateSlackListUsers }),
+            t({ tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels", validateACL: validateSlackListChannels }),
+            t({ tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation })
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)
     }
@@ -120,3 +122,10 @@ BEST PRACTICES:
 - Include relevant links
 - For thread conversations, always use the \`thread_ts\` from previous message results to maintain thread context
 `.trim()
+
+type SlackACL<TName extends ToolName> = ToolACLValidator<TName, SlackOutputConfig>
+
+const validateSlackSendMessage: SlackACL<"slack_send_message"> = _params => ({ ok: true as const })
+const validateSlackListUsers: SlackACL<"slack_list_users"> = _params => ({ ok: true as const })
+const validateSlackListChannels: SlackACL<"slack_list_channels"> = _params => ({ ok: true as const })
+const validateSlackReadConversation: SlackACL<"slack_read_conversation"> = _params => ({ ok: true as const })

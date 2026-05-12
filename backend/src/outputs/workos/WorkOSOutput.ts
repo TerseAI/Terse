@@ -1,8 +1,9 @@
 import { OutputConfigType } from "@prisma/client"
 import { WorkOSOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
+import { ToolName } from "terse-types"
 
-import { Output, ToolboxEntry } from "../../outputs/abstract/Output"
+import { Output, ToolACLValidator, defineToolEntry } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
 
 import { getWorkOSUserTool } from "./tools/getUser"
@@ -11,10 +12,11 @@ import { listWorkOSUsersTool } from "./tools/listUsers"
 
 export class WorkOSOutput extends Output<WorkOSOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users" },
-            { tool: listWorkOSOrganizationsTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List organizations" },
-            { tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user" }
+        const t = defineToolEntry<WorkOSOutputConfig>()
+        const toolbox = [
+            t({ tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users", validateACL: validateListWorkOSUsers }),
+            t({ tool: listWorkOSOrganizationsTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List organizations", validateACL: validateListWorkOSOrganizations }),
+            t({ tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user", validateACL: validateGetWorkOSUser })
         ]
 
         super(OutputConfigType.WORKOS, toolbox)
@@ -54,3 +56,9 @@ export class WorkOSOutput extends Output<WorkOSOutputConfig> {
         return sections.join("\n")
     }
 }
+
+type WorkOSACL<TName extends ToolName> = ToolACLValidator<TName, WorkOSOutputConfig>
+
+const validateListWorkOSUsers: WorkOSACL<"listWorkOSUsers"> = _params => ({ ok: true as const })
+const validateListWorkOSOrganizations: WorkOSACL<"listWorkOSOrganizations"> = _params => ({ ok: true as const })
+const validateGetWorkOSUser: WorkOSACL<"getWorkOSUser"> = _params => ({ ok: true as const })

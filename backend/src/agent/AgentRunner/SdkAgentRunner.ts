@@ -17,7 +17,7 @@ import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import type { BillingService } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
-import { createNeedsApprovalFunction, formatError } from "../../tools/toolUtils"
+import { createNeedsApprovalFunction, createToolACLGuardrail, formatError } from "../../tools/toolUtils"
 import { convertConfigTypeToOutputConfigType } from "../../utility/typeConverters"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
 import { resolveLanguageModel } from "../modelRegistry"
@@ -343,10 +343,12 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         const toolsMap = new Map<string, Tool<SdkRunnerSession>>()
         for (const output of this.outputs) {
             for (const entry of output.toolbox) {
+                const aclGuardrail = createToolACLGuardrail(entry, output)
                 const toolOptions = {
                     ...entry.tool,
                     needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
-                    errorFunction: formatError
+                    errorFunction: formatError,
+                    ...(aclGuardrail ? { inputGuardrails: [aclGuardrail] } : {})
                 }
                 const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
                 if (toolsMap.has(toolEntry.name)) continue
