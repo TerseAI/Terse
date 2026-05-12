@@ -72,7 +72,11 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
                 continue
             }
 
-            const installations = await getAppInstallationsForUser(tokenAccessValue)
+            const installations = await getAppInstallationsForUser(tokenAccessValue, {
+                userId: token.user_id,
+                tokenId: token.id,
+                installationId
+            })
             const installation = installations.installations?.find((inst: { id: number }) => inst.id === installationId)
             if (installation) {
                 accessToken = tokenAccessValue
