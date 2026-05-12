@@ -1,8 +1,8 @@
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, requireAllInAllowedList, requireInAllowedList, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, LaunchDarklyConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, requireAllInAllowedList, requireInAllowedList, verifyIntegrationIdExists } from "../../abstract/Output"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
 export const listLaunchDarklyFlagsTool = defineSessionTool({
@@ -239,7 +239,8 @@ export const listLaunchDarklyFlagsTool = defineSessionTool({
     }
 })
 
-export const validateListLaunchDarklyFlags: ToolACLValidator<"listLaunchDarklyFlags", LaunchDarklyConfig> = ({ args, configs }) => validateLaunchDarklyArgs(args.integrationId, args.projectKey, args.environmentKeys, null, configs)
+export const validateListLaunchDarklyFlags: ToolACLValidator<"listLaunchDarklyFlags", LaunchDarklyConfig> = ({ args, configs }) =>
+    validateLaunchDarklyArgs(args.integrationId, args.projectKey, args.environmentKeys, null, configs)
 
 export const validateLaunchDarklyArgs = (
     integrationId: string,

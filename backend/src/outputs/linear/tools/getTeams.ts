@@ -1,4 +1,5 @@
 import { RunHistoryActionType } from "@prisma/client"
+import { ToolACLValidator, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
@@ -6,7 +7,6 @@ import logger from "../../../logger"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const linearGetTeamsTool = defineSessionTool({
     name: "linear_get_teams",

@@ -1,10 +1,10 @@
+import { ToolACLValidator } from "src/outputs/abstract/acl"
 import { WebConfig } from "terse-types"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { Session } from "../../../express"
 import { getWebSearchService } from "../../../services/webSearch/getWebSearchService"
 import { TypedToolOptions, defineTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/Output"
 
 export const webSearchTool = defineTool({
     name: "web_search",

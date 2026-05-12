@@ -4,7 +4,8 @@ import { IntegrationType } from "terse-types"
 
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { defineToolEntry } from "../abstract/acl"
 
 import { aggregateRumEventsTool, validateAggregateRumEvents } from "./tools/aggregateRumEvents"
 import { listRumEventsTool, validateListRumEvents } from "./tools/listRumEvents"
@@ -63,4 +64,3 @@ export class DatadogSkillOutput extends Output<DatadogConfig> {
         return sections.join("\n")
     }
 }
-

@@ -1,11 +1,11 @@
 import { RunHistoryActionType } from "@prisma/client"
+import { ToolACLValidator, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, SlackOutputConfig } from "terse-types"
 
 import { fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const slackListUsersTool = defineSessionTool({
     name: "slack_list_users",

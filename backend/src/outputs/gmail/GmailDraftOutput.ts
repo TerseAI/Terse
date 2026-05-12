@@ -3,7 +3,8 @@ import { GmailDraftOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { defineToolEntry } from "../abstract/acl"
 
 import { gmailCreateDraftTool, validateGmailCreateDraft } from "./tools/createDraft"
 
@@ -83,4 +84,3 @@ USER-FACING RESPONSE STYLE:
 - Do NOT mention low-level implementation details unless explicitly asked (for example: CID/content-id, MIME/base64 internals, replacement image URLs, attachment plumbing).
 - If the user explicitly asks for technical/debug details, you may provide those details.
 `.trim()
-

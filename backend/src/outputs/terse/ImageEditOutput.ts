@@ -3,7 +3,8 @@ import { ImageEditConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { defineToolEntry } from "../abstract/acl"
 
 import { imageEditTool, validateImageEdit } from "./tools/editImage"
 
@@ -26,4 +27,3 @@ export class ImageEditOutput extends Output<ImageEditConfig> {
         return ""
     }
 }
-

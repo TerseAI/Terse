@@ -1,12 +1,12 @@
 import { Client } from "@notionhq/client"
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints"
+import { ToolACLValidator, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { verifyNotionPageInScope } from "../../../utility/notionAcl"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {

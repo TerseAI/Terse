@@ -1,10 +1,10 @@
 import { RunHistoryActionType } from "@prisma/client"
+import { ToolACLValidator } from "src/outputs/abstract/acl"
 import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator } from "../../abstract/Output"
 import { createGitHubClient, getFileContents, getGitHubAccessToken, parseRepoFullName } from "../githubApiClient"
 
 import { validateGitHubRepository } from "./searchCode"

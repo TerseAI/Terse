@@ -2,8 +2,9 @@ import { OutputConfigType } from "@prisma/client"
 import { WorkOSOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { Output, defineToolEntry } from "../../outputs/abstract/Output"
+import { Output } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
+import { defineToolEntry } from "../abstract/acl"
 
 import { getWorkOSUserTool, validateGetWorkOSUser } from "./tools/getUser"
 import { listWorkOSOrganizationsTool, validateListWorkOSOrganizations } from "./tools/listOrganizations"
@@ -55,4 +56,3 @@ export class WorkOSOutput extends Output<WorkOSOutputConfig> {
         return sections.join("\n")
     }
 }
-

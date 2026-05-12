@@ -1,4 +1,5 @@
 import { RunHistoryActionType } from "@prisma/client"
+import { ToolACLValidator } from "src/outputs/abstract/acl"
 import { AttioOutputConfig, IntegrationType } from "terse-types"
 import type { AttioAttribute, AttioRecord } from "terse-types"
 import { z } from "zod"
@@ -6,7 +7,6 @@ import { z } from "zod"
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/Output"
 
 import { validateAttioObjectSlug } from "./queryRecords"
 

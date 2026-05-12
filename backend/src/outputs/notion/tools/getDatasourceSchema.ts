@@ -1,12 +1,12 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
+import { ToolACLValidator, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { verifyNotionDatabaseInScope } from "../../../utility/notionAcl"
-import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/Output"
 
 // Helper function to build property schema with format examples
 function buildPropertySchema(propertyName: string, propertyConfig: any): any {

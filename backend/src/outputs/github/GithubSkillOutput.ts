@@ -5,7 +5,8 @@ import { IntegrationType } from "terse-types"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, RuntimeSystemInstructionsContext, defineToolEntry } from "../abstract/Output"
+import { Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
+import { defineToolEntry } from "../abstract/acl"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
 import { grepGitHubCodeTool, validateGrepGitHubCode } from "./tools/grepCode"
@@ -105,4 +106,3 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
         return lines.join("\n")
     }
 }
-

@@ -4,7 +4,8 @@ import { IntegrationType } from "terse-types"
 
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { defineToolEntry } from "../abstract/acl"
 
 import { getSessionEventsTool, validateGetPosthogSessionEvents } from "./tools/getSessionEvents"
 import { searchEventsTool, validateSearchPosthogEvents } from "./tools/searchEvents"
@@ -62,4 +63,3 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         return sections.join("\n")
     }
 }
-

@@ -3,7 +3,8 @@ import { SnowflakeOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { defineToolEntry } from "../abstract/acl"
 
 import { snowflakeExecuteQueryTool, validateSnowflakeExecuteQuery } from "./tools/executeQuery"
 import { snowflakeExplainQueryTool, validateSnowflakeExplainQuery } from "./tools/explainQuery"
@@ -61,4 +62,3 @@ export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
         return sections.join("\n")
     }
 }
-

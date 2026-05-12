@@ -1,4 +1,5 @@
 import { RunHistoryActionType } from "@prisma/client"
+import { ToolACLValidator } from "src/outputs/abstract/acl"
 import { IntegrationType, SlackOutputConfig } from "terse-types"
 
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
@@ -6,7 +7,6 @@ import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator } from "../../abstract/Output"
 
 import { validateSlackChannelOrUser } from "./sendMessage"
 

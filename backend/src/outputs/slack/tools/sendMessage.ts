@@ -1,5 +1,6 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { KnownBlock } from "@slack/web-api"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { IntegrationType, SlackOutputConfig } from "terse-types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse-types"
 
@@ -9,7 +10,6 @@ import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { resolveSlackChannelIdForDestination } from "../../../utility/slack"
 import { isValidEpochTimestamp } from "../../../utility/strings"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, verifyIntegrationIdExists } from "../../abstract/Output"
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -203,14 +203,10 @@ export const slackSendMessageTool = defineSessionTool({
     }
 })
 
-export const validateSlackSendMessage: ToolACLValidator<"slack_send_message", SlackOutputConfig> = ({ args, configs }) => validateSlackChannelOrUser(args.integrationId, args.channelId, args.slackUserId, configs)
+export const validateSlackSendMessage: ToolACLValidator<"slack_send_message", SlackOutputConfig> = ({ args, configs }) =>
+    validateSlackChannelOrUser(args.integrationId, args.channelId, args.slackUserId, configs)
 
-export const validateSlackChannelOrUser = (
-    integrationId: string,
-    channelId: string | null | undefined,
-    slackUserId: string | null | undefined,
-    configs: SlackOutputConfig[]
-) => {
+export const validateSlackChannelOrUser = (integrationId: string, channelId: string | null | undefined, slackUserId: string | null | undefined, configs: SlackOutputConfig[]) => {
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (!idCheck.ok) return idCheck
     const matching = findConfigsByIntegrationId(integrationId, configs)

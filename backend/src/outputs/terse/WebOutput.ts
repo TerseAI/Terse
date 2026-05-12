@@ -3,7 +3,8 @@ import { WebConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { defineToolEntry } from "../abstract/acl"
 
 import { validateWebExtract, webExtractTool } from "./tools/webExtractTool"
 import { validateWebResearch, webResearchTool } from "./tools/webResearchTool"
@@ -32,4 +33,3 @@ export class WebOutput extends Output<WebConfig> {
         return ""
     }
 }
-

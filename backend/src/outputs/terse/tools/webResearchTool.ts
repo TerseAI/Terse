@@ -1,8 +1,8 @@
+import { ToolACLValidator } from "src/outputs/abstract/acl"
 import { WebConfig } from "terse-types"
 
 import { getWebSearchService } from "../../../services/webSearch"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/Output"
 
 export const webResearchTool = defineSessionTool({
     name: "web_research",

@@ -1,11 +1,11 @@
 import { RunHistoryActionType } from "@prisma/client"
+import { ToolACLValidator, findConfigsByIntegrationId, requireValueInAnyConfig, verifyIntegrationIdExists } from "src/outputs/abstract/acl"
 import { AttioOutputConfig, IntegrationType } from "terse-types"
 import type { AttioRecord } from "terse-types"
 
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
-import { ToolACLValidator, findConfigsByIntegrationId, requireValueInAnyConfig, verifyIntegrationIdExists } from "../../abstract/Output"
 
 export const attioQueryRecordsTool = defineSessionTool({
     name: "attio_query_records",

@@ -1,10 +1,10 @@
 import { RunHistoryActionType } from "@prisma/client"
+import { ToolACLValidator } from "src/outputs/abstract/acl"
 import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator } from "../../abstract/Output"
 import { createGitHubClient, getGitHubAccessToken, listPullRequests, parseRepoFullName } from "../githubApiClient"
 
 import { validateGitHubRepository } from "./searchCode"
@@ -166,4 +166,5 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
     }
 })
 
-export const validateListGitHubPullRequests: ToolACLValidator<"listGitHubPullRequests", GitHubConfig> = ({ args, configs, runContext }) => validateGitHubRepository(args.repository, configs, runContext)
+export const validateListGitHubPullRequests: ToolACLValidator<"listGitHubPullRequests", GitHubConfig> = ({ args, configs, runContext }) =>
+    validateGitHubRepository(args.repository, configs, runContext)

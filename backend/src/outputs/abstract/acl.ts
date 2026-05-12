@@ -1,0 +1,112 @@
+import { RunContext, ToolGuardrailFunctionOutputFactory, ToolInputGuardrailDefinition, defineToolInputGuardrail } from "@openai/agents-core"
+import { ConfigData, ToolInputByName, ToolName } from "terse-types"
+
+import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
+import { Session } from "../../express"
+import logger from "../../logger"
+
+import { Output, ToolboxEntry } from "./Output"
+
+export function createToolACLGuardrail<TConfig extends ConfigData>(
+    entry: ToolboxEntry<ToolName, TConfig>,
+    output: Output<TConfig>
+): ToolInputGuardrailDefinition<SessionWithTracking<Session>> | undefined {
+    const validate = entry.validateACL
+    if (!validate) return undefined
+
+    const toolName = entry.tool.name ?? ""
+
+    return defineToolInputGuardrail<SessionWithTracking<Session>>({
+        name: `acl:${toolName}`,
+        run: async ({ context, toolCall }) => {
+            try {
+                const args = JSON.parse(toolCall.arguments) as ToolInputByName[ToolName]
+                const result = await validate({
+                    args,
+                    configs: output.configs,
+                    runContext: context
+                })
+                if (result.ok) {
+                    return ToolGuardrailFunctionOutputFactory.allow()
+                }
+                logger.info(`[ACL] Soft-denying tool ${toolName}`, { message: result.message })
+                return ToolGuardrailFunctionOutputFactory.rejectContent(result.message)
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error)
+                logger.error(`[ACL] Validator for ${toolName} threw`, { error: message })
+                return ToolGuardrailFunctionOutputFactory.rejectContent(`Tool ${toolName} blocked: ACL check failed (${message})`)
+            }
+        }
+    })
+}
+
+export function requireAllValuesInAnyConfig<T extends ConfigData>(args: {
+    integrationId: string
+    configs: T[]
+    label: string
+    pickAllowed: (config: T) => readonly string[] | null | undefined
+    values: readonly string[] | null | undefined
+}): ToolACLValidationResult {
+    const matchingConfigs = findConfigsByIntegrationId(args.integrationId, args.configs)
+    const allowed = Array.from(new Set(matchingConfigs.flatMap(c => args.pickAllowed(c) ?? [])))
+    return requireAllInAllowedList(args.values, allowed, `${args.label} for integration "${args.integrationId}"`)
+}
+
+export function requireValueInAnyConfig<T extends ConfigData>(args: {
+    integrationId: string
+    configs: T[]
+    label: string
+    pickAllowed: (config: T) => readonly string[] | null | undefined
+    value: string | null | undefined
+}): ToolACLValidationResult {
+    const matchingConfigs = findConfigsByIntegrationId(args.integrationId, args.configs)
+    const allowed = Array.from(new Set(matchingConfigs.flatMap(c => args.pickAllowed(c) ?? [])))
+    return requireInAllowedList(args.value, allowed, `${args.label} for integration "${args.integrationId}"`)
+}
+
+export function findConfigsByIntegrationId<TConfig extends ConfigData>(integrationId: string, configs: TConfig[]): TConfig[] {
+    return configs.filter(c => c.integrationId === integrationId)
+}
+
+export function requireInAllowedList(value: string | null | undefined, allowed: readonly string[], label: string): ToolACLValidationResult {
+    return value && allowed.includes(value) ? { ok: true } : denyToolACL(`${label} ${value ?? "(missing)"} is not in the allowed list: ${allowed.join(", ") || "(none)"}`)
+}
+
+export function requireAllInAllowedList(values: readonly string[] | null | undefined, allowed: readonly string[], label: string): ToolACLValidationResult {
+    const offenders = (values ?? []).filter(v => !allowed.includes(v))
+    return offenders.length === 0 ? { ok: true } : denyToolACL(`${label} not in allowed list (${offenders.join(", ")}). Allowed: ${allowed.join(", ") || "(none)"}.`)
+}
+
+export function denyToolACL(message: string): ToolACLValidationResult {
+    return { ok: false, message }
+}
+
+export function verifyIntegrationIdExists(integrationId: string, configs: ConfigData[]): ToolACLValidationResult {
+    if (doesIntegrationIdExist(integrationId, configs)) return { ok: true }
+    const known = listIntegrationIds(configs).join(", ") || "(none)"
+    return denyToolACL(`Integration ID "${integrationId}" not found. Configured integrations: ${known}.`)
+}
+
+export function doesIntegrationIdExist(integrationId: string, configs: ConfigData[]): boolean {
+    const config = configs.find(config => config.integrationId === integrationId)
+    return !!config
+}
+
+export function listIntegrationIds(configs: readonly ConfigData[]): string[] {
+    return Array.from(new Set(configs.map(c => c.integrationId)))
+}
+
+export type ToolACLValidator<TName extends ToolName, TConfig extends ConfigData> = (params: ToolACLValidatorParams<TName, TConfig>) => Promise<ToolACLValidationResult> | ToolACLValidationResult
+
+export type ToolACLValidationResult = { ok: true } | { ok: false; message: string }
+
+export interface ToolACLValidatorParams<TName extends ToolName, TConfig extends ConfigData> {
+    args: ToolInputByName[TName]
+    configs: TConfig[]
+    runContext?: RunContext<SessionWithTracking<Session>>
+}
+
+export const defineToolEntry =
+    <TConfig extends ConfigData>() =>
+    <TName extends ToolName>(entry: ToolboxEntry<TName, TConfig>): ToolboxEntry<ToolName, TConfig> =>
+        entry as unknown as ToolboxEntry<ToolName, TConfig> // MARK: - ACL Guardrail

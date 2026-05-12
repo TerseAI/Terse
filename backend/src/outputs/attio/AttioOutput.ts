@@ -4,7 +4,8 @@ import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, defineToolEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { defineToolEntry } from "../abstract/acl"
 
 import { attioListObjectsTool, validateAttioListObjects } from "./tools/listObjects"
 import { attioQueryRecordsTool, validateAttioQueryRecords } from "./tools/queryRecords"
@@ -76,4 +77,3 @@ export class AttioOutput extends Output<AttioOutputConfig> {
         return sections.join("\n")
     }
 }
-

@@ -1,8 +1,8 @@
+import { ToolACLValidator } from "src/outputs/abstract/acl"
 import { IntegrationType, LaunchDarklyConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/Output"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
 import { validateLaunchDarklyArgs } from "./listFeatureFlags"

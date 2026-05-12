@@ -1,5 +1,6 @@
 import { Agent, AgentInputItem, AgentOutputType } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
+import { ToolACLValidator } from "src/outputs/abstract/acl"
 import { GitHubConfig, IntegrationType } from "terse-types"
 
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../../../agent/runner"
@@ -8,7 +9,6 @@ import { settings } from "../../../config/settings"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator } from "../../abstract/Output"
 import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepoFullName } from "../githubApiClient"
 
 import { validateGitHubRepository } from "./searchCode"

@@ -7,22 +7,9 @@ import { SessionWithTracking } from "../../agent/AgentRunner/AgentRunner"
 import { Session } from "../../express"
 import { getLinearAccessTokenForOrganization } from "../../integrations/LinearIntegration"
 import logger from "../../logger"
-import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../abstract/Output"
+import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../abstract/acl"
 
 type LinearIssueScope = { teamId: string | null; projectId: string | null }
-
-const issueScopeCache = new WeakMap<object, Map<string, Promise<LinearIssueScope | null>>>()
-
-function cacheFor(runContext: RunContext<SessionWithTracking<Session>> | undefined): Map<string, Promise<LinearIssueScope | null>> | null {
-    const ctx = runContext?.context as unknown as object | undefined
-    if (!ctx) return null
-    let m = issueScopeCache.get(ctx)
-    if (!m) {
-        m = new Map()
-        issueScopeCache.set(ctx, m)
-    }
-    return m
-}
 
 async function fetchIssueScope(client: LinearClient, issueId: string): Promise<LinearIssueScope | null> {
     let issue
@@ -59,7 +46,8 @@ function scopeMatches(issue: LinearIssueScope, config: LinearOutputConfig): bool
 
 /**
  * Verify that the issue identified by `issueId` lives within at least one of the configured (team, project) scopes
- * for any config sharing `integrationId`. Returns ok if no config narrows scope. Fetches the issue once per run.
+ * for any config sharing `integrationId`. Returns ok if no config narrows scope. Fetches the issue on every call —
+ * no caching, so each validator invocation hits the Linear API.
  */
 export async function verifyLinearIssueInScope(args: {
     integrationId: string
@@ -77,21 +65,10 @@ export async function verifyLinearIssueInScope(args: {
     const organizationId = args.runContext?.context?.user?.organizationId
     if (!organizationId) return { ok: true } // capability lookup / no runtime context — skip the API hop
 
-    const cache = cacheFor(args.runContext)
-    const cacheKey = `${args.integrationId}:${args.issueId}`
-    let scopePromise: Promise<LinearIssueScope | null>
-    if (cache?.has(cacheKey)) {
-        scopePromise = cache.get(cacheKey)!
-    } else {
-        scopePromise = (async () => {
-            const accessToken = await getLinearAccessTokenForOrganization(args.integrationId, organizationId)
-            const client = new LinearClient({ accessToken })
-            return fetchIssueScope(client, args.issueId)
-        })()
-        cache?.set(cacheKey, scopePromise)
-    }
+    const accessToken = await getLinearAccessTokenForOrganization(args.integrationId, organizationId)
+    const client = new LinearClient({ accessToken })
+    const issueScope = await fetchIssueScope(client, args.issueId)
 
-    const issueScope = await scopePromise
     if (!issueScope) {
         logger.info("[LinearACL] could not resolve issue scope (issue may not exist)", { issueId: args.issueId })
         return denyToolACL(`Linear issue ${args.issueId} could not be found. Configured scope: ${describeConfiguredScopes(configsForIntegration)}.`)
