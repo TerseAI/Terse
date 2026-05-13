@@ -1,7 +1,18 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { AttioEventType, AttioRecordPayload, AttioSubscription, AttioTrigger, AttioWebhookEvent, AttioWebhookPayload, ConfigurationFieldDefinition, attioEventTypeSchema, attioFilterSchema, attioRecordPayloadSchema } from "terse-types"
+import {
+    AttioEventType,
+    AttioRecordPayload,
+    AttioSubscription,
+    AttioTrigger,
+    AttioWebhookEvent,
+    AttioWebhookPayload,
+    ConfigurationFieldDefinition,
+    attioEventTypeSchema,
+    attioFilterSchema,
+    attioRecordPayloadSchema
+} from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
