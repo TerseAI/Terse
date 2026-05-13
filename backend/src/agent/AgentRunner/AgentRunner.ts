@@ -13,6 +13,7 @@ import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
+import { createToolACLGuardrail } from "../../outputs/abstract/acl"
 import { BillingService, billingServiceProxyForOrganization } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
 import { FileCategory, StoredFile } from "../../services/FileStorageService"
@@ -72,10 +73,12 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
 
         outputs.forEach(output => {
             output.toolbox.forEach(entry => {
+                const aclGuardrail = createToolACLGuardrail(entry, output)
                 const toolOptions = {
                     ...entry.tool,
                     needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
-                    errorFunction: formatError
+                    errorFunction: formatError,
+                    ...(aclGuardrail ? { inputGuardrails: [aclGuardrail] } : {})
                 }
                 const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
                 toolsMap.set(toolEntry.name, toolEntry)

@@ -1,27 +1,22 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { LaunchDarklyConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
 
-import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails"
-import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags"
+import { getLaunchDarklyFlagDetailsTool, validateGetLaunchDarklyFlagDetails } from "./tools/getFeatureFlagDetails"
+import { listLaunchDarklyFlagsTool, validateListLaunchDarklyFlags } from "./tools/listFeatureFlags"
 
 export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: listLaunchDarklyFlagsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "List feature flags" },
-            { tool: getLaunchDarklyFlagDetailsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "Get flag details" }
+        const toolbox = [
+            { tool: listLaunchDarklyFlagsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "List feature flags", validateACL: validateListLaunchDarklyFlags },
+            { tool: getLaunchDarklyFlagDetailsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "Get flag details", validateACL: validateGetLaunchDarklyFlagDetails }
         ]
 
         super(OutputConfigType.LAUNCHDARKLY, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): LaunchDarklyConfig {
-        return new LaunchDarklyConfig("example", "example-project", ["production"])
     }
 
     async validateConfig(output: LaunchDarklyConfig, _userId: string): Promise<void> {

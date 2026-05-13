@@ -1,10 +1,13 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator } from "../../abstract/acl"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
+
+import { validateGitHubRepositoryNames } from "./searchCode"
 
 /**
  * Tool for grep-style exact text search in GitHub repositories.
@@ -171,3 +174,5 @@ This is more precise than semantic search - use it when you know exactly what te
         }
     }
 })
+
+export const validateGrepGitHubCode: ToolACLValidator<"grepGitHubCode", GitHubConfig> = ({ args, configs, runContext }) => validateGitHubRepositoryNames(args.repositoryNames, configs, runContext)

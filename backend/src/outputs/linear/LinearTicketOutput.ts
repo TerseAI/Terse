@@ -1,42 +1,38 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { LinearOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
-import { linearAddCommentTool } from "./tools/addComment"
-import { linearCreateTicketTool } from "./tools/createTicket"
-import { linearGetLabelsTool } from "./tools/getLabels"
-import { linearGetProjectsTool } from "./tools/getProjects"
-import { linearGetStatesTool } from "./tools/getStates"
+import { linearAddCommentTool, validateLinearAddComment } from "./tools/addComment"
+import { linearCreateTicketTool, validateLinearCreateTicket } from "./tools/createTicket"
+import { linearGetLabelsTool, validateLinearGetLabels } from "./tools/getLabels"
+import { linearGetProjectsTool, validateLinearGetProjects } from "./tools/getProjects"
+import { linearGetStatesTool, validateLinearGetStates } from "./tools/getStates"
 import { linearGetTeamsTool } from "./tools/getTeams"
 import { linearGetUsersTool } from "./tools/getUsers"
-import { linearReadTicketTool } from "./tools/readTicket"
+import { linearReadTicketTool, validateLinearReadTicket } from "./tools/readTicket"
 import { linearSearchTicketTool } from "./tools/searchTicket"
-import { linearUpdateTicketTool } from "./tools/updateTicket"
+import { linearUpdateTicketTool, validateLinearUpdateTicket } from "./tools/updateTicket"
 
 export class LinearTicketOutput extends Output<LinearOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: linearSearchTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Search tickets" },
-            { tool: linearGetTeamsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get teams" },
-            { tool: linearGetStatesTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get states" },
-            { tool: linearGetLabelsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get labels" },
-            { tool: linearGetProjectsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get projects" },
-            { tool: linearGetUsersTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users" },
-            { tool: linearCreateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket" },
-            { tool: linearUpdateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket" },
-            { tool: linearAddCommentTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment" },
-            { tool: linearReadTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket" }
+        const toolbox = [
+            { tool: linearSearchTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Search tickets", validateACL: unrestricted },
+            { tool: linearGetTeamsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get teams", validateACL: unrestricted },
+            { tool: linearGetStatesTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get states", validateACL: validateLinearGetStates },
+            { tool: linearGetLabelsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get labels", validateACL: validateLinearGetLabels },
+            { tool: linearGetProjectsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get projects", validateACL: validateLinearGetProjects },
+            { tool: linearGetUsersTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get users", validateACL: unrestricted },
+            { tool: linearCreateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Create ticket", validateACL: validateLinearCreateTicket },
+            { tool: linearUpdateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket", validateACL: validateLinearUpdateTicket },
+            { tool: linearAddCommentTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment", validateACL: validateLinearAddComment },
+            { tool: linearReadTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket", validateACL: validateLinearReadTicket }
         ]
         super(OutputConfigType.LINEAR_TICKET, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): LinearOutputConfig {
-        return new LinearOutputConfig("example", "team-123", "Example Team")
     }
 
     async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {

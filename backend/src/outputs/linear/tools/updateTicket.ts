@@ -1,12 +1,14 @@
 import { LinearClient } from "@linear/sdk"
 import { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
+import { verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearUpdateTicketTool = defineSessionTool({
     name: "linear_update_ticket",
@@ -83,3 +85,19 @@ export const linearUpdateTicketTool = defineSessionTool({
         }
     }
 })
+
+export const validateLinearUpdateTicket: ToolACLValidator<"linear_update_ticket", LinearOutputConfig> = async ({ args, configs, runContext }) => {
+    const issueScopeCheck = await verifyLinearIssueInScope({ integrationId: args.integrationId, issueId: args.issueId, configs, runContext })
+    if (!issueScopeCheck.ok) return issueScopeCheck
+
+    // If the update would move the issue to a different project, that target project must also be configured
+    if (args.updates.projectId) {
+        const matching = findConfigsByIntegrationId(args.integrationId, configs)
+        const narrowing = matching.filter(c => c.projectId)
+        if (narrowing.length > 0 && !narrowing.some(c => c.projectId === args.updates.projectId)) {
+            const allowed = narrowing.map(c => c.projectId).join(", ")
+            return denyToolACL(`Linear update would move issue into projectId "${args.updates.projectId}", which is not in the configured projects: ${allowed}.`)
+        }
+    }
+    return { ok: true }
+}

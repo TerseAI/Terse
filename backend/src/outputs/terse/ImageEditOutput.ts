@@ -3,30 +3,20 @@ import { ImageEditConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
 import { imageEditTool } from "./tools/editImage"
 
 export class ImageEditOutput extends Output<ImageEditConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            {
-                tool: imageEditTool,
-                isReadOnly: true,
-                integration: IntegrationType.TERSE,
-                displayName: "Edit Image"
-            }
-        ]
+        const toolbox = [{ tool: imageEditTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Edit Image", validateACL: unrestricted }]
         super(OutputConfigType.IMAGE_EDIT, toolbox)
     }
 
     async validateConfig(_output: ImageEditConfig, _userId: string): Promise<void> {}
 
     async addOutputToAgent(_tx: PrismaTransaction, _agentOutputId: string, _output: ImageEditConfig): Promise<void> {}
-
-    protected getDummyConfigForCapability(): ImageEditConfig {
-        return new ImageEditConfig()
-    }
 
     protected getSystemInstructionsForConfigs(_configs: ImageEditConfig[]): string {
         return ""

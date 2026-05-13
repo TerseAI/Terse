@@ -1,10 +1,14 @@
+import type { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { GitHubConfig, IntegrationType } from "terse-types"
 
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { Session } from "../../../express"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
+import { ToolACLValidator, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
+import { createGitHubClient, getAllowedRepoNamesForConfigs, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
 /**
  * Tool for semantic code search in GitHub repositories.
@@ -171,3 +175,23 @@ Tips:
         }
     }
 })
+
+export const validateSearchGitHubCode: ToolACLValidator<"searchGitHubCode", GitHubConfig> = async ({ args, configs, runContext }) =>
+    validateGitHubRepositoryNames(args.repositoryNames, configs, runContext)
+
+// GitHub repository names (owner/repo) are case-insensitive, so we lowercase both sides before comparison.
+const normalizeGitHubRepoName = (name: string): string => name.toLowerCase()
+
+export async function validateGitHubRepositoryNames(repositoryNames: readonly string[], configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>> | undefined) {
+    const userId = runContext?.context?.user?.id
+    if (!userId) return { ok: true }
+    const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
+    return requireAllInAllowedList(repositoryNames.map(normalizeGitHubRepoName), Array.from(allowed, normalizeGitHubRepoName), "repositoryNames")
+}
+
+export async function validateGitHubRepository(repository: string, configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>> | undefined) {
+    const userId = runContext?.context?.user?.id
+    if (!userId) return { ok: true }
+    const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
+    return requireInAllowedList(normalizeGitHubRepoName(repository), Array.from(allowed, normalizeGitHubRepoName), "repository")
+}

@@ -1,11 +1,11 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { NotionConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
 import {
     notionCreateOrUpdateDatabaseRowTool,
@@ -14,25 +14,39 @@ import {
     notionListUsersTool,
     notionModifyBlocksTool,
     notionQueryDatabaseTool,
-    notionQueryPageTool
+    notionQueryPageTool,
+    validateNotionCreateOrUpdateDatabaseRow,
+    validateNotionCreateOrUpdatePage,
+    validateNotionGetSchema,
+    validateNotionModifyBlocks,
+    validateNotionQueryDatabase,
+    validateNotionQueryPage
 } from "./tools"
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema" },
-            { tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database" },
-            { tool: notionCreateOrUpdateDatabaseRowTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update database row" },
-            { tool: notionCreateOrUpdatePageTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Create or update page (standalone)" },
-            { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page" },
-            { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks" },
-            { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users" }
+        const toolbox = [
+            { tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema", validateACL: validateNotionGetSchema },
+            { tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database", validateACL: validateNotionQueryDatabase },
+            {
+                tool: notionCreateOrUpdateDatabaseRowTool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Create or update database row",
+                validateACL: validateNotionCreateOrUpdateDatabaseRow
+            },
+            {
+                tool: notionCreateOrUpdatePageTool,
+                isReadOnly: false,
+                integration: IntegrationType.NOTION,
+                displayName: "Create or update page (standalone)",
+                validateACL: validateNotionCreateOrUpdatePage
+            },
+            { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page", validateACL: validateNotionQueryPage },
+            { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks", validateACL: validateNotionModifyBlocks },
+            { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users", validateACL: unrestricted }
         ]
         super(OutputConfigType.NOTION, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): NotionConfig {
-        return new NotionConfig("example", ["example-db-id"], ["Example DB"], ["example-page-id"], ["Example Page"])
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {

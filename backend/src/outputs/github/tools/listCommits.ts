@@ -1,10 +1,13 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator } from "../../abstract/acl"
 import { createGitHubClient, getGitHubAccessToken, listCommits, parseRepoFullName } from "../githubApiClient"
+
+import { validateGitHubRepository } from "./searchCode"
 
 /**
  * Tool for listing commits in GitHub repositories within a time window.
@@ -142,3 +145,5 @@ The tool returns commit details including message, author, date, and SHA.`,
         }
     }
 })
+
+export const validateListGitHubCommits: ToolACLValidator<"listGitHubCommits", GitHubConfig> = ({ args, configs, runContext }) => validateGitHubRepository(args.repository, configs, runContext)

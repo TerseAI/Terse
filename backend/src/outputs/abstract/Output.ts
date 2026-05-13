@@ -1,5 +1,5 @@
 import { OutputConfigType } from "@prisma/client"
-import { ConfigData } from "terse-types"
+import { ConfigData, ToolName } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
@@ -7,44 +7,27 @@ import { Session } from "../../express"
 import { TypedToolOptions } from "../../tools/toolUtils"
 import { PrismaTransaction } from "../../types/prisma"
 
-export interface ToolboxEntry {
-    tool: TypedToolOptions<any, SessionWithTracking<Session>>
-    isReadOnly: boolean
-    integration: IntegrationType
-    displayName: string
-    /** If true, this tool can be selected for approval even though it is read-only. TODO: extend approval tool support for all tools  */
-    supportsApproval?: boolean
-}
-
-export interface RuntimeSystemInstructionsContext {
-    userId: string
-}
+import { ToolACLValidationResult, ToolACLValidatorParams } from "./acl"
 
 export abstract class Output<TConfig extends ConfigData> {
     integration: OutputConfigType
-    readonly toolbox: readonly ToolboxEntry[]
+    readonly toolbox: readonly ToolboxEntry<TConfig>[]
     configs: TConfig[] = []
 
-    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
+    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntryInput<TConfig>[]) {
         this.integration = integration
-        this.toolbox = toolbox
+        // Widen each per-tool narrow entry to a more general type for consumers.
+        this.toolbox = toolbox as readonly ToolboxEntry<TConfig>[]
     }
 
     abstract validateConfig(output: TConfig, userId: string): Promise<void>
 
     abstract addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: TConfig): Promise<void>
 
-    /**
-     * Returns system instructions. When useDummyConfig is true, uses a minimal dummy config
-     * instead of this.configs—useful for capability lookup where no real configs exist.
-     */
-    getSystemInstructions(useDummyConfig = false): string {
-        const configs = useDummyConfig ? [this.getDummyConfigForCapability()] : this.configs
+    getSystemInstructions(): string {
+        const configs = this.configs
         return this.getSystemInstructionsForConfigs(configs)
     }
-
-    /** Minimal dummy config for generating system instructions when no real configs exist. */
-    protected abstract getDummyConfigForCapability(): TConfig
 
     /**
      * Protected method that subclasses implement to generate system instructions.
@@ -57,4 +40,28 @@ export abstract class Output<TConfig extends ConfigData> {
     async getRuntimeSystemInstructions(_context: RuntimeSystemInstructionsContext): Promise<string> {
         return this.getSystemInstructions()
     }
+}
+
+export type ToolboxEntryInput<TConfig extends ConfigData> = {
+    [TName in ToolName]: {
+        tool: TypedToolOptions<TName, SessionWithTracking<Session>>
+        isReadOnly: boolean
+        integration: IntegrationType
+        displayName: string
+        supportsApproval?: boolean
+        validateACL: (params: ToolACLValidatorParams<TName, TConfig>) => Promise<ToolACLValidationResult> | ToolACLValidationResult
+    }
+}[ToolName]
+
+export interface ToolboxEntry<TConfig extends ConfigData> {
+    tool: TypedToolOptions<ToolName, SessionWithTracking<Session>>
+    isReadOnly: boolean
+    integration: IntegrationType
+    displayName: string
+    supportsApproval?: boolean
+    validateACL(params: ToolACLValidatorParams<ToolName, TConfig>): Promise<ToolACLValidationResult> | ToolACLValidationResult
+}
+
+export interface RuntimeSystemInstructionsContext {
+    userId: string
 }

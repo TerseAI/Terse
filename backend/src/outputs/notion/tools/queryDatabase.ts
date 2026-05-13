@@ -1,10 +1,12 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { verifyNotionDatabaseInScope } from "../../../utility/notionAcl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {
@@ -204,3 +206,7 @@ NOTE: This tool does NOT return the database schema. Use notion_get_schema if yo
         }
     }
 })
+
+export const validateNotionQueryDatabase: ToolACLValidator<"notion_query_database", NotionConfig> = async ({ args, configs }) => {
+    return verifyNotionDatabaseInScope(args.integrationId, args.databaseId, configs)
+}

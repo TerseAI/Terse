@@ -5,27 +5,27 @@ import { IntegrationType } from "terse-types"
 import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../logger"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, RuntimeSystemInstructionsContext, ToolboxEntry } from "../abstract/Output"
+import { Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
-import { grepGitHubCodeTool } from "./tools/grepCode"
-import { listGitHubCommitsTool } from "./tools/listCommits"
-import { listGitHubDirectoryTool } from "./tools/listDirectory"
-import { listGitHubPullRequestsTool } from "./tools/listPullRequests"
-import { readGitHubFileTool } from "./tools/readFile"
-import { searchGitHubCodeTool } from "./tools/searchCode"
-import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequestDiff"
+import { grepGitHubCodeTool, validateGrepGitHubCode } from "./tools/grepCode"
+import { listGitHubCommitsTool, validateListGitHubCommits } from "./tools/listCommits"
+import { listGitHubDirectoryTool, validateListGitHubDirectory } from "./tools/listDirectory"
+import { listGitHubPullRequestsTool, validateListGitHubPullRequests } from "./tools/listPullRequests"
+import { readGitHubFileTool, validateReadGitHubFile } from "./tools/readFile"
+import { searchGitHubCodeTool, validateSearchGitHubCode } from "./tools/searchCode"
+import { summarizeGitHubPullRequestDiffTool, validateSummarizeGitHubPullRequestDiff } from "./tools/summarizePullRequestDiff"
 
 export class GithubSkillOutput extends Output<GitHubConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code" },
-            { tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code" },
-            { tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file" },
-            { tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory" },
-            { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests" },
-            { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits" },
-            { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff" }
+        const toolbox = [
+            { tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code", validateACL: validateSearchGitHubCode },
+            { tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code", validateACL: validateGrepGitHubCode },
+            { tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file", validateACL: validateReadGitHubFile },
+            { tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory", validateACL: validateListGitHubDirectory },
+            { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests", validateACL: validateListGitHubPullRequests },
+            { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits", validateACL: validateListGitHubCommits },
+            { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff", validateACL: validateSummarizeGitHubPullRequestDiff }
         ]
 
         super(OutputConfigType.GITHUB, toolbox)
@@ -48,10 +48,6 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
                 repository_ids: output.repositoryIds
             }
         })
-    }
-
-    protected getDummyConfigForCapability(): GitHubConfig {
-        return new GitHubConfig("example", [0])
     }
 
     async getRuntimeSystemInstructions(context: RuntimeSystemInstructionsContext): Promise<string> {

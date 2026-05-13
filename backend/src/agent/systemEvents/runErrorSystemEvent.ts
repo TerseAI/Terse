@@ -11,7 +11,7 @@ const runErrorSystemEventPayloadSchema = z.object({
     kind: z.literal("run_error"),
     id: z.string().trim().min(1).optional(),
     run_error_id: z.string().trim().min(1).optional(),
-    error: z.string().trim().min(1),
+    error: z.string().trim(),
     code: z.string().optional(),
     hint: z.string().optional()
 })

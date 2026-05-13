@@ -1,8 +1,9 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, WorkOSOutputConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator, verifyIntegrationIdExists } from "../../abstract/acl"
 import { getWorkOSApiKeyByIntegrationId, listWorkOSUsers } from "../workosApiClient"
 
 export const listWorkOSUsersTool = defineSessionTool({

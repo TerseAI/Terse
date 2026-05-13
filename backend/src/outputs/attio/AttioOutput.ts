@@ -4,24 +4,21 @@ import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
 import { attioListObjectsTool } from "./tools/listObjects"
-import { attioQueryRecordsTool } from "./tools/queryRecords"
-import { attioUpsertRecordTool } from "./tools/upsertRecord"
+import { attioQueryRecordsTool, validateAttioQueryRecords } from "./tools/queryRecords"
+import { attioUpsertRecordTool, validateAttioUpsertRecord } from "./tools/upsertRecord"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects" },
-            { tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records" },
-            { tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record" }
+        const toolbox = [
+            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: unrestricted },
+            { tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records", validateACL: validateAttioQueryRecords },
+            { tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record", validateACL: validateAttioUpsertRecord }
         ]
         super(OutputConfigType.ATTIO, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): AttioOutputConfig {
-        return new AttioOutputConfig("example", "people")
     }
 
     async validateConfig(output: AttioOutputConfig, _userId: string): Promise<void> {

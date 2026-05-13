@@ -1,7 +1,8 @@
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LaunchDarklyConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
 export const listLaunchDarklyFlagsTool = defineSessionTool({
@@ -237,3 +238,28 @@ export const listLaunchDarklyFlagsTool = defineSessionTool({
         }
     }
 })
+
+export const validateListLaunchDarklyFlags: ToolACLValidator<"listLaunchDarklyFlags", LaunchDarklyConfig> = ({ args, configs }) =>
+    validateLaunchDarklyArgs(args.integrationId, args.projectKey, args.environmentKeys, null, configs)
+
+export const validateLaunchDarklyArgs = (
+    integrationId: string,
+    projectKey: string,
+    environmentKeys: readonly string[] | null | undefined,
+    environmentKey: string | null | undefined,
+    configs: LaunchDarklyConfig[]
+) => {
+    const matching = findConfigsByIntegrationId(integrationId, configs)
+    const configsForProject = matching.filter(c => c.projectKey === projectKey)
+    if (configsForProject.length === 0) {
+        const allowed = Array.from(new Set(matching.map(c => c.projectKey))).join(", ") || "(none)"
+        return denyToolACL(`LaunchDarkly projectKey "${projectKey}" is not configured for integration "${integrationId}". Allowed: ${allowed}.`)
+    }
+    const allowedEnvs = Array.from(new Set(configsForProject.flatMap(c => c.environmentKeys ?? [])))
+    const envCheck = requireAllInAllowedList(environmentKeys, allowedEnvs, `environmentKeys for integration "${integrationId}" project "${projectKey}"`)
+    if (!envCheck.ok) return envCheck
+    if (environmentKey) {
+        return requireInAllowedList(environmentKey, allowedEnvs, `environmentKey for integration "${integrationId}" project "${projectKey}"`)
+    }
+    return { ok: true }
+}

@@ -14,6 +14,7 @@ import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
 import { Output } from "../../outputs/abstract/Output"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
+import { createToolACLGuardrail } from "../../outputs/abstract/acl"
 import { db } from "../../prismaClient"
 import type { BillingService } from "../../services/BillingService"
 import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../services/CacheInvalidationService"
@@ -344,10 +345,12 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         const toolsMap = new Map<string, Tool<SdkRunnerSession>>()
         for (const output of this.outputs) {
             for (const entry of output.toolbox) {
+                const aclGuardrail = createToolACLGuardrail(entry, output)
                 const toolOptions = {
                     ...entry.tool,
                     needsApproval: createNeedsApprovalFunction(entry.tool.name ?? ""),
-                    errorFunction: formatError
+                    errorFunction: formatError,
+                    ...(aclGuardrail ? { inputGuardrails: [aclGuardrail] } : {})
                 }
                 const toolEntry = tool(toolOptions as ToolOptions<ToolInputParameters, SessionWithTracking<Session>>)
                 if (toolsMap.has(toolEntry.name)) continue
