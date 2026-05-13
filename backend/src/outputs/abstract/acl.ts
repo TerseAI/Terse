@@ -27,11 +27,11 @@ export function createToolACLGuardrail<TConfig extends ConfigData>(entry: Toolbo
                     return ToolGuardrailFunctionOutputFactory.allow()
                 }
                 logger.info(`[ACL] Soft-denying tool ${toolName}`, { message: result.message })
-                return ToolGuardrailFunctionOutputFactory.rejectContent(result.message || "")
+                return rejectAsFailure(result.message || "")
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error)
                 logger.error(`[ACL] Validator for ${toolName} threw`, { error: message })
-                return ToolGuardrailFunctionOutputFactory.rejectContent(`Tool ${toolName} blocked: ACL check failed (${message})`)
+                return rejectAsFailure(`Tool ${toolName} blocked: ACL check failed (${message})`)
             }
         }
     })
@@ -47,7 +47,12 @@ function checkIntegrationIdGuardrail(args: unknown, configs: ConfigData[], toolN
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (idCheck.ok) return null
     logger.info(`[ACL] Unknown integrationId for ${toolName}`, { message: idCheck.message })
-    return ToolGuardrailFunctionOutputFactory.rejectContent(idCheck.message || "")
+    return rejectAsFailure(idCheck.message || "")
+}
+
+// Wraps the rejection in a structured-failure payload so downstream parsing (extractStructuredFailure) marks the tool call as failed in the UI.
+function rejectAsFailure(message: string) {
+    return ToolGuardrailFunctionOutputFactory.rejectContent(JSON.stringify({ success: false, text: message }))
 }
 
 export function requireValueInAnyConfig<T extends ConfigData>(args: {
