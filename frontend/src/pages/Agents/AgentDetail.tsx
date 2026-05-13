@@ -8,9 +8,7 @@ import { AgentNotificationSettings, AgentPrompt, TransientAgentOutput, Transient
 import BreadCrumb from "../../components/BreadCrumb"
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { useAgent } from "../../hooks/api/useAgents"
-import { useTemplates } from "../../hooks/api/useTemplates"
 import { FeatureFlags, useFeatureFlag } from "../../hooks/useFeatureFlag"
-import { useTemplateHydration } from "../../hooks/useTemplateHydration"
 import { toTransientAgentOutput, toTransientAgentTrigger } from "../../utility/AgentUtils"
 
 import SdkJobDetail from "./SdkJobDetail"
@@ -21,7 +19,7 @@ import AgentSetupTab, { AgentSetupTabProps } from "./tabs/AgentSetupTab"
 const AGENT_DETAIL_TABS = ["setup", "history", "improvements"] as const
 
 function AgentDetail() {
-    const { id, templateId } = useParams<{ id: string; templateId: string }>()
+    const { id } = useParams<{ id: string }>()
     const [searchParams, setSearchParams] = useSearchParams()
 
     // Only pass agentId if it's not "new"
@@ -33,15 +31,6 @@ function AgentDetail() {
 
     // Fetch agent data using useSWR
     const { agent, isLoading: isFetching, isError: agentFetchError, mutate } = useAgent(agentId)
-
-    // Fetch templates for template hydration
-    const { templates, isLoading: isLoadingTemplates } = useTemplates()
-
-    // Hydrate from template if templateId is provided
-    const { hydratedState: templateHydratedState, templateFound } = useTemplateHydration(templateId, templates)
-
-    // Track if we've already hydrated from a template to avoid re-hydration
-    const [templateHydrated, setTemplateHydrated] = useState<string | null>(null)
 
     // Local state for editing - use transient types for the editing interface
     const [name, setName] = useState<string | null>(null)
@@ -58,37 +47,7 @@ function AgentDetail() {
 
     // Sync local state with fetched data - convert from AgentTrigger/Output to Transient types
     useEffect(() => {
-        if (!agentId) {
-            // Check if we need to hydrate from a template
-            if (templateId && templateFound && templateHydratedState && templateHydrated !== templateId) {
-                // Hydrate from template
-                setName(templateHydratedState.name)
-                setPrompt(templateHydratedState.prompt)
-                setIsActive(templateHydratedState.isActive)
-                setRequireApproval(templateHydratedState.requireApproval)
-                setToolApprovals(templateHydratedState.toolApprovals || [])
-                setInputs(templateHydratedState.inputs)
-                setOutputs(templateHydratedState.outputs)
-                setNotificationSettings(templateHydratedState.notificationSettings)
-                setTemplateHydrated(templateId)
-                return
-            }
-
-            // Reset to blank state for new agent (no template)
-            if (!templateId || templateHydrated === templateId) {
-                // Only reset if there's no template or we've already handled it
-                if (!templateId) {
-                    setName(null)
-                    setInputs([])
-                    setOutputs([])
-                    setPrompt(undefined)
-                    setIsActive(true)
-                    setRequireApproval(false)
-                    setToolApprovals([])
-                    setNotificationSettings({ enabled: false, actionTypes: [] })
-                }
-            }
-        } else if (agent) {
+        if (agent) {
             setName(agent.name)
             setInputs(agent.triggers.map(toTransientAgentTrigger))
             setOutputs(agent.outputs ? agent.outputs.map(toTransientAgentOutput) : [])
@@ -98,7 +57,7 @@ function AgentDetail() {
             setToolApprovals(agent.toolApprovals || [])
             setNotificationSettings(agent.notificationSettings ?? { enabled: false, actionTypes: [] })
         }
-    }, [agent, agentId, templateId, templateFound, templateHydratedState, templateHydrated])
+    }, [agent, agentId])
 
     const getTabIndex = (queryTab: string | null) => {
         const resolvedTab = queryTab ?? "setup"
@@ -122,8 +81,7 @@ function AgentDetail() {
 
     // Determine if we're still loading
     // - For existing agents: wait for agent data
-    // - For template-based agents: wait for templates to load and hydrate
-    const isLoading = isFetching || (!!templateId && (isLoadingTemplates || !templateFound || templateHydrated !== templateId))
+    const isLoading = isFetching
 
     // Prepare props for child components
     // Note: inputs and outputs are already in TransientAgentTrigger/Output format
