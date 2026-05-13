@@ -226,15 +226,15 @@ export const Triggers = {
             return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.NOTE_DELETED }])
         },
         /** Trigger when a record is created. Pass `object` to scope to a specific Attio object. */
-        onRecordCreated<T extends GeneratedAttioObject = never>(opts?: { object: T }): TypedTrigger<AttioRecordCreatedTrigger<[T] extends [never] ? Record<string, unknown> : T["__recordValues"]>> {
+        onRecordCreated<T extends GeneratedAttioObject = never>(opts?: { object: T }): TypedTrigger<AttioRecordCreatedTrigger<[T] extends [never] ? GeneratedAttioObject["__recordValues"] : T["__recordValues"]>> {
             return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.RECORD_CREATED, filter: attioParentObjectFilter(opts?.object) }])
         },
         /** Trigger when records are merged. Pass `object` to scope to a specific Attio object. */
-        onRecordMerged<T extends GeneratedAttioObject = never>(opts?: { object: T }): TypedTrigger<AttioRecordMergedTrigger<[T] extends [never] ? Record<string, unknown> : T["__recordValues"]>> {
+        onRecordMerged<T extends GeneratedAttioObject = never>(opts?: { object: T }): TypedTrigger<AttioRecordMergedTrigger<[T] extends [never] ? GeneratedAttioObject["__recordValues"] : T["__recordValues"]>> {
             return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.RECORD_MERGED, filter: attioParentObjectFilter(opts?.object) }])
         },
         /** Trigger when a record is updated. Pass `object` to scope to a specific Attio object. */
-        onRecordUpdated<T extends GeneratedAttioObject = never>(opts?: { object: T }): TypedTrigger<AttioRecordUpdatedTrigger<[T] extends [never] ? Record<string, unknown> : T["__recordValues"]>> {
+        onRecordUpdated<T extends GeneratedAttioObject = never>(opts?: { object: T }): TypedTrigger<AttioRecordUpdatedTrigger<[T] extends [never] ? GeneratedAttioObject["__recordValues"] : T["__recordValues"]>> {
             return new AttioInputConfig("{{escape attio.id}}", [{ eventType: AttioEventType.RECORD_UPDATED, filter: attioParentObjectFilter(opts?.object) }])
         },
         /** Trigger when a record is deleted. Pass `object` to scope to a specific Attio object. */
