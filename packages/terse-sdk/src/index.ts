@@ -175,9 +175,10 @@ export type AttioNoteCreatedTrigger = SDKTrigger<_RawAttioNoteCreatedTrigger>
 export type AttioNoteContentUpdatedTrigger = SDKTrigger<_RawAttioNoteContentUpdatedTrigger>
 export type AttioNoteUpdatedTrigger = SDKTrigger<_RawAttioNoteUpdatedTrigger>
 export type AttioNoteDeletedTrigger = SDKTrigger<_RawAttioNoteDeletedTrigger>
-export type AttioRecordCreatedTrigger = SDKTrigger<_RawAttioRecordCreatedTrigger>
-export type AttioRecordMergedTrigger = SDKTrigger<_RawAttioRecordMergedTrigger>
-export type AttioRecordUpdatedTrigger = SDKTrigger<_RawAttioRecordUpdatedTrigger>
+type _AttioRecordPayload<TValues> = Omit<_RawAttioRecordCreatedTrigger["record"], "values"> & { values: TValues }
+export type AttioRecordCreatedTrigger<TValues = Record<string, unknown>> = Omit<SDKTrigger<_RawAttioRecordCreatedTrigger>, "record"> & { record: _AttioRecordPayload<TValues> }
+export type AttioRecordMergedTrigger<TValues = Record<string, unknown>> = Omit<SDKTrigger<_RawAttioRecordMergedTrigger>, "record"> & { record: _AttioRecordPayload<TValues> }
+export type AttioRecordUpdatedTrigger<TValues = Record<string, unknown>> = Omit<SDKTrigger<_RawAttioRecordUpdatedTrigger>, "record"> & { record: _AttioRecordPayload<TValues> }
 export type AttioRecordDeletedTrigger = SDKTrigger<_RawAttioRecordDeletedTrigger>
 export type AttioTaskCreatedTrigger = SDKTrigger<_RawAttioTaskCreatedTrigger>
 export type AttioTaskUpdatedTrigger = SDKTrigger<_RawAttioTaskUpdatedTrigger>

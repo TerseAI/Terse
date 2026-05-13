@@ -973,8 +973,26 @@ export class WorkOSOutputConfig extends BaseConfigInstance<IntegrationType.WORKO
     }
 }
 
+export const AttioFilterOperator = {
+    EQUALS: "equals",
+    NOT_EQUALS: "not_equals"
+} as const
+export const attioFilterOperatorSchema = z.enum(AttioFilterOperator)
+export type AttioFilterOperator = z.infer<typeof attioFilterOperatorSchema>
+
+export const attioFilterClauseSchema = z.object({
+    field: z.string(),
+    operator: attioFilterOperatorSchema,
+    value: z.union([z.string(), z.number(), z.boolean()])
+})
+export type AttioFilterClause = z.infer<typeof attioFilterClauseSchema>
+
+export const attioFilterSchema = z.union([z.object({ $and: z.array(attioFilterClauseSchema) }), z.object({ $or: z.array(attioFilterClauseSchema) })])
+export type AttioFilter = z.infer<typeof attioFilterSchema>
+
 export const attioSubscriptionSchema = z.object({
-    eventType: attioEventTypeSchema
+    eventType: attioEventTypeSchema,
+    filter: attioFilterSchema.nullish()
 })
 export type AttioSubscription = z.infer<typeof attioSubscriptionSchema>
 

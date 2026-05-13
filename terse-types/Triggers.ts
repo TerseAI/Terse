@@ -732,6 +732,18 @@ export const attioWebhookPayloadSchema = z.object({
 })
 export type AttioWebhookPayload = z.infer<typeof attioWebhookPayloadSchema>
 
+export const attioRecordPayloadSchema = z.object({
+    id: z.object({
+        workspace_id: z.string(),
+        object_id: z.string(),
+        record_id: z.string()
+    }),
+    values: z.record(z.string(), z.unknown()),
+    web_url: z.string().optional(),
+    created_at: z.string().optional()
+})
+export type AttioRecordPayload = z.infer<typeof attioRecordPayloadSchema>
+
 const attioTriggerBaseSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.ATTIO),
     eventType: attioEventTypeSchema,
@@ -785,11 +797,11 @@ export const attioNoteUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eve
 export type AttioNoteUpdatedTrigger = z.infer<typeof attioNoteUpdatedTriggerSchema>
 export const attioNoteDeletedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.NOTE_DELETED) })
 export type AttioNoteDeletedTrigger = z.infer<typeof attioNoteDeletedTriggerSchema>
-export const attioRecordCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_CREATED) })
+export const attioRecordCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_CREATED), record: attioRecordPayloadSchema })
 export type AttioRecordCreatedTrigger = z.infer<typeof attioRecordCreatedTriggerSchema>
-export const attioRecordMergedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_MERGED) })
+export const attioRecordMergedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_MERGED), record: attioRecordPayloadSchema })
 export type AttioRecordMergedTrigger = z.infer<typeof attioRecordMergedTriggerSchema>
-export const attioRecordUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_UPDATED) })
+export const attioRecordUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_UPDATED), record: attioRecordPayloadSchema })
 export type AttioRecordUpdatedTrigger = z.infer<typeof attioRecordUpdatedTriggerSchema>
 export const attioRecordDeletedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_DELETED) })
 export type AttioRecordDeletedTrigger = z.infer<typeof attioRecordDeletedTriggerSchema>

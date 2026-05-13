@@ -1,7 +1,7 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
-import { AttioSubscription, AttioTrigger, AttioWebhookEvent, AttioWebhookPayload, ConfigurationFieldDefinition, attioEventTypeSchema } from "terse-types"
+import { AttioEventType, AttioRecordPayload, AttioSubscription, AttioTrigger, AttioWebhookEvent, AttioWebhookPayload, ConfigurationFieldDefinition, attioEventTypeSchema, attioFilterSchema, attioRecordPayloadSchema } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
@@ -158,7 +158,18 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         for (let i = 0; i < payload.events.length; i++) {
             const event = payload.events[i]
             const perEventId = payload.events.length > 1 ? `${idempotencyKey}-${i}` : idempotencyKey
-            const runtime = new AttioTriggerRuntime(event, subscribedTrigger.integration_id, perEventId)
+            let runtime: AttioTriggerRuntime
+            try {
+                runtime = await AttioTriggerRuntime.create(event, subscribedTrigger.integration_id, perEventId)
+            } catch (error) {
+                logger.warn("Attio webhook: dropping event after enrichment failure", {
+                    error,
+                    eventType: event.event_type,
+                    eventId: perEventId,
+                    integrationId: subscribedTrigger.integration_id
+                })
+                continue
+            }
             const processor = new EventProcessor(runtime, user)
             const results = await processor.process()
             for (const result of results) {
@@ -381,10 +392,15 @@ export class AttioTriggerRuntime extends TriggerRuntime<AttioTrigger> {
     data: AttioTrigger
     private integrationId: string
 
-    constructor(event: AttioWebhookEvent, integrationId: string, eventId: string) {
+    private constructor(data: AttioTrigger, integrationId: string) {
         super()
-        this.data = buildAttioTrigger(event, eventId)
+        this.data = data
         this.integrationId = integrationId
+    }
+
+    static async create(event: AttioWebhookEvent, integrationId: string, eventId: string): Promise<AttioTriggerRuntime> {
+        const data = await buildAttioTrigger(event, eventId, integrationId)
+        return new AttioTriggerRuntime(data, integrationId)
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
@@ -439,7 +455,7 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
     const requestBody = {
         data: {
             target_url: buildAttioWebhookUrl(triggerId),
-            subscriptions: subscriptions.map(sub => ({ event_type: sub.eventType, filter: null }))
+            subscriptions: subscriptions.map(sub => ({ event_type: sub.eventType, filter: sub.filter ?? null }))
         }
     }
 
@@ -468,7 +484,8 @@ const attioGetWebhookResponseSchema = z.object({
     data: z.object({
         subscriptions: z.array(
             z.object({
-                event_type: attioEventTypeSchema
+                event_type: attioEventTypeSchema,
+                filter: attioFilterSchema.nullable()
             })
         )
     })
@@ -490,7 +507,32 @@ export async function fetchAttioWebhookSubscriptions(integrationId: string, webh
     }
 
     const parsed = attioGetWebhookResponseSchema.parse(await response.json())
-    return parsed.data.subscriptions.map(s => ({ eventType: s.event_type }))
+    return parsed.data.subscriptions.map(s => ({ eventType: s.event_type, filter: s.filter ?? null }))
+}
+
+const RECORD_EVENT_TYPES_WITH_PAYLOAD: ReadonlySet<string> = new Set<AttioEventType>([AttioEventType.RECORD_CREATED, AttioEventType.RECORD_UPDATED, AttioEventType.RECORD_MERGED])
+
+const attioGetRecordResponseSchema = z.object({
+    data: attioRecordPayloadSchema
+})
+
+async function fetchAttioRecord(integrationId: string, objectId: string, recordId: string): Promise<AttioRecordPayload> {
+    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
+    if (!accessToken) {
+        throw new Error("Attio access token not found")
+    }
+
+    const response = await fetch(`${ATTIO_API_BASE}/objects/${encodeURIComponent(objectId)}/records/${encodeURIComponent(recordId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+    })
+
+    if (!response.ok) {
+        const text = await response.text()
+        throw new Error(`Attio GetRecord failed: ${response.status} ${text}`)
+    }
+
+    const parsed = attioGetRecordResponseSchema.parse(await response.json())
+    return parsed.data
 }
 
 async function deleteAttioWebhook(webhookId: string, integrationId: string): Promise<void> {
@@ -513,9 +555,9 @@ async function deleteAttioWebhook(webhookId: string, integrationId: string): Pro
     logger.info("Attio DeleteWebhook succeeded", { webhookId })
 }
 
-function buildAttioTrigger(event: AttioWebhookEvent, eventId: string): AttioTrigger {
-    return {
-        integrationType: IntegrationType.ATTIO,
+async function buildAttioTrigger(event: AttioWebhookEvent, eventId: string, integrationId: string): Promise<AttioTrigger> {
+    const base = {
+        integrationType: IntegrationType.ATTIO as const,
         eventType: event.event_type,
         eventId,
         createdAt: new Date().toISOString(),
@@ -523,7 +565,17 @@ function buildAttioTrigger(event: AttioWebhookEvent, eventId: string): AttioTrig
         resourceIds: event.id,
         actor: event.actor,
         rawEvent: event as unknown as Record<string, unknown>
-    } as AttioTrigger
+    }
+
+    if (RECORD_EVENT_TYPES_WITH_PAYLOAD.has(event.event_type)) {
+        if (!event.id.object_id || !event.id.record_id) {
+            throw new Error(`Attio ${event.event_type} event missing object_id or record_id`)
+        }
+        const record = await fetchAttioRecord(integrationId, event.id.object_id, event.id.record_id)
+        return { ...base, record } as AttioTrigger
+    }
+
+    return base as AttioTrigger
 }
 
 function humanizeAttioEventType(eventType: string): string {

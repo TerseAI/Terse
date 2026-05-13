@@ -104,6 +104,7 @@ interface WorkOSSectionContext {
 interface AttioObjectContext {
     staticName: string
     apiSlug: string
+    objectId: string
     singularNoun: string
     attributeSource: string
     recordValuesType: string
@@ -620,6 +621,7 @@ function buildGeneratedAttioObjects(instances: AttioInstanceData[]): Array<Attio
         return {
             staticName,
             apiSlug: object.api_slug,
+            objectId: object.id.object_id,
             singularNoun: object.singular_noun,
             attributeSource,
             recordValuesType: renderAttioObjectValueShape(attributes, "record"),

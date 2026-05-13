@@ -16,6 +16,7 @@ export class AttioObject<
     constructor(
         public readonly apiSlug: TSlug,
         public readonly name: string,
+        public readonly objectId: string,
         public readonly attributes: readonly AttioAttributeDefinition[] = []
     ) {}
 
@@ -24,8 +25,13 @@ export class AttioObject<
 {{#if objects.length}}
 
 {{#each objects}}
-    static {{staticName}} = new AttioObject<"{{escape apiSlug}}", {{{recordValuesType}}}, {{{inputValuesType}}}>("{{escape apiSlug}}", "{{escape singularNoun}}", {{{attributeSource}}})
+    static {{staticName}} = new AttioObject<"{{escape apiSlug}}", {{{recordValuesType}}}, {{{inputValuesType}}}>("{{escape apiSlug}}", "{{escape singularNoun}}", "{{escape objectId}}", {{{attributeSource}}})
 {{/each}}
 {{/if}}
+}
+
+function attioParentObjectFilter(object: AttioObject | undefined) {
+    if (!object) return null
+    return { $and: [{ field: "parent_object_id", operator: "equals" as const, value: object.objectId }] }
 }
 
