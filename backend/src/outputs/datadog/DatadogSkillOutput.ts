@@ -4,27 +4,24 @@ import { IntegrationType } from "terse-types"
 
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
 import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
 import { listRumEventsTool } from "./tools/listRumEvents"
-import { searchDatadogLogsTool } from "./tools/searchLogs"
+import { searchDatadogLogsTool, validateSearchDatadogLogs } from "./tools/searchLogs"
 import { searchRumEventsTool } from "./tools/searchRumEvents"
 
 export class DatadogSkillOutput extends Output<DatadogConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: searchDatadogLogsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs" },
-            { tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events" },
-            { tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events" },
-            { tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events" }
+        const toolbox = [
+            { tool: searchDatadogLogsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs", validateACL: validateSearchDatadogLogs },
+            { tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events", validateACL: unrestricted },
+            { tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events", validateACL: unrestricted },
+            { tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events", validateACL: unrestricted }
         ]
 
         super(OutputConfigType.DATADOG, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): DatadogConfig {
-        return new DatadogConfig("example", ["main"])
     }
 
     async validateConfig(output: DatadogConfig, _userId: string): Promise<void> {

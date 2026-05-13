@@ -1,21 +1,17 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { GmailOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
 import { gmailSendEmailTool } from "./tools/sendEmail"
 
 export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [{ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email" }]
+        const toolbox = [{ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email", validateACL: unrestricted }]
         super(OutputConfigType.GMAIL, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): GmailOutputConfig {
-        return new GmailOutputConfig("example")
     }
 
     async validateConfig(output: GmailOutputConfig, _userId: string): Promise<void> {}

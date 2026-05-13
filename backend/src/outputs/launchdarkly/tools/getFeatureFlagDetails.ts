@@ -1,8 +1,11 @@
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LaunchDarklyConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator } from "../../abstract/acl"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
+
+import { validateLaunchDarklyArgs } from "./listFeatureFlags"
 
 export const getLaunchDarklyFlagDetailsTool = defineSessionTool({
     name: "getLaunchDarklyFlagDetails",
@@ -348,3 +351,6 @@ export const getLaunchDarklyFlagDetailsTool = defineSessionTool({
         }
     }
 })
+
+export const validateGetLaunchDarklyFlagDetails: ToolACLValidator<"getLaunchDarklyFlagDetails", LaunchDarklyConfig> = ({ args, configs }) =>
+    validateLaunchDarklyArgs(args.integrationId, args.projectKey, args.environmentKeys, args.environmentKey, configs)

@@ -1,9 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, PosthogConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator } from "../../abstract/acl"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
+
+import { validatePosthogArgs } from "./searchLogs"
 
 /**
  * Tool for querying PostHog session recordings for a specific user.
@@ -234,3 +237,5 @@ export const searchSessionsTool = defineSessionTool({
         }
     }
 })
+
+export const validateSearchPosthogSessions: ToolACLValidator<"searchPosthogSessions", PosthogConfig> = ({ args, configs }) => validatePosthogArgs(args.integrationId, args.projectId, configs)

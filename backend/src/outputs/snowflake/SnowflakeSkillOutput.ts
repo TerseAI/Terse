@@ -1,26 +1,29 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { SnowflakeOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
 import { snowflakeExecuteQueryTool } from "./tools/executeQuery"
 import { snowflakeExplainQueryTool } from "./tools/explainQuery"
 
 export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query" },
-            { tool: snowflakeExecuteQueryTool, isReadOnly: true, supportsApproval: true, integration: IntegrationType.SNOWFLAKE, displayName: "Execute query" }
+        const toolbox = [
+            { tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query", validateACL: unrestricted },
+            {
+                tool: snowflakeExecuteQueryTool,
+                isReadOnly: true,
+                supportsApproval: true,
+                integration: IntegrationType.SNOWFLAKE,
+                displayName: "Execute query",
+                validateACL: unrestricted
+            }
         ]
 
         super(OutputConfigType.SNOWFLAKE, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): SnowflakeOutputConfig {
-        return new SnowflakeOutputConfig("example")
     }
 
     async validateConfig(output: SnowflakeOutputConfig, _userId: string): Promise<void> {}

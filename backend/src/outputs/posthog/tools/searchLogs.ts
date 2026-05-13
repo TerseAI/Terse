@@ -1,8 +1,9 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, PosthogConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator, requireValueInAnyConfig } from "../../abstract/acl"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 
 /**
@@ -221,3 +222,15 @@ export const searchLogsTool = defineSessionTool({
         }
     }
 })
+
+export const validateSearchPosthogLogs: ToolACLValidator<"searchPosthogLogs", PosthogConfig> = ({ args, configs }) => validatePosthogArgs(args.integrationId, args.projectId, configs)
+
+export const validatePosthogArgs = (integrationId: string, projectId: string, configs: PosthogConfig[]) => {
+    return requireValueInAnyConfig({
+        integrationId,
+        configs,
+        label: "projectId",
+        pickAllowed: c => [c.projectId],
+        value: projectId
+    })
+}

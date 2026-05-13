@@ -1,7 +1,10 @@
+import { WebConfig } from "terse-types"
+
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { Session } from "../../../express"
 import { getWebSearchService } from "../../../services/webSearch"
 import { TypedToolOptions, defineTool } from "../../../tools/toolUtils"
+import { ToolACLValidator } from "../../abstract/acl"
 
 export const webExtractTool = defineTool({
     name: "web_extract",

@@ -1,31 +1,26 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { PosthogConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
-import { Output, ToolboxEntry } from "../abstract/Output"
+import { Output } from "../abstract/Output"
 
-import { getSessionEventsTool } from "./tools/getSessionEvents"
-import { searchEventsTool } from "./tools/searchEvents"
-import { searchLogsTool } from "./tools/searchLogs"
-import { searchSessionsTool } from "./tools/searchSessions"
+import { getSessionEventsTool, validateGetPosthogSessionEvents } from "./tools/getSessionEvents"
+import { searchEventsTool, validateSearchPosthogEvents } from "./tools/searchEvents"
+import { searchLogsTool, validateSearchPosthogLogs } from "./tools/searchLogs"
+import { searchSessionsTool, validateSearchPosthogSessions } from "./tools/searchSessions"
 
 export class PosthogSkillOutput extends Output<PosthogConfig> {
     constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: searchLogsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs" },
-            { tool: searchSessionsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions" },
-            { tool: getSessionEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events" },
-            { tool: searchEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events" }
+        const toolbox = [
+            { tool: searchLogsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs", validateACL: validateSearchPosthogLogs },
+            { tool: searchSessionsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions", validateACL: validateSearchPosthogSessions },
+            { tool: getSessionEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events", validateACL: validateGetPosthogSessionEvents },
+            { tool: searchEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events", validateACL: validateSearchPosthogEvents }
         ]
 
         super(OutputConfigType.POSTHOG, toolbox)
-    }
-
-    protected getDummyConfigForCapability(): PosthogConfig {
-        return new PosthogConfig("example", "example-project", "Example Project")
     }
 
     async validateConfig(output: PosthogConfig, _userId: string): Promise<void> {

@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, SlackOutputConfig } from "terse-types"
 
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator } from "../../abstract/acl"
 
 const SLACK_TYPES_MAP: Record<string, string> = {
     public: "public_channel",

@@ -1,9 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, PosthogConfig } from "terse-types"
 
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { ToolACLValidator } from "../../abstract/acl"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
+
+import { validatePosthogArgs } from "./searchLogs"
 
 /**
  * Tool for querying PostHog analytics events.
@@ -329,3 +332,5 @@ function formatPosthogTimestamp(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, "0")
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
 }
+
+export const validateSearchPosthogEvents: ToolACLValidator<"searchPosthogEvents", PosthogConfig> = ({ args, configs }) => validatePosthogArgs(args.integrationId, args.projectId, configs)

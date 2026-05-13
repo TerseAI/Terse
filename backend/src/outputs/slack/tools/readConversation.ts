@@ -1,11 +1,14 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, SlackOutputConfig } from "terse-types"
 
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator } from "../../abstract/acl"
+
+import { validateSlackChannelOrUser } from "./sendMessage"
 
 export const slackReadConversationTool = defineSessionTool({
     name: "slack_read_conversation",
@@ -124,3 +127,6 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
         }
     }
 })
+
+export const validateSlackReadConversation: ToolACLValidator<"slack_read_conversation", SlackOutputConfig> = ({ args, configs }) =>
+    validateSlackChannelOrUser(args.integrationId, args.channelId, null, configs)

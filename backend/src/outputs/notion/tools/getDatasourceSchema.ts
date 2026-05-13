@@ -1,10 +1,12 @@
 import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
+import { verifyNotionDatabaseInScope } from "../../../utility/notionAcl"
+import { ToolACLValidator } from "../../abstract/acl"
 
 // Helper function to build property schema with format examples
 function buildPropertySchema(propertyName: string, propertyConfig: any): any {
@@ -113,3 +115,7 @@ The schema information returned by this tool should be used to properly format p
         }
     }
 })
+
+export const validateNotionGetSchema: ToolACLValidator<"notion_get_schema", NotionConfig> = async ({ args, configs }) => {
+    return verifyNotionDatabaseInScope(args.integrationId, args.databaseId, configs)
+}

@@ -1,12 +1,13 @@
 import { LinearClient } from "@linear/sdk"
 import { IssueCreateInput } from "@linear/sdk/dist/_generated_documents"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
 
 export const linearCreateTicketTool = defineSessionTool({
     name: "linear_create_ticket",
@@ -77,3 +78,24 @@ export const linearCreateTicketTool = defineSessionTool({
         }
     }
 })
+
+export const validateLinearCreateTicket: ToolACLValidator<"linear_create_ticket", LinearOutputConfig> = ({ args, configs }) => {
+    const matching = findConfigsByIntegrationId(args.integrationId, configs)
+    const accepts = matching.some(c => {
+        if (c.teamId && args.ticket.teamId !== c.teamId) return false
+        if (c.projectId && args.ticket.projectId !== c.projectId) return false
+        return true
+    })
+    if (accepts) return { ok: true }
+    const scopes = matching
+        .map(c => {
+            const parts: string[] = []
+            if (c.teamId) parts.push(`teamId=${c.teamId}`)
+            if (c.projectId) parts.push(`projectId=${c.projectId}`)
+            return parts.length ? `{${parts.join(", ")}}` : "{workspace-wide}"
+        })
+        .join(", ")
+    return denyToolACL(
+        `Linear ticket scope (teamId=${args.ticket.teamId}, projectId=${args.ticket.projectId ?? "(none)"}) does not match any configured scope for integration "${args.integrationId}". Allowed: ${scopes}.`
+    )
+}

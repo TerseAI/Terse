@@ -1,7 +1,7 @@
 import { client, v2 } from "@datadog/datadog-api-client"
 import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { DatadogConfig, IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { Session } from "../../../express"
@@ -9,6 +9,7 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { getDatadogLogsDeepLink, getDatadogSite } from "../../../utility/datadog"
+import { ToolACLValidator, requireAllValuesInAnyConfig } from "../../abstract/acl"
 
 /**
  * Tool for querying Datadog logs with flexible filtering options.
@@ -235,3 +236,16 @@ export const searchDatadogLogsTool = defineSessionTool({
         }
     }
 })
+
+export const validateSearchDatadogLogs: ToolACLValidator<"searchDatadogLogs", DatadogConfig> = ({ args, configs }) => validateDatadogIndexes(args.integrationId, args.indexes, configs)
+
+export const validateDatadogIndexes = (integrationId: string, indexes: readonly string[] | null | undefined, configs: DatadogConfig[]) => {
+    if (!indexes || indexes.length === 0) return { ok: true }
+    return requireAllValuesInAnyConfig({
+        integrationId,
+        configs,
+        label: "indexes",
+        pickAllowed: c => c.defaultIndexes,
+        values: indexes
+    })
+}

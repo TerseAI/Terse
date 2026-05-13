@@ -1,7 +1,7 @@
 import { client, v2 } from "@datadog/datadog-api-client"
 import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { DatadogConfig, IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
 import { Session } from "../../../express"
@@ -9,6 +9,7 @@ import { getDatadogCredentialsForOrganization } from "../../../integrations/Data
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
+import { ToolACLValidator } from "../../abstract/acl"
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.
