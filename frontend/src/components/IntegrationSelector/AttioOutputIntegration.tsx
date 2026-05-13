@@ -16,14 +16,14 @@ import { InputConfigSelectorProps } from "./types"
 export function AttioOutputIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useAttioIntegrations()
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.ATTIO>(IntegrationType.ATTIO, {})
-    const currentConfig = input.config as AttioOutputConfig
+    const currentConfig = input.config as AttioOutputConfig | undefined
     const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.ATTIO_OUTPUT)
     const { objects, isLoading: isLoadingObjects } = useAttioObjects(selectedIntegrationId)
 
     function onSelectIntegration(value: string) {
         const integration = integrations.find((i: AttioIntegrationType) => i.id === value)
         if (integration) {
-            const attioConfig = new AttioOutputConfig(integration.id, currentConfig.objectSlug)
+            const attioConfig = new AttioOutputConfig(integration.id, currentConfig?.objectSlug)
             setConfig(attioConfig)
         }
     }

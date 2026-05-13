@@ -941,7 +941,7 @@ export type AttioOutputConfigInstance = AttioOutputConfigData & ConfigBehavior
 export class AttioOutputConfig extends BaseConfigInstance<IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT> implements AttioOutputConfigInstance {
     constructor(
         integrationId: string,
-        public objectSlug: string
+        public objectSlug: string | null = null
     ) {
         super(integrationId, IntegrationType.ATTIO, ConfigType.ATTIO_OUTPUT)
     }
