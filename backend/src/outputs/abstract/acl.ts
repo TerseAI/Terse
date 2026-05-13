@@ -37,17 +37,19 @@ export function createToolACLGuardrail<TConfig extends ConfigData>(entry: Toolbo
     })
 }
 
-function isToolWithIntegrationId(toolName: string): toolName is ToolNameWithIntegrationId {
-    return toolsWithIntegrationId.has(toolName as ToolName)
+function checkIntegrationIdGuardrail(args: unknown, configs: ConfigData[], toolName: string) {
+    if (!isArgsWithIntegrationId(args)) return null
+
+    const idCheck = verifyIntegrationIdExists(args.integrationId, configs)
+    if (idCheck.ok) return null
+
+    logger.info(`[ACL] Unknown integrationId for ${toolName}`, { message: idCheck.message })
+
+    return rejectAsFailure(idCheck.message || "")
 }
 
-function checkIntegrationIdGuardrail(args: unknown, configs: ConfigData[], toolName: string) {
-    if (!isToolWithIntegrationId(toolName)) return null
-    const { integrationId } = args as ToolInputByName[ToolNameWithIntegrationId]
-    const idCheck = verifyIntegrationIdExists(integrationId, configs)
-    if (idCheck.ok) return null
-    logger.info(`[ACL] Unknown integrationId for ${toolName}`, { message: idCheck.message })
-    return rejectAsFailure(idCheck.message || "")
+function isArgsWithIntegrationId(args: unknown): args is { integrationId: string } {
+    return typeof args === "object" && args !== null && "integrationId" in args
 }
 
 // Wraps the rejection in a structured-failure payload so downstream parsing (extractStructuredFailure) marks the tool call as failed in the UI.
@@ -123,10 +125,6 @@ export type ToolACLValidationResult = {
     ok: boolean
     message?: string
 }
-
-export type ToolNameWithIntegrationId = {
-    [K in ToolName]: ToolInputByName[K] extends { integrationId: string } ? K : never
-}[ToolName]
 
 export interface ToolACLValidatorParams<TName extends ToolName, TConfig extends ConfigData> {
     args: ToolInputByName[TName]
