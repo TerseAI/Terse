@@ -325,5 +325,3 @@ export const listRumEventsTool = defineSessionTool({
         }
     }
 })
-
-export const validateListRumEvents: ToolACLValidator<"listRumEvents", DatadogConfig> = ({ args, configs }) => ({ ok: true })

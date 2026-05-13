@@ -59,5 +59,3 @@ export const listWorkOSOrganizationsTool = defineSessionTool({
         }
     }
 })
-
-export const validateListWorkOSOrganizations: ToolACLValidator<"listWorkOSOrganizations", WorkOSOutputConfig> = ({ args, configs }) => ({ ok: true })

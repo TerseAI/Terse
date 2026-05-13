@@ -46,5 +46,3 @@ export const snowflakeExplainQueryTool = defineSessionTool({
         }
     }
 })
-
-export const validateSnowflakeExplainQuery: ToolACLValidator<"snowflakeExplainQuery", SnowflakeOutputConfig> = ({ args, configs }) => ({ ok: true })

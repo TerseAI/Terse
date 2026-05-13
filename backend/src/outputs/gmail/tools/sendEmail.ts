@@ -242,5 +242,3 @@ export const gmailSendEmailTool = defineSessionTool({
         }
     }
 })
-
-export const validateGmailSendEmail: ToolACLValidator<"gmail_send_email", GmailOutputConfig> = () => ({ ok: true })

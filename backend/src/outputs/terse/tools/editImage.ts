@@ -69,5 +69,3 @@ export const imageEditTool = defineSessionTool({
         }
     }
 })
-
-export const validateImageEdit: ToolACLValidator<"image_edit", ImageEditConfig> = () => ({ ok: true })

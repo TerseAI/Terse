@@ -44,5 +44,3 @@ export const linearGetUsersTool = defineSessionTool({
         }
     }
 })
-
-export const validateLinearGetUsers: ToolACLValidator<"linear_get_users", LinearOutputConfig> = () => ({ ok: true })

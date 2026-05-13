@@ -19,5 +19,3 @@ export const webExtractTool = defineTool({
         })
     }
 })
-
-export const validateWebExtract: ToolACLValidator<"web_extract", WebConfig> = () => ({ ok: true })

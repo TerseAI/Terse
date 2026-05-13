@@ -4,4 +4,4 @@ export { notionCreateOrUpdateDatabaseRowTool, validateNotionCreateOrUpdateDataba
 export { notionCreateOrUpdatePageTool, validateNotionCreateOrUpdatePage } from "./createOrUpdatePage"
 export { notionQueryPageTool, validateNotionQueryPage } from "./queryPage"
 export { notionModifyBlocksTool, validateNotionModifyBlocks } from "./modifyBlocks"
-export { notionListUsersTool, validateNotionListUsers } from "./listUsers"
+export { notionListUsersTool } from "./listUsers"

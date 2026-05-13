@@ -293,5 +293,3 @@ export const searchRumEventsTool = defineSessionTool({
         }
     }
 })
-
-export const validateSearchRumEvents: ToolACLValidator<"searchRumEvents", DatadogConfig> = ({ args, configs }) => ({ ok: true })

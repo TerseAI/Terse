@@ -119,6 +119,8 @@ export function listIntegrationIds(configs: readonly ConfigData[]): string[] {
     return Array.from(new Set(configs.map(c => c.integrationId)))
 }
 
+export const unrestricted: ToolACLValidator<any, any> = () => ({ ok: true })
+
 export type ToolACLValidator<TName extends ToolName, TConfig extends ConfigData> = (params: ToolACLValidatorParams<TName, TConfig>) => Promise<ToolACLValidationResult> | ToolACLValidationResult
 
 export type ToolACLValidationResult = {

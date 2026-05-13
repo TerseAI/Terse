@@ -4,21 +4,22 @@ import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
-import { snowflakeExecuteQueryTool, validateSnowflakeExecuteQuery } from "./tools/executeQuery"
-import { snowflakeExplainQueryTool, validateSnowflakeExplainQuery } from "./tools/explainQuery"
+import { snowflakeExecuteQueryTool } from "./tools/executeQuery"
+import { snowflakeExplainQueryTool } from "./tools/explainQuery"
 
 export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     constructor() {
         const toolbox = [
-            { tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query", validateACL: validateSnowflakeExplainQuery },
+            { tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query", validateACL: unrestricted },
             {
                 tool: snowflakeExecuteQueryTool,
                 isReadOnly: true,
                 supportsApproval: true,
                 integration: IntegrationType.SNOWFLAKE,
                 displayName: "Execute query",
-                validateACL: validateSnowflakeExecuteQuery
+                validateACL: unrestricted
             }
         ]
 

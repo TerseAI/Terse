@@ -5,19 +5,20 @@ import { IntegrationType } from "terse-types"
 import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
-import { aggregateRumEventsTool, validateAggregateRumEvents } from "./tools/aggregateRumEvents"
-import { listRumEventsTool, validateListRumEvents } from "./tools/listRumEvents"
+import { aggregateRumEventsTool } from "./tools/aggregateRumEvents"
+import { listRumEventsTool } from "./tools/listRumEvents"
 import { searchDatadogLogsTool, validateSearchDatadogLogs } from "./tools/searchLogs"
-import { searchRumEventsTool, validateSearchRumEvents } from "./tools/searchRumEvents"
+import { searchRumEventsTool } from "./tools/searchRumEvents"
 
 export class DatadogSkillOutput extends Output<DatadogConfig> {
     constructor() {
         const toolbox = [
             { tool: searchDatadogLogsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs", validateACL: validateSearchDatadogLogs },
-            { tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events", validateACL: validateListRumEvents },
-            { tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events", validateACL: validateSearchRumEvents },
-            { tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events", validateACL: validateAggregateRumEvents }
+            { tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events", validateACL: unrestricted },
+            { tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events", validateACL: unrestricted },
+            { tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events", validateACL: unrestricted }
         ]
 
         super(OutputConfigType.DATADOG, toolbox)

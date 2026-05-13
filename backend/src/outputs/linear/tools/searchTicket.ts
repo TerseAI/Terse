@@ -153,5 +153,3 @@ export const linearSearchTicketTool = defineSessionTool({
         }
     }
 })
-
-export const validateLinearSearchTicket: ToolACLValidator<"linear_search_ticket", LinearOutputConfig> = () => ({ ok: true })

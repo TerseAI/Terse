@@ -20,5 +20,3 @@ export const webResearchTool = defineSessionTool({
         }
     }
 })
-
-export const validateWebResearch: ToolACLValidator<"web_research", WebConfig> = () => ({ ok: true })

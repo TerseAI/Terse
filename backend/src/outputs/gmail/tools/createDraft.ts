@@ -233,5 +233,3 @@ export const gmailCreateDraftTool = defineSessionTool({
         }
     }
 })
-
-export const validateGmailCreateDraft: ToolACLValidator<"gmail_create_draft", GmailDraftOutputConfig> = () => ({ ok: true })

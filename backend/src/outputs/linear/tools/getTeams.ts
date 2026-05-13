@@ -44,5 +44,3 @@ export const linearGetTeamsTool = defineSessionTool({
         }
     }
 })
-
-export const validateLinearGetTeams: ToolACLValidator<"linear_get_teams", LinearOutputConfig> = () => ({ ok: true })

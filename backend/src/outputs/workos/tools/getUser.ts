@@ -57,5 +57,3 @@ export const getWorkOSUserTool = defineSessionTool({
         }
     }
 })
-
-export const validateGetWorkOSUser: ToolACLValidator<"getWorkOSUser", WorkOSOutputConfig> = ({ args, configs }) => ({ ok: true })

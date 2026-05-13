@@ -4,12 +4,13 @@ import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
-import { gmailCreateDraftTool, validateGmailCreateDraft } from "./tools/createDraft"
+import { gmailCreateDraftTool } from "./tools/createDraft"
 
 export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
     constructor() {
-        const toolbox = [{ tool: gmailCreateDraftTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft", validateACL: validateGmailCreateDraft }]
+        const toolbox = [{ tool: gmailCreateDraftTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft", validateACL: unrestricted }]
         super(OutputConfigType.GMAIL_DRAFT, toolbox)
     }
 

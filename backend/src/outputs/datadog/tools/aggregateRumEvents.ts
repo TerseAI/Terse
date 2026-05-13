@@ -289,5 +289,3 @@ export const aggregateRumEventsTool = defineSessionTool({
         }
     }
 })
-
-export const validateAggregateRumEvents: ToolACLValidator<"aggregateRumEvents", DatadogConfig> = ({ args, configs }) => ({ ok: true })

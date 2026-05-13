@@ -54,5 +54,3 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
         }
     }
 })
-
-export const validateSlackListUsers: ToolACLValidator<"slack_list_users", SlackOutputConfig> = () => ({ ok: true })

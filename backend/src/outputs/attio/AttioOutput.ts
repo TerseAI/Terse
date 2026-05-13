@@ -1,19 +1,20 @@
 import { OutputConfigType } from "@prisma/client"
-import { AttioOutputConfig, AttioOutputConfigData } from "terse-types"
+import { AttioOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import { AttioIntegrationManager } from "../../integrations/AttioIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
-import { attioListObjectsTool, validateAttioListObjects } from "./tools/listObjects"
+import { attioListObjectsTool } from "./tools/listObjects"
 import { attioQueryRecordsTool, validateAttioQueryRecords } from "./tools/queryRecords"
 import { attioUpsertRecordTool, validateAttioUpsertRecord } from "./tools/upsertRecord"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
         const toolbox = [
-            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: validateAttioListObjects },
+            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: unrestricted },
             { tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records", validateACL: validateAttioQueryRecords },
             { tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record", validateACL: validateAttioUpsertRecord }
         ]

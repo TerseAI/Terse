@@ -5,9 +5,10 @@ import { IntegrationType } from "terse-types"
 import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
-import { slackListChannelsTool, validateSlackListChannels } from "./tools/listChannels"
-import { slackListUsersTool, validateSlackListUsers } from "./tools/listUsers"
+import { slackListChannelsTool } from "./tools/listChannels"
+import { slackListUsersTool } from "./tools/listUsers"
 import { slackReadConversationTool, validateSlackReadConversation } from "./tools/readConversation"
 import { slackSendMessageTool, validateSlackSendMessage } from "./tools/sendMessage"
 
@@ -15,8 +16,8 @@ export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
         const toolbox = [
             { tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message", validateACL: validateSlackSendMessage },
-            { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users", validateACL: validateSlackListUsers },
-            { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels", validateACL: validateSlackListChannels },
+            { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users", validateACL: unrestricted },
+            { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels", validateACL: unrestricted },
             { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation }
         ]
         super(OutputConfigType.SLACK_CHANNEL, toolbox)

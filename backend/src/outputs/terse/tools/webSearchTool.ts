@@ -22,5 +22,3 @@ export const webSearchTool = defineTool({
         })
     }
 })
-
-export const validateWebSearch: ToolACLValidator<"web_search", WebConfig> = () => ({ ok: true })

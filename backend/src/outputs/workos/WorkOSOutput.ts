@@ -4,17 +4,18 @@ import { IntegrationType } from "terse-types"
 
 import { Output } from "../../outputs/abstract/Output"
 import { PrismaTransaction } from "../../types/prisma"
+import { unrestricted } from "../abstract/acl"
 
-import { getWorkOSUserTool, validateGetWorkOSUser } from "./tools/getUser"
-import { listWorkOSOrganizationsTool, validateListWorkOSOrganizations } from "./tools/listOrganizations"
-import { listWorkOSUsersTool, validateListWorkOSUsers } from "./tools/listUsers"
+import { getWorkOSUserTool } from "./tools/getUser"
+import { listWorkOSOrganizationsTool } from "./tools/listOrganizations"
+import { listWorkOSUsersTool } from "./tools/listUsers"
 
 export class WorkOSOutput extends Output<WorkOSOutputConfig> {
     constructor() {
         const toolbox = [
-            { tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users", validateACL: validateListWorkOSUsers },
-            { tool: listWorkOSOrganizationsTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List organizations", validateACL: validateListWorkOSOrganizations },
-            { tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user", validateACL: validateGetWorkOSUser }
+            { tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users", validateACL: unrestricted },
+            { tool: listWorkOSOrganizationsTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List organizations", validateACL: unrestricted },
+            { tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user", validateACL: unrestricted }
         ]
 
         super(OutputConfigType.WORKOS, toolbox)

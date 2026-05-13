@@ -75,5 +75,3 @@ Use the returned user IDs in people property format:
         }
     }
 })
-
-export const validateNotionListUsers: ToolACLValidator<"notion_list_users", NotionConfig> = () => ({ ok: true })

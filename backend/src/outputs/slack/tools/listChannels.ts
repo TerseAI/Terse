@@ -121,5 +121,3 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
         }
     }
 })
-
-export const validateSlackListChannels: ToolACLValidator<"slack_list_channels", SlackOutputConfig> = () => ({ ok: true })

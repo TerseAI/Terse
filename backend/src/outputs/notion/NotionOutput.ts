@@ -5,6 +5,7 @@ import { IntegrationType } from "terse-types"
 import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
+import { unrestricted } from "../abstract/acl"
 
 import {
     notionCreateOrUpdateDatabaseRowTool,
@@ -17,7 +18,6 @@ import {
     validateNotionCreateOrUpdateDatabaseRow,
     validateNotionCreateOrUpdatePage,
     validateNotionGetSchema,
-    validateNotionListUsers,
     validateNotionModifyBlocks,
     validateNotionQueryDatabase,
     validateNotionQueryPage
@@ -44,7 +44,7 @@ export class NotionOutput extends Output<NotionConfig> {
             },
             { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page", validateACL: validateNotionQueryPage },
             { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks", validateACL: validateNotionModifyBlocks },
-            { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users", validateACL: validateNotionListUsers }
+            { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users", validateACL: unrestricted }
         ]
         super(OutputConfigType.NOTION, toolbox)
     }

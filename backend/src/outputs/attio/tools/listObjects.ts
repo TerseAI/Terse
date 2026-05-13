@@ -71,5 +71,3 @@ export const attioListObjectsTool = defineSessionTool({
         }
     }
 })
-
-export const validateAttioListObjects: ToolACLValidator<"attio_list_objects", AttioOutputConfig> = () => ({ ok: true })
