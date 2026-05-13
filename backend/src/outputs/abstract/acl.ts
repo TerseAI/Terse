@@ -27,7 +27,7 @@ export function createToolACLGuardrail<TConfig extends ConfigData>(entry: Toolbo
                     return ToolGuardrailFunctionOutputFactory.allow()
                 }
                 logger.info(`[ACL] Soft-denying tool ${toolName}`, { message: result.message })
-                return ToolGuardrailFunctionOutputFactory.rejectContent(result.message)
+                return ToolGuardrailFunctionOutputFactory.rejectContent(result.message || "")
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error)
                 logger.error(`[ACL] Validator for ${toolName} threw`, { error: message })
@@ -47,7 +47,7 @@ function checkIntegrationIdGuardrail(args: unknown, configs: ConfigData[], toolN
     const idCheck = verifyIntegrationIdExists(integrationId, configs)
     if (idCheck.ok) return null
     logger.info(`[ACL] Unknown integrationId for ${toolName}`, { message: idCheck.message })
-    return ToolGuardrailFunctionOutputFactory.rejectContent(idCheck.message)
+    return ToolGuardrailFunctionOutputFactory.rejectContent(idCheck.message || "")
 }
 
 export function requireValueInAnyConfig<T extends ConfigData>(args: {
@@ -114,7 +114,10 @@ export function listIntegrationIds(configs: readonly ConfigData[]): string[] {
 
 export type ToolACLValidator<TName extends ToolName, TConfig extends ConfigData> = (params: ToolACLValidatorParams<TName, TConfig>) => Promise<ToolACLValidationResult> | ToolACLValidationResult
 
-export type ToolACLValidationResult = { ok: true } | { ok: false; message: string }
+export type ToolACLValidationResult = {
+    ok: boolean
+    message?: string
+}
 
 export type ToolNameWithIntegrationId = {
     [K in ToolName]: ToolInputByName[K] extends { integrationId: string } ? K : never

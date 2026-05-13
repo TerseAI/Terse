@@ -83,10 +83,6 @@ Filter syntax uses shorthand or verbose form:
 export const validateAttioQueryRecords: ToolACLValidator<"attio_query_records", AttioOutputConfig> = ({ args, configs }) => validateAttioObjectSlug(args.integrationId, args.objectSlug, configs)
 
 export const validateAttioObjectSlug = (integrationId: string, objectSlug: string, configs: AttioOutputConfig[]) => {
-    // If no config narrows objectSlug, allow.
-    const matching = findConfigsByIntegrationId(integrationId, configs)
-    const narrowing = matching.filter(c => c.objectSlug)
-    if (narrowing.length === 0) return { ok: true as const }
     return requireValueInAnyConfig({
         integrationId,
         configs,

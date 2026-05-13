@@ -261,5 +261,5 @@ export const validateLaunchDarklyArgs = (
     if (environmentKey) {
         return requireInAllowedList(environmentKey, allowedEnvs, `environmentKey for integration "${integrationId}" project "${projectKey}"`)
     }
-    return { ok: true as const }
+    return { ok: true }
 }

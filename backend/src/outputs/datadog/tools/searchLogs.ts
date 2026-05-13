@@ -240,7 +240,7 @@ export const searchDatadogLogsTool = defineSessionTool({
 export const validateSearchDatadogLogs: ToolACLValidator<"searchDatadogLogs", DatadogConfig> = ({ args, configs }) => validateDatadogIndexes(args.integrationId, args.indexes, configs)
 
 export const validateDatadogIndexes = (integrationId: string, indexes: readonly string[] | null | undefined, configs: DatadogConfig[]) => {
-    if (!indexes || indexes.length === 0) return { ok: true as const }
+    if (!indexes || indexes.length === 0) return { ok: true }
     return requireAllValuesInAnyConfig({
         integrationId,
         configs,

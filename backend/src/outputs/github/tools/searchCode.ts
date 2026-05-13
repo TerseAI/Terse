@@ -179,16 +179,19 @@ Tips:
 export const validateSearchGitHubCode: ToolACLValidator<"searchGitHubCode", GitHubConfig> = async ({ args, configs, runContext }) =>
     validateGitHubRepositoryNames(args.repositoryNames, configs, runContext)
 
+// GitHub repository names (owner/repo) are case-insensitive, so we lowercase both sides before comparison.
+const normalizeGitHubRepoName = (name: string): string => name.toLowerCase()
+
 export async function validateGitHubRepositoryNames(repositoryNames: readonly string[], configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>> | undefined) {
     const userId = runContext?.context?.user?.id
-    if (!userId) return { ok: true as const }
+    if (!userId) return { ok: true }
     const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
-    return requireAllInAllowedList(repositoryNames, Array.from(allowed), "repositoryNames")
+    return requireAllInAllowedList(repositoryNames.map(normalizeGitHubRepoName), Array.from(allowed, normalizeGitHubRepoName), "repositoryNames")
 }
 
 export async function validateGitHubRepository(repository: string, configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>> | undefined) {
     const userId = runContext?.context?.user?.id
-    if (!userId) return { ok: true as const }
+    if (!userId) return { ok: true }
     const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
-    return requireInAllowedList(repository, Array.from(allowed), "repository")
+    return requireInAllowedList(normalizeGitHubRepoName(repository), Array.from(allowed, normalizeGitHubRepoName), "repository")
 }

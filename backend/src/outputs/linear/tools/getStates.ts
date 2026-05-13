@@ -48,11 +48,11 @@ export const linearGetStatesTool = defineSessionTool({
 export const validateLinearGetStates: ToolACLValidator<"linear_get_states", LinearOutputConfig> = ({ args, configs }) => validateLinearOptionalTeam(args.integrationId, args.teamId, configs)
 
 export const validateLinearOptionalTeam = (integrationId: string, teamId: string | null | undefined, configs: LinearOutputConfig[]) => {
-    if (!teamId) return { ok: true as const }
+    if (!teamId) return { ok: true }
     const matching = findConfigsByIntegrationId(integrationId, configs)
     const narrowing = matching.filter(c => c.teamId)
-    if (narrowing.length === 0) return { ok: true as const }
-    if (narrowing.some(c => c.teamId === teamId)) return { ok: true as const }
+    if (narrowing.length === 0) return { ok: true }
+    if (narrowing.some(c => c.teamId === teamId)) return { ok: true }
     const allowed = narrowing.map(c => c.teamId).join(", ") || "(none)"
     return denyToolACL(`Linear teamId "${teamId}" is not in the configured teams for integration "${integrationId}": ${allowed}.`)
 }

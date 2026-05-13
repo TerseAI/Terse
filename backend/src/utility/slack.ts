@@ -74,6 +74,34 @@ export async function sendSlackMessage(userSlackIntegrationId: string, channelId
     }
 }
 
+/**
+ * For a DM channel id (e.g. "D…"), return the other Slack user id that the DM is with.
+ * Returns null when the channel is not a 1:1 DM, when the integration is missing, or when the API call fails.
+ */
+export async function resolveSlackDmCounterpartUser(userSlackIntegrationId: string, channelId: string): Promise<string | null> {
+    if (!channelId || !channelId.startsWith("D")) return null
+
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        where: { id: userSlackIntegrationId },
+        include: { slack_integration: true, user: true }
+    })
+
+    if (!userSlackIntegration?.slack_integration) {
+        return null
+    }
+
+    try {
+        const client = await initializeSlackWebClient(userSlackIntegration)
+        const info = await client.conversations.info({ channel: channelId })
+        const ch = info.channel as { is_im?: boolean; user?: string } | undefined
+        if (ch?.is_im && ch?.user) return ch.user
+        return null
+    } catch (error) {
+        logger.warn(`[resolveSlackDmCounterpartUser] Failed to resolve DM counterpart`, { error, userSlackIntegrationId, channelId })
+        return null
+    }
+}
+
 export async function resolveSlackChannelIdForDestination(userSlackIntegrationId: string, slackChannelId?: string | null, slackUserId?: string | null): Promise<string | null> {
     if (slackChannelId) {
         return slackChannelId
