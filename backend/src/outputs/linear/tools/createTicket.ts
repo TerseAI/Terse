@@ -83,7 +83,7 @@ export const validateLinearCreateTicket: ToolACLValidator<"linear_create_ticket"
     const matching = findConfigsByIntegrationId(args.integrationId, configs)
     const accepts = matching.some(c => {
         if (c.teamId && args.ticket.teamId !== c.teamId) return false
-        if (c.projectId && args.ticket.projectId && args.ticket.projectId !== c.projectId) return false
+        if (c.projectId && args.ticket.projectId !== c.projectId) return false
         return true
     })
     if (accepts) return { ok: true }
