@@ -817,11 +817,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("")
 
         if (attioGeneratedObjects.length > 0) {
-            attioPreludeLines.push("export type GeneratedAttioObject =")
-            for (const object of attioGeneratedObjects) {
-                attioPreludeLines.push(`    | typeof AttioObject.${object.staticName}`)
-            }
-            attioPreludeLines.push("")
             attioPreludeLines.push("export type AttioInputValuesByObject = {")
             for (const object of attioGeneratedObjects) {
                 const inputShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "input")
@@ -848,7 +843,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             }
             attioPreludeLines.push("}")
         } else {
-            attioPreludeLines.push("export type GeneratedAttioObject = AttioObject<string, Record<string, __AttioValue>, Record<string, __AttioValue>>")
             attioPreludeLines.push("export type AttioInputValuesByObject = Record<string, Record<string, __AttioValue>>")
             attioPreludeLines.push("export type AttioRecordValuesByObject = Record<string, Record<string, __AttioValue>>")
             attioPreludeLines.push("export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>")
