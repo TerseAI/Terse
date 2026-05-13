@@ -26,7 +26,8 @@ export default function BillingPage() {
     const timezone = getUserTimezone()
     const usageRangeLabel = formatUsageRangeLabel()
     const { billingEnabled, balance, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
-    const { buckets } = useBillingUsageBuckets({ timezone: "UTC" })
+    const usageRange = computeDefaultUsageRange()
+    const { buckets } = useBillingUsageBuckets({ timezone: "UTC", start: usageRange.start, end: usageRange.end })
     const catalogEnabled = billingEnabled !== false
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(catalogEnabled)
     const { status: billingStatus, isLoading: billingStatusLoading } = useBillingStatus()
@@ -203,4 +204,10 @@ function formatUsageRangeLabel(): string {
     const start = today.minus({ days: 29 })
     const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
     return `${formatter.format(start.toJSDate())} - ${formatter.format(today.toJSDate())}`
+}
+
+function computeDefaultUsageRange(): { start: Date; end: Date } {
+    const end = DateTime.utc().plus({ days: 1 }).startOf("day").toJSDate()
+    const start = DateTime.fromJSDate(end).toUTC().minus({ days: 30 }).toJSDate()
+    return { start, end }
 }
