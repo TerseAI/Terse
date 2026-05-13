@@ -493,6 +493,8 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
 
 const attioGetWebhookResponseSchema = z.object({
     data: z.object({
+        target_url: z.string(),
+        status: z.string(),
         subscriptions: z.array(
             z.object({
                 event_type: attioEventTypeSchema,
@@ -518,6 +520,12 @@ export async function fetchAttioWebhookSubscriptions(integrationId: string, webh
     }
 
     const parsed = attioGetWebhookResponseSchema.parse(await response.json())
+    logger.info("Attio webhook hydration", {
+        webhookId,
+        targetUrl: parsed.data.target_url,
+        status: parsed.data.status,
+        subscriptions: parsed.data.subscriptions
+    })
     return parsed.data.subscriptions.map(s => ({ eventType: s.event_type, filter: s.filter ?? null }))
 }
 

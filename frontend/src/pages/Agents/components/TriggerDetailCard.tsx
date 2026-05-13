@@ -294,9 +294,7 @@ function AttioSubscriptionRow({ subscription, objectNameById }: { subscription: 
         <div className="flex flex-wrap items-center gap-1.5">
             <span className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs font-medium">{formatAttioEvent(subscription.eventType)}</span>
             {parentObjectId ? <span className="text-muted-foreground text-xs">on</span> : null}
-            {parentObjectId ? (
-                <span className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs font-medium">{objectName ?? parentObjectId}</span>
-            ) : null}
+            {parentObjectId ? <span className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs font-medium">{objectName ?? parentObjectId}</span> : null}
         </div>
     )
 }
@@ -304,7 +302,7 @@ function AttioSubscriptionRow({ subscription, objectNameById }: { subscription: 
 function parentObjectIdFromFilter(filter: AttioFilter | null): string | null {
     if (!filter) return null
     const clauses = "$and" in filter ? filter.$and : filter.$or
-    const match = clauses.find(c => c.field === "parent_object_id" && c.operator === "equals")
+    const match = clauses.find(c => (c.field === "id.object_id" || c.field === "parent_object_id") && c.operator === "equals")
     return typeof match?.value === "string" ? match.value : null
 }
 
