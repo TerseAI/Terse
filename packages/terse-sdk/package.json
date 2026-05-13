@@ -1,6 +1,6 @@
 {
     "name": "terse-sdk",
-    "version": "0.1.35",
+    "version": "0.1.38",
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

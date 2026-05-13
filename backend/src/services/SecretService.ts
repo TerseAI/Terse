@@ -2,7 +2,7 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { gcp } from "../config/settings"
 import logger from "../logger"
-import { SecretManagerClient, getSecretManagerClient, isSecretManagerNotFoundError } from "../utility/secretManagerClient"
+import { SecretManagerClient, getSecretManagerClient, isSecretManagerDestroyedError, isSecretManagerNotFoundError } from "../utility/secretManagerClient"
 
 /** System integrations that do not store secrets in GCP Secret Manager. */
 type SystemIntegration = IntegrationType.TERSE | IntegrationType.CRON_JOB
@@ -116,7 +116,7 @@ class SecretService {
             this.setCachedSecret(secretId, value)
             return value
         } catch (error) {
-            if (isSecretManagerNotFoundError(error)) {
+            if (isSecretManagerNotFoundError(error) || isSecretManagerDestroyedError(error)) {
                 return null
             }
             throw error

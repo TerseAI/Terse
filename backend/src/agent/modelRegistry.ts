@@ -40,8 +40,18 @@ export function resolveLanguageModel(modelRef: string = getDefaultModelRef()) {
 
     return {
         ...parsed,
-        model: registry.languageModel(`${parsed.providerId}:${parsed.modelId}`)
+        model: registry.languageModel(`${parsed.providerId}:${parsed.modelId}`),
+        providerData: buildProviderData(parsed.providerId)
     }
+}
+
+function buildProviderData(providerId: SupportedProvider): Record<string, unknown> {
+    if (providerId === "anthropic") {
+        // Enables Anthropic's automatic prompt caching. For some reason, this is not enabled by default
+        // (It is for OpenAI)
+        return { providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } }
+    }
+    return {}
 }
 
 function isSupportedProvider(providerId: string): providerId is SupportedProvider {

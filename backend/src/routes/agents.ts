@@ -314,6 +314,9 @@ async function updateAgentForUser(userId: string, organizationId: string, agentI
                 data: {
                     ...(name !== undefined && { name }),
                     ...(isActive !== undefined && { is_active: isActive }),
+                    // When the user manually re-enables an agent, reset the
+                    // consecutive failure counter so they get a fresh strike window.
+                    ...(isActive === true && { consecutive_failures: 0 }),
                     ...(requireApproval !== undefined && {
                         require_approval: requireApproval
                     })
@@ -409,7 +412,9 @@ async function updateAgentForUser(userId: string, organizationId: string, agentI
             }
         }
 
-        await upsertNotificationSettings(tx, agentId, userId, notificationSettings ?? null)
+        if (notificationSettings !== undefined) {
+            await upsertNotificationSettings(tx, agentId, userId, notificationSettings)
+        }
 
         // Update tool approvals if provided
         if (toolApprovals !== undefined) {

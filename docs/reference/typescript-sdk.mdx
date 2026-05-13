@@ -164,6 +164,8 @@ await TerseAgent.executeTool("slack_send_message", {
 })
 ```
 
+The same tool accepts **`slackUserId`** (Slack member `U…`) to send a 1:1 DM; Terse opens the conversation if one does not exist yet. If you pass **`channelId` and `slackUserId`**, the message is sent to **`channelId`**. With codegen, prefer **`SlackUser.*.userId`** from `src/terse.generated.ts` for member ids.
+
 Use `TerseAgent.executeTool` when you want guaranteed execution of a specific tool by name (for example when the name is only known at runtime).
 
 ## `toolbox.*` (generated)
@@ -273,7 +275,7 @@ It exports:
 
 - **`Triggers`**: per-integration trigger builders (when connected), including **`Triggers.heyReach`** when HeyReach is connected, plus **`Triggers.schedule`**, **`Triggers.webhook`**, and **`Triggers.webMonitor`**
 - **`Skills`**: per-integration skill factories (when connected) plus built-in **`Skills.web()`** and **`Skills.imageEdit()`**
-- Workspace resource constants (for example **`Repos`**, **`SlackChannel`**, **`AttioObject.*`** statics) and other typed prelude exports your workspace needs
+- Workspace resource constants (for example **`Repos`**, **`SlackChannel`**, **`SlackUser`**, **`AttioObject.*`** statics) and other typed prelude exports your workspace needs
 - **`toolbox`**: deterministic tool wrappers without an agent or **`skills`** filter
 - Deterministic tool wrappers on **`TerseAgent`** via `agent.tools.*` (filtered by **`skills`**)
 

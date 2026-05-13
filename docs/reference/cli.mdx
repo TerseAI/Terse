@@ -312,7 +312,7 @@ terse generate
 | Skill constructors          | `Skills.github()`, `Skills.slack()`, `Skills.attio()`                                       |
 | Deterministic tool wrappers | `toolbox.slack.sendMessage()` (no `TerseAgent`, not limited by **skills**), `agent.tools.slack.sendMessage()` (same tools, limited by **skills**) |
 
-Each integration generates typed helpers from real workspace data such as repositories, channels, lists, projects, and tool definitions, so your workflows reference actual resources instead of raw ids.
+Each integration generates typed helpers from real workspace data such as repositories, Slack channels and members, lists, projects, and tool definitions, so your workflows reference actual resources instead of raw ids.
 
 TypeScript projects also get **`Triggers.webhook`** from `src/terse.generated.ts`. Pass a type argument to `Triggers.webhook.onRequest<YourBodyType>()` so `onTrigger` and `filter` infer `WebhookTrigger<YourBodyType>` for `event.body`. See [Webhook trigger](/reference/triggers#webhook).
 

@@ -60,7 +60,14 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
         }
 
         // Parse JSON body
-        const body = linearWebhookPayloadSchema.parse(rawBody)
+        let parsedJson: unknown
+        try {
+            parsedJson = JSON.parse(rawBody.toString("utf8"))
+        } catch (error) {
+            logger.error("Malformed JSON in Linear webhook body:", { error })
+            return res.sendStatus(400)
+        }
+        const body = linearWebhookPayloadSchema.parse(parsedJson)
 
         // Ack early, avoid spamming the webhook
         res.status(200).json({ received: true })

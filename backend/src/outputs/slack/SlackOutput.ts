@@ -1,4 +1,3 @@
-import { Tool } from "@openai/agents"
 import { OutputConfigType } from "@prisma/client"
 import { SlackOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
@@ -94,7 +93,7 @@ const SLACK_OUTPUT_INSTRUCTIONS = `
 === SLACK OUTPUT ===
 
 TOOLS:
-- slack_send_message: Send messages to Slack channels or DMs. Use configured channel IDs when provided, otherwise discover DM channel IDs with slack_list_channels. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
+- slack_send_message: Send messages to Slack channels or DMs. Use channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM via conversations.open; you can still discover IDs with slack_list_channels. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
 - slack_list_users: List workspace users (id and name). Use to resolve user IDs to names when needed.
 
 MESSAGE TYPES:

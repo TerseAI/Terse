@@ -1,3 +1,4 @@
+import { RunHistoryActionType } from "@prisma/client"
 import { Request, Response } from "express"
 import { TriggerConfigData } from "terse-types/Configs"
 import { SdkDeployResponseBody, User, sdkDeployRequestBodySchema } from "terse-types/types"
@@ -285,6 +286,8 @@ async function updateExistingAutomation(
 
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
 
+        await seedSdkNotificationSettings(tx, automationId)
+
         // This is a hack to preserve webhook tokens so URLs don't change on redeploy.
         // The right way to do this is to have some stable ids for the triggers so we can upsert. But that's a bigger change.
         // TODO: Figure out a way to upsert here and prevent this workaround.
@@ -339,10 +342,26 @@ async function createNewAutomation(
 
         await createTriggersForAutomation(tx, newAgent.id, triggers, organizationId, userId)
 
+        await seedSdkNotificationSettings(tx, newAgent.id)
+
         return tx.automations.findFirstOrThrow({
             where: { id: newAgent.id },
             include: { inputs: { include: getInputConfigInclude() } }
         })
+    })
+}
+
+/**
+ * SDK automations always notify on run failures. Settings are not user-configurable for now,
+ * so we overwrite on every deploy to guarantee the row exists with the expected values.
+ */
+const SDK_NOTIFICATION_ACTION_TYPES = [RunHistoryActionType.error]
+
+async function seedSdkNotificationSettings(tx: PrismaTransaction, automationId: string): Promise<void> {
+    await tx.automation_notification_settings.upsert({
+        where: { automation_id: automationId },
+        update: { enabled: true, action_types: SDK_NOTIFICATION_ACTION_TYPES },
+        create: { automation_id: automationId, enabled: true, action_types: SDK_NOTIFICATION_ACTION_TYPES }
     })
 }
 

@@ -6,13 +6,14 @@ import logger from "../logger"
 
 const GRPC_NOT_FOUND = 5
 const GRPC_ALREADY_EXISTS = 6
+const GRPC_FAILED_PRECONDITION = 9
 const SECRET_MANAGER_REQUESTS_PER_MINUTE = 600
 const SECRET_MANAGER_RATE_LIMIT_FRACTION = 0.25
 const SECRET_MANAGER_MAX_REQUESTS_PER_MINUTE = SECRET_MANAGER_REQUESTS_PER_MINUTE * SECRET_MANAGER_RATE_LIMIT_FRACTION
 const SECRET_MANAGER_MIN_INTERVAL_MS = Math.ceil(60_000 / SECRET_MANAGER_MAX_REQUESTS_PER_MINUTE)
 
 interface GrpcError {
-    code?: number
+    code?: number | string
     message?: string
 }
 
@@ -21,7 +22,15 @@ function isGrpcError(error: unknown): error is GrpcError {
 }
 
 export function isSecretManagerNotFoundError(error: unknown): boolean {
-    return isGrpcError(error) && error.code === GRPC_NOT_FOUND
+    if (!isGrpcError(error)) {
+        return false
+    }
+    // gRPC NOT_FOUND is 5; some client layers stringify the code.
+    return error.code === GRPC_NOT_FOUND || error.code === "5"
+}
+
+export function isSecretManagerDestroyedError(error: unknown): boolean {
+    return isGrpcError(error) && error.code === GRPC_FAILED_PRECONDITION && typeof error.message === "string" && error.message.includes("DESTROYED")
 }
 
 type SecretVersionCleanupReport = {
@@ -372,6 +381,11 @@ export class SecretManagerClient {
         } catch (error) {
             if (isSecretManagerNotFoundError(error)) {
                 logger.debug("Secret not found in Secret Manager", { secretId })
+                throw error
+            }
+
+            if (isSecretManagerDestroyedError(error)) {
+                logger.warn("Secret version is in DESTROYED state in Secret Manager", { secretId })
                 throw error
             }
 
