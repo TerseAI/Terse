@@ -26,7 +26,7 @@ function rowTotal(row: Row): number {
     return row.inputTokenCredits + row.outputTokenCredits + row.cachedInputCredits + row.runCredits
 }
 
-export function UsageChart({ buckets, timezone }: { buckets: UsageBucket[] | null; timezone: string }) {
+export function UsageChart({ buckets }: { buckets: UsageBucket[] | null }) {
     if (!buckets) return <UsageChartSkeleton />
 
     if (buckets.length === 0) {
@@ -39,8 +39,8 @@ export function UsageChart({ buckets, timezone }: { buckets: UsageBucket[] | nul
         )
     }
 
-    const dayFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: timezone })
-    const fullDayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: timezone })
+    const dayFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" })
+    const fullDayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
     const round2 = (n: number) => Math.round(n * 100) / 100
     const rows: Row[] = buckets
         .map(bucket => ({
