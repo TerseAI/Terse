@@ -1,10 +1,10 @@
 ---
 title: "TerseAgent"
-description: "A typed wrapper around the OpenAI Agents SDK that runs agentic loops, returns structured outputs, and enforces a strict allowlist of skills and resources."
+description: "A typed wrapper around the OpenAI Agents SDK that runs agentic loops, returns structured outputs, and enforces which integrations and resources the model can use—including validating tool arguments against your skill configuration."
 icon: "bot"
 ---
 
-`TerseAgent` is the runtime your handler uses to reason and act. It wraps the [OpenAI Agents SDK](https://openai.github.io/openai-agents-js/) under the hood, so you get the same agentic loop, tool-calling, and streaming model. On top of that, it adds the things workflows actually need: typed deterministic tool wrappers, structured outputs validated with `zod`, and a strict allowlist that prevents the model from touching anything you didn't explicitly grant.
+`TerseAgent` is the runtime your handler uses to reason and act. It wraps the [OpenAI Agents SDK](https://openai.github.io/openai-agents-js/) under the hood, so you get the same agentic loop, tool-calling, and streaming model. On top of that, it adds the things workflows actually need: typed deterministic tool wrappers, structured outputs validated with `zod`, and access rules so the model only reaches integrations and resources you declared in **`skills`**—with extra checks on each model-driven tool call (see below).
 
 You create one inside `onTrigger` with `TerseAgent.create()` and then either call tools deterministically, hand off to the model with `run()` / `runAndWait()`, or both.
 
@@ -74,17 +74,18 @@ if (scored.nextAction === "accept") {
 
 If the model returns malformed JSON or fails schema validation, the run errors out and is recorded as **Failed** in Activity, with no half-applied side effects to your CRM.
 
-## Strict ACL on skills and resources
+## Access control on model tool calls
 
-The most important property of `TerseAgent` is what it _won't_ do. Even though the underlying OpenAI Agents SDK can call arbitrary tools, the Terse runtime enforces a strict allowlist on every model-driven tool call:
+The most important property of `TerseAgent` is what it _won't_ do. Even though the underlying OpenAI Agents SDK can call arbitrary tools, the Terse runtime constrains **model-driven** tool calls during **`run()`** and **`runAndWait()`** in two layers:
 
-- The model can only see the integrations declared in **`skills`**. If Slack isn't in `skills`, the model has no way to discover or call any Slack tool, even if your workspace has Slack connected.
-- Skill configuration further narrows the surface. `Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })` means the model can read and update records in **NewDeals** only, not your other lists or your other Attio workspaces.
-- `Slack.skill({ channel: SlackChannel.DealDesk })` pins messaging to one channel. The model can't `@here` your `#general`.
-- `GitHub.skill({ repos: [...] })` restricts code access to specific repositories.
-- Tools listed in **`toolApprovals`** are paused for [human approval](/core-concepts/human-in-the-loop) before execution.
+- **Which tools exist for the model:** The model only receives tools for integrations you declare in **`skills`**. If Slack is not in **`skills`**, the model cannot call Slack tools, even when Slack is connected for other code paths.
+- **Whether a specific call is allowed:** Before the backend calls a third-party API, it validates the tool arguments against your connected configuration for that run—such as allowed Slack channels, GitHub repositories, Attio lists, Notion pages or databases, Linear teams or projects, Datadog indexes, PostHog projects, and valid `integrationId` values. Arguments outside the scopes implied by your **`skills`** are rejected; those failures show up as tool errors in [Activity](/core-concepts/activity-and-observability).
 
-Tool calls outside this allowlist are rejected before any external API is touched. The same allowlist applies whether the model picks the tool or you call it through `agent.tools.*`, so the rules in your code are the rules in production.
+Skill configuration is how you declare those scopes—for example `Attio.skill({ lists: [AttioList.Pipeline.NewDeals] })`, `Slack.skill({ channel: SlackChannel.DealDesk })`, or `GitHub.skill({ repos: [...] })`.
+
+Tools listed in **`toolApprovals`** are paused for [human approval](/core-concepts/human-in-the-loop) before execution.
+
+Generated **`agent.tools.*`** only exposes integrations that appear in your **`skills`** array; use **`toolbox.*`** from `terse.generated.ts` when your handler code needs a connected integration you did not pass to **`TerseAgent.create()`**. Your code is responsible for passing the parameters you intend on deterministic paths.
 
 <CodeGroup>
 

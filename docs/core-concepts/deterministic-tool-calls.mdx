@@ -157,7 +157,7 @@ When you call `toolbox.*`, `agent.tools.*`, or `TerseAgent.executeTool`, the SDK
 Your code → SDK → POST /sdk/tool-execute → Backend resolves tool → OAuth/credentials → Integration API → Result
 ```
 
-The same tools are available to the model during `run` and `runAndWait`. The difference is only in who decides to call them.
+The same tools are available to the model during `run` and `runAndWait`. The difference is only in who decides to call them. On those agentic runs, the backend also validates tool arguments against your **`skills`** configuration (channels, repositories, lists, integration IDs, and other integration-specific limits) before calling external APIs, so a hallucinated parameter cannot leave the scope you declared in code.
 
 ## Available deterministic tools
 

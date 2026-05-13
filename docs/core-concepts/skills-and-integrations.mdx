@@ -32,17 +32,21 @@ This is the key distinction:
 |                   | Skills (model access)                                | Deterministic tools (code access)    |
 | ----------------- | ---------------------------------------------------- | ------------------------------------ |
 | **Who decides**   | The model chooses which tools to call                | Your code calls tools directly       |
-| **Controlled by** | `skills` array on `TerseAgent.create()`              | Always available via `agent.tools.*` |
-| **Scope**         | Only integrations declared as skills                 | Any connected integration            |
+| **Controlled by** | `skills` array on `TerseAgent.create()`              | `agent.tools.*` (on `TerseAgent`) or `toolbox.*` (imported from `terse.generated`) |
+| **Scope**         | Only integrations declared as skills                 | **`agent.tools.*`**: only integrations listed in **`skills`**. **`toolbox.*`**: any connected integration |
 | **Token cost**    | Tokens consumed per call                             | Zero LLM tokens                      |
 
-Deterministic tool wrappers (`agent.tools.*`) are not gated by the skills list. If you have Slack connected and generated, you can always call `agent.tools.slack.sendMessage()` from your handler code, even if Slack isn't in the agent's `skills` array. The `skills` array only controls what the model sees when it's reasoning.
+`terse generate` wires **`agent.tools.*`** so it only includes integrations present in that agent's **`skills`** array. Import **`toolbox`** when you want deterministic calls to an integration you did not add to **`skills`**.
 
-This means you can be precise about the model's reach while keeping full programmatic access to all your integrations:
+This means you can be precise about the model's reach while still reaching other connected systems from code when you need to:
 
 <CodeGroup>
 
 ```ts TypeScript
+import { TerseAgent, Trigger, createJob } from "terse-sdk"
+
+import { Attio, AttioList, Schedule, SlackChannel, toolbox } from "./terse.generated"
+
 createJob({
     name: "weekly-digest",
     triggers: [Schedule.cron("0 9 * * 1")],
@@ -55,8 +59,8 @@ createJob({
         // Agentic: model can only use Attio (the declared skill)
         const summary = await agent.runAndWait("Summarize this week's pipeline activity.")
 
-        // Deterministic: code can always call Slack directly
-        await agent.tools.slack.sendMessage({
+        // Deterministic: Slack is not in skills, so use toolbox (not agent.tools)
+        await toolbox.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
             message: summary
         })
@@ -68,7 +72,7 @@ createJob({
 
 ## Skill configuration
 
-Some skills accept configuration that scopes what the model sees or where it acts:
+Some skills accept configuration that scopes what the model can use and what counts as in-bounds for model-driven tool calls:
 
 | Skill               | Configuration | Effect                                               |
 | ------------------- | ------------- | ---------------------------------------------------- |
