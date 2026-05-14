@@ -1,19 +1,23 @@
 import { log } from "@clack/prompts"
-import { confirm } from "@inquirer/prompts"
+import { confirm, select } from "@inquirer/prompts"
 import chalk from "chalk"
-import type { DeviceTokenExchangeResponse } from "terse-types"
+import type { DeviceTokenExchangeResponse, IdentifyResponse, SdkOrganizationsListResponse } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
-import { BACKEND_URL, WORKOS_CLIENT_ID } from "../config.js"
+import { BACKEND_URL, FRONTEND_URL, WORKOS_CLIENT_ID } from "../config.js"
 import { openUrlInBrowser } from "../openBrowser.js"
-import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setStoredApiKey } from "../userConfig.js"
+import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setActiveOrgToken } from "../userConfig.js"
+
+import { resolveApiKeyForOrg } from "./authOrg.js"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"
 const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code"
+const ORG_CREATE_PATH = "/app/organizations/create"
+const IDENTIFY_POLL_INTERVAL_MS = 3000
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
@@ -75,11 +79,42 @@ async function pollForTokens(deviceCode: string, expiresIn: number, interval: nu
     throw new Error("Authorization timed out — please try again")
 }
 
-async function exchangeForApiKey(accessToken: string): Promise<DeviceTokenExchangeResponse> {
-    const res = await fetch(`${BACKEND_URL}/sdk/auth/device-token-exchange`, {
+class JwtRejectedError extends Error {
+    constructor() {
+        super("WorkOS session expired")
+    }
+}
+
+async function identifyWithJwt(accessToken: string): Promise<IdentifyResponse> {
+    const res = await fetch(`${BACKEND_URL}/sdk/auth/identify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessToken })
+    })
+    if (res.status === 401) {
+        throw new JwtRejectedError()
+    }
+    if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
+        throw new Error(`${res.status} — ${body.error || "Failed to identify"}`)
+    }
+    return res.json() as Promise<IdentifyResponse>
+}
+
+async function waitForOrganizationCreation(accessToken: string, deadline: number): Promise<IdentifyResponse> {
+    while (Date.now() < deadline) {
+        await sleep(IDENTIFY_POLL_INTERVAL_MS)
+        const result = await identifyWithJwt(accessToken)
+        if (result.organizations.length > 0) return result
+    }
+    throw new Error("Timed out waiting for organization creation. Run `terse auth login` again once your organization is set up.")
+}
+
+async function exchangeForApiKey(accessToken: string, organizationId: string): Promise<DeviceTokenExchangeResponse> {
+    const res = await fetch(`${BACKEND_URL}/sdk/auth/device-token-exchange`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken, organizationId })
     })
 
     if (!res.ok) {
@@ -90,7 +125,15 @@ async function exchangeForApiKey(accessToken: string): Promise<DeviceTokenExchan
     return res.json() as Promise<DeviceTokenExchangeResponse>
 }
 
-async function login(): Promise<{ apiKey: string; displayName: string | null } | null> {
+async function pickOrganization(orgs: IdentifyResponse["organizations"]): Promise<string> {
+    if (orgs.length === 1) return orgs[0].id
+    return select({
+        message: "Select an organization for this CLI session",
+        choices: orgs.map(o => ({ name: `${o.name}  ${chalk.dim(o.id)}`, value: o.id }))
+    })
+}
+
+async function login(): Promise<{ apiKey: string; displayName: string | null; organizationId: string; organizationName: string } | null> {
     const s = createSpinner()
     s.start("Requesting login code")
 
@@ -113,21 +156,118 @@ async function login(): Promise<{ apiKey: string; displayName: string | null } |
     let tokenData: TokenResponse
     try {
         tokenData = await pollForTokens(deviceData.device_code, deviceData.expires_in, deviceData.interval)
-        s.message("Exchanging token")
     } catch (err: any) {
         s.stop("Login failed")
         console.error(chalk.red(`  ${err.message}`))
         return null
     }
 
+    const jwtDeadline = Date.now() + 5 * 60 * 1000
+
+    s.message("Loading your organizations")
+    let identity: IdentifyResponse
     try {
-        const exchangeData = await exchangeForApiKey(tokenData.access_token)
-        s.stop(`Logged in as ${exchangeData.user.displayName || exchangeData.user.email}`)
-        return { apiKey: exchangeData.apiKey, displayName: exchangeData.user.displayName }
+        identity = await identifyWithJwt(tokenData.access_token)
+    } catch (err: any) {
+        s.stop("Login failed")
+        if (err instanceof JwtRejectedError) {
+            console.error(chalk.red("  WorkOS session expired before we could load your account. Run `terse auth login` again."))
+        } else {
+            console.error(chalk.red(`  ${err.message}`))
+        }
+        return null
+    }
+
+    if (identity.organizations.length === 0) {
+        s.stop("Account ready — finish setup in your browser")
+        const orgCreateUrl = `${FRONTEND_URL}${ORG_CREATE_PATH}`
+        openUrlInBrowser(orgCreateUrl)
+        log.info("Finish creating your organization in the browser. If the tab didn't open, visit:")
+        log.info(`  ${chalk.cyan(orgCreateUrl)}`)
+        s.start("Waiting for organization creation")
+        try {
+            identity = await waitForOrganizationCreation(tokenData.access_token, jwtDeadline)
+        } catch (err: any) {
+            s.stop("Login failed")
+            if (err instanceof JwtRejectedError) {
+                console.error(chalk.red("  WorkOS session expired before your organization was ready. Run `terse auth login` again."))
+            } else {
+                console.error(chalk.red(`  ${err.message}`))
+            }
+            return null
+        }
+    }
+
+    let organizationId: string
+    try {
+        s.stop("Organizations loaded")
+        organizationId = await pickOrganization(identity.organizations)
+        s.start("Issuing API key")
+    } catch (err: any) {
+        console.error(chalk.red(`  ${err.message}`))
+        return null
+    }
+
+    try {
+        const exchangeData = await exchangeForApiKey(tokenData.access_token, organizationId)
+        s.stop(`Logged in as ${exchangeData.user.displayName || exchangeData.user.email} · ${exchangeData.organization.name}`)
+        return {
+            apiKey: exchangeData.apiKey,
+            displayName: exchangeData.user.displayName,
+            organizationId: exchangeData.organization.id,
+            organizationName: exchangeData.organization.name
+        }
     } catch (err: any) {
         s.stop("Failed to create API key")
         console.error(chalk.red(`  ${err.message}`))
         return null
+    }
+}
+
+type AlreadyLoggedInChoice = { kind: "keep" } | { kind: "switch"; apiKey: string } | { kind: "reauth" }
+
+async function promptAlreadyLoggedInChoice(currentApiKey: string, me: MeSummary): Promise<AlreadyLoggedInChoice> {
+    let allOrgs: SdkOrganizationsListResponse | null = null
+    try {
+        allOrgs = await fetchWithAuth<SdkOrganizationsListResponse>("/sdk/me/organizations", currentApiKey)
+    } catch {
+        // Fall back to the simple confirm path below.
+    }
+
+    const activeId = allOrgs?.activeOrganizationId ?? null
+    const orgs = allOrgs?.organizations ?? []
+
+    if (orgs.length <= 1) {
+        const shouldReauth = await confirm({ message: "Log in again with a different account?", default: false })
+        return shouldReauth ? { kind: "reauth" } : { kind: "keep" }
+    }
+
+    const choice = await select<string>({
+        message: "Which organization?",
+        choices: [
+            ...orgs.map(o => ({
+                name: o.id === activeId ? `${o.name} ${chalk.dim("(current)")}` : o.name,
+                value: o.id
+            })),
+            { name: "Log in with a different account", value: "__reauth__" }
+        ],
+        default: activeId ?? orgs[0].id
+    })
+
+    if (choice === "__reauth__") return { kind: "reauth" }
+    if (choice === activeId) return { kind: "keep" }
+
+    const picked = orgs.find(o => o.id === choice)!
+    const s = createSpinner()
+    s.start(`Switching to ${picked.name}`)
+    try {
+        const newKey = await resolveApiKeyForOrg(picked.id, picked.name, currentApiKey)
+        setActiveOrgToken(picked.id, newKey, picked.name)
+        s.stop(`Switched to ${picked.name}`)
+        return { kind: "switch", apiKey: newKey }
+    } catch (err: any) {
+        s.stop(`Failed to switch: ${err.message}`)
+        throw err
     }
 }
 
@@ -140,17 +280,25 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
     if (stored) {
         const s = createSpinner()
         s.start("Checking existing API key")
-        const existingName = await fetchDisplayNameForKey(stored)
-        if (existingName) {
-            s.stop(`Already logged in as ${existingName}`)
-            if (skipPrompts) return { apiKey: stored, displayName: existingName }
-            const shouldContinue = await confirm({ message: "Log in again with a different account?", default: false })
-            if (!shouldContinue) return { apiKey: stored, displayName: existingName }
+        const me = await fetchMeForKey(stored)
+        if (me) {
+            const orgLabel = me.organization?.name ?? "(no organization)"
+            s.stop(`Already logged in as ${me.displayName} · ${orgLabel}`)
+            if (skipPrompts) return { apiKey: stored, displayName: me.displayName }
+
+            const next = await promptAlreadyLoggedInChoice(stored, me)
+            if (next.kind === "keep") {
+                return { apiKey: stored, displayName: me.displayName }
+            }
+            if (next.kind === "switch") {
+                return { apiKey: next.apiKey, displayName: me.displayName }
+            }
+            // next.kind === "reauth" — fall through to device-code login
         } else {
             s.stop("Existing API key is invalid or expired")
             if (!canFallToDeviceLogin) {
                 throw new CliError("not_authenticated", "Stored credentials are invalid or expired.", {
-                    detail: 'Run "terse login" to refresh them.',
+                    detail: 'Run "terse auth login" to refresh them.',
                     actionRequired: true,
                     exitCode: ErrorCode.BAD_ARGUMENTS
                 })
@@ -158,7 +306,7 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
         }
     } else if (!canFallToDeviceLogin) {
         throw new CliError("not_authenticated", "Not authenticated.", {
-            detail: 'Run "terse login" first, then retry.',
+            detail: 'Run "terse auth login" first, then retry.',
             actionRequired: true,
             exitCode: ErrorCode.BAD_ARGUMENTS
         })
@@ -166,30 +314,37 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
 
     const result = await login()
     if (!result?.apiKey) {
-        log.info("You can run `terse login` later to authenticate.")
+        log.info("You can run `terse auth login` later to authenticate.")
         return null
     }
 
-    setStoredApiKey(result.apiKey)
+    setActiveOrgToken(result.organizationId, result.apiKey, result.organizationName)
     log.info(chalk.dim(`Saved credentials to ${getAuthFilePath()}`))
 
-    return result
-}
-
-async function getExistingAuthenticatedUserName(): Promise<string | null> {
-    const stored = getStoredApiKey()
-    if (!stored) return null
-    return fetchDisplayNameForKey(stored)
+    return { apiKey: result.apiKey, displayName: result.displayName }
 }
 
 export function logout(): boolean {
     return clearStoredApiKey()
 }
 
-async function fetchDisplayNameForKey(apiKey: string): Promise<string | null> {
+type MeSummary = {
+    displayName: string
+    organization: { id: string; name: string } | null
+}
+
+async function fetchMeForKey(apiKey: string): Promise<MeSummary | null> {
     try {
-        const me = await fetchWithAuth<{ displayName?: string | null; firstName?: string | null; email?: string | null }>("/sdk/me", apiKey)
-        return me.displayName || me.firstName || me.email || "Unknown user"
+        const me = await fetchWithAuth<{
+            displayName?: string | null
+            firstName?: string | null
+            email?: string | null
+            organization?: { id: string; name: string } | null
+        }>("/sdk/me", apiKey)
+        return {
+            displayName: me.displayName || me.firstName || me.email || "Unknown user",
+            organization: me.organization ?? null
+        }
     } catch {
         return null
     }
@@ -198,7 +353,8 @@ async function fetchDisplayNameForKey(apiKey: string): Promise<string | null> {
 export async function getProjectAttachedUserName(targetDir: string): Promise<string | null> {
     const projectKey = readApiKeyFromDir(targetDir)
     if (!projectKey) return null
-    return fetchDisplayNameForKey(projectKey)
+    const me = await fetchMeForKey(projectKey)
+    return me?.displayName ?? null
 }
 
 // Types
