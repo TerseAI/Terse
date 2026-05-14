@@ -32,6 +32,8 @@ Import these from `terse-sdk`:
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 - `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
 
+The **`terse-types`** package (install separately) holds shared Zod schemas and TypeScript types for Terse **dashboard and billing HTTP APIs**. Those contracts are **not** re-exported from **`terse-sdk`**, which stays focused on workflow runtime (`createJob`, `Terse`, `TerseAgent`, triggers, and related types).
+
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
 ```bash
@@ -284,3 +286,15 @@ It exports:
 ## Bring your own API
 
 Call REST endpoints from `onTrigger` with **`fetch`** (or your HTTP client of choice), then pass results into **`TerseAgent.runAndWait`** or deterministic **`agent.tools.*`** / **`TerseAgent.executeTool`** calls. Pair that with **`Triggers.webhook.onRequest`** when an external system should start the workflow, and use **`Skills.web()`** when you want the built-in web research tools on the agent.
+
+When you call **Terse app APIs** (the same JSON routes the dashboard uses under your API base URL), align request shapes with **`terse-types`** exports such as **`billingUsageBucketsQuerySchema`** and **`BillingUsageBucketsQuery`** instead of guessing query parameters.
+
+### Billing usage buckets
+
+`GET /billing/usage-buckets` (see **`ApiRoutes.BILLING.USAGE_BUCKETS`** in **`terse-types`**) returns time-bucketed usage for billing charts. Integrations and scripts must send:
+
+- **`start`** and **`end`**: required; each is parsed as a date; **`start`** must be strictly before **`end`**
+- Range length: at most **90 days** between **`start`** and **`end`** (constant **`MAX_BILLING_USAGE_RANGE_DAYS`**)
+- **`timezone`**: optional query string; when omitted, **`terse-types`** applies its default billing timezone. The Terse app requests **UTC** for this route so the **Billing** usage chart matches **UTC** day boundaries and axis labels.
+
+The **`terse` CLI** does not wrap this route; it is relevant when you build your own admin tooling or reports against Terse with an API token.
