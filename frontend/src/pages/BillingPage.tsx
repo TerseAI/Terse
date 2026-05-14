@@ -24,9 +24,10 @@ import { useBillingStatus } from "../hooks/api/useBillingStatus"
 
 export default function BillingPage() {
     const timezone = getUserTimezone()
-    const usageRangeLabel = formatUsageRangeLabel(timezone)
+    const usageRangeLabel = formatUsageRangeLabel()
     const { billingEnabled, balance, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
-    const { buckets } = useBillingUsageBuckets({ timezone })
+    const usageRange = computeDefaultUsageRange()
+    const { buckets } = useBillingUsageBuckets({ timezone: "UTC", start: usageRange.start, end: usageRange.end })
     const catalogEnabled = billingEnabled !== false
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(catalogEnabled)
     const { status: billingStatus, isLoading: billingStatusLoading } = useBillingStatus()
@@ -156,10 +157,12 @@ export default function BillingPage() {
                                 <div>
                                     <h2 className="text-sm font-medium text-foreground">Last 30 days</h2>
                                 </div>
-                                <div className="text-xs text-muted-foreground sm:text-right">{usageRangeLabel}</div>
+                                <div className="text-xs text-muted-foreground sm:text-right">
+                                    {usageRangeLabel} <span className="text-muted-foreground/70">· times shown in UTC</span>
+                                </div>
                             </div>
                             <div className="px-6 py-6">
-                                <UsageChart buckets={buckets} timezone={timezone} />
+                                <UsageChart buckets={buckets} />
                             </div>
                         </section>
                     </>
@@ -196,9 +199,15 @@ function formatScheduledChange(balance: BalanceSummary): string | null {
     return `Switch to ${balance.scheduledChange.period === "yearly" ? "annual" : "monthly"} billing scheduled for ${effectiveAt}.`
 }
 
-function formatUsageRangeLabel(timezone: string): string {
-    const today = DateTime.now().setZone(timezone).startOf("day")
+function formatUsageRangeLabel(): string {
+    const today = DateTime.utc().startOf("day")
     const start = today.minus({ days: 29 })
-    const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: timezone })
-    return `${formatter.format(start.toJSDate())} - ${formatter.format(today.toJSDate())}, ${timezone}`
+    const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
+    return `${formatter.format(start.toJSDate())} - ${formatter.format(today.toJSDate())}`
+}
+
+function computeDefaultUsageRange(): { start: Date; end: Date } {
+    const end = DateTime.utc().plus({ days: 1 }).startOf("day").toJSDate()
+    const start = DateTime.fromJSDate(end).toUTC().minus({ days: 30 }).toJSDate()
+    return { start, end }
 }
