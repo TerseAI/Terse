@@ -9,6 +9,8 @@ Terse workflows combine two sources:
 - the public `terse-sdk` package
 - the generated helpers in `src/terse.generated.ts`
 
+The `terse-sdk` package exports workflow and agent-runtime types and helpers such as `createJob`, `TerseAgent`, triggers, `Terse`, session streaming, and run-history re-exports. It does **not** expose client methods or types for listing or bootstrapping **Agents** from a platform template catalog; those product flows were removed. For ready-made workflow patterns in code, see [GTM workflow templates](/templates).
+
 After `terse generate`, integration trigger builders and skill factories are grouped under top-level **`Triggers`** and **`Skills`** objects (for example `Triggers.github.onPROpened(...)`, `Triggers.heyReach.onMessageReplyReceived(...)`, `Skills.slack({ channel: ... })`). System-style helpers live there too: `Triggers.schedule.cron(...)`, `Triggers.webhook.onRequest()`, and `Triggers.webMonitor.onEvent(...)`. Prefer these namespaces instead of older per-integration root exports such as `GitHub.*`, `Slack.*`, or `Schedule.*` / `Webhook.*`.
 
 <Note>
