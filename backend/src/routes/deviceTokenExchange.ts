@@ -21,7 +21,10 @@ import { getOrCreateDbUserFromWorkOS } from "./auth"
 const featureFlagService = FeatureFlagService.getInstance()
 
 class WorkosTokenError extends Error {
-    constructor(public readonly status: number, message: string) {
+    constructor(
+        public readonly status: number,
+        message: string
+    ) {
         super(message)
     }
 }
