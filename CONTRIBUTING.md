@@ -7,14 +7,14 @@ We'd love to collaborate with you to make this vision a reality.
 
 ## License
 
-TensorZero is licensed under the [Sustainable Use License](LICENSE).
+Terse is licensed under the [Sustainable Use License](LICENSE.md).
 By contributing to this repository, you agree to license your contributions under the same license.
 
 ## Community & Support
 
-### Slack and Discord
+### Slack
 
-Join our community on [Slack](https://www.tensorzero.com/slack)
+Join our community on [Slack](https://join.slack.com/t/tersecommunity/shared_invite/zt-3y01ap0bn-VvOqz~iJW0LbJ0cTqWuAIQ).
 
 ### GitHub
 
@@ -58,7 +58,7 @@ We'd love to collaborate on examples, tutorials, and other content that showcase
 For content contributed directly to our repository, please follow the same process as code contributions.
 
 For external content (e.g. blog posts, videos, social media content), we're excited to support and amplify your work.
-Share your content in our community channels (Slack and Discord), tag us on social media, or reach out if you'd like technical review or feedback before publishing.
+Share your content in our community Slack, tag us on social media, or reach out if you'd like technical review or feedback before publishing.
 
 We're happy to provide guidance and support for both types of content to help you create high-quality resources for the Terse community.
 
@@ -173,4 +173,4 @@ Terse is a pnpm monorepo. The workspaces you'll touch most often:
 2. Run `pnpm run format` and `pnpm run build` before pushing — CI runs the same.
 3. Open a PR against `main` with a short description of what changed and why. Link any related issue or discussion.
 
-If you get stuck on setup, ping us in [Slack](https://www.tensorzero.com/slack) or open a GitHub Discussion — we'd rather unblock you early than have you fight the toolchain.
+If you get stuck on setup, ping us in [Slack](https://join.slack.com/t/tersecommunity/shared_invite/zt-3y01ap0bn-VvOqz~iJW0LbJ0cTqWuAIQ) or open a GitHub Discussion — we'd rather unblock you early than have you fight the toolchain.
