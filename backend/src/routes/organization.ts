@@ -24,15 +24,33 @@ export async function createOrganization(req: Request, res: Response) {
             })
         }
 
-        const organization = await workos.organizations.createOrganization({
-            name: name.trim()
-        })
-
-        await workos.userManagement.createOrganizationMembership({
-            organizationId: organization.id,
+        const memberships = await workos.userManagement.listOrganizationMemberships({
             userId: user.workosId,
-            roleSlug: "admin"
+            statuses: ["active"]
         })
+        const existingOrgId = memberships.data[0]?.organizationId
+
+        let organization: { id: string; name: string }
+        if (existingOrgId) {
+            organization = await workos.organizations.updateOrganization({
+                organization: existingOrgId,
+                name: name.trim()
+            })
+            logger.info("Reused existing organization (renamed)", {
+                organizationId: existingOrgId,
+                userId: user.id,
+                name: organization.name
+            })
+        } else {
+            organization = await workos.organizations.createOrganization({
+                name: name.trim()
+            })
+            await workos.userManagement.createOrganizationMembership({
+                organizationId: organization.id,
+                userId: user.workosId,
+                roleSlug: "admin"
+            })
+        }
 
         const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
         if (!sealedSessionData) {
