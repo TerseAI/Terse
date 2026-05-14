@@ -39,7 +39,6 @@ import {
     Agent,
     AgentFileContentResponse,
     AgentFilesResponse,
-    AgentTemplate,
     type AgentTrigger,
     AgentUpdate,
     AgentsResponse,
@@ -475,11 +474,6 @@ interface BackendService {
      * Deletes an API token
      */
     deleteApiToken(id: string): Promise<void>
-
-    /**
-     * Gets all available agent templates
-     */
-    getTemplates(): Promise<AgentTemplate[]>
 
     /**
      * Fetches sample events for the given triggers (e.g. GitHub push/PR events)
@@ -1088,10 +1082,6 @@ export const BackendProvider: BackendService = {
     deleteApiToken: (id: string) => {
         const url = buildRoute(ApiRoutes.API_TOKENS.BY_ID, { id })
         return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
-    },
-
-    getTemplates: () => {
-        return axios.get<AgentTemplate[]>(`${backendBaseUrl}${ApiRoutes.TEMPLATES}`, { withCredentials: true }).then(response => response.data)
     },
 
     fetchSampleEvents: (triggers: Array<{ triggerId?: string; integrationId: string; integrationType: IntegrationType; config: AgentTrigger["config"] }>) => {

@@ -68,7 +68,6 @@ import { getSentNotifications } from "./routes/sentNotifications"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { createOrUpdateSnowflakeIntegration, getSnowflakeIntegrations } from "./routes/snowflake"
 import { getStats } from "./routes/stats"
-import { getPublicTemplates, getTemplates } from "./routes/templates"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
 import { getUserById } from "./routes/users"
 import { handleWebhookTrigger } from "./routes/webhookTrigger"
@@ -612,16 +611,6 @@ app.post(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, requireAuth([AuthKind.UserCookie, 
 
 app.patch(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     toggleImprovementsEnabled(req, res)
-})
-
-// MARK: TEMPLATES
-
-app.get(ApiRoutes.PUBLIC.TEMPLATES, async (req, res) => {
-    getPublicTemplates(req, res)
-})
-
-app.get("/templates", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getTemplates(req, res)
 })
 
 // MARK: INTEGRATIONS
