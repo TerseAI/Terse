@@ -5,14 +5,14 @@ import { billingUsageBucketsKey } from "terse-types/InvalidationKeys"
 import { BackendProvider } from "@/services/backend"
 import { getUserTimezone } from "@/utility/timezone"
 
-export function useBillingUsageBuckets(params?: Partial<BillingUsageBucketsQuery>): {
+export function useBillingUsageBuckets(params: BillingUsageBucketsQuery): {
     buckets: UsageBucket[] | null
     isLoading: boolean
     isValidating: boolean
     isError: boolean
     mutate: KeyedMutator<UsageResponse>
 } {
-    const timezone = params?.timezone ?? getUserTimezone()
+    const timezone = params.timezone ?? getUserTimezone()
     const requestParams = { ...params, timezone }
     const { data, error, isLoading, isValidating, mutate } = useSWR(billingUsageBucketsKey(requestParams), () => BackendProvider.getBillingUsageBuckets(requestParams))
 

@@ -194,8 +194,22 @@ export const billingContextQuerySchema = z.object({
 })
 export type BillingContextQuery = z.infer<typeof billingContextQuerySchema>
 
-/** Query params for GET /billing/usage-buckets (same range semantics as the chart on the billing page). */
-export const billingUsageBucketsQuerySchema = billingContextQuerySchema
+export const MAX_BILLING_USAGE_RANGE_DAYS = 90
+
+export const billingUsageBucketsQuerySchema = z
+    .object({
+        start: z.coerce.date(),
+        end: z.coerce.date(),
+        timezone: z
+            .string()
+            .trim()
+            .optional()
+            .transform(timezone => timezone || DEFAULT_BILLING_CONTEXT_TIMEZONE)
+            .refine(isValidTimezone, { message: "Invalid timezone" })
+    })
+    .refine(r => r.start.getTime() < r.end.getTime(), { message: "start must be before end" })
+    .refine(r => (r.end.getTime() - r.start.getTime()) / (24 * 60 * 60 * 1000) <= MAX_BILLING_USAGE_RANGE_DAYS, { message: `Range exceeds ${MAX_BILLING_USAGE_RANGE_DAYS}-day maximum` })
+
 export type BillingUsageBucketsQuery = z.infer<typeof billingUsageBucketsQuerySchema>
 
 export const billingUsageBucketsResponseSchema = usageResponseSchema
