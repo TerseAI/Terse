@@ -1,6 +1,10 @@
 import { IntegrationType } from "terse-types"
 import type { ConfigData, SerializedEvent, Trigger } from "terse-types"
 
+import { getEventTransform } from "./context.js"
+export { registerEventTransform } from "./context.js"
+export type { EventTransform } from "./context.js"
+
 /**
  * Lightweight interface for toolbox entries.
  * The backend's concrete ToolboxEntry (which depends on @openai/agents Tool) structurally satisfies this interface.
@@ -19,7 +23,10 @@ export type SDKTrigger<TEvent extends Trigger = Trigger> = TEvent & {
 export type InferStructuredOutput<TSchema, TFallback = string> = TSchema extends { _output: infer TOutput } ? TOutput : TFallback
 
 export function createSDKTrigger(serialized: SerializedEvent): SDKTrigger {
-    return Object.assign({}, serialized.data, {
+    const integrationType = (serialized.data as { integrationType?: string }).integrationType
+    const transform = integrationType ? getEventTransform(integrationType) : undefined
+    const data = transform ? transform(serialized.data) : serialized.data
+    return Object.assign({}, data, {
         formatForAgentRunner: () => serialized.formattedContent,
         debugLog: () => serialized.debugLog
     }) as SDKTrigger

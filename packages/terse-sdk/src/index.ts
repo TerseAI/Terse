@@ -114,7 +114,7 @@ export { SessionStreamError, openListenStream, openSessionStream } from "./sessi
 export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
 
 // Re-export SDK-specific types
-export { createSDKTrigger } from "./types.js"
+export { createSDKTrigger, registerEventTransform } from "./types.js"
 export type { ToolboxEntry, SDKTrigger, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals, InferStructuredOutput } from "./types.js"
 
 // Re-export shared types for consumer convenience
