@@ -92,7 +92,32 @@ triggers: [Triggers.linear.onIssueCreated({ team: LinearTeam.Engineering, projec
 
 ### Attio
 
-Attio record events are configured in your Terse workspace. After `terse generate`, check **`Triggers`** in `src/terse.generated.ts` for any Attio trigger helpers your connected workspace exposes.
+Connect **Attio** under **Integrations**, configure which Attio events start each workflow in the Terse app, then run **`terse generate`**. When Attio input triggers are enabled for your workspace, **`Triggers.attio`** appears in **`src/terse.generated.ts`**.
+
+Each helper maps to an **`AttioEventType`** value (also exported from **`terse-sdk`**). Use **`Triggers.attio.trigger({ eventTypes: [...], object?: … })`** when you need several event types or you pick the type at runtime. For record webhooks, pass **`object: AttioObject.YourObject`** to scope deliveries to one CRM object; omit **`object`** on **`onRecordCreated`**, **`onRecordUpdated`**, **`onRecordMerged`**, and **`onRecordDeleted`** when you want the union of every generated object’s attribute shape.
+
+| Area | Examples |
+| ---- | -------- |
+| Records | `Triggers.attio.onRecordCreated()`, `onRecordUpdated()`, `onRecordMerged()`, `onRecordDeleted()` |
+| Lists & entries | `onListCreated()`, `onListEntryCreated()`, `onListEntryUpdated()`, … |
+| Notes & comments | `onNoteCreated()`, `onCommentCreated()`, `onCommentResolved()`, … |
+| Tasks & workspace | `onTaskCreated()`, `onWorkspaceMemberCreated()`, `onCallRecordingCreated()`, … |
+
+**Event types:** Prefer the helper that matches your handler (for example **`AttioRecordCreatedTrigger`**), or **`AttioTrigger`** for the union when you use **`trigger()`**.
+
+<CodeGroup>
+```ts TypeScript
+import { Triggers } from "./terse.generated"
+
+triggers: [Triggers.attio.onRecordCreated({ object: AttioObject.People })]
+```
+</CodeGroup>
+
+<Expandable title="Event payload">
+
+Record triggers include a **`record`** object with Attio ids/slugs plus **`values`** (and related fields) shaped from your workspace’s Attio object metadata—flattened for use in **`onTrigger`** and **`filter`**. Other Attio triggers carry event-specific payloads (lists, notes, tasks, and so on). Every event still exposes **`formatForAgentRunner()`** and **`debugLog()`** from **`terse-sdk`**.
+
+</Expandable>
 
 ### Gmail
 
