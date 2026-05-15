@@ -367,8 +367,7 @@ export function SecretsSection({ projectId }: { projectId: string }) {
                         <SecretRow key={secret.name} secret={secret} onDelete={() => setPendingDelete(secret)} />
                     ))}
                     <li className="text-muted-foreground flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs">
-                        Add another with{" "}
-                        <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse secrets add &lt;NAME&gt;</code>
+                        Add another with <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse secrets add &lt;NAME&gt;</code>
                     </li>
                 </ul>
             )}
@@ -401,7 +400,9 @@ function SecretRow({ secret, onDelete }: { secret: ProjectSecretSummary; onDelet
         <li className="group hover:bg-muted/30 grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 py-3 transition-colors">
             <code className="text-foreground min-w-0 truncate font-mono text-[12px]">{secret.name}</code>
 
-            <span aria-hidden className="text-muted-foreground/60 font-mono text-[12px] tracking-wider select-none">••••••••</span>
+            <span aria-hidden className="text-muted-foreground/60 font-mono text-[12px] tracking-wider select-none">
+                ••••••••
+            </span>
 
             <Tooltip>
                 <TooltipTrigger asChild>
