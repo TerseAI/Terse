@@ -69,13 +69,17 @@ export async function attach(provider: LanguageProvider = resolveProvider(), opt
     }
 
     log.info("Reviewing integrations")
-    await listAndPromptIntegrations({ showLifecycle: false, nonInteractive })
+    await listAndPromptIntegrations({
+        showLifecycle: false,
+        nonInteractive,
+        ...(attachApiKey ? { apiKey: attachApiKey } : {})
+    })
 
     if (canGenerateFromCurrentDirectory(provider, cwd)) {
         const s = createSpinner()
         s.start("Generating code")
         try {
-            await generate(provider)
+            await generate(provider, attachApiKey ? { apiKey: attachApiKey } : undefined)
             s.stop("Generated code")
         } catch {
             s.stop(`Failed to generate code. Run ${chalk.cyan("terse generate")} manually.`)
