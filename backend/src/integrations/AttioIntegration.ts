@@ -174,7 +174,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             const perEventId = payload.events.length > 1 ? `${idempotencyKey}-${i}` : idempotencyKey
             let runtime: AttioTriggerRuntime
             try {
-                runtime = await AttioTriggerRuntime.create(event, subscribedTrigger.integration_id, perEventId)
+                runtime = await AttioTriggerRuntime.create(event, subscribedTrigger.integration_id, triggerId, perEventId)
             } catch (error) {
                 logger.warn("Attio webhook: dropping event after enrichment failure", {
                     error,
@@ -405,21 +405,25 @@ export class AttioTriggerRuntime extends TriggerRuntime<AttioTrigger> {
     readonly integrationType = IntegrationType.ATTIO
     data: AttioTrigger
     private integrationId: string
+    /** `automation_inputs.id` for the webhook URL that received this event (distinct per agent trigger). */
+    private automationInputId: string
 
-    private constructor(data: AttioTrigger, integrationId: string) {
+    private constructor(data: AttioTrigger, integrationId: string, automationInputId: string) {
         super()
         this.data = data
         this.integrationId = integrationId
+        this.automationInputId = automationInputId
     }
 
-    static async create(event: AttioWebhookEvent, integrationId: string, eventId: string): Promise<AttioTriggerRuntime> {
+    static async create(event: AttioWebhookEvent, integrationId: string, automationInputId: string, eventId: string): Promise<AttioTriggerRuntime> {
         const data = await buildAttioTrigger(event, eventId, integrationId)
-        return new AttioTriggerRuntime(data, integrationId)
+        return new AttioTriggerRuntime(data, integrationId, automationInputId)
     }
 
     matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
         if (agentTrigger.config_type !== InputConfigType.ATTIO_INPUT) return false
         if (agentTrigger.integration_id !== this.integrationId) return false
+        if (agentTrigger.id !== this.automationInputId) return false
         // Attio filters via subscriptions server-side: any event we receive is one we subscribed to.
         return true
     }
