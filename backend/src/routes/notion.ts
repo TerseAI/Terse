@@ -51,7 +51,7 @@ export const fetchNotionResources = async (organizationId: string, integrationId
         throw new Error("Notion integration not found")
     }
 
-    const integrationToken = await getSecret(IntegrationType.NOTION, integration.id, SecretField.IntegrationToken)
+    const integrationToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.NOTION, recordId: integration.id, field: SecretField.IntegrationToken } })
     if (!integrationToken) {
         throw new Error("Notion integration is missing credentials. Please reconnect.")
     }

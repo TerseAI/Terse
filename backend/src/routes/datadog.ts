@@ -89,8 +89,8 @@ export const getDatadogIndexes = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Datadog integration not found" })
         }
 
-        const apiKey = await getSecret(IntegrationType.DATADOG, integration.id, SecretField.ApiKey)
-        const appKey = await getSecret(IntegrationType.DATADOG, integration.id, SecretField.AppKey)
+        const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.ApiKey } })
+        const appKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.AppKey } })
         if (!apiKey || !appKey) {
             return res.status(400).json({ error: "Datadog integration is missing credentials. Please reconnect." })
         }

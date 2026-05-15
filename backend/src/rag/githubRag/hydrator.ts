@@ -67,7 +67,7 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
 
         let accessToken: string | null = null
         for (const token of githubTokens) {
-            const tokenAccessValue = await getSecret(IntegrationType.GITHUB, token.id, SecretField.AccessToken)
+            const tokenAccessValue = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: token.id, field: SecretField.AccessToken } })
             if (!tokenAccessValue) {
                 continue
             }

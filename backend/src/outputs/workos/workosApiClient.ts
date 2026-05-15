@@ -25,7 +25,7 @@ export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user
         return null
     }
 
-    return await getSecret(IntegrationType.WORKOS, integration.id, SecretField.ApiKey)
+    return await getSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: integration.id, field: SecretField.ApiKey } })
 }
 
 function workosForApiKey(apiKey: string): WorkOS {

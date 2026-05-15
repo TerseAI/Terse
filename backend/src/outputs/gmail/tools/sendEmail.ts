@@ -46,7 +46,7 @@ export const gmailSendEmailTool = defineSessionTool({
                 throw new Error("Failed to get Gmail access token")
             }
 
-            const refreshToken = await getSecret(IntegrationType.GMAIL, gmailIntegration.id, SecretField.RefreshToken)
+            const refreshToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: gmailIntegration.id, field: SecretField.RefreshToken } })
 
             // Set up OAuth2 client
             const oauth2Client = getOAuth2Client()

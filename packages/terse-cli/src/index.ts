@@ -19,6 +19,7 @@ import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, in
 import { listen } from "./commands/listen.js"
 import { replay } from "./commands/replay.js"
 import { run } from "./commands/run.js"
+import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./commands/secrets.js"
 import { test, testList, testRun, testShow } from "./commands/test.js"
 import { isCliRunCommandEnabled } from "./env.js"
 import { isPromptCancellationError } from "./promptErrors.js"
@@ -263,6 +264,56 @@ integrateCommand
     .option("--json", "Emit JSON")
     .action(async (type: string, opts: { timeout?: number; json?: boolean }) => {
         await integrateWait({ integrationType: type, timeoutSeconds: opts.timeout, json: opts.json })
+    })
+
+const secretsCommand = program
+    .command("secrets")
+    .description("Manage managed project secrets")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse secrets list --json
+  $ terse secrets add OPENAI_API_KEY
+  $ printf '%s' "$OPENAI_API_KEY" | terse secrets add OPENAI_API_KEY --value-stdin
+  $ terse secrets import .env --overwrite
+  $ terse secrets remove OPENAI_API_KEY --yes
+`
+    )
+
+secretsCommand
+    .command("list")
+    .description("List project secret names")
+    .option("--json", "Emit JSON")
+    .action(async (opts: JsonOpts) => {
+        await secretsList({ json: opts.json })
+    })
+
+secretsCommand
+    .command("add")
+    .description("Add or update a project secret")
+    .argument("<NAME>", "Secret environment variable name")
+    .option("--value-stdin", "Read the secret value from stdin")
+    .action(async (name: string, opts: { valueStdin?: boolean }) => {
+        await secretsAdd(name, { valueStdin: opts.valueStdin })
+    })
+
+secretsCommand
+    .command("remove")
+    .description("Remove a project secret")
+    .argument("<NAME>", "Secret environment variable name")
+    .option("--yes", "Confirm removal")
+    .action(async (name: string, opts: { yes?: boolean }) => {
+        await secretsRemove(name, { yes: opts.yes })
+    })
+
+secretsCommand
+    .command("import")
+    .description("Import project secrets from a .env file")
+    .argument("<file>", ".env-format file")
+    .option("--overwrite", "Update existing server-side secrets")
+    .action(async (file: string, opts: { overwrite?: boolean }) => {
+        await secretsImport(file, { overwrite: opts.overwrite })
     })
 
 program

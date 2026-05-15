@@ -50,6 +50,7 @@ import {
     handleRotateProjectApiKey,
     handleRotateProjectSigningSecret
 } from "./routes/project"
+import { handleDeleteProjectSecret, handleImportProjectSecrets, handleListProjectSecrets, handleUpsertProjectSecret } from "./routes/projectSecrets"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
@@ -793,6 +794,22 @@ app.post(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, requireAuth([AuthKind.UserCoo
 
 app.post(ApiRoutes.PROJECTS.ROTATE_API_KEY, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleRotateProjectApiKey(req, res)
+})
+
+app.get(ApiRoutes.PROJECT_SECRETS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleListProjectSecrets(req, res)
+})
+
+app.post(ApiRoutes.PROJECT_SECRETS.UPSERT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleUpsertProjectSecret(req, res)
+})
+
+app.delete(ApiRoutes.PROJECT_SECRETS.DELETE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleDeleteProjectSecret(req, res)
+})
+
+app.post(ApiRoutes.PROJECT_SECRETS.IMPORT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleImportProjectSecrets(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

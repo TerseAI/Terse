@@ -18,8 +18,8 @@ export async function getDatadogCredentialsByIntegrationId(integrationId: string
         return null
     }
 
-    const apiKey = await getSecret(IntegrationType.DATADOG, integration.id, SecretField.ApiKey)
-    const appKey = await getSecret(IntegrationType.DATADOG, integration.id, SecretField.AppKey)
+    const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.ApiKey } })
+    const appKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.AppKey } })
 
     if (!apiKey || !appKey) {
         logger.warn("Datadog integration is missing API key or app key", { integrationId })

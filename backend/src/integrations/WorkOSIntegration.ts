@@ -12,7 +12,7 @@ import logger from "../logger"
 import { getWorkOSUser } from "../outputs/workos/workosApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, createSecret, deleteManySecrets, getSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
@@ -33,7 +33,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         })
         return Promise.all(
             integrations.map(async i => {
-                const apiKey = await getSecret(IntegrationType.WORKOS, i.id, SecretField.ApiKey)
+                const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: i.id, field: SecretField.ApiKey } })
                 return this.enrichInstance(i.id, apiKey || "")
             })
         )
@@ -63,7 +63,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         })
         return Promise.all(
             integrations.map(async i => {
-                const apiKey = await getSecret(IntegrationType.WORKOS, i.id, SecretField.ApiKey)
+                const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: i.id, field: SecretField.ApiKey } })
                 return this.enrichInstance(i.id, apiKey || "")
             })
         )
@@ -94,7 +94,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             return
         }
 
-        const apiKey = await getSecret(IntegrationType.WORKOS, integrationId, SecretField.ApiKey)
+        const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: integrationId, field: SecretField.ApiKey } })
         const enrichedPayload = apiKey ? await enrichWorkOSEventPayload(payload, apiKey) : payload
         const event = new WorkOSTriggerRuntime(enrichedPayload, integrationId)
         const processor = new EventProcessor(event, user)
@@ -115,9 +115,9 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         // DB-first, then best-effort GSM cleanup
         await db().workos_integrations.delete({ where: { id: integrationId } })
 
-        await deleteSecretsBestEffort([
-            { integrationType: IntegrationType.WORKOS, recordId: integrationId, field: SecretField.ApiKey },
-            { integrationType: IntegrationType.WORKOS, recordId: integrationId, field: SecretField.WebhookSecret }
+        await deleteManySecrets([
+            { type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: integrationId, field: SecretField.ApiKey } },
+            { type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: integrationId, field: SecretField.WebhookSecret } }
         ])
     }
 
@@ -206,7 +206,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             let integrationId: string
 
             if (existing) {
-                const storedWebhookSecret = await getSecret(IntegrationType.WORKOS, existing.id, SecretField.WebhookSecret)
+                const storedWebhookSecret = await getSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: existing.id, field: SecretField.WebhookSecret } })
                 if (!storedWebhookSecret && !secret) {
                     return {
                         success: false,
@@ -215,9 +215,9 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                     }
                 }
 
-                await storeSecret(IntegrationType.WORKOS, existing.id, SecretField.ApiKey, apiKey)
+                await createSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: existing.id, field: SecretField.ApiKey } }, apiKey)
                 if (secret !== null) {
-                    await storeSecret(IntegrationType.WORKOS, existing.id, SecretField.WebhookSecret, secret)
+                    await createSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: existing.id, field: SecretField.WebhookSecret } }, secret)
                 }
 
                 await db().workos_integrations.update({
@@ -236,9 +236,9 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                     }
                 })
 
-                await storeSecret(IntegrationType.WORKOS, integration.id, SecretField.ApiKey, apiKey)
+                await createSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: integration.id, field: SecretField.ApiKey } }, apiKey)
                 if (secret !== null) {
-                    await storeSecret(IntegrationType.WORKOS, integration.id, SecretField.WebhookSecret, secret)
+                    await createSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: integration.id, field: SecretField.WebhookSecret } }, secret)
                 }
 
                 integrationId = integration.id
@@ -282,7 +282,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             where: { id: integrationId, organization_id: organizationId }
         })
 
-        const apiKey = workosIntegration ? await getSecret(IntegrationType.WORKOS, workosIntegration.id, SecretField.ApiKey) : null
+        const apiKey = workosIntegration ? await getSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: workosIntegration.id, field: SecretField.ApiKey } }) : null
         if (!apiKey) {
             throw new Error(`WorkOS API key not found for integration ${integrationId}`)
         }

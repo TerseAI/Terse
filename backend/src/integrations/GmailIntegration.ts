@@ -16,7 +16,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, createSecret, deleteManySecrets, getSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
@@ -130,7 +130,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
                     // Step 3: Set up Gmail client (fast, non-blocking)
                     const accessToken = await refreshAccessTokenIfNeeded(integration)
-                    const refreshToken = await getSecret(IntegrationType.GMAIL, integration.id, SecretField.RefreshToken)
+                    const refreshToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.RefreshToken } })
                     const oauth2Client = getOAuth2Client()
                     oauth2Client.setCredentials({
                         access_token: accessToken,
@@ -384,8 +384,8 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 }
             })
 
-            await storeSecret(IntegrationType.GMAIL, integration.id, SecretField.AccessToken, tokens.access_token)
-            await storeSecret(IntegrationType.GMAIL, integration.id, SecretField.RefreshToken, tokens.refresh_token)
+            await createSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.AccessToken } }, tokens.access_token)
+            await createSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.RefreshToken } }, tokens.refresh_token)
 
             logger.info(`Gmail integration activated for ${emailAddress}`, {
                 emailAddress,
@@ -409,9 +409,9 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 await tx.gmail_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([
-                    { integrationType: IntegrationType.GMAIL, recordId: integrationId, field: SecretField.AccessToken },
-                    { integrationType: IntegrationType.GMAIL, recordId: integrationId, field: SecretField.RefreshToken }
+                await deleteManySecrets([
+                    { type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integrationId, field: SecretField.AccessToken } },
+                    { type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integrationId, field: SecretField.RefreshToken } }
                 ])
             })
     }
@@ -469,7 +469,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 // Set up OAuth client with current credentials
                 const oauth2Client = getOAuth2Client()
                 const currentExpiry = updatedIntegration?.token_expiry || integration.token_expiry
-                const refreshToken = await getSecret(IntegrationType.GMAIL, integration.id, SecretField.RefreshToken)
+                const refreshToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.RefreshToken } })
                 oauth2Client.setCredentials({
                     access_token: accessToken,
                     ...(refreshToken ? { refresh_token: refreshToken } : {}),
@@ -552,7 +552,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
 
         const accessToken = await refreshAccessTokenIfNeeded(gmailIntegration)
-        const refreshToken = await getSecret(IntegrationType.GMAIL, gmailIntegration.id, SecretField.RefreshToken)
+        const refreshToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: gmailIntegration.id, field: SecretField.RefreshToken } })
         const oauth2Client = getOAuth2Client()
         oauth2Client.setCredentials({
             access_token: accessToken,
@@ -654,8 +654,8 @@ export function getOAuth2Client(): OAuth2Client {
  */
 async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): Promise<string> {
     const now = new Date()
-    const currentAccessToken = await getSecret(IntegrationType.GMAIL, integration.id, SecretField.AccessToken)
-    const refreshToken = await getSecret(IntegrationType.GMAIL, integration.id, SecretField.RefreshToken)
+    const currentAccessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.AccessToken } })
+    const refreshToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.RefreshToken } })
     if (!currentAccessToken) {
         throw new Error(`Gmail access token not found for integration ${integration.id}`)
     }
@@ -681,9 +681,9 @@ async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): 
         const { credentials } = await oauth2Client.refreshAccessToken()
 
         const newTokenExpiry = credentials.expiry_date ? new Date(credentials.expiry_date) : new Date(Date.now() + 3600 * 1000)
-        await storeSecret(IntegrationType.GMAIL, integration.id, SecretField.AccessToken, credentials.access_token!)
+        await createSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.AccessToken } }, credentials.access_token!)
         if (credentials.refresh_token) {
-            await storeSecret(IntegrationType.GMAIL, integration.id, SecretField.RefreshToken, credentials.refresh_token)
+            await createSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.RefreshToken } }, credentials.refresh_token)
         }
 
         // Update the database with new tokens
@@ -821,7 +821,7 @@ async function markMessageAsProcessed(integrationId: string, messageId: string, 
 async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistoryId: string): Promise<string[]> {
     // Refresh token if needed
     const accessToken = await refreshAccessTokenIfNeeded(integration)
-    const refreshToken = await getSecret(IntegrationType.GMAIL, integration.id, SecretField.RefreshToken)
+    const refreshToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GMAIL, recordId: integration.id, field: SecretField.RefreshToken } })
 
     const oauth2Client = getOAuth2Client()
     oauth2Client.setCredentials({

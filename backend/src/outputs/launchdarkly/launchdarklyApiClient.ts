@@ -24,5 +24,5 @@ export async function getLaunchDarklyApiKeyByIntegrationId(integrationId: string
         return null
     }
 
-    return await getSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey)
+    return await getSecret({ type: "integration", params: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id, field: SecretField.ApiKey } })
 }

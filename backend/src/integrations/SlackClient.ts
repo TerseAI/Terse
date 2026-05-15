@@ -17,15 +17,15 @@ type SlackTokenSource = {
  */
 export async function resolveSlackAccessToken(integration: SlackTokenSource): Promise<string | null> {
     if (integration.is_bot_user) {
-        return await getSecret(IntegrationType.SLACK, integration.slack_integration.id, SecretField.AccessToken)
+        return await getSecret({ type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: integration.slack_integration.id, field: SecretField.AccessToken } })
     }
 
-    const userToken = await getSecret(IntegrationType.SLACK, integration.id, SecretField.AuthedUserAccessToken)
+    const userToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: integration.id, field: SecretField.AuthedUserAccessToken } })
     if (userToken) {
         return userToken
     }
 
-    return await getSecret(IntegrationType.SLACK, integration.slack_integration.id, SecretField.AccessToken)
+    return await getSecret({ type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: integration.slack_integration.id, field: SecretField.AccessToken } })
 }
 
 export async function initializeSlackWebClient(integration: SlackTokenSource): Promise<WebClient> {

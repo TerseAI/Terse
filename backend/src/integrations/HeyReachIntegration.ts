@@ -9,7 +9,7 @@ import { z } from "zod"
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, createSecret, deleteManySecrets, getSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
 import { buildHeyReachWebhookUrl } from "../utility/webhookUrl"
 import { getUserForOrg } from "../utility/workos"
@@ -91,7 +91,7 @@ export class HeyReachIntegrationManager
 
     async deleteInstallation(integrationId: string): Promise<void> {
         await db().hey_reach_integrations.delete({ where: { id: integrationId } })
-        await deleteSecretsBestEffort([{ integrationType: IntegrationType.HEY_REACH, recordId: integrationId, field: SecretField.ApiKey }])
+        await deleteManySecrets([{ type: "integration", params: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId, field: SecretField.ApiKey } }])
     }
 
     async setupAgentTrigger(_integrationId: string, _agentTrigger: AgentTriggerWithConfigs): Promise<void> {}
@@ -166,12 +166,12 @@ export class HeyReachIntegrationManager
 
             let integrationId: string
             if (existing) {
-                await storeSecret(IntegrationType.HEY_REACH, existing.id, SecretField.ApiKey, apiKey)
+                await createSecret({ type: "integration", params: { integrationType: IntegrationType.HEY_REACH, recordId: existing.id, field: SecretField.ApiKey } }, apiKey)
                 integrationId = existing.id
                 logger.info("Updated HeyReach integration", { integrationId })
             } else {
                 const integration = await db().hey_reach_integrations.create({ data: { organization_id: organizationId } })
-                await storeSecret(IntegrationType.HEY_REACH, integration.id, SecretField.ApiKey, apiKey)
+                await createSecret({ type: "integration", params: { integrationType: IntegrationType.HEY_REACH, recordId: integration.id, field: SecretField.ApiKey } }, apiKey)
                 integrationId = integration.id
                 logger.info("Created HeyReach integration", { integrationId })
             }
@@ -307,7 +307,7 @@ export async function fetchHeyReachCampaigns(organizationId: string, integration
     if (!integration) {
         throw new Error("HeyReach integration not found")
     }
-    const apiKey = await getSecret(IntegrationType.HEY_REACH, integration.id, SecretField.ApiKey)
+    const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.HEY_REACH, recordId: integration.id, field: SecretField.ApiKey } })
     if (!apiKey) {
         throw new Error("HeyReach API key not found")
     }
@@ -351,7 +351,7 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
         throw new Error("HeyReach integration not found")
     }
 
-    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
+    const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId, field: SecretField.ApiKey } })
     if (!apiKey) {
         throw new Error("HeyReach API key not found")
     }
@@ -378,7 +378,7 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
 }
 
 async function deleteHeyReachWebhook(webhookId: number, integrationId: string) {
-    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
+    const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId, field: SecretField.ApiKey } })
     if (!apiKey) {
         throw new Error("HeyReach API key not found")
     }
@@ -409,7 +409,7 @@ const heyReachUpdateWebhookRequestSchema = z.object({
 })
 
 async function updateHeyReachWebhook(webhookId: number, integrationId: string, isActive: boolean) {
-    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
+    const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId, field: SecretField.ApiKey } })
     if (!apiKey) {
         throw new Error("HeyReach API key not found")
     }

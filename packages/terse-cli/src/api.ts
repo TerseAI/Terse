@@ -139,6 +139,15 @@ export async function fetchWithAuth<T>(urlPath: string, apiKey: string, params: 
     return res.json() as Promise<T>
 }
 
+export async function fetchWithAuthNoResponse(urlPath: string, apiKey: string, params: Record<string, unknown> = {}, type: AuthenticatedRequestMethod = "POST"): Promise<void> {
+    const res = await fetchRawWithAuth(urlPath, apiKey, { params, type })
+
+    if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
+        throw new ApiError(res.status, body)
+    }
+}
+
 export async function resolveAgentIdByJobName(jobName: string, apiKey: string): Promise<string | null> {
     const search = encodeURIComponent(jobName)
     const response = await fetchWithAuth<AgentsResponse>(`${ApiRoutes.AGENTS.LIST}?search=${search}&pageSize=100`, apiKey)

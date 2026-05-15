@@ -51,6 +51,28 @@ export function writeProjectConfig(cwd: string, config: TerseProjectConfig): voi
     fs.writeFileSync(filePath, serialized)
 }
 
+export function addProjectConfigSecrets(names: string[], cwd: string = process.cwd()): TerseProjectConfig {
+    const config = readProjectConfigOrBail(cwd)
+    const secrets = Array.from(new Set([...(config.secrets ?? []), ...names])).sort()
+    const next = { ...config, secrets }
+    writeProjectConfig(cwd, next)
+    return next
+}
+
+export function removeProjectConfigSecrets(names: string[], cwd: string = process.cwd()): TerseProjectConfig {
+    const config = readProjectConfigOrBail(cwd)
+    const remove = new Set(names)
+    const secrets = (config.secrets ?? []).filter(name => !remove.has(name)).sort()
+    const next = secrets.length > 0 ? { ...config, secrets } : withoutSecrets(config)
+    writeProjectConfig(cwd, next)
+    return next
+}
+
+function withoutSecrets(config: TerseProjectConfig): TerseProjectConfig {
+    const { secrets: _secrets, ...rest } = config
+    return rest
+}
+
 export async function createRemoteProject(apiKey: string, name: string): Promise<TerseProjectConfig> {
     const response = await fetchWithAuth(ApiRoutes.SDK.CREATE_PROJECT, apiKey, { name }, "POST")
     const parsed = sdkCreateProjectResponseBodySchema.parse(response)

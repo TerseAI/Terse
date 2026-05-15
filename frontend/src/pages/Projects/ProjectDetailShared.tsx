@@ -1,11 +1,11 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
-import { AlertTriangle, ArrowRight, Briefcase, CheckCircle2, CircleDot, Loader2, Rocket, RotateCcw, XCircle } from "lucide-react"
+import { AlertTriangle, ArrowRight, Briefcase, CheckCircle2, CircleDot, KeyRound, Loader2, MoreVertical, Rocket, RotateCcw, Trash2, XCircle } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
-import type { ProjectDeploy, ProjectDeployJobsDelta, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
+import type { ProjectDeploy, ProjectDeployJobsDelta, ProjectDeployStatus, ProjectDetailResponse, ProjectSecretSummary } from "terse-types/types"
 
 import { ALL_RUN_STATUSES, AgentRow, HEALTH_RANK, computeHealth, groupRunsByAgent } from "../../components/Agents/AgentHealthRow"
 import BreadCrumb from "../../components/BreadCrumb"
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../components/ui/empty"
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { Skeleton } from "../../components/ui/skeleton"
@@ -20,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import { useAgents } from "../../hooks/api/useAgents"
 import { useAllRunHistory } from "../../hooks/api/useAllRunHistory"
 import { useProjectMutations } from "../../hooks/api/useProject"
+import { useProjectSecrets } from "../../hooks/api/useProjectSecrets"
 import { cn } from "../../lib/utils"
 import { formatDuration, formatTimestamp } from "../../utility/timeUtils"
 
@@ -323,6 +325,144 @@ export function DeploysSkeleton() {
                     <Skeleton className="h-5 w-20 rounded-full" />
                     <Skeleton className="h-3 w-20" />
                     <Skeleton className="ml-auto h-3 w-24" />
+                </div>
+            ))}
+        </div>
+    )
+}
+
+export function SecretsSection({ projectId }: { projectId: string }) {
+    const { secrets, isLoading, deleteSecret } = useProjectSecrets(projectId)
+    const [pendingDelete, setPendingDelete] = useState<ProjectSecretSummary | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const total = secrets?.length ?? 0
+
+    const handleDelete = async () => {
+        if (!pendingDelete) return
+        setIsDeleting(true)
+        try {
+            await deleteSecret(pendingDelete.name)
+            toast.success(`Deleted secret ${pendingDelete.name}`)
+            setPendingDelete(null)
+        } catch {
+            toast.error("Failed to delete secret")
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    return (
+        <section className="mt-8">
+            <SectionLabel>Secrets{total > 0 ? ` · ${total}` : ""}</SectionLabel>
+
+            {isLoading ? (
+                <SecretsSkeleton />
+            ) : !secrets || secrets.length === 0 ? (
+                <SecretsEmpty />
+            ) : (
+                <ul className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+                    {secrets.map(secret => (
+                        <SecretRow key={secret.name} secret={secret} onDelete={() => setPendingDelete(secret)} />
+                    ))}
+                </ul>
+            )}
+
+            <Dialog open={!!pendingDelete} onOpenChange={open => !open && setPendingDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete secret</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete <span className="text-foreground font-semibold">{pendingDelete?.name}</span> from this managed project. Jobs that read this environment
+                            variable will stop receiving it.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPendingDelete(null)} disabled={isDeleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                            {isDeleting ? "Deleting…" : "Delete secret"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </section>
+    )
+}
+
+function SecretRow({ secret, onDelete }: { secret: ProjectSecretSummary; onDelete: () => void }) {
+    const relative = formatTimestamp(secret.createdAt)
+    const absolute = DateTime.fromISO(secret.createdAt).toFormat("LLL d, yyyy · h:mm:ss a")
+
+    return (
+        <li className="hover:bg-muted/30 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors sm:grid-cols-[minmax(160px,1fr)_160px_180px_auto]">
+            <code className="text-foreground min-w-0 truncate font-mono text-[12px]">{secret.name}</code>
+
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span className="text-muted-foreground hidden cursor-default text-xs tabular-nums sm:inline">{relative}</span>
+                </TooltipTrigger>
+                <TooltipContent>{absolute}</TooltipContent>
+            </Tooltip>
+
+            <div className="text-muted-foreground col-start-1 row-start-2 flex min-w-0 items-center gap-2 text-xs sm:col-start-auto sm:row-start-auto">
+                {secret.createdBy ? (
+                    <>
+                        <Avatar className="size-5">
+                            {secret.createdBy.avatarUrl ? <AvatarImage src={secret.createdBy.avatarUrl} alt="" /> : null}
+                            <AvatarFallback className="text-[9px] font-medium">{initialsOf(secret.createdBy.displayName)}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{secret.createdBy.displayName}</span>
+                    </>
+                ) : (
+                    <span>Unknown creator</span>
+                )}
+            </div>
+
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Open secret actions</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </li>
+    )
+}
+
+function SecretsEmpty() {
+    return (
+        <Empty className="mx-auto w-full max-w-lg border-solid border-border/60 bg-muted/10 p-6 md:p-8">
+            <EmptyHeader className="max-w-lg">
+                <EmptyMedia variant="icon">
+                    <KeyRound className="text-primary" />
+                </EmptyMedia>
+                <EmptyTitle className="text-base">No secrets yet</EmptyTitle>
+                <EmptyDescription className="text-xs">
+                    Run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse secrets add &lt;NAME&gt;</code> from your SDK project
+                    to add one.
+                </EmptyDescription>
+            </EmptyHeader>
+        </Empty>
+    )
+}
+
+function SecretsSkeleton() {
+    return (
+        <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+            {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3 sm:grid-cols-[minmax(160px,1fr)_160px_180px_auto]">
+                    <Skeleton className="h-3.5 w-36" />
+                    <Skeleton className="hidden h-3 w-20 sm:block" />
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-8 w-8" />
                 </div>
             ))}
         </div>

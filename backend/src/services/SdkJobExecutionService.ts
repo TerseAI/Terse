@@ -18,6 +18,7 @@ import { extractErrorMessage } from "../utility/strings"
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 import { SdkSandboxImageService } from "./SdkSandboxImageService"
+import { getSecret } from "./SecretService"
 import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
@@ -109,7 +110,21 @@ export class SdkJobExecutionService {
             sandboxTokenId = tokenId
             logger.info("SDK sandbox: created temp API token", { runId, agentId: agent.id })
 
+            const projectSecretRows = await db().project_secrets.findMany({
+                where: { project_id: agent.project.id },
+                select: { name: true }
+            })
+            const projectSecretNames = projectSecretRows.map(row => row.name)
+            const projectSecretEntries = await Promise.all(
+                projectSecretNames.map(async name => {
+                    const value = await getSecret({ type: "project", params: { projectId: agent.project.id, name } })
+                    return value === null ? null : ([name, value] as const)
+                })
+            )
+            const projectSecretValues = Object.fromEntries(projectSecretEntries.filter((entry): entry is readonly [string, string] => entry !== null))
+
             const sandboxEnv = {
+                ...projectSecretValues,
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: settings.urls.backend,
                 TERSE_RUN_ID: runId,

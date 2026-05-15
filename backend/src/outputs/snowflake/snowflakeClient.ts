@@ -97,12 +97,12 @@ export async function getSnowflakeCredentials(integrationId: string, organizatio
         throw new Error(`Snowflake integration not found for integrationId: ${integrationId}`)
     }
 
-    const privateKey = await getSecret(IntegrationType.SNOWFLAKE, integrationId, SecretField.PrivateKey)
+    const privateKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKey } })
     if (!privateKey) {
         throw new Error(`Snowflake private key not found for integrationId: ${integrationId}`)
     }
 
-    const passphrase = await getSecret(IntegrationType.SNOWFLAKE, integrationId, SecretField.PrivateKeyPassphrase)
+    const passphrase = await getSecret({ type: "integration", params: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKeyPassphrase } })
 
     return {
         accountIdentifier: integration.account_identifier,

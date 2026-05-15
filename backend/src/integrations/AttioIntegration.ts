@@ -8,7 +8,7 @@ import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretField, createSecret, deleteManySecrets, getSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 
@@ -34,7 +34,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         })
         return Promise.all(
             integrations.map(async i => {
-                const accessToken = await getSecret(IntegrationType.ATTIO, i.id, SecretField.AccessToken)
+                const accessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.ATTIO, recordId: i.id, field: SecretField.AccessToken } })
                 return {
                     id: i.id,
                     workspaceName: accessToken ? await this.fetchWorkspaceName(accessToken) : undefined
@@ -114,7 +114,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         })
         return Promise.all(
             integrations.map(async i => {
-                const accessToken = await getSecret(IntegrationType.ATTIO, i.id, SecretField.AccessToken)
+                const accessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.ATTIO, recordId: i.id, field: SecretField.AccessToken } })
                 return {
                     id: i.id,
                     workspaceName: accessToken ? await this.fetchWorkspaceName(accessToken) : undefined
@@ -227,11 +227,11 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                     }
                 })
 
-                await storeSecret(IntegrationType.ATTIO, newIntegration.id, SecretField.AccessToken, access_token)
+                await createSecret({ type: "integration", params: { integrationType: IntegrationType.ATTIO, recordId: newIntegration.id, field: SecretField.AccessToken } }, access_token)
 
                 integrationId = newIntegration.id
             } else {
-                await storeSecret(IntegrationType.ATTIO, existing.id, SecretField.AccessToken, access_token)
+                await createSecret({ type: "integration", params: { integrationType: IntegrationType.ATTIO, recordId: existing.id, field: SecretField.AccessToken } }, access_token)
 
                 await db().attio_integrations.update({
                     where: { id: existing.id },
@@ -265,7 +265,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 await tx.attio_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([{ integrationType: IntegrationType.ATTIO, recordId: integrationId, field: SecretField.AccessToken }])
+                await deleteManySecrets([{ type: "integration", params: { integrationType: IntegrationType.ATTIO, recordId: integrationId, field: SecretField.AccessToken } }])
             })
     }
 
@@ -311,7 +311,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 return null
             }
 
-            return await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
+            return await getSecret({ type: "integration", params: { integrationType: IntegrationType.ATTIO, recordId: integrationId, field: SecretField.AccessToken } })
         } catch (error) {
             logger.error(`Error getting Attio access token for integration ${integrationId}`, { error, integrationId })
             return null

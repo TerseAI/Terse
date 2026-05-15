@@ -743,11 +743,54 @@ export const projectRotateApiKeyResponseSchema = z.object({
 })
 export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
 
+export const projectSecretCreatedBySchema = z.object({
+    displayName: z.string(),
+    avatarUrl: z.string().nullable()
+})
+export type ProjectSecretCreatedBy = z.infer<typeof projectSecretCreatedBySchema>
+
+export const projectSecretSummarySchema = z.object({
+    name: z.string(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    createdBy: projectSecretCreatedBySchema.optional()
+})
+export type ProjectSecretSummary = z.infer<typeof projectSecretSummarySchema>
+
+export const projectSecretsListResponseSchema = z.object({
+    secrets: z.array(projectSecretSummarySchema)
+})
+export type ProjectSecretsListResponse = z.infer<typeof projectSecretsListResponseSchema>
+
+export const projectSecretUpsertRequestSchema = z.object({
+    name: z.string(),
+    value: z.string()
+})
+export type ProjectSecretUpsertRequest = z.infer<typeof projectSecretUpsertRequestSchema>
+
+export const projectSecretsImportRequestSchema = z.object({
+    entries: z.array(projectSecretUpsertRequestSchema).max(500)
+})
+export type ProjectSecretsImportRequest = z.infer<typeof projectSecretsImportRequestSchema>
+
+export const projectSecretsImportResponseSchema = z.object({
+    added: z.array(z.string()),
+    updated: z.array(z.string()),
+    rejected: z.array(
+        z.object({
+            name: z.string(),
+            reason: z.string()
+        })
+    )
+})
+export type ProjectSecretsImportResponse = z.infer<typeof projectSecretsImportResponseSchema>
+
 export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
     name: z.string().min(1),
     selfHosted: z.boolean().optional(),
-    remoteServerUrl: z.string().optional()
+    remoteServerUrl: z.string().optional(),
+    secrets: z.array(z.string()).optional()
 })
 export type TerseProjectConfig = z.infer<typeof terseProjectConfigSchema>
 

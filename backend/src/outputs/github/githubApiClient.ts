@@ -28,7 +28,7 @@ export async function getGitHubAccessToken(userId: string): Promise<string | nul
         return null
     }
 
-    return await getSecret(IntegrationType.GITHUB, githubToken.id, SecretField.AccessToken)
+    return await getSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: githubToken.id, field: SecretField.AccessToken } })
 }
 
 /**
