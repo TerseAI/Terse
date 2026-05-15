@@ -52,7 +52,7 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
         opts?.apiKey?.trim() ||
         readApiKeyOrBail({
             title: "\n  Not authenticated.\n",
-            detail: "  Run `terse login` to authenticate, or set TERSE_API_KEY in your environment.\n"
+            detail: "  Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment.\n"
         })
 
     s.message("Fetching integrations")
@@ -73,7 +73,7 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
 
         if (isAuthError) {
             throw new CliError("not_authenticated", "Authentication failed: your TERSE_API_KEY was rejected.", {
-                detail: "Run `terse login` to refresh your credentials and try again.",
+                detail: "Run `terse auth login` to refresh your credentials and try again.",
                 actionRequired: true,
                 exitCode: ErrorCode.BAD_ARGUMENTS
             })

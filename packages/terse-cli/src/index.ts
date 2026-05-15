@@ -53,7 +53,7 @@ program
         `
 Examples:
   $ terse init myproj                       # interactive scaffold
-  $ terse init myproj --non-interactive     # non-interactive; requires prior \`terse login\`
+  $ terse init myproj --non-interactive     # non-interactive; requires prior \`terse auth login\`
   $ terse init myproj < /dev/null           # auto non-interactive (no TTY)
 `
     )

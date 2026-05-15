@@ -15,7 +15,7 @@ export async function listen(jobName?: string, opts?: ListenOpts): Promise<void>
 
     const apiKey = readApiKeyOrBail({
         title: "Error: Not authenticated.",
-        detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
+        detail: "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment."
     })
 
     const projectConfig = readProjectConfigOrBail()
@@ -65,7 +65,7 @@ function mapListenStreamError(error: unknown, jobName: string): unknown {
     if (error instanceof SessionStreamError) {
         if (error.status === 401 || error.status === 403) {
             return new CliError("not_authenticated", "Not authenticated.", {
-                detail: "Your TERSE_API_KEY is missing, expired, or invalid. Run `terse login` to re-authenticate.",
+                detail: "Your TERSE_API_KEY is missing, expired, or invalid. Run `terse auth login` to re-authenticate.",
                 actionRequired: true
             })
         }
