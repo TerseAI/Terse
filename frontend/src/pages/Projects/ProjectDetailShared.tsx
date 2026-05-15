@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
-import { AlertTriangle, ArrowRight, Briefcase, CheckCircle2, CircleDot, KeyRound, Loader2, MoreVertical, Rocket, RotateCcw, Trash2, XCircle } from "lucide-react"
+import { AlertTriangle, ArrowRight, Briefcase, CheckCircle2, CircleDot, KeyRound, Loader2, Rocket, RotateCcw, Trash2, XCircle } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
@@ -13,7 +13,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../components/ui/empty"
 import { SidebarTrigger } from "../../components/ui/sidebar"
 import { Skeleton } from "../../components/ui/skeleton"
@@ -353,7 +352,10 @@ export function SecretsSection({ projectId }: { projectId: string }) {
 
     return (
         <section className="mt-8">
-            <SectionLabel>Secrets{total > 0 ? ` · ${total}` : ""}</SectionLabel>
+            <SectionLabel className="flex items-center gap-1.5">
+                <KeyRound className="h-3 w-3" />
+                Secrets{total > 0 ? ` · ${total}` : ""}
+            </SectionLabel>
 
             {isLoading ? (
                 <SecretsSkeleton />
@@ -364,6 +366,10 @@ export function SecretsSection({ projectId }: { projectId: string }) {
                     {secrets.map(secret => (
                         <SecretRow key={secret.name} secret={secret} onDelete={() => setPendingDelete(secret)} />
                     ))}
+                    <li className="text-muted-foreground flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs">
+                        Add another with{" "}
+                        <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse secrets add &lt;NAME&gt;</code>
+                    </li>
                 </ul>
             )}
 
@@ -372,8 +378,8 @@ export function SecretsSection({ projectId }: { projectId: string }) {
                     <DialogHeader>
                         <DialogTitle>Delete secret</DialogTitle>
                         <DialogDescription>
-                            This will permanently delete <span className="text-foreground font-semibold">{pendingDelete?.name}</span> from this managed project. Jobs that read this environment
-                            variable will stop receiving it.
+                            This will permanently delete <span className="text-foreground font-semibold">{pendingDelete?.name}</span> from this project. Jobs that depend on this variable will lose
+                            access.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -392,23 +398,25 @@ export function SecretsSection({ projectId }: { projectId: string }) {
 
 function SecretRow({ secret, onDelete }: { secret: ProjectSecretSummary; onDelete: () => void }) {
     return (
-        <li className="hover:bg-muted/30 grid grid-cols-[1fr_auto] items-center gap-x-4 px-4 py-3 transition-colors">
+        <li className="group hover:bg-muted/30 grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 py-3 transition-colors">
             <code className="text-foreground min-w-0 truncate font-mono text-[12px]">{secret.name}</code>
 
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Open secret actions</span>
+            <span aria-hidden className="text-muted-foreground/60 font-mono text-[12px] tracking-wider select-none">••••••••</span>
+
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onDelete}
+                        className="text-muted-foreground hover:text-danger h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="sr-only">Delete {secret.name}</span>
                     </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                </TooltipTrigger>
+                <TooltipContent>Delete secret</TooltipContent>
+            </Tooltip>
         </li>
     )
 }
@@ -434,9 +442,10 @@ function SecretsSkeleton() {
     return (
         <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
             {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3">
-                    <Skeleton className="h-3.5 w-36" />
-                    <Skeleton className="h-8 w-8" />
+                <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 py-3">
+                    <Skeleton className="h-3.5 w-48" />
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-7 w-7" />
                 </div>
             ))}
         </div>

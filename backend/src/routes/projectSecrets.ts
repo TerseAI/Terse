@@ -66,10 +66,9 @@ export async function handleDeleteProjectSecret(req: Request, res: Response) {
         return res.status(400).json({ error: nameError })
     }
 
-    try {
-        await deleteSecretFields({ type: "project", secret: { projectId: access.id, keys: [name] } })
-    } catch (error) {
-        logger.error("Project secret deletion failed", { error, projectId: access.id, name })
+    const removed = await deleteSecretFields({ type: "project", secret: { projectId: access.id, keys: [name] } })
+    if (!removed) {
+        return res.status(404).json({ error: `Secret ${name} not found` })
     }
 
     emitCacheInvalidationWithWildcard(access.organization_id, "projectSecrets", access.id)

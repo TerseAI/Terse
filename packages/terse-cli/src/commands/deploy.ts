@@ -1,14 +1,16 @@
-import { intro, log, outro, spinner } from "@clack/prompts"
+import { cancel, intro, isCancel, log, multiselect, outro, spinner } from "@clack/prompts"
 import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
+import dotenv from "dotenv"
 import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
-import { ApiRoutes, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types"
-import type { SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
+import { ApiRoutes, SdkDeployStage, buildRoute, sdkDeployRequestBodySchema, validateSecretName, validateSecretValue } from "terse-types"
+import type { ProjectSecretUpsertRequest, ProjectSecretsImportResponse, ProjectSecretsListResponse, SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
-import { ApiError, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
+import { ApiError, fetchWithAuth, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
+import { isNonInteractive } from "../cliHelpers.js"
 import { getCliVersion } from "../cliVersion.js"
 import { FRONTEND_URL } from "../config.js"
 import { loadJobRegistry } from "../loadJob.js"
@@ -40,6 +42,12 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
     const isUrlMode = !!remoteServerUrl
 
+    intro(`terse deploy`)
+
+    if (!config.selfHosted) {
+        await syncMissingLocalSecrets({ projectId, apiKey })
+    }
+
     let sourceZipBase64: string | undefined
     let fileCount = 0
     let zipSizeBytes = 0
@@ -50,8 +58,6 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         fileCount = zipPayload.fileCount
         zipSizeBytes = zipPayload.zipSizeBytes
     }
-
-    intro(`terse deploy`)
 
     const s = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
 
@@ -208,6 +214,78 @@ function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string;
         fileCount,
         zipSizeBytes: zipData.length
     }
+}
+
+async function syncMissingLocalSecrets(args: { projectId: string; apiKey: string }): Promise<void> {
+    const envPath = path.join(process.cwd(), ".env")
+    if (!fs.existsSync(envPath)) return
+
+    const eligible = readEligibleLocalEnv(envPath)
+    if (eligible.length === 0) return
+
+    let remoteNames: Set<string>
+    try {
+        const response = await fetchWithAuth<ProjectSecretsListResponse>(buildRoute(ApiRoutes.PROJECT_SECRETS.LIST, { id: args.projectId }), args.apiKey)
+        remoteNames = new Set(response.secrets.map(secret => secret.name))
+    } catch (error) {
+        log.warn(`Could not check project secrets — skipping sync. ${error instanceof Error ? error.message : String(error)}`)
+        return
+    }
+
+    const missing = eligible.filter(entry => !remoteNames.has(entry.name))
+    if (missing.length === 0) return
+
+    if (isNonInteractive()) {
+        log.warn(`Skipping secret sync (non-interactive). Missing on server: ${missing.map(m => m.name).join(", ")}. Run \`terse secrets import .env\` to upload.`)
+        return
+    }
+
+    const selected = await multiselect<string>({
+        message: `Upload ${missing.length} new secret${missing.length === 1 ? "" : "s"} from .env before deploy?`,
+        options: missing.map(entry => ({ value: entry.name, label: entry.name })),
+        initialValues: missing.map(entry => entry.name),
+        required: false
+    })
+
+    if (isCancel(selected)) {
+        cancel("Deploy cancelled.")
+        process.exit(0)
+    }
+
+    if (selected.length === 0) {
+        log.info("No secrets uploaded.")
+        return
+    }
+
+    const entries = missing.filter(entry => selected.includes(entry.name))
+    try {
+        await fetchWithAuth<ProjectSecretsImportResponse>(buildRoute(ApiRoutes.PROJECT_SECRETS.IMPORT, { id: args.projectId }), args.apiKey, { entries }, "POST")
+    } catch (error) {
+        throw new CliError("secret_sync_failed", "Failed to upload secrets before deploy.", {
+            detail: error instanceof Error ? error.message : String(error)
+        })
+    }
+
+    log.info(`Uploaded ${entries.length} secret${entries.length === 1 ? "" : "s"}: ${entries.map(e => e.name).join(", ")}`)
+}
+
+function readEligibleLocalEnv(envPath: string): ProjectSecretUpsertRequest[] {
+    let raw: string
+    try {
+        raw = fs.readFileSync(envPath, "utf-8")
+    } catch (error) {
+        log.warn(`Could not read .env — skipping secret sync. ${error instanceof Error ? error.message : String(error)}`)
+        return []
+    }
+
+    const parsed = dotenv.parse(raw)
+    const entries: ProjectSecretUpsertRequest[] = []
+    for (const [name, value] of Object.entries(parsed)) {
+        if (validateSecretName(name)) continue
+        if (validateSecretValue(value)) continue
+        entries.push({ name, value })
+    }
+    return entries
 }
 
 function getStageMessage(stage: SdkDeployStage): string {

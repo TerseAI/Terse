@@ -6,7 +6,7 @@ import fs from "node:fs"
 import { ApiRoutes, MAX_SECRET_VALUE_BYTES, buildRoute, validateSecretName, validateSecretValue } from "terse-types"
 import type { ProjectSecretSummary, ProjectSecretUpsertRequest, ProjectSecretsImportResponse, ProjectSecretsListResponse } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
+import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
 import { readProjectConfigOrBail } from "../projectConfig.js"
 
@@ -61,6 +61,11 @@ export async function secretsRemove(name: string, opts: { yes?: boolean } = {}):
     assertManagedProjectConfig(config)
     validateSecretNameOrThrow(name)
 
+    const existing = await fetchWithAuth<ProjectSecretsListResponse>(buildRoute(ApiRoutes.PROJECT_SECRETS.LIST, { id: config.projectId }), apiKey)
+    if (!existing.secrets.some(secret => secret.name === name)) {
+        throw new CliError("secret_not_found", `Secret ${name} not found in project ${config.name}.`)
+    }
+
     if (!opts.yes) {
         if (!process.stdin.isTTY || !process.stdout.isTTY) {
             throw new CliError("confirmation_required", "Refusing to remove a secret without confirmation.", {
@@ -74,7 +79,14 @@ export async function secretsRemove(name: string, opts: { yes?: boolean } = {}):
         }
     }
 
-    await fetchWithAuth<ProjectSecretSummary>(buildRoute(ApiRoutes.PROJECT_SECRETS.DELETE, { id: config.projectId, name }), apiKey, {}, "DELETE")
+    try {
+        await fetchWithAuth<ProjectSecretSummary>(buildRoute(ApiRoutes.PROJECT_SECRETS.DELETE, { id: config.projectId, name }), apiKey, {}, "DELETE")
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+            throw new CliError("secret_not_found", `Secret ${name} not found in project ${config.name}.`)
+        }
+        throw error
+    }
 
     process.stdout.write(chalk.green(`Secret ${name} removed.\n`))
 }

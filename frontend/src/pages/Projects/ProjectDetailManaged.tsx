@@ -25,9 +25,9 @@ export default function ProjectDetailManaged({ project }: { project: ProjectDeta
 
                 <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
 
-                <SecretsSection projectId={project.id} />
-
                 <SourceSection projectId={project.id} activeDeploy={activeDeploy} />
+
+                <SecretsSection projectId={project.id} />
 
                 <DeleteProjectAction project={project} />
             </PageFrame>

@@ -93,7 +93,7 @@ export async function deleteSecrets(arg: DeleteSecretsArg | DeleteSecretsArg[]):
     }
 }
 
-export async function deleteSecretFields(arg: DeleteSecretFieldsArg): Promise<void> {
+export async function deleteSecretFields(arg: DeleteSecretFieldsArg): Promise<boolean> {
     const blobId = blobIdFor(arg)
     const blob = await readBlob(blobId)
 
@@ -105,14 +105,15 @@ export async function deleteSecretFields(arg: DeleteSecretFieldsArg): Promise<vo
         }
     }
 
-    if (!mutated) return
+    if (!mutated) return false
     if (Object.keys(blob).length === 0) {
         await deleteBlob(blobId)
-        return
+        return true
     }
 
     const validated = partialSchemaFor(arg).parse(blob) as Record<string, unknown>
     await writeBlob(blobId, validated)
+    return true
 }
 
 export async function listSecretKeys(arg: ListSecretKeysArg): Promise<string[]> {
