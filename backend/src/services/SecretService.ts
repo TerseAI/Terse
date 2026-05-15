@@ -60,13 +60,19 @@ export function getSecrets<A extends GetSecretsArg>(arg: A): Promise<GetSecretsR
 async function getIntegrationSecrets<T extends IntegrationKey>(arg: { integrationType: T; recordId: string }): Promise<IntegrationBlob<T> | null> {
     const blobId = blobIdFor({ type: "integration", secret: arg })
     const validated = await readAndValidateOrNull(blobId, integrationBlobSchemas[arg.integrationType])
-    return validated as IntegrationBlob<T> | null
+    if (!validated) {
+        throw new SecretNotFoundError(`Integration secret ${blobId} not found`)
+    }
+    return validated as IntegrationBlob<T>
 }
 
 async function getProjectSecrets(arg: ProjectGetSecretsArg["secret"]): Promise<Record<string, string>> {
     const blobId = blobIdFor({ type: "project", secret: arg })
     const validated = await readAndValidateOrNull(blobId, projectBlobSchema)
-    return validated ?? {}
+    if (!validated) {
+        throw new SecretNotFoundError(`Project secret ${blobId} not found`)
+    }
+    return validated
 }
 
 export async function deleteSecrets(arg: DeleteSecretsArg | DeleteSecretsArg[]): Promise<void> {
@@ -240,7 +246,7 @@ type ProjectGetSecretsArg = {
     secret: { projectId: string }
 }
 
-type GetSecretsReturn<A> = A extends IntegrationGetSecretsArg<infer T> ? IntegrationBlob<T> | null : A extends ProjectGetSecretsArg ? Record<string, string> : never
+type GetSecretsReturn<A> = A extends IntegrationGetSecretsArg<infer T> ? IntegrationBlob<T> : A extends ProjectGetSecretsArg ? Record<string, string> : never
 
 export type CreateSecretsArg = IntegrationCreateSecretsArg | ProjectCreateSecretsArg
 
@@ -294,8 +300,13 @@ type ProjectListSecretKeysArg = {
     secret: { projectId: string }
 }
 
-export type ListSecretKeysReturn = string[]
-
 type AnyArg = IntegrationAnyArg | ProjectAnyArg
 type IntegrationAnyArg = { type: "integration"; secret: { integrationType: IntegrationKey; recordId: string } }
 type ProjectAnyArg = { type: "project"; secret: { projectId: string } }
+
+export class SecretNotFoundError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "SecretNotFoundError"
+    }
+}

@@ -1,7 +1,8 @@
 import { LogLevel, WebClient } from "@slack/web-api"
 import { IntegrationType } from "terse-types/Integrations"
 
-import { getSecrets } from "../services/SecretService"
+import logger from "../logger"
+import { SecretNotFoundError, getSecrets } from "../services/SecretService"
 
 type SlackTokenSource = {
     id: string
@@ -13,11 +14,19 @@ type SlackTokenSource = {
 
 export async function resolveSlackAccessToken(integration: SlackTokenSource): Promise<string | null> {
     if (integration.is_bot_user) {
-        const botSecrets = await getSecrets({
-            type: "integration",
-            secret: { integrationType: IntegrationType.SLACK, recordId: integration.slack_integration.id }
-        })
-        return botSecrets?.accessToken ?? null
+        try {
+            const botSecrets = await getSecrets({
+                type: "integration",
+                secret: { integrationType: IntegrationType.SLACK, recordId: integration.slack_integration.id }
+            })
+            return botSecrets.accessToken ?? null
+        } catch (error) {
+            if (error instanceof SecretNotFoundError) {
+                logger.error(`Slack integration ${integration.id} not found or missing access token`, { integrationId: integration.id })
+                return null
+            }
+            throw error
+        }
     }
 
     const userSecrets = await getSecrets({

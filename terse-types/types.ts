@@ -743,6 +743,26 @@ export const projectRotateApiKeyResponseSchema = z.object({
 })
 export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
 
+export const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
+export const MAX_SECRET_VALUE_BYTES = 32 * 1024
+
+export function validateSecretName(name: string): string | null {
+    if (!SECRET_NAME_PATTERN.test(name)) {
+        return "Secret names must match ^[A-Z][A-Z0-9_]{0,63}$"
+    }
+    if (name.startsWith("TERSE_")) {
+        return "Secret names cannot start with TERSE_"
+    }
+    return null
+}
+
+export function validateSecretValue(value: string): string | null {
+    if (new TextEncoder().encode(value).length > MAX_SECRET_VALUE_BYTES) {
+        return "Secret value must be 32KB or less"
+    }
+    return null
+}
+
 export const projectSecretSummarySchema = z.object({
     name: z.string()
 })
@@ -766,13 +786,7 @@ export type ProjectSecretsImportRequest = z.infer<typeof projectSecretsImportReq
 
 export const projectSecretsImportResponseSchema = z.object({
     added: z.array(z.string()),
-    updated: z.array(z.string()),
-    rejected: z.array(
-        z.object({
-            name: z.string(),
-            reason: z.string()
-        })
-    )
+    updated: z.array(z.string())
 })
 export type ProjectSecretsImportResponse = z.infer<typeof projectSecretsImportResponseSchema>
 

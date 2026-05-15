@@ -69,10 +69,7 @@ export async function setupSlackBolt() {
             }
 
             const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: slackIntegration.id } })
-            const botToken = secrets?.accessToken
-            if (!botToken) {
-                throw new Error(`No Slack access token found for team_id: ${teamId}`)
-            }
+            const botToken = secrets.accessToken
 
             return {
                 botToken,

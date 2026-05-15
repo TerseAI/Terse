@@ -122,9 +122,6 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
 
     for (const token of orgTokens) {
         const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
-        if (!secrets) {
-            continue
-        }
         const accessToken = secrets.accessToken
 
         const installations = await getAppInstallationsForUser(accessToken, {
@@ -216,12 +213,6 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
                 const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
-                if (!secrets) {
-                    return {
-                        userId: user.user_id,
-                        installations: []
-                    }
-                }
                 const accessToken = secrets.accessToken
 
                 const installations = await getAppInstallationsForUser(accessToken, {

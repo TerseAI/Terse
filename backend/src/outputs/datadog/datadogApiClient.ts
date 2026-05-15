@@ -18,10 +18,6 @@ export async function getDatadogCredentialsByIntegrationId(integrationId: string
         type: "integration",
         secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id }
     })
-    if (!secrets) {
-        logger.warn("Datadog integration is missing API key or app key", { integrationId })
-        return null
-    }
 
     return {
         apiKey: secrets.apiKey,

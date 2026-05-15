@@ -261,11 +261,8 @@ export async function validatePosthogProjectExists(integrationId: string, projec
     if (!integration) {
         throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
     }
-    const secrets_apiKey = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integrationId } })
-    const apiKey = secrets_apiKey?.apiKey
-    if (!apiKey) {
-        throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
-    }
+    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integrationId } })
+    const apiKey = secret.apiKey
     const response = await fetch(`https://us.posthog.com/api/projects/${projectId}/`, {
         method: "GET",
         headers: {

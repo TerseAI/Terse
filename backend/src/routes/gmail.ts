@@ -61,9 +61,6 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
             type: "integration",
             secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id }
         })
-        if (!secrets) {
-            return res.status(400).json({ error: "Gmail integration is missing credentials. Please reconnect." })
-        }
         const { accessToken, refreshToken } = secrets
 
         // Set up OAuth client with stored credentials

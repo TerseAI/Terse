@@ -657,9 +657,6 @@ async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): 
         type: "integration",
         secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id }
     })
-    if (!secrets) {
-        throw new Error(`Gmail access token not found for integration ${integration.id}`)
-    }
     const currentAccessToken = secrets.accessToken
     const refreshToken = secrets.refreshToken
 

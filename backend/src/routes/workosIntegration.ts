@@ -110,14 +110,12 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
         const payload = JSON.parse(rawBody.toString("utf8")) as Record<string, unknown>
         const sigHeader = req.get("workos-signature") ?? req.get("WorkOS-Signature") ?? ""
 
-        const secrets_webhookSecret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id } })
-        const webhookSecret = secrets_webhookSecret?.webhookSecret
+        const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id } })
+        const webhookSecret = secret.webhookSecret
 
         if (!webhookSecret) {
             logger.warn("WorkOS trigger webhook rejected: no signing secret configured", { integrationId })
-            res.status(403).json({
-                error: "Webhook signing secret is not configured for this integration. Add it in Terse or WorkOS integration settings before accepting deliveries."
-            })
+            res.status(403).json({ error: "Webhook signing secret is not configured for this integration. Add it in Terse or WorkOS integration settings before accepting deliveries." })
             return
         }
 

@@ -316,12 +316,8 @@ export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): 
     if (!integration) {
         throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
     }
-    const secrets_apiKey = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId } })
-    const apiKey = secrets_apiKey?.apiKey
-    if (!apiKey) {
-        throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
-    }
-    return apiKey
+    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId } })
+    return secret.apiKey
 }
 
 /**

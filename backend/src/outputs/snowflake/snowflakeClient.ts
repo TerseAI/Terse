@@ -101,9 +101,6 @@ export async function getSnowflakeCredentials(integrationId: string, organizatio
         type: "integration",
         secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId }
     })
-    if (!secrets) {
-        throw new Error(`Snowflake private key not found for integrationId: ${integrationId}`)
-    }
 
     return {
         accountIdentifier: integration.account_identifier,

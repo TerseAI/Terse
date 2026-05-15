@@ -34,7 +34,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         return Promise.all(
             integrations.map(async i => {
                 const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
-                return this.enrichInstance(i.id, secrets?.apiKey ?? "")
+                return this.enrichInstance(i.id, secrets.apiKey ?? "")
             })
         )
     }

@@ -1484,7 +1484,13 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
         let storedFiles: StoredFile[] = []
         if (enrichedMessage.files && enrichedMessage.files.length > 0) {
             const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: filteredWorkspaceUserIntegrations[0].slack_integration.id } })
-            const botToken = secrets?.accessToken
+            if (!secrets) {
+                logger.warn("No Slack bot token available for file download", {
+                    teamId
+                })
+                return
+            }
+            const botToken = secrets.accessToken
 
             if (botToken) {
                 storedFiles = await downloadSlackFiles(enrichedMessage.files, teamId, botToken)

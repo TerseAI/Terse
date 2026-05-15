@@ -10,7 +10,7 @@ import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/sett
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
-import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { SecretNotFoundError, createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 
@@ -284,27 +284,29 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
     }
 
     async getAccessToken(integrationId: string): Promise<string | null> {
-        try {
-            const integration = await db().notion_integrations.findUnique({
-                where: { id: integrationId },
-                select: {
-                    id: true
-                }
-            })
+        const integration = await db().notion_integrations.findUnique({
+            where: { id: integrationId },
+            select: {
+                id: true
+            }
+        })
 
-            if (!integration) {
-                logger.error(`Notion integration ${integrationId} not found`, {
-                    integrationId
-                })
+        if (!integration) {
+            logger.error(`Notion integration ${integrationId} not found`, {
+                integrationId
+            })
+            return null
+        }
+
+        try {
+            const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
+            return secrets.integrationToken
+        } catch (error) {
+            if (error instanceof SecretNotFoundError) {
+                logger.error(`Notion integration ${integrationId} not found or missing access token`, { integrationId })
                 return null
             }
-
-            const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
-            const value = secrets?.integrationToken
-            return value ?? null
-        } catch (error) {
-            logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId })
-            return null
+            throw error
         }
     }
 }

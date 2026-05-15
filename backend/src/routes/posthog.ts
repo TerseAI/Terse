@@ -99,11 +99,11 @@ export const fetchPosthogProjects = async (organizationId: string, integrationId
         throw new Error("Posthog integration not found")
     }
 
-    const secrets_apiKey = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
-    const apiKey = secrets_apiKey?.apiKey
-    if (!apiKey) {
+    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
+    if (!secret) {
         throw new Error("Posthog API key not found")
     }
+    const apiKey = secret.apiKey
 
     const apiUrl = "https://us.posthog.com/api/projects/"
     const response = await fetch(apiUrl, {

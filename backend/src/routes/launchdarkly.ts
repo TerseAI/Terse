@@ -98,11 +98,8 @@ export async function fetchLaunchDarklyProjects(organizationId: string, integrat
         throw new Error("LaunchDarkly integration not found")
     }
 
-    const secrets_apiKey = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id } })
-    const apiKey = secrets_apiKey?.apiKey
-    if (!apiKey) {
-        throw new Error("LaunchDarkly API key not found")
-    }
+    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id } })
+    const apiKey = secret.apiKey
 
     const response = await fetch("https://app.launchdarkly.com/api/v2/projects", {
         method: "GET",

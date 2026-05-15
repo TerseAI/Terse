@@ -113,6 +113,8 @@ export class SdkJobExecutionService {
             const projectSecretValues = await getSecrets({ type: "project", secret: { projectId: agent.project.id } })
 
             const sandboxEnv = {
+                // Make sure to keep this first as the sandbox env,
+                // so that the following env variables take precedence.
                 ...projectSecretValues,
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: settings.urls.backend,

@@ -93,9 +93,6 @@ export const getDatadogIndexes = async (req: Request, res: Response) => {
             type: "integration",
             secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id }
         })
-        if (!secrets) {
-            return res.status(400).json({ error: "Datadog integration is missing credentials. Please reconnect." })
-        }
         const { apiKey, appKey } = secrets
 
         // Fetch indexes from Datadog API

@@ -18,7 +18,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { fetchLinearTeams } from "../routes/linear"
 import { StoredFile } from "../services/FileStorageService"
-import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { SecretNotFoundError, createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
@@ -435,13 +435,11 @@ export class LinearIntegrationManager
                 })
                 return null
             }
-
             const secrets = await getSecrets({
                 type: "integration",
                 secret: { integrationType: IntegrationType.LINEAR, recordId: integration.id }
             })
-            const existingAccessToken = secrets?.accessToken ?? null
-            const refreshToken = secrets?.refreshToken ?? null
+            const { accessToken: existingAccessToken, refreshToken } = secrets
 
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
@@ -511,9 +509,11 @@ export class LinearIntegrationManager
             // Token is still valid
             return existingAccessToken
         } catch (error) {
-            logger.error(`Error getting Linear access token for integration ${integrationId}`, { error, integrationId })
-            // Return null on error - caller should handle
-            return null
+            if (error instanceof SecretNotFoundError) {
+                logger.error(`Linear integration ${integrationId} not found or missing access token`, { integrationId })
+                return null
+            }
+            throw error
         }
     }
 

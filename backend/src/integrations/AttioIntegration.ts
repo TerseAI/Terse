@@ -318,7 +318,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 type: "integration",
                 secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId }
             })
-            return secrets?.accessToken ?? null
+            return secrets.accessToken
         } catch (error) {
             logger.error(`Error getting Attio access token for integration ${integrationId}`, { error, integrationId })
             return null
