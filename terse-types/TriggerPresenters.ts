@@ -565,7 +565,7 @@ function attioResourceLabel(event: AttioTrigger): string | null {
     return null
 }
 
-function humanizeAttioEventType(eventType: string): string {
+export function humanizeAttioEventType(eventType: string): string {
     return eventType
         .replace(/[-.]/g, " ")
         .split(" ")

@@ -6,16 +6,19 @@ import {
     AttioRecordPayload,
     AttioSubscription,
     AttioTrigger,
+    AttioTriggerBase,
     AttioWebhookEvent,
     AttioWebhookPayload,
     ConfigurationFieldDefinition,
     attioEventTypeSchema,
     attioFilterSchema,
-    attioRecordPayloadSchema
+    attioRecordPayloadSchema,
+    attioTriggerSchema
 } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { humanizeAttioEventType } from "terse-types/TriggerPresenters"
 import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
@@ -575,8 +578,8 @@ async function deleteAttioWebhook(webhookId: string, integrationId: string): Pro
 }
 
 async function buildAttioTrigger(event: AttioWebhookEvent, eventId: string, integrationId: string): Promise<AttioTrigger> {
-    const base = {
-        integrationType: IntegrationType.ATTIO as const,
+    const base: AttioTriggerBase = {
+        integrationType: IntegrationType.ATTIO,
         eventType: event.event_type,
         eventId,
         createdAt: new Date().toISOString(),
@@ -591,17 +594,8 @@ async function buildAttioTrigger(event: AttioWebhookEvent, eventId: string, inte
             throw new Error(`Attio ${event.event_type} event missing object_id or record_id`)
         }
         const record = await fetchAttioRecord(integrationId, event.id.object_id, event.id.record_id)
-        return { ...base, record } as AttioTrigger
+        return attioTriggerSchema.parse({ ...base, record })
     }
 
-    return base as AttioTrigger
-}
-
-function humanizeAttioEventType(eventType: string): string {
-    return eventType
-        .replace(/[-.]/g, " ")
-        .split(" ")
-        .filter(Boolean)
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-        .join(" ")
+    return attioTriggerSchema.parse(base)
 }

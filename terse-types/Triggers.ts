@@ -744,7 +744,7 @@ export const attioRecordPayloadSchema = z.object({
 })
 export type AttioRecordPayload = z.infer<typeof attioRecordPayloadSchema>
 
-const attioTriggerBaseSchema = baseTriggerSchema.extend({
+export const attioTriggerBaseSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.ATTIO),
     eventType: attioEventTypeSchema,
     /** Set from the inbound `Idempotency-Key` header; Attio does not include an event id in the body. */
@@ -758,6 +758,7 @@ const attioTriggerBaseSchema = baseTriggerSchema.extend({
     actor: attioWebhookActorSchema,
     rawEvent: z.record(z.string(), z.unknown())
 })
+export type AttioTriggerBase = z.infer<typeof attioTriggerBaseSchema>
 
 export const attioCallRecordingCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.CALL_RECORDING_CREATED) })
 export type AttioCallRecordingCreatedTrigger = z.infer<typeof attioCallRecordingCreatedTriggerSchema>
