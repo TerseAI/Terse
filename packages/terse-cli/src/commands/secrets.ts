@@ -7,7 +7,7 @@ import type { ProjectSecretUpsertRequest, ProjectSecretsImportResponse, ProjectS
 
 import { fetchWithAuth, fetchWithAuthNoResponse, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
-import { addProjectConfigSecrets, readProjectConfigOrBail, removeProjectConfigSecrets } from "../projectConfig.js"
+import { readProjectConfigOrBail } from "../projectConfig.js"
 
 const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
 const MAX_SECRET_VALUE_BYTES = 32 * 1024
@@ -17,16 +17,12 @@ export async function secretsList(opts: { json?: boolean } = {}): Promise<void> 
     const config = readProjectConfigOrBail()
     assertManagedProjectConfig(config)
     const response = await fetchWithAuth<ProjectSecretsListResponse>(buildRoute(ApiRoutes.PROJECT_SECRETS.LIST, { id: config.projectId }), apiKey)
-    const declared = new Set(config.secrets ?? [])
 
     if (opts.json) {
         process.stdout.write(
             JSON.stringify(
                 {
-                    secrets: response.secrets.map(secret => ({
-                        name: secret.name,
-                        declaredLocally: declared.has(secret.name)
-                    }))
+                    secrets: response.secrets.map(secret => ({ name: secret.name }))
                 },
                 null,
                 2
@@ -42,8 +38,7 @@ export async function secretsList(opts: { json?: boolean } = {}): Promise<void> 
 
     process.stdout.write(`Project secrets for ${chalk.cyan(config.name)}:\n\n`)
     for (const secret of response.secrets) {
-        const local = declared.has(secret.name) ? chalk.green("declared") : chalk.dim("not in terse.config.json")
-        process.stdout.write(`  ${chalk.cyan(secret.name)}  ${local}\n`)
+        process.stdout.write(`  ${chalk.cyan(secret.name)}\n`)
     }
 }
 
@@ -58,7 +53,6 @@ export async function secretsAdd(name: string, opts: { valueStdin?: boolean } = 
 
     const body: ProjectSecretUpsertRequest = { name, value }
     await fetchWithAuthNoResponse(buildRoute(ApiRoutes.PROJECT_SECRETS.UPSERT, { id: config.projectId }), apiKey, body, "POST")
-    addProjectConfigSecrets([name])
 
     process.stdout.write(chalk.green(`Secret ${name} saved.\n`))
 }
@@ -83,7 +77,6 @@ export async function secretsRemove(name: string, opts: { yes?: boolean } = {}):
     }
 
     await fetchWithAuthNoResponse(buildRoute(ApiRoutes.PROJECT_SECRETS.DELETE, { id: config.projectId, name }), apiKey, {}, "DELETE")
-    removeProjectConfigSecrets([name])
 
     process.stdout.write(chalk.green(`Secret ${name} removed.\n`))
 }
@@ -96,14 +89,12 @@ export async function secretsImport(filePath: string, opts: { overwrite?: boolea
 
     const rejected = [...parsed.rejected]
     let entries = parsed.entries
-    const skippedExisting: string[] = []
 
     if (!opts.overwrite && entries.length > 0) {
         const existing = await fetchWithAuth<ProjectSecretsListResponse>(buildRoute(ApiRoutes.PROJECT_SECRETS.LIST, { id: config.projectId }), apiKey)
         const existingNames = new Set(existing.secrets.map(secret => secret.name))
         entries = entries.filter(entry => {
             if (!existingNames.has(entry.name)) return true
-            skippedExisting.push(entry.name)
             rejected.push({ name: entry.name, reason: "Already exists; pass --overwrite to update it" })
             return false
         })
@@ -115,11 +106,6 @@ export async function secretsImport(filePath: string, opts: { overwrite?: boolea
     }
 
     const accepted = [...response.added, ...response.updated]
-    const declared = [...accepted, ...skippedExisting]
-    if (declared.length > 0) {
-        addProjectConfigSecrets(declared)
-    }
-
     const allRejected = [...rejected, ...response.rejected]
     process.stdout.write(chalk.green(`Imported ${accepted.length} secret${accepted.length === 1 ? "" : "s"}.\n`))
     if (allRejected.length > 0) {

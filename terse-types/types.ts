@@ -780,8 +780,7 @@ export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
     name: z.string().min(1),
     selfHosted: z.boolean().optional(),
-    remoteServerUrl: z.string().optional(),
-    secrets: z.array(z.string()).optional()
+    remoteServerUrl: z.string().optional()
 })
 export type TerseProjectConfig = z.infer<typeof terseProjectConfigSchema>
 
