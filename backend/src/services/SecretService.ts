@@ -197,8 +197,7 @@ const integrationBlobSchemas = {
         webhookSecret: z.string().optional()
     }),
     [IntegrationType.GITHUB]: z.object({
-        accessToken: z.string(),
-        refreshToken: z.string()
+        accessToken: z.string()
     }),
     [IntegrationType.DATADOG]: z.object({
         apiKey: z.string(),

@@ -260,7 +260,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
                 secret: {
                     integrationType: IntegrationType.GITHUB,
                     recordId: githubTokenId,
-                    value: authToken.refresh_token ? { accessToken: authToken.access_token, refreshToken: authToken.refresh_token } : { accessToken: authToken.access_token }
+                    value: { accessToken: authToken.access_token }
                 }
             })
 
