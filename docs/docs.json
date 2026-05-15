@@ -12,9 +12,9 @@
         "size": 80
     },
     "colors": {
-        "primary": "#0F766E",
-        "light": "#14B8A6",
-        "dark": "#115E59"
+        "primary": "#2F7A52",
+        "light": "#4FA774",
+        "dark": "#1F5A38"
     },
     "navigation": {
         "groups": [
