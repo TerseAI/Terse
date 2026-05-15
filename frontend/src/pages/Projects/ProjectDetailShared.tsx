@@ -391,33 +391,9 @@ export function SecretsSection({ projectId }: { projectId: string }) {
 }
 
 function SecretRow({ secret, onDelete }: { secret: ProjectSecretSummary; onDelete: () => void }) {
-    const relative = formatTimestamp(secret.createdAt)
-    const absolute = DateTime.fromISO(secret.createdAt).toFormat("LLL d, yyyy · h:mm:ss a")
-
     return (
-        <li className="hover:bg-muted/30 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors sm:grid-cols-[minmax(160px,1fr)_160px_180px_auto]">
+        <li className="hover:bg-muted/30 grid grid-cols-[1fr_auto] items-center gap-x-4 px-4 py-3 transition-colors">
             <code className="text-foreground min-w-0 truncate font-mono text-[12px]">{secret.name}</code>
-
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <span className="text-muted-foreground hidden cursor-default text-xs tabular-nums sm:inline">{relative}</span>
-                </TooltipTrigger>
-                <TooltipContent>{absolute}</TooltipContent>
-            </Tooltip>
-
-            <div className="text-muted-foreground col-start-1 row-start-2 flex min-w-0 items-center gap-2 text-xs sm:col-start-auto sm:row-start-auto">
-                {secret.createdBy ? (
-                    <>
-                        <Avatar className="size-5">
-                            {secret.createdBy.avatarUrl ? <AvatarImage src={secret.createdBy.avatarUrl} alt="" /> : null}
-                            <AvatarFallback className="text-[9px] font-medium">{initialsOf(secret.createdBy.displayName)}</AvatarFallback>
-                        </Avatar>
-                        <span className="truncate">{secret.createdBy.displayName}</span>
-                    </>
-                ) : (
-                    <span>Unknown creator</span>
-                )}
-            </div>
 
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -458,10 +434,8 @@ function SecretsSkeleton() {
     return (
         <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
             {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3 sm:grid-cols-[minmax(160px,1fr)_160px_180px_auto]">
+                <div key={i} className="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3">
                     <Skeleton className="h-3.5 w-36" />
-                    <Skeleton className="hidden h-3 w-20 sm:block" />
-                    <Skeleton className="h-5 w-28" />
                     <Skeleton className="h-8 w-8" />
                 </div>
             ))}

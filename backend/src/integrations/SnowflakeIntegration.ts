@@ -4,7 +4,7 @@ import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } f
 import logger from "../logger"
 import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
 import { db } from "../prismaClient"
-import { SecretField, createSecret, deleteManySecrets } from "../services/SecretService"
+import { createSecrets, deleteSecretFields, deleteSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 
@@ -146,10 +146,7 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
                 await tx.snowflake_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteManySecrets([
-                    { type: "integration", params: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKey } },
-                    { type: "integration", params: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKeyPassphrase } }
-                ])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId } })
             })
     }
 
@@ -276,8 +273,8 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
                 logger.info("✅ Created Snowflake integration", { integrationId, userId })
             }
 
-            await createSecret({ type: "integration", params: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKey } }, normalizedPrivateKey)
-            await deleteManySecrets([{ type: "integration", params: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKeyPassphrase } }])
+            await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, value: { privateKey: normalizedPrivateKey } } })
+            await deleteSecretFields({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, keys: ["privateKeyPassphrase"] } })
 
             return {
                 success: true,

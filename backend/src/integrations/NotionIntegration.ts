@@ -10,7 +10,7 @@ import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/sett
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
-import { SecretField, createSecret, deleteManySecrets, getSecret } from "../services/SecretService"
+import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 
@@ -220,11 +220,11 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                     }
                 })
 
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.NOTION, recordId: newIntegration.id, field: SecretField.IntegrationToken } }, access_token)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: newIntegration.id, value: { integrationToken: access_token } } })
 
                 integrationId = newIntegration.id
             } else {
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.NOTION, recordId: existing.id, field: SecretField.IntegrationToken } }, access_token)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: existing.id, value: { integrationToken: access_token } } })
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().notion_integrations.update({
@@ -263,7 +263,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 await tx.notion_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteManySecrets([{ type: "integration", params: { integrationType: IntegrationType.NOTION, recordId: integrationId, field: SecretField.IntegrationToken } }])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
             })
     }
 
@@ -299,7 +299,9 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 return null
             }
 
-            return await getSecret({ type: "integration", params: { integrationType: IntegrationType.NOTION, recordId: integrationId, field: SecretField.IntegrationToken } })
+            const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
+            const value = secrets?.integrationToken
+            return value ?? null
         } catch (error) {
             logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId })
             return null

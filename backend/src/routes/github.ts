@@ -8,7 +8,7 @@ import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstall
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { GithubAppInstallationRepository } from "../routes/GithubTypes"
-import { SecretField, getSecret } from "../services/SecretService"
+import { getSecrets } from "../services/SecretService"
 import { getUserForOrg } from "../utility/workos"
 
 import { parseGithubUnifiedEventPayload } from "./githubUnifiedEventParser"
@@ -121,10 +121,11 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
     let tokenWithAccess: string | null = null
 
     for (const token of orgTokens) {
-        const accessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: token.id, field: SecretField.AccessToken } })
-        if (!accessToken) {
+        const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+        if (!secrets) {
             continue
         }
+        const accessToken = secrets.accessToken
 
         const installations = await getAppInstallationsForUser(accessToken, {
             userId: token.user_id,
@@ -214,13 +215,14 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const accessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: user.id, field: SecretField.AccessToken } })
-                if (!accessToken) {
+                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
+                if (!secrets) {
                     return {
                         userId: user.user_id,
                         installations: []
                     }
                 }
+                const accessToken = secrets.accessToken
 
                 const installations = await getAppInstallationsForUser(accessToken, {
                     userId: user.user_id,

@@ -6,7 +6,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, getSecret } from "../services/SecretService"
+import { getSecrets } from "../services/SecretService"
 import { getDatadogApiUrl } from "../utility/datadog"
 
 export async function getDatadogIntegrations(req: Request, res: Response) {
@@ -89,11 +89,14 @@ export const getDatadogIndexes = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Datadog integration not found" })
         }
 
-        const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.ApiKey } })
-        const appKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.AppKey } })
-        if (!apiKey || !appKey) {
+        const secrets = await getSecrets({
+            type: "integration",
+            secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id }
+        })
+        if (!secrets) {
             return res.status(400).json({ error: "Datadog integration is missing credentials. Please reconnect." })
         }
+        const { apiKey, appKey } = secrets
 
         // Fetch indexes from Datadog API
         // Datadog API endpoint: GET /api/v1/logs/config/indexes

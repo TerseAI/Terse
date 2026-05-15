@@ -21,7 +21,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { SecretField, SecretRef, createSecret, deleteManySecrets, getSecret } from "../services/SecretService"
+import { DeleteSecretsArg, createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { Jwt } from "../utility/jwt"
@@ -458,10 +458,13 @@ export class SlackIntegrationManager
                 return
             }
 
-            await createSecret({ type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: slackIntegration.id, field: SecretField.AccessToken } }, access_token)
+            await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: slackIntegration.id, value: { accessToken: access_token } } })
 
             if (isUserType && authed_user.access_token && userSlackIntegrationId) {
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: userSlackIntegrationId, field: SecretField.AuthedUserAccessToken } }, authed_user.access_token)
+                await createSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.SLACK, recordId: userSlackIntegrationId, value: { authedUserAccessToken: authed_user.access_token } }
+                })
             }
 
             const userSlackIntegration = userSlackIntegrationId
@@ -540,14 +543,11 @@ export class SlackIntegrationManager
                     return
                 }
 
-                const secrets: SecretRef[] = [
-                    { type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: integrationId, field: SecretField.AuthedUserAccessToken } }
-                ]
+                const queries: DeleteSecretsArg[] = [{ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: integrationId } }]
                 if (userSlackIntegration.slack_integration?.id) {
-                    secrets.push({ type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: userSlackIntegration.slack_integration.id, field: SecretField.AccessToken } })
+                    queries.push({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: userSlackIntegration.slack_integration.id } })
                 }
-
-                await deleteManySecrets(secrets)
+                await deleteSecrets(queries)
             })
     }
 
@@ -1023,15 +1023,9 @@ async function markWorkspaceUninstalled(team_id: string) {
     })
 
     // Best-effort GSM cleanup
-    await deleteManySecrets([
-        ...slackIntegrations.map<SecretRef>(i => ({
-            type: "integration",
-            params: { integrationType: IntegrationType.SLACK, recordId: i.id, field: SecretField.AccessToken }
-        })),
-        ...userSlackIntegrations.map<SecretRef>(i => ({
-            type: "integration",
-            params: { integrationType: IntegrationType.SLACK, recordId: i.id, field: SecretField.AuthedUserAccessToken }
-        }))
+    await deleteSecrets([
+        ...slackIntegrations.map<DeleteSecretsArg>(i => ({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: i.id } })),
+        ...userSlackIntegrations.map<DeleteSecretsArg>(i => ({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: i.id } }))
     ])
 
     logger.info("Workspace uninstalled. Records deleted from database.", {
@@ -1489,7 +1483,8 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
         // Supports: images, PDFs
         let storedFiles: StoredFile[] = []
         if (enrichedMessage.files && enrichedMessage.files.length > 0) {
-            const botToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: filteredWorkspaceUserIntegrations[0].slack_integration.id, field: SecretField.AccessToken } })
+            const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: filteredWorkspaceUserIntegrations[0].slack_integration.id } })
+            const botToken = secrets?.accessToken
 
             if (botToken) {
                 storedFiles = await downloadSlackFiles(enrichedMessage.files, teamId, botToken)

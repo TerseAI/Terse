@@ -743,17 +743,8 @@ export const projectRotateApiKeyResponseSchema = z.object({
 })
 export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
 
-export const projectSecretCreatedBySchema = z.object({
-    displayName: z.string(),
-    avatarUrl: z.string().nullable()
-})
-export type ProjectSecretCreatedBy = z.infer<typeof projectSecretCreatedBySchema>
-
 export const projectSecretSummarySchema = z.object({
-    name: z.string(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
-    createdBy: projectSecretCreatedBySchema.optional()
+    name: z.string()
 })
 export type ProjectSecretSummary = z.infer<typeof projectSecretSummarySchema>
 

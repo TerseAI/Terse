@@ -39,7 +39,6 @@ model users {
   attio_integrations        attio_integrations[]
   snowflake_integrations    snowflake_integrations[]
   project_deploys           project_deploys[]
-  project_secrets           project_secrets[]
 
   @@index([workos_id])
 }
@@ -291,24 +290,8 @@ model projects {
   automations automations[]
   deploys     project_deploys[]
   api_tokens  api_tokens[]
-  secrets     project_secrets[]
 
   @@unique([organization_id, name])
-}
-
-model project_secrets {
-  id            String   @id @default(cuid())
-  project_id    String
-  name          String
-  created_by_id String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  project    projects @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  created_by users?   @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
-
-  @@unique([project_id, name])
-  @@index([project_id])
 }
 
 // Automation tables

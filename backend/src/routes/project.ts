@@ -17,7 +17,7 @@ import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
-import { deleteManySecrets } from "../services/SecretService"
+import { deleteSecrets } from "../services/SecretService"
 import { createProjectScopedToken } from "../utility/apiTokens"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { getActiveSourceCodeGcsKeyForProject } from "../utility/projectHelper"
@@ -110,8 +110,7 @@ export async function handleProjectDelete(req: Request, res: Response) {
     const project = await db().projects.findFirst({
         where: { id, organization_id: user.organizationId },
         include: {
-            automations: { include: { inputs: { include: getInputConfigInclude() } } },
-            secrets: { select: { name: true } }
+            automations: { include: { inputs: { include: getInputConfigInclude() } } }
         }
     })
 
@@ -142,9 +141,11 @@ export async function handleProjectDelete(req: Request, res: Response) {
     }
 
     await db().projects.delete({ where: { id } })
-    deleteManySecrets(project.secrets.map(secret => ({ type: "project", params: { projectId: id, name: secret.name } }))).catch(error => {
+    try {
+        await deleteSecrets({ type: "project", secret: { projectId: id } })
+    } catch (error) {
         logger.error("Project secret cleanup scheduling failed after project delete", { error, projectId: id })
-    })
+    }
 
     emitCacheInvalidationWithKey(user.organizationId, "agents")
     emitCacheInvalidationWithKey(user.organizationId, "recentAgents")

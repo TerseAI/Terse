@@ -4,7 +4,7 @@ import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from 
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
-import { SecretField, createSecret, deleteManySecrets } from "../services/SecretService"
+import { createSecrets, deleteSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 
@@ -112,10 +112,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                 await tx.datadog_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteManySecrets([
-                    { type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integrationId, field: SecretField.ApiKey } },
-                    { type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integrationId, field: SecretField.AppKey } }
-                ])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: integrationId } })
             })
     }
 
@@ -211,8 +208,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: existing.id, field: SecretField.ApiKey } }, apiKey)
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: existing.id, field: SecretField.AppKey } }, appKey)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
 
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,
@@ -229,8 +225,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.ApiKey } }, apiKey)
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.AppKey } }, appKey)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id, value: { apiKey: apiKey, appKey: appKey } } })
 
                 logger.info("✅ Created Datadog integration", {
                     integrationId: integration.id,

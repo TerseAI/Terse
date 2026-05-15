@@ -4,11 +4,10 @@ import { ProjectSecretsImportResponse, ProjectSecretsListResponse, User, project
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
-import { createSecret, deleteManySecrets } from "../services/SecretService"
-import { workos } from "../utility/workos"
+import { createSecrets, deleteSecretFields, listSecretKeys } from "../services/SecretService"
 
 const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
-const MAX_SECRET_VALUE_BYTES = 64 * 1024
+const MAX_SECRET_VALUE_BYTES = 32 * 1024
 
 type ProjectAccess = {
     id: string
@@ -20,45 +19,10 @@ export async function handleListProjectSecrets(req: Request, res: Response) {
     const access = await requireManagedProject(req, res)
     if (!access) return
 
-    const rows = await db().project_secrets.findMany({
-        where: { project_id: access.id },
-        orderBy: { name: "asc" },
-        include: { created_by: true }
-    })
-
-    const workosIds = Array.from(new Set(rows.map(row => row.created_by?.workos_id).filter((id): id is string => !!id)))
-    const workosUserById = new Map<string, Awaited<ReturnType<typeof workos.userManagement.getUser>> | null>()
-    await Promise.all(
-        workosIds.map(async workosId => {
-            try {
-                workosUserById.set(workosId, await workos.userManagement.getUser(workosId))
-            } catch (error) {
-                logger.warn("Failed to fetch WorkOS user for project secret", { error, workosId, projectId: access.id })
-                workosUserById.set(workosId, null)
-            }
-        })
-    )
-
+    const names = await listSecretKeys({ type: "project", secret: { projectId: access.id } })
     const response: ProjectSecretsListResponse = {
-        secrets: rows.map(row => {
-            const workosId = row.created_by?.workos_id
-            const workosUser = workosId ? workosUserById.get(workosId) : null
-            const createdBy = row.created_by
-                ? {
-                      displayName: workosUser ? `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || workosUser.email : "Unknown",
-                      avatarUrl: workosUser?.profilePictureUrl ?? null
-                  }
-                : undefined
-
-            return {
-                name: row.name,
-                createdAt: row.created_at.toISOString(),
-                updatedAt: row.updated_at.toISOString(),
-                ...(createdBy ? { createdBy } : {})
-            }
-        })
+        secrets: names.map(name => ({ name }))
     }
-
     return res.status(200).json(response)
 }
 
@@ -73,7 +37,7 @@ export async function handleUpsertProjectSecret(req: Request, res: Response) {
         return res.status(400).json({ error })
     }
 
-    await storeSecretThenUpsertMetadata(access.id, user.id, body.name, body.value)
+    await createSecrets({ type: "project", secret: { projectId: access.id, value: { [body.name]: body.value } } })
     emitCacheInvalidationWithWildcard(access.organization_id, "projectSecrets", access.id)
     logger.info("Project secret upserted", { projectId: access.id, userId: user.id, secretName: body.name })
 
@@ -95,13 +59,10 @@ export async function handleDeleteProjectSecret(req: Request, res: Response) {
         return res.status(400).json({ error: nameError })
     }
 
-    await db().project_secrets.deleteMany({
-        where: { project_id: access.id, name }
-    })
     try {
-        await deleteManySecrets([{ type: "project", params: { projectId: access.id, name } }])
+        await deleteSecretFields({ type: "project", secret: { projectId: access.id, keys: [name] } })
     } catch (error) {
-        logger.error("Project secret cleanup scheduling failed", { error, projectId: access.id, name })
+        logger.error("Project secret deletion failed", { error, projectId: access.id, name })
     }
 
     emitCacheInvalidationWithWildcard(access.organization_id, "projectSecrets", access.id)
@@ -128,17 +89,13 @@ export async function handleImportProjectSecrets(req: Request, res: Response) {
         validEntries.set(entry.name, entry.value)
     }
 
-    const existingRows = await db().project_secrets.findMany({
-        where: { project_id: access.id, name: { in: [...validEntries.keys()] } },
-        select: { name: true }
-    })
-    const existingNames = new Set(existingRows.map(row => row.name))
+    const existingNames = new Set(await listSecretKeys({ type: "project", secret: { projectId: access.id } }))
     const added: string[] = []
     const updated: string[] = []
 
     for (const [name, value] of validEntries) {
         try {
-            await storeSecretThenUpsertMetadata(access.id, user.id, name, value)
+            await createSecrets({ type: "project", secret: { projectId: access.id, value: { [name]: value } } })
             if (existingNames.has(name)) {
                 updated.push(name)
             } else {
@@ -192,50 +149,12 @@ async function requireManagedProject(req: Request, res: Response): Promise<Proje
     return project
 }
 
-async function storeSecretThenUpsertMetadata(projectId: string, userId: string, name: string, value: string): Promise<void> {
-    await createSecret({ type: "project", params: { projectId, name } }, value)
-
-    try {
-        await db().project_secrets.upsert({
-            where: { project_id_name: { project_id: projectId, name } },
-            update: { updated_at: new Date() },
-            create: {
-                project_id: projectId,
-                name,
-                created_by_id: userId
-            }
-        })
-    } catch (error) {
-        let ownerKnownAbsent = false
-        try {
-            const owner = await db().project_secrets.findUnique({
-                where: { project_id_name: { project_id: projectId, name } },
-                select: { id: true }
-            })
-            ownerKnownAbsent = !owner
-        } catch (lookupError) {
-            logger.error("Could not verify project secret ownership during rollback; leaving GSM in place", { lookupError, projectId, name })
-        }
-
-        if (ownerKnownAbsent) {
-            try {
-                await deleteManySecrets([{ type: "project", params: { projectId, name } }])
-            } catch (error) {
-                logger.error("Failed to rollback project secret after DB write failure", { error, projectId, name })
-            }
-        } else {
-            logger.error("Project secret DB metadata update failed after GSM write succeeded; metadata may be stale until retry", { error, projectId, name })
-        }
-        throw error
-    }
-}
-
 function validateSecretEntry(name: string, value: string): string | null {
     const nameError = validateSecretName(name)
     if (nameError) return nameError
 
     if (Buffer.byteLength(value, "utf8") > MAX_SECRET_VALUE_BYTES) {
-        return "Secret value must be 64KB or less"
+        return "Secret value must be 32KB or less"
     }
 
     return null

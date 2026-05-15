@@ -2,12 +2,8 @@ import { IntegrationType } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { SecretField, getSecret } from "../../services/SecretService"
+import { getSecrets } from "../../services/SecretService"
 
-/**
- * Get Datadog credentials by integration ID
- * Validates that the integration belongs to the user
- */
 export async function getDatadogCredentialsByIntegrationId(integrationId: string): Promise<{ apiKey: string; appKey: string; region: string } | null> {
     const integration = await db().datadog_integrations.findUnique({
         where: { id: integrationId }
@@ -18,17 +14,18 @@ export async function getDatadogCredentialsByIntegrationId(integrationId: string
         return null
     }
 
-    const apiKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.ApiKey } })
-    const appKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.DATADOG, recordId: integration.id, field: SecretField.AppKey } })
-
-    if (!apiKey || !appKey) {
+    const secrets = await getSecrets({
+        type: "integration",
+        secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id }
+    })
+    if (!secrets) {
         logger.warn("Datadog integration is missing API key or app key", { integrationId })
         return null
     }
 
     return {
-        apiKey,
-        appKey,
+        apiKey: secrets.apiKey,
+        appKey: secrets.appKey,
         region: integration.region
     }
 }

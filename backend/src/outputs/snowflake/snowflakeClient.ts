@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { SecretField, getSecret } from "../../services/SecretService"
+import { getSecrets } from "../../services/SecretService"
 import { extractErrorMessage } from "../../utility/strings"
 
 snowflake.configure({ logLevel: "OFF" })
@@ -97,18 +97,19 @@ export async function getSnowflakeCredentials(integrationId: string, organizatio
         throw new Error(`Snowflake integration not found for integrationId: ${integrationId}`)
     }
 
-    const privateKey = await getSecret({ type: "integration", params: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKey } })
-    if (!privateKey) {
+    const secrets = await getSecrets({
+        type: "integration",
+        secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId }
+    })
+    if (!secrets) {
         throw new Error(`Snowflake private key not found for integrationId: ${integrationId}`)
     }
-
-    const passphrase = await getSecret({ type: "integration", params: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKeyPassphrase } })
 
     return {
         accountIdentifier: integration.account_identifier,
         username: integration.username,
-        privateKey,
-        passphrase: passphrase ?? undefined,
+        privateKey: secrets.privateKey,
+        passphrase: secrets.privateKeyPassphrase ?? undefined,
         warehouse: integration.warehouse,
         databaseName: integration.database_name,
         schemaName: integration.schema_name,

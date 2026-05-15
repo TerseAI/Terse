@@ -21,7 +21,7 @@ import { Identifiable } from "../rag/Hydrator"
 import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
-import { SecretField, createSecret, deleteManySecrets, getSecret } from "../services/SecretService"
+import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
@@ -46,12 +46,12 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         })
         const installations = await Promise.all(
             organizationAccounts.map(async oa => {
-                const accessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: oa.id, field: SecretField.AccessToken } })
-                if (!accessToken) {
+                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: oa.id } })
+                if (!secrets) {
                     return []
                 }
 
-                const appInstallations = await getAppInstallationsForUser(accessToken, {
+                const appInstallations = await getAppInstallationsForUser(secrets.accessToken, {
                     userId: oa.user_id,
                     tokenId: oa.id
                 })
@@ -133,14 +133,15 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             const fullUser = await getUserForOrg(user.id, token.organization_id)
             if (!fullUser) continue
 
-            const accessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: token.id, field: SecretField.AccessToken } })
-            if (!accessToken) {
+            const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+            if (!secrets) {
                 logger.warn("Missing GitHub access token while processing webhook event", {
                     userId: user.id,
                     installationId: event.installationId
                 })
                 continue
             }
+            const accessToken = secrets.accessToken
 
             // Attach any images or files from the event
             const storedFiles: StoredFile[] = await getPullRequestFiles(event, accessToken, event.installationId.toString())
@@ -260,10 +261,14 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
                 }
             })
 
-            await createSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: githubTokenId, field: SecretField.AccessToken } }, authToken.access_token)
-            if (authToken.refresh_token) {
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: githubTokenId, field: SecretField.RefreshToken } }, authToken.refresh_token)
-            }
+            await createSecrets({
+                type: "integration",
+                secret: {
+                    integrationType: IntegrationType.GITHUB,
+                    recordId: githubTokenId,
+                    value: authToken.refresh_token ? { accessToken: authToken.access_token, refreshToken: authToken.refresh_token } : { accessToken: authToken.access_token }
+                }
+            })
 
             logger.info("[GitHub Setup URL Installation] Upsert completed", {
                 installationId: installation_id_number,
@@ -290,10 +295,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
                 await tx.github_app_tokens.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteManySecrets([
-                    { type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: integrationId, field: SecretField.AccessToken } },
-                    { type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: integrationId, field: SecretField.RefreshToken } }
-                ])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: integrationId } })
             })
     }
 
@@ -655,15 +657,15 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
         const githubAppUsers = await tx.github_app_tokens.findMany()
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const accessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: user.id, field: SecretField.AccessToken } })
-                if (!accessToken) {
+                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
+                if (!secrets) {
                     return {
                         userId: user.user_id,
                         installations: []
                     }
                 }
 
-                const installations = await getAppInstallationsForUser(accessToken, {
+                const installations = await getAppInstallationsForUser(secrets.accessToken, {
                     userId: user.user_id,
                     tokenId: user.id,
                     installationId
@@ -715,10 +717,11 @@ export async function validateGithubRepositoryIds({ userId, integrationId, repos
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }
 
-    const resolvedAccessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.GITHUB, recordId: accessToken.id, field: SecretField.AccessToken } })
-    if (!resolvedAccessToken) {
+    const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: accessToken.id } })
+    if (!secrets) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }
+    const resolvedAccessToken = secrets.accessToken
 
     const integrationInstallationId = Number(integrationId)
     const installations = await getAppInstallationsForUser(resolvedAccessToken, {

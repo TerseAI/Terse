@@ -10,7 +10,7 @@ import { CliError } from "../cliError.js"
 import { addProjectConfigSecrets, readProjectConfigOrBail, removeProjectConfigSecrets } from "../projectConfig.js"
 
 const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
-const MAX_SECRET_VALUE_BYTES = 64 * 1024
+const MAX_SECRET_VALUE_BYTES = 32 * 1024
 
 export async function secretsList(opts: { json?: boolean } = {}): Promise<void> {
     const apiKey = readApiKeyOrBail()
@@ -25,8 +25,6 @@ export async function secretsList(opts: { json?: boolean } = {}): Promise<void> 
                 {
                     secrets: response.secrets.map(secret => ({
                         name: secret.name,
-                        createdAt: secret.createdAt,
-                        updatedAt: secret.updatedAt,
                         declaredLocally: declared.has(secret.name)
                     }))
                 },
@@ -45,7 +43,7 @@ export async function secretsList(opts: { json?: boolean } = {}): Promise<void> 
     process.stdout.write(`Project secrets for ${chalk.cyan(config.name)}:\n\n`)
     for (const secret of response.secrets) {
         const local = declared.has(secret.name) ? chalk.green("declared") : chalk.dim("not in terse.config.json")
-        process.stdout.write(`  ${chalk.cyan(secret.name)}  ${local}  ${chalk.dim(`updated ${formatDate(secret.updatedAt)}`)}\n`)
+        process.stdout.write(`  ${chalk.cyan(secret.name)}  ${local}\n`)
     }
 }
 
@@ -252,13 +250,7 @@ function validateSecretValueOrThrow(value: string): void {
 
 function validateSecretValue(value: string): string | null {
     if (Buffer.byteLength(value, "utf8") > MAX_SECRET_VALUE_BYTES) {
-        return "Secret value must be 64KB or less"
+        return "Secret value must be 32KB or less"
     }
     return null
-}
-
-function formatDate(value: string): string {
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return value
-    return date.toLocaleString()
 }

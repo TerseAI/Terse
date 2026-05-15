@@ -15,7 +15,7 @@ import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegist
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
-import { SecretField, getSecret } from "../services/SecretService"
+import { getSecrets } from "../services/SecretService"
 import { OAuthStatePayload, createOAuthStateToken } from "../utility/oauth"
 
 import {
@@ -68,7 +68,8 @@ export async function setupSlackBolt() {
                 throw new Error(`No Slack integration found for team_id: ${teamId}`)
             }
 
-            const botToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.SLACK, recordId: slackIntegration.id, field: SecretField.AccessToken } })
+            const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: slackIntegration.id } })
+            const botToken = secrets?.accessToken
             if (!botToken) {
                 throw new Error(`No Slack access token found for team_id: ${teamId}`)
             }

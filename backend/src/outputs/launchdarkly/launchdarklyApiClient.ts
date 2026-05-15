@@ -3,7 +3,7 @@ import { User } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { SecretField, getSecret } from "../../services/SecretService"
+import { getSecrets } from "../../services/SecretService"
 
 /**
  * Get LaunchDarkly API key by integration ID
@@ -24,5 +24,7 @@ export async function getLaunchDarklyApiKeyByIntegrationId(integrationId: string
         return null
     }
 
-    return await getSecret({ type: "integration", params: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id, field: SecretField.ApiKey } })
+    const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id } })
+    const value = secrets?.apiKey
+    return value ?? null
 }

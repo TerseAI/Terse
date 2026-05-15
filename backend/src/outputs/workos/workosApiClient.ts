@@ -4,7 +4,7 @@ import { User as TerseUser } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { SecretField, getSecret } from "../../services/SecretService"
+import { getSecrets } from "../../services/SecretService"
 
 /**
  * Get the WorkOS API key for a given integration, validating that
@@ -25,7 +25,9 @@ export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user
         return null
     }
 
-    return await getSecret({ type: "integration", params: { integrationType: IntegrationType.WORKOS, recordId: integration.id, field: SecretField.ApiKey } })
+    const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id } })
+    const value = secrets?.apiKey
+    return value ?? null
 }
 
 function workosForApiKey(apiKey: string): WorkOS {

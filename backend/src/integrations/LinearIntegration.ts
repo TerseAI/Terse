@@ -18,7 +18,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { fetchLinearTeams } from "../routes/linear"
 import { StoredFile } from "../services/FileStorageService"
-import { SecretField, createSecret, deleteManySecrets, getSecret } from "../services/SecretService"
+import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
@@ -297,11 +297,14 @@ export class LinearIntegrationManager
                     }
                 })
 
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: newIntegration.id, field: SecretField.AccessToken } }, access_token)
-                const refreshTokenValue = refresh_token || ""
-                if (refreshTokenValue) {
-                    await createSecret({ type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: newIntegration.id, field: SecretField.RefreshToken } }, refreshTokenValue)
-                }
+                await createSecrets({
+                    type: "integration",
+                    secret: {
+                        integrationType: IntegrationType.LINEAR,
+                        recordId: newIntegration.id,
+                        value: refresh_token ? { accessToken: access_token, refreshToken: refresh_token } : { accessToken: access_token }
+                    }
+                })
 
                 integrationId = newIntegration.id
                 logger.info("✅ Created Linear OAuth connection", {
@@ -309,10 +312,14 @@ export class LinearIntegrationManager
                     userId: decoded.userId
                 })
             } else {
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: existing.id, field: SecretField.AccessToken } }, access_token)
-                if (refresh_token) {
-                    await createSecret({ type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: existing.id, field: SecretField.RefreshToken } }, refresh_token)
-                }
+                await createSecrets({
+                    type: "integration",
+                    secret: {
+                        integrationType: IntegrationType.LINEAR,
+                        recordId: existing.id,
+                        value: refresh_token ? { accessToken: access_token, refreshToken: refresh_token } : { accessToken: access_token }
+                    }
+                })
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().linear_integrations.update({
@@ -351,10 +358,7 @@ export class LinearIntegrationManager
                 await tx.linear_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteManySecrets([
-                    { type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: integrationId, field: SecretField.AccessToken } },
-                    { type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: integrationId, field: SecretField.RefreshToken } }
-                ])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.LINEAR, recordId: integrationId } })
             })
     }
 
@@ -432,8 +436,12 @@ export class LinearIntegrationManager
                 return null
             }
 
-            const existingAccessToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: integration.id, field: SecretField.AccessToken } })
-            const refreshToken = await getSecret({ type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: integration.id, field: SecretField.RefreshToken } })
+            const secrets = await getSecrets({
+                type: "integration",
+                secret: { integrationType: IntegrationType.LINEAR, recordId: integration.id }
+            })
+            const existingAccessToken = secrets?.accessToken ?? null
+            const refreshToken = secrets?.refreshToken ?? null
 
             const now = new Date()
             // Check if token is expired or will expire within the refresh threshold
@@ -447,10 +455,10 @@ export class LinearIntegrationManager
 
                 // Exchange refresh token for new access token
                 const params = new URLSearchParams()
-                params.append("refresh_token", refreshToken)
+                params.append("refreshToken", refreshToken)
                 params.append("client_id", settings.linear.clientId)
                 params.append("client_secret", settings.linear.clientSecret)
-                params.append("grant_type", "refresh_token")
+                params.append("grant_type", "refreshToken")
 
                 const tokenResponse = await fetch("https://api.linear.app/oauth/token", {
                     method: "POST",
@@ -479,10 +487,14 @@ export class LinearIntegrationManager
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000)
 
-                await createSecret({ type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: integration.id, field: SecretField.AccessToken } }, access_token)
-                if (refresh_token) {
-                    await createSecret({ type: "integration", params: { integrationType: IntegrationType.LINEAR, recordId: integration.id, field: SecretField.RefreshToken } }, refresh_token)
-                }
+                await createSecrets({
+                    type: "integration",
+                    secret: {
+                        integrationType: IntegrationType.LINEAR,
+                        recordId: integration.id,
+                        value: refresh_token ? { accessToken: access_token, refreshToken: refresh_token } : { accessToken: access_token }
+                    }
+                })
 
                 // Update the database with new tokens
                 await db().linear_integrations.update({
