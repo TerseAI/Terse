@@ -688,8 +688,6 @@ model automation_attio_input_configs {
   updated_at          DateTime @updatedAt
 
   automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
-
-  @@unique([automation_input_id, webhook_id])
 }
 
 // Webhook Trigger Configuration
