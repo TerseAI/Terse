@@ -59,6 +59,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <TerseIcon />
         case ConfigType.HEY_REACH_INPUT:
             return <HeyReachIcon />
+        case ConfigType.ATTIO_INPUT:
+            return <AttioIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never

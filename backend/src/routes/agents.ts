@@ -1,10 +1,11 @@
 import { Request, Response } from "express"
 import { isValidToolName } from "terse-types"
-import { ConfigData, WebMonitorConfig } from "terse-types/Configs"
+import { AttioInputConfig, ConfigData, ConfigType, WebMonitorConfig } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { Agent, AgentDraft, AgentFileContentResponse, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, File, agentCreateSchema, agentUpdateSchema } from "terse-types/types"
 import { version as uuidVersion, validate as validateUuid } from "uuid"
 
+import { fetchAttioWebhookSubscriptions } from "../integrations/AttioIntegration"
 import { getMonitor } from "../integrations/WebMonitorIntegration"
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
@@ -772,17 +773,30 @@ export function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][numbe
 
 async function rehydrateTriggerConfig(trigger: AgentWithRelations["inputs"][number]): Promise<ConfigData> {
     const base = convertPrismaConfigToConfigData(trigger)
+
     const monitorId = trigger.webmonitor_config?.provider_monitor_id
-    if (base.configType !== "webmonitor" || !monitorId) {
-        return base
+    if (base.configType === ConfigType.WEBMONITOR && monitorId) {
+        try {
+            const { query, frequency, outputSchema } = await getMonitor(monitorId)
+            return new WebMonitorConfig(query, frequency, outputSchema)
+        } catch (error) {
+            logger.warn("Failed to rehydrate WebMonitor config from Parallel API", { monitorId, error })
+            return base
+        }
     }
-    try {
-        const { query, frequency, outputSchema } = await getMonitor(monitorId)
-        return new WebMonitorConfig(query, frequency, outputSchema)
-    } catch (error) {
-        logger.warn("Failed to rehydrate WebMonitor config from Parallel API", { monitorId, error })
-        return base
+
+    const attioWebhookId = trigger.attio_input_config?.webhook_id
+    if (base.configType === ConfigType.ATTIO_INPUT && attioWebhookId) {
+        try {
+            const subscriptions = await fetchAttioWebhookSubscriptions(trigger.integration_id, attioWebhookId)
+            return new AttioInputConfig(trigger.integration_id, subscriptions)
+        } catch (error) {
+            logger.warn("Failed to rehydrate Attio subscriptions from Attio API", { webhookId: attioWebhookId, error })
+            return base
+        }
     }
+
+    return base
 }
 
 // Helper function to transform AgentWithRelations to frontend Agent format

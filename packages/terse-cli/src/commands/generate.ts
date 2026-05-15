@@ -281,6 +281,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                     instances.map(async (inst): Promise<AttioInstanceData> => {
                         const objects = await fetchWithAuth<
                             Array<{
+                                id: { workspace_id: string; object_id: string }
                                 api_slug: string
                                 singular_noun: string
                                 plural_noun?: string
@@ -289,6 +290,7 @@ export async function generate(provider: LanguageProvider = resolveProvider()): 
                         >(buildRoute(ApiRoutes.ATTIO.OBJECTS, { integrationId: inst.id }), apiKey).catch(
                             () =>
                                 [] as Array<{
+                                    id: { workspace_id: string; object_id: string }
                                     api_slug: string
                                     singular_noun: string
                                     plural_noun?: string

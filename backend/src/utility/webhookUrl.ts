@@ -21,3 +21,8 @@ export function buildHeyReachWebhookUrl(triggerId: string): string {
     const baseUrl = settings.urls.backendProxy ?? settings.urls.backend
     return `${baseUrl}/webhooks/heyreach/${triggerId}`
 }
+
+export function buildAttioWebhookUrl(triggerId: string): string {
+    const baseUrl = settings.urls.backendProxy ?? settings.urls.backend
+    return `${baseUrl}/webhooks/attio/${triggerId}`
+}

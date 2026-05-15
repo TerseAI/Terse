@@ -17,7 +17,7 @@ import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { createAgent, deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
-import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./routes/attio"
+import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingCatalog, getBillingContext, getBillingStatus, getBillingUsageBuckets } from "./routes/billing"
@@ -132,7 +132,8 @@ app.use((req, res, next) => {
         req.path === "/linear/webhook" ||
         req.path === ApiRoutes.WEBHOOKS.WORKOS ||
         req.path.startsWith("/webhooks/workos-trigger/") ||
-        req.path.startsWith("/webhooks/webmonitor/")
+        req.path.startsWith("/webhooks/webmonitor/") ||
+        req.path.startsWith("/webhooks/attio/")
     ) {
         next()
     } else {
@@ -241,6 +242,13 @@ app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, async (req, res) => {
 
 app.post(ApiRoutes.WEBHOOKS.HEY_REACH_BY_INTEGRATION_ID, async (req, res) => {
     handleHeyReachWebhook(req, res)
+})
+
+// Attio webhook needs raw body for HMAC-SHA256 signature verification
+app.use(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, express.raw({ type: "application/json" }))
+
+app.post(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, async (req, res) => {
+    handleAttioWebhook(req, res)
 })
 
 app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
