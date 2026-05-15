@@ -249,11 +249,11 @@ app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
 
 // MARK: DEVICE AUTH (uses WorkOS JWT in body, not bearer token)
 app.post(ApiRoutes.SDK.IDENTIFY, async (req, res) => {
-    identify(req, res)
+    await identify(req, res)
 })
 
 app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
-    deviceTokenExchange(req, res)
+    await deviceTokenExchange(req, res)
 })
 
 // Billing service callback: uses a service JWT, not bearer API token auth.
@@ -705,11 +705,11 @@ app.get(ApiRoutes.SDK.ME, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, 
 })
 
 app.get(ApiRoutes.SDK.ME_ORGANIZATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    listMyOrganizations(req, res)
+    await listMyOrganizations(req, res)
 })
 
 app.post(ApiRoutes.SDK.SWITCH_ORGANIZATION, requireAuth([AuthKind.UserToken]), async (req, res) => {
-    sdkSwitchOrganization(req, res)
+    await sdkSwitchOrganization(req, res)
 })
 
 app.post(ApiRoutes.SDK.SAMPLE_EVENTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {

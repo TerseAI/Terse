@@ -9,6 +9,7 @@ import {
     identifyRequestSchema,
     switchOrganizationRequestSchema
 } from "terse-types/types"
+import { ZodError } from "zod"
 
 import logger from "../logger"
 import { getClaimsFromVerifiedPayload } from "../utility/accessTokenClaims"
@@ -62,9 +63,8 @@ function handleVerifyError(error: any, res: Response, route: string): Response |
  * the user finishes the org-creation form in the web app.
  */
 export async function identify(req: Request, res: Response) {
-    const { accessToken } = identifyRequestSchema.parse(req.body)
-
     try {
+        const { accessToken } = identifyRequestSchema.parse(req.body)
         const { workosUserId } = await verifyWorkosAccessToken(accessToken)
         const workosUser = await workos.userManagement.getUser(workosUserId)
 
@@ -99,6 +99,9 @@ export async function identify(req: Request, res: Response) {
 
         return res.status(200).json(response)
     } catch (error: any) {
+        if (error instanceof ZodError) {
+            return res.status(400).json({ error: "Invalid request body", issues: error.issues })
+        }
         const handled = handleVerifyError(error, res, "identify")
         if (handled) return handled
         return res.status(500).json({ error: "Failed to identify user" })
@@ -114,9 +117,8 @@ export async function identify(req: Request, res: Response) {
  * /app/organizations/create flow.
  */
 export async function deviceTokenExchange(req: Request, res: Response) {
-    const { accessToken, organizationId } = deviceTokenExchangeRequestSchema.parse(req.body)
-
     try {
+        const { accessToken, organizationId } = deviceTokenExchangeRequestSchema.parse(req.body)
         const { payload, workosUserId } = await verifyWorkosAccessToken(accessToken)
         const workosUser = await workos.userManagement.getUser(workosUserId)
 
@@ -154,6 +156,9 @@ export async function deviceTokenExchange(req: Request, res: Response) {
 
         return res.status(201).json(response)
     } catch (error: any) {
+        if (error instanceof ZodError) {
+            return res.status(400).json({ error: "Invalid request body", issues: error.issues })
+        }
         const handled = handleVerifyError(error, res, "device-token-exchange")
         if (handled) return handled
         return res.status(500).json({ error: "Failed to exchange token" })
@@ -205,9 +210,8 @@ export async function switchOrganization(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const { organizationId } = switchOrganizationRequestSchema.parse(req.body)
-
     try {
+        const { organizationId } = switchOrganizationRequestSchema.parse(req.body)
         const memberships = await workos.userManagement.listOrganizationMemberships({
             userId: user.workosId,
             statuses: ["active"]
@@ -225,6 +229,9 @@ export async function switchOrganization(req: Request, res: Response) {
         }
         return res.status(201).json(response)
     } catch (error: any) {
+        if (error instanceof ZodError) {
+            return res.status(400).json({ error: "Invalid request body", issues: error.issues })
+        }
         logger.error("[switch-organization] Failed", { error, userId: user.id, organizationId })
         return res.status(500).json({ error: "Failed to switch organization" })
     }
