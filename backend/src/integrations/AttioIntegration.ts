@@ -538,9 +538,45 @@ export async function fetchAttioWebhookSubscriptions(integrationId: string, webh
 
 const RECORD_EVENT_TYPES_WITH_PAYLOAD: ReadonlySet<string> = new Set<AttioEventType>([AttioEventType.RECORD_CREATED, AttioEventType.RECORD_UPDATED, AttioEventType.RECORD_MERGED])
 
+const attioGetObjectResponseSchema = z.object({
+    data: z.object({
+        api_slug: z.string().nullable().optional()
+    })
+})
+
 const attioGetRecordResponseSchema = z.object({
     data: attioRecordPayloadSchema
 })
+
+async function fetchAttioObjectApiSlug(integrationId: string, objectIdOrSlug: string): Promise<string | null> {
+    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
+    if (!accessToken) {
+        throw new Error("Attio access token not found")
+    }
+
+    const response = await fetch(`${ATTIO_API_BASE}/objects/${encodeURIComponent(objectIdOrSlug)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+    })
+
+    if (!response.ok) {
+        const text = await response.text()
+        throw new Error(`Attio GetObject failed: ${response.status} ${text}`)
+    }
+
+    const parsed = attioGetObjectResponseSchema.parse(await response.json())
+    const slug = parsed.data.api_slug
+    return typeof slug === "string" && slug.length > 0 ? slug : null
+}
+
+async function resolveAttioObjectSlugForEvent(integrationId: string, objectId: string | undefined): Promise<string | null> {
+    if (!objectId) return null
+    try {
+        return await fetchAttioObjectApiSlug(integrationId, objectId)
+    } catch (error) {
+        logger.warn("Attio webhook: failed to resolve object api_slug", { integrationId, objectId, error })
+        return null
+    }
+}
 
 async function fetchAttioRecord(integrationId: string, objectId: string, recordId: string): Promise<AttioRecordPayload> {
     const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
@@ -581,25 +617,31 @@ async function deleteAttioWebhook(webhookId: string, integrationId: string): Pro
     logger.info("Attio DeleteWebhook succeeded", { webhookId })
 }
 
-async function buildAttioTrigger(event: AttioWebhookEvent, eventId: string, integrationId: string): Promise<AttioTrigger> {
-    const base: AttioTriggerBase = {
+function buildAttioTriggerBase(event: AttioWebhookEvent, eventId: string, objectSlug: string | null): AttioTriggerBase {
+    return {
         integrationType: IntegrationType.ATTIO,
         eventType: event.event_type,
         eventId,
         createdAt: new Date().toISOString(),
         workspaceId: event.id.workspace_id,
         resourceIds: event.id,
+        objectSlug,
         actor: event.actor,
         rawEvent: event as unknown as Record<string, unknown>
     }
+}
+
+async function buildAttioTrigger(event: AttioWebhookEvent, eventId: string, integrationId: string): Promise<AttioTrigger> {
+    const objectSlugPromise = resolveAttioObjectSlugForEvent(integrationId, event.id.object_id)
 
     if (RECORD_EVENT_TYPES_WITH_PAYLOAD.has(event.event_type)) {
         if (!event.id.object_id || !event.id.record_id) {
             throw new Error(`Attio ${event.event_type} event missing object_id or record_id`)
         }
-        const record = await fetchAttioRecord(integrationId, event.id.object_id, event.id.record_id)
-        return attioTriggerSchema.parse({ ...base, record })
+        const [record, objectSlug] = await Promise.all([fetchAttioRecord(integrationId, event.id.object_id, event.id.record_id), objectSlugPromise])
+        return attioTriggerSchema.parse({ ...buildAttioTriggerBase(event, eventId, objectSlug), record })
     }
 
-    return attioTriggerSchema.parse(base)
+    const objectSlug = await objectSlugPromise
+    return attioTriggerSchema.parse(buildAttioTriggerBase(event, eventId, objectSlug))
 }
