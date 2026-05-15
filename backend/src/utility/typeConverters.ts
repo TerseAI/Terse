@@ -1,5 +1,6 @@
 import { InputConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import {
+    AttioInputConfig,
     AttioOutputConfig,
     ConfigData,
     ConfigType,
@@ -270,6 +271,11 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         return new HeyReachInputConfig(integrationId, channelInput.hey_reach_config.event_type as HeyReachEventType, channelInput.hey_reach_config.campaign_ids || [])
     }
 
+    if (channelInput.attio_input_config) {
+        // Subscriptions live on Attio (source of truth); FE fetches via GET /v2/webhooks/:webhook_id.
+        return new AttioInputConfig(integrationId, [])
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelInput.config_type) {
         case InputConfigType.GMAIL:
@@ -281,6 +287,7 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         case InputConfigType.POSTHOG:
         case InputConfigType.TIME_TRIGGER:
         case InputConfigType.WORKOS_INPUT:
+        case InputConfigType.ATTIO_INPUT:
         case InputConfigType.WEBHOOK_INPUT:
         case InputConfigType.WEBMONITOR:
         case InputConfigType.HEY_REACH_INPUT:
@@ -414,6 +421,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.WEBMONITOR
         case ConfigType.HEY_REACH_INPUT:
             return InputConfigType.HEY_REACH_INPUT
+        case ConfigType.ATTIO_INPUT:
+            return InputConfigType.ATTIO_INPUT
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error("SLACK_OUTPUT is an output type, not an input type")
@@ -466,6 +475,8 @@ const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigType): C
             return ConfigType.WEBMONITOR
         case InputConfigType.HEY_REACH_INPUT:
             return ConfigType.HEY_REACH_INPUT
+        case InputConfigType.ATTIO_INPUT:
+            return ConfigType.ATTIO_INPUT
         default:
             throw inputConfigType satisfies never
     }
