@@ -36,7 +36,7 @@
             },
             {
                 "group": "Reference",
-                "pages": ["reference/cli", "reference/triggers", "reference/skills", "reference/typescript-sdk"]
+                "pages": ["reference/cli", "reference/triggers", "reference/skills", "reference/typescript-sdk", "reference/licensing"]
             }
         ]
     },
