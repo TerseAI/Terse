@@ -71,7 +71,8 @@ Duplicate **`name`** values throw an error when the second job registers. At mos
 | `triggers`       | typed trigger array                             | One or more triggers that start the workflow.                                                     |
 | `filter`         | `(event) => boolean \| Promise<boolean>`        | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger`      | `(event) => Promise<void>`                      | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or `https://app.useterse.ai/api`).      |
+
+`CreateJobParameters` still includes an optional `remoteServerUrl` field for typing compatibility, but **`terse deploy` does not send it today**. Point self-hosted servers at Terse using **`remoteServerUrl`** in **`terse.config.json`** (see the [CLI reference](/reference/cli#terse-attach)).
 
 Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
 
@@ -224,6 +225,8 @@ createJob({
 ## Tool approvals
 
 List tool names in **`toolApprovals`** on **`TerseAgent.create()`** to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
+
+When you stream with **`agent.run()`**, either set **`onApprovalRequired`** so the SDK calls **`TerseAgent.submitApprovalDecision`** for you, or handle **`ToolApprovalRequestedResult`** chunks and call **`submitApprovalDecision`** yourself with the **`runId`** from the stream.
 
 ```ts
 createJob({
