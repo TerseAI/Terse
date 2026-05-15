@@ -57,7 +57,16 @@ export function getSecrets<A extends GetSecretsArg>(arg: A): Promise<GetSecretsR
     }
 }
 
-async function getIntegrationSecrets<T extends IntegrationKey>(arg: { integrationType: T; recordId: string }): Promise<IntegrationBlob<T> | null> {
+export async function tryGetSecrets<A extends GetSecretsArg>(arg: A): Promise<GetSecretsReturn<A> | null> {
+    try {
+        return await getSecrets(arg)
+    } catch (error) {
+        if (error instanceof SecretNotFoundError) return null
+        throw error
+    }
+}
+
+async function getIntegrationSecrets<T extends IntegrationKey>(arg: { integrationType: T; recordId: string }): Promise<IntegrationBlob<T>> {
     const blobId = blobIdFor({ type: "integration", secret: arg })
     const validated = await readAndValidateOrNull(blobId, integrationBlobSchemas[arg.integrationType])
     if (!validated) {
@@ -69,10 +78,7 @@ async function getIntegrationSecrets<T extends IntegrationKey>(arg: { integratio
 async function getProjectSecrets(arg: ProjectGetSecretsArg["secret"]): Promise<Record<string, string>> {
     const blobId = blobIdFor({ type: "project", secret: arg })
     const validated = await readAndValidateOrNull(blobId, projectBlobSchema)
-    if (!validated) {
-        throw new SecretNotFoundError(`Project secret ${blobId} not found`)
-    }
-    return validated
+    return validated ?? {}
 }
 
 export async function deleteSecrets(arg: DeleteSecretsArg | DeleteSecretsArg[]): Promise<void> {

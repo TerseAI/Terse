@@ -21,7 +21,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { DeleteSecretsArg, createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { DeleteSecretsArg, createSecrets, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { Jwt } from "../utility/jwt"
@@ -1483,21 +1483,12 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
         // Supports: images, PDFs
         let storedFiles: StoredFile[] = []
         if (enrichedMessage.files && enrichedMessage.files.length > 0) {
-            const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: filteredWorkspaceUserIntegrations[0].slack_integration.id } })
-            if (!secrets) {
-                logger.warn("No Slack bot token available for file download", {
-                    teamId
-                })
-                return
-            }
-            const botToken = secrets.accessToken
-
+            const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: filteredWorkspaceUserIntegrations[0].slack_integration.id } })
+            const botToken = secrets?.accessToken
             if (botToken) {
                 storedFiles = await downloadSlackFiles(enrichedMessage.files, teamId, botToken)
             } else {
-                logger.warn("No Slack bot token available for file download", {
-                    teamId
-                })
+                logger.warn("No Slack bot token available for file download", { teamId })
             }
         }
 

@@ -12,7 +12,7 @@ import logger from "../logger"
 import { getWorkOSUser } from "../outputs/workos/workosApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { createSecrets, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
@@ -33,8 +33,8 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         })
         return Promise.all(
             integrations.map(async i => {
-                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
-                return this.enrichInstance(i.id, secrets.apiKey ?? "")
+                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
+                return this.enrichInstance(i.id, secrets?.apiKey ?? "")
             })
         )
     }
@@ -63,7 +63,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         })
         return Promise.all(
             integrations.map(async i => {
-                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
+                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
                 return this.enrichInstance(i.id, secrets?.apiKey ?? "")
             })
         )
@@ -95,7 +95,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         }
 
         const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integrationId } })
-        const enrichedPayload = secrets ? await enrichWorkOSEventPayload(payload, secrets.apiKey) : payload
+        const enrichedPayload = await enrichWorkOSEventPayload(payload, secrets.apiKey)
         const event = new WorkOSTriggerRuntime(enrichedPayload, integrationId)
         const processor = new EventProcessor(event, user)
         const results = await processor.process()
@@ -203,7 +203,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             let integrationId: string
 
             if (existing) {
-                const storedSecrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: existing.id } })
+                const storedSecrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: existing.id } })
                 if (!storedSecrets?.webhookSecret && !secret) {
                     return {
                         success: false,
@@ -286,11 +286,11 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         const workosIntegration = await db().workos_integrations.findUnique({
             where: { id: integrationId, organization_id: organizationId }
         })
-
-        const secrets = workosIntegration ? await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: workosIntegration.id } }) : null
-        if (!secrets) {
-            throw new Error(`WorkOS API key not found for integration ${integrationId}`)
+        if (!workosIntegration) {
+            throw new Error(`WorkOS integration ${integrationId} not found`)
         }
+
+        const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: workosIntegration.id } })
         const apiKey = secrets.apiKey
 
         const events = await fetchWorkOSEvents(apiKey, workosConfig.eventTypes, limit)

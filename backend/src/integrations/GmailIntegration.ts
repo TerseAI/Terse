@@ -134,7 +134,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                     const oauth2Client = getOAuth2Client()
                     oauth2Client.setCredentials({
                         access_token: accessToken,
-                        ...(secrets ? { refresh_token: secrets.refreshToken } : {})
+                        refresh_token: secrets.refreshToken
                     })
                     const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
@@ -471,7 +471,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id } })
                 oauth2Client.setCredentials({
                     access_token: accessToken,
-                    ...(secrets ? { refresh_token: secrets.refreshToken } : {}),
+                    refresh_token: secrets.refreshToken,
                     expiry_date: currentExpiry?.getTime()
                 })
 
@@ -555,7 +555,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         const oauth2Client = getOAuth2Client()
         oauth2Client.setCredentials({
             access_token: accessToken,
-            ...(secrets ? { refresh_token: secrets.refreshToken } : {})
+            refresh_token: secrets.refreshToken
         })
         const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
@@ -830,7 +830,7 @@ async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistor
     const oauth2Client = getOAuth2Client()
     oauth2Client.setCredentials({
         access_token: accessToken,
-        ...(secrets ? { refresh_token: secrets.refreshToken } : {})
+        refresh_token: secrets.refreshToken
     })
 
     const gmail = createGmailClient({ version: "v1", auth: oauth2Client })

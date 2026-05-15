@@ -260,12 +260,7 @@ export async function getDatadogCredentialsForOrganization(integrationId: string
         throw new Error(`Datadog integration not found for integrationId: ${integrationId}`)
     }
 
-    const credentials = await getDatadogCredentialsByIntegrationId(datadogIntegration.id)
-    if (!credentials) {
-        throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
-    }
-
-    return credentials
+    return getDatadogCredentialsByIntegrationId(datadogIntegration.id)
 }
 
 /**
@@ -274,9 +269,6 @@ export async function getDatadogCredentialsForOrganization(integrationId: string
 export async function validateDatadogIndexesExist(integrationId: string, indexes: string[]): Promise<void> {
     if (!indexes.length) return
     const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
-    if (!credentials) {
-        throw new Error(`Datadog integration ${integrationId} not found or access denied`)
-    }
     const apiUrl = getDatadogApiUrl(credentials.region)
     const response = await fetch(`${apiUrl}/api/v1/logs/config/indexes`, {
         method: "GET",

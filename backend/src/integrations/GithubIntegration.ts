@@ -21,7 +21,7 @@ import { Identifiable } from "../rag/Hydrator"
 import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
-import { SecretNotFoundError, createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { createSecrets, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
@@ -46,12 +46,9 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         })
         const installations = await Promise.all(
             organizationAccounts.map(async oa => {
-                let secrets: { accessToken: string } | undefined
-
-                try {
-                    secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: oa.id } })
-                } catch (error) {
-                    logger.error(`Github integration ${oa.id} not found or missing access token`, { integrationId: oa.id })
+                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: oa.id } })
+                if (!secrets) {
+                    logger.warn(`Github app token ${oa.id} is missing its secret blob; skipping`, { integrationId: oa.id })
                     return []
                 }
 
@@ -136,21 +133,17 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             if (!token?.organization_id) continue
             const fullUser = await getUserForOrg(user.id, token.organization_id)
             if (!fullUser) continue
-            try {
-                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
-                const storedFiles: StoredFile[] = await getPullRequestFiles(event, secrets.accessToken, event.installationId.toString())
-                await runWithUserContext(fullUser, async () => {
-                    const githubEvent = new GithubTriggerRuntime(event, storedFiles)
-                    const eventProcessor = new EventProcessor(githubEvent, fullUser)
-                    await eventProcessor.process()
-                })
-            } catch (error) {
-                if (error instanceof SecretNotFoundError) {
-                    logger.warn(`Github integration ${token.id} not found or missing access token`, { integrationId: token.id })
-                    continue
-                }
-                logger.error(`Error processing Github webhook event for integration ${token.id}`, { error, integrationId: token.id })
+            const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+            if (!secrets) {
+                logger.warn(`Github app token ${token.id} is missing its secret blob; skipping`, { integrationId: token.id })
+                continue
             }
+            const storedFiles: StoredFile[] = await getPullRequestFiles(event, secrets.accessToken, event.installationId.toString())
+            await runWithUserContext(fullUser, async () => {
+                const githubEvent = new GithubTriggerRuntime(event, storedFiles)
+                const eventProcessor = new EventProcessor(githubEvent, fullUser)
+                await eventProcessor.process()
+            })
         }
     }
 
@@ -658,8 +651,9 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
         const githubAppUsers = await tx.github_app_tokens.findMany()
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
+                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
                 if (!secrets) {
+                    logger.warn(`Github app token ${user.id} is missing its secret blob; skipping`, { integrationId: user.id })
                     return {
                         userId: user.user_id,
                         installations: []

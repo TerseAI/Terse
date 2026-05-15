@@ -8,7 +8,7 @@ import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { SecretNotFoundError, createSecrets, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 
@@ -34,7 +34,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         })
         return Promise.all(
             integrations.map(async i => {
-                const secrets = await getSecrets({
+                const secrets = await tryGetSecrets({
                     type: "integration",
                     secret: { integrationType: IntegrationType.ATTIO, recordId: i.id }
                 })
@@ -117,7 +117,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         })
         return Promise.all(
             integrations.map(async i => {
-                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: i.id } })
+                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: i.id } })
                 return {
                     id: i.id,
                     workspaceName: secrets ? await this.fetchWorkspaceName(secrets.accessToken) : undefined
@@ -301,27 +301,28 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
     }
 
     async getAccessToken(integrationId: string): Promise<string | null> {
+        const integration = await db().attio_integrations.findUnique({
+            where: { id: integrationId },
+            select: { id: true }
+        })
+
+        if (!integration) {
+            logger.error(`Attio integration ${integrationId} not found`, { integrationId })
+            return null
+        }
+
         try {
-            const integration = await db().attio_integrations.findUnique({
-                where: { id: integrationId },
-                select: {
-                    id: true
-                }
-            })
-
-            if (!integration) {
-                logger.error(`Attio integration ${integrationId} not found`, { integrationId })
-                return null
-            }
-
             const secrets = await getSecrets({
                 type: "integration",
                 secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId }
             })
             return secrets.accessToken
         } catch (error) {
-            logger.error(`Error getting Attio access token for integration ${integrationId}`, { error, integrationId })
-            return null
+            if (error instanceof SecretNotFoundError) {
+                logger.warn(`Attio integration ${integrationId} is missing its secret blob`, { integrationId })
+                return null
+            }
+            throw error
         }
     }
 }
