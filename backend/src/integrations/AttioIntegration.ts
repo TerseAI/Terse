@@ -184,16 +184,26 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 })
                 continue
             }
-            const processor = new EventProcessor(runtime, user)
-            const results = await processor.process()
-            for (const result of results) {
-                if (result.success) {
-                    logger.info("Attio event processed", {
-                        integrationId: subscribedTrigger.integration_id,
-                        eventType: event.event_type,
-                        agentId: result.agentConfig?.id
-                    })
+            try {
+                const processor = new EventProcessor(runtime, user)
+                const results = await processor.process()
+                for (const result of results) {
+                    if (result.success) {
+                        logger.info("Attio event processed", {
+                            integrationId: subscribedTrigger.integration_id,
+                            eventType: event.event_type,
+                            agentId: result.agentConfig?.id
+                        })
+                    }
                 }
+            } catch (error) {
+                logger.error("Attio webhook: event processing failed; continuing with remaining events", {
+                    error,
+                    eventType: event.event_type,
+                    eventId: perEventId,
+                    integrationId: subscribedTrigger.integration_id
+                })
+                continue
             }
         }
     }
