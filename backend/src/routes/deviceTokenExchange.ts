@@ -232,7 +232,7 @@ export async function switchOrganization(req: Request, res: Response) {
         if (error instanceof ZodError) {
             return res.status(400).json({ error: "Invalid request body", issues: error.issues })
         }
-        logger.error("[switch-organization] Failed", { error, userId: user.id, organizationId })
+        logger.error("[switch-organization] Failed", { error, userId: user.id })
         return res.status(500).json({ error: "Failed to switch organization" })
     }
 }
