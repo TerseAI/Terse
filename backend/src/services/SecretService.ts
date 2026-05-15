@@ -41,7 +41,7 @@ export async function createSecrets(arg: CreateSecretsArg): Promise<void> {
     for (const [k, v] of Object.entries(value)) {
         if (v !== undefined) merged[k] = v
     }
-    const validated = schemaFor(arg).parse(merged) as Record<string, unknown>
+    const validated = partialSchemaFor(arg).parse(merged) as Record<string, unknown>
 
     await writeBlob(blobId, validated)
 }
@@ -111,7 +111,7 @@ export async function deleteSecretFields(arg: DeleteSecretFieldsArg): Promise<vo
         return
     }
 
-    const validated = schemaFor(arg).parse(blob) as Record<string, unknown>
+    const validated = partialSchemaFor(arg).parse(blob) as Record<string, unknown>
     await writeBlob(blobId, validated)
 }
 
@@ -120,10 +120,10 @@ export async function listSecretKeys(arg: ListSecretKeysArg): Promise<string[]> 
     return Object.keys(blob).sort()
 }
 
-function schemaFor(arg: AnyArg): z.ZodType {
+function partialSchemaFor(arg: AnyArg): z.ZodType {
     switch (arg.type) {
         case "integration":
-            return integrationBlobSchemas[arg.secret.integrationType]
+            return integrationBlobSchemas[arg.secret.integrationType].partial()
         case "project":
             return projectBlobSchema
         default:
