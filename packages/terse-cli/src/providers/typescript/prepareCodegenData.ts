@@ -694,7 +694,7 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     lines.push("}")
     lines.push("")
     lines.push('registerEventTransform("attio", (event) => {')
-    lines.push('    const e = event as { record?: { values?: unknown }; resourceIds?: { object_id?: string } }')
+    lines.push("    const e = event as { record?: { values?: unknown }; resourceIds?: { object_id?: string } }")
     lines.push("    if (!e?.record?.values) return event")
     lines.push("    const objectId = e.resourceIds?.object_id")
     lines.push("    const slug = objectId ? __attioObjectSlugByObjectId[objectId] : undefined")
