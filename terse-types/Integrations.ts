@@ -130,8 +130,8 @@ export const WorkOSIntegrationMetadata = {
 export const AttioIntegrationMetadata = {
     type: IntegrationType.ATTIO,
     name: "Attio",
-    description: "Add and update contacts in Attio",
-    isInput: false,
+    description: "Trigger on Attio record events and add/update contacts in Attio",
+    isInput: true,
     isOutput: true
 } as const satisfies IntegrationDetails
 

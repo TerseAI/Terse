@@ -74,6 +74,7 @@ export interface AttioAttributeData {
 }
 
 interface AttioObjectData {
+    id: { workspace_id: string; object_id: string }
     api_slug: string
     singular_noun: string
     plural_noun?: string

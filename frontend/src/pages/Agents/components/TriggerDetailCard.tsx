@@ -4,6 +4,9 @@ import { Check, Copy } from "lucide-react"
 import { CONFIG_DETAILS, ConfigType } from "terse-types"
 import type {
     AgentTrigger,
+    AttioFilter,
+    AttioInputConfigData,
+    AttioSubscription,
     DatadogConfigData,
     FrequencyUnit,
     GitHubConfigData,
@@ -20,6 +23,7 @@ import type {
 
 import { getCronDescription } from "../../../components/ScheduleEditor"
 import ToolCallParameters from "../../../components/ToolCallParameters"
+import { useAttioObjects } from "../../../hooks/api/useAttioObjects"
 import { useGithubIntegrations } from "../../../hooks/api/useGithubIntegrations"
 import { useGithubResources } from "../../../hooks/api/useGithubResources"
 import { useHeyReachCampaigns } from "../../../hooks/api/useHeyReachCampaigns"
@@ -63,6 +67,8 @@ export function TriggerDetailCard({ trigger }: { trigger: AgentTrigger }) {
             return <LaunchDarklyBody config={config} label={label} type={type} />
         case ConfigType.HEY_REACH_INPUT:
             return <HeyReachBody config={config} label={label} type={type} />
+        case ConfigType.ATTIO_INPUT:
+            return <AttioBody config={config} label={label} type={type} />
         default:
             return <Frame type={type} label={label} />
     }
@@ -256,6 +262,50 @@ function DatadogBody({ config, label, type }: { config: DatadogConfigData; label
     )
 }
 
+function AttioBody({ config, label, type }: { config: AttioInputConfigData; label: string; type: ConfigType }) {
+    const { objects } = useAttioObjects(config.integrationId)
+    const subscriptions = config.subscriptions ?? []
+    const objectNameById = new Map(objects.filter(o => o.id?.object_id).map(o => [o.id!.object_id, o.singular_noun || o.api_slug]))
+
+    const summary = subscriptions.length > 0 ? `${subscriptions.length} ${subscriptions.length === 1 ? "subscription" : "subscriptions"}` : undefined
+
+    return (
+        <Frame type={type} label={label} summary={summary}>
+            {subscriptions.length > 0 ? (
+                <Field label="Subscriptions">
+                    <div className="flex flex-col gap-1.5">
+                        {subscriptions.map((sub, i) => (
+                            <AttioSubscriptionRow key={`${sub.eventType}-${i}`} subscription={sub} objectNameById={objectNameById} />
+                        ))}
+                    </div>
+                </Field>
+            ) : (
+                <EmptyValue text="No subscriptions" />
+            )}
+        </Frame>
+    )
+}
+
+function AttioSubscriptionRow({ subscription, objectNameById }: { subscription: AttioSubscription; objectNameById: Map<string, string> }) {
+    const parentObjectId = parentObjectIdFromFilter(subscription.filter ?? null)
+    const objectName = parentObjectId ? objectNameById.get(parentObjectId) : null
+
+    return (
+        <div className="flex flex-wrap items-center gap-1.5">
+            <span className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs font-medium">{formatAttioEvent(subscription.eventType)}</span>
+            {parentObjectId ? <span className="text-muted-foreground text-xs">on</span> : null}
+            {parentObjectId ? <span className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs font-medium">{objectName ?? parentObjectId}</span> : null}
+        </div>
+    )
+}
+
+function parentObjectIdFromFilter(filter: AttioFilter | null): string | null {
+    if (!filter) return null
+    const clauses = "$and" in filter ? filter.$and : filter.$or
+    const match = clauses.find(c => (c.field === "id.object_id" || c.field === "parent_object_id") && c.operator === "equals")
+    return typeof match?.value === "string" ? match.value : null
+}
+
 function HeyReachBody({ config, label, type }: { config: HeyReachInputConfigData; label: string; type: ConfigType }) {
     const { campaigns } = useHeyReachCampaigns(config.integrationId)
     const campaignIds = config.campaignIds ?? []
@@ -388,6 +438,13 @@ function formatLinearEvent(type: string): string {
 function formatGmailEvent(type: string): string {
     if (type === "email.received") return "Email received"
     return type
+}
+
+function formatAttioEvent(eventType: string): string {
+    const words = eventType.replace(/[-.]/g, " ").split(" ").filter(Boolean)
+    if (words.length === 0) return eventType
+    const [first, ...rest] = words
+    return [first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(), ...rest.map(w => w.toLowerCase())].join(" ")
 }
 
 function formatHeyReachEvent(type: string): string {

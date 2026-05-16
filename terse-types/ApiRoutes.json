@@ -175,7 +175,8 @@
         "WEBMONITOR_BY_INPUT_ID": "/webhooks/webmonitor/:inputId",
         "WORKOS_TRIGGER_BY_INTEGRATION_ID": "/webhooks/workos-trigger/:integrationId",
         "WEBHOOK_TRIGGER_BY_TOKEN": "/webhooks/trigger/:webhookToken",
-        "HEY_REACH_BY_INTEGRATION_ID": "/webhooks/heyreach/:triggerId"
+        "HEY_REACH_BY_INTEGRATION_ID": "/webhooks/heyreach/:triggerId",
+        "ATTIO_BY_TRIGGER_ID": "/webhooks/attio/:triggerId"
     },
     "SCHEDULE": {
         "TRIGGER_BY_INPUT_ID": "/schedule/trigger/:inputId",
