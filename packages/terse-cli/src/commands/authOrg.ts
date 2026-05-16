@@ -98,9 +98,9 @@ export async function authOrgSwitch(orgIdArg: string | undefined): Promise<void>
             choices: data.organizations.map(o => {
                 const isCurrent = o.id === data.activeOrganizationId
                 return {
-                    name: isCurrent ? `${o.name} ${chalk.dim("(current)")}` : `${o.name} ${chalk.dim(o.id)}`,
+                    name: isCurrent ? o.name : `${o.name} ${chalk.dim(o.id)}`,
                     value: o.id,
-                    disabled: isCurrent
+                    disabled: isCurrent ? chalk.dim("(current)") : false
                 }
             })
         })
