@@ -9,6 +9,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GmailIntegration, GmailIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { OAuthInstallationDetails } from "terse-types/types"
+import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { gmail as gmailConfig, urls } from "../config/settings"
@@ -31,7 +32,11 @@ const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.g
 
 export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.GMAIL
+    readonly integrationType = IntegrationType.GMAIL
+    readonly secretSchema = z.object({
+        accessToken: z.string(),
+        refreshToken: z.string()
+    })
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return []

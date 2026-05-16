@@ -5,6 +5,7 @@ import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { ConfigData, ConfigType, WorkOSEventType, WorkOSInputConfigSchema } from "terse-types/Configs"
 import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
+import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
@@ -22,7 +23,11 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]
 
 export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, WorkOSWebhookRequest, typeof WorkOSIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.WORKOS> {
-    integrationType: IntegrationType = IntegrationType.WORKOS
+    readonly integrationType = IntegrationType.WORKOS
+    readonly secretSchema = z.object({
+        apiKey: z.string(),
+        webhookSecret: z.string().optional()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<WorkOSIntegration[]> {
         const integrations = await db().workos_integrations.findMany({

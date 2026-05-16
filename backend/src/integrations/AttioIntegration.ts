@@ -4,6 +4,7 @@ import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, AttioIntegration, AttioIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
+import { z } from "zod"
 
 import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
 import logger from "../logger"
@@ -19,7 +20,10 @@ import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, cr
 
 export class AttioIntegrationManager implements Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject>, OAuthIntegrationInstallation<IntegrationType.ATTIO> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.ATTIO
+    readonly integrationType = IntegrationType.ATTIO
+    readonly secretSchema = z.object({
+        accessToken: z.string()
+    })
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return []

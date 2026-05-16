@@ -1,5 +1,6 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "terse-types/Integrations"
+import { z } from "zod"
 
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
@@ -12,7 +13,11 @@ import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult,
 
 export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.DATADOG> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.DATADOG
+    readonly integrationType = IntegrationType.DATADOG
+    readonly secretSchema = z.object({
+        apiKey: z.string(),
+        appKey: z.string()
+    })
 
     getFormFields(): FormFieldDefinition[] {
         return [

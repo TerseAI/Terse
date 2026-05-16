@@ -1,6 +1,7 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "terse-types/Integrations"
 import { LaunchDarklyProject } from "terse-types/types"
+import { z } from "zod"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -23,7 +24,10 @@ export class LaunchDarklyIntegrationManager
     implements Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata, LaunchDarklyProject>, FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY>
 {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY
+    readonly integrationType = IntegrationType.LAUNCHDARKLY
+    readonly secretSchema = z.object({
+        apiKey: z.string()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<LaunchDarklyIntegration[]> {
         const launchdarklyIntegrations = await db().launchdarkly_integrations.findMany({

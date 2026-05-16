@@ -1,6 +1,7 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, PosthogIntegration, PosthogIntegrationMetadata } from "terse-types/Integrations"
 import { PosthogProject } from "terse-types/types"
+import { z } from "zod"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -21,7 +22,10 @@ import {
 
 export class PosthogIntegrationManager implements Integration<PosthogIntegration, never, typeof PosthogIntegrationMetadata, PosthogProject>, FormIntegrationInstallation<IntegrationType.POSTHOG> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.POSTHOG
+    readonly integrationType = IntegrationType.POSTHOG
+    readonly secretSchema = z.object({
+        apiKey: z.string()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<PosthogIntegration[]> {
         const posthogIntegrations = await db().posthog_integrations.findMany({

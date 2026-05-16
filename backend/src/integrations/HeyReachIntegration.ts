@@ -27,7 +27,10 @@ export interface HeyReachWebhookRequest {
 export class HeyReachIntegrationManager
     implements Integration<HeyReachIntegration, HeyReachWebhookRequest, typeof HeyReachIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.HEY_REACH>
 {
-    integrationType: IntegrationType = IntegrationType.HEY_REACH
+    readonly integrationType = IntegrationType.HEY_REACH
+    readonly secretSchema = z.object({
+        apiKey: z.string()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<HeyReachIntegration[]> {
         const integrations = await db().hey_reach_integrations.findMany({

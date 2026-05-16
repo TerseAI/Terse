@@ -10,6 +10,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, LinearIntegration, LinearIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { LinearTeam, OAuthInstallationDetails } from "terse-types/types"
+import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, settings, urls } from "../config/settings"
@@ -34,7 +35,11 @@ export class LinearIntegrationManager
     implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR>
 {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.LINEAR
+    readonly integrationType = IntegrationType.LINEAR
+    readonly secretSchema = z.object({
+        accessToken: z.string(),
+        refreshToken: z.string()
+    })
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return []

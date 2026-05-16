@@ -11,6 +11,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { OAuthInstallationDetails, Repository } from "terse-types/types"
+import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { githubApp, urls } from "../config/settings"
@@ -34,7 +35,10 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubTrigger, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.GITHUB
+    readonly integrationType = IntegrationType.GITHUB
+    readonly secretSchema = z.object({
+        accessToken: z.string()
+    })
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return []

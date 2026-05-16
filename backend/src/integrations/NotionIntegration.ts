@@ -5,6 +5,7 @@ import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "terse-types/Integrations"
 import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
+import { z } from "zod"
 
 import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/settings"
 import logger from "../logger"
@@ -21,7 +22,10 @@ import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, cr
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata, NotionResource>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.NOTION
+    readonly integrationType = IntegrationType.NOTION
+    readonly secretSchema = z.object({
+        integrationToken: z.string()
+    })
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return []

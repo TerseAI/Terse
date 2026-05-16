@@ -1,5 +1,6 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "terse-types/Integrations"
+import { z } from "zod"
 
 import logger from "../logger"
 import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
@@ -12,7 +13,11 @@ import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult,
 
 export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegration, never, typeof SnowflakeIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.SNOWFLAKE> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.SNOWFLAKE
+    readonly integrationType = IntegrationType.SNOWFLAKE
+    readonly secretSchema = z.object({
+        privateKey: z.string(),
+        privateKeyPassphrase: z.string().optional()
+    })
 
     getFormFields(): FormFieldDefinition[] {
         return [

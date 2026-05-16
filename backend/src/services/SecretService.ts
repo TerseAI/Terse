@@ -1,30 +1,9 @@
-import { IntegrationType } from "terse-types/Integrations"
 import { z } from "zod"
 
 import { gcp } from "../config/settings"
+import { INTEGRATION_REGISTRY, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
-import { SecretManagerClient, getSecretManagerClient } from "../utility/secretManagerClient"
-
-let cachedClient: SecretManagerClient | null = null
-let clientInitFailed = false
-
-function getClient(): SecretManagerClient {
-    if (!isGsmAvailable()) {
-        throw new Error("GSM is not configured.")
-    }
-    if (cachedClient) return cachedClient
-    if (clientInitFailed) {
-        throw new Error("Secret Manager client initialization previously failed")
-    }
-    try {
-        cachedClient = getSecretManagerClient()
-        return cachedClient
-    } catch (error) {
-        clientInitFailed = true
-        logger.error("Failed to initialize Secret Manager client.", { error })
-        throw error
-    }
-}
+import { getSecretManagerClient } from "../utility/secretManagerClient"
 
 export function isGsmAvailable(): boolean {
     return Boolean(gcp.serviceAccountBase64 && gcp.projectId)
@@ -68,7 +47,7 @@ export async function tryGetSecrets<A extends GetSecretsArg>(arg: A): Promise<Ge
 
 async function getIntegrationSecrets<T extends IntegrationKey>(arg: { integrationType: T; recordId: string }): Promise<IntegrationBlob<T>> {
     const blobId = blobIdFor({ type: "integration", secret: arg })
-    const validated = await readAndValidateOrNull(blobId, integrationBlobSchemas[arg.integrationType])
+    const validated = await readAndValidateOrNull(blobId, schemaFor(arg.integrationType))
     if (!validated) {
         throw new SecretNotFoundError(`Integration secret ${blobId} not found`)
     }
@@ -81,7 +60,7 @@ async function getProjectSecrets(arg: ProjectGetSecretsArg["secret"]): Promise<R
     return validated ?? {}
 }
 
-export async function deleteSecrets(arg: DeleteSecretsArg | DeleteSecretsArg[]): Promise<void> {
+export async function deleteSecrets(arg: GetSecretsArg | GetSecretsArg[]): Promise<void> {
     const list = Array.isArray(arg) ? arg : [arg]
     if (list.length === 0) return
 
@@ -124,7 +103,7 @@ export async function listSecretKeys(arg: ListSecretKeysArg): Promise<string[]> 
 function partialSchemaFor(arg: AnyArg): z.ZodType {
     switch (arg.type) {
         case "integration":
-            return integrationBlobSchemas[arg.secret.integrationType].partial()
+            return schemaFor(arg.secret.integrationType).partial()
         case "project":
             return projectBlobSchema
         default:
@@ -148,7 +127,7 @@ async function readBlob(blobId: string): Promise<Record<string, unknown>> {
 }
 
 async function readBlobOrNull(blobId: string): Promise<Record<string, unknown> | null> {
-    const raw = await getClient().getSecretOrNull(blobId)
+    const raw = await getSecretManagerClient().getSecretOrNull(blobId)
     if (raw === null) return null
     try {
         const parsed = JSON.parse(raw)
@@ -180,67 +159,33 @@ async function writeBlob(blobId: string, blob: Record<string, unknown>): Promise
         throw new Error(`Secret blob exceeds ${MAX_BLOB_BYTES} bytes`)
     }
 
-    await getClient().createOrUpdateSecret(blobId, serialized)
+    await getSecretManagerClient().createOrUpdateSecret(blobId, serialized)
 }
 
 async function deleteBlob(blobId: string): Promise<void> {
-    await getClient().deleteSecret(blobId)
+    await getSecretManagerClient().deleteSecret(blobId)
 }
 
 const MAX_BLOB_BYTES = 60 * 1024
 
-const integrationBlobSchemas = {
-    [IntegrationType.ATTIO]: z.object({
-        accessToken: z.string()
-    }),
-    [IntegrationType.WORKOS]: z.object({
-        apiKey: z.string(),
-        webhookSecret: z.string().optional()
-    }),
-    [IntegrationType.GITHUB]: z.object({
-        accessToken: z.string()
-    }),
-    [IntegrationType.DATADOG]: z.object({
-        apiKey: z.string(),
-        appKey: z.string()
-    }),
-    [IntegrationType.HEY_REACH]: z.object({
-        apiKey: z.string()
-    }),
-    [IntegrationType.SLACK]: z.object({
-        accessToken: z.string().optional(),
-        authedUserAccessToken: z.string().optional()
-    }),
-    [IntegrationType.POSTHOG]: z.object({
-        apiKey: z.string()
-    }),
-    [IntegrationType.SNOWFLAKE]: z.object({
-        privateKey: z.string(),
-        privateKeyPassphrase: z.string().optional()
-    }),
-    [IntegrationType.GMAIL]: z.object({
-        accessToken: z.string(),
-        refreshToken: z.string()
-    }),
-    [IntegrationType.LINEAR]: z.object({
-        accessToken: z.string(),
-        refreshToken: z.string()
-    }),
-    [IntegrationType.LAUNCHDARKLY]: z.object({
-        apiKey: z.string()
-    }),
-    [IntegrationType.NOTION]: z.object({
-        integrationToken: z.string()
-    })
-}
-
 const projectBlobSchema = z.record(z.string(), z.string())
 
-export type IntegrationKey = keyof typeof integrationBlobSchemas
-export type IntegrationBlob<T extends IntegrationKey> = z.infer<(typeof integrationBlobSchemas)[T]>
+type RegistryEntry = IntegrationManagers[number]
+type ManagerWithSchema = Extract<RegistryEntry, { secretSchema: unknown }>
+
+export type IntegrationKey = ManagerWithSchema["integrationType"]
+export type IntegrationBlob<T extends IntegrationKey> = z.infer<Extract<ManagerWithSchema, { integrationType: T }>["secretSchema"]>
 export type IntegrationField<T extends IntegrationKey> = keyof IntegrationBlob<T>
 
-type GetSecretsArg = IntegrationGetSecretsArg | ProjectGetSecretsArg
+function schemaFor(integrationType: IntegrationKey): z.ZodObject {
+    const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
+    if (!manager || !("secretSchema" in manager) || !manager.secretSchema) {
+        throw new Error(`No secret schema registered for integration type: ${integrationType}`)
+    }
+    return manager.secretSchema
+}
+
+export type GetSecretsArg = IntegrationGetSecretsArg | ProjectGetSecretsArg
 
 type IntegrationGetSecretsArg<T extends IntegrationKey = IntegrationKey> = {
     type: "integration"
@@ -266,18 +211,6 @@ type IntegrationCreateSecretsArg = {
 type ProjectCreateSecretsArg = {
     type: "project"
     secret: { projectId: string; value: Record<string, string> }
-}
-
-export type DeleteSecretsArg = IntegrationDeleteSecretsArg | ProjectDeleteSecretsArg
-
-type IntegrationDeleteSecretsArg = {
-    type: "integration"
-    secret: { integrationType: IntegrationKey; recordId: string }
-}
-
-type ProjectDeleteSecretsArg = {
-    type: "project"
-    secret: { projectId: string }
 }
 
 export type DeleteSecretFieldsArg = IntegrationDeleteSecretFieldsArg | ProjectDeleteSecretFieldsArg

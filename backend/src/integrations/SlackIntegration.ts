@@ -14,6 +14,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse, SlackUserResponse, SlackUsersResponse } from "terse-types/types"
+import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { jwt as jwtConfig, slack as slackConfig, urls } from "../config/settings"
@@ -21,7 +22,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { DeleteSecretsArg, createSecrets, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
+import { GetSecretsArg, createSecrets, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { Jwt } from "../utility/jwt"
@@ -39,7 +40,11 @@ export class SlackIntegrationManager
     implements Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.SLACK
+    readonly integrationType = IntegrationType.SLACK
+    readonly secretSchema = z.object({
+        accessToken: z.string().optional(),
+        authedUserAccessToken: z.string().optional()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<SlackIntegration[]> {
         const userSlackIntegrations = await db().user_slack_integrations.findMany({
@@ -543,7 +548,7 @@ export class SlackIntegrationManager
                     return
                 }
 
-                const queries: DeleteSecretsArg[] = [{ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: integrationId } }]
+                const queries: GetSecretsArg[] = [{ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: integrationId } }]
                 if (userSlackIntegration.slack_integration?.id) {
                     queries.push({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: userSlackIntegration.slack_integration.id } })
                 }
@@ -1024,8 +1029,8 @@ async function markWorkspaceUninstalled(team_id: string) {
 
     // Best-effort GSM cleanup
     await deleteSecrets([
-        ...slackIntegrations.map<DeleteSecretsArg>(i => ({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: i.id } })),
-        ...userSlackIntegrations.map<DeleteSecretsArg>(i => ({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: i.id } }))
+        ...slackIntegrations.map<GetSecretsArg>(i => ({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: i.id } })),
+        ...userSlackIntegrations.map<GetSecretsArg>(i => ({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: i.id } }))
     ])
 
     logger.info("Workspace uninstalled. Records deleted from database.", {
