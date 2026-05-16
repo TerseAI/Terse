@@ -104,6 +104,7 @@ interface WorkOSSectionContext {
 interface AttioObjectContext {
     staticName: string
     apiSlug: string
+    objectId: string
     singularNoun: string
     attributeSource: string
     recordValuesType: string
@@ -114,6 +115,7 @@ interface AttioSectionContext {
     id: string
     skillToolType: string
     objects: AttioObjectContext[]
+    runtimeLines: string[]
 }
 
 interface SnowflakeSectionContext {
@@ -620,6 +622,7 @@ function buildGeneratedAttioObjects(instances: AttioInstanceData[]): Array<Attio
         return {
             staticName,
             apiSlug: object.api_slug,
+            objectId: object.id.object_id,
             singularNoun: object.singular_noun,
             attributeSource,
             recordValuesType: renderAttioObjectValueShape(attributes, "record"),
@@ -629,13 +632,125 @@ function buildGeneratedAttioObjects(instances: AttioInstanceData[]): Array<Attio
     })
 }
 
+function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioObjects>): string[] {
+    const lines: string[] = []
+    lines.push("const __attioMetadataKeys = new Set([")
+    lines.push('    "active_from",')
+    lines.push('    "active_until",')
+    lines.push('    "attribute_type",')
+    lines.push('    "created_by_actor",')
+    lines.push("])")
+    lines.push("")
+    lines.push("const __attioMultiValueAttributeSlugsByObject: Record<string, readonly string[]> = {")
+    for (const object of objects) {
+        const multiValueSlugs = object.attributes
+            .filter(isProbablyAttioMultiValue)
+            .map(attr => `"${escapeString(attr.api_slug)}"`)
+            .join(", ")
+        lines.push(`    "${escapeString(object.apiSlug)}": [${multiValueSlugs}],`)
+    }
+    lines.push("}")
+    lines.push("")
+    lines.push("const __attioObjectSlugByObjectId: Record<string, string> = {")
+    for (const object of objects) {
+        lines.push(`    "${escapeString(object.objectId)}": "${escapeString(object.apiSlug)}",`)
+    }
+    lines.push("}")
+    lines.push("")
+    lines.push("function __flattenAttioLeafValue(value: unknown): unknown {")
+    lines.push("    if (value === null || value === undefined) return value")
+    lines.push("    if (Array.isArray(value)) return value.map(entry => __flattenAttioLeafValue(entry))")
+    lines.push('    if (typeof value !== "object") return value')
+    lines.push("    const rawObject = value as Record<string, unknown>")
+    lines.push('    if (typeof rawObject.full_name === "string") return rawObject.full_name')
+    lines.push('    if (typeof rawObject.email_address === "string") return rawObject.email_address')
+    lines.push('    if (typeof rawObject.domain === "string") return rawObject.domain')
+    lines.push('    if (typeof rawObject.phone_number === "string") return rawObject.phone_number')
+    lines.push('    if ("value" in rawObject) return __flattenAttioLeafValue(rawObject.value)')
+    lines.push("    const dataEntries = Object.entries(rawObject).filter(([key]) => !__attioMetadataKeys.has(key))")
+    lines.push("    if (dataEntries.length === 0) return rawObject")
+    lines.push("    if (dataEntries.length === 1) return __flattenAttioLeafValue(dataEntries[0][1])")
+    lines.push("    return Object.fromEntries(dataEntries.map(([key, entryValue]) => [key, __flattenAttioLeafValue(entryValue)]))")
+    lines.push("}")
+    lines.push("")
+    lines.push("function __flattenAttioAttributeValue(rawValue: unknown, preferArray: boolean): unknown {")
+    lines.push("    if (!Array.isArray(rawValue)) return __flattenAttioLeafValue(rawValue)")
+    lines.push("    const flattened = rawValue.map(entry => __flattenAttioLeafValue(entry)).filter(entry => entry !== undefined)")
+    lines.push("    return preferArray ? flattened : flattened[0]")
+    lines.push("}")
+    lines.push("")
+    lines.push("function __isAttioMultiValueAttribute(objectSlug: string, attributeSlug: string): boolean {")
+    lines.push("    return (__attioMultiValueAttributeSlugsByObject[objectSlug] || []).includes(attributeSlug)")
+    lines.push("}")
+    lines.push("")
+    lines.push("function __getAttioRecordValues<TValues extends Record<string, unknown>>(objectSlug: string, record: unknown): TValues {")
+    lines.push('    const rawValues = record && typeof record === "object" ? (record as { values?: unknown }).values : undefined')
+    lines.push('    if (!rawValues || typeof rawValues !== "object" || Array.isArray(rawValues)) return {} as TValues')
+    lines.push("    const flattenedValues: Record<string, unknown> = {}")
+    lines.push("    for (const [attributeSlug, rawValue] of Object.entries(rawValues)) {")
+    lines.push("        flattenedValues[attributeSlug] = __flattenAttioAttributeValue(rawValue, __isAttioMultiValueAttribute(objectSlug, attributeSlug))")
+    lines.push("    }")
+    lines.push("    return flattenedValues as TValues")
+    lines.push("}")
+    lines.push("")
+    lines.push('registerEventTransform("attio", (event) => {')
+    lines.push("    const e = event as { record?: { values?: unknown }; resourceIds?: { object_id?: string } }")
+    lines.push("    if (!e?.record?.values) return event")
+    lines.push("    const objectId = e.resourceIds?.object_id")
+    lines.push("    const slug = objectId ? __attioObjectSlugByObjectId[objectId] : undefined")
+    lines.push("    if (!slug) return event")
+    lines.push("    return { ...e, record: { ...e.record, values: __getAttioRecordValues(slug, e.record) } }")
+    lines.push("})")
+    return lines
+}
+
 function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefinition[]): SectionContext<AttioSectionContext> {
     if (instances.length === 0) return sectionData([])
-    return sectionData(["AttioOutputConfig", "TypedSkill"], {
-        id: instances[0].id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
-        objects: buildGeneratedAttioObjects(instances)
-    })
+    const objects = buildGeneratedAttioObjects(instances)
+    return sectionData(
+        [
+            "registerEventTransform",
+            "AttioOutputConfig",
+            "TypedSkill",
+            "AttioInputConfig",
+            "AttioEventType",
+            "TypedTrigger",
+            "AttioTrigger",
+            "AttioCallRecordingCreatedTrigger",
+            "AttioCommentCreatedTrigger",
+            "AttioCommentResolvedTrigger",
+            "AttioCommentUnresolvedTrigger",
+            "AttioCommentDeletedTrigger",
+            "AttioListCreatedTrigger",
+            "AttioListUpdatedTrigger",
+            "AttioListDeletedTrigger",
+            "AttioListAttributeCreatedTrigger",
+            "AttioListAttributeUpdatedTrigger",
+            "AttioListEntryCreatedTrigger",
+            "AttioListEntryUpdatedTrigger",
+            "AttioListEntryDeletedTrigger",
+            "AttioObjectAttributeCreatedTrigger",
+            "AttioObjectAttributeUpdatedTrigger",
+            "AttioNoteCreatedTrigger",
+            "AttioNoteContentUpdatedTrigger",
+            "AttioNoteUpdatedTrigger",
+            "AttioNoteDeletedTrigger",
+            "AttioRecordCreatedTrigger",
+            "AttioRecordMergedTrigger",
+            "AttioRecordUpdatedTrigger",
+            "AttioRecordDeletedTrigger",
+            "AttioTaskCreatedTrigger",
+            "AttioTaskUpdatedTrigger",
+            "AttioTaskDeletedTrigger",
+            "AttioWorkspaceMemberCreatedTrigger"
+        ],
+        {
+            id: instances[0].id,
+            skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
+            objects,
+            runtimeLines: buildAttioRuntimeLines(objects)
+        }
+    )
 }
 
 function prepareSnowflakeSection(instances: SnowflakeInstanceData[], tools: ToolDefinition[]): SectionContext<SnowflakeSectionContext> {
@@ -778,11 +893,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("")
 
         if (attioGeneratedObjects.length > 0) {
-            attioPreludeLines.push("export type GeneratedAttioObject =")
-            for (const object of attioGeneratedObjects) {
-                attioPreludeLines.push(`    | typeof AttioObject.${object.staticName}`)
-            }
-            attioPreludeLines.push("")
             attioPreludeLines.push("export type AttioInputValuesByObject = {")
             for (const object of attioGeneratedObjects) {
                 const inputShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "input")
@@ -809,7 +919,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             }
             attioPreludeLines.push("}")
         } else {
-            attioPreludeLines.push("export type GeneratedAttioObject = AttioObject<string, Record<string, __AttioValue>, Record<string, __AttioValue>>")
             attioPreludeLines.push("export type AttioInputValuesByObject = Record<string, Record<string, __AttioValue>>")
             attioPreludeLines.push("export type AttioRecordValuesByObject = Record<string, Record<string, __AttioValue>>")
             attioPreludeLines.push("export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>")
@@ -840,23 +949,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             'export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_upsert_record"], "records"> & { records?: Array<AttioRecordFor<TObject>> }'
         )
         attioPreludeLines.push("")
-        attioPreludeLines.push("const __attioMetadataKeys = new Set([")
-        attioPreludeLines.push('    "active_from",')
-        attioPreludeLines.push('    "active_until",')
-        attioPreludeLines.push('    "attribute_type",')
-        attioPreludeLines.push('    "created_by_actor",')
-        attioPreludeLines.push("])")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("const __attioMultiValueAttributeSlugsByObject: Record<string, readonly string[]> = {")
-        for (const object of attioGeneratedObjects) {
-            const multiValueSlugs = object.attributes
-                .filter(isProbablyAttioMultiValue)
-                .map(attr => `"${escapeString(attr.api_slug)}"`)
-                .join(", ")
-            attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": [${multiValueSlugs}],`)
-        }
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
         attioPreludeLines.push("function __normalizeAttioObjectSlug(object: unknown): string {")
         attioPreludeLines.push('    if (object && typeof object === "object" && "apiSlug" in (object as Record<string, unknown>)) {')
         attioPreludeLines.push("        const apiSlug = (object as { apiSlug?: unknown }).apiSlug")
@@ -873,44 +965,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("function __serializeAttioRecords(records: unknown): string {")
         attioPreludeLines.push("    if (!Array.isArray(records)) return JSON.stringify([])")
         attioPreludeLines.push('    return JSON.stringify(records.filter((record): record is Record<string, unknown> => typeof record === "object" && record !== null && !Array.isArray(record)))')
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __isAttioMultiValueAttribute(objectSlug: string, attributeSlug: string): boolean {")
-        attioPreludeLines.push("    return (__attioMultiValueAttributeSlugsByObject[objectSlug] || []).includes(attributeSlug)")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __flattenAttioLeafValue(value: unknown): unknown {")
-        attioPreludeLines.push("    if (value === null || value === undefined) return value")
-        attioPreludeLines.push("    if (Array.isArray(value)) return value.map(entry => __flattenAttioLeafValue(entry))")
-        attioPreludeLines.push('    if (typeof value !== "object") return value')
-        attioPreludeLines.push("    const rawObject = value as Record<string, unknown>")
-        attioPreludeLines.push('    if (typeof rawObject.full_name === "string") return rawObject.full_name')
-        attioPreludeLines.push('    if (typeof rawObject.email_address === "string") return rawObject.email_address')
-        attioPreludeLines.push('    if (typeof rawObject.domain === "string") return rawObject.domain')
-        attioPreludeLines.push('    if (typeof rawObject.phone_number === "string") return rawObject.phone_number')
-        attioPreludeLines.push('    if ("value" in rawObject) return __flattenAttioLeafValue(rawObject.value)')
-        attioPreludeLines.push("    const dataEntries = Object.entries(rawObject).filter(([key]) => !__attioMetadataKeys.has(key))")
-        attioPreludeLines.push("    if (dataEntries.length === 0) return rawObject")
-        attioPreludeLines.push("    if (dataEntries.length === 1) return __flattenAttioLeafValue(dataEntries[0][1])")
-        attioPreludeLines.push("    return Object.fromEntries(dataEntries.map(([key, entryValue]) => [key, __flattenAttioLeafValue(entryValue)]))")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __flattenAttioAttributeValue(rawValue: unknown, preferArray: boolean): unknown {")
-        attioPreludeLines.push("    if (!Array.isArray(rawValue)) return __flattenAttioLeafValue(rawValue)")
-        attioPreludeLines.push("    const flattened = rawValue")
-        attioPreludeLines.push("        .map(entry => __flattenAttioLeafValue(entry))")
-        attioPreludeLines.push("        .filter(entry => entry !== undefined)")
-        attioPreludeLines.push("    return preferArray ? flattened : flattened[0]")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __getAttioRecordValues<TValues extends Record<string, unknown>>(objectSlug: string, record: unknown): TValues {")
-        attioPreludeLines.push('    const rawValues = record && typeof record === "object" ? (record as { values?: unknown }).values : undefined')
-        attioPreludeLines.push('    if (!rawValues || typeof rawValues !== "object" || Array.isArray(rawValues)) return {} as TValues')
-        attioPreludeLines.push("    const flattenedValues: Record<string, unknown> = {}")
-        attioPreludeLines.push("    for (const [attributeSlug, rawValue] of Object.entries(rawValues)) {")
-        attioPreludeLines.push("        flattenedValues[attributeSlug] = __flattenAttioAttributeValue(rawValue, __isAttioMultiValueAttribute(objectSlug, attributeSlug))")
-        attioPreludeLines.push("    }")
-        attioPreludeLines.push("    return flattenedValues as TValues")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
         attioPreludeLines.push(

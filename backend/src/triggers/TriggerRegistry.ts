@@ -1,3 +1,4 @@
+import { AttioTrigger } from "./AttioTrigger"
 import { GithubTrigger } from "./GithubTrigger"
 import { GmailTrigger } from "./GmailTrigger"
 import { HeyReachTrigger } from "./HeyReachTrigger"
@@ -18,5 +19,6 @@ export const TRIGGER_REGISTRY: Trigger<any>[] = [
     new WebMonitorTrigger(),
     new WorkOSTrigger(),
     new WebhookTrigger(),
-    new HeyReachTrigger()
+    new HeyReachTrigger(),
+    new AttioTrigger()
 ]

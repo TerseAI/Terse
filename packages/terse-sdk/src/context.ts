@@ -25,3 +25,20 @@ export function runWithJobContext<T>(ctx: TerseJobContext, fn: () => T | Promise
 export function getJobContext(): TerseJobContext | undefined {
     return store.getStore()
 }
+
+export type EventTransform = (event: unknown) => unknown
+
+const EVENT_TRANSFORMS_KEY = Symbol.for("terse.eventTransforms")
+type GlobalWithEventTransforms = typeof globalThis & {
+    [EVENT_TRANSFORMS_KEY]?: Map<string, EventTransform>
+}
+const eventTransformsScope = globalThis as GlobalWithEventTransforms
+const eventTransforms: Map<string, EventTransform> = eventTransformsScope[EVENT_TRANSFORMS_KEY] ?? (eventTransformsScope[EVENT_TRANSFORMS_KEY] = new Map())
+
+export function registerEventTransform(integrationType: string, fn: EventTransform): void {
+    eventTransforms.set(integrationType, fn)
+}
+
+export function getEventTransform(integrationType: string): EventTransform | undefined {
+    return eventTransforms.get(integrationType)
+}

@@ -1,9 +1,11 @@
 import { z } from "zod"
 
 import {
+    AttioEventType,
     GitHubEventType,
     HeyReachEventType,
     WorkOSEventType,
+    attioEventTypeSchema,
     frequencyUnitSchema,
     gitHubEventTypeSchema,
     gmailEventTypeSchema,
@@ -16,7 +18,15 @@ import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
 import { debugTrigger as debugTriggerWithPresenter, displayTrigger as displayTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"
 
-const providerTriggerTypeSchema = z.union([slackEventTypeSchema, gitHubEventTypeSchema, linearEventTypeSchema, gmailEventTypeSchema, workOSEventTypeSchema, heyReachEventTypeSchema])
+const providerTriggerTypeSchema = z.union([
+    slackEventTypeSchema,
+    gitHubEventTypeSchema,
+    linearEventTypeSchema,
+    gmailEventTypeSchema,
+    workOSEventTypeSchema,
+    heyReachEventTypeSchema,
+    attioEventTypeSchema
+])
 
 const TriggerHeaderSchema = z.object({
     integrationType: integrationTypeEnum,
@@ -328,6 +338,7 @@ export const TriggerTypeSchema = z.union([
     gmailEventTypeSchema,
     workOSEventTypeSchema,
     heyReachEventTypeSchema,
+    attioEventTypeSchema,
     webhookTriggerTypeSchema,
     cronTriggerTypeSchema,
     webMonitorTriggerTypeSchema,
@@ -675,6 +686,166 @@ export const heyReachTriggerSchema = z.discriminatedUnion("eventType", [
 ])
 export type HeyReachTrigger = z.infer<typeof heyReachTriggerSchema>
 
+// MARK: Attio Triggers
+
+export const AttioActorType = {
+    API_TOKEN: "api-token",
+    WORKSPACE_MEMBER: "workspace-member",
+    SYSTEM: "system",
+    APP: "app"
+} as const
+export const attioActorTypeSchema = z.enum(AttioActorType)
+export type AttioActorType = z.infer<typeof attioActorTypeSchema>
+
+export const attioWebhookActorSchema = z.object({
+    type: attioActorTypeSchema.nullable(),
+    id: z.string().nullable()
+})
+export type AttioWebhookActor = z.infer<typeof attioWebhookActorSchema>
+
+export const attioWebhookEventIdSchema = z.object({
+    workspace_id: z.string(),
+    object_id: z.string().optional(),
+    record_id: z.string().optional(),
+    list_id: z.string().optional(),
+    entry_id: z.string().optional(),
+    note_id: z.string().optional(),
+    task_id: z.string().optional(),
+    comment_id: z.string().optional(),
+    attribute_id: z.string().optional(),
+    call_recording_id: z.string().optional(),
+    meeting_id: z.string().optional(),
+    workspace_member_id: z.string().optional()
+})
+export type AttioWebhookEventId = z.infer<typeof attioWebhookEventIdSchema>
+
+export const attioWebhookEventSchema = z.object({
+    event_type: attioEventTypeSchema,
+    id: attioWebhookEventIdSchema,
+    actor: attioWebhookActorSchema
+})
+export type AttioWebhookEvent = z.infer<typeof attioWebhookEventSchema>
+
+export const attioWebhookPayloadSchema = z.object({
+    webhook_id: z.string(),
+    events: z.array(attioWebhookEventSchema)
+})
+export type AttioWebhookPayload = z.infer<typeof attioWebhookPayloadSchema>
+
+export const attioRecordPayloadSchema = z.object({
+    id: z.object({
+        workspace_id: z.string(),
+        object_id: z.string(),
+        record_id: z.string()
+    }),
+    values: z.record(z.string(), z.unknown()),
+    web_url: z.string().optional(),
+    created_at: z.string().optional()
+})
+export type AttioRecordPayload = z.infer<typeof attioRecordPayloadSchema>
+
+export const attioTriggerBaseSchema = baseTriggerSchema.extend({
+    integrationType: z.literal(IntegrationType.ATTIO),
+    eventType: attioEventTypeSchema,
+    /** Set from the inbound `Idempotency-Key` header; Attio does not include an event id in the body. */
+    eventId: z.string(),
+    /** Server-side receipt timestamp; Attio does not include a timestamp in the body. */
+    createdAt: z.string(),
+    workspaceId: z.string(),
+    resourceIds: attioWebhookEventIdSchema,
+    /** Object slug resolved by the backend when the event targets a record. */
+    objectSlug: z.string().nullable().optional(),
+    actor: attioWebhookActorSchema,
+    rawEvent: z.record(z.string(), z.unknown())
+})
+export type AttioTriggerBase = z.infer<typeof attioTriggerBaseSchema>
+
+export const attioCallRecordingCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.CALL_RECORDING_CREATED) })
+export type AttioCallRecordingCreatedTrigger = z.infer<typeof attioCallRecordingCreatedTriggerSchema>
+export const attioCommentCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.COMMENT_CREATED) })
+export type AttioCommentCreatedTrigger = z.infer<typeof attioCommentCreatedTriggerSchema>
+export const attioCommentResolvedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.COMMENT_RESOLVED) })
+export type AttioCommentResolvedTrigger = z.infer<typeof attioCommentResolvedTriggerSchema>
+export const attioCommentUnresolvedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.COMMENT_UNRESOLVED) })
+export type AttioCommentUnresolvedTrigger = z.infer<typeof attioCommentUnresolvedTriggerSchema>
+export const attioCommentDeletedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.COMMENT_DELETED) })
+export type AttioCommentDeletedTrigger = z.infer<typeof attioCommentDeletedTriggerSchema>
+export const attioListCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.LIST_CREATED) })
+export type AttioListCreatedTrigger = z.infer<typeof attioListCreatedTriggerSchema>
+export const attioListUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.LIST_UPDATED) })
+export type AttioListUpdatedTrigger = z.infer<typeof attioListUpdatedTriggerSchema>
+export const attioListDeletedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.LIST_DELETED) })
+export type AttioListDeletedTrigger = z.infer<typeof attioListDeletedTriggerSchema>
+export const attioListAttributeCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.LIST_ATTRIBUTE_CREATED) })
+export type AttioListAttributeCreatedTrigger = z.infer<typeof attioListAttributeCreatedTriggerSchema>
+export const attioListAttributeUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.LIST_ATTRIBUTE_UPDATED) })
+export type AttioListAttributeUpdatedTrigger = z.infer<typeof attioListAttributeUpdatedTriggerSchema>
+export const attioListEntryCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.LIST_ENTRY_CREATED) })
+export type AttioListEntryCreatedTrigger = z.infer<typeof attioListEntryCreatedTriggerSchema>
+export const attioListEntryUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.LIST_ENTRY_UPDATED) })
+export type AttioListEntryUpdatedTrigger = z.infer<typeof attioListEntryUpdatedTriggerSchema>
+export const attioListEntryDeletedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.LIST_ENTRY_DELETED) })
+export type AttioListEntryDeletedTrigger = z.infer<typeof attioListEntryDeletedTriggerSchema>
+export const attioObjectAttributeCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.OBJECT_ATTRIBUTE_CREATED) })
+export type AttioObjectAttributeCreatedTrigger = z.infer<typeof attioObjectAttributeCreatedTriggerSchema>
+export const attioObjectAttributeUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.OBJECT_ATTRIBUTE_UPDATED) })
+export type AttioObjectAttributeUpdatedTrigger = z.infer<typeof attioObjectAttributeUpdatedTriggerSchema>
+export const attioNoteCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.NOTE_CREATED) })
+export type AttioNoteCreatedTrigger = z.infer<typeof attioNoteCreatedTriggerSchema>
+export const attioNoteContentUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.NOTE_CONTENT_UPDATED) })
+export type AttioNoteContentUpdatedTrigger = z.infer<typeof attioNoteContentUpdatedTriggerSchema>
+export const attioNoteUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.NOTE_UPDATED) })
+export type AttioNoteUpdatedTrigger = z.infer<typeof attioNoteUpdatedTriggerSchema>
+export const attioNoteDeletedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.NOTE_DELETED) })
+export type AttioNoteDeletedTrigger = z.infer<typeof attioNoteDeletedTriggerSchema>
+export const attioRecordCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_CREATED), record: attioRecordPayloadSchema })
+export type AttioRecordCreatedTrigger = z.infer<typeof attioRecordCreatedTriggerSchema>
+export const attioRecordMergedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_MERGED), record: attioRecordPayloadSchema })
+export type AttioRecordMergedTrigger = z.infer<typeof attioRecordMergedTriggerSchema>
+export const attioRecordUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_UPDATED), record: attioRecordPayloadSchema })
+export type AttioRecordUpdatedTrigger = z.infer<typeof attioRecordUpdatedTriggerSchema>
+export const attioRecordDeletedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.RECORD_DELETED) })
+export type AttioRecordDeletedTrigger = z.infer<typeof attioRecordDeletedTriggerSchema>
+export const attioTaskCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.TASK_CREATED) })
+export type AttioTaskCreatedTrigger = z.infer<typeof attioTaskCreatedTriggerSchema>
+export const attioTaskUpdatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.TASK_UPDATED) })
+export type AttioTaskUpdatedTrigger = z.infer<typeof attioTaskUpdatedTriggerSchema>
+export const attioTaskDeletedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.TASK_DELETED) })
+export type AttioTaskDeletedTrigger = z.infer<typeof attioTaskDeletedTriggerSchema>
+export const attioWorkspaceMemberCreatedTriggerSchema = attioTriggerBaseSchema.extend({ eventType: z.literal(AttioEventType.WORKSPACE_MEMBER_CREATED) })
+export type AttioWorkspaceMemberCreatedTrigger = z.infer<typeof attioWorkspaceMemberCreatedTriggerSchema>
+
+export const attioTriggerSchema = z.discriminatedUnion("eventType", [
+    attioCallRecordingCreatedTriggerSchema,
+    attioCommentCreatedTriggerSchema,
+    attioCommentResolvedTriggerSchema,
+    attioCommentUnresolvedTriggerSchema,
+    attioCommentDeletedTriggerSchema,
+    attioListCreatedTriggerSchema,
+    attioListUpdatedTriggerSchema,
+    attioListDeletedTriggerSchema,
+    attioListAttributeCreatedTriggerSchema,
+    attioListAttributeUpdatedTriggerSchema,
+    attioListEntryCreatedTriggerSchema,
+    attioListEntryUpdatedTriggerSchema,
+    attioListEntryDeletedTriggerSchema,
+    attioObjectAttributeCreatedTriggerSchema,
+    attioObjectAttributeUpdatedTriggerSchema,
+    attioNoteCreatedTriggerSchema,
+    attioNoteContentUpdatedTriggerSchema,
+    attioNoteUpdatedTriggerSchema,
+    attioNoteDeletedTriggerSchema,
+    attioRecordCreatedTriggerSchema,
+    attioRecordMergedTriggerSchema,
+    attioRecordUpdatedTriggerSchema,
+    attioRecordDeletedTriggerSchema,
+    attioTaskCreatedTriggerSchema,
+    attioTaskUpdatedTriggerSchema,
+    attioTaskDeletedTriggerSchema,
+    attioWorkspaceMemberCreatedTriggerSchema
+])
+export type AttioTrigger = z.infer<typeof attioTriggerSchema>
+
 export const webhookTriggerSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.WEBHOOK),
     eventType: webhookTriggerTypeSchema,
@@ -766,6 +937,7 @@ export const TriggerSchema = z.union([
     linearTriggerSchema,
     workOSTriggerSchema,
     heyReachTriggerSchema,
+    attioTriggerSchema,
     webhookTriggerSchema,
     cronTriggerSchema,
     webMonitorTriggerSchema,

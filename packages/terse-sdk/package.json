@@ -1,7 +1,8 @@
 {
     "name": "terse-sdk",
-    "version": "0.1.39",
+    "version": "0.1.40",
     "type": "module",
+    "license": "SEE LICENSE IN LICENSE.md",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "files": [

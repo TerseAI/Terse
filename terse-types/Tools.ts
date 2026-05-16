@@ -1781,6 +1781,10 @@ export const imageEditTool = defineTool({
 
 // Attio schemas
 export const attioObjectSchema = z.object({
+    id: z.object({
+        workspace_id: z.string(),
+        object_id: z.string()
+    }),
     api_slug: z.string(),
     singular_noun: z.string(),
     plural_noun: z.string()
