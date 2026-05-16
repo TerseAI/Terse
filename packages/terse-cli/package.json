@@ -2,6 +2,7 @@
     "name": "terse-cli",
     "version": "0.1.51",
     "type": "module",
+    "license": "SEE LICENSE IN LICENSE.md",
     "bin": {
         "terse": "dist/index.js"
     },
