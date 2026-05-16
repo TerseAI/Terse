@@ -4,7 +4,7 @@
   "private": true,
   "description": "A Probot app",
   "author": "Thomas Karatzas",
-  "license": "ISC",
+  "license": "SEE LICENSE IN ../LICENSE.md",
   "homepage": "https://github.com//",
   "keywords": [
     "probot",
