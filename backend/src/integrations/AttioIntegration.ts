@@ -487,8 +487,8 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
         throw new Error("Attio integration not found")
     }
 
-    const accessToken = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
-    if (!accessToken) {
+    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
+    if (!secret.accessToken) {
         throw new Error("Attio access token not found")
     }
 
@@ -501,7 +501,7 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
 
     const response = await fetch(`${ATTIO_API_BASE}/webhooks`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${secret.accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
     })
 
