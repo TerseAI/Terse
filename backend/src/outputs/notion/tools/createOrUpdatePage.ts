@@ -104,8 +104,9 @@ export const notionCreateOrUpdatePageTool = defineSessionTool({
     }
 })
 
-export const validateNotionCreateOrUpdatePage: ToolACLValidator<"notion_create_or_update_page", NotionConfig> = async ({ args, configs }) => {
-    if (args.page_id) return verifyNotionPageInScope(args.integrationId, args.page_id, configs)
-    if (args.parentPageId) return verifyNotionPageInScope(args.integrationId, args.parentPageId, configs)
+export const validateNotionCreateOrUpdatePage: ToolACLValidator<"notion_create_or_update_page", NotionConfig> = async ({ args, configs, runContext }) => {
+    const organizationId = runContext.context.user.organizationId
+    if (args.page_id) return verifyNotionPageInScope(args.integrationId, organizationId, args.page_id, configs)
+    if (args.parentPageId) return verifyNotionPageInScope(args.integrationId, organizationId, args.parentPageId, configs)
     return denyToolACL("notion_create_or_update_page requires either page_id (update) or parentPageId (create).")
 }

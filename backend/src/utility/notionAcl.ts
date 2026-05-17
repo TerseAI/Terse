@@ -2,7 +2,7 @@ import { Client } from "@notionhq/client"
 import { DataSourceObjectResponse, GetDataSourceResponse, GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints"
 import { NotionConfig } from "terse-types"
 
-import { getNotionAccessTokenOrThrow } from "../integrations/NotionIntegration"
+import { getNotionAccessTokenForOrganization } from "../integrations/NotionIntegration"
 import logger from "../logger"
 import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../outputs/abstract/acl"
 
@@ -113,29 +113,29 @@ function describeScope(scope: NotionScope): string {
     return `allowed pages: ${pages}; allowed databases: ${dbs}; descendants of these are also accessible.`
 }
 
-async function getResolverFor(integrationId: string, scope: NotionScope): Promise<NotionScopeResolver> {
-    const accessToken = await getNotionAccessTokenOrThrow(integrationId)
+async function getResolverFor(integrationId: string, organizationId: string, scope: NotionScope): Promise<NotionScopeResolver> {
+    const accessToken = await getNotionAccessTokenForOrganization(integrationId, organizationId)
     const notion = new Client({ auth: accessToken })
     return createNotionScopeResolver(notion, scope)
 }
 
-export async function verifyNotionPageInScope(integrationId: string, pageId: string, configs: NotionConfig[]): Promise<ToolACLValidationResult> {
+export async function verifyNotionPageInScope(integrationId: string, organizationId: string, pageId: string, configs: NotionConfig[]): Promise<ToolACLValidationResult> {
     const { scope, configsForIntegration } = buildScopeFromConfigs(integrationId, configs)
     if (configsForIntegration.length === 0) {
         return denyToolACL(`Integration ID "${integrationId}" not found.`)
     }
-    const resolver = await getResolverFor(integrationId, scope)
+    const resolver = await getResolverFor(integrationId, organizationId, scope)
     const allowed = await resolver.isPageInScope(pageId)
     if (allowed) return { ok: true }
     return denyToolACL(`Notion page ${pageId} is not in scope for integration "${integrationId}". ${describeScope(scope)}`)
 }
 
-export async function verifyNotionDatabaseInScope(integrationId: string, databaseId: string, configs: NotionConfig[]): Promise<ToolACLValidationResult> {
+export async function verifyNotionDatabaseInScope(integrationId: string, organizationId: string, databaseId: string, configs: NotionConfig[]): Promise<ToolACLValidationResult> {
     const { scope, configsForIntegration } = buildScopeFromConfigs(integrationId, configs)
     if (configsForIntegration.length === 0) {
         return denyToolACL(`Integration ID "${integrationId}" not found.`)
     }
-    const resolver = await getResolverFor(integrationId, scope)
+    const resolver = await getResolverFor(integrationId, organizationId, scope)
     const allowed = await resolver.isDatabaseInScope(databaseId)
     if (allowed) return { ok: true }
     return denyToolACL(`Notion database ${databaseId} is not in scope for integration "${integrationId}". ${describeScope(scope)}`)
