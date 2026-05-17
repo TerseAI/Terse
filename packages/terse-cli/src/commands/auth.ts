@@ -296,7 +296,11 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
             if (next.kind === "failed") {
                 return null
             }
-            // next.kind === "reauth" — fall through to device-code login
+            // next.kind === "reauth" — drop every cached per-org token before
+            // logging in again. Otherwise the new user inherits the previous
+            // user's tokens for any org they both belong to, and a later
+            // `terse auth org switch` would silently reuse the prior token.
+            clearStoredApiKey()
         } else {
             s.stop("Existing API key is invalid or expired")
             if (!canFallToDeviceLogin) {
