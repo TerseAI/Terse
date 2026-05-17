@@ -224,7 +224,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     }
 }
 
-type AlreadyLoggedInChoice = { kind: "keep" } | { kind: "switch"; apiKey: string } | { kind: "reauth" }
+type AlreadyLoggedInChoice = { kind: "keep" } | { kind: "switch"; apiKey: string } | { kind: "reauth" } | { kind: "failed" }
 
 async function promptAlreadyLoggedInChoice(currentApiKey: string, me: MeSummary): Promise<AlreadyLoggedInChoice> {
     let allOrgs: SdkOrganizationsListResponse | null = null
@@ -267,7 +267,7 @@ async function promptAlreadyLoggedInChoice(currentApiKey: string, me: MeSummary)
         return { kind: "switch", apiKey: newKey }
     } catch (err: any) {
         s.stop(`Failed to switch: ${err.message}`)
-        throw err
+        return { kind: "failed" }
     }
 }
 
@@ -292,6 +292,9 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
             }
             if (next.kind === "switch") {
                 return { apiKey: next.apiKey, displayName: me.displayName }
+            }
+            if (next.kind === "failed") {
+                return null
             }
             // next.kind === "reauth" — fall through to device-code login
         } else {
