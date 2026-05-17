@@ -16,7 +16,9 @@ jobs:
 
     wait-for-render-preview:
         name: Wait for Render Preview
-        if: github.event_name == 'pull_request'
+        # Skip on fork PRs — secrets aren't available, and a maintainer will re-run e2e
+        # on a branch in this repo after review.
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork != true
         runs-on: ubuntu-latest
         timeout-minutes: 20
         outputs:
@@ -96,10 +98,12 @@ jobs:
         name: End-to-End Tests
         needs: [wait-for-render-preview]
         # Run when the wait job succeeded OR was skipped (push to main).
+        # Skip on fork PRs — TERSE_API_KEY isn't available, and a maintainer can re-run on a branch.
         if: >
             always() &&
             needs.wait-for-render-preview.result != 'failure' &&
-            needs.wait-for-render-preview.result != 'cancelled'
+            needs.wait-for-render-preview.result != 'cancelled' &&
+            github.event.pull_request.head.repo.fork != true
         runs-on: blacksmith-4vcpu-ubuntu-2404
         env:
             TERSE_BACKEND_URL: ${{ needs.wait-for-render-preview.outputs.backend_url || 'https://terse.onrender.com' }}

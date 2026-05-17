@@ -20,7 +20,6 @@ import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/pri
 import { getActiveDeployForProject } from "../../utility/projectHelper"
 import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
-import { CancelReason } from "../cancellation/RunCancellationTaskQueue"
 import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 

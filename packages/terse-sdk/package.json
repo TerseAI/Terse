@@ -3,6 +3,15 @@
     "version": "0.1.41",
     "type": "module",
     "license": "SEE LICENSE IN LICENSE.md",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/TerseAI/Terse.git",
+        "directory": "packages/terse-sdk"
+    },
+    "homepage": "https://docs.useterse.ai",
+    "bugs": {
+        "url": "https://github.com/TerseAI/Terse/issues"
+    },
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "files": [

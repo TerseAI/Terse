@@ -36,6 +36,15 @@
         "access": "public"
     },
     "license": "SEE LICENSE IN LICENSE.md",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/TerseAI/Terse.git",
+        "directory": "terse-types"
+    },
+    "homepage": "https://docs.useterse.ai",
+    "bugs": {
+        "url": "https://github.com/TerseAI/Terse/issues"
+    },
     "devDependencies": {
         "tsc-esm-fix": "^3.1.2",
         "tsx": "^4.21.0",
