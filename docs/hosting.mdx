@@ -31,6 +31,8 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
 
 Each execution runs in its own isolated [Modal](https://modal.com) sandbox with a **project-scoped**, short-lived API token that is removed when the run finishes (and may also carry an expiration time). Your code and credentials are never shared across runs or organizations.
 
+Terse also injects your **project secrets** into the sandbox environment (as `process.env` variables) for that run. Secret values are not included in the uploaded ZIP — manage them with [`terse secrets`](/reference/cli#terse-secrets) or from the project page in the app. Names cannot start with `TERSE_`; Terse reserves that prefix for platform variables such as `TERSE_API_KEY`.
+
 ## What gets uploaded
 
 The CLI respects standard ignore patterns. The following are always excluded:

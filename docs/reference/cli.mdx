@@ -175,6 +175,7 @@ terse deploy --entry-file src/server.ts
 - Existing workflows are updated
 - Workflows removed from your code are removed from Terse
 - For each workflow that includes a **webhook** trigger, the CLI prints a **Webhook URL** line after deploy so you can wire up external systems without opening the app
+- On **hosted** projects, if a local `.env` file has valid secret names that are not yet stored on Terse, the CLI may prompt you to upload them before deploy (or run `terse secrets import .env` yourself)
 
 **Deployment modes:**
 
@@ -289,6 +290,42 @@ Use this after `terse integrate connect <type>` for OAuth integrations such as S
 | `--json`              | Emit machine-readable JSON                          |
 
 The `list`, `describe`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
+
+### `terse secrets`
+
+Manage **project secrets** for hosted (Terse-managed) projects. Secrets are key-value pairs stored on Terse and injected into the hosted runtime as environment variables when a workflow runs. They are not uploaded with your deploy bundle (`.env` is excluded from the ZIP).
+
+Project secrets are **not** available for self-hosted projects — manage runtime env vars on your own server instead.
+
+Secret names must match `^[A-Z][A-Z0-9_]{0,63}$` and cannot start with `TERSE_`. Values are limited to 32 KB each.
+
+```bash
+terse secrets list
+terse secrets list --json
+terse secrets add OPENAI_API_KEY
+printf '%s' "$OPENAI_API_KEY" | terse secrets add OPENAI_API_KEY --value-stdin
+terse secrets import .env
+terse secrets import .env --overwrite
+terse secrets remove OPENAI_API_KEY --yes
+```
+
+| Subcommand | Description |
+| ---------- | ----------- |
+| `list` | List secret names (values are never shown) |
+| `add <NAME>` | Create or update one secret |
+| `remove <NAME>` | Delete one secret |
+| `import <file>` | Bulk import from a `.env`-format file (up to 500 entries per request) |
+
+**Options:**
+
+| Flag | Commands | Description |
+| ---- | -------- | ----------- |
+| `--json` | `list` | Emit JSON |
+| `--value-stdin` | `add` | Read the secret value from stdin (avoids shell history) |
+| `--yes` | `remove` | Confirm removal without a prompt |
+| `--overwrite` | `import` | Update secrets that already exist on the server |
+
+In the Terse app, open your project to view and delete secret names. Add and update secrets from the CLI.
 
 ### `terse generate`
 
@@ -456,4 +493,6 @@ Those values are **user** API tokens (the same kind you create in the Terse app)
 
 After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 
-Your runtime still needs `TERSE_API_KEY` in its environment. Set that variable anywhere your Node process runs, such as a local `.env` file, a container secret, or your hosting provider's secret store.
+For **hosted** workflows, store third-party API keys and other runtime credentials as **project secrets** (`terse secrets`) so Terse injects them into the sandbox environment. Use a local `.env` for development and `terse secrets import` (or the deploy-time upload prompt) to sync eligible entries to Terse. Integration credentials (GitHub, Slack, and so on) stay on the integration — connect them with `terse integrate`, not `terse secrets`.
+
+For **self-hosted** workflows, set `TERSE_API_KEY` and any other env vars on the server where your code runs.
