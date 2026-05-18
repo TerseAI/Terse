@@ -18,7 +18,7 @@ import { extractErrorMessage } from "../utility/strings"
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 import { SdkSandboxImageService } from "./SdkSandboxImageService"
-import { getSecrets } from "./SecretService"
+import { SecretService } from "./SecretService"
 import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
@@ -110,7 +110,8 @@ export class SdkJobExecutionService {
             sandboxTokenId = tokenId
             logger.info("SDK sandbox: created temp API token", { runId, agentId: agent.id })
 
-            const projectSecretValues = await getSecrets({ type: "project", secret: { projectId: agent.project.id } })
+            const secretService = SecretService.getInstance()
+            const projectSecretValues = await secretService.getSecrets({ type: "project", secret: { projectId: agent.project.id } })
 
             const sandboxEnv = {
                 // Make sure to keep this first as the sandbox env,

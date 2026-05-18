@@ -8,7 +8,7 @@ import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstall
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { GithubAppInstallationRepository } from "../routes/GithubTypes"
-import { tryGetSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { getUserForOrg } from "../utility/workos"
 
 import { parseGithubUnifiedEventPayload } from "./githubUnifiedEventParser"
@@ -119,9 +119,10 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
 
     let targetInstallation: { id: number } | undefined
     let tokenWithAccess: string | null = null
+    const secretService = SecretService.getInstance()
 
     for (const token of orgTokens) {
-        const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+        const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
         if (!secrets) {
             logger.warn(`Github app token ${token.id} is missing its secret blob; skipping`, { tokenId: token.id })
             continue
@@ -209,6 +210,7 @@ export async function resolveUserForGithubInstallation(installationId: number, u
 // This doesn't guarantee that they have an active input config, but it's a good start.
 // This is super inefficient, but it's a good start. We need to optimize this.
 async function resolveUsersForGithubInstallation(installationId: number): Promise<import("../types/prisma").User[]> {
+    const secretService = SecretService.getInstance()
     return db().$transaction(async tx => {
         // Get all of our github app users.
         const githubAppUsers = await tx.github_app_tokens.findMany()
@@ -216,7 +218,7 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
+                const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
                 if (!secrets) {
                     logger.warn(`Github app token ${user.id} is missing its secret blob; skipping`, { tokenId: user.id })
                     return {

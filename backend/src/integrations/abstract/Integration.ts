@@ -4,9 +4,11 @@ import type { ConfigData, ConfigurationFieldDefinition, FormFieldDefinition, For
 import { OAuthInstallationDetails } from "terse-types"
 import { z } from "zod"
 
+import logger from "../../logger"
+import { SecretService } from "../../services/SecretService"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
-import type { FetchResourcesOptions } from "./FetchResourcesOptions"
+import { FetchResourcesOptions } from "./FetchResourcesOptions"
 import type { TriggerRuntime } from "./TriggerRuntime"
 
 export interface IntegrationWithResources<T extends IntegrationInstance, R> {
@@ -15,19 +17,24 @@ export interface IntegrationWithResources<T extends IntegrationInstance, R> {
 }
 
 // This ensures T is a valid Prisma model type
-export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails, R> {
-    integrationType: IntegrationType
+export abstract class Integration<T extends IntegrationInstance, W, M extends IntegrationDetails, R> {
+    protected get secretService(): SecretService {
+        return SecretService.getInstance()
+    }
+    abstract integrationType: IntegrationType
     secretSchema?: z.ZodObject<z.ZodRawShape>
-    getInstancesForOrganization(organizationId: string): Promise<T[]>
-    getCliDisplayStateForOrganization(organizationId: string): Promise<CliIntegrationDisplayState>
-    formatIntegrationInstanceForAgent(instance: T): string
-    getAllActiveInstances(): Promise<T[]>
-    processWebhookEvent(event: W): Promise<void>
-    deleteInstallation(integrationId: string): Promise<void>
-    setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void>
-    teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void>
-
-    fetchResourcesForOrganization?(organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<IntegrationWithResources<T, R>[]>
+    abstract getInstancesForOrganization(organizationId: string): Promise<T[]>
+    abstract getCliDisplayStateForOrganization(organizationId: string): Promise<CliIntegrationDisplayState>
+    abstract formatIntegrationInstanceForAgent(instance: T): string
+    abstract getAllActiveInstances(): Promise<T[]>
+    abstract processWebhookEvent(event: W): Promise<void>
+    abstract deleteInstallation(integrationId: string): Promise<void>
+    abstract setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void>
+    abstract teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void>
+    fetchResourcesForOrganization?(organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<IntegrationWithResources<T, R>[]> {
+        logger.warn("fetchResourcesForOrganization is not implemented for integration type", { integrationType: this.integrationType })
+        return Promise.resolve([])
+    }
 
     getSampleEvents?(
         integrationId: string,
@@ -38,7 +45,10 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
             limit?: number
             triggerId?: string
         }
-    ): Promise<TriggerRuntime[]>
+    ): Promise<TriggerRuntime[]> {
+        logger.warn("getSampleEvents is not implemented for integration type", { integrationType: this.integrationType })
+        return Promise.resolve([])
+    }
 }
 
 export interface FormSubmissionInput {

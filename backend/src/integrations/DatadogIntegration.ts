@@ -5,14 +5,12 @@ import { z } from "zod"
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
-import { createSecrets, deleteSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 
-export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.DATADOG> {
-    constructor() {}
+export class DatadogIntegrationManager extends Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never> implements FormIntegrationInstallation<IntegrationType.DATADOG> {
     readonly integrationType = IntegrationType.DATADOG
     readonly secretSchema = z.object({
         apiKey: z.string(),
@@ -117,7 +115,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                 await tx.datadog_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: integrationId } })
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: integrationId } })
             })
     }
 
@@ -213,7 +211,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
 
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,
@@ -230,7 +228,10 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id, value: { apiKey: apiKey, appKey: appKey } } })
+                await this.secretService.createSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id, value: { apiKey: apiKey, appKey: appKey } }
+                })
 
                 logger.info("✅ Created Datadog integration", {
                     integrationId: integration.id,

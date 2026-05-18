@@ -7,7 +7,7 @@ import { NotionResource, NotionResourcesResponse } from "terse-types/types"
 import { NotionIntegrationManager } from "../integrations/NotionIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { extractPageTitle } from "../utility/notion"
 
 export async function getNotionIntegrations(req: Request, res: Response) {
@@ -50,8 +50,8 @@ export const fetchNotionResources = async (organizationId: string, integrationId
     if (!integration) {
         throw new Error("Notion integration not found")
     }
-
-    const secrets = await getSecrets({
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({
         type: "integration",
         secret: { integrationType: IntegrationType.NOTION, recordId: integration.id }
     })

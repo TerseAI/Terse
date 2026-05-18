@@ -5,7 +5,7 @@ import { z } from "zod"
 import { isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
-import { getSecretManagerClient } from "../utility/secretManagerClient"
+import { SecretManagerClient } from "../utility/secretManagerClient"
 
 const clearOldSecretVersionsRequestSchema = z.object({
     dryRun: z.preprocess(value => {
@@ -139,8 +139,10 @@ export async function clearOldSecretVersions(req: Request, res: Response) {
         })
     }
 
+    const secretService = SecretManagerClient.getInstance()
+
     try {
-        const report = await getSecretManagerClient().clearOldSecretVersions(parsedInput.data)
+        const report = await secretService.clearOldSecretVersions(parsedInput.data)
 
         logger.info("Clear old secret versions completed", {
             dryRun: report.dryRun,

@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { getSecrets } from "../../services/SecretService"
+import { SecretService } from "../../services/SecretService"
 import { extractErrorMessage } from "../../utility/strings"
 
 snowflake.configure({ logLevel: "OFF" })
@@ -97,7 +97,8 @@ export async function getSnowflakeCredentials(integrationId: string, organizatio
         throw new Error(`Snowflake integration not found for integrationId: ${integrationId}`)
     }
 
-    const secrets = await getSecrets({
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({
         type: "integration",
         secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId }
     })

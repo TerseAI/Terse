@@ -6,7 +6,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -97,8 +97,8 @@ export async function fetchLaunchDarklyProjects(organizationId: string, integrat
     if (!integration) {
         throw new Error("LaunchDarkly integration not found")
     }
-
-    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id } })
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id } })
     const apiKey = secret.apiKey
 
     const response = await fetch("https://app.launchdarkly.com/api/v2/projects", {
@@ -147,7 +147,8 @@ export async function fetchLaunchDarklyEnvironments(organizationId: string, inte
         throw new Error("LaunchDarkly integration not found")
     }
 
-    const secrets = await getSecrets({
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({
         type: "integration",
         secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id }
     })
@@ -214,8 +215,8 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
             res.status(404).json({ error: "Integration not found" })
             return
         }
-
-        const secrets = await getSecrets({
+        const secretService = SecretService.getInstance()
+        const secrets = await secretService.getSecrets({
             type: "integration",
             secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id }
         })

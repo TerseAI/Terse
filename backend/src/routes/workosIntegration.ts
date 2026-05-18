@@ -7,7 +7,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { createSecrets, getSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { workos } from "../utility/workos"
 
 export async function getWorkOSIntegrations(req: Request, res: Response) {
@@ -70,7 +70,8 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
             return
         }
 
-        await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id, value: { webhookSecret: webhookSecret } } })
+        const secretService = SecretService.getInstance()
+        await secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id, value: { webhookSecret: webhookSecret } } })
 
         logger.info("Updated WorkOS webhook secret", { integrationId: integration.id })
 
@@ -109,8 +110,8 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
 
         const payload = JSON.parse(rawBody.toString("utf8")) as Record<string, unknown>
         const sigHeader = req.get("workos-signature") ?? req.get("WorkOS-Signature") ?? ""
-
-        const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id } })
+        const secretService = SecretService.getInstance()
+        const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id } })
         const webhookSecret = secret.webhookSecret
 
         if (!webhookSecret) {
