@@ -1,10 +1,11 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "terse-types/Integrations"
+import { z } from "zod"
 
 import logger from "../logger"
 import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
 import { db } from "../prismaClient"
-import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/SecretService"
+import { createSecrets, deleteSecretFields, deleteSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 
@@ -12,7 +13,11 @@ import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult,
 
 export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegration, never, typeof SnowflakeIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.SNOWFLAKE> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.SNOWFLAKE
+    readonly integrationType = IntegrationType.SNOWFLAKE
+    readonly secretSchema = z.object({
+        privateKey: z.string(),
+        privateKeyPassphrase: z.string().optional()
+    })
 
     getFormFields(): FormFieldDefinition[] {
         return [
@@ -146,10 +151,7 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
                 await tx.snowflake_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([
-                    { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKey },
-                    { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKeyPassphrase }
-                ])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId } })
             })
     }
 
@@ -276,8 +278,8 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
                 logger.info("✅ Created Snowflake integration", { integrationId, userId })
             }
 
-            await storeSecret(IntegrationType.SNOWFLAKE, integrationId, SecretField.PrivateKey, normalizedPrivateKey)
-            await deleteSecretsBestEffort([{ integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, field: SecretField.PrivateKeyPassphrase }])
+            await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, value: { privateKey: normalizedPrivateKey } } })
+            await deleteSecretFields({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, keys: ["privateKeyPassphrase"] } })
 
             return {
                 success: true,
