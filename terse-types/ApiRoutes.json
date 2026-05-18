@@ -146,6 +146,7 @@
     },
     "SDK": {
         "ME": "/sdk/me",
+        "ME_ORGANIZATIONS": "/sdk/me/organizations",
         "SAMPLE_EVENTS": "/sdk/sample-events",
         "HYDRATE_SAMPLE_EVENT": "/sdk/sample-events/hydrate",
         "VERIFY_JOB_SERVER": "/sdk/agents/:agentId/verify-job-server",
@@ -158,7 +159,9 @@
         "LISTEN": "/sdk/listen",
         "CREATE_PROJECT": "/sdk/projects",
         "DEPLOY": "/sdk/deploy",
+        "IDENTIFY": "/sdk/auth/identify",
         "DEVICE_TOKEN_EXCHANGE": "/sdk/auth/device-token-exchange",
+        "SWITCH_ORGANIZATION": "/sdk/auth/switch-organization",
         "INTEGRATION_FIELDS": "/sdk/integrations/:integrationType/fields",
         "INTEGRATION_FORM_SUBMIT": "/sdk/integrations/:integrationType/form-submit",
         "JOB_WEBHOOK_TRIGGER": "/webhook/terse/trigger"

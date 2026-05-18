@@ -8,6 +8,8 @@ import { NonInteractiveOpts, collectKeyValue, parseIntFlag } from "./cliHelpers.
 import { getCliVersion } from "./cliVersion.js"
 import { attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
+import { authOrgList, authOrgSwitch } from "./commands/authOrg.js"
+import { authStatus } from "./commands/authStatus.js"
 import { openDashboard } from "./commands/dashboard.js"
 import { deploy } from "./commands/deploy.js"
 import { openDocs } from "./commands/docs.js"
@@ -52,7 +54,7 @@ program
         `
 Examples:
   $ terse init myproj                       # interactive scaffold
-  $ terse init myproj --non-interactive     # non-interactive; requires prior \`terse login\`
+  $ terse init myproj --non-interactive     # non-interactive; requires prior \`terse auth login\`
   $ terse init myproj < /dev/null           # auto non-interactive (no TTY)
 `
     )
@@ -415,16 +417,19 @@ program
     })
 
 program.commandsGroup("Authentication:")
-program
+const authCommand = program.command("auth").description("Manage authentication and active organization")
+
+authCommand
     .command("login")
-    .description("Login to Terse")
+    .description("Log in to Terse")
     .action(async () => {
         const result = await loginAndPersist()
         if (!result) process.exit(1)
     })
-program
+
+authCommand
     .command("logout")
-    .description("Logout of Terse")
+    .description("Log out of Terse")
     .action(() => {
         const removed = logout()
         if (removed) {
@@ -432,6 +437,30 @@ program
         } else {
             console.log(chalk.dim("  Not logged in."))
         }
+    })
+
+authCommand
+    .command("status")
+    .description("Show the current user and active organization")
+    .action(async () => {
+        await authStatus()
+    })
+
+const authOrgCommand = authCommand.command("org").description("List or switch the active organization")
+
+authOrgCommand
+    .command("list")
+    .description("List organizations you belong to")
+    .option("--json", "Output as JSON")
+    .action(async (opts: { json?: boolean }) => {
+        await authOrgList(opts)
+    })
+
+authOrgCommand
+    .command("switch [org-id]")
+    .description("Switch the active organization. Pass an org id to skip the picker.")
+    .action(async (orgId: string | undefined) => {
+        await authOrgSwitch(orgId)
     })
 
 program.commandsGroup("Getting help:")

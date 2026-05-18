@@ -55,8 +55,8 @@ export function readApiKeyOrBail(options?: { title?: string; detail?: string }):
     const apiKey = readApiKey()
     if (apiKey) return apiKey
 
-    throw new CliError("not_authenticated", options?.title?.trim() || "Not authenticated. Run `terse login` first.", {
-        detail: options?.detail?.trim() || "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment.",
+    throw new CliError("not_authenticated", options?.title?.trim() || "Not authenticated. Run `terse auth login` first.", {
+        detail: options?.detail?.trim() || "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment.",
         actionRequired: true,
         exitCode: ErrorCode.BAD_ARGUMENTS
     })

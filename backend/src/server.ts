@@ -24,7 +24,7 @@ import { changeBillingSubscription, createBillingCheckoutSession, createBillingP
 import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
-import { deviceTokenExchange } from "./routes/deviceTokenExchange"
+import { deviceTokenExchange, identify, listMyOrganizations, switchOrganization as sdkSwitchOrganization } from "./routes/deviceTokenExchange"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations, handleHeyReachWebhook } from "./routes/heyreach"
@@ -258,8 +258,12 @@ app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
 })
 
 // MARK: DEVICE AUTH (uses WorkOS JWT in body, not bearer token)
+app.post(ApiRoutes.SDK.IDENTIFY, async (req, res) => {
+    await identify(req, res)
+})
+
 app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
-    deviceTokenExchange(req, res)
+    await deviceTokenExchange(req, res)
 })
 
 // Billing service callback: uses a service JWT, not bearer API token auth.
@@ -701,12 +705,21 @@ app.get(ApiRoutes.SDK.ME, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, 
             firstName: workOSUser.firstName || null,
             lastName: workOSUser.lastName || null,
             displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" ") || null,
-            organizationId: user.organizationId
+            organizationId: user.organizationId,
+            organization: user.organizationId ? { id: user.organizationId, name: user.organizationName } : null
         })
     } catch (error) {
         logger.error("[/sdk/me] Failed to fetch user from WorkOS", { error })
         return res.status(500).json({ error: "Failed to fetch user" })
     }
+})
+
+app.get(ApiRoutes.SDK.ME_ORGANIZATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+    await listMyOrganizations(req, res)
+})
+
+app.post(ApiRoutes.SDK.SWITCH_ORGANIZATION, requireAuth([AuthKind.UserToken]), async (req, res) => {
+    await sdkSwitchOrganization(req, res)
 })
 
 app.post(ApiRoutes.SDK.SAMPLE_EVENTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
