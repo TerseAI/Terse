@@ -175,6 +175,7 @@ terse deploy --entry-file src/server.ts
 - Existing workflows are updated
 - Workflows removed from your code are removed from Terse
 - For each workflow that includes a **webhook** trigger, the CLI prints a **Webhook URL** line after deploy so you can wire up external systems without opening the app
+- On **hosted** projects, if `.env` contains eligible keys that are not yet stored on Terse, the CLI prompts to upload them before upload begins (skipped in non-interactive shells; use `terse secrets import` instead)
 
 **Deployment modes:**
 
@@ -403,7 +404,31 @@ terse dashboard
 
 If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
 
- 
+### `terse secrets`
+
+Manage **project secrets** for hosted workflows: environment variables Terse stores for your project and injects into each hosted run. Values are never returned by the API—only names are listed.
+
+Project secrets apply to **managed (hosted) projects** only. Self-hosted projects keep runtime env vars on your own infrastructure; the CLI refuses `terse secrets` when `selfHosted` is set in `terse.config.json`.
+
+Secret names must match `^[A-Z][A-Z0-9_]{0,63}$` and cannot start with `TERSE_` (Terse reserves that prefix for platform-injected variables such as `TERSE_API_KEY`). Values are capped at 32 KB.
+
+```bash
+terse secrets list
+terse secrets list --json
+terse secrets add OPENAI_API_KEY
+printf '%s' "$OPENAI_API_KEY" | terse secrets add OPENAI_API_KEY --value-stdin
+terse secrets import .env --overwrite
+terse secrets remove OPENAI_API_KEY --yes
+```
+
+| Subcommand | Description |
+| ---------- | ----------- |
+| `list` | Print secret names stored for the linked project (`--json` for machine-readable output) |
+| `add <NAME>` | Create or update one secret (prompts for value, or pass `--value-stdin`) |
+| `import <file>` | Bulk-import from a `.env`-format file; skips existing names unless `--overwrite` |
+| `remove <NAME>` | Delete a secret (`--yes` for non-interactive confirmation) |
+
+In workflow code on hosted runs, read project secrets from `process.env` like any other variable (for example `process.env.OPENAI_API_KEY`). See [Authentication and environment variables](/reference/typescript-sdk#authentication-and-terse_api_key) in the SDK reference.
 
 ## Authentication
 

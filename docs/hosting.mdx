@@ -31,6 +31,8 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
 
 Each execution runs in its own isolated [Modal](https://modal.com) sandbox with a **project-scoped**, short-lived API token that is removed when the run finishes (and may also carry an expiration time). Your code and credentials are never shared across runs or organizations.
 
+**Project secrets** (API keys and other env vars you upload with [`terse secrets`](/reference/cli#terse-secrets)) are injected into the sandbox at run time. They are not bundled in the deploy ZIP—`.env` is always excluded from uploads. Integration OAuth tokens are stored separately and refreshed by Terse; workflows access those systems through generated skills and tools, not by reading integration secrets from `process.env`.
+
 ## What gets uploaded
 
 The CLI respects standard ignore patterns. The following are always excluded:
