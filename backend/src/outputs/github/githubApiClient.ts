@@ -29,7 +29,7 @@ export async function getGitHubAccessToken(userId: string): Promise<string | nul
     }
 
     const secretService = SecretService.getInstance()
-    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: githubToken.id } })
+    const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: githubToken.id } })
     return secrets?.accessToken ?? null
 }
 

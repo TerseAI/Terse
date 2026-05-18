@@ -52,7 +52,7 @@ export class GithubIntegrationManager
         })
         const installations = await Promise.all(
             organizationAccounts.map(async oa => {
-                const secrets = await this.secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: oa.id } })
+                const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: oa.id } })
                 if (!secrets) {
                     logger.warn(`Github app token ${oa.id} is missing its secret blob; skipping`, { integrationId: oa.id })
                     return []
