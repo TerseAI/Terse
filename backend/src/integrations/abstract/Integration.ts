@@ -18,7 +18,9 @@ export interface IntegrationWithResources<T extends IntegrationInstance, R> {
 
 // This ensures T is a valid Prisma model type
 export abstract class Integration<T extends IntegrationInstance, W, M extends IntegrationDetails, R> {
-    constructor(protected readonly secretService: SecretService = SecretService.getInstance()) {}
+    protected get secretService(): SecretService {
+        return SecretService.getInstance()
+    }
     abstract integrationType: IntegrationType
     secretSchema?: z.ZodObject<z.ZodRawShape>
     abstract getInstancesForOrganization(organizationId: string): Promise<T[]>
