@@ -50,6 +50,7 @@ import {
     handleRotateProjectApiKey,
     handleRotateProjectSigningSecret
 } from "./routes/project"
+import { handleDeleteProjectSecret, handleImportProjectSecrets, handleListProjectSecrets, handleUpsertProjectSecret } from "./routes/projectSecrets"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
@@ -74,6 +75,7 @@ import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
+import { SecretNotFoundError } from "./services/SecretService"
 import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./utility/analytics"
 import { AuthKind, requireAuth } from "./utility/authMiddleware"
@@ -816,10 +818,35 @@ app.post(ApiRoutes.PROJECTS.ROTATE_API_KEY, requireAuth([AuthKind.UserCookie, Au
     handleRotateProjectApiKey(req, res)
 })
 
+app.get(ApiRoutes.PROJECT_SECRETS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleListProjectSecrets(req, res)
+})
+
+app.post(ApiRoutes.PROJECT_SECRETS.UPSERT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleUpsertProjectSecret(req, res)
+})
+
+app.delete(ApiRoutes.PROJECT_SECRETS.DELETE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleDeleteProjectSecret(req, res)
+})
+
+app.post(ApiRoutes.PROJECT_SECRETS.IMPORT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleImportProjectSecrets(req, res)
+})
+
 // MARK: TOOLS THAT REQUIRE APPROVALS
 
 app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     toolsThatRequireApprovalsRoute(req, res)
+})
+
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    if (err instanceof SecretNotFoundError) {
+        logger.warn("Secret not found while handling request", { path: req.path, method: req.method, message: err.message })
+        res.status(404).json({ error: "Integration credentials not found. Please reconnect the integration." })
+        return
+    }
+    next(err)
 })
 
 /**

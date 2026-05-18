@@ -3,7 +3,7 @@ import { User } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { SecretField, getSecret } from "../../services/SecretService"
+import { tryGetSecrets } from "../../services/SecretService"
 
 /**
  * Get PostHog API key by integration ID
@@ -24,5 +24,6 @@ export async function getPosthogApiKeyByIntegrationId(integrationId: string, use
         return null
     }
 
-    return await getSecret(IntegrationType.POSTHOG, integration.id, SecretField.ApiKey)
+    const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
+    return secrets?.apiKey ?? null
 }

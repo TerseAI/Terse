@@ -1,11 +1,11 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
-import { AlertTriangle, ArrowRight, Briefcase, CheckCircle2, CircleDot, Loader2, Rocket, RotateCcw, XCircle } from "lucide-react"
+import { AlertTriangle, ArrowRight, Briefcase, CheckCircle2, CircleDot, KeyRound, Loader2, Rocket, RotateCcw, Trash2, XCircle } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
-import type { ProjectDeploy, ProjectDeployJobsDelta, ProjectDeployStatus, ProjectDetailResponse } from "terse-types/types"
+import type { ProjectDeploy, ProjectDeployJobsDelta, ProjectDeployStatus, ProjectDetailResponse, ProjectSecretSummary } from "terse-types/types"
 
 import { ALL_RUN_STATUSES, AgentRow, HEALTH_RANK, computeHealth, groupRunsByAgent } from "../../components/Agents/AgentHealthRow"
 import BreadCrumb from "../../components/BreadCrumb"
@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import { useAgents } from "../../hooks/api/useAgents"
 import { useAllRunHistory } from "../../hooks/api/useAllRunHistory"
 import { useProjectMutations } from "../../hooks/api/useProject"
+import { useProjectSecrets } from "../../hooks/api/useProjectSecrets"
 import { cn } from "../../lib/utils"
 import { formatDuration, formatTimestamp } from "../../utility/timeUtils"
 
@@ -323,6 +324,129 @@ export function DeploysSkeleton() {
                     <Skeleton className="h-5 w-20 rounded-full" />
                     <Skeleton className="h-3 w-20" />
                     <Skeleton className="ml-auto h-3 w-24" />
+                </div>
+            ))}
+        </div>
+    )
+}
+
+export function SecretsSection({ projectId }: { projectId: string }) {
+    const { secrets, isLoading, deleteSecret } = useProjectSecrets(projectId)
+    const [pendingDelete, setPendingDelete] = useState<ProjectSecretSummary | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const total = secrets?.length ?? 0
+
+    const handleDelete = async () => {
+        if (!pendingDelete) return
+        setIsDeleting(true)
+        try {
+            await deleteSecret(pendingDelete.name)
+            toast.success(`Deleted secret ${pendingDelete.name}`)
+            setPendingDelete(null)
+        } catch {
+            toast.error("Failed to delete secret")
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    return (
+        <section className="mt-8">
+            <SectionLabel className="flex items-center gap-1.5">
+                <KeyRound className="h-3 w-3" />
+                Secrets{total > 0 ? ` · ${total}` : ""}
+            </SectionLabel>
+
+            {isLoading ? (
+                <SecretsSkeleton />
+            ) : !secrets || secrets.length === 0 ? (
+                <SecretsEmpty />
+            ) : (
+                <ul className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+                    {secrets.map(secret => (
+                        <SecretRow key={secret.name} secret={secret} onDelete={() => setPendingDelete(secret)} />
+                    ))}
+                    <li className="text-muted-foreground flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs">
+                        Add another with <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse secrets add &lt;NAME&gt;</code>
+                    </li>
+                </ul>
+            )}
+
+            <Dialog open={!!pendingDelete} onOpenChange={open => !open && setPendingDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete secret</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete <span className="text-foreground font-semibold">{pendingDelete?.name}</span> from this project. Jobs that depend on this variable will lose
+                            access.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPendingDelete(null)} disabled={isDeleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                            {isDeleting ? "Deleting…" : "Delete secret"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </section>
+    )
+}
+
+function SecretRow({ secret, onDelete }: { secret: ProjectSecretSummary; onDelete: () => void }) {
+    return (
+        <li className="group hover:bg-muted/30 grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 py-3 transition-colors">
+            <code className="text-foreground min-w-0 truncate font-mono text-[12px]">{secret.name}</code>
+
+            <span aria-hidden className="text-muted-foreground/60 font-mono text-[12px] tracking-wider select-none">
+                ••••••••
+            </span>
+
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onDelete}
+                        className="text-muted-foreground hover:text-danger h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="sr-only">Delete {secret.name}</span>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete secret</TooltipContent>
+            </Tooltip>
+        </li>
+    )
+}
+
+function SecretsEmpty() {
+    return (
+        <Empty className="mx-auto w-full max-w-lg border-solid border-border/60 bg-muted/10 p-6 md:p-8">
+            <EmptyHeader className="max-w-lg">
+                <EmptyMedia variant="icon">
+                    <KeyRound className="text-primary" />
+                </EmptyMedia>
+                <EmptyTitle className="text-base">No secrets yet</EmptyTitle>
+                <EmptyDescription className="text-xs">
+                    Run <code className="text-foreground bg-muted border-border/60 rounded-sm border px-1.5 py-0.5 font-mono text-[11.5px]">terse secrets add &lt;NAME&gt;</code> from your SDK project
+                    to add one.
+                </EmptyDescription>
+            </EmptyHeader>
+        </Empty>
+    )
+}
+
+function SecretsSkeleton() {
+    return (
+        <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+            {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 py-3">
+                    <Skeleton className="h-3.5 w-48" />
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-7 w-7" />
                 </div>
             ))}
         </div>

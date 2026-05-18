@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { AdditionalStateParams, CliIntegrationDisplayState, InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
 import type { ConfigData, ConfigurationFieldDefinition, FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { OAuthInstallationDetails } from "terse-types"
+import { z } from "zod"
 
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
@@ -16,6 +17,7 @@ export interface IntegrationWithResources<T extends IntegrationInstance, R> {
 // This ensures T is a valid Prisma model type
 export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails, R> {
     integrationType: IntegrationType
+    secretSchema?: z.ZodObject<z.ZodRawShape>
     getInstancesForOrganization(organizationId: string): Promise<T[]>
     getCliDisplayStateForOrganization(organizationId: string): Promise<CliIntegrationDisplayState>
     formatIntegrationInstanceForAgent(instance: T): string

@@ -26,7 +26,7 @@ export function isSystemIntegration(integrationType: IntegrationType): boolean {
     return SYSTEM_INTEGRATION_TYPES.includes(integrationType)
 }
 
-export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
+const INTEGRATION_TUPLE = [
     new CronJobIntegrationManager(),
     new WebMonitorIntegrationManager(),
     new GithubIntegrationManager(),
@@ -41,4 +41,7 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new AttioIntegrationManager(),
     new SnowflakeIntegrationManager(),
     new HeyReachIntegrationManager()
-]
+] as const satisfies readonly IntegrationWithInstallation[]
+
+export const INTEGRATION_REGISTRY: readonly IntegrationWithInstallation[] = INTEGRATION_TUPLE
+export type IntegrationManagers = typeof INTEGRATION_TUPLE

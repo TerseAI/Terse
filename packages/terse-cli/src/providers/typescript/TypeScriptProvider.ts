@@ -12,6 +12,7 @@ import { tsImport } from "tsx/esm/api"
 import { readApiKeyOrBail } from "../../api.js"
 import { CliError } from "../../cliError.js"
 import { BACKEND_URL } from "../../config.js"
+import { ensureDotenvLoaded } from "../../dotenv.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
@@ -103,6 +104,11 @@ class TypeScriptProvider implements LanguageProvider {
         // re-linking). tsImport re-executes the entry module on each call, so
         // without this reset the retry would see both the old and new instances.
         __resetRegisteredTerseInstances()
+
+        // Load the project .env into process.env so the user's entry file
+        // (and any top-level process.env reads) see local values during
+        // `terse test`, `terse run`, `terse listen`, and `terse deploy`.
+        ensureDotenvLoaded(cwd)
 
         try {
             await tsImport(entryPath, parentURL)
