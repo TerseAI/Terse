@@ -15,7 +15,7 @@ import { parseModelReference } from "../modelRegistry"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
-import { RunContext, SystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
+import { SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 
 export type SessionWithTracking<T extends AppSession> = T & {
     agent: {
@@ -349,7 +349,6 @@ type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAge
 type AgentInitializationParams<TSession extends AppSession> = {
     name: string
     systemPromptDeps: SystemPromptBuilderDependencies<TSession, ConfigData>
-    runContext: RunContext
     model: AiSdkModel
     tools: Tool<TSession>[]
     modelSettings?: ModelSettings
