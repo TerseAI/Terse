@@ -23,7 +23,7 @@ export default function HomePage() {
     })
     const { approvals, isLoading: approvalsLoading } = usePendingApprovals({ status: "pending" })
 
-    const agents = allAgents.filter(a => a.source === "SDK")
+    const agents = allAgents
     const runsByAgent = groupRunsByAgent(runs)
     const agentsWithHealth = agents
         .map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) }))

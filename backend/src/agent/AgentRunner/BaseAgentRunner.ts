@@ -5,7 +5,6 @@ import { ConfigData, Decision, completedEventUsageSchema } from "terse-types"
 import { ChangedItem, ModelEvent } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { BillingError, CompletedEventUsage, ModelReference } from "terse-types"
-import { z } from "zod"
 
 import { settings } from "../../config/settings"
 import { Session as AppSession } from "../../express"
@@ -68,18 +67,7 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         await this.buildAgentPromise
     }
 
-    async buildAgent(params: AgentInitializationParams<TSession>): Promise<TAgent> {
-        const builder = new SystemPromptBuilder<TSession, ConfigData>(params.systemPromptDeps, params.runContext).withStandardSections()
-        const instructions = await builder.build()
-        this.agent = new Agent<TSession, AgentOutputType>({
-            name: params.name,
-            instructions,
-            model: params.model,
-            tools: params.tools,
-            modelSettings: params.modelSettings
-        }) as TAgent
-        return this.agent
-    }
+    protected abstract buildAgent(params: AgentInitializationParams<TSession>): Promise<TAgent>
 
     async runAgent(userHistory: AgentInputItem[], settings: RunExecutionSettings<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
         // Base run charges happen at explicit run-start call sites (SDK route, EventProcessor).
@@ -372,3 +360,12 @@ export type ApprovalDecision = {
     rejectionReason?: string
     responseId: string
 }
+
+export enum AgentRunResultStatus {
+    COMPLETED = "completed",
+    AWAITING_APPROVAL = "awaiting_approval"
+}
+
+export type ApprovalResult<T extends AppSession, AgentType extends Agent<T, AgentOutputType>> =
+    | { status: AgentRunResultStatus.COMPLETED; result: RunResult<T, AgentType>; endedWithToolFailure: boolean }
+    | { status: AgentRunResultStatus.AWAITING_APPROVAL; state: RunState<T, AgentType>; interruptions: RunToolApprovalItem[] }

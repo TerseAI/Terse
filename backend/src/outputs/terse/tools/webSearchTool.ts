@@ -1,10 +1,5 @@
-import { WebConfig } from "terse-types"
-
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
-import { Session } from "../../../express"
 import { getWebSearchService } from "../../../services/webSearch/getWebSearchService"
-import { TypedToolOptions, defineTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
+import { defineTool } from "../../../tools/toolUtils"
 
 export const webSearchTool = defineTool({
     name: "web_search",

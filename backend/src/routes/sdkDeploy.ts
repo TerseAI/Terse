@@ -157,7 +157,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 where: {
                     name: job.jobName,
                     organization_id: organizationId,
-                    source: "SDK",
                     project_id: projectId
                 },
                 include: { inputs: { include: getInputConfigInclude() } }
@@ -326,7 +325,6 @@ async function createNewAutomation(
                 name: jobName,
                 is_active: true,
                 require_approval: false,
-                source: "SDK",
                 project_id: projectId
             }
         })
@@ -416,7 +414,7 @@ async function createTriggersForAutomation(tx: PrismaTransaction, automationId: 
 async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>, projectId: string): Promise<{ id: string; name: string }[]> {
     // Lightweight query to identify which automations are stale
     const sdkAutomations = await prisma.automations.findMany({
-        where: { organization_id: organizationId, source: "SDK", project_id: projectId },
+        where: { organization_id: organizationId, project_id: projectId },
         select: { id: true, name: true }
     })
 

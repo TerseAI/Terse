@@ -20,7 +20,6 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
                 organization_id: session.user.organizationId
             },
             select: {
-                source: true,
                 project: {
                     select: {
                         remote_server_url: true,
@@ -34,7 +33,7 @@ export async function handleVerifySdkJobServer(req: Request, res: Response) {
             return res.status(404).json({ error: "Agent not found" })
         }
 
-        if (agent.source !== "SDK" || !agent.project?.remote_server_url) {
+        if (!agent.project?.remote_server_url) {
             const response: SdkJobServerCheckResponse = {
                 success: false,
                 message: "This SDK job does not have a self-hosted server URL configured."

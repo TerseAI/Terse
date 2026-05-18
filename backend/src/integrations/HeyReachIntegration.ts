@@ -19,7 +19,7 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 const HEYREACH_API_BASE = "https://api.heyreach.io/api/public"
 
-export interface HeyReachWebhookRequest {
+interface HeyReachWebhookRequest {
     triggerId: string
     payload: HeyReachWebhookPayload
 }
@@ -199,7 +199,7 @@ export class HeyReachIntegrationManager
     }
 }
 
-export class HeyReachTriggerRuntime extends TriggerRuntime<HeyReachTrigger> {
+class HeyReachTriggerRuntime extends TriggerRuntime<HeyReachTrigger> {
     readonly integrationType = IntegrationType.HEY_REACH
     data: HeyReachTrigger
     private integrationId: string

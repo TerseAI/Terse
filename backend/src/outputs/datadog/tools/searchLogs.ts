@@ -3,7 +3,7 @@ import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { DatadogConfig, IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../../express"
 import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
 import logger from "../../../logger"
@@ -239,7 +239,7 @@ export const searchDatadogLogsTool = defineSessionTool({
 
 export const validateSearchDatadogLogs: ToolACLValidator<"searchDatadogLogs", DatadogConfig> = ({ args, configs }) => validateDatadogIndexes(args.integrationId, args.indexes, configs)
 
-export const validateDatadogIndexes = (integrationId: string, indexes: readonly string[] | null | undefined, configs: DatadogConfig[]) => {
+const validateDatadogIndexes = (integrationId: string, indexes: readonly string[] | null | undefined, configs: DatadogConfig[]) => {
     if (!indexes || indexes.length === 0) return { ok: true }
     return requireAllValuesInAnyConfig({
         integrationId,

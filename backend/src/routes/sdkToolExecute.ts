@@ -5,7 +5,7 @@ import { User } from "terse-types/types"
 import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { z } from "zod"
 
-import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
+import { SessionWithTracking } from "../agent/AgentRunner/BaseAgentRunner"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import {
     type DeterministicToolCallRunContext,

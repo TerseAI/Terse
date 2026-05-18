@@ -257,7 +257,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         }
     }
 
-    override async buildAgent(params: {
+    protected async buildAgent(params: {
         name: string
         systemPromptDeps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData>
         runContext: RunContext

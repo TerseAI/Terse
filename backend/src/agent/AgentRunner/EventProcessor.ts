@@ -1,5 +1,4 @@
 import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
-import { ConfigData } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
@@ -7,25 +6,20 @@ import { Session } from "../../express"
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
-import { Output } from "../../outputs/abstract/Output"
-import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../realtimeSocket"
 import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
 import { AgentWithRelations, Agent as PrismaAgent, SDKAgent, isSDKAgent } from "../../types/prisma"
-import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
+import { trackActionTaken } from "../../utility/analytics"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getActiveDeployForProject } from "../../utility/projectHelper"
 import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
-import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
-import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 
-import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
-import { filterEvent } from "./EventFilter"
-import { RunContext } from "./SystemPromptBuilder"
+import { SessionWithTracking } from "./BaseAgentRunner"
+import { ApprovalResult } from "./BaseAgentRunner"
 import { appendRunAction, createRunRecord, evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
@@ -268,174 +262,11 @@ export class EventProcessor {
         }
 
         // SDK agents run in a Modal sandbox instead of the normal agent pipeline
-        else if (isSDKAgent(agent) && activeDeploy?.sdk_source_image_id) {
+        if (isSDKAgent(agent) && activeDeploy?.sdk_source_image_id) {
             return this.processSdkAgent(agent, existingRunId)
-        } else if (isSDKAgent(agent)) {
-            logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name, source: agent.source })
-            throw new Error(`Unknown agent source: ${agent.source}`)
-        }
-
-        const runId = existingRunId ?? (await this.createRunForAgent(agent))
-        const trigger = this.inputEvent.createTriggerMetadata()
-
-        // Get the outputs from agent relations (already fetched with config)
-        if (!agent.outputs || agent.outputs.length === 0) {
-            await this.failRunEarly(runId, agent.id, "No output integrations found for this agent")
-            await this.notifyRunFailure(agent, runId, "No output integrations found for this agent")
-            return new ProcessorResult(false, "No output integrations found for this agent", agent, undefined, runId)
-        }
-
-        // Create outputs from agent configuration
-        let outputs: Output<ConfigData>[]
-        try {
-            outputs = OutputFactory.createOutputsFromAgent(agent)
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Unknown error"
-            await this.failRunEarly(runId, agent.id, `Failed to create outputs: ${errorMessage}`)
-            await this.notifyRunFailure(agent, runId, `Failed to create outputs: ${errorMessage}`)
-            return new ProcessorResult(false, `Failed to create outputs: ${errorMessage}`, agent, undefined, runId)
-        }
-
-        // Create base session for AgentRunner
-        const session: Session = {
-            user: this.user
-        }
-
-        // Filter the event using AI to see if it's relevant to this agent
-        let filterResult
-        try {
-            const filterResponse = await filterEvent(this.inputEvent, agent, true, {
-                runId,
-                user: this.user,
-                agentId: agent.id
-            })
-
-            filterResult = filterResponse.result
-        } catch (error) {
-            // Log the error and update run history
-            const errorMessage = error instanceof Error ? error.message : "Unknown error"
-            logger.error(`Error filtering event for agent "${agent.name}"`, {
-                error,
-                agentId: agent.id,
-                agentName: agent.name,
-                runId
-            })
-
-            try {
-                await markRunFailed(runId, errorMessage, "filter")
-                emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
-            } catch (e) {
-                logger.error("Failed to mark run as failed", {
-                    error: e,
-                    runId,
-                    agentId: agent.id
-                })
-            }
-            await this.notifyRunFailure(agent, runId, errorMessage)
-
-            return new ProcessorResult(false, `Error during filtering: ${errorMessage}`, agent, undefined, runId)
-        }
-
-        if (!filterResult.isRelevant) {
-            logger.info(`Event is not relevant to agent "${agent.name}": ${filterResult.reason}`)
-            try {
-                await markRunSkipped(runId, filterResult.reason)
-                // Emit cache invalidation to update UI
-                emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
-            } catch (e) {
-                logger.error("Failed to mark run skipped", {
-                    error: e,
-                    runId,
-                    agentId: agent.id
-                })
-            }
-            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, agent, undefined, runId)
-        }
-
-        try {
-            await markRunProcessed(runId, filterResult.reason)
-        } catch (e) {
-            logger.error("Failed to mark run processed", {
-                error: e,
-                runId,
-                agentId: agent.id
-            })
-        }
-
-        logger.info(`Event is relevant to agent "${agent.name}"`)
-
-        // Track agent triggered analytics event (organization-scoped)
-        trackAgentTriggered(this.user.id, {
-            agentId: agent.id,
-            agentName: agent.name,
-            triggerType: trigger.integration,
-            triggerSource: trigger.source,
-            runId
-        })
-
-        const billing = billingServiceProxyForOrganization(this.user.organizationId, this.user.workosId)
-
-        // Create agent runner with the session and outputs
-        const runContext: RunContext = { runId }
-        const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
-        agentRunner.setInputEvent(this.inputEvent)
-        const cancellationController = new AbortController()
-        const cancellationSubscription = listenForRunCancellation(runId, this.user.organizationId, cancellationController)
-
-        // Run the agent runner with streaming parameters
-        let result: ApprovalResult<SessionWithTracking<Session>, OpenAIAgent<SessionWithTracking<Session>, AgentOutputType>>
-        try {
-            await startBillingRun(billing, { organizationId: this.user.organizationId, runId })
-
-            result = await agentRunner.run(
-                {
-                    runId,
-                    agentId: agent.id,
-                    user: this.user
-                },
-                {
-                    signal: cancellationController.signal
-                }
-            )
-        } catch (error) {
-            const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
-            const reason = cancellationSubscription.getReason()
-            cancellationSubscription.unsubscribe()
-
-            if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
-                await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
-                return new ProcessorResult(false, reason, agent, undefined, runId)
-            }
-
-            const classified = classifyAgentError(error)
-            logger.error(`Error running agent "${agent.name}"`, {
-                error,
-                agentId: agent.id,
-                agentName: agent.name,
-                runId
-            })
-            await finalizeRunFailure(runId, classified, this.user, agent)
-            throw error
-        }
-
-        const wasCancelled = cancellationSubscription.isCancellationRequested()
-        const reason = cancellationSubscription.getReason()
-        cancellationSubscription.unsubscribe()
-
-        if (wasCancelled) {
-            await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
-            return new ProcessorResult(false, reason, agent, undefined, runId)
-        }
-
-        if (result.status === AgentRunResultStatus.COMPLETED) {
-            logger.info(`Agent "${agent.name}" completed:`, {
-                finalOutput: result.result.finalOutput,
-                endedWithToolFailure: result.endedWithToolFailure
-            })
-            return persistRunResult(runId, result.result, session, agent, result.endedWithToolFailure, result)
         } else {
-            logger.info(`Agent "${agent.name}" awaiting approval:`)
-            return new ProcessorResult<SessionWithTracking<Session>>(false, "Agent awaiting approval", agent, result, runId)
+            logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name })
+            throw new Error("Unknown agent source")
         }
     }
 
@@ -561,29 +392,4 @@ async function persistRunResult<T extends Session>(
 
     const finalOutput = typeof result.finalOutput === "string" ? result.finalOutput : ""
     return new ProcessorResult<SessionWithTracking<T>>(completion.isSuccessful, finalOutput, agent, approvalResult, runId)
-}
-
-export async function persistRunAction<T extends Session>(runId: string, agent: PrismaAgent, session: T, action: RunHistoryAction): Promise<string | undefined> {
-    try {
-        const actionId = await appendRunAction(runId, action)
-        emitCacheInvalidationWithWildcard(session.user.organizationId, "runHistory", agent.id)
-        emitCacheInvalidationWithKey(session.user.organizationId, "recentActions")
-
-        trackActionTaken(session.user.id, {
-            runId,
-            actionType: action.type,
-            integration: action.integration,
-            target: action.target,
-            isReadOnly: action.isReadOnly
-        })
-
-        return actionId
-    } catch (e) {
-        logger.error("Failed to append run action", {
-            error: e,
-            runId,
-            agentId: agent.id
-        })
-    }
-    return undefined
 }

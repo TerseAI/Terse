@@ -14,7 +14,7 @@ import "./integrations/IntegrationTaskHandler"
 // Import to trigger listener registration
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
-import { createAgent, deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
+import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
@@ -581,10 +581,6 @@ app.get("/agents/recent", requireAuth([AuthKind.UserCookie, AuthKind.UserToken])
 
 app.get(ApiRoutes.AGENTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getUserAgent(req, res)
-})
-
-app.post("/agents", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createAgent(req, res)
 })
 
 app.patch(ApiRoutes.AGENTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {

@@ -177,16 +177,8 @@ export const analytics = AnalyticsService.getInstance()
 
 // Export convenience functions for cleaner API
 
-export function trackAgentTriggered(userId: string, properties: AgentTriggeredProperties): void {
-    analytics.capture(userId, AnalyticsEvent.AGENT_TRIGGERED, properties)
-}
-
 export function trackActionTaken(userId: string, properties: ActionTakenProperties): void {
     analytics.capture(userId, AnalyticsEvent.ACTION_TAKEN, properties)
-}
-
-export function trackAgentCreated(userId: string, properties: AgentCreatedProperties): void {
-    analytics.capture(userId, AnalyticsEvent.AGENT_CREATED, properties)
 }
 
 export function trackIntegrationAdded(userId: string, properties: IntegrationAddedProperties): void {

@@ -13,8 +13,7 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
-import { AgentWithNotificationSettingsRelations, AgentWithPromptRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction, SDKAgent, isSDKAgent } from "../types/prisma"
-import { trackAgentCreated } from "../utility/analytics"
+import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction, SDKAgent, isSDKAgent } from "../types/prisma"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { getActiveSourceCodeGcsKeyForAutomation } from "../utility/projectHelper"
@@ -128,159 +127,6 @@ async function persistToolApprovals(tx: PrismaTransaction, automationId: string,
             }))
         })
     }
-}
-
-type ApplyAgentOptions = { createWithId?: string }
-
-async function applyAgentForUser(userId: string, organizationId: string, draft: AgentDraft, options?: ApplyAgentOptions): Promise<{ id: string }> {
-    const { name, triggers, outputs, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovals } = draft
-
-    logger.debug("Outputs from frontend", {
-        outputs: JSON.stringify(outputs, null, 2),
-        userId
-    })
-    logger.debug("Triggers from frontend", {
-        triggers: JSON.stringify(triggers, null, 2),
-        userId
-    })
-    logger.debug("Notification settings from frontend", {
-        notificationSettings: JSON.stringify(notificationSettings, null, 2),
-        userId
-    })
-
-    // Validate request
-    if (!name || !triggers || triggers.length === 0 || !outputs || outputs.length === 0 || !prompt?.text) {
-        throw new Error("Invalid request: missing required fields")
-    }
-
-    const prisma = db()
-
-    const createWithId = options?.createWithId && isUuidV4(options.createWithId) ? options.createWithId : undefined
-
-    // Create new agent
-    const agent = await prisma.$transaction(async tx => {
-        // Create agent
-        const newAgent = await tx.automations.create({
-            data: {
-                ...(createWithId && { id: createWithId }),
-                user_id: userId,
-                organization_id: organizationId,
-                name,
-                is_active: isActive,
-                require_approval: requireApproval
-            }
-        })
-
-        // Create prompt
-        await tx.automation_prompts.create({
-            data: {
-                automation_id: newAgent.id,
-                content: prompt.text
-            }
-        })
-
-        // Create triggers
-        for (const trigger of triggers) {
-            const integrationType = trigger.config.integrationType
-
-            // Validate that user owns the integration (system integrations skip validation)
-            const integrationId = trigger.config.integrationId
-            if (!integrationId && !isSystemIntegration(integrationType)) {
-                throw new Error(`Integration ID is required for ${trigger.config.integrationType}`)
-            }
-
-            const isOwner = await validateUserOwnsIntegration(organizationId, integrationType, integrationId || "system")
-            if (!isOwner) {
-                throw new Error(`Integration ${trigger.config.integrationType} not found or not owned by user`)
-            }
-
-            const newTrigger = await tx.automation_inputs.create({
-                data: {
-                    automation_id: newAgent.id,
-                    config_type: convertConfigTypeToInputConfigType(trigger.config.configType),
-                    // System integrations use 'system' as a sentinel integration ID
-                    integration_id: integrationId || "system"
-                }
-            })
-
-            // Create config record if provided
-            await createTriggerConfig(tx, newTrigger.id, trigger, userId)
-        }
-
-        // Create outputs
-        for (const output of outputs) {
-            const outputIntegrationType = output.config.integrationType
-            const outputConfigType = output.config.configType
-
-            const outputIntegrationId = output.config.integrationId
-            if (!outputIntegrationId) {
-                throw new Error(`Integration ID is required for ${output.config.integrationType}`)
-            }
-            const isOwner = await validateUserOwnsIntegration(organizationId, outputIntegrationType, outputIntegrationId)
-            if (!isOwner) {
-                throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`)
-            }
-
-            logger.debug("Output integration ID", { outputIntegrationId, userId })
-            logger.debug("Output integration type", {
-                outputIntegrationType,
-                userId
-            })
-            logger.debug("Creating new output", {
-                output: JSON.stringify(output, null, 2),
-                userId
-            })
-
-            const newOutput = await tx.automation_outputs.create({
-                data: {
-                    automation_id: newAgent.id,
-                    config_type: convertConfigTypeToOutputConfigType(outputConfigType),
-                    integration_id: outputIntegrationId
-                }
-            })
-
-            // Create config record if provided
-            await createOutputConfig(tx, newOutput.id, output.config, userId)
-        }
-
-        await upsertNotificationSettings(tx, newAgent.id, userId, notificationSettings)
-
-        // Create tool approvals if provided
-        await persistToolApprovals(tx, newAgent.id, toolApprovals)
-
-        return newAgent
-    })
-
-    const agentWithRelations: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
-        where: { id: agent.id, organization_id: organizationId },
-        include: {
-            inputs: {
-                include: getInputConfigInclude()
-            }
-        }
-    })
-
-    if (!agentWithRelations) {
-        throw new Error(`Agent not found: ${agent.id}`)
-    }
-
-    // Set up agent triggers
-    await setupAgentTriggers(agentWithRelations)
-
-    // Invalidate recent agents and agent list caches
-    emitCacheInvalidationWithKey(organizationId, "recentAgents")
-    emitCacheInvalidationWithKey(organizationId, "agents")
-
-    // Track agent created analytics event
-    trackAgentCreated(userId, {
-        agentId: agent.id,
-        agentName: name,
-        triggerCount: triggers.length,
-        outputCount: outputs.length,
-        requiresApproval: requireApproval
-    })
-
-    return { id: agent.id }
 }
 
 async function updateAgentForUser(userId: string, organizationId: string, agentId: string, update: Partial<AgentUpdate>): Promise<{ id: string }> {
@@ -635,44 +481,6 @@ export async function getUserAgent(req: Request, res: Response) {
     }
 }
 
-// POST /agents - Create a new agent
-export async function createAgent(req: Request, res: Response) {
-    if (!req.session?.user) {
-        res.status(401).json({ error: "Unauthorized" })
-        return
-    }
-
-    const userId = req.session.user.id
-    const organizationId = req.session.user.organizationId
-    const { name, triggers, outputs, prompt, isActive, requireApproval, notificationSettings, toolApprovals } = agentCreateSchema.parse({ isActive: true, requireApproval: false, ...req.body })
-
-    try {
-        const { id } = await applyAgentForUser(userId, organizationId, {
-            id: null,
-            name,
-            triggers,
-            outputs,
-            prompt,
-            isActive,
-            requireApproval,
-            notificationSettings,
-            createdByUserId: userId,
-            toolApprovals,
-            metadata: null
-        })
-
-        res.status(201).json({ success: true, id })
-    } catch (error) {
-        logger.error("Error creating agent", { error, userId })
-        const details = extractErrorMessage(error)
-        if (details === "Invalid request: missing required fields") {
-            res.status(400).json({ error: details })
-            return
-        }
-        res.status(500).json({ error: "Failed to create agent", details })
-    }
-}
-
 // PATCH /agents/:id - Update an existing agent
 export async function updateAgent(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -828,7 +636,6 @@ async function transformAgentToFrontendFormat(agent: AgentWithRelations & Partia
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
         createdByUserId: agent.user_id,
         updatedAt: agent.updated_at.toISOString(),
-        source: agent.source,
         metadata: agent.project
             ? {
                   remoteServerUrl: agent.project.remote_server_url ?? null,

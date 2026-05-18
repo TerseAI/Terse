@@ -102,8 +102,8 @@ export async function finalizeRunStatus(runId: string, status: CompletedRunStatu
     }
 }
 
-export type FailureTier = "first" | "warning" | "paused"
-export const PAUSE_THRESHOLD = 3
+type FailureTier = "first" | "warning" | "paused"
+const PAUSE_THRESHOLD = 3
 
 export type FailureState = {
     consecutiveFailures: number

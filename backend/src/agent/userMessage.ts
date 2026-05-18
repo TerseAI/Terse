@@ -31,7 +31,7 @@ export function buildUserMessage(text: string, id?: string): UserMessageItem {
  * Build a user message AgentInputItem from pre-built content parts
  * (e.g. input_text + input_file/input_image attachments).
  */
-export function buildUserMessageFromContent(content: UserMessageItem["content"], id?: string): UserMessageItem {
+function buildUserMessageFromContent(content: UserMessageItem["content"], id?: string): UserMessageItem {
     const normalizedContent =
         typeof content === "string"
             ? [

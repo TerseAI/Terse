@@ -6,7 +6,7 @@ import { getNotionAccessTokenForOrganization } from "../integrations/NotionInteg
 import logger from "../logger"
 import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../outputs/abstract/acl"
 
-export type NotionScope = { databaseIds: readonly string[]; pageIds: readonly string[] }
+type NotionScope = { databaseIds: readonly string[]; pageIds: readonly string[] }
 
 const DEFAULT_MAX_DEPTH = 100
 
@@ -23,7 +23,7 @@ const isFullDataSource = (ds: GetDataSourceResponse): ds is DataSourceObjectResp
 type Kind = "page" | "database"
 type ResolverKey = `${Kind}:${string}`
 
-export interface NotionScopeResolver {
+interface NotionScopeResolver {
     isPageInScope(pageId: string): Promise<boolean>
     isDatabaseInScope(databaseId: string): Promise<boolean>
 }

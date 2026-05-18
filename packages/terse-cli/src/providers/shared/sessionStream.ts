@@ -9,8 +9,6 @@ import { BACKEND_URL } from "../../config.js"
 
 export type SessionHandle = SessionStreamHandle
 
-export type { SessionStreamEvent }
-
 type SessionStreamOptions = {
     verbose?: boolean
     isPaused?: () => boolean

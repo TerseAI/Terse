@@ -296,17 +296,16 @@ model projects {
 
 // Automation tables
 model automations {
-  id                   String           @id @default(cuid())
+  id                   String   @id @default(cuid())
   user_id              String
   organization_id      String
   name                 String
-  is_active            Boolean          @default(true)
-  improvements_enabled Boolean          @default(true)
-  require_approval     Boolean          @default(false)
-  source               AutomationSource @default(WEB_UI)
-  consecutive_failures Int              @default(0)
-  created_at           DateTime         @default(now())
-  updated_at           DateTime         @updatedAt
+  is_active            Boolean  @default(true)
+  improvements_enabled Boolean  @default(true)
+  require_approval     Boolean  @default(false)
+  consecutive_failures Int      @default(0)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
 
   user                       users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prompt                     automation_prompts?
@@ -319,13 +318,13 @@ model automations {
   agent_reviews              agent_reviews[]
   agent_improvements         agent_improvements[]
   sent_notifications         sent_notifications[]
-  project                    projects?                         @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  project_id                 String?
+  project                    projects                          @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  project_id                 String
 
   @@index([user_id])
   @@index([organization_id])
   @@index([is_active])
-  @@index([name, organization_id, source, project_id])
+  @@index([name, organization_id, project_id])
 }
 
 // Separate table for prompts (future-proof for versioning, templates, etc.)

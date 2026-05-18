@@ -182,7 +182,7 @@ export type SDKAgent = Omit<AgentWithRelations, "project"> & {
 }
 
 export function isSDKAgent(agent: AgentWithRelations): agent is SDKAgent {
-    return agent.source === "SDK" && agent.project !== null
+    return agent.project !== null
 }
 
 // Extract the transaction type from PrismaClient

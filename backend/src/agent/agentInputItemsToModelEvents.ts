@@ -6,7 +6,6 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 
 import { isScaffoldedRunContextUserMessage } from "./AgentRunner/formatContext"
 import { parseCancelledSystemEventItem } from "./systemEvents/cancelledSystemEvent"
-import { parseFilterOutcomeSystemEventItem } from "./systemEvents/filterOutcomeSystemEvent"
 import { parseProcessOutputSystemEventItem } from "./systemEvents/processOutputSystemEvent"
 import { parseRunErrorSystemEventItem } from "./systemEvents/runErrorSystemEvent"
 import { parseSnippetSystemEventItem } from "./systemEvents/snippetSystemEvent"
@@ -97,22 +96,6 @@ async function convertSingleItem(
                 timestamp: eventTimestamp,
                 error: runErrorSystemEvent.error,
                 ...(runErrorSystemEvent.code ? { code: runErrorSystemEvent.code } : {})
-            }
-        ]
-    }
-
-    const filterOutcomeSystemEvent = parseFilterOutcomeSystemEventItem(item)
-    if (filterOutcomeSystemEvent) {
-        const responseId = resolveResponseId(item, `filter-${eventTimestamp}-${itemIndex}`)
-        return [
-            {
-                type: "FilterResult",
-                id: responseId,
-                response_id: responseId,
-                timestamp: eventTimestamp,
-                isRelevant: filterOutcomeSystemEvent.isRelevant,
-                reason: filterOutcomeSystemEvent.reason,
-                confidence: filterOutcomeSystemEvent.confidence
             }
         ]
     }

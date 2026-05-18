@@ -1,26 +1,11 @@
 import { Link, useLocation } from "react-router-dom"
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
 import type { LucideIcon } from "lucide-react"
-import { Activity, BarChart3, Bell, BookOpen, ChevronRight, CreditCard, ExternalLink, Home, KeyRound, Plug, Zap } from "lucide-react"
-import { buildRoute } from "terse-types"
+import { Activity, BarChart3, Bell, BookOpen, CreditCard, ExternalLink, Home, KeyRound, Plug } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
 
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarMenuSkeleton,
-    SidebarMenuSub,
-    SidebarMenuSubButton,
-    SidebarMenuSubItem
-} from "@/components/ui/sidebar"
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import { useAgents } from "@/hooks/api/useAgents"
 import { useOrganizationProjects } from "@/hooks/api/useOrganizationProjects"
 import { usePendingApprovals } from "@/hooks/api/usePendingApprovals"
@@ -36,9 +21,6 @@ export function AppSidebar() {
     const { agents, isLoading } = useAgents({ limit: 100 })
     const { projects: organizationProjects, isLoading: projectsLoading } = useOrganizationProjects()
 
-    const webUiAgents = agents.filter(a => a.source !== "SDK")
-    const sdkJobs = agents.filter(a => a.source === "SDK")
-
     return (
         <Sidebar>
             <AppSidebarHeader />
@@ -46,7 +28,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation sdkJobs={sdkJobs} organizationProjects={organizationProjects} loading={isLoading || projectsLoading} />
+                        <ApplicationNavigation sdkJobs={agents} organizationProjects={organizationProjects} loading={isLoading || projectsLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
@@ -56,15 +38,6 @@ export function AppSidebar() {
                         <SettingsNavigation />
                     </SidebarGroupContent>
                 </SidebarGroup>
-
-                {webUiAgents.length > 0 && (
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Deprecated</SidebarGroupLabel>
-                        <SidebarGroupContent>
-                            <DeprecatedAgentsNavigation agents={webUiAgents} loading={isLoading} />
-                        </SidebarGroupContent>
-                    </SidebarGroup>
-                )}
             </SidebarContent>
             <AppSidebarFooter />
         </Sidebar>
@@ -116,32 +89,6 @@ function ApplicationNavigation({ sdkJobs, organizationProjects, loading }: Appli
     )
 }
 
-interface DeprecatedAgentsNavigationProps {
-    agents: Agent[]
-    loading: boolean
-}
-
-function DeprecatedAgentsNavigation({ agents, loading }: DeprecatedAgentsNavigationProps) {
-    return (
-        <SidebarMenu>
-            <Collapsible className="group/collapsible">
-                <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                        <SidebarMenuButton>
-                            <Zap className="text-muted-foreground" />
-                            <span className="text-muted-foreground">Agents</span>
-                            <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                        </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                        <AgentsList agents={agents} loading={loading} />
-                    </CollapsibleContent>
-                </SidebarMenuItem>
-            </Collapsible>
-        </SidebarMenu>
-    )
-}
-
 function SettingsNavigation() {
     const location = useLocation()
     const { approvals } = usePendingApprovals({ status: "pending" })
@@ -184,56 +131,6 @@ function SettingsNavigation() {
                 </SidebarMenuItem>
             ))}
         </SidebarMenu>
-    )
-}
-
-interface AgentsListProps {
-    agents: Agent[]
-    loading: boolean
-}
-function AgentsList({ agents, loading }: AgentsListProps) {
-    if (loading) {
-        return (
-            <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSkeleton />
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSkeleton />
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSkeleton />
-                </SidebarMenuSubItem>
-            </SidebarMenuSub>
-        )
-    }
-
-    return (
-        <SidebarMenuSub>
-            {agents.map(agent => (
-                <AgentListItem key={agent.id} agent={agent} />
-            ))}
-        </SidebarMenuSub>
-    )
-}
-
-interface AgentListItemProps {
-    agent: Agent
-}
-
-function AgentListItem({ agent }: AgentListItemProps) {
-    const location = useLocation()
-    const isActive = location.pathname === buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: agent.id })
-
-    return (
-        <SidebarMenuSubItem>
-            <SidebarMenuSubButton asChild isActive={isActive}>
-                <Link to={buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: agent.id })} className="flex items-center gap-2">
-                    <span className={`size-2 rounded-full shrink-0 ${agent.isActive ? "bg-success" : "bg-muted-foreground"}`} />
-                    <span className="truncate">{agent.name}</span>
-                </Link>
-            </SidebarMenuSubButton>
-        </SidebarMenuSubItem>
     )
 }
 

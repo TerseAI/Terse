@@ -3,7 +3,7 @@ import { RunContext } from "@openai/agents"
 import { LinearOutputConfig } from "terse-types"
 import { validate as isValidUuid } from "uuid"
 
-import { SessionWithTracking } from "../../agent/AgentRunner/AgentRunner"
+import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../express"
 import { getLinearAccessTokenForOrganization } from "../../integrations/LinearIntegration"
 import logger from "../../logger"
