@@ -69,7 +69,7 @@ Reach out if you're interested in collaborating.
 
 ### Security
 
-If you discover a security vulnerability, please email us at [security@useterse.ai](mailto:security@useterse.ai).
+Please don't open a public issue or PR for security vulnerabilities — see [SECURITY.md](SECURITY.md) for our private disclosure process.
 
 ### Other
 

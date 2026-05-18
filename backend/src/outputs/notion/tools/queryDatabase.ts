@@ -207,6 +207,6 @@ NOTE: This tool does NOT return the database schema. Use notion_get_schema if yo
     }
 })
 
-export const validateNotionQueryDatabase: ToolACLValidator<"notion_query_database", NotionConfig> = async ({ args, configs }) => {
-    return verifyNotionDatabaseInScope(args.integrationId, args.databaseId, configs)
+export const validateNotionQueryDatabase: ToolACLValidator<"notion_query_database", NotionConfig> = async ({ args, configs, runContext }) => {
+    return verifyNotionDatabaseInScope(args.integrationId, runContext.context.user.organizationId, args.databaseId, configs)
 }
