@@ -117,8 +117,6 @@ export class AgentRunner<T extends Session, TConfig extends ConfigData> extends 
             inputGuardrails: this.getInputGuardrails()
         })
 
-        logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) })
-
         this.setActiveStreamingParams(streamingParams)
         let loopResult: AgentRunnerLoopResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>
         try {

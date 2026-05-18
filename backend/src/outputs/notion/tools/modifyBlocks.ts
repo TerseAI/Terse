@@ -284,6 +284,6 @@ Error recovery: If Notion returns an error that suggests JSON/body/validation in
     }
 })
 
-export const validateNotionModifyBlocks: ToolACLValidator<"notion_modify_blocks", NotionConfig> = async ({ args, configs }) => {
-    return verifyNotionPageInScope(args.integrationId, args.pageId, configs)
+export const validateNotionModifyBlocks: ToolACLValidator<"notion_modify_blocks", NotionConfig> = async ({ args, configs, runContext }) => {
+    return verifyNotionPageInScope(args.integrationId, runContext.context.user.organizationId, args.pageId, configs)
 }

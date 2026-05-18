@@ -24,7 +24,7 @@ import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
-import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -163,12 +163,10 @@ export class GithubIntegrationManager
         const clientId = githubApp.clientId
         const redirectUri = githubApp.integrateCallbackUrl
 
-        // Generate state token using helper function (handles merging and encoding)
         const state = createOAuthStateToken({
             userId,
             organizationId,
-            additionalStatePayload,
-            encodingFormat: OAuthStateEncodingFormat.BASE64
+            additionalStatePayload
         })
 
         const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(

@@ -149,7 +149,7 @@ async function handleSlackInteraction(req: Request, res: Response) {
 async function openChat(accessToken: string, authedUserId: string) {
     try {
         const client = new WebClient(accessToken, {
-            logLevel: LogLevel.DEBUG
+            logLevel: LogLevel.WARN
         })
 
         const { channel } = await client.conversations.open({
