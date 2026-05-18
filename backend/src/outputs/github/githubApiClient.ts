@@ -4,7 +4,7 @@ import { GitHubConfig, IntegrationType } from "terse-types"
 
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { tryGetSecrets } from "../../services/SecretService"
+import { SecretService } from "../../services/SecretService"
 
 /**
  * Creates an authenticated Octokit client
@@ -28,7 +28,8 @@ export async function getGitHubAccessToken(userId: string): Promise<string | nul
         return null
     }
 
-    const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: githubToken.id } })
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: githubToken.id } })
     return secrets?.accessToken ?? null
 }
 

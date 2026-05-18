@@ -6,7 +6,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { getDatadogApiUrl } from "../utility/datadog"
 
 export async function getDatadogIntegrations(req: Request, res: Response) {
@@ -89,7 +89,8 @@ export const getDatadogIndexes = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Datadog integration not found" })
         }
 
-        const secrets = await getSecrets({
+        const secretService = SecretService.getInstance()
+        const secrets = await secretService.getSecrets({
             type: "integration",
             secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id }
         })

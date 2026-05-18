@@ -17,7 +17,7 @@ import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
-import { deleteSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { createProjectScopedToken } from "../utility/apiTokens"
 import { getInputConfigInclude } from "../utility/prismaIncludes"
 import { getActiveSourceCodeGcsKeyForProject } from "../utility/projectHelper"
@@ -140,9 +140,11 @@ export async function handleProjectDelete(req: Request, res: Response) {
         await tearDownAgentTriggers(automation)
     }
 
+    const secretService = SecretService.getInstance()
+
     await db().projects.delete({ where: { id } })
     try {
-        await deleteSecrets({ type: "project", secret: { projectId: id } })
+        await secretService.deleteSecrets({ type: "project", secret: { projectId: id } })
     } catch (error) {
         logger.error("Project secret cleanup scheduling failed after project delete", { error, projectId: id })
     }

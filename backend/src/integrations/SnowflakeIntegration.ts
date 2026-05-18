@@ -5,14 +5,15 @@ import { z } from "zod"
 import logger from "../logger"
 import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
 import { db } from "../prismaClient"
-import { createSecrets, deleteSecretFields, deleteSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 
-export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegration, never, typeof SnowflakeIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.SNOWFLAKE> {
-    constructor() {}
+export class SnowflakeIntegrationManager
+    extends Integration<SnowflakeIntegration, never, typeof SnowflakeIntegrationMetadata, never>
+    implements FormIntegrationInstallation<IntegrationType.SNOWFLAKE>
+{
     readonly integrationType = IntegrationType.SNOWFLAKE
     readonly secretSchema = z.object({
         privateKey: z.string(),
@@ -151,7 +152,7 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
                 await tx.snowflake_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId } })
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId } })
             })
     }
 
@@ -278,8 +279,11 @@ export class SnowflakeIntegrationManager implements Integration<SnowflakeIntegra
                 logger.info("✅ Created Snowflake integration", { integrationId, userId })
             }
 
-            await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, value: { privateKey: normalizedPrivateKey } } })
-            await deleteSecretFields({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, keys: ["privateKeyPassphrase"] } })
+            await this.secretService.createSecrets({
+                type: "integration",
+                secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, value: { privateKey: normalizedPrivateKey } }
+            })
+            await this.secretService.deleteSecretFields({ type: "integration", secret: { integrationType: IntegrationType.SNOWFLAKE, recordId: integrationId, keys: ["privateKeyPassphrase"] } })
 
             return {
                 success: true,

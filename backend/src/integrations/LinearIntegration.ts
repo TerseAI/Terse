@@ -19,7 +19,7 @@ import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { fetchLinearTeams } from "../routes/linear"
 import { StoredFile } from "../services/FileStorageService"
-import { SecretNotFoundError, createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { SecretNotFoundError } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
@@ -32,9 +32,9 @@ import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, cr
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class LinearIntegrationManager
-    implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata, LinearTeam>, OAuthIntegrationInstallation<IntegrationType.LINEAR>
+    extends Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata, LinearTeam>
+    implements OAuthIntegrationInstallation<IntegrationType.LINEAR>
 {
-    constructor() {}
     readonly integrationType = IntegrationType.LINEAR
     readonly secretSchema = z.object({
         accessToken: z.string(),
@@ -302,7 +302,7 @@ export class LinearIntegrationManager
                     }
                 })
 
-                await createSecrets({
+                await this.secretService.createSecrets({
                     type: "integration",
                     secret: {
                         integrationType: IntegrationType.LINEAR,
@@ -317,7 +317,7 @@ export class LinearIntegrationManager
                     userId: decoded.userId
                 })
             } else {
-                await createSecrets({
+                await this.secretService.createSecrets({
                     type: "integration",
                     secret: {
                         integrationType: IntegrationType.LINEAR,
@@ -363,7 +363,7 @@ export class LinearIntegrationManager
                 await tx.linear_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.LINEAR, recordId: integrationId } })
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.LINEAR, recordId: integrationId } })
             })
     }
 
@@ -440,7 +440,7 @@ export class LinearIntegrationManager
                 })
                 return null
             }
-            const secrets = await getSecrets({
+            const secrets = await this.secretService.getSecrets({
                 type: "integration",
                 secret: { integrationType: IntegrationType.LINEAR, recordId: integration.id }
             })
@@ -490,7 +490,7 @@ export class LinearIntegrationManager
                 // Calculate token expiry
                 const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000)
 
-                await createSecrets({
+                await this.secretService.createSecrets({
                     type: "integration",
                     secret: {
                         integrationType: IntegrationType.LINEAR,

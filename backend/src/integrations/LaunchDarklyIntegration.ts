@@ -6,7 +6,7 @@ import { z } from "zod"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
-import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
@@ -21,9 +21,9 @@ import {
 } from "./abstract/Integration"
 
 export class LaunchDarklyIntegrationManager
-    implements Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata, LaunchDarklyProject>, FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY>
+    extends Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata, LaunchDarklyProject>
+    implements FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY>
 {
-    constructor() {}
     readonly integrationType = IntegrationType.LAUNCHDARKLY
     readonly secretSchema = z.object({
         apiKey: z.string()
@@ -132,7 +132,7 @@ export class LaunchDarklyIntegrationManager
                 await tx.launchdarkly_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId } })
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId } })
             })
     }
 
@@ -252,7 +252,7 @@ export class LaunchDarklyIntegrationManager
             })
 
             if (existing) {
-                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: existing.id, value: { apiKey: apiKey } } })
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: existing.id, value: { apiKey: apiKey } } })
 
                 // Update existing integration
                 await db().launchdarkly_integrations.update({
@@ -280,7 +280,7 @@ export class LaunchDarklyIntegrationManager
                     }
                 })
 
-                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id, value: { apiKey: apiKey } } })
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id, value: { apiKey: apiKey } } })
 
                 logger.info("✅ Created LaunchDarkly integration", {
                     integrationId: integration.id,
@@ -320,7 +320,8 @@ export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): 
     if (!integration) {
         throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
     }
-    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId } })
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId } })
     return secret.apiKey
 }
 

@@ -27,11 +27,10 @@ import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult,
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export class WebMonitorIntegrationManager
-    implements Integration<IntegrationInstance, WebMonitorWebhookPayload, typeof WebMonitorIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.WEBMONITOR>
+    extends Integration<IntegrationInstance, WebMonitorWebhookPayload, typeof WebMonitorIntegrationMetadata, never>
+    implements FormIntegrationInstallation<IntegrationType.WEBMONITOR>
 {
     readonly integrationType = IntegrationType.WEBMONITOR
-
-    constructor() {}
 
     getFormFields(): FormFieldDefinition[] {
         return []

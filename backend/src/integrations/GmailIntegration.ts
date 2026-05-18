@@ -17,7 +17,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
 import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
@@ -30,8 +30,7 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose"]
 
-export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
-    constructor() {}
+export class GmailIntegrationManager extends Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never> implements OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     readonly integrationType = IntegrationType.GMAIL
     readonly secretSchema = z.object({
         accessToken: z.string(),
@@ -135,7 +134,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
                     // Step 3: Set up Gmail client (fast, non-blocking)
                     const accessToken = await refreshAccessTokenIfNeeded(integration)
-                    const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id } })
+                    const secrets = await this.secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id } })
                     const oauth2Client = getOAuth2Client()
                     oauth2Client.setCredentials({
                         access_token: accessToken,
@@ -389,7 +388,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 }
             })
 
-            await createSecrets({
+            await this.secretService.createSecrets({
                 type: "integration",
                 secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id, value: { accessToken: tokens.access_token, refreshToken: tokens.refresh_token } }
             })
@@ -416,7 +415,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 await tx.gmail_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integrationId } })
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integrationId } })
             })
     }
 
@@ -473,7 +472,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 // Set up OAuth client with current credentials
                 const oauth2Client = getOAuth2Client()
                 const currentExpiry = updatedIntegration?.token_expiry || integration.token_expiry
-                const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id } })
+                const secrets = await this.secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id } })
                 oauth2Client.setCredentials({
                     access_token: accessToken,
                     refresh_token: secrets.refreshToken,
@@ -556,7 +555,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
 
         const accessToken = await refreshAccessTokenIfNeeded(gmailIntegration)
-        const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: gmailIntegration.id } })
+        const secrets = await this.secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: gmailIntegration.id } })
         const oauth2Client = getOAuth2Client()
         oauth2Client.setCredentials({
             access_token: accessToken,
@@ -658,7 +657,8 @@ export function getOAuth2Client(): OAuth2Client {
  */
 async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): Promise<string> {
     const now = new Date()
-    const secrets = await getSecrets({
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({
         type: "integration",
         secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id }
     })
@@ -686,7 +686,7 @@ async function refreshAccessTokenIfNeeded(integration: PrismaGmailIntegration): 
         const { credentials } = await oauth2Client.refreshAccessToken()
 
         const newTokenExpiry = credentials.expiry_date ? new Date(credentials.expiry_date) : new Date(Date.now() + 3600 * 1000)
-        await createSecrets({
+        await secretService.createSecrets({
             type: "integration",
             secret: {
                 integrationType: IntegrationType.GMAIL,
@@ -830,7 +830,8 @@ async function markMessageAsProcessed(integrationId: string, messageId: string, 
 async function fetchNewMessageIds(integration: PrismaGmailIntegration, oldHistoryId: string): Promise<string[]> {
     // Refresh token if needed
     const accessToken = await refreshAccessTokenIfNeeded(integration)
-    const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id } })
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id } })
 
     const oauth2Client = getOAuth2Client()
     oauth2Client.setCredentials({

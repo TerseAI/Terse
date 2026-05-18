@@ -13,7 +13,7 @@ import {
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket"
-import { createSecrets, deleteSecretFields, listSecretKeys } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 
 type ProjectAccess = {
     id: string
@@ -24,8 +24,8 @@ type ProjectAccess = {
 export async function handleListProjectSecrets(req: Request, res: Response) {
     const access = await requireManagedProject(req, res)
     if (!access) return
-
-    const names = await listSecretKeys({ type: "project", secret: { projectId: access.id } })
+    const secretService = SecretService.getInstance()
+    const names = await secretService.listSecretKeys({ type: "project", secret: { projectId: access.id } })
     const response: ProjectSecretsListResponse = {
         secrets: names.map(name => ({ name }))
     }
@@ -42,8 +42,8 @@ export async function handleUpsertProjectSecret(req: Request, res: Response) {
     if (error) {
         return res.status(400).json({ error })
     }
-
-    await createSecrets({ type: "project", secret: { projectId: access.id, value: { [body.name]: body.value } } })
+    const secretService = SecretService.getInstance()
+    await secretService.createSecrets({ type: "project", secret: { projectId: access.id, value: { [body.name]: body.value } } })
     emitCacheInvalidationWithWildcard(access.organization_id, "projectSecrets", access.id)
     logger.info("Project secret upserted", { projectId: access.id, userId: user.id, secretName: body.name })
 
@@ -66,7 +66,8 @@ export async function handleDeleteProjectSecret(req: Request, res: Response) {
         return res.status(400).json({ error: nameError })
     }
 
-    const removed = await deleteSecretFields({ type: "project", secret: { projectId: access.id, keys: [name] } })
+    const secretService = SecretService.getInstance()
+    const removed = await secretService.deleteSecretFields({ type: "project", secret: { projectId: access.id, keys: [name] } })
     if (!removed) {
         return res.status(404).json({ error: `Secret ${name} not found` })
     }
@@ -99,9 +100,10 @@ export async function handleImportProjectSecrets(req: Request, res: Response) {
         const response: ProjectSecretsImportResponse = { added: [], updated: [] }
         return res.status(200).json(response)
     }
+    const secretService = SecretService.getInstance()
 
-    const existingNames = new Set(await listSecretKeys({ type: "project", secret: { projectId: access.id } }))
-    await createSecrets({ type: "project", secret: { projectId: access.id, value: validEntries } })
+    const existingNames = new Set(await secretService.listSecretKeys({ type: "project", secret: { projectId: access.id } }))
+    await secretService.createSecrets({ type: "project", secret: { projectId: access.id, value: validEntries } })
 
     const added: string[] = []
     const updated: string[] = []
