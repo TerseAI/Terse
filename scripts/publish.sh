@@ -74,6 +74,14 @@ echo ""
 
 echo "Pre-flight checks..."
 
+# branch gate
+current_branch=$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD)
+if [[ "$current_branch" != "$REQUIRED_BRANCH" ]]; then
+    echo "  ✗ Must publish from '$REQUIRED_BRANCH' (currently on '$current_branch')"
+    exit 1
+fi
+echo "  ✓ On '$REQUIRED_BRANCH' branch"
+
 # npm auth
 if ! pnpm whoami 2>/dev/null; then
     echo "  ✗ Not logged into npm. Run 'pnpm login' first."

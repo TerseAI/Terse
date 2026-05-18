@@ -333,6 +333,6 @@ This tool returns the current state of the page including all properties, metada
     }
 })
 
-export const validateNotionQueryPage: ToolACLValidator<"notion_query_page", NotionConfig> = async ({ args, configs }) => {
-    return verifyNotionPageInScope(args.integrationId, args.pageId, configs)
+export const validateNotionQueryPage: ToolACLValidator<"notion_query_page", NotionConfig> = async ({ args, configs, runContext }) => {
+    return verifyNotionPageInScope(args.integrationId, runContext.context.user.organizationId, args.pageId, configs)
 }

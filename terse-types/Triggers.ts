@@ -167,7 +167,7 @@ const GithubPRTriggerBaseSchema = GithubTriggerBaseSchema.extend({
 export const GithubPROpenedTriggerSchema = GithubPRTriggerBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_OPENED)
 })
-export type GithubPROpenedTrigger = z.infer<typeof GithubPRMergedTriggerSchema>
+export type GithubPROpenedTrigger = z.infer<typeof GithubPROpenedTriggerSchema>
 
 export const GithubPRSynchronizedTriggerSchema = GithubPRTriggerBaseSchema.extend({
     eventType: z.literal(GitHubEventType.PR_SYNCHRONIZE)

@@ -111,9 +111,10 @@ Use notion_get_schema first to understand property names and types. Use notion_q
     }
 })
 
-export const validateNotionCreateOrUpdateDatabaseRow: ToolACLValidator<"notion_create_or_update_database_row", NotionConfig> = async ({ args, configs }) => {
-    const dbCheck = await verifyNotionDatabaseInScope(args.integrationId, args.databaseId, configs)
+export const validateNotionCreateOrUpdateDatabaseRow: ToolACLValidator<"notion_create_or_update_database_row", NotionConfig> = async ({ args, configs, runContext }) => {
+    const organizationId = runContext.context.user.organizationId
+    const dbCheck = await verifyNotionDatabaseInScope(args.integrationId, organizationId, args.databaseId, configs)
     if (!dbCheck.ok) return dbCheck
-    if (args.page_id) return verifyNotionPageInScope(args.integrationId, args.page_id, configs)
+    if (args.page_id) return verifyNotionPageInScope(args.integrationId, organizationId, args.page_id, configs)
     return { ok: true }
 }
