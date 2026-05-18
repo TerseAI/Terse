@@ -6,7 +6,7 @@ import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Inte
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import logger from "../../logger"
 import { db } from "../../prismaClient"
-import { SecretField, getSecret } from "../../services/SecretService"
+import { getSecrets } from "../../services/SecretService"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class GmailEventHydrator extends Hydrator<GmailTriggerRuntime> {
@@ -71,10 +71,10 @@ export class GmailEventHydrator extends Hydrator<GmailTriggerRuntime> {
 
         try {
             const oauth2Client = getOAuth2Client()
-            const refreshToken = await getSecret(IntegrationType.GMAIL, integration.id, SecretField.RefreshToken)
+            const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id } })
             oauth2Client.setCredentials({
                 access_token: accessToken,
-                ...(refreshToken ? { refresh_token: refreshToken } : {})
+                refresh_token: secret.refreshToken
             })
             const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
             const parsed = await fetchAndParseEmail(gmail, messageId)

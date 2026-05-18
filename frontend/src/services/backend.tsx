@@ -60,6 +60,7 @@ import {
     ProjectDetailResponse,
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
+    ProjectSecretsListResponse,
     ProjectSourceFilesResponse,
     ProjectsListResponse,
     RecentAgent,
@@ -329,6 +330,16 @@ interface BackendService {
      * Lists the most recent deploys for a project, newest first.
      */
     getProjectDeploys(id: string): Promise<ProjectDeploysResponse>
+
+    /**
+     * Lists project secret names and metadata. Never returns values.
+     */
+    getProjectSecrets(id: string): Promise<ProjectSecretsListResponse>
+
+    /**
+     * Deletes one project secret by name.
+     */
+    deleteProjectSecret(id: string, name: string): Promise<void>
 
     /**
      * Lists the source files of a project's currently-active deploy.
@@ -911,6 +922,16 @@ export const BackendProvider: BackendService = {
     getProjectDeploys: (id: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.DEPLOYS, { id })
         return axios.get<ProjectDeploysResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getProjectSecrets: (id: string) => {
+        const url = buildRoute(ApiRoutes.PROJECT_SECRETS.LIST, { id })
+        return axios.get<ProjectSecretsListResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    deleteProjectSecret: (id: string, name: string) => {
+        const url = buildRoute(ApiRoutes.PROJECT_SECRETS.DELETE, { id, name })
+        return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(() => undefined)
     },
 
     getProjectSourceFiles: (id: string) => {

@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client"
+import { IntegrationType } from "terse-types"
+
+import { createSecrets, deleteSecrets, getSecrets } from "./services/SecretService"
 
 let prisma: PrismaClient | undefined
 

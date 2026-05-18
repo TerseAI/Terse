@@ -9,7 +9,7 @@ import { useProjectSourceFileEditorContent } from "../../hooks/api/useProjectSou
 import { useProjectSourceFiles } from "../../hooks/api/useProjectSourceFiles"
 import { formatTimestamp } from "../../utility/timeUtils"
 
-import { DeleteProjectAction, DeploymentsSection, Dot, Heading, JobsSection, PageFrame, SectionLabel } from "./ProjectDetailShared"
+import { DeleteProjectAction, DeploymentsSection, Dot, Heading, JobsSection, PageFrame, SecretsSection, SectionLabel } from "./ProjectDetailShared"
 
 export default function ProjectDetailManaged({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
@@ -26,6 +26,8 @@ export default function ProjectDetailManaged({ project }: { project: ProjectDeta
                 <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
 
                 <SourceSection projectId={project.id} activeDeploy={activeDeploy} />
+
+                <SecretsSection projectId={project.id} />
 
                 <DeleteProjectAction project={project} />
             </PageFrame>

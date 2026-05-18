@@ -7,7 +7,7 @@ import { NotionResource, NotionResourcesResponse } from "terse-types/types"
 import { NotionIntegrationManager } from "../integrations/NotionIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, getSecret } from "../services/SecretService"
+import { getSecrets } from "../services/SecretService"
 import { extractPageTitle } from "../utility/notion"
 
 export async function getNotionIntegrations(req: Request, res: Response) {
@@ -51,10 +51,11 @@ export const fetchNotionResources = async (organizationId: string, integrationId
         throw new Error("Notion integration not found")
     }
 
-    const integrationToken = await getSecret(IntegrationType.NOTION, integration.id, SecretField.IntegrationToken)
-    if (!integrationToken) {
-        throw new Error("Notion integration is missing credentials. Please reconnect.")
-    }
+    const secrets = await getSecrets({
+        type: "integration",
+        secret: { integrationType: IntegrationType.NOTION, recordId: integration.id }
+    })
+    const integrationToken = secrets.integrationToken
 
     const notionClient = new Client({ auth: integrationToken })
     const searchOptions: Parameters<typeof notionClient.search>[0] = {
