@@ -1,10 +1,11 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "terse-types/Integrations"
+import { z } from "zod"
 
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
-import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/SecretService"
+import { createSecrets, deleteSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 
@@ -12,7 +13,11 @@ import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult,
 
 export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.DATADOG> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.DATADOG
+    readonly integrationType = IntegrationType.DATADOG
+    readonly secretSchema = z.object({
+        apiKey: z.string(),
+        appKey: z.string()
+    })
 
     getFormFields(): FormFieldDefinition[] {
         return [
@@ -112,10 +117,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                 await tx.datadog_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([
-                    { integrationType: IntegrationType.DATADOG, recordId: integrationId, field: SecretField.ApiKey },
-                    { integrationType: IntegrationType.DATADOG, recordId: integrationId, field: SecretField.AppKey }
-                ])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: integrationId } })
             })
     }
 
@@ -211,8 +213,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await storeSecret(IntegrationType.DATADOG, existing.id, SecretField.ApiKey, apiKey)
-                await storeSecret(IntegrationType.DATADOG, existing.id, SecretField.AppKey, appKey)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
 
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,
@@ -229,8 +230,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await storeSecret(IntegrationType.DATADOG, integration.id, SecretField.ApiKey, apiKey)
-                await storeSecret(IntegrationType.DATADOG, integration.id, SecretField.AppKey, appKey)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id, value: { apiKey: apiKey, appKey: appKey } } })
 
                 logger.info("✅ Created Datadog integration", {
                     integrationId: integration.id,
@@ -265,12 +265,7 @@ export async function getDatadogCredentialsForOrganization(integrationId: string
         throw new Error(`Datadog integration not found for integrationId: ${integrationId}`)
     }
 
-    const credentials = await getDatadogCredentialsByIntegrationId(datadogIntegration.id)
-    if (!credentials) {
-        throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
-    }
-
-    return credentials
+    return getDatadogCredentialsByIntegrationId(datadogIntegration.id)
 }
 
 /**
@@ -279,9 +274,6 @@ export async function getDatadogCredentialsForOrganization(integrationId: string
 export async function validateDatadogIndexesExist(integrationId: string, indexes: string[]): Promise<void> {
     if (!indexes.length) return
     const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
-    if (!credentials) {
-        throw new Error(`Datadog integration ${integrationId} not found or access denied`)
-    }
     const apiUrl = getDatadogApiUrl(credentials.region)
     const response = await fetch(`${apiUrl}/api/v1/logs/config/indexes`, {
         method: "GET",

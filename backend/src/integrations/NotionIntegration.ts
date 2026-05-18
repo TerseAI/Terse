@@ -5,12 +5,13 @@ import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "terse-types/Integrations"
 import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
+import { z } from "zod"
 
 import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretNotFoundError, createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 
@@ -21,7 +22,10 @@ import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, cr
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata, NotionResource>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.NOTION
+    readonly integrationType = IntegrationType.NOTION
+    readonly secretSchema = z.object({
+        integrationToken: z.string()
+    })
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return []
@@ -220,11 +224,11 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                     }
                 })
 
-                await storeSecret(IntegrationType.NOTION, newIntegration.id, SecretField.IntegrationToken, access_token)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: newIntegration.id, value: { integrationToken: access_token } } })
 
                 integrationId = newIntegration.id
             } else {
-                await storeSecret(IntegrationType.NOTION, existing.id, SecretField.IntegrationToken, access_token)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: existing.id, value: { integrationToken: access_token } } })
 
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().notion_integrations.update({
@@ -263,7 +267,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 await tx.notion_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([{ integrationType: IntegrationType.NOTION, recordId: integrationId, field: SecretField.IntegrationToken }])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
             })
     }
 
@@ -284,25 +288,29 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
     }
 
     async getAccessToken(integrationId: string): Promise<string | null> {
-        try {
-            const integration = await db().notion_integrations.findUnique({
-                where: { id: integrationId },
-                select: {
-                    id: true
-                }
-            })
+        const integration = await db().notion_integrations.findUnique({
+            where: { id: integrationId },
+            select: {
+                id: true
+            }
+        })
 
-            if (!integration) {
-                logger.error(`Notion integration ${integrationId} not found`, {
-                    integrationId
-                })
+        if (!integration) {
+            logger.error(`Notion integration ${integrationId} not found`, {
+                integrationId
+            })
+            return null
+        }
+
+        try {
+            const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
+            return secrets.integrationToken
+        } catch (error) {
+            if (error instanceof SecretNotFoundError) {
+                logger.error(`Notion integration ${integrationId} not found or missing access token`, { integrationId })
                 return null
             }
-
-            return await getSecret(IntegrationType.NOTION, integrationId, SecretField.IntegrationToken)
-        } catch (error) {
-            logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId })
-            return null
+            throw error
         }
     }
 }

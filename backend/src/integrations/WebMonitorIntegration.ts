@@ -29,7 +29,7 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 export class WebMonitorIntegrationManager
     implements Integration<IntegrationInstance, WebMonitorWebhookPayload, typeof WebMonitorIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.WEBMONITOR>
 {
-    integrationType: IntegrationType = IntegrationType.WEBMONITOR
+    readonly integrationType = IntegrationType.WEBMONITOR
 
     constructor() {}
 
