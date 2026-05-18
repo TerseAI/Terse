@@ -445,6 +445,18 @@ terse docs
 
 If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs.
 
+## Environment variables
+
+The CLI reads these optional overrides from the process environment:
+
+| Variable | Default | Used by |
+| -------- | ------- | ------- |
+| `TERSE_BACKEND_URL` | `https://api.useterse.ai` | API calls (`terse test`, `terse deploy`, `terse generate`, `terse listen`, and others) |
+| `TERSE_FRONTEND_URL` | `https://app.useterse.ai` | `terse dashboard` |
+| `TERSE_DOCS_URL` | `https://docs.useterse.ai` | `terse docs` |
+
+Set `TERSE_BACKEND_URL` when you point the CLI at a self-hosted Terse backend or a local dev server.
+
 ## API key resolution
 
 Commands that call the Terse API resolve credentials in this order:

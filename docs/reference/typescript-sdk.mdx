@@ -30,7 +30,7 @@ Import these from `terse-sdk`:
 - Config helpers re-exported for trigger construction: `HeyReachInputConfig`, and the `HeyReachEventType` object for event-type constants
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
-- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
+- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** to the Terse API base URL if needed. Production is **`https://api.useterse.ai`** (what the CLI uses). When the variable is unset, **`terse-sdk`** defaults to **`https://app.useterse.ai/api`**, which proxies to the same backend. Optionally set **`TERSE_RUN_ID`** for run attribution.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -71,7 +71,7 @@ Duplicate **`name`** values throw an error when the second job registers. At mos
 | `triggers`       | typed trigger array                             | One or more triggers that start the workflow.                                                     |
 | `filter`         | `(event) => boolean \| Promise<boolean>`        | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger`      | `(event) => Promise<void>`                      | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or `https://app.useterse.ai/api`).      |
+| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or `https://api.useterse.ai`).      |
 
 Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
 
