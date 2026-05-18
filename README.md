@@ -19,7 +19,7 @@
     <a href="https://github.com/TerseAI/Terse/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/TerseAI/Terse?style=flat&logo=github&color=f5a623"></a>
     <a href="https://www.npmjs.com/package/terse-cli"><img alt="terse-cli on npm" src="https://img.shields.io/npm/v/terse-cli?label=terse-cli&logo=npm&color=cb3837"></a>
     <a href="https://www.npmjs.com/package/terse-sdk"><img alt="terse-sdk on npm" src="https://img.shields.io/npm/v/terse-sdk?label=terse-sdk&logo=npm&color=cb3837"></a>
-    <a href="https://github.com/TerseAI/Terse/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/TerseAI/Terse?color=blue"></a>
+    <a href="https://github.com/TerseAI/Terse/blob/main/LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-Sustainable%20Use-blue"></a>
     <img alt="Built with TypeScript" src="https://img.shields.io/badge/built%20with-TypeScript-3178c6?logo=typescript&logoColor=white">
   </p>
 
@@ -119,9 +119,9 @@ This is the Terse monorepo — the platform code Terse runs in production, plus 
 
 ## Contributing
 
-Issues and PRs welcome. If you're picking up something non-trivial, open an issue first so we can sanity-check the approach.
+Issues and PRs welcome. If you're picking up something non-trivial, open an issue first so we can sanity-check the approach. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide and [SECURITY.md](SECURITY.md) for the private disclosure process.
 
-Working on the SDK or CLI locally? Clone the repo and:
+Working on the SDK, CLI, or frontend? Clone the repo and:
 
 ```bash
 pnpm install
@@ -129,11 +129,13 @@ pnpm run dev             # watches terse-types, terse-sdk, terse-cli, frontend, 
 pnpm run install-global  # links your local terse-cli as `terse`
 ```
 
-Self-hosting is possible but not the default path — see [docs.useterse.ai/self-hosting](https://docs.useterse.ai/self-hosting) if that's what you're after.
+The frontend and CLI talk to the hosted Terse backend at `api.useterse.ai` by default, so most SDK/CLI/frontend work doesn't need a local backend. Override with `TERSE_BACKEND_URL` if you're pointing at a self-hosted instance.
+
+Backend work needs Postgres and the credentials backend integrations expect — see [docs.useterse.ai/self-hosting](https://docs.useterse.ai/self-hosting).
 
 ## License
 
-See [LICENSE](LICENSE).
+Terse is **source-available** under the [Sustainable Use License v1.0](LICENSE.md). You can read it, fork it, modify it, and self-host it for non-commercial or internal business use. You can't redistribute it commercially or run it as a competing hosted product. The license text in [LICENSE.md](LICENSE.md) is authoritative.
 
 ## Links
 

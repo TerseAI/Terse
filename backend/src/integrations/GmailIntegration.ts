@@ -1,6 +1,5 @@
 import { gmail as createGmailClient, gmail_v1 } from "@googleapis/gmail"
 import { InputConfigType } from "@prisma/client"
-import crypto from "crypto"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { ConfigData, ConfigType, GmailEventType, GmailMessagePayload, GmailParsedAttachment, GmailTrigger } from "terse-types"
@@ -19,7 +18,7 @@ import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
-import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -267,16 +266,10 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
     ): Promise<OAuthInstallationDetails> {
         const oauth2Client = getOAuth2Client()
 
-        // Generate state token using helper function (handles merging and encoding)
-        // Include random for CSRF protection
         const state = createOAuthStateToken({
             userId,
             organizationId,
-            additionalFields: {
-                random: crypto.randomBytes(16).toString("hex")
-            },
-            additionalStatePayload,
-            encodingFormat: OAuthStateEncodingFormat.BASE64
+            additionalStatePayload
         })
 
         const authUrl = oauth2Client.generateAuthUrl({

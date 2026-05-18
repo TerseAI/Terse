@@ -347,12 +347,26 @@ export class SlackIntegrationManager
                 }
             )
 
-            logger.debug("Slack OAuth response", { data: response.data })
+            logger.debug("Slack OAuth response", {
+                ok: response.data.ok,
+                teamId: response.data.team?.id,
+                appId: response.data.app_id,
+                botUserId: response.data.bot_user_id,
+                authedUserId: response.data.authed_user?.id,
+                authedUserTokenType: response.data.authed_user?.token_type,
+                hasAccessToken: Boolean(response.data.access_token),
+                hasAuthedUserAccessToken: Boolean(response.data.authed_user?.access_token)
+            })
 
             const { access_token, authed_user, team } = response.data
 
             if (!response.data.ok || !team || !team.id) {
-                logger.error("Slack OAuth response not ok", { data: response.data })
+                logger.error("Slack OAuth response not ok", {
+                    ok: response.data.ok,
+                    error: response.data.error,
+                    hasTeam: Boolean(response.data.team),
+                    teamId: response.data.team?.id
+                })
                 res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
                 return
             }
@@ -505,7 +519,7 @@ export class SlackIntegrationManager
     private async openChat(accessToken: string, authedUserId: string) {
         try {
             const client = new WebClient(accessToken, {
-                logLevel: LogLevel.DEBUG
+                logLevel: LogLevel.WARN
             })
 
             const { channel } = await client.conversations.open({
@@ -1904,6 +1918,7 @@ enum AuthedUserTokenType {
  */
 interface SlackOAuthResponse {
     ok: boolean
+    error?: string
     access_token: string
     token_type: string
     bot_user_id: string
