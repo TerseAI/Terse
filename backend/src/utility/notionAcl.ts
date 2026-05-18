@@ -32,7 +32,7 @@ interface NotionScopeResolver {
  * Each call walks the parent chain fresh — no memoization across calls. Cycles are detected with a `visited`
  * set local to one walk; recursion is bounded by `maxDepth` (default 100).
  */
-export function createNotionScopeResolver(notion: Client, scope: NotionScope, maxDepth: number = DEFAULT_MAX_DEPTH): NotionScopeResolver {
+function createNotionScopeResolver(notion: Client, scope: NotionScope, maxDepth: number = DEFAULT_MAX_DEPTH): NotionScopeResolver {
     const walk = (kind: Kind, id: string): Promise<boolean> => {
         const visited = new Set<ResolverKey>()
 

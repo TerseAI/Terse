@@ -360,12 +360,3 @@ export type ApprovalDecision = {
     rejectionReason?: string
     responseId: string
 }
-
-export enum AgentRunResultStatus {
-    COMPLETED = "completed",
-    AWAITING_APPROVAL = "awaiting_approval"
-}
-
-export type ApprovalResult<T extends AppSession, AgentType extends Agent<T, AgentOutputType>> =
-    | { status: AgentRunResultStatus.COMPLETED; result: RunResult<T, AgentType>; endedWithToolFailure: boolean }
-    | { status: AgentRunResultStatus.AWAITING_APPROVAL; state: RunState<T, AgentType>; interruptions: RunToolApprovalItem[] }

@@ -795,11 +795,6 @@ enum OutputConfigType {
   SNOWFLAKE
 }
 
-enum AutomationSource {
-  WEB_UI
-  SDK
-}
-
 enum KnowledgeBaseConfigType {
   POSTHOG
   GITHUB

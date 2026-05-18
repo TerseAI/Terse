@@ -1,13 +1,8 @@
 import { z } from "zod"
 
-import { gcp } from "../config/settings"
 import { INTEGRATION_REGISTRY, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { SecretManagerClient } from "../utility/secretManagerClient"
-
-export function isGsmAvailable(): boolean {
-    return Boolean(gcp.serviceAccountBase64 && gcp.projectId)
-}
 
 export class SecretService {
     private static instance: SecretService

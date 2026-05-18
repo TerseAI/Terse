@@ -9,7 +9,6 @@ import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryS
 import { SocketEvents, SocketRooms } from "terse-types"
 import { User } from "terse-types/types"
 
-import { AgentRunResultStatus } from "./agent/AgentRunner/BaseAgentRunner"
 import { SdkAgentRunner } from "./agent/AgentRunner/SdkAgentRunner"
 import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed, readSdkSkillsFromJson } from "./agent/AgentRunner/runHistory"

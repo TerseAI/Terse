@@ -7,7 +7,6 @@ import type { ToolApprovalResponseOptions } from "../../socket"
 
 import { RunErrorView } from "./RunErrorView"
 import type { Turn } from "./turnModel"
-import { FilterResultUnit } from "./units/FilterResultUnit"
 import { ProcessOutputUnit } from "./units/ProcessOutputUnit"
 import { SnippetUnit } from "./units/SnippetUnit"
 import { TextUnit } from "./units/TextUnit"
@@ -94,8 +93,6 @@ export function TurnView({ turn, isLatestAssistantTurn = false, disableAnimation
                             return <ProcessOutputUnit key={unit.unitId} unit={unit} />
                         case "thinking":
                             return <ThinkingUnit key={unit.unitId} unit={unit} />
-                        case "filter_result":
-                            return <FilterResultUnit key={unit.unitId} unit={unit} />
                         default: {
                             const exhaustive: never = unit
                             return exhaustive

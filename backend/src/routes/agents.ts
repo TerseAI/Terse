@@ -2,8 +2,7 @@ import { Request, Response } from "express"
 import { isValidToolName } from "terse-types"
 import { AttioInputConfig, ConfigData, ConfigType, WebMonitorConfig } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
-import { Agent, AgentDraft, AgentFileContentResponse, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, File, agentCreateSchema, agentUpdateSchema } from "terse-types/types"
-import { version as uuidVersion, validate as validateUuid } from "uuid"
+import { Agent, AgentFileContentResponse, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, File, agentUpdateSchema } from "terse-types/types"
 
 import { fetchAttioWebhookSubscriptions } from "../integrations/AttioIntegration"
 import { getMonitor } from "../integrations/WebMonitorIntegration"
@@ -13,7 +12,7 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
-import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction, SDKAgent, isSDKAgent } from "../types/prisma"
+import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { getActiveSourceCodeGcsKeyForAutomation } from "../utility/projectHelper"
@@ -21,10 +20,6 @@ import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from ".
 import { extractErrorMessage } from "../utility/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../utility/typeConverters"
 import { buildHeyReachWebhookUrl, buildWebhookUrl } from "../utility/webhookUrl"
-
-function isUuidV4(s: string): boolean {
-    return validateUuid(s) && uuidVersion(s) === 4
-}
 
 export async function createTriggerConfig(tx: PrismaTransaction, triggerId: string, config: AgentTrigger, userId: string): Promise<void> {
     logger.debug("🔵 [TRIGGER CONFIG] config", {
@@ -746,11 +741,6 @@ export async function getAgentFiles(req: Request, res: Response) {
             return
         }
 
-        if (!isSDKAgent(agent)) {
-            res.status(400).json({ error: "Agent is not a SDK agent" })
-            return
-        }
-
         const files = await getAgentFilesFromGCS(agent)
 
         res.status(200).json({ id: agent.id, files })
@@ -799,11 +789,6 @@ export async function getAgentFileContent(req: Request, res: Response) {
             return
         }
 
-        if (!isSDKAgent(agent)) {
-            res.status(400).json({ error: "Agent is not a SDK agent" })
-            return
-        }
-
         const payload = await getAgentFileFromGCS(agent, fileId)
         if (!payload) {
             res.status(404).json({ error: "File not found" })
@@ -817,7 +802,7 @@ export async function getAgentFileContent(req: Request, res: Response) {
     }
 }
 
-async function getAgentFilesFromGCS(agent: SDKAgent): Promise<File[]> {
+async function getAgentFilesFromGCS(agent: AgentWithRelations): Promise<File[]> {
     const gcsKey = await getActiveSourceCodeGcsKeyForAutomation(agent)
     const zip = await loadSdkSourceZip(gcsKey)
     if (!zip) {
@@ -826,7 +811,7 @@ async function getAgentFilesFromGCS(agent: SDKAgent): Promise<File[]> {
     return listSdkZipPathsRecursive(zip)
 }
 
-async function getAgentFileFromGCS(agent: SDKAgent, fileId: string): Promise<AgentFileContentResponse | null> {
+async function getAgentFileFromGCS(agent: AgentWithRelations, fileId: string): Promise<AgentFileContentResponse | null> {
     const gcsKey = await getActiveSourceCodeGcsKeyForAutomation(agent)
     const zip = await loadSdkSourceZip(gcsKey)
     if (!zip) {

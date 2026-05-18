@@ -21,7 +21,7 @@ function isGrpcError(error: unknown): error is GrpcError {
     return typeof error === "object" && error !== null && "code" in error
 }
 
-export function isSecretManagerNotFoundError(error: unknown): boolean {
+function isSecretManagerNotFoundError(error: unknown): boolean {
     if (!isGrpcError(error)) {
         return false
     }
@@ -29,7 +29,7 @@ export function isSecretManagerNotFoundError(error: unknown): boolean {
     return error.code === GRPC_NOT_FOUND || error.code === "5"
 }
 
-export function isSecretManagerDestroyedError(error: unknown): boolean {
+function isSecretManagerDestroyedError(error: unknown): boolean {
     return isGrpcError(error) && error.code === GRPC_FAILED_PRECONDITION && typeof error.message === "string" && error.message.includes("DESTROYED")
 }
 

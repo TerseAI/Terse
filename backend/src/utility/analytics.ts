@@ -9,9 +9,6 @@ import logger from "../logger"
  */
 enum AnalyticsEvent {
     NEW_USER_ADDED = "new_user_added",
-    AGENT_TRIGGERED = "agent_triggered",
-    ACTION_TAKEN = "action_taken",
-    AGENT_CREATED = "agent_created",
     INTEGRATION_ADDED = "integration_added"
 }
 
@@ -22,30 +19,6 @@ interface NewUserAddedProperties {
     githubUsername?: string | null
 }
 
-interface AgentTriggeredProperties {
-    agentId: string
-    agentName: string
-    triggerType: string
-    triggerSource?: string
-    runId: string
-}
-
-interface ActionTakenProperties {
-    runId: string
-    actionType: string
-    integration: string
-    target?: string
-    isReadOnly?: boolean
-}
-
-interface AgentCreatedProperties {
-    agentId: string
-    agentName: string
-    triggerCount: number
-    outputCount: number
-    requiresApproval: boolean
-}
-
 interface IntegrationAddedProperties {
     integrationType: string
     integrationName?: string
@@ -53,9 +26,6 @@ interface IntegrationAddedProperties {
 
 type EventProperties = {
     [AnalyticsEvent.NEW_USER_ADDED]: NewUserAddedProperties
-    [AnalyticsEvent.AGENT_TRIGGERED]: AgentTriggeredProperties
-    [AnalyticsEvent.ACTION_TAKEN]: ActionTakenProperties
-    [AnalyticsEvent.AGENT_CREATED]: AgentCreatedProperties
     [AnalyticsEvent.INTEGRATION_ADDED]: IntegrationAddedProperties
 }
 
@@ -176,10 +146,6 @@ class AnalyticsService {
 export const analytics = AnalyticsService.getInstance()
 
 // Export convenience functions for cleaner API
-
-export function trackActionTaken(userId: string, properties: ActionTakenProperties): void {
-    analytics.capture(userId, AnalyticsEvent.ACTION_TAKEN, properties)
-}
 
 export function trackIntegrationAdded(userId: string, properties: IntegrationAddedProperties): void {
     analytics.capture(userId, AnalyticsEvent.INTEGRATION_ADDED, properties)

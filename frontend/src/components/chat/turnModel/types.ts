@@ -47,14 +47,7 @@ export interface ThinkingUnit extends BaseUnit {
     active: boolean
 }
 
-export interface FilterResultUnit extends BaseUnit {
-    kind: "filter_result"
-    isRelevant: boolean
-    reason: string
-    confidence: number
-}
-
-export type TurnUnit = TextUnit | ToolCallUnit | SnippetUnit | ProcessOutputUnit | ThinkingUnit | FilterResultUnit
+export type TurnUnit = TextUnit | ToolCallUnit | SnippetUnit | ProcessOutputUnit | ThinkingUnit
 
 type TurnStatus = "generating" | "natural_stop" | "cancelled" | "failed"
 

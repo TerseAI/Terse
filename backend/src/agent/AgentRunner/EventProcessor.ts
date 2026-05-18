@@ -1,5 +1,3 @@
-import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
-import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
 import { Session } from "../../express"
@@ -11,38 +9,27 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finali
 import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
-import { AgentWithRelations, Agent as PrismaAgent, SDKAgent, isSDKAgent } from "../../types/prisma"
-import { trackActionTaken } from "../../utility/analytics"
+import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getActiveDeployForProject } from "../../utility/projectHelper"
 import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
 
-import { SessionWithTracking } from "./BaseAgentRunner"
-import { ApprovalResult } from "./BaseAgentRunner"
-import { appendRunAction, createRunRecord, evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from "./runHistory"
+import { createRunRecord, markRunFailed } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
 
-class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
+class ProcessorResult {
     success: boolean
     message: string
     agentConfig: PrismaAgent | null
-    approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null
     runId: string | null
 
-    constructor(
-        success: boolean,
-        message: string,
-        agentConfig: PrismaAgent | null,
-        approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null,
-        runId: string | null = null
-    ) {
+    constructor(success: boolean, message: string, agentConfig: PrismaAgent | null, runId: string | null = null) {
         this.success = success
         this.message = message
         this.agentConfig = agentConfig
-        this.approvalResult = approvalResult
         this.runId = runId
     }
 }
@@ -251,18 +238,18 @@ export class EventProcessor {
                 await this.failRunEarly(existingRunId, agent.id, "No prompt found for this agent")
                 await this.notifyRunFailure(agent, existingRunId, "No prompt found for this agent")
             }
-            return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
+            return new ProcessorResult(false, "No prompt found for this agent", agent, existingRunId ?? null)
         }
 
         const activeDeploy = agent.project?.id ? await getActiveDeployForProject(agent.project.id) : null
 
         // SDK agents with a remote_server_url trigger the user's own infrastructure via webhook
-        if (isSDKAgent(agent) && agent.project.remote_server_url) {
+        if (agent.project.remote_server_url) {
             return this.processWebhookAgent(agent, existingRunId)
         }
 
         // SDK agents run in a Modal sandbox instead of the normal agent pipeline
-        if (isSDKAgent(agent) && activeDeploy?.sdk_source_image_id) {
+        if (activeDeploy?.sdk_source_image_id) {
             return this.processSdkAgent(agent, existingRunId)
         } else {
             logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name })
@@ -270,7 +257,7 @@ export class EventProcessor {
         }
     }
 
-    private async processSdkAgent(agent: SDKAgent, existingRunId?: string): Promise<ProcessorResult> {
+    private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
         let gcsKey: string
@@ -289,7 +276,7 @@ export class EventProcessor {
         } catch (error) {
             logger.error(`SDK sandbox failed to start for agent "${agent.name}"`, { error, runId, agentId: agent.id })
             await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
-            return new ProcessorResult(false, error instanceof Error ? error.message : "SDK job failed to start", agent, undefined, runId)
+            return new ProcessorResult(false, error instanceof Error ? error.message : "SDK job failed to start", agent, runId)
         }
 
         // Fire-and-forget: sandbox runs asynchronously
@@ -313,10 +300,10 @@ export class EventProcessor {
                 await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
             })
 
-        return new ProcessorResult(true, "SDK job execution started", agent, undefined, runId)
+        return new ProcessorResult(true, "SDK job execution started", agent, runId)
     }
 
-    private async processWebhookAgent(agent: SDKAgent, existingRunId?: string): Promise<ProcessorResult> {
+    private async processWebhookAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
         const event = this.inputEvent.getSerializedEvent()
@@ -326,7 +313,7 @@ export class EventProcessor {
         if (!remoteServerUrl || !signingSecret) {
             const reason = !remoteServerUrl ? `Webhook agent "${agent.name}" is missing remote_server_url` : `Webhook agent "${agent.name}" is missing signing_secret`
             await finalizeRunFailure(runId, classifyAgentError(new Error(reason)), this.user, agent)
-            return new ProcessorResult(false, reason, agent, undefined, runId)
+            return new ProcessorResult(false, reason, agent, runId)
         }
 
         logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, remoteServerUrl })
@@ -353,43 +340,6 @@ export class EventProcessor {
                 await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
             })
 
-        return new ProcessorResult(true, "Webhook job execution started", agent, undefined, runId)
+        return new ProcessorResult(true, "Webhook job execution started", agent, runId)
     }
-}
-
-async function persistRunResult<T extends Session>(
-    runId: string,
-    result: RunResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>>,
-    session: T,
-    agent: PrismaAgent,
-    endedWithToolFailure: boolean,
-    approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null
-): Promise<ProcessorResult<SessionWithTracking<T>>> {
-    // Finalize run status
-    const completion = evaluateCompletedRun(result.finalOutput, endedWithToolFailure)
-    try {
-        await finalizeRunStatus(runId, completion.status)
-        // Invalidate all run history queries for this agent when status changes
-        emitCacheInvalidationWithWildcard(session.user.organizationId, "runHistory", agent.id)
-        if (!completion.isSuccessful) {
-            try {
-                await new NotificationManager(session.user, agent).notifyRunFailure(runId, completion.failureReason)
-            } catch (notificationError) {
-                logger.error("Failed to send run failure notification", {
-                    error: notificationError,
-                    runId,
-                    agentId: agent.id
-                })
-            }
-        }
-    } catch (e) {
-        logger.error("Failed to finalize run status", {
-            error: e,
-            runId,
-            agentId: agent.id
-        })
-    }
-
-    const finalOutput = typeof result.finalOutput === "string" ? result.finalOutput : ""
-    return new ProcessorResult<SessionWithTracking<T>>(completion.isSuccessful, finalOutput, agent, approvalResult, runId)
 }

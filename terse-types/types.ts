@@ -400,19 +400,6 @@ export const agentUpdateSchema = z.object({
 })
 export type AgentUpdate = z.infer<typeof agentUpdateSchema>
 
-export const agentCreateSchema = agentSchema.omit({
-    id: true,
-    createdByUserId: true,
-    updatedAt: true
-})
-export type AgentCreate = z.infer<typeof agentCreateSchema>
-
-export const agentDraftSchema = agentCreateSchema.extend({
-    id: z.string().nullable(),
-    createdByUserId: z.string()
-})
-export type AgentDraft = z.infer<typeof agentDraftSchema>
-
 export const paginationSchema = z.object({
     page: z.number(),
     limit: z.number(),

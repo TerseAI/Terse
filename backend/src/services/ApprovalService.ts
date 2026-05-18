@@ -1,5 +1,4 @@
 import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
-import { AgentRunResultStatus } from "src/agent/AgentRunner/BaseAgentRunner"
 import { ConfigData } from "terse-types/Configs"
 import { pendingApprovalsKey } from "terse-types/InvalidationKeys"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
