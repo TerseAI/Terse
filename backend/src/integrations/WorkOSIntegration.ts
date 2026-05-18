@@ -13,7 +13,6 @@ import logger from "../logger"
 import { getWorkOSUser } from "../outputs/workos/workosApiClient"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
-import { createSecrets, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
@@ -22,7 +21,10 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]
 
-export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, WorkOSWebhookRequest, typeof WorkOSIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.WORKOS> {
+export class WorkOSIntegrationManager
+    extends Integration<WorkOSIntegration, WorkOSWebhookRequest, typeof WorkOSIntegrationMetadata, never>
+    implements FormIntegrationInstallation<IntegrationType.WORKOS>
+{
     readonly integrationType = IntegrationType.WORKOS
     readonly secretSchema = z.object({
         apiKey: z.string(),
@@ -38,7 +40,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         })
         return Promise.all(
             integrations.map(async i => {
-                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
+                const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
                 return this.enrichInstance(i.id, secrets?.apiKey ?? "")
             })
         )
@@ -68,7 +70,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         })
         return Promise.all(
             integrations.map(async i => {
-                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
+                const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: i.id } })
                 return this.enrichInstance(i.id, secrets?.apiKey ?? "")
             })
         )
@@ -99,7 +101,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             return
         }
 
-        const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integrationId } })
+        const secrets = await this.secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integrationId } })
         const enrichedPayload = await enrichWorkOSEventPayload(payload, secrets.apiKey)
         const event = new WorkOSTriggerRuntime(enrichedPayload, integrationId)
         const processor = new EventProcessor(event, user)
@@ -120,7 +122,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
         // DB-first, then best-effort GSM cleanup
         await db().workos_integrations.delete({ where: { id: integrationId } })
 
-        await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integrationId } })
+        await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integrationId } })
     }
 
     async setupAgentTrigger(_integrationId: string, _agentTrigger: AgentTriggerWithConfigs): Promise<void> {
@@ -208,7 +210,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             let integrationId: string
 
             if (existing) {
-                const storedSecrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: existing.id } })
+                const storedSecrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: existing.id } })
                 if (!storedSecrets?.webhookSecret && !secret) {
                     return {
                         success: false,
@@ -217,7 +219,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                     }
                 }
 
-                await createSecrets({
+                await this.secretService.createSecrets({
                     type: "integration",
                     secret: {
                         integrationType: IntegrationType.WORKOS,
@@ -242,7 +244,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
                     }
                 })
 
-                await createSecrets({
+                await this.secretService.createSecrets({
                     type: "integration",
                     secret: {
                         integrationType: IntegrationType.WORKOS,
@@ -295,7 +297,7 @@ export class WorkOSIntegrationManager implements Integration<WorkOSIntegration, 
             throw new Error(`WorkOS integration ${integrationId} not found`)
         }
 
-        const secrets = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: workosIntegration.id } })
+        const secrets = await this.secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: workosIntegration.id } })
         const apiKey = secrets.apiKey
 
         const events = await fetchWorkOSEvents(apiKey, workosConfig.eventTypes, limit)

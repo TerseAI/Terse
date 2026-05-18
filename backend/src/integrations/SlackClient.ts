@@ -1,7 +1,7 @@
 import { LogLevel, WebClient } from "@slack/web-api"
 import { IntegrationType } from "terse-types/Integrations"
 
-import { tryGetSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 
 type SlackTokenSource = {
     id: string
@@ -12,21 +12,22 @@ type SlackTokenSource = {
 }
 
 export async function resolveSlackAccessToken(integration: SlackTokenSource): Promise<string | null> {
+    const secretService = SecretService.getInstance()
     if (integration.is_bot_user) {
-        const botSecrets = await tryGetSecrets({
+        const botSecrets = await secretService.tryGetSecrets({
             type: "integration",
             secret: { integrationType: IntegrationType.SLACK, recordId: integration.slack_integration.id }
         })
         return botSecrets?.accessToken ?? null
     }
 
-    const userSecrets = await tryGetSecrets({
+    const userSecrets = await secretService.tryGetSecrets({
         type: "integration",
         secret: { integrationType: IntegrationType.SLACK, recordId: integration.id }
     })
     if (userSecrets?.authedUserAccessToken) return userSecrets.authedUserAccessToken
 
-    const fallbackSecrets = await tryGetSecrets({
+    const fallbackSecrets = await secretService.tryGetSecrets({
         type: "integration",
         secret: { integrationType: IntegrationType.SLACK, recordId: integration.slack_integration.id }
     })

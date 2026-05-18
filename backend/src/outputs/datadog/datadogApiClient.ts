@@ -1,7 +1,7 @@
 import { IntegrationType } from "terse-types"
 
 import { db } from "../../prismaClient"
-import { getSecrets } from "../../services/SecretService"
+import { SecretService } from "../../services/SecretService"
 
 export async function getDatadogCredentialsByIntegrationId(integrationId: string): Promise<{ apiKey: string; appKey: string; region: string }> {
     const integration = await db().datadog_integrations.findUnique({
@@ -12,7 +12,8 @@ export async function getDatadogCredentialsByIntegrationId(integrationId: string
         throw new Error(`Datadog integration ${integrationId} not found`)
     }
 
-    const secrets = await getSecrets({
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({
         type: "integration",
         secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id }
     })

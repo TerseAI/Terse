@@ -7,7 +7,7 @@ import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integra
 import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 
 export async function getPosthogIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -98,8 +98,8 @@ export const fetchPosthogProjects = async (organizationId: string, integrationId
     if (!integration) {
         throw new Error("Posthog integration not found")
     }
-
-    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
     const apiKey = secret.apiKey
 
     const apiUrl = "https://us.posthog.com/api/projects/"

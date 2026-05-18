@@ -48,10 +48,18 @@ type SecretVersionCleanupReport = {
 }
 
 export class SecretManagerClient {
+    private static instance: SecretManagerClient
     private client: SecretManagerServiceClient
     private projectId: string
 
-    constructor() {
+    public static getInstance(): SecretManagerClient {
+        if (!SecretManagerClient.instance) {
+            SecretManagerClient.instance = new SecretManagerClient()
+        }
+        return SecretManagerClient.instance
+    }
+
+    private constructor() {
         try {
             const serviceAccountBase64 = gcp.serviceAccountBase64
 
@@ -389,17 +397,4 @@ export class SecretManagerClient {
             throw error
         }
     }
-}
-
-function createSecretManagerClient(): SecretManagerClient {
-    return new SecretManagerClient()
-}
-
-let secretManagerClient: SecretManagerClient | null = null
-
-export function getSecretManagerClient(): SecretManagerClient {
-    if (!secretManagerClient) {
-        secretManagerClient = createSecretManagerClient()
-    }
-    return secretManagerClient
 }

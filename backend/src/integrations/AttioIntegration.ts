@@ -26,7 +26,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretNotFoundError, createSecrets, deleteSecretFields, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
+import { SecretNotFoundError, SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
 import { createOAuthStateToken } from "../utility/oauth"
 import { buildAttioWebhookUrl } from "../utility/webhookUrl"
@@ -42,8 +42,7 @@ const ATTIO_API_BASE = "https://api.attio.com/v2"
 
 export type AttioWebhookRequest = { triggerId: string; payload: AttioWebhookPayload; idempotencyKey: string }
 
-export class AttioIntegrationManager implements Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject>, OAuthIntegrationInstallation<IntegrationType.ATTIO> {
-    constructor() {}
+export class AttioIntegrationManager extends Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject> implements OAuthIntegrationInstallation<IntegrationType.ATTIO> {
     readonly integrationType = IntegrationType.ATTIO
     readonly secretSchema = z.object({
         accessToken: z.string(),
@@ -63,7 +62,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         })
         return Promise.all(
             integrations.map(async i => {
-                const secrets = await tryGetSecrets({
+                const secrets = await this.secretService.tryGetSecrets({
                     type: "integration",
                     secret: { integrationType: IntegrationType.ATTIO, recordId: i.id }
                 })
@@ -146,7 +145,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         })
         return Promise.all(
             integrations.map(async i => {
-                const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: i.id } })
+                const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: i.id } })
                 return {
                     id: i.id,
                     workspaceName: secrets ? await this.fetchWorkspaceName(secrets.accessToken) : undefined
@@ -315,11 +314,14 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                     }
                 })
 
-                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: newIntegration.id, value: { accessToken: access_token } } })
+                await this.secretService.createSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.ATTIO, recordId: newIntegration.id, value: { accessToken: access_token } }
+                })
 
                 integrationId = newIntegration.id
             } else {
-                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: existing.id, value: { accessToken: access_token } } })
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: existing.id, value: { accessToken: access_token } } })
 
                 await db().attio_integrations.update({
                     where: { id: existing.id },
@@ -353,7 +355,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 await tx.attio_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
             })
     }
 
@@ -373,7 +375,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             logger.error("Attio teardown: failed to delete webhook", { error, webhookId, integrationId })
         }
 
-        await deleteSecretFields({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: automationInput.id, keys: ["webhookSecret"] } })
+        await this.secretService.deleteSecretFields({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: automationInput.id, keys: ["webhookSecret"] } })
     }
 
     async refreshToken(integrationId: string): Promise<boolean> {
@@ -408,7 +410,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         }
 
         try {
-            const secrets = await getSecrets({
+            const secrets = await this.secretService.getSecrets({
                 type: "integration",
                 secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId }
             })
@@ -486,8 +488,8 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
     if (!attioRow) {
         throw new Error("Attio integration not found")
     }
-
-    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
     if (!secret.accessToken) {
         throw new Error("Attio access token not found")
     }
@@ -513,8 +515,7 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
 
     const parsed = attioCreateWebhookResponseSchema.parse(raw)
     const webhookId = parsed.data.id.webhook_id
-
-    await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: triggerId, value: { webhookSecret: parsed.data.secret } } })
+    await secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: triggerId, value: { webhookSecret: parsed.data.secret } } })
 
     logger.info("Attio CreateWebhook succeeded", { webhookId, triggerId })
     return webhookId
@@ -534,7 +535,8 @@ const attioGetWebhookResponseSchema = z.object({
 })
 
 export async function fetchAttioWebhookSubscriptions(integrationId: string, webhookId: string): Promise<AttioSubscription[]> {
-    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
 
     const response = await fetch(`${ATTIO_API_BASE}/webhooks/${encodeURIComponent(webhookId)}`, {
         headers: { Authorization: `Bearer ${secret.accessToken}` }
@@ -568,7 +570,8 @@ const attioGetRecordResponseSchema = z.object({
 })
 
 async function fetchAttioObjectApiSlug(integrationId: string, objectIdOrSlug: string): Promise<string | null> {
-    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
 
     const response = await fetch(`${ATTIO_API_BASE}/objects/${encodeURIComponent(objectIdOrSlug)}`, {
         headers: { Authorization: `Bearer ${secret.accessToken}` }
@@ -595,7 +598,8 @@ async function resolveAttioObjectSlugForEvent(integrationId: string, objectId: s
 }
 
 async function fetchAttioRecord(integrationId: string, objectId: string, recordId: string): Promise<AttioRecordPayload> {
-    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
 
     const response = await fetch(`${ATTIO_API_BASE}/objects/${encodeURIComponent(objectId)}/records/${encodeURIComponent(recordId)}`, {
         headers: { Authorization: `Bearer ${secret.accessToken}` }
@@ -611,7 +615,8 @@ async function fetchAttioRecord(integrationId: string, objectId: string, recordI
 }
 
 async function deleteAttioWebhook(webhookId: string, integrationId: string): Promise<void> {
-    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
 
     const response = await fetch(`${ATTIO_API_BASE}/webhooks/${encodeURIComponent(webhookId)}`, {
         method: "DELETE",

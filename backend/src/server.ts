@@ -5,7 +5,6 @@ import "dotenv/config"
 import express, { NextFunction, Request, Response } from "express"
 import { createServer } from "http"
 import { ApiRoutes } from "terse-types"
-import { User } from "terse-types"
 
 import { setupLLMAnalytics } from "./agent/openaiInstance"
 // Import settings early to validate environment variables at startup
@@ -75,7 +74,6 @@ import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
-import { SecretNotFoundError } from "./services/SecretService"
 import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./utility/analytics"
 import { AuthKind, requireAuth } from "./utility/authMiddleware"
@@ -838,15 +836,6 @@ app.post(ApiRoutes.PROJECT_SECRETS.IMPORT, requireAuth([AuthKind.UserCookie, Aut
 
 app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     toolsThatRequireApprovalsRoute(req, res)
-})
-
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    if (err instanceof SecretNotFoundError) {
-        logger.warn("Secret not found while handling request", { path: req.path, method: req.method, message: err.message })
-        res.status(404).json({ error: "Integration credentials not found. Please reconnect the integration." })
-        return
-    }
-    next(err)
 })
 
 /**

@@ -23,12 +23,11 @@ interface ScheduleWebhookEvent {
 }
 
 export class CronJobIntegrationManager
-    implements Integration<IntegrationInstance, ScheduleWebhookEvent, typeof CronJobIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.CRON_JOB>
+    extends Integration<IntegrationInstance, ScheduleWebhookEvent, typeof CronJobIntegrationMetadata, never>
+    implements FormIntegrationInstallation<IntegrationType.CRON_JOB>
 {
     readonly integrationType = IntegrationType.CRON_JOB
     private schedulerClient: SchedulerClient | null = null
-
-    constructor() {}
 
     getFormFields(): FormFieldDefinition[] {
         return []

@@ -6,7 +6,7 @@ import { IntegrationType } from "terse-types/Integrations"
 import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../integrations/GmailIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { getSecrets } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 
 export async function getGmailIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -57,7 +57,8 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
             return res.status(404).json({ error: "No active Gmail integration found" })
         }
 
-        const secrets = await getSecrets({
+        const secretService = SecretService.getInstance()
+        const secrets = await secretService.getSecrets({
             type: "integration",
             secret: { integrationType: IntegrationType.GMAIL, recordId: integration.id }
         })
