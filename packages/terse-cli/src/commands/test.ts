@@ -31,7 +31,7 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
 
     const apiKey = readApiKeyOrBail({
         title: "Error: Not authenticated. Unable to fetch sample events.",
-        detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
+        detail: "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment."
     })
 
     const spinner = createSpinner()

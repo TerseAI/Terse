@@ -27,13 +27,13 @@ export function requireHydratorType(value: string): HydratorType {
 }
 
 export type HydratorTypeMap = {
-    ["run_history_raw_event"]: IdentifiableRunHistoryRawEvent
-    ["slack_message_event"]: SlackTriggerRuntime
-    ["github_event"]: GithubTriggerRuntime
-    ["linear_event"]: LinearTriggerRuntime
-    ["gmail_event"]: GmailTriggerRuntime
-    ["workos_event"]: WorkOSTriggerRuntime
-    ["webmonitor_event"]: WebMonitorTriggerRuntime
+    run_history_raw_event: IdentifiableRunHistoryRawEvent
+    slack_message_event: SlackTriggerRuntime
+    github_event: GithubTriggerRuntime
+    linear_event: LinearTriggerRuntime
+    gmail_event: GmailTriggerRuntime
+    workos_event: WorkOSTriggerRuntime
+    webmonitor_event: WebMonitorTriggerRuntime
 }
 
 export enum RAGNamespace {

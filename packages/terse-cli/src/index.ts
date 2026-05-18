@@ -8,6 +8,8 @@ import { NonInteractiveOpts, collectKeyValue, parseIntFlag } from "./cliHelpers.
 import { getCliVersion } from "./cliVersion.js"
 import { attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
+import { authOrgList, authOrgSwitch } from "./commands/authOrg.js"
+import { authStatus } from "./commands/authStatus.js"
 import { openDashboard } from "./commands/dashboard.js"
 import { deploy } from "./commands/deploy.js"
 import { openDocs } from "./commands/docs.js"
@@ -19,6 +21,7 @@ import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, in
 import { listen } from "./commands/listen.js"
 import { replay } from "./commands/replay.js"
 import { run } from "./commands/run.js"
+import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./commands/secrets.js"
 import { test, testList, testRun, testShow } from "./commands/test.js"
 import { isCliRunCommandEnabled } from "./env.js"
 import { isPromptCancellationError } from "./promptErrors.js"
@@ -51,7 +54,7 @@ program
         `
 Examples:
   $ terse init myproj                       # interactive scaffold
-  $ terse init myproj --non-interactive     # non-interactive; requires prior \`terse login\`
+  $ terse init myproj --non-interactive     # non-interactive; requires prior \`terse auth login\`
   $ terse init myproj < /dev/null           # auto non-interactive (no TTY)
 `
     )
@@ -265,6 +268,56 @@ integrateCommand
         await integrateWait({ integrationType: type, timeoutSeconds: opts.timeout, json: opts.json })
     })
 
+const secretsCommand = program
+    .command("secrets")
+    .description("Manage managed project secrets")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse secrets list --json
+  $ terse secrets add OPENAI_API_KEY
+  $ printf '%s' "$OPENAI_API_KEY" | terse secrets add OPENAI_API_KEY --value-stdin
+  $ terse secrets import .env --overwrite
+  $ terse secrets remove OPENAI_API_KEY --yes
+`
+    )
+
+secretsCommand
+    .command("list")
+    .description("List project secret names")
+    .option("--json", "Emit JSON")
+    .action(async (opts: JsonOpts) => {
+        await secretsList({ json: opts.json })
+    })
+
+secretsCommand
+    .command("add")
+    .description("Add or update a project secret")
+    .argument("<NAME>", "Secret environment variable name")
+    .option("--value-stdin", "Read the secret value from stdin")
+    .action(async (name: string, opts: { valueStdin?: boolean }) => {
+        await secretsAdd(name, { valueStdin: opts.valueStdin })
+    })
+
+secretsCommand
+    .command("remove")
+    .description("Remove a project secret")
+    .argument("<NAME>", "Secret environment variable name")
+    .option("--yes", "Confirm removal")
+    .action(async (name: string, opts: { yes?: boolean }) => {
+        await secretsRemove(name, { yes: opts.yes })
+    })
+
+secretsCommand
+    .command("import")
+    .description("Import project secrets from a .env file")
+    .argument("<file>", ".env-format file")
+    .option("--overwrite", "Update existing server-side secrets")
+    .action(async (file: string, opts: { overwrite?: boolean }) => {
+        await secretsImport(file, { overwrite: opts.overwrite })
+    })
+
 program
     .command("generate")
     .description("Autogenerate context from your connected workspaces")
@@ -364,16 +417,19 @@ program
     })
 
 program.commandsGroup("Authentication:")
-program
+const authCommand = program.command("auth").description("Manage authentication and active organization")
+
+authCommand
     .command("login")
-    .description("Login to Terse")
+    .description("Log in to Terse")
     .action(async () => {
         const result = await loginAndPersist()
         if (!result) process.exit(1)
     })
-program
+
+authCommand
     .command("logout")
-    .description("Logout of Terse")
+    .description("Log out of Terse")
     .action(() => {
         const removed = logout()
         if (removed) {
@@ -381,6 +437,30 @@ program
         } else {
             console.log(chalk.dim("  Not logged in."))
         }
+    })
+
+authCommand
+    .command("status")
+    .description("Show the current user and active organization")
+    .action(async () => {
+        await authStatus()
+    })
+
+const authOrgCommand = authCommand.command("org").description("List or switch the active organization")
+
+authOrgCommand
+    .command("list")
+    .description("List organizations you belong to")
+    .option("--json", "Output as JSON")
+    .action(async (opts: { json?: boolean }) => {
+        await authOrgList(opts)
+    })
+
+authOrgCommand
+    .command("switch [org-id]")
+    .description("Switch the active organization. Pass an org id to skip the picker.")
+    .action(async (orgId: string | undefined) => {
+        await authOrgSwitch(orgId)
     })
 
 program.commandsGroup("Getting help:")

@@ -1,11 +1,12 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "terse-types/Integrations"
 import { LaunchDarklyProject } from "terse-types/types"
+import { z } from "zod"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
@@ -23,7 +24,10 @@ export class LaunchDarklyIntegrationManager
     implements Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata, LaunchDarklyProject>, FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY>
 {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY
+    readonly integrationType = IntegrationType.LAUNCHDARKLY
+    readonly secretSchema = z.object({
+        apiKey: z.string()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<LaunchDarklyIntegration[]> {
         const launchdarklyIntegrations = await db().launchdarkly_integrations.findMany({
@@ -128,7 +132,7 @@ export class LaunchDarklyIntegrationManager
                 await tx.launchdarkly_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([{ integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId, field: SecretField.ApiKey }])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId } })
             })
     }
 
@@ -248,7 +252,7 @@ export class LaunchDarklyIntegrationManager
             })
 
             if (existing) {
-                await storeSecret(IntegrationType.LAUNCHDARKLY, existing.id, SecretField.ApiKey, apiKey)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: existing.id, value: { apiKey: apiKey } } })
 
                 // Update existing integration
                 await db().launchdarkly_integrations.update({
@@ -276,7 +280,7 @@ export class LaunchDarklyIntegrationManager
                     }
                 })
 
-                await storeSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey, apiKey)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id, value: { apiKey: apiKey } } })
 
                 logger.info("✅ Created LaunchDarkly integration", {
                     integrationId: integration.id,
@@ -316,11 +320,8 @@ export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): 
     if (!integration) {
         throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
     }
-    const apiKey = await getSecret(IntegrationType.LAUNCHDARKLY, integrationId, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error(`LaunchDarkly integration ${integrationId} not found or missing API key`)
-    }
-    return apiKey
+    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integrationId } })
+    return secret.apiKey
 }
 
 /**

@@ -97,7 +97,7 @@ export async function init(projectName?: string, provider: LanguageProvider = re
         nextSteps.push(`cd ${projectName}`)
     }
     if (!isAuthenticated) {
-        nextSteps.push(`Run ${chalk.cyan("terse login")} to authenticate`)
+        nextSteps.push(`Run ${chalk.cyan("terse auth login")} to authenticate`)
     }
     nextSteps.push(`Edit ${chalk.cyan(provider.entryFile)} to define your job`)
     nextSteps.push(...provider.getPostInitSteps(pm))

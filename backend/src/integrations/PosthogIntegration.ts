@@ -1,11 +1,12 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, PosthogIntegration, PosthogIntegrationMetadata } from "terse-types/Integrations"
 import { PosthogProject } from "terse-types/types"
+import { z } from "zod"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchPosthogProjects } from "../routes/posthog"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { createSecrets, deleteSecrets, getSecrets } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
@@ -21,7 +22,10 @@ import {
 
 export class PosthogIntegrationManager implements Integration<PosthogIntegration, never, typeof PosthogIntegrationMetadata, PosthogProject>, FormIntegrationInstallation<IntegrationType.POSTHOG> {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.POSTHOG
+    readonly integrationType = IntegrationType.POSTHOG
+    readonly secretSchema = z.object({
+        apiKey: z.string()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<PosthogIntegration[]> {
         const posthogIntegrations = await db().posthog_integrations.findMany({
@@ -110,7 +114,7 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
                 await tx.posthog_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([{ integrationType: IntegrationType.POSTHOG, recordId: integrationId, field: SecretField.ApiKey }])
+                await deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integrationId } })
             })
     }
 
@@ -195,7 +199,7 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
             })
 
             if (existing) {
-                await storeSecret(IntegrationType.POSTHOG, existing.id, SecretField.ApiKey, apiKey)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: existing.id, value: { apiKey: apiKey } } })
 
                 // Update existing integration
                 await db().posthog_integrations.update({
@@ -222,7 +226,7 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
                     }
                 })
 
-                await storeSecret(IntegrationType.POSTHOG, integration.id, SecretField.ApiKey, apiKey)
+                await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id, value: { apiKey: apiKey } } })
 
                 logger.info("✅ Created Posthog integration", {
                     integrationId: integration.id,
@@ -261,10 +265,8 @@ export async function validatePosthogProjectExists(integrationId: string, projec
     if (!integration) {
         throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
     }
-    const apiKey = await getSecret(IntegrationType.POSTHOG, integrationId, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error(`Posthog integration ${integrationId} not found or missing API key`)
-    }
+    const secret = await getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integrationId } })
+    const apiKey = secret.apiKey
     const response = await fetch(`https://us.posthog.com/api/projects/${projectId}/`, {
         method: "GET",
         headers: {

@@ -202,11 +202,50 @@ export const deviceTokenExchangeUserSchema = z.object({
     displayName: z.string().nullable()
 })
 
+export const sdkOrganizationSummarySchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+export type SdkOrganizationSummary = z.infer<typeof sdkOrganizationSummarySchema>
+
 export const deviceTokenExchangeResponseSchema = z.object({
     apiKey: z.string(),
-    user: deviceTokenExchangeUserSchema
+    user: deviceTokenExchangeUserSchema,
+    organization: sdkOrganizationSummarySchema
 })
 export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResponseSchema>
+
+export const identifyUserSchema = z.object({
+    workosId: z.string(),
+    email: z.string(),
+    firstName: z.string().nullable(),
+    lastName: z.string().nullable(),
+    displayName: z.string().nullable()
+})
+
+export const identifyOrganizationSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    roles: z.array(z.string())
+})
+
+export const identifyResponseSchema = z.object({
+    user: identifyUserSchema,
+    organizations: z.array(identifyOrganizationSchema)
+})
+export type IdentifyResponse = z.infer<typeof identifyResponseSchema>
+
+export const sdkOrganizationsListResponseSchema = z.object({
+    organizations: z.array(sdkOrganizationSummarySchema),
+    activeOrganizationId: z.string()
+})
+export type SdkOrganizationsListResponse = z.infer<typeof sdkOrganizationsListResponseSchema>
+
+export const switchOrganizationResponseSchema = z.object({
+    apiKey: z.string(),
+    organization: sdkOrganizationSummarySchema
+})
+export type SwitchOrganizationResponse = z.infer<typeof switchOrganizationResponseSchema>
 
 const configInstanceDataSchema = configDataSchema
 
@@ -743,6 +782,53 @@ export const projectRotateApiKeyResponseSchema = z.object({
 })
 export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
 
+export const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
+export const MAX_SECRET_VALUE_BYTES = 32 * 1024
+
+export function validateSecretName(name: string): string | null {
+    if (!SECRET_NAME_PATTERN.test(name)) {
+        return "Secret names must match ^[A-Z][A-Z0-9_]{0,63}$"
+    }
+    if (name.startsWith("TERSE_")) {
+        return "Secret names cannot start with TERSE_"
+    }
+    return null
+}
+
+export function validateSecretValue(value: string): string | null {
+    if (new TextEncoder().encode(value).length > MAX_SECRET_VALUE_BYTES) {
+        return "Secret value must be 32KB or less"
+    }
+    return null
+}
+
+export const projectSecretSummarySchema = z.object({
+    name: z.string()
+})
+export type ProjectSecretSummary = z.infer<typeof projectSecretSummarySchema>
+
+export const projectSecretsListResponseSchema = z.object({
+    secrets: z.array(projectSecretSummarySchema)
+})
+export type ProjectSecretsListResponse = z.infer<typeof projectSecretsListResponseSchema>
+
+export const projectSecretUpsertRequestSchema = z.object({
+    name: z.string(),
+    value: z.string()
+})
+export type ProjectSecretUpsertRequest = z.infer<typeof projectSecretUpsertRequestSchema>
+
+export const projectSecretsImportRequestSchema = z.object({
+    entries: z.array(projectSecretUpsertRequestSchema).max(500)
+})
+export type ProjectSecretsImportRequest = z.infer<typeof projectSecretsImportRequestSchema>
+
+export const projectSecretsImportResponseSchema = z.object({
+    added: z.array(z.string()),
+    updated: z.array(z.string())
+})
+export type ProjectSecretsImportResponse = z.infer<typeof projectSecretsImportResponseSchema>
+
 export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
     name: z.string().min(1),
@@ -877,10 +963,21 @@ export const apiTokenUpdateRequestSchema = z.object({
 })
 export type ApiTokenUpdateRequest = z.infer<typeof apiTokenUpdateRequestSchema>
 
-export const deviceTokenExchangeRequestSchema = z.object({
+export const identifyRequestSchema = z.object({
     accessToken: z.string()
 })
+export type IdentifyRequest = z.infer<typeof identifyRequestSchema>
+
+export const deviceTokenExchangeRequestSchema = z.object({
+    accessToken: z.string(),
+    organizationId: z.string()
+})
 export type DeviceTokenExchangeRequest = z.infer<typeof deviceTokenExchangeRequestSchema>
+
+export const switchOrganizationRequestSchema = z.object({
+    organizationId: z.string()
+})
+export type SwitchOrganizationRequest = z.infer<typeof switchOrganizationRequestSchema>
 
 export const sdkToolExecuteRequestSchema = z.object({
     toolName: z.string(),

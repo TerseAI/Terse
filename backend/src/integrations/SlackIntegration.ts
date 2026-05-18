@@ -14,6 +14,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse, SlackUserResponse, SlackUsersResponse } from "terse-types/types"
+import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { jwt as jwtConfig, slack as slackConfig, urls } from "../config/settings"
@@ -21,7 +22,7 @@ import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { GetSecretsArg, createSecrets, deleteSecrets, getSecrets, tryGetSecrets } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { Jwt } from "../utility/jwt"
@@ -39,7 +40,11 @@ export class SlackIntegrationManager
     implements Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>, OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
     constructor() {}
-    integrationType: IntegrationType = IntegrationType.SLACK
+    readonly integrationType = IntegrationType.SLACK
+    readonly secretSchema = z.object({
+        accessToken: z.string().optional(),
+        authedUserAccessToken: z.string().optional()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<SlackIntegration[]> {
         const userSlackIntegrations = await db().user_slack_integrations.findMany({
@@ -472,10 +477,13 @@ export class SlackIntegrationManager
                 return
             }
 
-            await storeSecret(IntegrationType.SLACK, slackIntegration.id, SecretField.AccessToken, access_token)
+            await createSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: slackIntegration.id, value: { accessToken: access_token } } })
 
             if (isUserType && authed_user.access_token && userSlackIntegrationId) {
-                await storeSecret(IntegrationType.SLACK, userSlackIntegrationId, SecretField.AuthedUserAccessToken, authed_user.access_token)
+                await createSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.SLACK, recordId: userSlackIntegrationId, value: { authedUserAccessToken: authed_user.access_token } }
+                })
             }
 
             const userSlackIntegration = userSlackIntegrationId
@@ -554,14 +562,11 @@ export class SlackIntegrationManager
                     return
                 }
 
-                const secrets: Array<{ integrationType: IntegrationType.SLACK; recordId: string; field: SecretField }> = [
-                    { integrationType: IntegrationType.SLACK, recordId: integrationId, field: SecretField.AuthedUserAccessToken }
-                ]
+                const queries: GetSecretsArg[] = [{ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: integrationId } }]
                 if (userSlackIntegration.slack_integration?.id) {
-                    secrets.push({ integrationType: IntegrationType.SLACK, recordId: userSlackIntegration.slack_integration.id, field: SecretField.AccessToken })
+                    queries.push({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: userSlackIntegration.slack_integration.id } })
                 }
-
-                await deleteSecretsBestEffort(secrets)
+                await deleteSecrets(queries)
             })
     }
 
@@ -1037,17 +1042,9 @@ async function markWorkspaceUninstalled(team_id: string) {
     })
 
     // Best-effort GSM cleanup
-    await deleteSecretsBestEffort([
-        ...slackIntegrations.map(i => ({
-            integrationType: IntegrationType.SLACK as const,
-            recordId: i.id,
-            field: SecretField.AccessToken
-        })),
-        ...userSlackIntegrations.map(i => ({
-            integrationType: IntegrationType.SLACK as const,
-            recordId: i.id,
-            field: SecretField.AuthedUserAccessToken
-        }))
+    await deleteSecrets([
+        ...slackIntegrations.map<GetSecretsArg>(i => ({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: i.id } })),
+        ...userSlackIntegrations.map<GetSecretsArg>(i => ({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: i.id } }))
     ])
 
     logger.info("Workspace uninstalled. Records deleted from database.", {
@@ -1505,14 +1502,12 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
         // Supports: images, PDFs
         let storedFiles: StoredFile[] = []
         if (enrichedMessage.files && enrichedMessage.files.length > 0) {
-            const botToken = await getSecret(IntegrationType.SLACK, filteredWorkspaceUserIntegrations[0].slack_integration.id, SecretField.AccessToken)
-
+            const secrets = await tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: filteredWorkspaceUserIntegrations[0].slack_integration.id } })
+            const botToken = secrets?.accessToken
             if (botToken) {
                 storedFiles = await downloadSlackFiles(enrichedMessage.files, teamId, botToken)
             } else {
-                logger.warn("No Slack bot token available for file download", {
-                    teamId
-                })
+                logger.warn("No Slack bot token available for file download", { teamId })
             }
         }
 
