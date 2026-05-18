@@ -32,7 +32,7 @@ export async function integrate(options: IntegrateOptions = {}): Promise<void> {
         intro("terse integrate")
     }
 
-    const apiKey = readApiKeyOrBail()
+    const apiKey = options.apiKey?.trim() || readApiKeyOrBail()
     let didChangeAnyIntegration = false
 
     let continueLoop = true
@@ -48,7 +48,7 @@ export async function integrate(options: IntegrateOptions = {}): Promise<void> {
     }
 
     if (didChangeAnyIntegration && runGenerateAfterChange) {
-        await generate(undefined)
+        await generate(undefined, { apiKey })
     }
 
     if (showLifecycle) {
@@ -57,7 +57,7 @@ export async function integrate(options: IntegrateOptions = {}): Promise<void> {
 }
 
 export async function listAndPromptIntegrations(options: IntegrateOptions = {}): Promise<void> {
-    const apiKey = readApiKey()
+    const apiKey = options.apiKey?.trim() || readApiKey()
     if (!apiKey) return
 
     const s = createSpinner()
@@ -94,10 +94,10 @@ export async function listAndPromptIntegrations(options: IntegrateOptions = {}):
                 initialValue: false
             })
         )
-        if (addMore) await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange })
+        if (addMore) await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
     } else {
         console.log(chalk.dim("No integrated tools yet."))
-        await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange })
+        await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
     }
 }
 
@@ -663,6 +663,8 @@ type IntegrationChangeResult = {
 }
 
 type IntegrateOptions = {
+    /** When set (e.g. during `terse attach`), all integration calls use this key instead of `readApiKey()`. */
+    apiKey?: string
     showLifecycle?: boolean
     runGenerateAfterChange?: boolean
     nonInteractive?: boolean

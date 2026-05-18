@@ -20,7 +20,7 @@ import { openSessionStream } from "../providers/shared/sessionStream.js"
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
     const apiKey = readApiKeyOrBail({
         title: "Error: Not authenticated.",
-        detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
+        detail: "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment."
     })
 
     const config = readProjectConfigOrBail()
