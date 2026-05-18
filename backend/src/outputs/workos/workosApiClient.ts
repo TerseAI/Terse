@@ -26,7 +26,7 @@ export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user
     }
 
     const secretService = SecretService.getInstance()
-    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id } })
+    const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id } })
     return secrets?.apiKey ?? null
 }
 

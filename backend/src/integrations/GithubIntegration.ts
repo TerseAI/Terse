@@ -139,7 +139,7 @@ export class GithubIntegrationManager
             if (!token?.organization_id) continue
             const fullUser = await getUserForOrg(user.id, token.organization_id)
             if (!fullUser) continue
-            const secrets = await this.secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+            const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
             if (!secrets) {
                 logger.warn(`Github app token ${token.id} is missing its secret blob; skipping`, { integrationId: token.id })
                 continue
@@ -658,7 +658,7 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
         const githubAppUsers = await tx.github_app_tokens.findMany()
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
+                const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
                 if (!secrets) {
                     logger.warn(`Github app token ${user.id} is missing its secret blob; skipping`, { integrationId: user.id })
                     return {

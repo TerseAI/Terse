@@ -25,6 +25,6 @@ export async function getLaunchDarklyApiKeyByIntegrationId(integrationId: string
     }
 
     const secretService = SecretService.getInstance()
-    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id } })
+    const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id } })
     return secrets?.apiKey ?? null
 }

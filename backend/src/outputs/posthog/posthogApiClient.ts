@@ -25,6 +25,6 @@ export async function getPosthogApiKeyByIntegrationId(integrationId: string, use
     }
 
     const secretService = SecretService.getInstance()
-    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
+    const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
     return secrets?.apiKey ?? null
 }

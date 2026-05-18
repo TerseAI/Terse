@@ -122,7 +122,7 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
     const secretService = SecretService.getInstance()
 
     for (const token of orgTokens) {
-        const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+        const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
         if (!secrets) {
             logger.warn(`Github app token ${token.id} is missing its secret blob; skipping`, { tokenId: token.id })
             continue
@@ -218,7 +218,7 @@ async function resolveUsersForGithubInstallation(installationId: number): Promis
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
+                const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
                 if (!secrets) {
                     logger.warn(`Github app token ${user.id} is missing its secret blob; skipping`, { tokenId: user.id })
                     return {

@@ -68,7 +68,7 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
 
         let accessToken: string | null = null
         for (const token of githubTokens) {
-            const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+            const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
             if (!secrets) {
                 logger.warn(`Github app token ${token.id} is missing its secret blob; skipping`, { tokenId: token.id })
                 continue
