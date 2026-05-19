@@ -1,8 +1,18 @@
 import axios from "axios"
 
 import { Jwt } from "./utility/Jwt.js"
+import { redactAxiosError, safeErrorFields } from "./utility/safeError.js"
 
 const backendBaseUrl = process.env.TERSE_BACKEND_URL || "http://localhost:3001"
+
+// Dedicated axios instance for the Terse backend. The response interceptor
+// strips Authorization headers from any AxiosError before it propagates,
+// so a downstream raw `console.error(err)` cannot leak the Bearer JWT.
+const backend = axios.create()
+backend.interceptors.response.use(
+    response => response,
+    error => Promise.reject(redactAxiosError(error))
+)
 
 export type Commit = {
     sha: string
@@ -27,7 +37,7 @@ interface VectraInterface {
 export const VectraInterface: VectraInterface = {
     async githubAppInstallationCallback(name: string, email: string, username: string, installationId: number, accountName: string | null, repositories: Repository[]): Promise<void> {
         const token = await new Jwt().sign(username)
-        return axios
+        return backend
             .post(
                 `${backendBaseUrl}/github/installation-callback`,
                 {
@@ -49,14 +59,14 @@ export const VectraInterface: VectraInterface = {
                 return response.data
             })
             .catch(error => {
-                console.error("GitHub installation callback failed:", error)
+                console.error("GitHub installation callback failed:", safeErrorFields(error))
                 throw error
             })
     },
 
     async githubAppInstallationDeleted(username: string, installationId: number): Promise<void> {
         const token = await new Jwt().sign(username)
-        return axios.post(
+        return backend.post(
             `${backendBaseUrl}/github/installation-deleted`,
             {
                 username,
@@ -73,7 +83,7 @@ export const VectraInterface: VectraInterface = {
 
     async githubUnifiedEvent(username: string, installationId: number, repositoryName: string, eventType: string, eventData: any): Promise<void> {
         const token = await new Jwt().sign(username)
-        return axios.post(
+        return backend.post(
             `${backendBaseUrl}/github/unified-event`,
             {
                 username,
