@@ -90,5 +90,5 @@ export function createOAuthStateToken(options: OAuthStatePayloadOptions): string
  * invalid or the token has expired — there is no unsigned fallback.
  */
 export function decodeOAuthStateToken(state: string): OAuthStatePayload {
-    return jwt.verify(state, jwtConfig.secret) as OAuthStatePayload
+    return jwt.verify(state, jwtConfig.secret, { algorithms: ["HS256"] }) as OAuthStatePayload
 }

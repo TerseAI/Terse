@@ -1,6 +1,5 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
-import jwt from "jsonwebtoken"
 import {
     AttioEventType,
     AttioRecordPayload,
@@ -23,12 +22,12 @@ import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
+import { attio as attioConfig, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretNotFoundError, SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
-import { createOAuthStateToken } from "../utility/oauth"
+import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { buildAttioWebhookUrl } from "../utility/webhookUrl"
 import { getUserForOrg } from "../utility/workos"
 
@@ -253,7 +252,7 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
         }
 
         try {
-            const decoded = jwt.verify(state as string, jwtSettings.secret) as {
+            const decoded = decodeOAuthStateToken(state as string) as {
                 userId: string
                 organizationId: string
                 timestamp: number

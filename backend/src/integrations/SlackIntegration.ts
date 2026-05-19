@@ -7,7 +7,6 @@ import { Member as SlackUserMember } from "@slack/web-api/dist/types/response/Us
 import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
-import jwt from "jsonwebtoken"
 import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage, SlackTrigger } from "terse-types"
 import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
@@ -17,7 +16,7 @@ import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChan
 import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { jwt as jwtConfig, slack as slackConfig, urls } from "../config/settings"
+import { slack as slackConfig, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
@@ -26,7 +25,7 @@ import { GetSecretsArg, SecretService } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
 import { Jwt } from "../utility/jwt"
-import { createOAuthStateToken } from "../utility/oauth"
+import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -311,7 +310,7 @@ export class SlackIntegrationManager
         // Decode the full JWT state payload
         let decoded: any
         try {
-            decoded = jwt.verify(state, jwtConfig.secret)
+            decoded = decodeOAuthStateToken(state)
         } catch (error) {
             logger.error("Error decoding JWT state", { error })
             res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
