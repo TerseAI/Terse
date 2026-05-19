@@ -3,7 +3,6 @@ import { IntegrationType } from "terse-types/Integrations"
 import { GetGithubRepositoriesForIntegrationResponse, User as RuntimeUser } from "terse-types/types"
 import { ZodError } from "zod"
 
-import { githubApp } from "../config/settings"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../integrations/GithubIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
@@ -28,27 +27,6 @@ export async function getGithubIntegrations(req: Request, res: Response) {
     } catch (error) {
         logger.error("Error fetching GitHub integrations", { error })
         res.status(500).json({ error: "Failed to fetch GitHub integrations" })
-    }
-}
-
-export async function getInstallationUrl(req: Request, res: Response) {
-    try {
-        const appName = githubApp.appName
-        const clientId = githubApp.clientId
-        const userId = req.session?.user?.id
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" })
-        }
-        const state = Buffer.from(userId).toString("base64")
-        // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories&state=${state}`
-
-        res.json({
-            installationUrl
-        })
-    } catch (error) {
-        logger.error("Error generating installation URL", { error })
-        res.status(500).json({ message: "Failed to generate installation URL" })
     }
 }
 
