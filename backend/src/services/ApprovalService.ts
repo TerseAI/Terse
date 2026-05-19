@@ -1,5 +1,4 @@
 import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
-import { ConfigData } from "terse-types/Configs"
 import { pendingApprovalsKey } from "terse-types/InvalidationKeys"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
@@ -9,8 +8,6 @@ import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalS
 import { appendToolApprovalResponseSystemEvent } from "../agent/systemEvents/toolApprovalSystemEvent"
 import logger from "../logger"
 import { NotificationManager } from "../notifications/Notification"
-import { Output } from "../outputs/abstract/Output"
-import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { resolveApprovalDecision } from "../routes/sdkApprovalGate"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
@@ -66,10 +63,6 @@ export class ApprovalService {
         }
 
         return { runRecord, channel }
-    }
-
-    private static createOutputs(channel: AgentWithRelations): Output<ConfigData>[] {
-        return OutputFactory.createOutputsFromAgent(channel)
     }
 
     /**
@@ -168,7 +161,7 @@ export class ApprovalService {
     }
 
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
-        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject, responseId } = request
+        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject } = request
 
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}, hardReject: ${hardReject}`)
 
@@ -230,11 +223,16 @@ export class ApprovalService {
             emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
             emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
 
-            // SDK runs: resolve the in-memory approval gate instead of creating a new AgentRunner.
-            // The SSE handler (handleSdkAgentRun) is already waiting on waitForApprovalDecision() and will resume the agent.
+            // SDK runs: resolve the in-memory approval gate.
+            // The SSE handler (handleSdkAgentRun) is awaiting waitForApprovalDecision() and will either
+            // resume the agent (approve/soft-reject) or finalize the run as cancelled (hardReject).
             const finalSlackStatus = resolveSlackApprovalStatus(approved, hardReject, rejectionReason)
 
-            resolveApprovalDecision(runId, stepId, { approved: !hardReject && approved, rejectionReason })
+            resolveApprovalDecision(runId, stepId, {
+                approved: !hardReject && approved,
+                rejectionReason,
+                hardReject: !!hardReject
+            })
 
             await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
 
@@ -305,10 +303,8 @@ type ApprovalRequest = {
     userId: string
     organizationId: string
     rejectionReason?: string
-    /** When true, stops the run completely without resuming the agent */
+    /** When true, finalizes the run as cancelled in the SSE handler instead of resuming the agent. */
     hardReject?: boolean
-    /** ResponseId of the original tool call (used to seed the DeltaProjector on resume so tool completions are attributed to the original turn). */
-    responseId?: string
 }
 
 type ApprovalResult = {

@@ -71,7 +71,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
         try {
             await deleteAgent(agentId)
             toast.success("Job deleted")
-            navigate(FrontendRoutes.AGENTS.SETUP)
+            navigate(FrontendRoutes.HOME)
         } catch {
             toast.error("Failed to delete job")
         } finally {

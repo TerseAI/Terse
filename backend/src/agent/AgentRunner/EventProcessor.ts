@@ -241,7 +241,7 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this agent", agent, existingRunId ?? null)
         }
 
-        const activeDeploy = agent.project?.id ? await getActiveDeployForProject(agent.project.id) : null
+        const activeDeploy = await getActiveDeployForProject(agent.project.id)
 
         // SDK agents with a remote_server_url trigger the user's own infrastructure via webhook
         if (agent.project.remote_server_url) {

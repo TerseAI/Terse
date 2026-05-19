@@ -62,12 +62,6 @@ function invalidateAgentDetail(id: string) {
 }
 
 export function useAgentMutations() {
-    const createAgent = async (data: AgentUpdate) => {
-        const result = await BackendProvider.createAgent(data)
-        await invalidateAgentLists()
-        return result
-    }
-
     const updateAgent = async ({ id, data, mutateAgent }: UpdateAgentArgs) => {
         await BackendProvider.updateAgent(id, data)
 
@@ -132,7 +126,6 @@ export function useAgentMutations() {
     }
 
     return {
-        createAgent,
         updateAgent,
         deleteAgent,
         toggleAgentActive,

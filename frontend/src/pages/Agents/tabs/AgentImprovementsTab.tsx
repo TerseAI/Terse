@@ -30,7 +30,6 @@ export function useAgentPendingCount(agentId: string | null): number {
 export default function AgentImprovementsTab({ agentId }: AgentImprovementsTabProps) {
     const { review, improvements, improvementsEnabled, isLoading, mutate } = useAgentImprovements(agentId)
     const [isToggling, setIsToggling] = useState(false)
-    const [isApplyingId, setIsApplyingId] = useState<string | null>(null)
     const [isDismissingId, setIsDismissingId] = useState<string | null>(null)
     const pendingImprovements = useMemo(() => improvements.filter(i => i.status === "PENDING"), [improvements])
 
@@ -47,19 +46,6 @@ export default function AgentImprovementsTab({ agentId }: AgentImprovementsTabPr
             toast.error("Failed to update improvements setting")
         } finally {
             setIsToggling(false)
-        }
-    }
-
-    const handleApply = async (improvement: AgentImprovement) => {
-        setIsApplyingId(improvement.id)
-        try {
-            await BackendProvider.applyImprovement(agentId, improvement.id)
-            await mutate()
-            toast.success("Improvement acknowledged")
-        } catch {
-            toast.error("Failed to apply improvement")
-        } finally {
-            setIsApplyingId(null)
         }
     }
 
@@ -93,7 +79,7 @@ export default function AgentImprovementsTab({ agentId }: AgentImprovementsTabPr
         return <div className="p-4 text-sm text-muted-foreground">Loading improvements...</div>
     }
 
-    const isBusy = isApplyingId !== null || isDismissingId !== null
+    const isBusy = isDismissingId !== null
 
     return (
         <div className="flex flex-col h-full p-4 space-y-4">
@@ -134,10 +120,8 @@ export default function AgentImprovementsTab({ agentId }: AgentImprovementsTabPr
                             <ImprovementRow
                                 key={improvement.id}
                                 improvement={improvement}
-                                isApplying={isApplyingId === improvement.id}
                                 isDismissing={isDismissingId === improvement.id}
                                 disabled={isBusy}
-                                onApply={() => handleApply(improvement)}
                                 onDismiss={() => handleDismiss(improvement.id)}
                                 defaultExpanded={pendingImprovements.length === 1}
                             />
@@ -152,20 +136,14 @@ export default function AgentImprovementsTab({ agentId }: AgentImprovementsTabPr
 
 function ImprovementRow({
     improvement,
-    isSdk = false,
-    isApplying,
     isDismissing,
     disabled,
-    onApply,
     onDismiss,
     defaultExpanded = false
 }: {
     improvement: AgentImprovement
-    isSdk?: boolean
-    isApplying: boolean
     isDismissing: boolean
     disabled: boolean
-    onApply: () => void
     onDismiss: () => void
     defaultExpanded?: boolean
 }) {
@@ -181,12 +159,7 @@ function ImprovementRow({
                     <span className="font-medium text-sm truncate">{improvement.title}</span>
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {isSdk && improvement.suggestedPatch && <CopyCommandButton command={`terse apply ${improvement.id}`} title="Copy. Then run in your project's terminal" disabled={disabled} />}
-                    {!isSdk && (
-                        <Button size="sm" onClick={onApply} disabled={disabled}>
-                            {isApplying ? "Applying..." : "Apply"}
-                        </Button>
-                    )}
+                    {improvement.suggestedPatch && <CopyCommandButton command={`terse apply ${improvement.id}`} title="Copy. Then run in your project's terminal" disabled={disabled} />}
                     <Button size="sm" variant="ghost" onClick={onDismiss} disabled={disabled}>
                         {isDismissing ? "Dismissing..." : "Dismiss"}
                     </Button>
@@ -203,7 +176,7 @@ function ImprovementRow({
                     >
                         <div className="pl-[22px] pt-2 space-y-2">
                             <p className="text-sm text-muted-foreground">{improvement.description}</p>
-                            {isSdk && improvement.suggestedPatch && <DiffViewer patch={improvement.suggestedPatch} />}
+                            {improvement.suggestedPatch && <DiffViewer patch={improvement.suggestedPatch} />}
                         </div>
                     </motion.div>
                 )}

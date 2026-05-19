@@ -5,7 +5,8 @@ const CANCELLATION_TASK_NAME = "CANCELLATION_TASK" as const
 
 export enum CancelReason {
     USER_CANCELLED = "user_cancelled",
-    BILLING_OVERAGE = "billing_overage"
+    BILLING_OVERAGE = "billing_overage",
+    HARD_REJECT = "hard_reject"
 }
 
 class CancellationTask implements Task {
