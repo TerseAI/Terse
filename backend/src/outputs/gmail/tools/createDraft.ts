@@ -57,9 +57,7 @@ export const gmailCreateDraftTool = defineSessionTool({
 
             const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
-            // Build email headers.
-            // sanitizeHeaderValue rejects CRLF in to/cc/bcc so an LLM-controlled value can't
-            // smuggle an additional header (e.g. silent Bcc to an attacker address).
+            // Build email headers
             const headers: string[] = [`To: ${sanitizeHeaderValue(to, "to")}`, `Subject: ${encodeSubjectHeader(subject)}`]
 
             if (cc) {

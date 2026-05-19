@@ -58,9 +58,6 @@ export const gmailSendEmailTool = defineSessionTool({
             const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
             // Build email headers
-            // Subject is encoded per RFC 2047 to handle non-ASCII characters (e.g., em-dashes).
-            // sanitizeHeaderValue rejects CRLF in to/cc/bcc so an LLM-controlled value can't
-            // smuggle an additional header (e.g. silent Bcc to an attacker address).
             const headers: string[] = [`To: ${sanitizeHeaderValue(to, "to")}`, `Subject: ${encodeSubjectHeader(subject)}`]
 
             if (cc) {
