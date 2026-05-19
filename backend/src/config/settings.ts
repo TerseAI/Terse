@@ -90,7 +90,14 @@ export const settings = {
         clientSecret: requireEnv("GMAIL_CLIENT_SECRET"),
         redirectUri: requireEnv("GMAIL_REDIRECT_URI"),
         pubsubTopic: requireEnv("GMAIL_PUBSUB_TOPIC"),
-        frontendRedirect: requireEnv("GMAIL_FRONTEND_REDIRECT")
+        frontendRedirect: requireEnv("GMAIL_FRONTEND_REDIRECT"),
+        // OIDC verification for inbound Pub/Sub push deliveries. When set,
+        // handleGmailWebhook rejects requests whose Authorization: Bearer
+        // OIDC token doesn't verify against Google's keys with this audience.
+        // The pubsubServiceAccountEmail (when set) is additionally compared
+        // to the verified token's `email` claim — defense in depth.
+        pubsubAudience: optionalEnv("GMAIL_PUBSUB_AUDIENCE"),
+        pubsubServiceAccountEmail: optionalEnv("GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL")
     },
 
     // GitHub App (for repository integration and OAuth)

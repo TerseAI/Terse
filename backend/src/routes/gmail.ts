@@ -1,12 +1,20 @@
 import { gmail as createGmailClient } from "@googleapis/gmail"
 import { InputConfigType, OutputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
+import { OAuth2Client } from "google-auth-library"
 import { IntegrationType } from "terse-types/Integrations"
 
+import { gmail as gmailConfig, settings } from "../config/settings"
 import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../integrations/GmailIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretService } from "../services/SecretService"
+import { readBearerToken } from "../utility/authDispatch"
+
+// Reusable client for verifying inbound Pub/Sub OIDC tokens against Google's
+// public keys. The library caches the keys internally; reusing the client
+// avoids fetching them per request.
+const pubsubOidcClient = new OAuth2Client()
 
 export async function getGmailIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -118,6 +126,17 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
  * Extracts data from request and immediately acknowledges, then processes asynchronously
  */
 export async function handleGmailWebhook(req: Request, res: Response) {
+    // Without OIDC verification this endpoint is unauthenticated — any
+    // attacker who knows a target's Gmail address can push an arbitrary
+    // historyId and (a) trigger paid LLM runs on demand, (b) advance the
+    // integration's history_id far into the future so all legitimate
+    // future deliveries are silently dropped (persistent DoS).
+    const verified = await verifyPubsubOidc(req)
+    if (!verified) {
+        res.status(401).send("Unauthorized")
+        return
+    }
+
     logger.info("Gmail webhook received", { body: req.body })
 
     // Extract and validate webhook data
@@ -137,6 +156,61 @@ export async function handleGmailWebhook(req: Request, res: Response) {
         })
     } catch (error) {
         logger.error("Error processing Gmail webhook:", { error })
+    }
+}
+
+/**
+ * Verify the Google-signed OIDC ID token that Pub/Sub push subscriptions
+ * attach to every delivery. Returns true on success, false on any miss.
+ *
+ * - In production: requires GMAIL_PUBSUB_AUDIENCE to be configured and the
+ *   token to verify against Google's keys with that audience. If the token
+ *   is missing, malformed, expired, signed by the wrong key, or its
+ *   audience doesn't match, the delivery is rejected.
+ * - In development: if GMAIL_PUBSUB_AUDIENCE isn't set, accepts the call
+ *   and logs a loud warning. This keeps local dev usable without GCP
+ *   credentials, but means dev environments must never be exposed publicly.
+ *
+ * If GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL is set, the verified token's
+ * `email` claim must match (defense in depth).
+ */
+async function verifyPubsubOidc(req: Request): Promise<boolean> {
+    const audience = gmailConfig.pubsubAudience
+    if (!audience) {
+        if (settings.nodeEnv === "production") {
+            logger.error("[gmail-webhook] GMAIL_PUBSUB_AUDIENCE not configured in production — refusing webhook delivery")
+            return false
+        }
+        logger.warn("[gmail-webhook] GMAIL_PUBSUB_AUDIENCE not configured — accepting delivery without OIDC verification (dev only)")
+        return true
+    }
+
+    const bearer = readBearerToken(req.headers.authorization)
+    if (!bearer) {
+        logger.warn("[gmail-webhook] Missing Pub/Sub OIDC bearer token")
+        return false
+    }
+
+    try {
+        const ticket = await pubsubOidcClient.verifyIdToken({ idToken: bearer, audience })
+        const payload = ticket.getPayload()
+        if (!payload) {
+            logger.warn("[gmail-webhook] OIDC token verified but payload was empty")
+            return false
+        }
+        if (payload.email_verified !== true) {
+            logger.warn("[gmail-webhook] OIDC token email_verified is not true", { email: payload.email })
+            return false
+        }
+        const expectedEmail = gmailConfig.pubsubServiceAccountEmail
+        if (expectedEmail && payload.email !== expectedEmail) {
+            logger.warn("[gmail-webhook] OIDC token email does not match configured service account", { email: payload.email })
+            return false
+        }
+        return true
+    } catch (error) {
+        logger.warn("[gmail-webhook] OIDC token verification failed", { error: error instanceof Error ? error.message : error })
+        return false
     }
 }
 
