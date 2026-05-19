@@ -114,8 +114,7 @@ export async function getLinearTeams(req: Request, res: Response) {
         res.status(200).json(response)
     } catch (error: unknown) {
         logger.error("Error fetching Linear teams:", { error })
-        const errorMessage = error instanceof Error ? error.message : "Failed to fetch Linear teams"
-        res.status(500).json({ error: errorMessage })
+        res.status(500).json({ error: "Failed to fetch Linear teams" })
     }
 }
 
@@ -163,8 +162,7 @@ export async function getLinearProjects(req: Request, res: Response) {
         res.status(200).json(response)
     } catch (error: unknown) {
         logger.error("Error fetching Linear projects:", { error })
-        const errorMessage = error instanceof Error ? error.message : "Failed to fetch Linear projects"
-        res.status(500).json({ error: errorMessage })
+        res.status(500).json({ error: "Failed to fetch Linear projects" })
     }
 }
 

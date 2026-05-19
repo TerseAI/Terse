@@ -54,7 +54,7 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
             integrationType: req.params.integrationType,
             userId: req.session?.user?.id
         })
-        res.status(500).json({ error: error.message || "Failed to get installation details" })
+        res.status(500).json({ error: "Failed to get installation details" })
     }
 }
 
@@ -129,7 +129,7 @@ export async function disconnectIntegration(req: Request, res: Response) {
             userId: req.session.user.id,
             organizationId: req.session.user.organizationId
         })
-        res.status(500).json({ error: error.message || "Failed to disconnect integration" })
+        res.status(500).json({ error: "Failed to disconnect integration" })
     }
 }
 
