@@ -1,5 +1,4 @@
 import net from "node:net"
-
 import { Agent, fetch as undiciFetch } from "undici"
 
 import type { ValidatedRemoteUrl } from "./urlValidation"
