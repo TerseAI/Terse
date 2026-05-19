@@ -194,8 +194,6 @@ export class GithubIntegrationManager
         })
 
         try {
-            // Verify state — throws if signature/expiry bad, or if browser
-            // flow's cookie nonce does not match.
             const stateData = verifyOAuthState(req, res, state as string)
             const user_id = stateData.userId
             const organizationId = stateData.organizationId

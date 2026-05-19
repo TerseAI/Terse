@@ -71,11 +71,6 @@ export interface FormIntegrationInstallation<T extends IntegrationType> {
 }
 
 export interface OAuthIntegrationInstallation<T extends IntegrationType> {
-    /**
-     * Generates the OAuth installation URL and binds the state to a
-     * single-use cookie nonce on `res`. The callback must validate the
-     * binding via verifyOAuthState — see utility/oauth.ts.
-     */
     getInstallationUrl(
         userId: string,
         organizationId: string,

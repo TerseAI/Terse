@@ -219,8 +219,6 @@ export class LinearIntegrationManager
         }
 
         try {
-            // Verify state — throws if signature/expiry bad, or if browser
-            // flow's cookie nonce does not match.
             const decoded = verifyOAuthState(req, res, state as string) as {
                 userId: string
                 organizationId: string

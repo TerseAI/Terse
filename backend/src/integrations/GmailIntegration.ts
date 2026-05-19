@@ -295,8 +295,6 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
         }
 
         try {
-            // Verify state — throws if signature/expiry bad, or if browser
-            // flow's cookie nonce does not match.
             const stateData = verifyOAuthState(req, res, state)
             const userId = stateData.userId
             const organizationId = stateData.organizationId
