@@ -290,6 +290,10 @@ Use this after `terse integrate connect <type>` for OAuth integrations such as S
 
 The `list`, `describe`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
 
+<Note>
+Integration setup endpoints (used by **`terse integrate`** and **`terse generate`** when loading teams, projects, repos, Notion resources, and similar metadata) return only a fixed **`error`** string on **500** responses—for example `"Failed to fetch Linear teams"` or `"Failed to disconnect integration"`. Upstream provider or database messages are not included. **4xx** responses such as `"Unauthorized"` or `"integrationId is required"` are unchanged. If codegen fails with a generic message, refresh the integration connection or contact Terse support; do not rely on parsing **500** bodies for third-party error text.
+</Note>
+
 ### `terse generate`
 
 Fetches your active integrations, their workspace resources, and the current tool definitions from Terse, then writes generated helpers for your local project.

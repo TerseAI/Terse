@@ -50,6 +50,10 @@ npm install terse-sdk zod
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
+<Note>
+**`terse-sdk`** runtime calls (`TerseAgent`, `TerseAgent.executeTool`, session streams) use different routes than integration metadata APIs behind **`terse integrate`** / **`terse generate`**. When those integration APIs fail with **500**, the JSON body includes only a fixed **`error`** string (no upstream provider text; Notion search no longer adds a **`details`** field). Non-streaming **`TerseAgent.run`** failures can still include a **`details`** array from request validation—that applies to agent runs, not integration listing.
+</Note>
+
 ## Trigger payloads
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
