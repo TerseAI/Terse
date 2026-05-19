@@ -1,6 +1,8 @@
+import crypto from "crypto"
+import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 
-import { jwt as jwtConfig } from "../config/settings"
+import { jwt as jwtConfig, settings } from "../config/settings"
 
 /**
  * OAuth state payload structure (decoded state token)
@@ -64,6 +66,12 @@ export interface OAuthStatePayloadOptions {
  * State is always JWT-signed — unsigned encodings are not supported because
  * an unsigned state lets an attacker forge userId/organizationId in the callback,
  * binding their OAuth account to a victim's tenant.
+ *
+ * NOTE: Signing alone does NOT prevent CSRF account hijacking. A signed state
+ * minted for user A can be embedded into a victim's OAuth flow, causing the
+ * victim's tokens to be stored under user A's account. For browser-initiated
+ * OAuth flows, use {@link mintBrowserOAuthState} + {@link verifyOAuthState}
+ * instead — these bind the state to a single-use cookie nonce.
  */
 export function createOAuthStateToken(options: OAuthStatePayloadOptions): string {
     const { userId, organizationId, additionalFields = {}, additionalStatePayload, expiresIn = "10m", encodeAsUriComponent = false } = options
@@ -91,4 +99,85 @@ export function createOAuthStateToken(options: OAuthStatePayloadOptions): string
  */
 export function decodeOAuthStateToken(state: string): OAuthStatePayload {
     return jwt.verify(state, jwtConfig.secret) as OAuthStatePayload
+}
+
+// ============================================================================
+// Cookie-bound OAuth state (CSRF protection)
+// ============================================================================
+
+const OAUTH_STATE_COOKIE_NAME = "TERSE_INTEGRATION_OAUTH_STATE"
+const TEN_MINUTES_MS = 10 * 60 * 1000
+
+function getOauthStateCookieOptions() {
+    const base = {
+        path: "/",
+        httpOnly: true,
+        secure: settings.nodeEnv === "production",
+        sameSite: "lax" as const,
+        maxAge: TEN_MINUTES_MS
+    }
+    return settings.optional.cookieDomain ? { ...base, domain: settings.optional.cookieDomain } : base
+}
+
+/**
+ * Browser-initiated OAuth state: binds the JWT state to a single-use nonce
+ * stored in an HttpOnly SameSite=Lax cookie. The callback must call
+ * {@link verifyOAuthState} to validate that the cookie nonce matches the
+ * embedded JWT nonce, preventing CSRF account-hijacking attacks where an
+ * attacker mints a valid state for themselves and tricks a victim into
+ * completing the OAuth flow against it.
+ *
+ * Mirrors the WorkOS login pattern in routes/auth.ts.
+ */
+export function mintBrowserOAuthState(res: Response, options: OAuthStatePayloadOptions): string {
+    const nonce = crypto.randomBytes(32).toString("hex")
+    res.cookie(OAUTH_STATE_COOKIE_NAME, nonce, getOauthStateCookieOptions())
+    return createOAuthStateToken({
+        ...options,
+        additionalFields: { ...(options.additionalFields ?? {}), nonce }
+    })
+}
+
+/**
+ * Server-initiated OAuth state for the Slack Bolt entry path: there is no
+ * browser session at mint time (the OAuth URL is generated inside a Slack
+ * message handler and delivered into the user's authenticated Slack
+ * workspace), so cookie binding cannot be applied. The state is tagged with
+ * `boltOrigin: true` so {@link verifyOAuthState} can recognize it and skip
+ * the cookie check.
+ */
+export function mintBoltOAuthState(options: OAuthStatePayloadOptions): string {
+    return createOAuthStateToken({
+        ...options,
+        additionalFields: { ...(options.additionalFields ?? {}), boltOrigin: true }
+    })
+}
+
+/**
+ * Verifies an OAuth state token at the callback. Single-use: the cookie is
+ * cleared regardless of outcome. Throws if the JWT is invalid/expired or if
+ * a browser-flow state's nonce does not match the cookie.
+ *
+ * Bolt-originated states (tagged at mint time via {@link mintBoltOAuthState})
+ * skip the cookie check because they were never associated with a browser.
+ */
+export function verifyOAuthState(req: Request, res: Response, state: string): OAuthStatePayload {
+    const cookieNonce = typeof req.cookies?.[OAUTH_STATE_COOKIE_NAME] === "string" ? (req.cookies[OAUTH_STATE_COOKIE_NAME] as string) : undefined
+    // Always clear — single-use, regardless of outcome.
+    res.clearCookie(OAUTH_STATE_COOKIE_NAME, getOauthStateCookieOptions())
+
+    const payload = decodeOAuthStateToken(state)
+
+    if (payload.boltOrigin === true) {
+        return payload
+    }
+
+    const jwtNonce = typeof payload.nonce === "string" ? payload.nonce : undefined
+    if (!cookieNonce || !jwtNonce || cookieNonce.length !== jwtNonce.length) {
+        throw new Error("OAuth state nonce mismatch — possible CSRF or stale flow")
+    }
+    if (!crypto.timingSafeEqual(Buffer.from(cookieNonce), Buffer.from(jwtNonce))) {
+        throw new Error("OAuth state nonce mismatch — possible CSRF or stale flow")
+    }
+    return payload
 }

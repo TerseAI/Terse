@@ -18,7 +18,7 @@ import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
-import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -262,15 +262,17 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
         userId: string,
         organizationId: string,
         options?: InstallationOptionsFor<IntegrationType.GMAIL>,
-        additionalStatePayload?: AdditionalStateParams
+        additionalStatePayload?: AdditionalStateParams,
+        res?: Response
     ): Promise<OAuthInstallationDetails> {
         const oauth2Client = getOAuth2Client()
 
-        const state = createOAuthStateToken({
+        const mintArgs = {
             userId,
             organizationId,
             additionalStatePayload
-        })
+        }
+        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
 
         const authUrl = oauth2Client.generateAuthUrl({
             access_type: "offline", // Get refresh token
@@ -294,8 +296,9 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
         }
 
         try {
-            // Decode state using helper function
-            const stateData = decodeOAuthStateToken(state)
+            // Verify state — throws if signature/expiry bad, or if browser
+            // flow's cookie nonce does not match.
+            const stateData = verifyOAuthState(req, res, state)
             const userId = stateData.userId
             const organizationId = stateData.organizationId
 

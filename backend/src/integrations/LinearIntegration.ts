@@ -2,7 +2,6 @@ import { LinearClient } from "@linear/sdk"
 import type { IssueFilter, IssuesQueryVariables, PaginationOrderBy } from "@linear/sdk/dist/_generated_documents"
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
-import jwt from "jsonwebtoken"
 import { LinearTrigger, LinearWebhookPayload } from "terse-types"
 import { ConfigurationFieldDefinition } from "terse-types"
 import { ConfigData, ConfigType } from "terse-types/Configs"
@@ -22,7 +21,7 @@ import { StoredFile } from "../services/FileStorageService"
 import { SecretNotFoundError } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { createOAuthStateToken } from "../utility/oauth"
+import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -176,15 +175,17 @@ export class LinearIntegrationManager
         userId: string,
         organizationId: string,
         options?: InstallationOptionsFor<IntegrationType.LINEAR>,
-        additionalStatePayload?: AdditionalStateParams
+        additionalStatePayload?: AdditionalStateParams,
+        res?: Response
     ): Promise<OAuthInstallationDetails> {
-        // Generate state token for security (prevents CSRF)
-        const state = createOAuthStateToken({
+        // Bind state to a single-use cookie nonce for browser flows.
+        const mintArgs = {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
             additionalStatePayload
-        })
+        }
+        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
 
         const clientId = settings.linear.clientId
         const redirectUri = settings.linear.oauthCallbackUrl
@@ -219,8 +220,9 @@ export class LinearIntegrationManager
         }
 
         try {
-            // Verify state token to prevent CSRF attacks
-            const decoded = jwt.verify(state as string, settings.jwt.secret) as {
+            // Verify state — throws if signature/expiry bad, or if browser
+            // flow's cookie nonce does not match.
+            const decoded = verifyOAuthState(req, res, state as string) as {
                 userId: string
                 organizationId: string
                 timestamp: number

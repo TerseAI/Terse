@@ -7,7 +7,6 @@ import { Member as SlackUserMember } from "@slack/web-api/dist/types/response/Us
 import axios from "axios"
 import crypto from "crypto"
 import { Request, Response } from "express"
-import jwt from "jsonwebtoken"
 import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage, SlackTrigger } from "terse-types"
 import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
@@ -17,7 +16,7 @@ import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChan
 import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { jwt as jwtConfig, slack as slackConfig, urls } from "../config/settings"
+import { slack as slackConfig, urls } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
 import { Identifiable } from "../rag/Hydrator"
@@ -25,8 +24,7 @@ import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensure
 import { GetSecretsArg, SecretService } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
-import { Jwt } from "../utility/jwt"
-import { createOAuthStateToken } from "../utility/oauth"
+import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -249,7 +247,8 @@ export class SlackIntegrationManager
         userId: string,
         organizationId: string,
         options?: InstallationOptionsFor<IntegrationType.SLACK>,
-        additionalStatePayload?: AdditionalStateParams
+        additionalStatePayload?: AdditionalStateParams,
+        res?: Response
     ): Promise<OAuthInstallationDetails> {
         if (!options) {
             throw new Error("Slack integration requires options (isBotUser)")
@@ -262,14 +261,14 @@ export class SlackIntegrationManager
         const user_scope = isBotUser
             ? ""
             : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write,reactions:read,reactions:write,files:read"
-        const state = createOAuthStateToken({
+        const mintArgs = {
             userId,
             organizationId,
             additionalFields: { isBotUser },
             additionalStatePayload,
-            expiresIn: "7d",
             encodeAsUriComponent: true
-        })
+        }
+        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
 
         const encodedRedirectUri = encodeURIComponent(redirect_uri)
         const url = `https://slack.com/oauth/v2/authorize?scope=${scope}&user_scope=${user_scope}&redirect_uri=${encodedRedirectUri}&client_id=${client_id}&state=${state}`
@@ -299,21 +298,11 @@ export class SlackIntegrationManager
             return
         }
 
-        const jwtUtil = new Jwt()
-        const user = await jwtUtil.verify(state)
-
-        if (!user) {
-            logger.error("Invalid or expired state token")
-            res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
-            return
-        }
-
-        // Decode the full JWT state payload
         let decoded: any
         try {
-            decoded = jwt.verify(state, jwtConfig.secret)
+            decoded = verifyOAuthState(req, res, state)
         } catch (error) {
-            logger.error("Error decoding JWT state", { error })
+            logger.error("Invalid OAuth state — rejecting Slack callback", { error })
             res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
             return
         }
@@ -321,7 +310,7 @@ export class SlackIntegrationManager
 
         if (!organizationId || typeof organizationId !== "string") {
             logger.error("Slack OAuth: organizationId is required in state", {
-                userId: user.user.id
+                userId: decoded.userId
             })
             res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
             return
@@ -437,14 +426,14 @@ export class SlackIntegrationManager
                 const createData =
                     isUserType && authed_user.access_token
                         ? {
-                              user_id: user.user.id,
+                              user_id: decoded.userId,
                               slack_team_id: slackIntegration.team_id,
                               authed_user_id: authed_user.id,
                               is_bot_user: false,
                               organization_id: organizationId
                           }
                         : {
-                              user_id: user.user.id,
+                              user_id: decoded.userId,
                               slack_team_id: slackIntegration.team_id,
                               authed_user_id: authed_user.id,
                               is_bot_user: true,
@@ -454,7 +443,7 @@ export class SlackIntegrationManager
                 const upsertedUserSlackIntegration = await tx.user_slack_integrations.upsert({
                     where: {
                         user_id_slack_team_id_is_bot_user: {
-                            user_id: user.user.id,
+                            user_id: decoded.userId,
                             slack_team_id: slackIntegration.team_id,
                             is_bot_user: !isUserType
                         }
@@ -470,7 +459,7 @@ export class SlackIntegrationManager
 
             if (!slackIntegration) {
                 logger.error("Failed to resolve slack integration after OAuth", {
-                    userId: user.user.id,
+                    userId: decoded.userId,
                     teamId: team.id
                 })
                 res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
@@ -494,7 +483,7 @@ export class SlackIntegrationManager
 
             if (!userSlackIntegration) {
                 logger.error("Failed to find user_slack_integration after OAuth", {
-                    userId: user.user.id,
+                    userId: decoded.userId,
                     teamId: team.id
                 })
                 res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`)
@@ -505,7 +494,7 @@ export class SlackIntegrationManager
             integrationTaskQueue.emit(new IntegrationCompletedTask(IntegrationType.SLACK, userSlackIntegration.id, decoded.userId, decoded, new Date()))
 
             logger.info("Slack OAuth completed successfully", {
-                userId: user.user.id,
+                userId: decoded.userId,
                 teamId: team.id,
                 integrationId: userSlackIntegration.id
             })

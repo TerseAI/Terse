@@ -24,7 +24,7 @@ import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
-import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -157,17 +157,19 @@ export class GithubIntegrationManager
         userId: string,
         organizationId: string,
         options?: InstallationOptionsFor<IntegrationType.GITHUB>,
-        additionalStatePayload?: AdditionalStateParams
+        additionalStatePayload?: AdditionalStateParams,
+        res?: Response
     ): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName
         const clientId = githubApp.clientId
         const redirectUri = githubApp.integrateCallbackUrl
 
-        const state = createOAuthStateToken({
+        const mintArgs = {
             userId,
             organizationId,
             additionalStatePayload
-        })
+        }
+        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
 
         const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(
             redirectUri
@@ -193,8 +195,9 @@ export class GithubIntegrationManager
         })
 
         try {
-            // Decode state using helper function (can throw)
-            const stateData = decodeOAuthStateToken(state as string)
+            // Verify state — throws if signature/expiry bad, or if browser
+            // flow's cookie nonce does not match.
+            const stateData = verifyOAuthState(req, res, state as string)
             const user_id = stateData.userId
             const organizationId = stateData.organizationId
 
