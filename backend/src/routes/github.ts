@@ -150,7 +150,7 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
         const result = await fetchGithubRepositoriesForIntegration(req.session.user.organizationId, installationId)
         res.status(200).json(result)
     } catch (error) {
-        const routeError = error as RouteError
-        res.status(routeError.statusCode || 500).json({ message: routeError.message || "Failed to fetch repositories" })
+        logger.error("Unhandled error in getGithubRepositoriesForIntegration", { error, installationId })
+        res.status(500).json({ message: "Failed to fetch repositories" })
     }
 }
