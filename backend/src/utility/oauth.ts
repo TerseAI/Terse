@@ -76,7 +76,7 @@ export function createOAuthStateToken(options: OAuthStatePayloadOptions): string
 }
 
 export function decodeOAuthStateToken(state: string): OAuthStatePayload {
-    return jwt.verify(state, jwtConfig.secret) as OAuthStatePayload
+    return jwt.verify(state, jwtConfig.secret, { algorithms: ["HS256"] }) as OAuthStatePayload
 }
 
 const OAUTH_STATE_COOKIE_NAME = "TERSE_INTEGRATION_OAUTH_STATE"

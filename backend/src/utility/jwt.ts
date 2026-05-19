@@ -27,7 +27,7 @@ export class Jwt {
 
     async verify(token: string): Promise<{ user: users; organizationId?: string } | null> {
         try {
-            const decoded = jwt.verify(token, jwtConfig.secret) as { userId: string; organizationId?: string }
+            const decoded = jwt.verify(token, jwtConfig.secret, { algorithms: ["HS256"] }) as { userId: string; organizationId?: string }
             const user = await db().users.findUnique({ where: { id: decoded.userId } })
             if (!user) return null
             return { user, organizationId: decoded.organizationId }
@@ -38,7 +38,7 @@ export class Jwt {
 
     async verifyGitHubApp(token: string): Promise<boolean> {
         try {
-            let decoded = jwt.verify(token, jwtConfig.secret)
+            let decoded = jwt.verify(token, jwtConfig.secret, { algorithms: ["HS256"] })
             return true
         } catch (error) {
             return false
