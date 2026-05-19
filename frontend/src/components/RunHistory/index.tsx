@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { RunHistoryRecord, RunHistoryStatus } from "terse-types"
@@ -106,9 +106,6 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
         to: undefined
     })
 
-    // Keep a reference to the currently viewed run so it doesn't disappear if filtered out
-    const pinnedRunRef = useRef<RunHistoryRecord | null>(null)
-
     const {
         runs: remoteRuns,
         total,
@@ -122,45 +119,9 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
         selectedStatuses
     })
 
-    // Update the pinned run reference when we have a new run with the open drawer ID
-    useEffect(() => {
-        pinnedRunRef.current = remoteRuns[0]
-    }, [remoteRuns])
-
-    // Include the pinned run in the list if it's not already there
-    const filteredRuns = useMemo(() => {
-        if (!pinnedRunRef.current) {
-            return remoteRuns
-        }
-
-        const pinnedRun = pinnedRunRef.current
-        const isInList = remoteRuns.some(r => r.id === pinnedRun.id)
-
-        if (isInList) {
-            return remoteRuns
-        }
-
-        // Pinned run is not in the list (was filtered out), add it back at the appropriate position
-        // Insert based on timestamp to maintain order
-        const runsWithPinned = [...remoteRuns]
-        const pinnedTimestamp = new Date(pinnedRun.timestamp).getTime()
-
-        // Find the right position (runs are typically sorted by timestamp desc)
-        let insertIndex = runsWithPinned.findIndex(r => new Date(r.timestamp).getTime() < pinnedTimestamp)
-
-        if (insertIndex === -1) {
-            // Pinned run is oldest, add at the end
-            runsWithPinned.push(pinnedRun)
-        } else {
-            runsWithPinned.splice(insertIndex, 0, pinnedRun)
-        }
-
-        return runsWithPinned
-    }, [remoteRuns])
-
     const totalPages = Math.ceil(total / runsPerPage) || 1
     const startIndex = (currentPage - 1) * runsPerPage
-    const paginatedRuns = filteredRuns // server provides paginated items already
+    const paginatedRuns = remoteRuns // server provides paginated items already
 
     useDeepLinkedRun({
         agentId,
@@ -213,7 +174,7 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
 
                 {isLoading ? (
                     <RunHistoryLoadingState />
-                ) : filteredRuns.length === 0 ? (
+                ) : paginatedRuns.length === 0 ? (
                     <RunHistoryEmptyState
                         hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length}
                         onClearAll={() => {
