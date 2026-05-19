@@ -3,7 +3,6 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { DatadogIntegrationManager } from "../integrations/DatadogIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretService } from "../services/SecretService"
@@ -45,10 +44,6 @@ export async function createOrUpdateDatadogIntegration(req: Request, res: Respon
             res.status(result.statusCode ?? 400).json(result)
             return
         }
-
-        const organizationId = req.session.user.organizationId
-        const stateToken = (req.query.state as string) || req.body?.state
-        await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, input.userId, organizationId, IntegrationType.DATADOG)
 
         res.status(result.statusCode ?? 200).json(result)
     } catch (error) {
