@@ -9,7 +9,7 @@ import { SecretService } from "../../../services/SecretService"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 
-import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders } from "./mime"
+import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders, sanitizeHeaderValue } from "./mime"
 
 /**
  * Tool for creating draft emails in Gmail.
@@ -57,15 +57,17 @@ export const gmailCreateDraftTool = defineSessionTool({
 
             const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
-            // Build email headers
-            const headers: string[] = [`To: ${to}`, `Subject: ${encodeSubjectHeader(subject)}`]
+            // Build email headers.
+            // sanitizeHeaderValue rejects CRLF in to/cc/bcc so an LLM-controlled value can't
+            // smuggle an additional header (e.g. silent Bcc to an attacker address).
+            const headers: string[] = [`To: ${sanitizeHeaderValue(to, "to")}`, `Subject: ${encodeSubjectHeader(subject)}`]
 
             if (cc) {
-                headers.push(`Cc: ${cc}`)
+                headers.push(`Cc: ${sanitizeHeaderValue(cc, "cc")}`)
             }
 
             if (bcc) {
-                headers.push(`Bcc: ${bcc}`)
+                headers.push(`Bcc: ${sanitizeHeaderValue(bcc, "bcc")}`)
             }
 
             // Add custom headers (e.g., List-Unsubscribe).

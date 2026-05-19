@@ -8,7 +8,27 @@ function getRandomBoundary(): string {
     return `mime_boundary_${randomUUID()}`
 }
 
+/**
+ * Reject any header value containing CR or LF. The headers array is joined
+ * with `\r\n`, so a CRLF in any value lets the LLM smuggle an additional
+ * header (e.g. `Bcc: attacker@evil.com`) into the outgoing MIME message —
+ * the exact silent-Bcc / from-spoof attack `BLOCKED_CUSTOM_HEADERS` was
+ * designed to prevent, just via a different field.
+ *
+ * Used for the standard header fields (To/Cc/Bcc/Subject) that
+ * sanitizeCustomHeaders doesn't cover.
+ */
+export function sanitizeHeaderValue(value: string, fieldName: string): string {
+    if (/[\r\n]/.test(value)) {
+        throw new Error(`Invalid \`${fieldName}\`: header values must not contain CR or LF characters.`)
+    }
+    return value
+}
+
 export function encodeSubjectHeader(subject: string): string {
+    // Refuse CRLF first — the ASCII fast-path below would otherwise pass it
+    // through and let it smuggle a header into the outgoing MIME message.
+    sanitizeHeaderValue(subject, "subject")
     // Keep ASCII subjects unchanged; encode non-ASCII as RFC 2047 UTF-8 Base64 encoded-word.
     if (/^[\x00-\x7F]*$/.test(subject)) {
         return subject
