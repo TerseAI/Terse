@@ -27,7 +27,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretNotFoundError, SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
-import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { buildAttioWebhookUrl } from "../utility/webhookUrl"
 import { getUserForOrg } from "../utility/workos"
 
@@ -216,10 +216,11 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.ATTIO>,
-        additionalStatePayload?: AdditionalStateParams
+        options: InstallationOptionsFor<IntegrationType.ATTIO> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
-        const state = createOAuthStateToken({
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
@@ -252,7 +253,7 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
         }
 
         try {
-            const decoded = decodeOAuthStateToken(state as string) as {
+            const decoded = verifyOAuthState(req, res, state as string) as {
                 userId: string
                 organizationId: string
                 timestamp: number

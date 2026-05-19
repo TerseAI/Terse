@@ -21,7 +21,7 @@ import { StoredFile } from "../services/FileStorageService"
 import { SecretNotFoundError } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -174,11 +174,12 @@ export class LinearIntegrationManager
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.LINEAR>,
-        additionalStatePayload?: AdditionalStateParams
+        options: InstallationOptionsFor<IntegrationType.LINEAR> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
-        // Generate state token for security (prevents CSRF)
-        const state = createOAuthStateToken({
+        // Bind state to a single-use cookie nonce.
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
@@ -218,8 +219,7 @@ export class LinearIntegrationManager
         }
 
         try {
-            // Verify state token to prevent CSRF attacks
-            const decoded = decodeOAuthStateToken(state as string) as {
+            const decoded = verifyOAuthState(req, res, state as string) as {
                 userId: string
                 organizationId: string
                 timestamp: number

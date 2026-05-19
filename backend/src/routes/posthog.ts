@@ -4,7 +4,6 @@ import { PosthogProjectsResponse } from "terse-types/types"
 
 import { PosthogIntegrationManager } from "../integrations/PosthogIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretService } from "../services/SecretService"
@@ -42,12 +41,6 @@ export async function createOrUpdatePosthogIntegration(req: Request, res: Respon
                 ...(result.data || {})
             })
             return
-        }
-
-        const organizationId = req.session?.user?.organizationId
-        if (organizationId) {
-            const stateToken = (req.query.state as string) || req.body?.state
-            await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, input.userId, organizationId, IntegrationType.POSTHOG)
         }
 
         res.status(result.statusCode || 200).json(result.data || { success: true })
