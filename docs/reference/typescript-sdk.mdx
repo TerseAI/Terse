@@ -124,6 +124,12 @@ for await (const chunk of agent.run("Summarize pipeline risk.")) {
 
 Use `run` when you want to stream output progressively.
 
+Assistant text from `run()` (`EventType.TEXT` chunks and the stored conversation in Activity) is rendered in the Terse app as **GitHub Flavored Markdown**: headings, emphasis, lists, fenced code blocks, links, and tables. Use markdown when you want readable formatting in run views and Activity replay.
+
+The app does not execute HTML in assistant messages. If the model echoes raw HTML from an integration payload (for example tags copied from a GitHub PR body), it appears as plain text. Rely on markdown for structure; do not depend on inline HTML.
+
+`terse test -v`, `terse listen -v`, and other CLI commands that stream agent output print assistant text as plain text in your terminal, without markdown styling.
+
 ### `runAndWait(userMessage)`
 
 Waits for the model to complete and returns the final output string.

@@ -42,7 +42,7 @@ Actions are categorized by type: `create`, `update`, `delete`, `read`, `approve`
 
 ### Raw event stream
 
-The full model conversation is stored as a sequence of raw events: every prompt, tool call, tool result, and model response, in order. This is what powers the run replay in the Activity drawer. You can step through the entire execution and see exactly what the model was thinking and doing at each point.
+The full model conversation is stored as a sequence of raw events: every prompt, tool call, tool result, and model response, in order. This is what powers the run replay in the Activity drawer. You can step through the entire execution and see exactly what the model was thinking and doing at each point. Assistant messages in the replay are rendered as [GitHub Flavored Markdown](https://github.github.com/gfm/); raw HTML in the text is shown literally, not executed.
 
 ## Activity tab
 
