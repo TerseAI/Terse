@@ -12,10 +12,12 @@ An integration is a connection to an external service. When you run `terse integ
 
 Terse supports two connection types:
 
-| Type      | Flow                                                        | Examples                                         |
-| --------- | ----------------------------------------------------------- | ------------------------------------------------ |
-| **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
-| **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
+| Type      | Flow                                                        | Examples                                                    |
+| --------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
+| **OAuth** | Opens your browser for authorization                        | Attio, GitHub, Gmail, Linear, Notion, Slack                 |
+| **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, HeyReach, LaunchDarkly, PostHog, Snowflake, WorkOS |
+
+Connect OAuth integrations from the Terse app (**Integrations**) or with `terse integrate` / `terse integrate connect`. Terse binds each OAuth flow to the browser session that started it: finish authorization in the same browser Terse opened, do not copy the provider URL to another browser or device, and complete the flow within **10 minutes** (then start again if it expires).
 
 After connecting, run `terse generate` to turn your active integrations into typed code.
 

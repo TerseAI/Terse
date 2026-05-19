@@ -50,6 +50,10 @@ npm install terse-sdk zod
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
+<Note>
+    Connecting OAuth integrations (Attio, GitHub, Gmail, Linear, Notion, Slack) is not part of the SDK API—use the Terse app **Integrations** page or [`terse integrate`](/reference/cli#terse-integrate). Each OAuth flow must finish in the same browser session that started it, within **10 minutes**. After you connect, run `terse generate` so `Triggers` and `Skills` in `src/terse.generated.ts` match your workspace.
+</Note>
+
 ## Trigger payloads
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
