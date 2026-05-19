@@ -23,13 +23,16 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
 
         After a new source image is built, Terse pre-warms a runtime sandbox from it so the first run after a deploy starts as fast as possible.
     </Step>
-    <Step title="Triggers and skills are registered">
+    <Step title="Triggers are registered">
         Each job's triggers (e.g. a GitHub webhook, a cron schedule) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never need to reconfigure external
         services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.
     </Step>
     <Step title="A trigger fires">
-        When an event matches one of your triggers, Terse launches an isolated [Modal](https://modal.com) sandbox from the pre-built source image for that deploy. Because your code and dependencies
-        are already baked into the image, the sandbox starts immediately — there is no extraction step and no package installation at runtime.
+        When an event matches one of your triggers, Terse launches an isolated [Modal](https://modal.com) sandbox to run your workflow. In the usual case, the sandbox starts from the pre-built source
+        image for that deploy, so your code, dependencies, and the matching `terse-cli` version are already present and the run starts immediately.
+
+        If that image is not available yet (for example while images are still building after a deploy, or when the image cache is cold), the sandbox installs your project's production dependencies
+        and runs `npm install -g terse-cli@<version>` before invoking `terse run`. You do not configure this fallback yourself; Terse uses the CLI version pinned for your project.
     </Step>
     <Step title="Your handler executes">
         Your `onTrigger` handler runs inside the container with the serialized trigger payload. It can call tools deterministically, prompt the agent, or both. When the run completes, the container
