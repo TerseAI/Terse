@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import ReactMarkdown from "react-markdown"
+
 import remarkGfm from "remark-gfm"
 
 // Markdown component overrides apply the same Tailwind classes the old
@@ -86,19 +87,11 @@ function TokenStream({ text, disableAnimation = false, onComplete }: { text: str
         }
     }, [visibleText, text, onComplete])
 
-    const isStreaming = !disableAnimation && visibleText !== text
-
     return (
         <div className="text-foreground text-md leading-relaxed text-wrap-pretty select-text">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {visibleText}
             </ReactMarkdown>
-            {isStreaming && (
-                // Blinking cursor at the end while content is still arriving.
-                // Uses Tailwind's built-in animate-pulse (2s opacity loop) so we
-                // don't need to ship custom keyframes.
-                <span aria-hidden="true" className="inline-block w-[0.4em] h-[1em] -mb-0.5 ml-0.5 align-text-bottom bg-current animate-pulse" />
-            )}
         </div>
     )
 }
