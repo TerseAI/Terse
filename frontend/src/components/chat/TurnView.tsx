@@ -15,20 +15,19 @@ import { ToolCallUnit } from "./units/ToolCallUnit"
 
 interface TurnViewProps {
     turn: Turn
-    isLatestAssistantTurn?: boolean
     disableAnimation?: boolean
-    onAssistantTextDisplayComplete?: () => void
     onApprove?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onReject?: (stepId: string, options?: ToolApprovalResponseOptions) => void
     onSendMessage?: (message: string) => void
     onMultipleChoiceAnswer?: (questionId: string, value: string) => void
 }
 
-export function TurnView({ turn, isLatestAssistantTurn = false, disableAnimation = false, onAssistantTextDisplayComplete, onApprove, onReject, onSendMessage, onMultipleChoiceAnswer }: TurnViewProps) {
+export function TurnView({ turn, disableAnimation = false, onApprove, onReject, onSendMessage, onMultipleChoiceAnswer }: TurnViewProps) {
     const isUser = turn.role === "user"
-    const textUnits = turn.units.filter(unit => unit.kind === "text")
-    const textForActions = textUnits.map(unit => unit.text).join("")
-    const lastTextUnit = textUnits[textUnits.length - 1]
+    const textForActions = turn.units
+        .filter(unit => unit.kind === "text")
+        .map(unit => unit.text)
+        .join("")
     const showAssistantActions = turn.role === "assistant" && turn.status !== "generating" && textForActions.length > 0
 
     if (turn.status === "cancelled") return null
@@ -67,14 +66,7 @@ export function TurnView({ turn, isLatestAssistantTurn = false, disableAnimation
                 {turn.units.map((unit, index) => {
                     switch (unit.kind) {
                         case "text":
-                            return (
-                                <TextUnit
-                                    key={unit.unitId}
-                                    unit={unit}
-                                    disableAnimation={disableAnimation || turn.disableAnimation}
-                                    onComplete={isLatestAssistantTurn && unit.unitId === lastTextUnit?.unitId ? onAssistantTextDisplayComplete : undefined}
-                                />
-                            )
+                            return <TextUnit key={unit.unitId} unit={unit} disableAnimation={disableAnimation || turn.disableAnimation} />
                         case "tool_call":
                             return (
                                 <ToolCallUnit
