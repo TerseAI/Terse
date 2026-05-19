@@ -175,6 +175,7 @@ terse deploy --entry-file src/server.ts
 - Existing workflows are updated
 - Workflows removed from your code are removed from Terse
 - For each workflow that includes a **webhook** trigger, the CLI prints a **Webhook URL** line after deploy so you can wire up external systems without opening the app
+- On **hosted** projects, the CLI reports **Building dependency image** and **Building source image** while Terse prepares cached runtimes from your `package.json`. If those stages fail due to a transient error, run `terse deploy` again—you do not need to change project code to recover
 
 **Deployment modes:**
 

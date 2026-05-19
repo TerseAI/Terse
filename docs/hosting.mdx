@@ -13,6 +13,9 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
         The CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. Archives are
         content-addressed by SHA-256 hash, so identical code across deploys is automatically deduplicated.
     </Step>
+    <Step title="Runtime images are prepared (hosted)">
+        For hosted projects, Terse installs dependencies from your `package.json` and caches sandbox images so later runs start quickly. The CLI shows **Building dependency image** and **Building source image** during this step. If preparation fails because of a transient error (for example a network timeout), run `terse deploy` again—Terse discards the failed build environment instead of reusing broken state on the next attempt.
+    </Step>
     <Step title="Triggers and skills are registered">
         Each job's triggers (e.g. a GitHub webhook, a cron schedule) and skills (e.g. Slack, Apollo) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never
         need to reconfigure external services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.
