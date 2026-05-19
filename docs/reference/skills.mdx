@@ -109,6 +109,12 @@ skills: [Skills.gmail()]
 | `gmail_send_email`   | Send emails or reply to threads      | Write  |
 | `gmail_create_draft` | Create draft emails for human review | Write  |
 
+Both tools accept `to`, `cc`, `bcc`, `subject`, at least one of `body` or `html_body`, optional `thread_id` (Gmail thread id for replies), `image_urls` for inline CID attachments in HTML, and optional `custom_headers` for standards-compliant extras such as `List-Unsubscribe`.
+
+`to`, `cc`, `bcc`, and `subject` must be single-line strings with no carriage return or line feed characters. If any contain `\r` or `\n`, the tool call fails with an error instead of sending the message. Non-ASCII subjects (emoji, em dashes) are still supported via RFC 2047 encoding.
+
+For `custom_headers`, Terse blocks keys that would override routing fields such as `To`, `Cc`, `Bcc`, or `Subject`, and drops custom header keys or values that contain CR/LF.
+
 ## Snowflake
 
 Read-only SQL query execution.
