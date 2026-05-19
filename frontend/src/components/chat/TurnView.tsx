@@ -24,7 +24,10 @@ interface TurnViewProps {
 
 export function TurnView({ turn, disableAnimation = false, onApprove, onReject, onSendMessage, onMultipleChoiceAnswer }: TurnViewProps) {
     const isUser = turn.role === "user"
-    const textForActions = turn.units.filter(unit => unit.kind === "text").map(unit => unit.text).join("")
+    const textForActions = turn.units
+        .filter(unit => unit.kind === "text")
+        .map(unit => unit.text)
+        .join("")
     const showAssistantActions = turn.role === "assistant" && turn.status !== "generating" && textForActions.length > 0
 
     if (turn.status === "cancelled") return null

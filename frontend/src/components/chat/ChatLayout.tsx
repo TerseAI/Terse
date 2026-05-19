@@ -114,14 +114,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                 <div className="flex-grow" />
                 <div ref={contentRef} className="space-y-1">
                     {turns.map(turn => (
-                        <TurnView
-                            key={turn.id}
-                            turn={turn}
-                            onApprove={onApprove}
-                            onReject={onReject}
-                            onSendMessage={onSendMessage}
-                            onMultipleChoiceAnswer={onMultipleChoiceAnswer}
-                        />
+                        <TurnView key={turn.id} turn={turn} onApprove={onApprove} onReject={onReject} onSendMessage={onSendMessage} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
                     ))}
 
                     {isPendingAssistantResponse && <AwaitingResponseAnimation />}
