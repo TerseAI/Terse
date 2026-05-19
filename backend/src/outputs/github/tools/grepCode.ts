@@ -56,7 +56,13 @@ This is more precise than semantic search - use it when you know exactly what te
         assertNoSearchQualifiers(pattern, "pattern")
         // Quote-wrap unconditionally so asymmetric / interior quotes can't
         // break the literal-token wrapping.
-        const query = [quoteGrepPattern(pattern), assertSimpleQualifierValue(fileExtension, "fileExtension") ? `extension:${fileExtension}` : null, assertSimpleQualifierValue(path, "path") ? `path:${path}` : null].filter(Boolean).join(" ")
+        const query = [
+            quoteGrepPattern(pattern),
+            assertSimpleQualifierValue(fileExtension, "fileExtension") ? `extension:${fileExtension}` : null,
+            assertSimpleQualifierValue(path, "path") ? `path:${path}` : null
+        ]
+            .filter(Boolean)
+            .join(" ")
 
         const pageNumber = Math.max(1, page ?? 1)
         const normalizedPerPage = Math.min(perPage || 20, 100)
