@@ -125,8 +125,6 @@ export const getNotionResources = async (req: Request, res: Response) => {
         res.status(200).json(response)
     } catch (error: any) {
         logger.error("Error searching Notion resources:", { error })
-        // Don't include error.message — Notion SDK errors carry workspace
-        // IDs, auth details, and secret-manager error specifics.
         res.status(500).json({ error: "Failed to search resources" })
     }
 }
