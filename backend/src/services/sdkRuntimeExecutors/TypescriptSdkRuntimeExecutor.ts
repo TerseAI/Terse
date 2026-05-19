@@ -43,10 +43,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             throw new Error("package.json is required to build the TypeScript sandbox image")
         }
 
-        await context.ensureSandboxCommand(
-            "prepare TypeScript image filesystem",
-            `export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -y -qq unzip >/dev/null && mkdir -p ${templateDir}`
-        )
+        await context.ensureSandboxCommand("prepare TypeScript image filesystem", `mkdir -p ${templateDir}`)
 
         await context.writeFile(`${context.templateDir}/package.json`, packageJson)
 
