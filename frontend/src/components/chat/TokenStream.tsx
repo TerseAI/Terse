@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import ReactMarkdown from "react-markdown"
 
 import remarkGfm from "remark-gfm"
@@ -33,13 +33,12 @@ const REVEAL_TICK_MS = 20
 const REVEAL_MIN_CHARS = 3
 const REVEAL_CATCHUP_DIVISOR = 8
 
-function TokenStream({ text, disableAnimation = false, onComplete }: { text: string; disableAnimation?: boolean; onComplete?: () => void }) {
+function TokenStream({ text, disableAnimation = false }: { text: string; disableAnimation?: boolean }) {
     // `visibleText` is the throttled prefix of `text`. We render Markdown
     // on this string directly — same render path while streaming and after,
     // so headings, bold, code fences, etc. form *live* as characters arrive
     // (the Claude / ChatGPT UX). No mode switch means no flicker.
     const [visibleText, setVisibleText] = useState(disableAnimation ? text : "")
-    const lastCompletedRef = useRef<string>("")
 
     // When animation is disabled (e.g. historical messages on initial load),
     // jump straight to the full text.
@@ -78,14 +77,6 @@ function TokenStream({ text, disableAnimation = false, onComplete }: { text: str
         }, REVEAL_TICK_MS)
         return () => clearInterval(interval)
     }, [text, visibleText, disableAnimation])
-
-    // Fire onComplete once the visible content catches up to the latest text.
-    useEffect(() => {
-        if (visibleText === text && text.length > 0 && lastCompletedRef.current !== text) {
-            lastCompletedRef.current = text
-            onComplete?.()
-        }
-    }, [visibleText, text, onComplete])
 
     return (
         <div className="text-foreground text-md leading-relaxed text-wrap-pretty select-text">
