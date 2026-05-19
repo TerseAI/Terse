@@ -71,7 +71,13 @@ export interface FormIntegrationInstallation<T extends IntegrationType> {
 }
 
 export interface OAuthIntegrationInstallation<T extends IntegrationType> {
-    getInstallationUrl(userId: string, organizationId: string, options?: InstallationOptionsFor<T>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails>
+    getInstallationUrl(
+        userId: string,
+        organizationId: string,
+        options: InstallationOptionsFor<T> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
+    ): Promise<OAuthInstallationDetails>
     processInstallationCallback(req: Request, res: Response): Promise<void>
     refreshToken(integrationId: string): Promise<boolean>
     getAccessToken(integrationId: string): Promise<string | null>

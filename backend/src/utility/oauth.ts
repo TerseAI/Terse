@@ -1,12 +1,9 @@
+import crypto from "crypto"
+import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 
-import { jwt as jwtConfig } from "../config/settings"
+import { jwt as jwtConfig, settings } from "../config/settings"
 
-/**
- * OAuth state payload structure (decoded state token)
- * This represents the structure of the state payload used in OAuth flows
- * Generic type that can contain any fields - specific fields are added at runtime
- */
 export interface OAuthStatePayload {
     /**
      * User ID (required)
@@ -58,13 +55,6 @@ export interface OAuthStatePayloadOptions {
     encodeAsUriComponent?: boolean
 }
 
-/**
- * Creates an OAuth state token signed as a JWT.
- *
- * State is always JWT-signed — unsigned encodings are not supported because
- * an unsigned state lets an attacker forge userId/organizationId in the callback,
- * binding their OAuth account to a victim's tenant.
- */
 export function createOAuthStateToken(options: OAuthStatePayloadOptions): string {
     const { userId, organizationId, additionalFields = {}, additionalStatePayload, expiresIn = "10m", encodeAsUriComponent = false } = options
 
@@ -85,10 +75,45 @@ export function createOAuthStateToken(options: OAuthStatePayloadOptions): string
     return encodeAsUriComponent ? encodeURIComponent(encodedState) : encodedState
 }
 
-/**
- * Decodes and verifies an OAuth state token. Throws if the signature is
- * invalid or the token has expired — there is no unsigned fallback.
- */
 export function decodeOAuthStateToken(state: string): OAuthStatePayload {
     return jwt.verify(state, jwtConfig.secret) as OAuthStatePayload
+}
+
+const OAUTH_STATE_COOKIE_NAME = "TERSE_INTEGRATION_OAUTH_STATE"
+const TEN_MINUTES_MS = 10 * 60 * 1000
+
+function getOauthStateCookieOptions() {
+    const base = {
+        path: "/",
+        httpOnly: true,
+        secure: settings.nodeEnv === "production",
+        sameSite: "lax" as const,
+        maxAge: TEN_MINUTES_MS
+    }
+    return settings.optional.cookieDomain ? { ...base, domain: settings.optional.cookieDomain } : base
+}
+
+export function mintBrowserOAuthState(res: Response, options: OAuthStatePayloadOptions): string {
+    const nonce = crypto.randomBytes(32).toString("hex")
+    res.cookie(OAUTH_STATE_COOKIE_NAME, nonce, getOauthStateCookieOptions())
+    return createOAuthStateToken({
+        ...options,
+        additionalFields: { ...(options.additionalFields ?? {}), nonce }
+    })
+}
+
+export function verifyOAuthState(req: Request, res: Response, state: string): OAuthStatePayload {
+    const cookieNonce = typeof req.cookies?.[OAUTH_STATE_COOKIE_NAME] === "string" ? (req.cookies[OAUTH_STATE_COOKIE_NAME] as string) : undefined
+    // Always clear — single-use, regardless of outcome.
+    res.clearCookie(OAUTH_STATE_COOKIE_NAME, getOauthStateCookieOptions())
+
+    const payload = decodeOAuthStateToken(state)
+    const jwtNonce = typeof payload.nonce === "string" ? payload.nonce : undefined
+    if (!cookieNonce || !jwtNonce || cookieNonce.length !== jwtNonce.length) {
+        throw new Error("OAuth state nonce mismatch — possible CSRF or stale flow")
+    }
+    if (!crypto.timingSafeEqual(Buffer.from(cookieNonce), Buffer.from(jwtNonce))) {
+        throw new Error("OAuth state nonce mismatch — possible CSRF or stale flow")
+    }
+    return payload
 }

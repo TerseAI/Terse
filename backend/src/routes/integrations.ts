@@ -46,7 +46,7 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
 
         const userId = req.session.user.id
         const organizationId = req.session.user.organizationId
-        const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId, organizationId, options, additionalStatePayload)
+        const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId, organizationId, options, additionalStatePayload, res)
         res.json(installationDetails)
     } catch (error: any) {
         logger.error("Error getting installation details", {
@@ -63,7 +63,8 @@ const getInstallationInformation = async (
     userId: string,
     organizationId: string,
     options: InstallationOptionsFor<IntegrationType>,
-    additionalStatePayload?: Record<string, string>
+    additionalStatePayload: Record<string, string> | undefined,
+    res: Response
 ): Promise<OAuthInstallationDetails> => {
     const integrationInstance = INTEGRATION_REGISTRY.find(instance => instance.integrationType === integration)
     if (!integrationInstance) {
@@ -71,7 +72,7 @@ const getInstallationInformation = async (
     }
 
     if (isOAuthIntegrationInstallation<typeof integration>(integrationInstance)) {
-        return await integrationInstance.getInstallationUrl(userId, organizationId, options, additionalStatePayload)
+        return await integrationInstance.getInstallationUrl(userId, organizationId, options, additionalStatePayload, res)
     }
 
     throw new Error(`Integration ${integration} does not support installation`)
