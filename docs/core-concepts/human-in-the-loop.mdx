@@ -6,7 +6,7 @@ icon: "shield-check"
 
 Not every tool call should run automatically. When a workflow writes to a production CRM, sends a customer-facing email, or executes a database query, you may want a human to review and approve before it goes through. Tool approvals give you that checkpoint.
 
-You declare which tools need approval in your job definition. When the model (or your code) calls one of those tools, the run pauses, notifies you, and waits for a decision. Approve to continue; reject to stop that tool call.
+You declare which tools need approval in your job definition. When the model (or your code) calls one of those tools, the run pauses, notifies you, and waits for a decision. Approve to continue and execute the tool. Reject blocks that tool call from running; **Reject** in Slack ends the run as **Cancelled**.
 
 ## Configuring tool approvals
 

@@ -9,6 +9,8 @@ Terse workflows combine two sources:
 - the public `terse-sdk` package
 - the generated helpers in `src/terse.generated.ts`
 
+Every production workflow is a **project-scoped TypeScript job** you define with `createJob()` and deploy with `terse deploy` (or run on your own server with `Terse.handleTrigger`). Terse executes that code path only—there is no separate non-SDK automation runner.
+
 After `terse generate`, integration trigger builders and skill factories are grouped under top-level **`Triggers`** and **`Skills`** objects (for example `Triggers.github.onPROpened(...)`, `Triggers.heyReach.onMessageReplyReceived(...)`, `Skills.slack({ channel: ... })`). System-style helpers live there too: `Triggers.schedule.cron(...)`, `Triggers.webhook.onRequest()`, and `Triggers.webMonitor.onEvent(...)`. Prefer these namespaces instead of older per-integration root exports such as `GitHub.*`, `Slack.*`, or `Schedule.*` / `Webhook.*`.
 
 <Note>
@@ -23,7 +25,7 @@ Import these from `terse-sdk`:
 - `CreateJobParameters`: the object shape passed to `createJob`
 - `Terse`: client for `handleTrigger` when you self-host the webhook endpoint
 - `TERSE_JOB_WEBHOOK_TRIGGER_PATH`: mount this path on your HTTP server when wiring `handleTrigger` (matches what the Terse backend calls)
-- `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`
+- `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`; optional `onApprovalRequired` callback and `submitApprovalDecision()` for programmatic approval handling during `run()`
 - `EventType`: enum for values on streamed `TerseAgent` results
 - `Trigger`: the base event interface
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), HeyReach types such as `HeyReachMessageReplyReceivedTrigger` and `HeyReachTrigger`, and other per-integration exports (see `terse-sdk` package entry)
@@ -250,6 +252,28 @@ createJob({
 ```
 
 Use **`toolApprovals`** for workflows that write to production systems during early development, or when compliance requires a human in the loop.
+
+### Programmatic approvals during `run()`
+
+By default, `tool_approval_requested` events are yielded on the stream and the run waits until something submits a decision. Set **`onApprovalRequired`** on the agent to handle approvals in code (for example in a custom host or test harness). The callback receives `{ stepId, toolName, arguments }` and should return `true` to approve or `false` to reject; the SDK then calls **`submitApprovalDecision({ runId, stepId, approved })`** for you.
+
+```ts
+const agent = TerseAgent.create({
+    prompt: "You draft Slack replies for the deal desk.",
+    skills: [Skills.slack({ channel: SlackChannel.DealDesk })],
+    toolApprovals: ["slack.sendMessage"],
+    onApprovalRequired: async ({ toolName }) => {
+        // Your policy here — return false to reject without executing the tool
+        return toolName !== "slack.sendMessage"
+    }
+})
+
+for await (const chunk of agent.run("Draft a one-line reply.")) {
+    // handle stream chunks
+}
+```
+
+In production, humans approve through the Terse app, Slack, or email. **Reject** in Slack ends the run with status **Cancelled**. Rejecting from Activity or Notifications blocks the gated tool; the agent may continue unless the run is cancelled.
 
 ## Events
 

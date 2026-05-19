@@ -15,7 +15,7 @@
 
 - Use "workflow" for code-defined automations deployed with the CLI.
 - The TypeScript SDK method is `createJob()`. In prose, prefer "workflow" for the product concept and show the real SDK method name in code samples.
-- Use "agent" for UI-created automations, or when the product UI itself uses the word "Agents".
+- Use "agent" for the in-run `TerseAgent` helper, or when the product UI labels a deployed workflow as an agent in Activity or Stats.
 - Use "integration" for a connected external system such as Attio, Apollo, Slack, Outreach, or Snowflake.
 - Use "skill" for the capabilities a workflow can use after you connect an integration and run code generation.
 - Use "trigger" for the event or schedule that starts a workflow.
@@ -45,7 +45,7 @@
 
 - Prioritize external developer docs for TypeScript workflows, CLI workflows, templates, and the parts of the web UI needed to operate them.
 - Document the user-visible app areas that matter for code workflows: Home, Workflows, Integrations, Activity, Stats, Notifications, and Profile.
-- Mention UI agents only when users need orientation or migration context.
+- Do not document a separate UI-only automation builder; workflows are defined in TypeScript and deployed with the CLI.
 - Treat templates and comparison pages as first-class product docs, not side content.
 - Frame planned GTM integrations as waitlist or coming soon. Keep the current path clear.
 - Do not document internal admin tools, internal-only templates, implementation details of backend services, or unreleased product behavior.

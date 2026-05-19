@@ -1,6 +1,6 @@
 ---
 title: "Activity & observability"
-description: "Every workflow run is recorded with a full trace of actions taken, model decisions, failures, and timing."
+description: "Every workflow run is recorded with a full trace of actions taken, filter outcomes, failures, and timing."
 icon: "activity"
 ---
 
@@ -27,7 +27,7 @@ Every run produces a **run record** with three layers of detail:
 
 ### Run summary
 
-The top-level record captures the basics: status, trigger source, trigger title, the model's decision (processed or skipped), decision reasoning, whether it was manually triggered, and timestamps. This is what you see in the Activity list.
+The top-level record captures the basics: status, trigger source, trigger title, whether the run was processed or skipped (including when your `filter` returned `false`), a short decision reason, whether it was manually triggered, and timestamps. This is what you see in the Activity list.
 
 ### Action trace
 

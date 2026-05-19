@@ -50,7 +50,7 @@ Trigger fires → Filter (optional) → Handler executes → Run recorded in Act
 ```
 
 1. **Trigger fires.** An event arrives from the connected integration or on the configured schedule.
-2. **Filter evaluates.** If you defined a `filter` function, Terse calls it with the event. Return `false` to skip the run entirely. No tokens spent, no side effects.
+2. **Filter evaluates.** If you defined a `filter` function on `createJob`, your TypeScript code runs it with the enriched trigger event. Return `false` to skip the run entirely—no handler, no tokens spent, no side effects. This is deterministic code you control, not a platform-side relevance model.
 3. **Handler executes.** Your `onTrigger` (TypeScript) runs with the event payload and a `TerseAgent`. You control the logic: call tools deterministically, hand off to the model, or both.
 4. **Run is recorded.** Every execution, whether it succeeds or fails, is logged in Activity with the full action trace so you can inspect what happened.
 
