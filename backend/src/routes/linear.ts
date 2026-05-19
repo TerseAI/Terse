@@ -114,8 +114,6 @@ export async function getLinearTeams(req: Request, res: Response) {
         res.status(200).json(response)
     } catch (error: unknown) {
         logger.error("Error fetching Linear teams:", { error })
-        // Don't echo error.message — Linear GraphQL/SDK errors carry internal
-        // request URLs, token-related debug strings, and Prisma details.
         res.status(500).json({ error: "Failed to fetch Linear teams" })
     }
 }
