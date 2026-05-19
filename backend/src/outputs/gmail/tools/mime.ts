@@ -8,8 +8,15 @@ function getRandomBoundary(): string {
     return `mime_boundary_${randomUUID()}`
 }
 
+export function sanitizeHeaderValue(value: string, fieldName: string): string {
+    if (/[\r\n]/.test(value)) {
+        throw new Error(`Invalid \`${fieldName}\`: header values must not contain CR or LF characters.`)
+    }
+    return value
+}
+
 export function encodeSubjectHeader(subject: string): string {
-    // Keep ASCII subjects unchanged; encode non-ASCII as RFC 2047 UTF-8 Base64 encoded-word.
+    sanitizeHeaderValue(subject, "subject")
     if (/^[\x00-\x7F]*$/.test(subject)) {
         return subject
     }
