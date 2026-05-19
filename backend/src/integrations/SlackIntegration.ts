@@ -24,7 +24,7 @@ import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensure
 import { GetSecretsArg, SecretService } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
-import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -246,9 +246,9 @@ export class SlackIntegrationManager
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.SLACK>,
-        additionalStatePayload?: AdditionalStateParams,
-        res?: Response
+        options: InstallationOptionsFor<IntegrationType.SLACK> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
         if (!options) {
             throw new Error("Slack integration requires options (isBotUser)")
@@ -261,14 +261,13 @@ export class SlackIntegrationManager
         const user_scope = isBotUser
             ? ""
             : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write,reactions:read,reactions:write,files:read"
-        const mintArgs = {
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalFields: { isBotUser },
             additionalStatePayload,
             encodeAsUriComponent: true
-        }
-        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
+        })
 
         const encodedRedirectUri = encodeURIComponent(redirect_uri)
         const url = `https://slack.com/oauth/v2/authorize?scope=${scope}&user_scope=${user_scope}&redirect_uri=${encodedRedirectUri}&client_id=${client_id}&state=${state}`

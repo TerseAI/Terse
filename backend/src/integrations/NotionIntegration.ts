@@ -12,7 +12,7 @@ import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
 import { SecretNotFoundError } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
@@ -113,17 +113,16 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.NOTION>,
-        additionalStatePayload?: AdditionalStateParams,
-        res?: Response
+        options: InstallationOptionsFor<IntegrationType.NOTION> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
-        const mintArgs = {
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
             additionalStatePayload
-        }
-        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
+        })
 
         const clientId = notionConfig.clientId
         const redirectUri = notionConfig.redirectUri

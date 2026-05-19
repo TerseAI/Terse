@@ -27,7 +27,7 @@ import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretNotFoundError, SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
-import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { buildAttioWebhookUrl } from "../utility/webhookUrl"
 import { getUserForOrg } from "../utility/workos"
 
@@ -216,17 +216,16 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.ATTIO>,
-        additionalStatePayload?: AdditionalStateParams,
-        res?: Response
+        options: InstallationOptionsFor<IntegrationType.ATTIO> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
-        const mintArgs = {
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
             additionalStatePayload
-        }
-        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
+        })
 
         const authUrl = new URL("https://app.attio.com/authorize")
         authUrl.searchParams.append("client_id", attioConfig.clientId)

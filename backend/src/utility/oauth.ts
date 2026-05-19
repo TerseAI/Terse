@@ -139,27 +139,9 @@ export function mintBrowserOAuthState(res: Response, options: OAuthStatePayloadO
 }
 
 /**
- * Server-initiated OAuth state for the Slack Bolt entry path: there is no
- * browser session at mint time (the OAuth URL is generated inside a Slack
- * message handler and delivered into the user's authenticated Slack
- * workspace), so cookie binding cannot be applied. The state is tagged with
- * `boltOrigin: true` so {@link verifyOAuthState} can recognize it and skip
- * the cookie check.
- */
-export function mintBoltOAuthState(options: OAuthStatePayloadOptions): string {
-    return createOAuthStateToken({
-        ...options,
-        additionalFields: { ...(options.additionalFields ?? {}), boltOrigin: true }
-    })
-}
-
-/**
  * Verifies an OAuth state token at the callback. Single-use: the cookie is
  * cleared regardless of outcome. Throws if the JWT is invalid/expired or if
- * a browser-flow state's nonce does not match the cookie.
- *
- * Bolt-originated states (tagged at mint time via {@link mintBoltOAuthState})
- * skip the cookie check because they were never associated with a browser.
+ * the embedded nonce does not match the cookie — there is no escape hatch.
  */
 export function verifyOAuthState(req: Request, res: Response, state: string): OAuthStatePayload {
     const cookieNonce = typeof req.cookies?.[OAUTH_STATE_COOKIE_NAME] === "string" ? (req.cookies[OAUTH_STATE_COOKIE_NAME] as string) : undefined
@@ -167,11 +149,6 @@ export function verifyOAuthState(req: Request, res: Response, state: string): OA
     res.clearCookie(OAUTH_STATE_COOKIE_NAME, getOauthStateCookieOptions())
 
     const payload = decodeOAuthStateToken(state)
-
-    if (payload.boltOrigin === true) {
-        return payload
-    }
-
     const jwtNonce = typeof payload.nonce === "string" ? payload.nonce : undefined
     if (!cookieNonce || !jwtNonce || cookieNonce.length !== jwtNonce.length) {
         throw new Error("OAuth state nonce mismatch — possible CSRF or stale flow")

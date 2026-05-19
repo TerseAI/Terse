@@ -24,7 +24,7 @@ import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
-import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -156,20 +156,19 @@ export class GithubIntegrationManager
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.GITHUB>,
-        additionalStatePayload?: AdditionalStateParams,
-        res?: Response
+        options: InstallationOptionsFor<IntegrationType.GITHUB> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName
         const clientId = githubApp.clientId
         const redirectUri = githubApp.integrateCallbackUrl
 
-        const mintArgs = {
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalStatePayload
-        }
-        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
+        })
 
         const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(
             redirectUri

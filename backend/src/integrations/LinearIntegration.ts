@@ -21,7 +21,7 @@ import { StoredFile } from "../services/FileStorageService"
 import { SecretNotFoundError } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -174,18 +174,17 @@ export class LinearIntegrationManager
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.LINEAR>,
-        additionalStatePayload?: AdditionalStateParams,
-        res?: Response
+        options: InstallationOptionsFor<IntegrationType.LINEAR> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
-        // Bind state to a single-use cookie nonce for browser flows.
-        const mintArgs = {
+        // Bind state to a single-use cookie nonce.
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
             additionalStatePayload
-        }
-        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
+        })
 
         const clientId = settings.linear.clientId
         const redirectUri = settings.linear.oauthCallbackUrl

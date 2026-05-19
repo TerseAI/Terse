@@ -72,12 +72,11 @@ export interface FormIntegrationInstallation<T extends IntegrationType> {
 
 export interface OAuthIntegrationInstallation<T extends IntegrationType> {
     /**
-     * Generates the OAuth installation URL. If `res` is provided, the state
-     * is bound to a single-use cookie nonce (browser-initiated flow). If
-     * `res` is omitted, the state is marked as bolt-originated and the
-     * callback will skip the cookie check. See utility/oauth.ts.
+     * Generates the OAuth installation URL and binds the state to a
+     * single-use cookie nonce on `res`. The callback must validate the
+     * binding via verifyOAuthState — see utility/oauth.ts.
      */
-    getInstallationUrl(userId: string, organizationId: string, options?: InstallationOptionsFor<T>, additionalStatePayload?: AdditionalStateParams, res?: Response): Promise<OAuthInstallationDetails>
+    getInstallationUrl(userId: string, organizationId: string, options: InstallationOptionsFor<T> | undefined, additionalStatePayload: AdditionalStateParams | undefined, res: Response): Promise<OAuthInstallationDetails>
     processInstallationCallback(req: Request, res: Response): Promise<void>
     refreshToken(integrationId: string): Promise<boolean>
     getAccessToken(integrationId: string): Promise<string | null>
