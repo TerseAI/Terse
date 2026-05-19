@@ -144,6 +144,12 @@ async function updateAgentForUser(userId: string, organizationId: string, agentI
         throw new Error("Agent not found")
     }
 
+    // Set to true inside the transaction when triggers were replaced so we
+    // know to tear down OLD external webhooks AFTER the transaction commits.
+    // Running teardown inside the tx would leave external state torn down
+    // if any later step in the tx throws and rolls the DB back.
+    let triggersReplaced = false
+
     // Update agent in transaction
     await prisma.$transaction(async tx => {
         // Update basic fields if provided
@@ -187,7 +193,7 @@ async function updateAgentForUser(userId: string, organizationId: string, agentI
             await tx.automation_inputs.deleteMany({
                 where: { automation_id: agentId }
             })
-            await tearDownAgentTriggers(existingAgent)
+            triggersReplaced = true
 
             // Create new triggers
             for (const trigger of triggers) {
@@ -263,6 +269,14 @@ async function updateAgentForUser(userId: string, organizationId: string, agentI
             await persistToolApprovals(tx, agentId, toolApprovals, { replaceExisting: true })
         }
     })
+
+    // Now that the transaction has committed, sync external trigger state.
+    // Tear down the OLD triggers first (only if they were actually replaced
+    // in the tx), then set up the NEW ones. Doing this after the commit
+    // means a tx failure can't desync DB and external state.
+    if (triggersReplaced) {
+        await tearDownAgentTriggers(existingAgent)
+    }
 
     const agentWithTriggerRelations: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
         where: { id: agentId, organization_id: organizationId },
@@ -531,7 +545,6 @@ export async function deleteAgent(req: Request, res: Response) {
             res.status(404).json({ error: "Agent not found" })
             return
         }
-        await tearDownAgentTriggers(existingAgent)
 
         // Clean up orphaned records and delete agent in a single transaction
         await prisma.$transaction(async tx => {
@@ -550,6 +563,14 @@ export async function deleteAgent(req: Request, res: Response) {
                 throw new Error("Agent not found during delete")
             }
         })
+
+        // Tear down external webhooks only after the DB delete commits, so
+        // a transaction failure (e.g. concurrent delete) can't leave the
+        // automation row alive but its external triggers torn down.
+        // Per-trigger failures inside tearDownAgentTriggers are logged
+        // but don't throw — orphan external webhooks will fire and find
+        // no matching automation, which is already handled downstream.
+        await tearDownAgentTriggers(existingAgent)
 
         // Invalidate recent agents cache
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
