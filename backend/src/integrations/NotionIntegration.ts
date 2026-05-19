@@ -1,19 +1,18 @@
 import { Client } from "@notionhq/client"
 import { Request, Response } from "express"
-import jwt from "jsonwebtoken"
 import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionIntegration, NotionIntegrationMetadata } from "terse-types/Integrations"
 import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
-import { jwt as jwtSettings, notion as notionConfig, urls } from "../config/settings"
+import { notion as notionConfig, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
 import { SecretNotFoundError } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { createOAuthStateToken } from "../utility/oauth"
+import { mintBoltOAuthState, mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
@@ -115,17 +114,16 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
         userId: string,
         organizationId: string,
         options?: InstallationOptionsFor<IntegrationType.NOTION>,
-        additionalStatePayload?: AdditionalStateParams
+        additionalStatePayload?: AdditionalStateParams,
+        res?: Response
     ): Promise<OAuthInstallationDetails> {
-        // Note: options parameter is required by interface but NotionIntegration uses NoInstallationOptions
-        // additionalStatePayload allows passing extra state variables
-        // Generate state token for security (prevents CSRF)
-        const state = createOAuthStateToken({
+        const mintArgs = {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
             additionalStatePayload
-        })
+        }
+        const state = res ? mintBrowserOAuthState(res, mintArgs) : mintBoltOAuthState(mintArgs)
 
         const clientId = notionConfig.clientId
         const redirectUri = notionConfig.redirectUri
@@ -158,8 +156,9 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
         }
 
         try {
-            // Verify state token to prevent CSRF attacks
-            const decoded = jwt.verify(state as string, jwtSettings.secret) as {
+            // Verify state — throws if signature/expiry bad, or if browser
+            // flow's cookie nonce does not match.
+            const decoded = verifyOAuthState(req, res, state as string) as {
                 userId: string
                 organizationId: string
                 timestamp: number
