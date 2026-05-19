@@ -10,8 +10,8 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
 
 <Steps>
     <Step title="Your code is zipped and uploaded">
-        The CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. This archive is
-        used as the input for the image build in the next step.
+        The CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. This archive
+        is content-addressed by SHA-256 hash and serves two purposes: it is the input for the image build in the next step, and it backs the source file browser in your project dashboard.
     </Step>
     <Step title="Two images are built">
         Terse builds a pair of [Modal](https://modal.com) sandbox images from your ZIP:
