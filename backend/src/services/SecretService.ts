@@ -1,13 +1,8 @@
 import { z } from "zod"
 
-import { gcp } from "../config/settings"
 import { INTEGRATION_REGISTRY, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
 import { SecretManagerClient } from "../utility/secretManagerClient"
-
-export function isGsmAvailable(): boolean {
-    return Boolean(gcp.serviceAccountBase64 && gcp.projectId)
-}
 
 export class SecretService {
     private static instance: SecretService
@@ -193,9 +188,9 @@ const projectBlobSchema = z.record(z.string(), z.string())
 type RegistryEntry = IntegrationManagers[number]
 type ManagerWithSchema = Extract<RegistryEntry, { secretSchema: unknown }>
 
-export type IntegrationKey = ManagerWithSchema["integrationType"]
-export type IntegrationBlob<T extends IntegrationKey> = z.infer<Extract<ManagerWithSchema, { integrationType: T }>["secretSchema"]>
-export type IntegrationField<T extends IntegrationKey> = keyof IntegrationBlob<T>
+type IntegrationKey = ManagerWithSchema["integrationType"]
+type IntegrationBlob<T extends IntegrationKey> = z.infer<Extract<ManagerWithSchema, { integrationType: T }>["secretSchema"]>
+type IntegrationField<T extends IntegrationKey> = keyof IntegrationBlob<T>
 
 export type GetSecretsArg = IntegrationGetSecretsArg | ProjectGetSecretsArg
 
@@ -213,7 +208,7 @@ type GetSecretsReturn<A> = A extends IntegrationGetSecretsArg<infer T> ? Integra
 
 type WithSecretField<A, F> = A extends { secret: infer S } ? Omit<A, "secret"> & { secret: S & F } : never
 
-export type CreateSecretsArg = IntegrationCreateSecretsArg | ProjectCreateSecretsArg
+type CreateSecretsArg = IntegrationCreateSecretsArg | ProjectCreateSecretsArg
 
 type IntegrationCreateSecretsArg = {
     [K in IntegrationKey]: WithSecretField<IntegrationGetSecretsArg<K>, { value: Partial<IntegrationBlob<K>> }>
@@ -221,7 +216,7 @@ type IntegrationCreateSecretsArg = {
 
 type ProjectCreateSecretsArg = WithSecretField<ProjectGetSecretsArg, { value: Record<string, string> }>
 
-export type DeleteSecretFieldsArg = IntegrationDeleteSecretFieldsArg | ProjectDeleteSecretFieldsArg
+type DeleteSecretFieldsArg = IntegrationDeleteSecretFieldsArg | ProjectDeleteSecretFieldsArg
 
 type IntegrationDeleteSecretFieldsArg = {
     [K in IntegrationKey]: WithSecretField<IntegrationGetSecretsArg<K>, { keys: readonly IntegrationField<K>[] }>

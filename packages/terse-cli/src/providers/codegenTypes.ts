@@ -112,7 +112,7 @@ export interface AttioInstanceData extends IntegrationInstanceData {
     objects: AttioObjectData[]
 }
 
-export interface HeyReachCampaignData {
+interface HeyReachCampaignData {
     id: string
     name: string
 }

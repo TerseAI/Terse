@@ -10,7 +10,7 @@ import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../realtimeSocket"
-import { SDKAgent, project_deploys } from "../types/prisma"
+import { AgentWithRelations, project_deploys } from "../types/prisma"
 import { createSandboxToken } from "../utility/apiTokens"
 import { getActiveDeployForProject } from "../utility/projectHelper"
 import { extractErrorMessage } from "../utility/strings"
@@ -27,7 +27,7 @@ import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLay
 interface SdkJobExecutionParams {
     gcsKey: string
     runId: string
-    agent: SDKAgent
+    agent: AgentWithRelations
     orgId: string
     userId: string
     user: User
@@ -166,7 +166,7 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async resolveOrPrepareSourceImage(params: { agent: SDKAgent; gcsKey: string; orgId: string; runId: string }): Promise<ResolvedSdkSourceImage> {
+    private async resolveOrPrepareSourceImage(params: { agent: AgentWithRelations; gcsKey: string; orgId: string; runId: string }): Promise<ResolvedSdkSourceImage> {
         const { agent, gcsKey, orgId, runId } = params
         const activeDeploy = await getActiveDeployForProject(agent.project.id)
         if (!activeDeploy) {
@@ -193,7 +193,7 @@ export class SdkJobExecutionService {
     }
 
     private async prepareAndLinkSourceImage(params: {
-        agent: SDKAgent
+        agent: AgentWithRelations
         gcsKey: string
         orgId: string
         runId: string

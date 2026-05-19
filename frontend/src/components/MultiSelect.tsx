@@ -9,7 +9,7 @@ import { Button } from "./ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 
-export interface MultiSelectOption {
+interface MultiSelectOption {
     id: string | number
     label: string
 }

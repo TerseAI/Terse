@@ -42,7 +42,7 @@ export abstract class Output<TConfig extends ConfigData> {
     }
 }
 
-export type ToolboxEntryInput<TConfig extends ConfigData> = {
+type ToolboxEntryInput<TConfig extends ConfigData> = {
     [TName in ToolName]: {
         tool: TypedToolOptions<TName, SessionWithTracking<Session>>
         isReadOnly: boolean

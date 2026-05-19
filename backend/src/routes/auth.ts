@@ -340,7 +340,7 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     return { user }
 }
 
-export async function setDefaultUserMetadata(workosUserId: string, dbUserId: string): Promise<UserWithMetadata> {
+async function setDefaultUserMetadata(workosUserId: string, dbUserId: string): Promise<UserWithMetadata> {
     const metadata = userMetadataSchema.parse({
         db_id: dbUserId
     })
@@ -354,7 +354,7 @@ export async function setDefaultUserMetadata(workosUserId: string, dbUserId: str
     }
 }
 
-export type UserWithMetadata = Omit<WorkOSUser, "metadata"> & {
+type UserWithMetadata = Omit<WorkOSUser, "metadata"> & {
     metadata: UserMetadata
 }
 

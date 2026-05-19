@@ -40,7 +40,7 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 const ATTIO_API_BASE = "https://api.attio.com/v2"
 
-export type AttioWebhookRequest = { triggerId: string; payload: AttioWebhookPayload; idempotencyKey: string }
+type AttioWebhookRequest = { triggerId: string; payload: AttioWebhookPayload; idempotencyKey: string }
 
 export class AttioIntegrationManager extends Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject> implements OAuthIntegrationInstallation<IntegrationType.ATTIO> {
     readonly integrationType = IntegrationType.ATTIO
@@ -425,7 +425,7 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
     }
 }
 
-export class AttioTriggerRuntime extends TriggerRuntime<AttioTrigger> {
+class AttioTriggerRuntime extends TriggerRuntime<AttioTrigger> {
     readonly integrationType = IntegrationType.ATTIO
     data: AttioTrigger
     private integrationId: string

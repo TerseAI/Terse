@@ -32,7 +32,6 @@ export function useCompletionSocket({ subscribeToEvents, sendMessage, onEvent }:
                 case "ToolCall":
                 case "ToolCallComplete":
                 case "NaturalStop":
-                case "FilterResult":
                 case "Thinking":
                 case "ToolApprovalRequest":
                 case "ToolApprovalResponse":

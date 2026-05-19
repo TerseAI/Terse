@@ -1,7 +1,7 @@
 import { RunContext, ToolOptions, UnknownContext } from "@openai/agents"
 import { ToolDefinitions, ToolInputByName, ToolInputSchemaByName, ToolName, ToolOutputByName } from "terse-types"
 
-import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner"
+import { SessionWithTracking } from "../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../express"
 import logger from "../logger"
 

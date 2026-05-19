@@ -71,18 +71,6 @@ export async function appendRunAction(runId: string, action: RunHistoryAction, s
     return result.id
 }
 
-export async function markRunProcessed(runId: string, reason?: string): Promise<void> {
-    const prisma = db()
-    await prisma.run_history_records.update({
-        where: { id: runId },
-        data: {
-            filtered: false,
-            decision_action: "processed",
-            decision_reason: reason ?? ""
-        }
-    })
-}
-
 export async function finalizeRunStatus(runId: string, status: CompletedRunStatus): Promise<void> {
     const prisma = db()
     const updated = await prisma.run_history_records.update({
@@ -102,8 +90,8 @@ export async function finalizeRunStatus(runId: string, status: CompletedRunStatu
     }
 }
 
-export type FailureTier = "first" | "warning" | "paused"
-export const PAUSE_THRESHOLD = 3
+type FailureTier = "first" | "warning" | "paused"
+const PAUSE_THRESHOLD = 3
 
 export type FailureState = {
     consecutiveFailures: number

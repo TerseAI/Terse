@@ -10,6 +10,8 @@ import { SdkAgentRunner } from "../agent/AgentRunner/SdkAgentRunner"
 import { appendRunAction, upsertSdkSkills } from "../agent/AgentRunner/runHistory"
 import { emitSessionEvent } from "../agent/SessionEventBus"
 import { classifyAgentError } from "../agent/agentErrorUtils"
+import { CancelReason } from "../agent/cancellation/RunCancellationTaskQueue"
+import { markRunCancelledAndInvalidate } from "../agent/cancellation/runCancellationEffects"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { finalizeRunFailure } from "../realtimeSocket"
@@ -78,6 +80,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         let result = await sdkRunner.run(data.message)
 
         // Approval loop: keep the stream open while awaiting decisions
+        let hardRejected = false
         while (result.loopResult.status === "awaiting_approval") {
             const interruptions = result.loopResult.interruptions ?? []
             const stepId = (interruptions[0]?.rawItem as any)?.callId as string | undefined
@@ -87,8 +90,31 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             }
 
             const decision = await waitForApprovalDecision(runId, stepId)
+            if (decision.hardReject) {
+                if (isProductionRun) {
+                    const record = await db().run_history_records.findUnique({
+                        where: { id: runId },
+                        select: { automation: { select: { id: true, organization_id: true } } }
+                    })
+                    const automationId = record?.automation?.id
+                    const cancelOrgId = record?.automation?.organization_id ?? orgId
+                    if (automationId) {
+                        await markRunCancelledAndInvalidate(runId, automationId, cancelOrgId, user.workosId, CancelReason.HARD_REJECT)
+                    } else {
+                        logger.warn("[sdk-agent-run] hardReject received but no automation found to cancel", { runId })
+                    }
+                }
+                hardRejected = true
+                break
+            }
             const resumeDecision = decision.approved ? ("approve" as const) : ("reject" as const)
             result = await sdkRunner.resume(resumeDecision, stepId, JSON.stringify(result.loopResult.state), interruptions, decision.rejectionReason)
+        }
+
+        if (hardRejected) {
+            send({ type: "done" })
+            res.end()
+            return
         }
 
         finishSseStream(res, send, result, sdkRunner)

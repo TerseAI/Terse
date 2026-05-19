@@ -3,26 +3,20 @@ import { Server as HttpServer } from "http"
 import { jwtVerify } from "jose"
 import { createClient } from "redis"
 import { Server, Socket } from "socket.io"
-import { ConfigData } from "terse-types"
 import { SendModelRequest, ToolApprovalResponse } from "terse-types"
 import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "terse-types"
 import { SocketEvents, SocketRooms } from "terse-types"
 import { User } from "terse-types/types"
 
-import { AgentRunResultStatus, AgentRunner } from "./agent/AgentRunner/AgentRunner"
 import { SdkAgentRunner } from "./agent/AgentRunner/SdkAgentRunner"
-import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed, readSdkSkillsFromJson } from "./agent/AgentRunner/runHistory"
 import { type ClassifiedError, buildRunErrorEvent, classifyAgentError } from "./agent/agentErrorUtils"
 import { CancelReason, listenForRunCancellation, requestRunCancellation } from "./agent/cancellation/RunCancellationTaskQueue"
 import { markRunCancelledAndInvalidate } from "./agent/cancellation/runCancellationEffects"
 import { appendRunHistoryErrorSystemEvent } from "./agent/systemEvents/runErrorSystemEvent"
 import { optional } from "./config/settings"
-import { Session } from "./express"
 import logger from "./logger"
 import { NotificationManager } from "./notifications/Notification"
-import { Output } from "./outputs/abstract/Output"
-import { OutputFactory } from "./outputs/abstract/OutputFactory"
 import { db } from "./prismaClient"
 import { ApprovalProcessingStatus, ApprovalService } from "./services/ApprovalService"
 import { billingServiceProxyForOrganization } from "./services/BillingService"
@@ -290,71 +284,36 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
             const cancellationSubscription = listenForRunCancellation(runId, organizationIdForRun, cancellationController)
             const notificationManager = new NotificationManager(user, agent)
 
-            const isSdkAgent = agent.source === "SDK"
-
             let endedWithToolFailure = false
             let finalOutput: unknown = undefined
 
             const billing = billingServiceProxyForOrganization(user.organizationId, user.workosId)
 
             try {
-                if (isSdkAgent) {
-                    const skills = readSdkSkillsFromJson(runRecord.sdk_skills)
+                const skills = readSdkSkillsFromJson(runRecord.sdk_skills)
 
-                    const sdkRunner = new SdkAgentRunner({
-                        runId,
-                        user,
-                        prompt: agent.prompt?.content ?? "",
-                        skills,
-                        // TODO: This probably isn't right. Idk how to handle tool approvals anymore for this use case. Need to think more about it.
-                        toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
-                        maxTurns: 50,
-                        requireApproval: true,
-                        send: () => {},
-                        isProductionRun: true,
-                        billing
-                    })
+                const sdkRunner = new SdkAgentRunner({
+                    runId,
+                    user,
+                    prompt: agent.prompt?.content ?? "",
+                    skills,
+                    // TODO: This probably isn't right. Idk how to handle tool approvals anymore for this use case. Need to think more about it.
+                    toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
+                    maxTurns: 50,
+                    requireApproval: true,
+                    send: () => {},
+                    isProductionRun: true,
+                    billing
+                })
 
-                    const sdkResult = await sdkRunner.userMessageRun(userMessage, {
-                        signal: cancellationController.signal,
-                        clientTurnId: message.client_turn_id
-                    })
+                const sdkResult = await sdkRunner.userMessageRun(userMessage, {
+                    signal: cancellationController.signal,
+                    clientTurnId: message.client_turn_id
+                })
 
-                    if (sdkResult.loopResult.status === "completed") {
-                        endedWithToolFailure = sdkResult.loopResult.endedWithToolFailure || sdkRunner.hasToolFailures()
-                        finalOutput = SdkAgentRunner.getFinalOutput(sdkResult.loopResult.result)
-                    }
-                } else {
-                    let outputs: Output<ConfigData>[]
-                    try {
-                        outputs = OutputFactory.createOutputsFromAgent(agent)
-                    } catch (error) {
-                        logger.error(`[agent:chat:message] Failed to create outputs for agent: ${agent.id}`, { error, agentId: agent.id, userId })
-                        return
-                    }
-
-                    const session: Session = { user }
-                    const runContext: RunContext = { runId }
-                    const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
-
-                    const result = await agentRunner.userMessageRun(
-                        userMessage,
-                        undefined,
-                        {
-                            runId,
-                            user: user,
-                            agentId: agent.id
-                        },
-                        {
-                            signal: cancellationController.signal,
-                            clientTurnId: message.client_turn_id
-                        }
-                    )
-
-                    if (result.status === AgentRunResultStatus.COMPLETED) {
-                        endedWithToolFailure = result.endedWithToolFailure
-                        finalOutput = result.result?.finalOutput
-                    }
+                if (sdkResult.loopResult.status === "completed") {
+                    endedWithToolFailure = sdkResult.loopResult.endedWithToolFailure || sdkRunner.hasToolFailures()
+                    finalOutput = SdkAgentRunner.getFinalOutput(sdkResult.loopResult.result)
                 }
             } catch (error) {
                 const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
@@ -436,17 +395,13 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                 return
             }
 
-            // Treat response_id as a hint only when it's distinct from the callId (legacy clients sent stepId here).
-            const incomingResponseId = message.response_id && message.response_id !== message.id ? message.response_id : undefined
-
             const result = await ApprovalService.processApproval({
                 runId,
                 stepId: message.id,
                 approved: message.approved,
                 rejectionReason: message.rejection_reason,
                 userId,
-                organizationId: organizationId ?? "",
-                responseId: incomingResponseId
+                organizationId: organizationId ?? ""
             })
 
             if (result.status === ApprovalProcessingStatus.FAILED && result.error) {
@@ -536,7 +491,7 @@ export async function finalizeRunFailure(runId: string, classified: ClassifiedEr
     }
 }
 
-export async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<boolean> {
+async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedError, organizationId: string | undefined, agentId: string): Promise<boolean> {
     try {
         const transitioned = await markRunFailed(runId, classified.message, "agent")
         if (!transitioned) return false

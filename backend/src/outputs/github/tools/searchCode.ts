@@ -2,7 +2,7 @@ import type { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { GitHubConfig, IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../../express"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"

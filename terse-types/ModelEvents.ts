@@ -122,14 +122,6 @@ export const toolCallCompleteSchema = modelEventBaseSchema.extend({
 })
 export type ToolCallComplete = z.infer<typeof toolCallCompleteSchema>
 
-export const filterResultSchema = modelEventBaseSchema.extend({
-    isRelevant: z.boolean(),
-    reason: z.string(),
-    confidence: z.number(),
-    type: z.literal("FilterResult")
-})
-export type FilterResult = z.infer<typeof filterResultSchema>
-
 export enum SandboxStage {
     DOWNLOADING_SOURCE = "downloading_source",
     BOOTING = "booting",
@@ -241,7 +233,6 @@ export const modelEventSchema = z.discriminatedUnion("type", [
     runErrorSchema,
     cancelledSchema,
     naturalStopSchema,
-    filterResultSchema,
     userMessageSchema,
     thinkingSchema,
     modelEventChatSnippetSchema,

@@ -394,11 +394,6 @@ interface BackendService {
     toggleImprovementsEnabled(agentId: string, enabled: boolean): Promise<ToggleImprovementsEnabledResponse>
 
     /**
-     * Creates a new agent
-     */
-    createAgent(data: AgentUpdate): Promise<{ success: boolean; id: string }>
-
-    /**
      * Updates an existing agent
      */
     updateAgent(id: string, data: AgentUpdate): Promise<{ success: boolean; id: string }>
@@ -982,10 +977,6 @@ export const BackendProvider: BackendService = {
     toggleImprovementsEnabled: (agentId: string, enabled: boolean) => {
         const url = buildRoute(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, { agentId })
         return axios.patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${url}`, { enabled }, { withCredentials: true }).then(response => response.data)
-    },
-
-    createAgent: (data: AgentUpdate) => {
-        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true }).then(response => response.data)
     },
 
     updateAgent: (id: string, data: AgentUpdate) => {

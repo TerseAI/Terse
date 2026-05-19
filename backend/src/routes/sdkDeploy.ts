@@ -157,7 +157,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 where: {
                     name: job.jobName,
                     organization_id: organizationId,
-                    source: "SDK",
                     project_id: projectId
                 },
                 include: { inputs: { include: getInputConfigInclude() } }
@@ -326,7 +325,6 @@ async function createNewAutomation(
                 name: jobName,
                 is_active: true,
                 require_approval: false,
-                source: "SDK",
                 project_id: projectId
             }
         })
@@ -388,35 +386,10 @@ async function createTriggersForAutomation(tx: PrismaTransaction, automationId: 
     }
 }
 
-// We may decide to bring this back! Structure still TBD
-// async function createOutputsForAutomation(tx: PrismaTransaction, automationId: string, outputs: SkillConfigData[], organizationId: string, userId: string) {
-//     for (const output of outputs) {
-//         const integrationId = output.integrationId
-//         if (!integrationId) {
-//             throw new Error(`Integration ID is required for ${output.integrationType}`)
-//         }
-
-//         const isOwner = await validateUserOwnsIntegration(organizationId, output.integrationType, integrationId)
-//         if (!isOwner) {
-//             throw new Error(`Integration ${output.integrationType} not found or not owned by user`)
-//         }
-
-//         const newOutput = await tx.automation_outputs.create({
-//             data: {
-//                 automation_id: automationId,
-//                 config_type: convertConfigTypeToOutputConfigType(output.configType),
-//                 integration_id: integrationId
-//             }
-//         })
-
-//         await createOutputConfig(tx, newOutput.id, output, userId)
-//     }
-// }
-
 async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>, projectId: string): Promise<{ id: string; name: string }[]> {
     // Lightweight query to identify which automations are stale
     const sdkAutomations = await prisma.automations.findMany({
-        where: { organization_id: organizationId, source: "SDK", project_id: projectId },
+        where: { organization_id: organizationId, project_id: projectId },
         select: { id: true, name: true }
     })
 
