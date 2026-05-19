@@ -175,20 +175,28 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
     if (!user.organizationId) {
         return res.status(403).json({ success: false, error: "Forbidden" })
     }
-    const runRecord = await db().run_history_records.findFirst({
-        where: { id: parsed.data.runId, automation: { organization_id: user.organizationId } },
-        select: { id: true, automation: { select: { organization_id: true } } }
-    })
-    if (!runRecord?.automation.organization_id) {
-        logger.warn("[sdk/approval-decision] Rejecting cross-tenant approval decision", {
-            requestedRunId: parsed.data.runId,
-            userId: user.id,
-            organizationId: user.organizationId
+
+    const productionHeaderRunId = req.headers["x-terse-run-id"] as string | undefined
+    let resolveOrgId: string
+    if (productionHeaderRunId) {
+        const runRecord = await db().run_history_records.findFirst({
+            where: { id: parsed.data.runId, automation: { organization_id: user.organizationId } },
+            select: { automation: { select: { organization_id: true } } }
         })
-        return res.status(404).json({ success: false, error: "Run not found" })
+        if (!runRecord?.automation.organization_id) {
+            logger.warn("[sdk/approval-decision] Rejecting cross-tenant approval decision", {
+                requestedRunId: parsed.data.runId,
+                userId: user.id,
+                organizationId: user.organizationId
+            })
+            return res.status(404).json({ success: false, error: "Run not found" })
+        }
+        resolveOrgId = runRecord.automation.organization_id
+    } else {
+        resolveOrgId = user.organizationId
     }
 
-    resolveApprovalDecision(parsed.data.runId, parsed.data.stepId, runRecord.automation.organization_id, { approved: parsed.data.approved })
+    resolveApprovalDecision(parsed.data.runId, parsed.data.stepId, resolveOrgId, { approved: parsed.data.approved })
 
     return res.status(200).json({ success: true })
 }
