@@ -82,7 +82,9 @@ export async function getLaunchDarklyProjects(req: Request, res: Response) {
             error,
             integrationId
         })
-        res.status(500).json({ error: error.message || "Failed to fetch projects" })
+        // Don't echo error.message — it can contain raw LaunchDarkly API
+        // response bodies (request IDs, account hints, internal URLs).
+        res.status(500).json({ error: "Failed to fetch projects" })
     }
 }
 

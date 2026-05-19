@@ -54,7 +54,9 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
             integrationType: req.params.integrationType,
             userId: req.session?.user?.id
         })
-        res.status(500).json({ error: error.message || "Failed to get installation details" })
+        // Don't echo error.message — JSON.parse errors are shaped by user
+        // input, and integration SDK errors carry internal IDs / API URLs.
+        res.status(500).json({ error: "Failed to get installation details" })
     }
 }
 
@@ -129,7 +131,9 @@ export async function disconnectIntegration(req: Request, res: Response) {
             userId: req.session.user.id,
             organizationId: req.session.user.organizationId
         })
-        res.status(500).json({ error: error.message || "Failed to disconnect integration" })
+        // Don't echo error.message — Prisma / SDK errors carry table names,
+        // constraint IDs, and external API URLs.
+        res.status(500).json({ error: "Failed to disconnect integration" })
     }
 }
 
