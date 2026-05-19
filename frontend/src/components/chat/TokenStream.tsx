@@ -1,8 +1,35 @@
-import { type JSX, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import ReactMarkdown from "react-markdown"
+
+import remarkGfm from "remark-gfm"
 
 interface Token {
     id: string
     value: string
+}
+
+// Markdown component overrides apply the same Tailwind classes the old
+// regex pipeline used, so the rendered output looks the same. react-markdown
+// renders to React elements (never to raw HTML), so any literal <script>,
+// <img onerror=...>, or other HTML in the assistant's stream is treated as
+// text — the XSS path that the old dangerouslySetInnerHTML enabled is gone.
+const markdownComponents = {
+    h1: ({ children }: { children?: React.ReactNode }) => <h1 className="text-2xl font-bold mb-4 mt-8">{children}</h1>,
+    h2: ({ children }: { children?: React.ReactNode }) => <h2 className="text-xl font-bold mb-3 mt-6">{children}</h2>,
+    h3: ({ children }: { children?: React.ReactNode }) => <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>,
+    h4: ({ children }: { children?: React.ReactNode }) => <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>,
+    strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-bold">{children}</strong>,
+    em: ({ children }: { children?: React.ReactNode }) => <em className="italic">{children}</em>,
+    code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
+        const isBlock = (className ?? "").includes("language-")
+        if (isBlock) {
+            return <code className={className}>{children}</code>
+        }
+        return <code className="px-1 rounded font-mono text-sm">{children}</code>
+    },
+    pre: ({ children }: { children?: React.ReactNode }) => <pre className="rounded p-4 overflow-x-auto my-4 font-mono">{children}</pre>,
+    ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside">{children}</ul>,
+    ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside">{children}</ol>
 }
 
 function TokenStream({ text, disableAnimation = false, onComplete }: { text: string; disableAnimation?: boolean; onComplete?: () => void }) {
@@ -35,39 +62,6 @@ function TokenStream({ text, disableAnimation = false, onComplete }: { text: str
             setShowFormatted(false)
         }
     }, [text])
-
-    // Process markdown
-    const processMarkdown = (text: string): JSX.Element => {
-        let processed = text
-
-        // Handle code blocks ```
-        processed = processed.replace(/```([\s\S]*?)```/g, '<pre class="rounded p-4 overflow-x-auto my-4 font-mono"><code>$1</code></pre>')
-
-        // Handle bold **text**
-        processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')
-
-        // Handle italic *text* (but not **text**)
-        processed = processed.replace(/(?<!\*)\*(?!\*)([^*]+?)(?<!\*)\*(?!\*)/g, '<em class="italic">$1</em>')
-
-        // Handle inline code `text`
-        processed = processed.replace(/`([^`]+)`/g, '<code class="px-1 rounded font-mono text-sm">$1</code>')
-
-        // Handle headers
-        processed = processed.replace(/^#### (.*$)/gm, '<h3 class="text-lg font-bold mb-2 mt-4">$1</h3>')
-        processed = processed.replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mb-2 mt-4">$1</h3>')
-        processed = processed.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mb-3 mt-6">$1</h2>')
-        processed = processed.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mb-4 mt-8">$1</h1>')
-
-        // Handle bullet lists - simple approach
-        processed = processed.replace(/^\* (.*)$/gm, "• $1")
-        processed = processed.replace(/^- (.*)$/gm, "• $1")
-        processed = processed.replace(/^\+ (.*)$/gm, "• $1")
-
-        // Handle numbered lists - simple approach
-        processed = processed.replace(/^(\d+)\. (.*)$/gm, "$1. $2")
-
-        return <span dangerouslySetInnerHTML={{ __html: processed }} />
-    }
 
     // Diff text and buffer the new tokens
     useEffect(() => {
@@ -153,7 +147,13 @@ function TokenStream({ text, disableAnimation = false, onComplete }: { text: str
 
     // Show formatted version (only if finalText matches current text to avoid stale content)
     if (showFormatted && finalText === text) {
-        return <div className="text-foreground text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty select-text">{processMarkdown(finalText)}</div>
+        return (
+            <div className="text-foreground text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty select-text">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {finalText}
+                </ReactMarkdown>
+            </div>
+        )
     }
 
     // Show streaming tokens
