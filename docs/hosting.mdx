@@ -24,8 +24,8 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
         After a new source image is built, Terse pre-warms a runtime sandbox from it so the first run after a deploy starts as fast as possible.
     </Step>
     <Step title="Triggers and skills are registered">
-        Each job's triggers (e.g. a GitHub webhook, a cron schedule) and skills (e.g. Slack, Apollo) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never
-        need to reconfigure external services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.
+        Each job's triggers (e.g. a GitHub webhook, a cron schedule) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never need to reconfigure external
+        services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.
     </Step>
     <Step title="A trigger fires">
         When an event matches one of your triggers, Terse launches an isolated [Modal](https://modal.com) sandbox from the pre-built source image for that deploy. Because your code and dependencies
