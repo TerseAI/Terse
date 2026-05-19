@@ -32,7 +32,7 @@ If you omit `project-name`, the CLI scaffolds into the current directory. If you
 
 1. Creates the target directory and scaffolds `package.json`, `tsconfig.json`, `src/terse.jobs.ts`, `.env.example`, and `.gitignore`
 2. Detects `pnpm` or `npm` and installs dependencies
-3. Runs `terse login`
+3. Runs `terse auth login`
 4. Creates a Terse project and writes `terse.config.json`
 5. Reviews your current integrations
 6. Runs `terse generate`
@@ -336,7 +336,7 @@ What it does:
 
 Requirements:
 
-- You’re authenticated (`terse login`) or `TERSE_API_KEY` is set
+- You’re authenticated (`terse auth login`) or `TERSE_API_KEY` is set
 - The workflow is deployed in this project (`terse deploy`)
 - `terse.config.json` exists with a valid `projectId`
 
@@ -349,7 +349,7 @@ Options:
 
 Common errors:
 
-- 401/403 Not authenticated: run `terse login`
+- 401/403 Not authenticated: run `terse auth login`
 - 404 Workflow not deployed: run `terse deploy` first
 
 Press Ctrl-C to stop listening.
@@ -407,12 +407,14 @@ If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
 
 ## Authentication
 
-### `terse login`
+CLI authentication lives under the `auth` command group. All commands below store or read credentials from your **user-level** config (not the project directory).
 
-Authenticates with Terse using a device authorization flow and saves your API key to a user-level config file.
+### `terse auth login`
+
+Authenticates with Terse using a WorkOS device authorization flow and saves a Terse API key for later CLI commands.
 
 ```bash
-terse login
+terse auth login
 ```
 
 **How it works:**
@@ -420,18 +422,28 @@ terse login
 1. Requests a device code from WorkOS
 2. Opens your browser to a verification page
 3. Polls until you complete the browser authorization
-4. Exchanges the token with the Terse backend for an API key
-5. Saves the API key so later CLI commands can reuse it
+4. Sends the short-lived **WorkOS access token** to Terse (`POST /sdk/auth/identify`, then `POST /sdk/auth/device-token-exchange`). Terse verifies the token against WorkOS before minting a **`terse_` API key** scoped to the organization you pick
+5. Saves that API key so later CLI commands can reuse it
+
+If you have no organizations yet, the CLI opens the org-creation page in your browser and polls until one exists. Finish that step within a few minutes of approving the device login. If the WorkOS access token expires first, the CLI reports that the session expired and you should run `terse auth login` again.
 
 If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
 
-### `terse logout`
+### `terse auth logout`
 
 Removes the saved API key from your user config.
 
 ```bash
-terse logout
+terse auth logout
 ```
+
+### `terse auth status`
+
+Shows the email and active organization for your saved API key, or tells you to run `terse auth login`.
+
+### `terse auth org list` / `terse auth org switch`
+
+Lists organizations you belong to and switches the active org by minting a new API key for that org (without repeating the full browser login).
 
 ## Help
 
@@ -450,10 +462,10 @@ If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs.
 Commands that call the Terse API resolve credentials in this order:
 
 1. `TERSE_API_KEY` in the current process environment
-2. The API key saved by `terse login`
+2. The API key saved by `terse auth login`
 
-Those values are **user** API tokens (the same kind you create in the Terse app). Hosted executions use separate **project-scoped** tokens that Terse injects for you; you do not paste those into `.env`.
+Those values are **user** API tokens (the same kind you create in the Terse app). They are not WorkOS access tokens. Hosted executions use separate **project-scoped** tokens that Terse injects for you; you do not paste those into `.env`.
 
-After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
+After `terse init` or `terse auth login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 
 Your runtime still needs `TERSE_API_KEY` in its environment. Set that variable anywhere your Node process runs, such as a local `.env` file, a container secret, or your hosting provider's secret store.
