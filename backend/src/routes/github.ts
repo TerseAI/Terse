@@ -150,15 +150,6 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
         const result = await fetchGithubRepositoriesForIntegration(req.session.user.organizationId, installationId)
         res.status(200).json(result)
     } catch (error) {
-        // Only echo the message when the error came from createRouteError (i.e.
-        // statusCode is set) — those messages are vetted controlled strings.
-        // Anything else (Octokit/Axios/SecretService/Prisma) gets a generic 500
-        // so internal API URLs, secret IDs, and gRPC error text don't leak.
-        const routeError = error as RouteError
-        if (routeError.statusCode) {
-            res.status(routeError.statusCode).json({ message: routeError.message })
-            return
-        }
         logger.error("Unhandled error in getGithubRepositoriesForIntegration", { error, installationId })
         res.status(500).json({ message: "Failed to fetch repositories" })
     }
