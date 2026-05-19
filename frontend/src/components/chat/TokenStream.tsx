@@ -3,11 +3,6 @@ import ReactMarkdown from "react-markdown"
 
 import remarkGfm from "remark-gfm"
 
-// Markdown component overrides apply the same Tailwind classes the old
-// regex pipeline used, so the rendered output looks the same. react-markdown
-// renders to React elements (never to raw HTML), so any literal <script>,
-// <img onerror=...>, or other HTML in the assistant's stream is treated as
-// text — the XSS path that the old dangerouslySetInnerHTML enabled is gone.
 const markdownComponents = {
     h1: ({ children }: { children?: React.ReactNode }) => <h1 className="text-2xl font-bold mb-4 mt-8">{children}</h1>,
     h2: ({ children }: { children?: React.ReactNode }) => <h2 className="text-xl font-bold mb-3 mt-6">{children}</h2>,
