@@ -3,7 +3,6 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { LaunchDarklyIntegrationManager } from "../integrations/LaunchDarklyIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretService } from "../services/SecretService"
@@ -41,12 +40,6 @@ export async function createOrUpdateLaunchDarklyIntegration(req: Request, res: R
                 ...(result.data || {})
             })
             return
-        }
-
-        const organizationId = req.session?.user?.organizationId
-        if (organizationId) {
-            const stateToken = (req.query.state as string) || req.body?.state
-            await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, input.userId, organizationId, IntegrationType.LAUNCHDARKLY)
         }
 
         res.status(result.statusCode || 200).json(result.data || { success: true })

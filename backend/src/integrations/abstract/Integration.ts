@@ -76,7 +76,13 @@ export interface OAuthIntegrationInstallation<T extends IntegrationType> {
      * single-use cookie nonce on `res`. The callback must validate the
      * binding via verifyOAuthState — see utility/oauth.ts.
      */
-    getInstallationUrl(userId: string, organizationId: string, options: InstallationOptionsFor<T> | undefined, additionalStatePayload: AdditionalStateParams | undefined, res: Response): Promise<OAuthInstallationDetails>
+    getInstallationUrl(
+        userId: string,
+        organizationId: string,
+        options: InstallationOptionsFor<T> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
+    ): Promise<OAuthInstallationDetails>
     processInstallationCallback(req: Request, res: Response): Promise<void>
     refreshToken(integrationId: string): Promise<boolean>
     getAccessToken(integrationId: string): Promise<string | null>

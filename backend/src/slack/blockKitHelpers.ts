@@ -104,7 +104,6 @@ function createDividerBlock(): KnownBlock {
     }
 }
 
-
 /**
  * Creates an approval message with approve/reject/request changes buttons
  */
@@ -317,7 +316,6 @@ export function createFeedbackModal(options: { title: string; submitText: string
         ]
     }
 }
-
 
 // =============================================================================
 // TEXT EXTRACTION FROM BLOCKS AND ATTACHMENTS
