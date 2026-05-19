@@ -4,26 +4,36 @@ description: "How terse deploy takes your local code and turns it into a live, t
 icon: "cloud-upload"
 ---
 
-When you run `terse deploy`, your workflow goes from local code to a hosted, trigger-ready automation in seconds. There's no build step, no Dockerfile, and no infrastructure to configure.
+When you run `terse deploy`, your workflow goes from local code to a hosted, trigger-ready automation in seconds. There's no Dockerfile, and no infrastructure to configure.
 
 ## What happens when you deploy
 
 <Steps>
     <Step title="Your code is zipped and uploaded">
-        The CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. Archives are
-        content-addressed by SHA-256 hash, so identical code across deploys is automatically deduplicated.
+        The CLI collects all project files (excluding `node_modules`, `.git`, `.env`, and other non-essentials), compresses them into a ZIP archive, and uploads it to cloud storage. This archive
+        is content-addressed by SHA-256 hash and serves two purposes: it is the input for the image build in the next step, and it backs the source file browser in your project dashboard.
+    </Step>
+    <Step title="Two images are built">
+        Terse builds a pair of [Modal](https://modal.com) sandbox images from your ZIP:
+
+        - **Dependency image** — starts from the detected base runtime (`node:22-slim` for TypeScript) and installs your project's packages. This layer is hashed by your dependency manifest
+          (`package.json`, lockfile, etc.) and shared across deploys, so re-deploying without changing dependencies reuses the cached image instantly.
+        - **Source image** — layered on top of the dependency image with your source code baked in. This layer is hashed by your organization, dependency hash, and source content, so it is also
+          reused automatically when nothing has changed.
+
+        After a new source image is built, Terse pre-warms a runtime sandbox from it so the first run after a deploy starts as fast as possible.
     </Step>
     <Step title="Triggers and skills are registered">
         Each job's triggers (e.g. a GitHub webhook, a cron schedule) and skills (e.g. Slack, Apollo) are registered on the Terse platform. Webhook URLs remain stable across redeploys, so you never
         need to reconfigure external services. Any jobs from a previous deploy that are no longer in your code are automatically cleaned up.
     </Step>
     <Step title="A trigger fires">
-        When an event matches one of your triggers, Terse spins up an isolated [Modal](https://modal.com) sandbox with the right runtime: `node:22-slim` for TypeScript, detected automatically from
-        your `package.json`.
+        When an event matches one of your triggers, Terse launches an isolated [Modal](https://modal.com) sandbox from the pre-built source image for that deploy. Because your code and dependencies
+        are already baked into the image, the sandbox starts immediately — there is no extraction step and no package installation at runtime.
     </Step>
     <Step title="Your handler executes">
-        Inside the container, your code is extracted, dependencies are installed, and your workflow runs with the serialized trigger payload. Your `onTrigger` handler executes. It can call tools
-        deterministically, prompt the agent, or both. When the run completes, the container is torn down and results are logged.
+        Your `onTrigger` handler runs inside the container with the serialized trigger payload. It can call tools deterministically, prompt the agent, or both. When the run completes, the container
+        is torn down and results are logged.
     </Step>
 </Steps>
 
