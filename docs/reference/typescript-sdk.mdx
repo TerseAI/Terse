@@ -50,6 +50,10 @@ npm install terse-sdk zod
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
+<Warning>
+    Never log `TERSE_API_KEY`, `TERSE_SIGNING_SECRET`, or a workflow's full [webhook URL](/reference/triggers#webhook). When debugging HTTP failures in your handler, log message and status fields only—raw `fetch` or Axios error objects can include `Authorization` headers from the SDK.
+</Warning>
+
 ## Trigger payloads
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
