@@ -72,7 +72,6 @@ export async function handleWebhookTrigger(req: Request, res: Response) {
     }
 
     logger.info("🔗 Webhook trigger received", {
-        webhookToken,
         automationId: automation.id,
         automationName: automation.name
     })
@@ -103,6 +102,6 @@ export async function handleWebhookTrigger(req: Request, res: Response) {
         const eventProcessor = new EventProcessor(webhookEvent, user)
         await eventProcessor.processSingleAgent(automation.id)
     }).catch(error => {
-        logger.error("❌ Error processing webhook trigger", { error, webhookToken, automationId: automation.id })
+        logger.error("❌ Error processing webhook trigger", { error, automationId: automation.id })
     })
 }
