@@ -16,8 +16,7 @@ export async function fetchWebhookSampleEvents(opts: { jobName: string; projectI
         where: {
             name: jobName,
             project_id: projectId,
-            organization_id: organizationId,
-            source: "SDK"
+            organization_id: organizationId
         },
         select: {
             id: true,

@@ -110,12 +110,12 @@ export function verifyIntegrationIdExists(integrationId: string, configs: Config
     return denyToolACL(`Integration ID "${integrationId}" not found. Configured integrations: ${known}.`)
 }
 
-export function doesIntegrationIdExist(integrationId: string, configs: ConfigData[]): boolean {
+function doesIntegrationIdExist(integrationId: string, configs: ConfigData[]): boolean {
     const config = configs.find(config => config.integrationId === integrationId)
     return !!config
 }
 
-export function listIntegrationIds(configs: readonly ConfigData[]): string[] {
+function listIntegrationIds(configs: readonly ConfigData[]): string[] {
     return Array.from(new Set(configs.map(c => c.integrationId)))
 }
 

@@ -45,8 +45,6 @@ function App() {
                             <Route index element={<Navigate to="home" replace />} />
                             <Route path="home" element={<HomePage />} />
                             <Route path="pricing" element={<PricingPage />} />
-                            <Route path="agents/new" element={<AgentDetail />} />
-                            <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetail />} />
                             <Route path={FrontendRoutes.PROJECTS.BY_ID} element={<ProjectDetail />} />
                             <Route path={FrontendRoutes.PROJECTS.DEPLOYS} element={<ProjectDeploysPage />} />

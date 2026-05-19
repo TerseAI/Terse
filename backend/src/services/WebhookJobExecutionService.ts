@@ -8,7 +8,7 @@ import { classifyAgentError } from "../agent/agentErrorUtils"
 import { emitAndPersistSnippetEvent } from "../agent/systemEvents/emitAndPersistSnippetEvent"
 import logger from "../logger"
 import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../realtimeSocket"
-import { SDKAgent } from "../types/prisma"
+import { AgentWithRelations } from "../types/prisma"
 import { extractErrorMessage } from "../utility/strings"
 import { buildSignatureHeaders } from "../utility/webhookHmac"
 
@@ -17,7 +17,7 @@ import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from ".
 interface WebhookJobExecutionParams {
     remoteServerUrl: string
     runId: string
-    agent: SDKAgent
+    agent: AgentWithRelations
     orgId: string
     user: User
     event: SerializedEvent

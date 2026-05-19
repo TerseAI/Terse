@@ -6,6 +6,8 @@ const APPROVAL_DECISION_TASK_NAME = "SDK_APPROVAL_DECISION" as const
 export type ApprovalDecision = {
     approved: boolean
     rejectionReason?: string
+    /** When true, the SSE handler must finalize the run as cancelled instead of resuming the agent. */
+    hardReject?: boolean
 }
 
 class ApprovalDecisionTask implements Task {

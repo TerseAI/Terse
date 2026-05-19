@@ -28,7 +28,7 @@ import { buildUserMessage } from "../userMessage"
 
 import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
 import { StreamEventEmitter } from "./StreamProcessor"
-import { BaseSystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
+import { BaseSystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { clearPendingApprovalState as clearPendingApprovalStateDb, markRunInProgress as markRunInProgressDb, storePendingApprovalState } from "./runHistory"
 
 export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>> {
@@ -257,15 +257,15 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         }
     }
 
-    override async buildAgent(params: {
+    protected async buildAgent(params: {
         name: string
         systemPromptDeps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData>
-        runContext: RunContext
         model: AiSdkModel
         tools: Tool<SdkRunnerSession>[]
         modelSettings?: ModelSettings
     }): Promise<Agent<SdkRunnerSession, AgentOutputType>> {
-        const instructions = await new BaseSystemPromptBuilder<SdkRunnerSession, ConfigData>(params.systemPromptDeps, params.runContext)
+        const instructions = await new BaseSystemPromptBuilder<SdkRunnerSession, ConfigData>(params.systemPromptDeps)
+            .withTimeSection()
             .withOutputsSection()
             .withSection(() => ({
                 header: "SDK USER INSTRUCTIONS",
@@ -287,10 +287,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     protected getAgentInitializationParams() {
         const deps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData> = {
             session: this.getToolContext(),
-            agent: {
-                id: SDK_AGENT_ID,
-                user_id: this.user.id
-            },
             outputs: this.outputs
         }
         const defaultModel = settings.aisdk.default
@@ -299,7 +295,6 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return {
             name: "Terse SDK Agent",
             systemPromptDeps: deps,
-            runContext: { runId: this.sdkRunId } as RunContext,
             model: aisdk(resolved.model),
             tools: this.tools,
             modelSettings: { providerData: resolved.providerData }

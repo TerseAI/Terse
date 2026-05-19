@@ -1,20 +1,13 @@
 import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
-import { ConfigData } from "terse-types/Configs"
 import { pendingApprovalsKey } from "terse-types/InvalidationKeys"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
 
-import { AgentRunResultStatus, AgentRunner } from "../agent/AgentRunner/AgentRunner"
-import { evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunInProgress } from "../agent/AgentRunner/runHistory"
+import { markRunFailed, markRunInProgress } from "../agent/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent"
-import { listenForRunCancellation } from "../agent/cancellation/RunCancellationTaskQueue"
-import { markRunCancelledAndInvalidate } from "../agent/cancellation/runCancellationEffects"
 import { appendToolApprovalResponseSystemEvent } from "../agent/systemEvents/toolApprovalSystemEvent"
-import { Session } from "../express"
 import logger from "../logger"
 import { NotificationManager } from "../notifications/Notification"
-import { Output } from "../outputs/abstract/Output"
-import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { resolveApprovalDecision } from "../routes/sdkApprovalGate"
 import { SlackApprovalMessageStatus } from "../slack/ApprovalStatus"
@@ -70,10 +63,6 @@ export class ApprovalService {
         }
 
         return { runRecord, channel }
-    }
-
-    private static createOutputs(channel: AgentWithRelations): Output<ConfigData>[] {
-        return OutputFactory.createOutputsFromAgent(channel)
     }
 
     /**
@@ -172,7 +161,7 @@ export class ApprovalService {
     }
 
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
-        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject, responseId } = request
+        const { runId, stepId, approved, userId, organizationId, rejectionReason, hardReject } = request
 
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}, hardReject: ${hardReject}`)
 
@@ -209,13 +198,6 @@ export class ApprovalService {
                 logger.info(`[ApprovalService] Stored rejection reason for runId: ${runId}, stepId: ${stepId}`)
             }
 
-            // Create outputs
-            const outputs = this.createOutputs(channel)
-
-            const session: Session = {
-                user
-            }
-
             // Ensure run status is 'in_progress' for streaming
             if (runRecord.status !== RunHistoryStatus.IN_PROGRESS) {
                 await markRunInProgress(runId)
@@ -241,126 +223,22 @@ export class ApprovalService {
             emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
             emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
 
-            // SDK runs: resolve the in-memory approval gate instead of creating a new AgentRunner.
-            // The SSE handler (handleSdkAgentRun) is already waiting on waitForApprovalDecision() and will resume the agent.
+            // SDK runs: resolve the in-memory approval gate.
+            // The SSE handler (handleSdkAgentRun) is awaiting waitForApprovalDecision() and will either
+            // resume the agent (approve/soft-reject) or finalize the run as cancelled (hardReject).
             const finalSlackStatus = resolveSlackApprovalStatus(approved, hardReject, rejectionReason)
 
-            if (channel.source === "SDK") {
-                resolveApprovalDecision(runId, stepId, { approved: !hardReject && approved, rejectionReason })
-
-                await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
-
-                logger.info("[ApprovalService] SDK approval decision resolved via in-memory gate", { runId, stepId, approved, hardReject })
-                return {
-                    status: ApprovalProcessingStatus.COMPLETED
-                }
-            }
-
-            // Create agent runner and resume from pending approval
-            const runContext = { runId }
-            const agentRunner = new AgentRunner(session, outputs, channel, runContext)
-
-            const decision = approved ? "approve" : "reject"
-            const cancellationController = new AbortController()
-            const cancellationSubscription = listenForRunCancellation(runId, channel.organization_id, cancellationController)
-
-            let result: Awaited<ReturnType<typeof agentRunner.resumeFromPendingApproval>>
-            try {
-                result = await agentRunner.resumeFromPendingApproval(
-                    decision,
-                    stepId,
-                    {
-                        runId,
-                        user: user,
-                        agentId: channel.id
-                    },
-                    rejectionReason,
-                    hardReject,
-                    {
-                        signal: cancellationController.signal,
-                        responseId
-                    }
-                )
-            } catch (error) {
-                if (cancellationSubscription.isCancellationRequested()) {
-                    const reason = cancellationSubscription.getReason()
-                    await markRunCancelledAndInvalidate(runId, channel.id, channel.organization_id, user.id, reason)
-                    await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
-                    return {
-                        status: ApprovalProcessingStatus.COMPLETED
-                    }
-                }
-                throw error
-            } finally {
-                cancellationSubscription.unsubscribe()
-            }
-
-            if (cancellationSubscription.isCancellationRequested()) {
-                const reason = cancellationSubscription.getReason()
-                await markRunCancelledAndInvalidate(runId, channel.id, channel.organization_id, user.id, reason)
-                await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
-                return {
-                    status: ApprovalProcessingStatus.COMPLETED
-                }
-            }
-
-            // Finalize run status based on result
-            if (result.status === AgentRunResultStatus.COMPLETED) {
-                const completion = evaluateCompletedRun(result.result?.finalOutput, result.endedWithToolFailure)
-                try {
-                    await finalizeRunStatus(runId, completion.status)
-                    emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
-                    emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
-                    if (!completion.isSuccessful) {
-                        try {
-                            await new NotificationManager(user, channel).notifyRunFailure(runId, completion.failureReason)
-                        } catch (notificationError) {
-                            logger.error("[ApprovalService] Failed to send run failure notification", {
-                                error: notificationError,
-                                runId,
-                                stepId,
-                                channelId: channel.id
-                            })
-                        }
-                    }
-                } catch (e) {
-                    logger.error("Failed to finalize run status", { error: e })
-                }
-
-                // Update Slack notification to final approved/rejected state
-                await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
-
-                logger.info(`[ApprovalService] Successfully processed approval for runId: ${runId}, stepId: ${stepId}`)
-                return {
-                    status: ApprovalProcessingStatus.COMPLETED,
-                    result: result.result
-                }
-            }
-
-            if (result.status === AgentRunResultStatus.AWAITING_APPROVAL) {
-                await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
-
-                emitCacheInvalidationWithWildcard(channel.organization_id, "runHistory", channel.id)
-                emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
-                emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
-
-                logger.info(`[ApprovalService] Processed approval decision; run is now awaiting another approval`, { runId, stepId, approved })
-
-                return {
-                    status: ApprovalProcessingStatus.AWAITING_APPROVAL
-                }
-            }
-
-            // Defensive fallback: unknown status from AgentRunner
-            logger.warn(`[ApprovalService] Unexpected agent status after resuming approval`, {
-                runId,
-                stepId,
-                status: (result as any)?.status
+            resolveApprovalDecision(runId, stepId, {
+                approved: !hardReject && approved,
+                rejectionReason,
+                hardReject: !!hardReject
             })
+
             await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
+
+            logger.info("[ApprovalService] SDK approval decision resolved via in-memory gate", { runId, stepId, approved, hardReject })
             return {
-                status: ApprovalProcessingStatus.FAILED,
-                error: `Unexpected agent status after resuming: ${(result as any)?.status ?? "unknown"}`
+                status: ApprovalProcessingStatus.COMPLETED
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error"
@@ -425,10 +303,8 @@ type ApprovalRequest = {
     userId: string
     organizationId: string
     rejectionReason?: string
-    /** When true, stops the run completely without resuming the agent */
+    /** When true, finalizes the run as cancelled in the SSE handler instead of resuming the agent. */
     hardReject?: boolean
-    /** ResponseId of the original tool call (used to seed the DeltaProjector on resume so tool completions are attributed to the original turn). */
-    responseId?: string
 }
 
 type ApprovalResult = {

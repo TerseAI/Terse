@@ -21,7 +21,7 @@ export async function handleSdkListen(req: Request, res: Response) {
     const { jobName, projectId } = parsed.data
 
     const automation = await db().automations.findFirst({
-        where: { organization_id: user.organizationId, project_id: projectId, source: "SDK", name: jobName },
+        where: { organization_id: user.organizationId, project_id: projectId, name: jobName },
         select: { id: true }
     })
     if (!automation) {

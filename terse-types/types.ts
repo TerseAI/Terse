@@ -384,7 +384,6 @@ export const agentSchema = z.object({
     notificationSettings: agentNotificationSettingsSchema.nullable(),
     toolApprovals: z.array(z.string()).nullable(),
     updatedAt: z.string().nullable(),
-    source: z.enum(["WEB_UI", "SDK"]).nullable(),
     metadata: jobMetadataSchema.nullable()
 })
 export type Agent = z.infer<typeof agentSchema>
@@ -400,20 +399,6 @@ export const agentUpdateSchema = z.object({
     toolApprovals: z.array(z.string()).nullable().optional()
 })
 export type AgentUpdate = z.infer<typeof agentUpdateSchema>
-
-export const agentCreateSchema = agentSchema.omit({
-    id: true,
-    createdByUserId: true,
-    source: true,
-    updatedAt: true
-})
-export type AgentCreate = z.infer<typeof agentCreateSchema>
-
-export const agentDraftSchema = agentCreateSchema.extend({
-    id: z.string().nullable(),
-    createdByUserId: z.string()
-})
-export type AgentDraft = z.infer<typeof agentDraftSchema>
 
 export const paginationSchema = z.object({
     page: z.number(),
