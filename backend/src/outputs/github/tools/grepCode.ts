@@ -8,6 +8,7 @@ import { ToolACLValidator } from "../../abstract/acl"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
 import { validateGitHubRepositoryNames } from "./searchCode"
+import { assertNoSearchQualifiers, assertSimpleQualifierValue, quoteGrepPattern } from "./searchSanitize"
 
 /**
  * Tool for grep-style exact text search in GitHub repositories.
@@ -49,19 +50,13 @@ This is more precise than semantic search - use it when you know exactly what te
 
         const client = createGitHubClient(accessToken)
 
-        // Build query - wrap in quotes for exact match if not already quoted
-        let query = pattern
-        if (!pattern.startsWith('"') && !pattern.endsWith('"')) {
-            // GitHub code search uses quotes for exact matching
-            query = `"${pattern}"`
-        }
-
-        if (fileExtension) {
-            query += ` extension:${fileExtension}`
-        }
-        if (path) {
-            query += ` path:${path}`
-        }
+        // Reject GitHub search qualifiers smuggled into the user-controlled
+        // pattern (the admin's `repo:<allowed>` filters are OR'd, so an
+        // unsanitized `repo:victim/secret` in the pattern bypasses the ACL).
+        assertNoSearchQualifiers(pattern, "pattern")
+        // Quote-wrap unconditionally so asymmetric / interior quotes can't
+        // break the literal-token wrapping.
+        const query = [quoteGrepPattern(pattern), assertSimpleQualifierValue(fileExtension, "fileExtension") ? `extension:${fileExtension}` : null, assertSimpleQualifierValue(path, "path") ? `path:${path}` : null].filter(Boolean).join(" ")
 
         const pageNumber = Math.max(1, page ?? 1)
         const normalizedPerPage = Math.min(perPage || 20, 100)

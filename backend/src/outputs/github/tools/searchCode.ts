@@ -10,6 +10,8 @@ import { extractErrorMessage } from "../../../utility/strings"
 import { ToolACLValidator, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
 import { createGitHubClient, getAllowedRepoNamesForConfigs, getGitHubAccessToken, searchCode } from "../githubApiClient"
 
+import { assertNoSearchQualifiers, assertSimpleQualifierValue } from "./searchSanitize"
+
 /**
  * Tool for semantic code search in GitHub repositories.
  * Uses GitHub's Code Search API to find code by meaning, function names, classes, etc.
@@ -53,17 +55,18 @@ Tips:
 
         const client = createGitHubClient(accessToken)
 
-        // Build enhanced query with optional filters
-        let enhancedQuery = query
-        if (language) {
-            enhancedQuery += ` language:${language}`
-        }
-        if (filename) {
-            enhancedQuery += ` filename:${filename}`
-        }
-        if (path) {
-            enhancedQuery += ` path:${path}`
-        }
+        // Reject GitHub search qualifiers smuggled into the user-controlled
+        // query / filter fields (the admin's `repo:<allowed>` filters are
+        // OR'd, so an unsanitized `repo:victim/secret` here bypasses the ACL).
+        assertNoSearchQualifiers(query, "query")
+        const enhancedQuery = [
+            query,
+            assertSimpleQualifierValue(language, "language") ? `language:${language}` : null,
+            assertSimpleQualifierValue(filename, "filename") ? `filename:${filename}` : null,
+            assertSimpleQualifierValue(path, "path") ? `path:${path}` : null
+        ]
+            .filter(Boolean)
+            .join(" ")
 
         const pageNumber = Math.max(1, page ?? 1)
         const normalizedPerPage = Math.min(perPage || 10, 100)

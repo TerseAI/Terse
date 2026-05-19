@@ -89,7 +89,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
                 break
             }
 
-            const decision = await waitForApprovalDecision(runId, stepId)
+            const decision = await waitForApprovalDecision(runId, stepId, orgId)
             if (decision.hardReject) {
                 if (isProductionRun) {
                     const record = await db().run_history_records.findUnique({
@@ -172,7 +172,23 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: "Missing required fields: runId, stepId, approved" })
     }
 
-    resolveApprovalDecision(parsed.data.runId, parsed.data.stepId, { approved: parsed.data.approved })
+    if (!user.organizationId) {
+        return res.status(403).json({ success: false, error: "Forbidden" })
+    }
+    const runRecord = await db().run_history_records.findFirst({
+        where: { id: parsed.data.runId, automation: { organization_id: user.organizationId } },
+        select: { id: true, automation: { select: { organization_id: true } } }
+    })
+    if (!runRecord?.automation.organization_id) {
+        logger.warn("[sdk/approval-decision] Rejecting cross-tenant approval decision", {
+            requestedRunId: parsed.data.runId,
+            userId: user.id,
+            organizationId: user.organizationId
+        })
+        return res.status(404).json({ success: false, error: "Run not found" })
+    }
+
+    resolveApprovalDecision(parsed.data.runId, parsed.data.stepId, runRecord.automation.organization_id, { approved: parsed.data.approved })
 
     return res.status(200).json({ success: true })
 }
