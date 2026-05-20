@@ -254,10 +254,15 @@ export const triggerMetadataSchema = z.object({
 })
 export type TriggerMetadata = z.infer<typeof triggerMetadataSchema>
 
+export const triggerSetupStatusEnum = z.enum(["PENDING", "ACTIVE", "FAILED"])
+export type TriggerSetupStatus = z.infer<typeof triggerSetupStatusEnum>
+
 export const agentTriggerSchema = z.object({
     id: z.string(),
     config: configInstanceDataSchema,
-    metadata: triggerMetadataSchema.nullable().optional()
+    metadata: triggerMetadataSchema.nullable().optional(),
+    setupStatus: triggerSetupStatusEnum.optional(),
+    setupError: z.string().nullable().optional()
 })
 export type AgentTrigger = z.infer<typeof agentTriggerSchema>
 

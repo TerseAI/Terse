@@ -1,3 +1,4 @@
+import { TriggerSetupStatus } from "@prisma/client"
 import { Request, Response } from "express"
 import { isValidToolName } from "terse-types"
 import { AttioInputConfig, ConfigData, ConfigType, WebMonitorConfig } from "terse-types/Configs"
@@ -12,7 +13,7 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../realtimeSocket"
 import { TRIGGER_REGISTRY } from "../triggers/TriggerRegistry"
-import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
+import { AgentTriggerWithConfigs, AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../types/prisma"
 import { parsePageParams } from "../utility/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes"
 import { getActiveSourceCodeGcsKeyForAutomation } from "../utility/projectHelper"
@@ -215,7 +216,11 @@ async function updateAgentForUser(userId: string, organizationId: string, agentI
                         automation_id: agentId,
                         config_type: convertConfigTypeToInputConfigType(trigger.config.configType),
                         // System integrations use 'system' as a sentinel integration ID
-                        integration_id: integrationId || "system"
+                        integration_id: integrationId || "system",
+                        // Triggers start PENDING. setupAgentTriggers (which
+                        // runs after the transaction commits) flips them
+                        // to ACTIVE or FAILED.
+                        setup_status: TriggerSetupStatus.PENDING
                     }
                 })
 
@@ -629,6 +634,8 @@ async function transformAgentToFrontendFormat(agent: AgentWithRelations & Partia
         agent.inputs.map(async trigger => ({
             id: trigger.id,
             config: await rehydrateTriggerConfig(trigger),
+            setupStatus: trigger.setup_status,
+            setupError: trigger.setup_error,
             ...buildTriggerMetadata(trigger)
         }))
     )
@@ -664,31 +671,59 @@ async function transformAgentToFrontendFormat(agent: AgentWithRelations & Partia
 
 export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Promise<void> {
     for (const trigger of agent.inputs) {
-        try {
-            // Convert prisma config to shared config data to get integration type
-            const configData = convertPrismaConfigToConfigData(trigger)
-            const integrationType = configData.integrationType
+        await setupSingleAgentTrigger(trigger)
+    }
+}
 
-            // Find the integration from the registry
-            const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)
+/**
+ * Run the upstream webhook/subscription registration for a single trigger,
+ * persisting setup_status + setup_error so the UI can surface failures with
+ * a retry affordance instead of silently swallowing the error.
+ */
+export async function setupSingleAgentTrigger(trigger: AgentTriggerWithConfigs): Promise<void> {
+    await db().automation_inputs.update({
+        where: { id: trigger.id },
+        data: { setup_status: TriggerSetupStatus.PENDING, setup_error: null }
+    })
+    try {
+        const configData = convertPrismaConfigToConfigData(trigger)
+        const integrationType = configData.integrationType
+        const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)
 
-            if (integration) {
-                await integration.setupAgentTrigger(trigger.integration_id, trigger)
-                logger.info(`✅ Setup completed for ${trigger.config_type} trigger (ID: ${trigger.id})`, {
-                    configType: trigger.config_type,
-                    triggerId: trigger.id,
-                    integrationId: trigger.integration_id
-                })
-            } else {
-                logger.warn(`⚠️  No integration found for ${integrationType} (config: ${trigger.config_type}). Skipping setup.`, {
-                    integrationType,
-                    configType: trigger.config_type,
-                    triggerId: trigger.id
-                })
-            }
-        } catch (error) {
-            logger.error(`❌ Error setting up ${trigger.config_type} trigger (ID: ${trigger.id})`, { error, configType: trigger.config_type, triggerId: trigger.id })
+        if (!integration) {
+            // Unknown integration type — treat as ACTIVE so we don't leave
+            // the trigger permanently stuck PENDING. This branch is unusual
+            // but harmless: any agent run will already error out at dispatch
+            // time with a clearer message.
+            logger.warn(`⚠️  No integration found for ${integrationType} (config: ${trigger.config_type}). Skipping setup.`, {
+                integrationType,
+                configType: trigger.config_type,
+                triggerId: trigger.id
+            })
+            await db().automation_inputs.update({
+                where: { id: trigger.id },
+                data: { setup_status: TriggerSetupStatus.ACTIVE, setup_error: null }
+            })
+            return
         }
+
+        await integration.setupAgentTrigger(trigger.integration_id, trigger)
+        await db().automation_inputs.update({
+            where: { id: trigger.id },
+            data: { setup_status: TriggerSetupStatus.ACTIVE, setup_error: null }
+        })
+        logger.info(`✅ Setup completed for ${trigger.config_type} trigger (ID: ${trigger.id})`, {
+            configType: trigger.config_type,
+            triggerId: trigger.id,
+            integrationId: trigger.integration_id
+        })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        await db().automation_inputs.update({
+            where: { id: trigger.id },
+            data: { setup_status: TriggerSetupStatus.FAILED, setup_error: message.slice(0, 500) }
+        })
+        logger.error(`❌ Error setting up ${trigger.config_type} trigger (ID: ${trigger.id})`, { error, configType: trigger.config_type, triggerId: trigger.id })
     }
 }
 
@@ -821,6 +856,47 @@ export async function getAgentFileContent(req: Request, res: Response) {
         logger.error("Error fetching agent file", { error, organizationId, agentId, fileId })
         res.status(500).json({ error: "Failed to fetch agent file" })
     }
+}
+
+/**
+ * POST /agents/:agentId/triggers/:triggerId/setup-retry
+ *
+ * Re-runs the upstream webhook/subscription registration for a trigger whose
+ * last setup failed. Surfaces the result so the UI can update the banner
+ * without a refetch.
+ */
+export async function retryTriggerSetup(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user) {
+        res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+    const { agentId, triggerId } = req.params
+
+    const trigger = await db().automation_inputs.findFirst({
+        where: {
+            id: triggerId,
+            automation_id: agentId,
+            automation: { organization_id: user.organizationId }
+        },
+        include: getInputConfigInclude()
+    })
+    if (!trigger) {
+        res.status(404).json({ error: "Trigger not found" })
+        return
+    }
+
+    await setupSingleAgentTrigger(trigger as AgentTriggerWithConfigs)
+
+    const refreshed = await db().automation_inputs.findUnique({
+        where: { id: triggerId },
+        select: { setup_status: true, setup_error: true }
+    })
+    res.status(200).json({
+        success: true,
+        setupStatus: refreshed?.setup_status,
+        setupError: refreshed?.setup_error ?? null
+    })
 }
 
 async function getAgentFilesFromGCS(agent: AgentWithRelations): Promise<File[]> {

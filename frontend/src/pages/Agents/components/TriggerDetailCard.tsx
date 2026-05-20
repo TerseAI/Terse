@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { Check, Copy } from "lucide-react"
+import { AlertTriangle, Check, Copy, Loader2, RefreshCw } from "lucide-react"
 import { CONFIG_DETAILS, ConfigType } from "terse-types"
 import type {
     AgentTrigger,
@@ -32,11 +32,22 @@ import { useSlackUsers } from "../../../hooks/api/useSlackUsers"
 
 import { IconForConfigType } from "./Integration"
 
-export function TriggerDetailCard({ trigger }: { trigger: AgentTrigger }) {
+export function TriggerDetailCard({ trigger, agentId }: { trigger: AgentTrigger; agentId: string }) {
     const { config } = trigger
     const type = config.configType
     const label = CONFIG_DETAILS[type as keyof typeof CONFIG_DETAILS]?.name ?? type
 
+    const body = renderTriggerBody(trigger, type, label)
+    return (
+        <div className="space-y-2">
+            <TriggerSetupBanner trigger={trigger} agentId={agentId} />
+            {body}
+        </div>
+    )
+}
+
+function renderTriggerBody(trigger: AgentTrigger, type: ConfigType, label: string) {
+    const { config } = trigger
     switch (config.configType) {
         case ConfigType.WEBHOOK_INPUT:
             return <WebhookBody webhookUrl={trigger.metadata?.webhookUrl || undefined} label={label} type={type} />
@@ -379,6 +390,46 @@ function Chips({ items, mono = false }: { items: string[]; mono?: boolean }) {
 
 function EmptyValue({ text }: { text: string }) {
     return <p className="text-muted-foreground text-xs">{text}</p>
+}
+
+function TriggerSetupBanner({ trigger, agentId }: { trigger: AgentTrigger; agentId: string }) {
+    const [retrying, setRetrying] = useState(false)
+    const [localStatus, setLocalStatus] = useState<string | null>(null)
+    const [localError, setLocalError] = useState<string | null>(null)
+
+    const status = localStatus ?? trigger.setupStatus ?? "ACTIVE"
+    const error = localError ?? trigger.setupError ?? null
+    if (status !== "FAILED") return null
+
+    const handleRetry = async () => {
+        setRetrying(true)
+        try {
+            const res = await fetch(`/api/agents/${agentId}/triggers/${trigger.id}/setup-retry`, { method: "POST", credentials: "include" })
+            const body = (await res.json()) as { setupStatus?: string; setupError?: string | null }
+            setLocalStatus(body.setupStatus ?? null)
+            setLocalError(body.setupError ?? null)
+        } catch {
+            // Surface a generic message if the retry request itself fails — the
+            // banner stays visible so the user can try again.
+            setLocalError("Retry failed. Please try again.")
+        } finally {
+            setRetrying(false)
+        }
+    }
+
+    return (
+        <div className="border-destructive/40 bg-destructive/10 text-destructive-foreground flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <div className="flex-1">
+                <div className="text-foreground font-medium">Trigger setup failed</div>
+                {error ? <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed break-words">{error}</div> : null}
+            </div>
+            <button onClick={handleRetry} disabled={retrying} className="hover:bg-muted/80 ml-2 inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50">
+                {retrying ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                Retry
+            </button>
+        </div>
+    )
 }
 
 function CopyButton({ text }: { text: string }) {

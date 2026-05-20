@@ -417,14 +417,28 @@ enum DeployStatus {
   ROLLED_BACK
 }
 
+enum TriggerSetupStatus {
+  PENDING
+  ACTIVE
+  FAILED
+}
+
 // Polymorphic inputs - can reference any integration type
 model automation_inputs {
-  id             String          @id @default(cuid())
+  id             String              @id @default(cuid())
   automation_id  String
   config_type    InputConfigType
   integration_id String
-  created_at     DateTime        @default(now())
-  updated_at     DateTime        @updatedAt
+  // Setup state for the upstream webhook/subscription registration. PENDING
+  // is the initial state when a trigger is created and external setup
+  // hasn't run yet; ACTIVE is the steady state after a successful
+  // setupAgentTrigger; FAILED means the last attempt errored out, in which
+  // case setup_error carries the message that the UI surfaces with a
+  // retry affordance.
+  setup_status   TriggerSetupStatus  @default(ACTIVE)
+  setup_error    String?
+  created_at     DateTime            @default(now())
+  updated_at     DateTime            @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 

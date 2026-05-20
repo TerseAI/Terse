@@ -14,7 +14,7 @@ import "./integrations/IntegrationTaskHandler"
 // Import to trigger listener registration
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
-import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
+import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, retryTriggerSetup, updateAgent } from "./routes/agents"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
@@ -593,6 +593,10 @@ app.get(ApiRoutes.AGENTS.FILES, requireAuth([AuthKind.UserCookie, AuthKind.UserT
 
 app.get(ApiRoutes.AGENTS.FILE_CONTENT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAgentFileContent(req, res)
+})
+
+app.post(ApiRoutes.AGENTS.TRIGGER_SETUP_RETRY, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    retryTriggerSetup(req, res)
 })
 
 // MARK: IMPROVEMENTS

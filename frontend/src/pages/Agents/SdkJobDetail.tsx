@@ -154,7 +154,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                     onDelete={() => setShowDeleteDialog(true)}
                 />
 
-                <TriggersSection triggers={triggers} />
+                <TriggersSection triggers={triggers} agentId={agentId} />
 
                 {hasSelfHostedJobUrl ? <EnvironmentSection remoteServerUrl={agent.metadata?.remoteServerUrl ?? null} isVerifying={isVerifyingServer} onVerify={handleVerifyServer} /> : null}
 
@@ -323,7 +323,7 @@ function primaryTriggerSummary(triggers: AgentTrigger[]): string | null {
     return details?.name ?? null
 }
 
-function TriggersSection({ triggers }: { triggers: AgentTrigger[] }) {
+function TriggersSection({ triggers, agentId }: { triggers: AgentTrigger[]; agentId: string }) {
     return (
         <section className="mt-8">
             <SectionLabel>Triggers</SectionLabel>
@@ -332,7 +332,7 @@ function TriggersSection({ triggers }: { triggers: AgentTrigger[] }) {
             ) : (
                 <div className="space-y-2.5">
                     {triggers.map(trigger => (
-                        <TriggerDetailCard key={trigger.id} trigger={trigger} />
+                        <TriggerDetailCard key={trigger.id} trigger={trigger} agentId={agentId} />
                     ))}
                 </div>
             )}
