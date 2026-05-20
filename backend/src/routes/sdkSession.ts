@@ -5,14 +5,18 @@ import { User } from "terse-types/types"
 import { onSessionEvent } from "../agent/SessionEventBus"
 import logger from "../logger"
 import { RateLimiterClient } from "../rateLimit/RateLimiterClient"
-import { CONNECTION_CAPS } from "../rateLimit/presets"
+
+// SSE session cap: at most 5 concurrent streams per user. The Redis set's
+// TTL is refreshed by `heartbeatIntervalMs`; if a process dies without
+// releasing slots, the TTL ensures they expire instead of leaking forever.
+const SSE_SESSION_CAP = { name: "sse-session", max: 5, keyTtlSeconds: 120, heartbeatIntervalMs: 30_000 }
 
 // Lazy so the module load order doesn't matter — server.ts awaits
 // RateLimiterClient.init() before any route fires, so the first hit here
 // will see a fully-initialized client.
 let cap: ReturnType<typeof RateLimiterClient.prototype.createConnectionCap> | null = null
 function getSseCap() {
-    if (!cap) cap = RateLimiterClient.getInstance().createConnectionCap(CONNECTION_CAPS.SSE_SESSION)
+    if (!cap) cap = RateLimiterClient.getInstance().createConnectionCap(SSE_SESSION_CAP)
     return cap
 }
 
@@ -54,7 +58,7 @@ export async function handleSessionEvents(req: Request, res: Response) {
     const heartbeat = setInterval(() => {
         safeWrite(`: keepalive\n\n`)
         void slot.refresh().catch(error => logger.warn("[sdkSession] slot.refresh failed", { error, sessionId, userId: user.id }))
-    }, CONNECTION_CAPS.SSE_SESSION.heartbeatIntervalMs)
+    }, SSE_SESSION_CAP.heartbeatIntervalMs)
 
     const unsubscribe = onSessionEvent(sessionId, event => {
         safeWrite(`data: ${JSON.stringify(event)}\n\n`)

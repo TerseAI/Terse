@@ -8,22 +8,7 @@ export interface AcquiredSlot {
     refresh: () => Promise<void>
 }
 
-/**
- * Per-key cap on the number of concurrent open connections (SSE streams,
- * long-poll requests, …). Separate from request-rate limiting because the
- * lifecycle is acquire / refresh / release rather than consume-and-forget,
- * and `rate-limiter-flexible` doesn't model it cleanly.
- *
- * Redis-backed in prod via a Lua SCARD-and-SADD that's atomic against a
- * concurrent acquire, with EXPIRE for safety so a crashed process can't
- * leak slots forever. Falls back to a per-process `Map<key, Set<connId>>`
- * in dev when no Redis client is available.
- */
 export class ConnectionCap {
-    // Atomic acquire: only adds the new conn id if the current size is below
-    // the cap. Returns 1 on success, 0 if the cap is reached. Refreshes the
-    // TTL so the set is reclaimed if a process crashes between acquire and
-    // release.
     private static readonly ACQUIRE_LUA = `
         local count = redis.call('SCARD', KEYS[1])
         if count >= tonumber(ARGV[1]) then return 0 end

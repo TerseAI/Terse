@@ -8,40 +8,21 @@ import logger from "../logger"
 import { ConnectionCap } from "./ConnectionCap"
 
 export interface RateLimitOptions {
-    /** Logging tag + Redis key prefix. Must be unique per limiter. */
     name: string
-    /** Requests allowed per window. */
     points: number
-    /** Window in seconds. */
     duration: number
-    /** Returns the bucket key, or `null` to skip rate limiting for this request. */
     keyBy: (req: Request) => string | null
-    /** Optional extra block after exhaustion (seconds). */
     blockDuration?: number
-    /** Override the default 429 response. */
     onLimit?: (req: Request, res: Response, info: { msBeforeNext: number }) => void
 }
 
 export interface ConnectionCapOptions {
     name: string
     max: number
-    /** TTL on the Redis set holding open connection ids. Heartbeats refresh it. */
     keyTtlSeconds: number
-    /** Heartbeat interval used by the SSE handler (re: `keyTtlSeconds`). */
     heartbeatIntervalMs: number
 }
 
-/**
- * Singleton that owns the Redis client and constructs rate limiters.
- * Mirrors the SecretService/SecretManagerClient pattern: private constructor,
- * static getInstance(), all state on the instance.
- *
- * Call `init()` once at server startup before any route is registered. The
- * limiters fall back to in-memory state when REDIS_URL is unset in dev/test;
- * production requires a working Redis connection so multi-instance deploys
- * share counters (otherwise an N-instance fleet effectively multiplies every
- * configured limit by N).
- */
 export class RateLimiterClient {
     private static instance: RateLimiterClient
     private redisClient: RedisClientType | null = null
@@ -61,9 +42,6 @@ export class RateLimiterClient {
         const url = settings.optional.redisUrl?.trim()
 
         if (!url) {
-            if (settings.nodeEnv === "production") {
-                throw new Error("REDIS_URL is required in production for rate limiting")
-            }
             logger.info("ℹ️  REDIS_URL not set — rate limiter using in-memory store")
             this.initialized = true
             return
@@ -79,10 +57,6 @@ export class RateLimiterClient {
             this.redisClient = client
             logger.info("✅ Rate-limit Redis connected")
         } catch (err) {
-            if (settings.nodeEnv === "production") {
-                logger.error("Rate-limit Redis connect failed in production", { err })
-                throw err
-            }
             logger.warn("⚠️  Rate-limit Redis connect failed — falling back to in-memory", { err })
         }
 
@@ -127,7 +101,7 @@ export class RateLimiterClient {
             blockDuration: opts.blockDuration,
             keyPrefix: `rl:${opts.name}`
         }
-        return this.redisClient ? new RateLimiterRedis({ ...base, storeClient: this.redisClient }) : new RateLimiterMemory(base)
+        return this.redisClient ? new RateLimiterRedis({ ...base, storeClient: this.redisClient, useRedisPackage: true }) : new RateLimiterMemory(base)
     }
 
     private assertInitialized(): void {
