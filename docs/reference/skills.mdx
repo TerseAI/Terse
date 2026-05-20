@@ -10,7 +10,7 @@ In TypeScript, `terse generate` writes a single **`Skills`** object in `src/ters
 
 ## GitHub
 
-Read-only access to repositories.
+Read-only access to repositories. Repo-scoped tools (`search_code`, `grep_code`, `read_file`, and the rest in this section) enforce your **`Skills.github`** allowlist against the GitHub connection for the authenticated Terse user on the run. If the platform cannot resolve that user context, the call is denied instead of falling back to an unscoped token.
 
 ```ts
 skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })]

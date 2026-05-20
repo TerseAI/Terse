@@ -48,6 +48,8 @@ npm install terse-sdk zod
 
 - Tokens with an **expiration** stop working when they expire; the API responds with **401** and an expired-token message.
 
+- **Organization membership:** User tokens are scoped to the organization they were created in. Terse requires an **active** membership in that organization on every authenticated SDK and CLI request. If you are removed from the organization, the token stops working immediately and requests return **401** (`Invalid API token`), even when the token has not expired and has not been revoked in the app. Create a new token after you rejoin, or use a token from an organization where you still have access.
+
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
 ## Trigger payloads

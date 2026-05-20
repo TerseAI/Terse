@@ -425,6 +425,8 @@ terse login
 
 If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
 
+Saved API keys follow the same rules as tokens in the Terse app: they must map to an **active** organization membership. If you are removed from the organization, CLI commands that call the API return **401** until you run **`terse login`** again (or set **`TERSE_API_KEY`** from a valid token for an org you still belong to).
+
 ### `terse logout`
 
 Removes the saved API key from your user config.
@@ -453,6 +455,8 @@ Commands that call the Terse API resolve credentials in this order:
 2. The API key saved by `terse login`
 
 Those values are **user** API tokens (the same kind you create in the Terse app). Hosted executions use separate **project-scoped** tokens that Terse injects for you; you do not paste those into `.env`.
+
+User tokens stop authenticating when your **organization membership** ends (for example after you are removed from the org in WorkOS). The API responds with **401** even if the token string is unchanged. Run **`terse login`** or rotate **`TERSE_API_KEY`** after your access is restored.
 
 After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 
