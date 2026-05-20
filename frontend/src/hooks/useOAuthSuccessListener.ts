@@ -9,7 +9,8 @@ import { type KeyedMutator } from "swr"
 export function useOAuthSuccessListener<T = any>(mutate: KeyedMutator<T>, successCallback?: () => void) {
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            if (event.data.type === "oauth-success") {
+            if (event.origin !== window.location.origin) return
+            if (event.data?.type === "oauth-success") {
                 mutate()
                 successCallback?.()
             }

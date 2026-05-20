@@ -43,7 +43,7 @@ This is more precise than semantic search - use it when you know exactly what te
             throw new Error("No repositories provided. The repositoryNames parameter must contain at least one repository.")
         }
 
-        const accessToken = await getGitHubAccessToken(runContext.context.user.id)
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id, runContext.context.user.organizationId)
         if (!accessToken) {
             throw new Error(`GitHub access token not found for user`)
         }
