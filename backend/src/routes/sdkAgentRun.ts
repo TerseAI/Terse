@@ -183,7 +183,8 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
             where: { id: parsed.data.runId, automation: { organization_id: user.organizationId } },
             select: { automation: { select: { organization_id: true } } }
         })
-        if (!runRecord?.automation.organization_id) {
+        const resolvedOrgId = runRecord?.automation?.organization_id
+        if (!resolvedOrgId) {
             logger.warn("[sdk/approval-decision] Rejecting cross-tenant approval decision", {
                 requestedRunId: parsed.data.runId,
                 userId: user.id,
@@ -191,7 +192,7 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
             })
             return res.status(404).json({ success: false, error: "Run not found" })
         }
-        resolveOrgId = runRecord.automation.organization_id
+        resolveOrgId = resolvedOrgId
     } else {
         resolveOrgId = user.organizationId
     }

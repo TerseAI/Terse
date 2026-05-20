@@ -5,7 +5,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
-import { __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, runWithJobContext } from "terse-sdk"
+import { __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
@@ -169,6 +169,11 @@ class TypeScriptProvider implements LanguageProvider {
                 return
             }
             if (event.type !== "tool_approval_requested") return
+
+            // If a TerseAgent in this process defined its own onApprovalRequired,
+            // it will handle and submit the decision on its own SSE stream.
+            // Skip here to avoid double-prompting and duplicate decision posts.
+            if (isAgentApprovalHandlingClaimed()) return
 
             const runId = latestRunId
             if (!runId) {

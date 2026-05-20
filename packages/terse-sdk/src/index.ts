@@ -90,7 +90,7 @@ import type {
 } from "terse-types"
 import { z } from "zod"
 
-import { getJobContext, runWithJobContext } from "./context.js"
+import { claimAgentApprovalHandling, getJobContext, releaseAgentApprovalHandling, runWithJobContext } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
 import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
@@ -107,7 +107,7 @@ function resolveApiBaseUrl(): string {
 
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
 
-export { getJobContext, runWithJobContext } from "./context.js"
+export { getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "./context.js"
 export type { TerseJobContext } from "./context.js"
 
 export { SessionStreamError, openListenStream, openSessionStream } from "./sessionStream.js"
@@ -432,25 +432,35 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             outputSchema: outputSchema ? (stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) as Record<string, unknown>) : undefined
         })
 
-        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
-            method: "POST",
-            headers: TerseAgent.buildHeaders(),
-            body: JSON.stringify(requestBody)
-        })
+        // Claim approval handling for this run if the caller wired up its own
+        // callback, so the CLI's session-stream handler won't also prompt and
+        // submit a decision for the same stepId.
+        const ownsApprovals = !!this.onApprovalRequired
+        if (ownsApprovals) claimAgentApprovalHandling()
 
-        const contentType = res.headers.get("content-type") ?? ""
-        if (contentType.includes("text/event-stream")) {
-            yield* this.consumeSseStream(res)
-            return
+        try {
+            const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
+                method: "POST",
+                headers: TerseAgent.buildHeaders(),
+                body: JSON.stringify(requestBody)
+            })
+
+            const contentType = res.headers.get("content-type") ?? ""
+            if (contentType.includes("text/event-stream")) {
+                yield* this.consumeSseStream(res)
+                return
+            }
+
+            const data = (await res.json()) as SdkAgentRunResponseBody
+            if (!res.ok || !data.success) {
+                const details = data.details?.length ? ` (${data.details.join("; ")})` : ""
+                throw new Error(`${data.error ?? "Agent run failed"}${details}`)
+            }
+
+            yield new TextResult("Agent run request accepted.")
+        } finally {
+            if (ownsApprovals) releaseAgentApprovalHandling()
         }
-
-        const data = (await res.json()) as SdkAgentRunResponseBody
-        if (!res.ok || !data.success) {
-            const details = data.details?.length ? ` (${data.details.join("; ")})` : ""
-            throw new Error(`${data.error ?? "Agent run failed"}${details}`)
-        }
-
-        yield new TextResult("Agent run request accepted.")
     }
 
     async submitApprovalDecision(params: { runId: string; stepId: string; approved: boolean }): Promise<void> {

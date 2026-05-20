@@ -9,12 +9,15 @@
  * reaches the GitHub client.
  */
 
-// Whitespace-separated tokens of the form `<qualifier>:` are special to
-// GitHub's Code Search. We block the ones an attacker could use to expand
-// the search outside the admin-configured repos.
+// Tokens of the form `<qualifier>:` are special to GitHub's Code Search.
+// We block the ones an attacker could use to expand the search outside the
+// admin-configured repos. Use a word boundary so qualifiers preceded by any
+// non-word character — parens, quotes, brackets, etc. — are also caught,
+// since GitHub's Code Search treats those as token boundaries (e.g.
+// `(repo:other/secret)` parses `repo:` as a real qualifier).
 const DISALLOWED_SEARCH_QUALIFIERS = ["repo", "user", "org", "in", "fork", "language", "extension", "filename", "path", "topic", "size", "created", "pushed", "archived", "is", "license"]
 
-const QUALIFIER_INJECTION_PATTERN = new RegExp(`(?:^|\\s)(?:${DISALLOWED_SEARCH_QUALIFIERS.join("|")}):`, "i")
+const QUALIFIER_INJECTION_PATTERN = new RegExp(`\\b(?:${DISALLOWED_SEARCH_QUALIFIERS.join("|")}):`, "i")
 
 export function assertNoSearchQualifiers(value: string, fieldName: string): void {
     if (QUALIFIER_INJECTION_PATTERN.test(value)) {
