@@ -424,7 +424,11 @@ function TriggerSetupBanner({ trigger, agentId }: { trigger: AgentTrigger; agent
                 <div className="text-foreground font-medium">Trigger setup failed</div>
                 {error ? <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed break-words">{error}</div> : null}
             </div>
-            <button onClick={handleRetry} disabled={retrying} className="hover:bg-muted/80 ml-2 inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50">
+            <button
+                onClick={handleRetry}
+                disabled={retrying}
+                className="hover:bg-muted/80 ml-2 inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+            >
                 {retrying ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
                 Retry
             </button>
