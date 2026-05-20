@@ -63,9 +63,21 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     const event = await chooseSampleEvent(candidates, apiKey)
 
     const runSpinner = createSpinner()
-    runSpinner.start(`Running ${formatEventLabel(event)}`)
+    const runSpinnerMessage = `Running ${formatEventLabel(event)}`
+    runSpinner.start(runSpinnerMessage)
     try {
-        await provider.executeJob(job, null, event, { verbose: !!verbose, entryFile })
+        await provider.executeJob(job, null, event, {
+            verbose: !!verbose,
+            entryFile,
+            pauseUiAround: async fn => {
+                runSpinner.stop("Awaiting approval")
+                try {
+                    return await fn()
+                } finally {
+                    runSpinner.start(runSpinnerMessage)
+                }
+            }
+        })
         runSpinner.stop("Run completed")
         outro("Done")
     } catch (error) {

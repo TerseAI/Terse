@@ -29,5 +29,19 @@ export interface LanguageProvider {
     resolveGeneratedCodePath(cwd: string): string
     renderGeneratedCode(input: CodegenInput): string
     loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>>
-    executeJob(job: CreateJobParameters, runId: string | null, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void>
+    executeJob(
+        job: CreateJobParameters,
+        runId: string | null,
+        event: SerializedEvent,
+        opts?: {
+            verbose?: boolean
+            entryFile?: string
+            /**
+             * Wraps interactive prompts (e.g. tool-approval confirms) so the
+             * caller can pause any outer UI it owns (clack spinners, etc.)
+             * for the duration of the prompt and decision submission.
+             */
+            pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+        }
+    ): Promise<void>
 }

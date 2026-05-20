@@ -228,7 +228,7 @@ export class ApprovalService {
             // resume the agent (approve/soft-reject) or finalize the run as cancelled (hardReject).
             const finalSlackStatus = resolveSlackApprovalStatus(approved, hardReject, rejectionReason)
 
-            resolveApprovalDecision(runId, stepId, {
+            resolveApprovalDecision(runId, stepId, channel.organization_id, {
                 approved: !hardReject && approved,
                 rejectionReason,
                 hardReject: !!hardReject
