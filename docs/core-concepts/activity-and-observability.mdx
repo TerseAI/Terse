@@ -44,6 +44,8 @@ Actions are categorized by type: `create`, `update`, `delete`, `read`, `approve`
 
 The full model conversation is stored as a sequence of raw events: every prompt, tool call, tool result, and model response, in order. This is what powers the run replay in the Activity drawer. You can step through the entire execution and see exactly what the model was thinking and doing at each point.
 
+When Terse rebuilds agent context from those stored events, it collapses true duplicates: the same **event kind and id**, keeping the latest occurrence. User messages and system events (for example tool approval requests or run errors) use separate namespaces, so matching `id` strings across kinds do not replace one another. System events such as approvals and errors stay in the agent's effective context even if a later user turn reuses an id you saw in the replay.
+
 ## Activity tab
 
 The Activity tab shows all runs across your workflows in one place, with the most recent runs first.

@@ -391,7 +391,7 @@ When you pass `job-name`, the CLI matches your local workflow name to the deploy
 | `--events`        | Also fetch the full model event stream for each listed run                                                |
 | `--run-id <id>`   | Show full chat events for one run instead of listing runs for a workflow                                  |
 
-Use `--triggers` when you want the serialized input event for each run. Use `--events` when you want the full stored conversation, including the trigger payload.
+Use `--triggers` when you want the serialized input event for each run. Use `--events` when you want the full stored conversation, including the trigger payload. Each model event includes an `id` field. Terse deduplicates replayed agent context by **event kind and id** (not id alone), so ids from system events such as approvals or run errors are not interchangeable with user turn ids.
 
 ### `terse dashboard`
 
