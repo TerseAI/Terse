@@ -350,10 +350,11 @@ async function createNewAutomation(
 }
 
 /**
- * SDK automations always notify on run failures. Settings are not user-configurable for now,
- * so we overwrite on every deploy to guarantee the row exists with the expected values.
+ * SDK automations always notify on run failures and tool-approval requests. Settings are not
+ * user-configurable for now, so we overwrite on every deploy to guarantee the row exists with
+ * the expected values.
  */
-const SDK_NOTIFICATION_ACTION_TYPES = [RunHistoryActionType.error]
+const SDK_NOTIFICATION_ACTION_TYPES = [RunHistoryActionType.error, RunHistoryActionType.approve]
 
 async function seedSdkNotificationSettings(tx: PrismaTransaction, automationId: string): Promise<void> {
     await tx.automation_notification_settings.upsert({
