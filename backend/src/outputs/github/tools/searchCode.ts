@@ -48,7 +48,7 @@ Tips:
             throw new Error("No repositories provided. The repositoryNames parameter must contain at least one repository.")
         }
 
-        const accessToken = await getGitHubAccessToken(runContext.context.user.id)
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id, runContext.context.user.organizationId)
         if (!accessToken) {
             throw new Error(`GitHub access token not found for user`)
         }
@@ -187,14 +187,16 @@ const normalizeGitHubRepoName = (name: string): string => name.toLowerCase()
 
 export async function validateGitHubRepositoryNames(repositoryNames: readonly string[], configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>>) {
     const userId = runContext.context.user.id
-    if (!userId) return denyToolACL("missing user context")
-    const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
+    const organizationId = runContext.context.user.organizationId
+    if (!userId || !organizationId) return denyToolACL("missing user context")
+    const allowed = await getAllowedRepoNamesForConfigs(configs, userId, organizationId)
     return requireAllInAllowedList(repositoryNames.map(normalizeGitHubRepoName), Array.from(allowed, normalizeGitHubRepoName), "repositoryNames")
 }
 
 export async function validateGitHubRepository(repository: string, configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>>) {
     const userId = runContext.context.user.id
-    if (!userId) return denyToolACL("missing user context")
-    const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
+    const organizationId = runContext.context.user.organizationId
+    if (!userId || !organizationId) return denyToolACL("missing user context")
+    const allowed = await getAllowedRepoNamesForConfigs(configs, userId, organizationId)
     return requireInAllowedList(normalizeGitHubRepoName(repository), Array.from(allowed, normalizeGitHubRepoName), "repository")
 }
