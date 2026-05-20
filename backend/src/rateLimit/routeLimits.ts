@@ -39,8 +39,8 @@ const PROFILES: Record<RateLimitKind, Omit<RateLimitOptions, "name">> = {
     [RateLimitKind.AuthEndpoint]: { points: 20, duration: 60, keyBy: byIp },
     [RateLimitKind.Identify]: { points: 10, duration: 60, keyBy: byIp },
     [RateLimitKind.TokenMinting]: { points: 5, duration: 3600, blockDuration: 3600, keyBy: byUserOrIp },
-    [RateLimitKind.WebhookByToken]: { points: 30, duration: 60, keyBy: byParam("webhookToken") },
-    [RateLimitKind.WebhookByIp]: { points: 60, duration: 60, keyBy: byIp },
+    [RateLimitKind.WebhookByToken]: { points: 100, duration: 60, keyBy: byParam("webhookToken") },
+    [RateLimitKind.WebhookByIp]: { points: 300, duration: 60, keyBy: byIp },
     [RateLimitKind.HeyReachByTrigger]: { points: 60, duration: 60, keyBy: byParam("triggerId") }
 }
 
