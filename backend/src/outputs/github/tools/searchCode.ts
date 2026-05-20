@@ -159,7 +159,7 @@ Tips:
             }
 
             logger.debug("[github_searchCode] Returning action in result", {
-                userId: runContext?.context?.user?.id || "unknown",
+                userId: runContext.context.user.id,
                 action
             })
 
@@ -185,15 +185,15 @@ export const validateSearchGitHubCode: ToolACLValidator<"searchGitHubCode", GitH
 // GitHub repository names (owner/repo) are case-insensitive, so we lowercase both sides before comparison.
 const normalizeGitHubRepoName = (name: string): string => name.toLowerCase()
 
-export async function validateGitHubRepositoryNames(repositoryNames: readonly string[], configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>> | undefined) {
-    const userId = runContext?.context?.user?.id
+export async function validateGitHubRepositoryNames(repositoryNames: readonly string[], configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>>) {
+    const userId = runContext.context.user.id
     if (!userId) return denyToolACL("missing user context")
     const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
     return requireAllInAllowedList(repositoryNames.map(normalizeGitHubRepoName), Array.from(allowed, normalizeGitHubRepoName), "repositoryNames")
 }
 
-export async function validateGitHubRepository(repository: string, configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>> | undefined) {
-    const userId = runContext?.context?.user?.id
+export async function validateGitHubRepository(repository: string, configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>>) {
+    const userId = runContext.context.user.id
     if (!userId) return denyToolACL("missing user context")
     const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
     return requireInAllowedList(normalizeGitHubRepoName(repository), Array.from(allowed, normalizeGitHubRepoName), "repository")

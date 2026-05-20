@@ -49,9 +49,6 @@ export async function getUserForOrg(userId: string, organizationId: string): Pro
     })
     const matchingMembership = organizationMemberships.data?.find(m => m.organizationId === organizationId)
     if (!matchingMembership) {
-        // No active membership in this org — caller (authenticateViaApiToken,
-        // webhook user resolution, manual triggers) must treat this as a hard
-        // rejection so ex-members can't continue to authenticate.
         return null
     }
 
