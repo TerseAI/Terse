@@ -51,6 +51,21 @@ npm install terse-sdk zod
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
+## Rate limits and errors
+
+Terse applies request and connection limits on the API. When you exceed a limit, the response is **429 Too Many Requests** with a **`Retry-After`** header (seconds) and a JSON body such as `{ "error": "Too many requests", "retryAfterSeconds": 42 }`. Back off until that window resets instead of retrying immediately.
+
+| Surface | Limit | Notes |
+| ------- | ----- | ----- |
+| Most authenticated SDK and API routes | 120 requests / minute | Counted per authenticated user, or per client IP when no user is present |
+| `POST /sdk/auth/device-token-exchange` (used by **`terse login`**) | 5 attempts / hour | A 6th attempt within the hour is blocked for one hour |
+| Public workflow webhook URLs (`Triggers.webhook`) | 100 requests / minute | Counted per webhook token in the URL |
+| Other public webhook ingress (Gmail, Attio, GitHub, and similar) | 300 requests / minute | Counted per client IP |
+| HeyReach trigger webhooks | 60 requests / minute | Counted per `triggerId` in the path |
+| Session event SSE (`openSessionStream`, used by **`handleTrigger`**) | 5 concurrent streams / user | A 6th open stream returns `{ "error": "Too many concurrent SSE connections" }` with **`Retry-After: 30`** |
+
+`TerseAgent.run`, `TerseAgent.executeTool`, and approval calls share the default request bucket. Each **`handleTrigger`** run opens one session stream for the duration of `onTrigger`, so avoid running more than five overlapping self-hosted trigger handlers under the same user token.
+
 ## Trigger payloads
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
@@ -104,6 +119,18 @@ const terse = new Terse()
 
 // Mount TERSE_JOB_WEBHOOK_TRIGGER_PATH on your HTTP server (Express, Hono, Next.js, etc.)
 ```
+
+
+`handleTrigger` uses a two-phase protocol: a signed **challenge** on first deploy, then signed **trigger** payloads. Each trigger run opens a session SSE stream via **`openSessionStream`** so agent runs and tool calls stay attributed to that run; the stream closes when `onTrigger` finishes.
+
+## Session streams
+
+`openSessionStream` and `openListenStream` open authenticated SSE connections to the Terse backend. They throw **`SessionStreamError`** when the HTTP handshake fails (for example **401**, **404**, or **429**). The error's **`status`** field matches the HTTP status code.
+
+- **`openSessionStream`**: used internally by **`handleTrigger`**; emits `session_started` then session events for the run.
+- **`openListenStream`**: used by **`terse listen`**; requires `jobName` and `projectId` query params and emits `listen_started` plus forwarded trigger events.
+
+Call **`close()`** on the returned handle when you are done so the backend can release resources. Session event streams are capped at **five concurrent connections per user**; see [Rate limits and errors](#rate-limits-and-errors).
 
 ## `TerseAgent`
 
