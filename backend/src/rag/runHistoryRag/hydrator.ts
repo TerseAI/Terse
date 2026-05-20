@@ -12,9 +12,6 @@ export class RunHistoryRawEventHydrator extends Hydrator<IdentifiableRunHistoryR
     }
 
     async hydrate(ref: Identifiable): Promise<IdentifiableRunHistoryRawEvent> {
-        // Org scope is required — without it any authenticated tenant could
-        // request another org's run_history_raw_events by id. Sibling
-        // GithubEventHydrator fails closed the same way.
         if (!this.ctx.organizationId) {
             throw new Error("Run history raw event hydrator requires organizationId in context")
         }

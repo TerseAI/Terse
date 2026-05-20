@@ -15,12 +15,6 @@ export function createGitHubClient(accessToken: string): Octokit {
     })
 }
 
-/**
- * Get the user's GitHub OAuth access token for the given organization.
- * organizationId is required — a user who has connected GitHub from multiple
- * orgs will otherwise get an arbitrary token back (github_app_tokens has a
- * unique on (user_id, github_username), not on user_id alone).
- */
 export async function getGitHubAccessToken(userId: string, organizationId: string): Promise<string | null> {
     const githubToken = await db().github_app_tokens.findFirst({
         where: { user_id: userId, organization_id: organizationId }

@@ -239,9 +239,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
                         destination_type: NotificationDestinationType.EMAIL,
                         destination_label: group.emailAddress,
                         status: emailError ? SentNotificationStatus.failed : SentNotificationStatus.sent,
-                        // emailError.message can contain Resend/SES payload text and constraint
-                        // names; sent_notifications is surfaced to end users so we keep only a
-                        // generic label and rely on server-side logs for the real detail.
                         error_message: emailError ? "Failed to send email" : null,
                         agent_name: agentNames
                     }
