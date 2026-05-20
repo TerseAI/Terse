@@ -11,7 +11,41 @@ import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from
 
 type LinearIssueScope = { teamId: string | null; projectId: string | null }
 
-async function fetchIssueScope(client: LinearClient, issueId: string): Promise<LinearIssueScope | null> {
+type ResolvedLinearIssue = {
+    uuid: string
+    scope: LinearIssueScope
+}
+
+// Cache the validator-resolved UUID so execute() can use it instead of
+// re-running searchIssues — see [[Terse-other-toctou-acl-bypass-b6d88728ce]].
+// Keyed by RunContext (one per agent step), GC'd with the context.
+const resolvedIssueCache = new WeakMap<object, Map<string, ResolvedLinearIssue>>()
+
+function cacheKey(integrationId: string, issueId: string): string {
+    return `${integrationId}\0${issueId}`
+}
+
+function rememberResolvedIssue(runContext: object | undefined, integrationId: string, issueId: string, resolved: ResolvedLinearIssue): void {
+    if (!runContext) return
+    let bucket = resolvedIssueCache.get(runContext)
+    if (!bucket) {
+        bucket = new Map()
+        resolvedIssueCache.set(runContext, bucket)
+    }
+    bucket.set(cacheKey(integrationId, issueId), resolved)
+}
+
+/**
+ * After validateLinearReadTicket runs, execute() can call this to skip the
+ * fuzzy resolution step entirely — closing the TOCTOU window where the
+ * validator and execute could resolve to different issues.
+ */
+export function getResolvedLinearIssue(runContext: object | undefined, integrationId: string, issueId: string): ResolvedLinearIssue | undefined {
+    if (!runContext) return undefined
+    return resolvedIssueCache.get(runContext)?.get(cacheKey(integrationId, issueId))
+}
+
+async function fetchIssueScope(client: LinearClient, issueId: string): Promise<(LinearIssueScope & { uuid: string }) | null> {
     let issue
     if (isValidUuid(issueId)) {
         issue = await client.issue(issueId)
@@ -23,7 +57,7 @@ async function fetchIssueScope(client: LinearClient, issueId: string): Promise<L
     if (!issue) return null
     const team = issue.team ? await issue.team : null
     const project = issue.project ? await issue.project : null
-    return { teamId: team?.id ?? null, projectId: project?.id ?? null }
+    return { uuid: issue.id, teamId: team?.id ?? null, projectId: project?.id ?? null }
 }
 
 function describeConfiguredScopes(configs: LinearOutputConfig[]): string {
@@ -55,23 +89,45 @@ export async function verifyLinearIssueInScope(args: {
         return denyToolACL(`Integration ID "${args.integrationId}" not found.`)
     }
     const narrowing = configsForIntegration.filter(c => c.teamId || c.projectId)
-    if (narrowing.length === 0) return { ok: true }
-
     const organizationId = args.runContext?.context?.user?.organizationId
+
+    if (narrowing.length === 0) {
+        // No scope to check, but still resolve once so execute() can reuse the
+        // UUID and skip its own searchIssues call.
+        if (organizationId) {
+            const accessToken = await getLinearAccessTokenForOrganization(args.integrationId, organizationId)
+            const client = new LinearClient({ accessToken })
+            const resolved = await fetchIssueScope(client, args.issueId)
+            if (resolved) {
+                rememberResolvedIssue(args.runContext, args.integrationId, args.issueId, {
+                    uuid: resolved.uuid,
+                    scope: { teamId: resolved.teamId, projectId: resolved.projectId }
+                })
+            }
+        }
+        return { ok: true }
+    }
+
     if (!organizationId) return { ok: true } // capability lookup / no runtime context — skip the API hop
 
     const accessToken = await getLinearAccessTokenForOrganization(args.integrationId, organizationId)
     const client = new LinearClient({ accessToken })
-    const issueScope = await fetchIssueScope(client, args.issueId)
+    const resolved = await fetchIssueScope(client, args.issueId)
 
-    if (!issueScope) {
+    if (!resolved) {
         logger.info("[LinearACL] could not resolve issue scope (issue may not exist)", { issueId: args.issueId })
         return denyToolACL(`Linear issue ${args.issueId} could not be found. Configured scope: ${describeConfiguredScopes(configsForIntegration)}.`)
     }
-    if (narrowing.some(c => scopeMatches(issueScope, c))) return { ok: true }
+    if (narrowing.some(c => scopeMatches(resolved, c))) {
+        rememberResolvedIssue(args.runContext, args.integrationId, args.issueId, {
+            uuid: resolved.uuid,
+            scope: { teamId: resolved.teamId, projectId: resolved.projectId }
+        })
+        return { ok: true }
+    }
 
     return denyToolACL(
-        `Linear issue ${args.issueId} (team=${issueScope.teamId ?? "?"}, project=${issueScope.projectId ?? "?"}) is outside the configured scope. ` +
+        `Linear issue ${args.issueId} (team=${resolved.teamId ?? "?"}, project=${resolved.projectId ?? "?"}) is outside the configured scope. ` +
             `Allowed scopes for integration "${args.integrationId}": ${describeConfiguredScopes(narrowing)}.`
     )
 }

@@ -8,7 +8,7 @@ import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
 import { ToolACLValidator } from "../../abstract/acl"
-import { verifyLinearIssueInScope } from "../linearAcl"
+import { getResolvedLinearIssue, verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearReadTicketTool = defineSessionTool({
     name: "linear_read_ticket",
@@ -25,10 +25,15 @@ Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this afte
         const client = new LinearClient({ accessToken })
 
         try {
-            let issue = null
+            // Prefer the UUID the ACL validator resolved — closes the TOCTOU
+            // window where validate-time and execute-time fuzzy searches could
+            // resolve to different issues.
+            const cachedResolution = getResolvedLinearIssue(runContext?.context, integrationId, issueId)
+            const resolvedUuid = cachedResolution?.uuid ?? (isValidUuid(issueId) ? issueId : null)
 
-            if (isValidUuid(issueId)) {
-                issue = await client.issue(issueId)
+            let issue = null
+            if (resolvedUuid) {
+                issue = await client.issue(resolvedUuid)
             } else {
                 const searchResult = await client.searchIssues(issueId, { first: 1 })
                 const first = searchResult.nodes[0]

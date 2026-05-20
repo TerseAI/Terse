@@ -48,9 +48,18 @@ export const linearGetStatesTool = defineSessionTool({
 export const validateLinearGetStates: ToolACLValidator<"linear_get_states", LinearOutputConfig> = ({ args, configs }) => validateLinearOptionalTeam(args.integrationId, args.teamId, configs)
 
 export const validateLinearOptionalTeam = (integrationId: string, teamId: string | null | undefined, configs: LinearOutputConfig[]) => {
-    if (!teamId) return { ok: true }
     const matching = findConfigsByIntegrationId(integrationId, configs)
     const narrowing = matching.filter(c => c.teamId)
+    // If the integration is configured to narrow to specific teams, refuse to
+    // fall back to the workspace-wide list when teamId is omitted. Otherwise the
+    // agent could call linear_get_labels / linear_get_projects without teamId
+    // and enumerate metadata (label/project names — often sensitive business
+    // context) from every team in the workspace.
+    if (narrowing.length > 0 && !teamId) {
+        const allowed = narrowing.map(c => c.teamId).join(", ")
+        return denyToolACL(`teamId is required for integration "${integrationId}" — pick one of the configured teams: ${allowed}.`)
+    }
+    if (!teamId) return { ok: true }
     if (narrowing.length === 0) return { ok: true }
     if (narrowing.some(c => c.teamId === teamId)) return { ok: true }
     const allowed = narrowing.map(c => c.teamId).join(", ") || "(none)"
