@@ -8,35 +8,18 @@ import { buildSignatureHeaders, generateChallengeToken, verifyChallengeSignature
 import { joinJobServerPath } from "../utility/webhookUrl"
 
 export const WEBHOOK_JOB_FETCH_TIMEOUT_MS = 30_000
-// Challenge response is ~150 bytes of JSON. A few KB is plenty of slack; we
-// hard-stop the read at 64 KiB to keep a malicious remote server from
-// streaming gigabytes (or trickling forever) after sending headers.
 const WEBHOOK_JOB_MAX_BODY_BYTES = 64 * 1024
 
 export interface WebhookJobHandshakeChallengeParams {
     remoteServerUrl: string
     signingSecret: string
-    /**
-     * When set, aborts the handshake fetch if this signal aborts (e.g. HTTP request cancelled).
-     * The timeout still applies.
-     */
     signal?: AbortSignal
 }
 
-/**
- * Outcome of the challenge POST plus server-side verification that the returned signature
- * proves the remote server holds the correct signing secret.
- */
 export type WebhookJobHandshakeChallengeResult =
     | {
           ok: true
           triggerUrl: string
-          /**
-           * The validated + IP-pinned context for the trigger URL. Reusable
-           * by the subsequent delivery fetch so the same connect-pinning
-           * applies (and we don't re-validate, which would reopen the TOCTOU
-           * window between handshake and delivery).
-           */
           validatedTrigger: ValidatedRemoteUrl
       }
     | {
@@ -47,11 +30,6 @@ export type WebhookJobHandshakeChallengeResult =
           httpStatus?: number
       }
 
-/**
- * POSTs `{ type: "challenge", challenge: "<random>" }` (signed) to the job's Terse trigger path,
- * then verifies the server echoed the challenge and provided a valid HMAC signature proving it
- * holds the signing secret.
- */
 export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshakeChallengeParams): Promise<WebhookJobHandshakeChallengeResult> {
     const timeoutMs = WEBHOOK_JOB_FETCH_TIMEOUT_MS
 
@@ -68,8 +46,6 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     const triggerUrl = joinJobServerPath(params.remoteServerUrl, ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER)
-    // safeFetch needs a ValidatedRemoteUrl pointing at the trigger path —
-    // same host as the validated remoteServerUrl, just a different path.
     const validatedTrigger: ValidatedRemoteUrl = { ...validated, url: triggerUrl, parsedUrl: new URL(triggerUrl) }
     const challengeToken = generateChallengeToken()
     const body = JSON.stringify({ type: "challenge", challenge: challengeToken })
@@ -106,9 +82,6 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
         }
     }
 
-    // 3xx responses are surfaced as-is (redirects are never followed — see
-    // safeFetch comment). Following a Location header could land us on an
-    // internal address despite the IP pinning.
     if (response.status >= 300 && response.status < 400) {
         clearTimeout(timeout)
         return {
@@ -122,9 +95,6 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
 
     if (!response.ok) {
         clearTimeout(timeout)
-        // Intentionally do NOT echo the response body back to the caller.
-        // Echoing the body turns this endpoint into a free SSRF data
-        // exfiltration channel (cloud metadata, internal admin pages, etc.).
         return {
             ok: false,
             triggerUrl,
@@ -134,9 +104,6 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
         }
     }
 
-    // Keep the abort controller active across the body read — fetch resolves
-    // when headers arrive, so without this a malicious remote could stream
-    // unbounded bytes (or trickle forever) while we hold a worker.
     let bodyText: string
     try {
         bodyText = await readResponseBodyWithCap(response, WEBHOOK_JOB_MAX_BODY_BYTES)
