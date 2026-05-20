@@ -1,4 +1,4 @@
-import { App as SlackApp } from "@slack/bolt"
+import { SlackAction, App as SlackApp, SlackViewAction } from "@slack/bolt"
 // ESM wraps CommonJS default exports, so we need to access .default
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver"
 import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js"
@@ -15,6 +15,35 @@ import { SecretService } from "../services/SecretService"
 import { createFeedbackModal } from "./blockKitHelpers"
 
 const ExpressReceiver = ((ExpressReceiverModule as any).default || ExpressReceiverModule) as typeof ExpressReceiverType
+
+type SlackClickerCheck = { ok: true; userId: string; organizationId: string } | { ok: false; reason: string }
+
+async function resolveSlackClicker(body: SlackAction | SlackViewAction, expectedOrganizationId: string): Promise<SlackClickerCheck> {
+    const slackUserId = body.user.id
+    // In Slack Connect shared channels, body.team.id is the host workspace
+    // (where the message was posted), but user_slack_integrations.slack_team_id
+    // records the user's home workspace (where they OAuth'd). Prefer
+    // body.user.team_id so external-org members aren't denied; fall back to
+    // body.team.id for payloads (e.g. some view submissions) where user.team_id
+    // is absent.
+    const slackTeamId = body.user.team_id ?? body.team?.id
+    if (!slackUserId || !slackTeamId) {
+        return { ok: false, reason: "clicker identity missing from action body" }
+    }
+    const clicker = await db().user_slack_integrations.findFirst({
+        where: {
+            authed_user_id: slackUserId,
+            slack_team_id: slackTeamId,
+            is_bot_user: false,
+            organization_id: expectedOrganizationId
+        },
+        select: { user_id: true, organization_id: true }
+    })
+    if (!clicker) {
+        return { ok: false, reason: `clicker ${slackUserId}@${slackTeamId} is not a member of org ${expectedOrganizationId}` }
+    }
+    return { ok: true, userId: clicker.user_id, organizationId: clicker.organization_id }
+}
 
 /**
  * Creates and configures the Slack Bolt app with ExpressReceiver
@@ -209,36 +238,13 @@ export async function setupSlackBolt() {
                 return
             }
 
-            // Get user from slack integration
-            const userSlackIntegration = await db().user_slack_integrations.findUnique({
-                where: {
-                    id: approvalMessage.user_slack_integration_id
-                },
-                include: {
-                    user: true
-                }
-            })
-
-            if (!userSlackIntegration) {
-                logger.error("[Slack Approval] No user slack integration found")
-                await respond({
-                    text: "Error: User integration not found",
-                    response_type: "ephemeral"
-                })
-                return
-            }
-
-            const userId = userSlackIntegration.user_id
-            const organizationId = userSlackIntegration.organization_id
-
-            // Get channel info for updating message and generating summary
             const runRecord = await db().run_history_records.findUnique({
                 where: { id: runId },
                 include: { automation: true }
             })
 
-            if (!runRecord || !runRecord.automation || runRecord.automation.organization_id !== organizationId) {
-                logger.error(`[Slack Approval] User ${userId} does not have access to run ${runId}`)
+            if (!runRecord || !runRecord.automation) {
+                logger.error(`[Slack Approval] Run not found for runId: ${runId}`)
                 await respond({
                     text: "Error: You don't have permission to approve this request",
                     response_type: "ephemeral"
@@ -246,18 +252,18 @@ export async function setupSlackBolt() {
                 return
             }
 
-            const channel = await db().automations.findUnique({
-                where: { id: runRecord.automation.id }
-            })
-
-            if (!channel) {
-                logger.error("[Slack Approval] Channel not found")
+            const clicker = await resolveSlackClicker(body, runRecord.automation.organization_id)
+            if (!clicker.ok) {
+                logger.warn("[Slack Approval] Clicker authorization failed", { reason: clicker.reason, runId, stepId })
                 await respond({
-                    text: "Error: Channel not found",
+                    text: "Error: You don't have permission to approve this request",
                     response_type: "ephemeral"
                 })
                 return
             }
+
+            const userId = clicker.userId
+            const organizationId = clicker.organizationId
 
             // Use centralized approval service - it handles Slack notifications internally
             const result = await ApprovalService.processApproval({
@@ -330,36 +336,23 @@ export async function setupSlackBolt() {
                 return
             }
 
-            // Get user from slack integration to verify access
-            const userSlackIntegration = await db().user_slack_integrations.findUnique({
-                where: {
-                    id: approvalMessage.user_slack_integration_id
-                },
-                include: {
-                    user: true
-                }
-            })
-
-            if (!userSlackIntegration) {
-                logger.error("[Slack Approval] No user slack integration found")
-                await respond({
-                    text: "Error: User integration not found",
-                    response_type: "ephemeral"
-                })
-                return
-            }
-
-            const userId = userSlackIntegration.user_id
-            const organizationId = userSlackIntegration.organization_id
-
-            // Verify user has access to this run
             const runRecord = await db().run_history_records.findUnique({
                 where: { id: runId },
                 include: { automation: true }
             })
 
-            if (!runRecord || !runRecord.automation || runRecord.automation.organization_id !== organizationId) {
-                logger.error(`[Slack Approval] User ${userId} does not have access to run ${runId}`)
+            if (!runRecord || !runRecord.automation) {
+                logger.error(`[Slack Approval] Run not found for runId: ${runId}`)
+                await respond({
+                    text: "Error: You don't have permission to request changes",
+                    response_type: "ephemeral"
+                })
+                return
+            }
+
+            const clicker = await resolveSlackClicker(body, runRecord.automation.organization_id)
+            if (!clicker.ok) {
+                logger.warn("[Slack Approval] Clicker authorization failed", { reason: clicker.reason, runId, stepId })
                 await respond({
                     text: "Error: You don't have permission to request changes",
                     response_type: "ephemeral"
@@ -452,42 +445,32 @@ export async function setupSlackBolt() {
                 return
             }
 
-            // Get user from slack integration
-            const userSlackIntegration = await db().user_slack_integrations.findUnique({
-                where: {
-                    id: approvalMessage.user_slack_integration_id
-                },
-                include: {
-                    user: true
-                }
-            })
-
-            if (!userSlackIntegration) {
-                logger.error("[Slack Approval] No user slack integration found")
-                await respond({
-                    text: "Error: User integration not found",
-                    response_type: "ephemeral"
-                })
-                return
-            }
-
-            const userId = userSlackIntegration.user_id
-            const organizationId = userSlackIntegration.organization_id
-
-            // Verify user has access to this run
             const runRecord = await db().run_history_records.findUnique({
                 where: { id: runId },
                 include: { automation: true }
             })
 
-            if (!runRecord || !runRecord.automation || runRecord.automation.organization_id !== organizationId) {
-                logger.error(`[Slack Approval] User ${userId} does not have access to run ${runId}`)
+            if (!runRecord || !runRecord.automation) {
+                logger.error(`[Slack Approval] Run not found for runId: ${runId}`)
                 await respond({
                     text: "Error: You don't have permission to reject this request",
                     response_type: "ephemeral"
                 })
                 return
             }
+
+            const clicker = await resolveSlackClicker(body, runRecord.automation.organization_id)
+            if (!clicker.ok) {
+                logger.warn("[Slack Approval] Clicker authorization failed", { reason: clicker.reason, runId, stepId })
+                await respond({
+                    text: "Error: You don't have permission to reject this request",
+                    response_type: "ephemeral"
+                })
+                return
+            }
+
+            const userId = clicker.userId
+            const organizationId = clicker.organizationId
 
             // Use centralized approval service with hardReject flag - it handles Slack notifications internally
             const result = await ApprovalService.processApproval({
@@ -606,36 +589,26 @@ export async function setupSlackBolt() {
                     return
                 }
 
-                // Get user from slack integration
-                const userSlackIntegration = await db().user_slack_integrations.findUnique({
-                    where: {
-                        id: approvalMessage.user_slack_integration_id
-                    },
-                    include: {
-                        user: true
-                    }
-                })
-
-                if (!userSlackIntegration) {
-                    logger.error("[Slack Approval] No user slack integration found")
-                    await notifySubmitter("Error: User integration not found", approvalMessage.slack_channel_id)
-                    return
-                }
-
-                const userId = userSlackIntegration.user_id
-                const organizationId = userSlackIntegration.organization_id
-
-                // Verify user has access
                 const runRecord = await db().run_history_records.findUnique({
                     where: { id: runId },
                     include: { automation: true }
                 })
 
-                if (!runRecord || !runRecord.automation || runRecord.automation.organization_id !== organizationId) {
-                    logger.error(`[Slack Approval] User ${userId} does not have access to run ${runId}`)
+                if (!runRecord || !runRecord.automation) {
+                    logger.error(`[Slack Approval] Run not found for runId: ${runId}`)
                     await notifySubmitter("Error: You don't have permission to request changes", approvalMessage.slack_channel_id)
                     return
                 }
+
+                const clicker = await resolveSlackClicker(body, runRecord.automation.organization_id)
+                if (!clicker.ok) {
+                    logger.warn("[Slack Approval] Clicker authorization failed", { reason: clicker.reason, runId, stepId })
+                    await notifySubmitter("Error: You don't have permission to request changes", approvalMessage.slack_channel_id)
+                    return
+                }
+
+                const userId = clicker.userId
+                const organizationId = clicker.organizationId
 
                 // Process the request changes with the feedback
                 const result = await ApprovalService.processApproval({
