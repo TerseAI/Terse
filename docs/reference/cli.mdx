@@ -331,6 +331,7 @@ terse listen my-workflow
 What it does:
 
 - Opens an authenticated SSE stream to the backend for your project/workflow
+- Ignores SSE comment keepalives the server sends between events (the stream stays open through proxies)
 - Prints each forwarded event as it arrives
 - Runs your current local workflow code against that serialized trigger
 

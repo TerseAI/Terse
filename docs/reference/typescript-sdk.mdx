@@ -31,6 +31,8 @@ Import these from `terse-sdk`:
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 - `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
+- `openSessionStream`, `openListenStream`, `SessionStreamError`: low-level SSE clients for session and live-listen endpoints (see [Session streams](#session-streams))
+- Types: `SessionStreamHandle`, `ListenStreamHandle`, `SessionStreamEvent`, `OpenSessionStreamOptions`, `OpenListenStreamOptions`, `SessionStartedEvent`
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -103,6 +105,21 @@ const terse = new Terse()
 
 // Mount TERSE_JOB_WEBHOOK_TRIGGER_PATH on your HTTP server (Express, Hono, Next.js, etc.)
 ```
+
+`handleTrigger` opens a session stream for the duration of your `onTrigger` handler so agent runs, tool calls, and approvals stay tied to one `sessionId`. Call `session.close()` when you are done if you open a stream yourself.
+
+## Session streams
+
+Use **`openSessionStream`** and **`openListenStream`** when you need direct access to Terse SSE endpoints (for example a custom dev harness). Most workflows rely on **`Terse.handleTrigger`**, **`TerseAgent.run`**, or the CLI instead.
+
+| Function | Endpoint | First event | Used by |
+| -------- | -------- | ----------- | ------- |
+| `openSessionStream(apiBaseUrl, apiKey, options?)` | `GET /sdk/session/events` | `{ type: "session_started", sessionId }` | `Terse.handleTrigger`, `terse test`, `terse deploy` |
+| `openListenStream(apiBaseUrl, apiKey, options)` | `GET /sdk/listen?jobName=…&projectId=…` | `{ type: "listen_started", … }` | `terse listen` |
+
+Both streams deliver JSON on `data:` lines. Terse also sends SSE **comment** keepalives between events so proxies do not close idle connections—the session endpoint emits `: keepalive` every **15 seconds**. The SDK and CLI parsers only read `data:` lines and ignore comments. If you write your own SSE client, skip lines that start with `:`.
+
+On write or socket errors, the server tears down the stream instead of leaving a half-open listener attached. Per-user connection caps are not enforced on these endpoints yet.
 
 ## `TerseAgent`
 

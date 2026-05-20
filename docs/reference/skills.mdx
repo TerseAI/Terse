@@ -109,6 +109,8 @@ skills: [Skills.gmail()]
 | `gmail_send_email`   | Send emails or reply to threads      | Write  |
 | `gmail_create_draft` | Create draft emails for human review | Write  |
 
+When embedding inline images via `image_urls` (signed internal bucket URLs referenced as `cid:…` in `html_body`), Terse downloads at most **10** images per send and rejects any single image larger than **25 MB**. Extra URLs are dropped with a warning.
+
 ## Snowflake
 
 Read-only SQL query execution.
