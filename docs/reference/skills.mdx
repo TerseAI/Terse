@@ -26,6 +26,8 @@ skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })]
 | `list_commits`                | List commits                    | Read   |
 | `summarize_pull_request_diff` | Summarize PR changes            | Read   |
 
+For **`search_code`** and **`grep_code`**, pass plain search text in **`query`** / **`pattern`**. Do not embed GitHub search qualifiers such as `repo:`, `user:`, or `path:` in those fields—Terse applies the repo allowlist from your skill config. Optional filters (`language`, `filename`, `fileExtension`, `path`) must not contain whitespace, colons, or quote characters. The tools reject values that would escape the configured repositories.
+
 ## Slack
 
 Send messages and read conversations.

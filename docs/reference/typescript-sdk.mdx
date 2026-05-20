@@ -24,7 +24,8 @@ Import these from `terse-sdk`:
 - `Terse`: client for `handleTrigger` when you self-host the webhook endpoint
 - `TERSE_JOB_WEBHOOK_TRIGGER_PATH`: mount this path on your HTTP server when wiring `handleTrigger` (matches what the Terse backend calls)
 - `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`
-- `EventType`: enum for values on streamed `TerseAgent` results
+- `EventType`: enum for values on streamed `TerseAgent` results (includes `TOOL_APPROVAL_REQUESTED`)
+- `ApprovalRequestInfo`: `{ stepId, toolName, arguments }` passed to `onApprovalRequired`
 - `Trigger`: the base event interface
 - Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), HeyReach types such as `HeyReachMessageReplyReceivedTrigger` and `HeyReachTrigger`, and other per-integration exports (see `terse-sdk` package entry)
 - Config helpers re-exported for trigger construction: `HeyReachInputConfig`, and the `HeyReachEventType` object for event-type constants
@@ -223,7 +224,21 @@ createJob({
 
 ## Tool approvals
 
-List tool names in **`toolApprovals`** on **`TerseAgent.create()`** to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
+List tool names in **`toolApprovals`** on **`TerseAgent.create()`** to require human approval before those tools execute.
+
+### Local testing and production
+
+During local testing, **`terse test`** listens on the Terse session stream for **`tool_approval_requested`** events and prompts in the terminal (the run spinner pauses while you decide). In production, approval requests surface in the Terse app under **Notifications** (and Slack or email when configured).
+
+Every **`terse deploy`** re-seeds notification settings for CLI workflows so **run failures** and **tool approval requests** are always enabled. You do not configure these separately in the app today.
+
+### Programmatic approval (`onApprovalRequired`)
+
+Set **`onApprovalRequired`** on a **`TerseAgent`** instance to handle approvals in code instead of waiting on the CLI or in-app UI. The callback receives **`ApprovalRequestInfo`** (`stepId`, `toolName`, `arguments`) and must return `true` to approve or `false` to reject.
+
+When **`onApprovalRequired`** is set and you call **`agent.run()`**, the SDK submits the decision via **`submitApprovalDecision()`** after your callback returns. The CLI skips its own terminal prompt for that step so you are not asked twice.
+
+For custom flows, yield **`EventType.TOOL_APPROVAL_REQUESTED`** chunks from **`agent.run()`** and call **`submitApprovalDecision({ runId, stepId, approved })`** yourself. Approval decisions are scoped to your organization; submitting a decision for a run outside your org returns an error.
 
 ```ts
 createJob({
@@ -236,11 +251,17 @@ createJob({
             toolApprovals: ["slack.sendMessage"]
         })
 
+        agent.onApprovalRequired = async ({ toolName, arguments: args }) => {
+            // Custom policy: auto-approve reads, prompt for writes in your own UI, etc.
+            console.log(`Approve ${toolName}?`, args)
+            return true
+        }
+
         const summary = await agent.runAndWait(
             ["Summarize this thread in one sentence for the on-call owner.", `Channel: ${event.channelName}`, `From: ${event.userName}`, `Text: ${event.text}`].join("\n")
         )
 
-        // Pauses until a human approves in the CLI (local) or Notifications (prod)
+        // Pauses until onApprovalRequired returns true, or a human approves via CLI / Notifications
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
             message: `Suggested reply based on: ${summary}`
@@ -248,6 +269,8 @@ createJob({
     }
 })
 ```
+
+Non-interactive runs (no TTY) cannot show the CLI prompt. **`terse test`** auto-rejects approvals in that case. Set **`onApprovalRequired`** if you need a different policy in CI or scripts.
 
 Use **`toolApprovals`** for workflows that write to production systems during early development, or when compliance requires a human in the loop.
 

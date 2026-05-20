@@ -59,7 +59,7 @@ The approval experience adapts to your environment:
 
 ### Local development (`terse test`)
 
-When you test locally, approval requests appear as interactive prompts in your terminal:
+When you test locally, the CLI listens on the Terse session stream for **`tool_approval_requested`** events and shows an interactive prompt in your terminal. The run spinner pauses while you decide:
 
 ```
   Approval required: attio.updateRecord
@@ -73,6 +73,10 @@ When you test locally, approval requests appear as interactive prompts in your t
 ```
 
 Type `Y` to approve or `n` to reject. The run resumes immediately in the same terminal session.
+
+If your workflow sets **`TerseAgent.onApprovalRequired`**, the SDK handles and submits the decision in your callback. The CLI does not prompt again for the same step.
+
+In non-interactive environments (no TTY), the CLI auto-rejects approvals. Set **`onApprovalRequired`** on the agent when you need custom approval logic in CI or scripts.
 
 ### Production (deployed workflows)
 
@@ -108,12 +112,13 @@ A common pattern is to start with approvals enabled during development and the f
 
 ## Notification configuration
 
-Approval requests are delivered through your workflow's notification settings. To receive approval notifications, make sure:
+Approval requests are delivered through notification destinations and workflow notification settings.
 
-1. **Notification destination** is configured. Add a Slack workspace or confirm your email in **Profile > Notification destinations**.
-2. **Approval requests are enabled.** In your workflow's notification settings, include "Approval requests" in the action types to notify on.
+**CLI workflows (`terse deploy`):** Terse automatically enables notifications for **run failures** and **tool approval requests** on every deploy. You do not toggle these in the app today. Make sure you have a notification destination configured so deliveries can reach you.
 
-Terse tries Slack first when you have an active Slack destination. If Slack isn't configured, it falls back to email. Every approval request sent is logged in your notification history.
+**UI agents:** Configure notification action types in the agent's notification settings, including **Approval requests**.
+
+For any workflow, add a Slack workspace or confirm your email under **Profile > Notification destinations**. Terse tries Slack first when you have an active Slack destination. If Slack isn't configured, it falls back to email. Every approval request sent is logged in your notification history.
 
 ## Where to go next
 
