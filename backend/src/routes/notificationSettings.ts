@@ -71,6 +71,19 @@ export async function updateNotificationSettings(req: Request, res: Response) {
         res.status(400).json({ error: "Organization context is required to apply settings to all agents" })
         return
     }
+    // applyToAllAgents reaches across every automation in the org, including
+    // ones the caller doesn't own — that's a notification-silencer surface a
+    // low-privilege account could use to hide subsequent automation activity
+    // from coworkers. Restrict to admins. Non-admins can still toggle their
+    // own automations via the per-agent UI.
+    if (applyToAllAgents) {
+        const isAdmin = req.session.user.roles?.includes("admin") ?? false
+        if (!isAdmin) {
+            logger.warn("🚫 applyToAllAgents blocked: requester is not an org admin", { userId, organizationId })
+            res.status(403).json({ error: "Only organization admins can apply notification settings to all agents" })
+            return
+        }
+    }
 
     try {
         const prisma = db()
