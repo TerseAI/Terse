@@ -26,7 +26,7 @@ Terse still runs the rest of the platform.
         This authenticates, links the repo to a Terse project, and writes `terse.config.json` with self-hosted mode enabled. See [`terse attach`](/reference/cli#terse-attach) for the full flow.
     </Step>
     <Step title="Point Terse at your server">
-        Set `remoteServerUrl` to the public URL of your service:
+        Set `remoteServerUrl` to the public URL of your service (scheme + host; no path):
 
         ```json terse.config.json
         {
@@ -36,6 +36,8 @@ Terse still runs the rest of the platform.
             "remoteServerUrl": "https://your-app.example.com"
         }
         ```
+
+        Terse validates this URL when you run `terse deploy`. It must use **HTTPS** and resolve to a **public** address. Private, link-local, loopback, and other reserved ranges are rejected. For local development against `http://localhost` or `127.0.0.1`, the Terse platform must have **`NODE_ENV`** explicitly set to `development` or `test` and run in development mode — an unset `NODE_ENV` is treated as production and blocks localhost URLs.
     </Step>
     <Step title="Set the required environment variables">
         Your server needs two values from Terse, both available in the dashboard under your project's settings:
@@ -98,6 +100,22 @@ Terse still runs the rest of the platform.
     from the platform.
 </Tip>
 
+## Remote server URL
+
+`remoteServerUrl` in `terse.config.json` is the base URL Terse uses for the deploy handshake and every trigger delivery. The platform appends **`TERSE_JOB_WEBHOOK_TRIGGER_PATH`** from `terse-sdk` when it POSTs to your handler.
+
+| Requirement | Details |
+| ----------- | ------- |
+| **HTTPS** | Required in production. `http://` is allowed only for `localhost`, `127.0.0.1`, or `::1` when the Terse platform has **`NODE_ENV`** set to `development` or `test` and runs in development mode. |
+| **Public DNS** | Hostnames must resolve to global unicast addresses only. Private, link-local, loopback, CGNAT, multicast, documentation, and other reserved ranges are rejected. IPv4 literals and DNS results are checked; IPv4-mapped IPv6 is evaluated as IPv4. |
+| **No redirects** | Terse does not follow **3xx** responses on the handshake or delivery POST. Your app must answer on the trigger path with a direct **2xx** (or a non-redirect error you intend to surface). |
+| **Handshake response** | On first deploy, Terse POSTs a challenge and expects JSON `{ challenge, signature }` within **64 KiB**. The request times out after **30 seconds**, including the response body read. |
+| **Failure messages** | When handshake or delivery fails, Activity shows the HTTP status and Terse's error text only — not the body your server returned. |
+
+<Warning>
+    If a reverse proxy or framework redirects POSTs (trailing slash, HTTP→HTTPS, canonical host), fix routing so `TERSE_JOB_WEBHOOK_TRIGGER_PATH` is handled without a redirect. Otherwise deploy or runs fail with "Redirects are not followed."
+</Warning>
+
 ## Identity verification
 
 Every request Terse sends to your server is signed with HMAC-SHA256 using `TERSE_SIGNING_SECRET`. `handleTrigger` does the verification for you, but it's worth understanding what it checks so you can debug failures and make informed decisions about middleware order.
@@ -127,8 +145,7 @@ The base string is `v0:<timestamp>:<rawBody>`, hashed with `TERSE_SIGNING_SECRET
         The recomputed HMAC must equal the value in `x-terse-signature`. Any mismatch fails the request without invoking your handler.
     </Step>
     <Step title="The challenge handshake (first deploy)">
-        When Terse first registers your workflows, it sends a `{ type: "challenge", challenge: "<token>" }` payload. `handleTrigger` re-signs the token with `TERSE_SIGNING_SECRET` and returns the
-        result. This proves your server actually holds the secret before the platform routes real triggers to it. You don't need to handle this case yourself — `handleTrigger` covers both phases.
+        When Terse first registers your workflows, it sends a `{ type: "challenge", challenge: "<token>" }` payload. `handleTrigger` re-signs the token with `TERSE_SIGNING_SECRET` and returns `{ challenge, signature }`. This proves your server holds the secret before the platform routes real triggers to it. You don't need to handle this case yourself — `handleTrigger` covers both phases. Keep the JSON response small; Terse rejects handshake bodies over **64 KiB**.
     </Step>
 </Steps>
 

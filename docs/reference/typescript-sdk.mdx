@@ -71,9 +71,10 @@ Duplicate **`name`** values throw an error when the second job registers. At mos
 | `triggers`       | typed trigger array                             | One or more triggers that start the workflow.                                                     |
 | `filter`         | `(event) => boolean \| Promise<boolean>`        | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger`      | `(event) => Promise<void>`                      | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or `https://app.useterse.ai/api`).      |
 
 Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
+
+For self-hosted workflows, set **`remoteServerUrl`** in **`terse.config.json`** (not on `createJob`). Terse validates that URL at deploy time and when calling your server. See [Self-hosting](/self-hosting#remote-server-url).
 
 ```ts
 import { GithubPRTrigger, createJob, TerseAgent } from "terse-sdk"
@@ -95,6 +96,8 @@ createJob({
 ## `Terse`
 
 Use a **`Terse`** instance for **`handleTrigger`**, which verifies signed webhook payloads from the Terse backend and runs the matching registered workflow. You do not need `new Terse()` only to call `createJob()`.
+
+When Terse calls your server for the deploy handshake or trigger delivery, it connects to the validated hostname and **does not follow HTTP redirects**. Respond with **2xx** directly on **`TERSE_JOB_WEBHOOK_TRIGGER_PATH`** — if your framework issues a **3xx** (for example trailing-slash or HTTP→HTTPS redirects), the run fails with a redirect error. The handshake expects compact JSON (`{ challenge, signature }`) within **64 KiB**. If your handler returns a non-2xx status, Activity shows the HTTP status only, not your response body.
 
 ```ts
 import { Terse, TERSE_JOB_WEBHOOK_TRIGGER_PATH } from "terse-sdk"
