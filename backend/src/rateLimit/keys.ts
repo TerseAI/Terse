@@ -1,6 +1,8 @@
 import { Request } from "express"
 
-export const byIp = (req: Request): string => req.ip ?? req.socket.remoteAddress ?? "unknown"
+import { extractClientIp } from "../utility/clientIp"
+
+export const byIp = (req: Request): string => extractClientIp(req) ?? "unknown"
 
 export const byUserId = (req: Request): string | null => req.session?.user?.id ?? null
 

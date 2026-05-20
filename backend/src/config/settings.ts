@@ -84,6 +84,10 @@ export const settings = {
     // Environment
     nodeEnv: optionalEnv("NODE_ENV", "development") as "development" | "production" | "test",
 
+    health: {
+        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")!
+    },
+
     // Gmail OAuth
     gmail: {
         clientId: requireEnv("GMAIL_CLIENT_ID"),
