@@ -162,8 +162,7 @@ When a trigger fires, Terse signs the event and POSTs it to your server. Your se
         `onTrigger` closure.
     </Step>
     <Step title="Your handler runs in your environment">
-        The closure has access to your env vars, secret stores, private network, and any code you import. Deterministic tools, agent runs, and approvals still call back into Terse so Activity stays
-        complete.
+        The closure has access to your env vars, secret stores, private network, and any code you import. `handleTrigger` sets job context with the `runId` from the trigger payload, so `TerseAgent` and tool calls send `X-Terse-Run-Id` and persist to that run's Activity record. Deterministic tools, agent runs, and approvals still call back into Terse so Activity stays complete.
     </Step>
 </Steps>
 

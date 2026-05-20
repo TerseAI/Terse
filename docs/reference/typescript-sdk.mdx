@@ -30,7 +30,19 @@ Import these from `terse-sdk`:
 - Config helpers re-exported for trigger construction: `HeyReachInputConfig`, and the `HeyReachEventType` object for event-type constants
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
-- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
+- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (`sessionId`, `runId`, `apiBaseUrl`). `TerseAgent` and `TerseAgent.executeTool` read this when each request is made and send `X-Terse-Session-Id` and `X-Terse-Run-Id` when a run id is available (from async context or `process.env.TERSE_RUN_ID`). Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**).
+
+### Run attribution
+
+When the SDK sends **`X-Terse-Run-Id`**, Terse treats the call as a **production run**: actions, skills, approvals, and run history attach to that run record in Activity. The API checks that the run belongs to your organization before streaming a response. If the id is missing, deleted, or from another organization, agent-run requests return **404 Run not found** instead of writing to the wrong run.
+
+| How you run the workflow | Where the run id comes from | Activity / run history |
+| ------------------------ | --------------------------- | ---------------------- |
+| `terse test`, `terse replay`, or `terse listen` | None (local sandbox) | Not updated from SDK callbacks |
+| `Terse.handleTrigger` (self-hosted) | `runId` on the trigger payload via `runWithJobContext` | Updated for that production run |
+| Hosted deploy (`terse deploy`) | `TERSE_RUN_ID` in the execution environment (set by Terse) | Updated for that production run |
+
+You can set **`TERSE_RUN_ID`** manually only when you intend to attribute SDK calls to an existing run in **your** organization (for example debugging a deployed run). Remove stale values from `.env` — a deleted or foreign run id now fails with **404** rather than attaching elsewhere.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 

@@ -93,7 +93,7 @@ If you only have one workflow, the CLI selects it automatically. If you have mor
 3. Synthesizes local sample events for **cron** triggers (and other cases without stored samples)
 4. If you use a **webhook** trigger but **no deliveries are stored yet**, prints a **`curl`** example against your webhook URL instead of opening an empty picker—run **`terse deploy`** first so the CLI can show the URL, send a test POST, then run **`terse test`** again
 5. Prompts you to choose one sample event
-6. Executes the workflow locally
+6. Executes the workflow locally without a production run id, so agent and tool callbacks do not write to another run's Activity record (see [Run attribution](/reference/typescript-sdk#run-attribution) in the SDK reference)
 
 #### `terse test list [job-name]`
 
