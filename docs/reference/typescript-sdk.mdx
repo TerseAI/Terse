@@ -223,7 +223,7 @@ createJob({
 
 ## Tool approvals
 
-List tool names in **`toolApprovals`** on **`TerseAgent.create()`** to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**.
+List tool names in **`toolApprovals`** on **`TerseAgent.create()`** to require human approval before those tools execute. During local testing, the CLI prompts in the terminal. In production, approval requests surface in the Terse app under **Notifications**, or in Slack when you have a Slack destination. In Slack, only the Terse org member who clicks **Approve** or **Reject** can continue the run — not other channel members.
 
 ```ts
 createJob({

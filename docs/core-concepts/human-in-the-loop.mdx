@@ -84,6 +84,8 @@ In production, approval requests are delivered through your configured notificat
 | **Email**  | Notification with a link to the run in the Terse app                                                |
 | **In-app** | Pending approvals appear in the **Notifications** page with approve/reject actions                  |
 
+In Slack, only the person who clicks **Approve** or **Reject** can act on the request. Terse checks that their linked Slack account belongs to the same organization as the paused workflow. Other people in the channel — including Slack guests, channel members who are not in your Terse org, or members of a different Terse org in a shared workspace — cannot approve on someone else's behalf. The audit trail records the clicker, not the notification destination.
+
 You can also approve or reject from the **Activity** tab by opening the paused run and reviewing the tool call in context.
 
 ## When to use tool approvals

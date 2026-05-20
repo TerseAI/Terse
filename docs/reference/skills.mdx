@@ -171,6 +171,8 @@ skills: [Skills.launchDarkly({ project: LaunchDarklyProject.MyFlags, environment
 | `list_launchdarkly_flags`       | List feature flags | Read   |
 | `get_launchdarkly_flag_details` | Get flag details   | Read   |
 
+Pass the LaunchDarkly flag key (for example `my-feature-flag`) as `flagKey`. Terse resolves it within the project you configured on the skill; path-like values are treated as literal keys, not alternate API routes.
+
 ## WorkOS
 
 Read-only access to users and organizations.
