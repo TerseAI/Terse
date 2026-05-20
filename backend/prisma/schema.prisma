@@ -180,7 +180,7 @@ model notion_integrations {
 model posthog_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String @unique
+  organization_id String   @unique
   user_email      String?
   org_name        String?
   created_at      DateTime @default(now())
@@ -204,7 +204,7 @@ model hey_reach_integrations {
 model launchdarkly_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String @unique
+  organization_id String   @unique
   user_email      String?
   token_name      String?
   created_at      DateTime @default(now())
@@ -218,7 +218,7 @@ model launchdarkly_integrations {
 model datadog_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String @unique
+  organization_id String   @unique
   region          String
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt

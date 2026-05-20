@@ -202,9 +202,9 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
 
             // Refuse to write rows without a workspace_id — the
             // @@unique([organization_id, workspace_id]) constraint treats
-                // NULL workspace_ids as distinct (Postgres NULLS DISTINCT
-                // semantics), so legacy null rows could shadow each other.
-                // New rows MUST carry the workspace id from Notion.
+            // NULL workspace_ids as distinct (Postgres NULLS DISTINCT
+            // semantics), so legacy null rows could shadow each other.
+            // New rows MUST carry the workspace id from Notion.
             if (!workspace_id) {
                 logger.error("Notion OAuth response missing workspace_id; refusing to persist", {
                     userId: decoded.userId,
