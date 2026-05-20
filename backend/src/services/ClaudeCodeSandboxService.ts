@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
+import { assertValidEnvVarName, shellQuote, shellQuoteArgs } from "../utility/shellEscape"
 
 import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
 
@@ -145,16 +146,14 @@ export class ClaudeCodeSandboxService {
             const claudeEnv = { ANTHROPIC_API_KEY: settings.anthropic.apiKey, ...extraEnv }
             const envExports = Object.entries(claudeEnv)
                 .map(([k, v]) => {
-                    // Keys go in unquoted; reject anything that isn't a
-                    // valid POSIX identifier so a caller can't break out
+                    // Keys go in unquoted, so they must be valid POSIX
+                    // identifiers — otherwise a caller could break out
                     // of the export line with newlines/metachars.
-                    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) {
-                        throw new Error(`Invalid env var name for sandbox: ${JSON.stringify(k)}`)
-                    }
-                    return `export ${k}='${v.replace(/'/g, "'\\''")}'`
+                    assertValidEnvVarName(k)
+                    return `export ${k}=${shellQuote(v)}`
                 })
                 .join("\n")
-            const escapedArgs = claudeArgs.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")
+            const escapedArgs = shellQuoteArgs(claudeArgs)
             const runScript = `#!/bin/bash\n${envExports}\ncd /tmp/project && cat /tmp/prompt.txt | ${escapedArgs} > /tmp/claude-output.json\n`
             const scriptHandle = await sb.open("/tmp/run-claude.sh", "w")
             await scriptHandle.write(new TextEncoder().encode(runScript))
