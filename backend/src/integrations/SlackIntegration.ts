@@ -5,7 +5,6 @@ import { Channel as SlackChannel } from "@slack/web-api/dist/types/response/Conv
 import { User as SlackUser } from "@slack/web-api/dist/types/response/UsersInfoResponse"
 import { Member as SlackUserMember } from "@slack/web-api/dist/types/response/UsersListResponse"
 import axios from "axios"
-import crypto from "crypto"
 import { Request, Response } from "express"
 import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage, SlackTrigger } from "terse-types"
 import { ConfigurationFieldDefinition } from "terse-types"
