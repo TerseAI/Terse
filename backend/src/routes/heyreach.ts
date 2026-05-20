@@ -1,3 +1,4 @@
+import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import { heyReachWebhookPayloadSchema } from "terse-types"
 import { z } from "zod"
@@ -78,7 +79,9 @@ export async function handleHeyReachWebhook(req: Request, res: Response) {
     const { triggerId } = webhookParamsSchema.parse(req.params)
 
     try {
-        const trigger = await db().automation_inputs.findUnique({ where: { id: triggerId } })
+        const trigger = await db().automation_inputs.findFirst({
+            where: { id: triggerId, config_type: InputConfigType.HEY_REACH_INPUT }
+        })
         if (!trigger) {
             logger.warn("HeyReach webhook received for unknown trigger", { triggerId })
             res.status(404).json({ error: "Trigger not found" })
