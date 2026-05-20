@@ -202,7 +202,16 @@ export class DatadogIntegrationManager extends Integration<DatadogIntegration, n
             })
 
             if (existing) {
-                // DB-first, then GSM
+                // Secret-first, then DB — matches LaunchDarkly/Posthog/Notion.
+                // If the DB write fails after the secret rotates, the
+                // secret stores the user's freshly-submitted credentials
+                // while the DB still has the old (region, user_email,
+                // org_name) — recoverable on next submit. The previous
+                // DB-first order left the row reporting a new region while
+                // GSM held credentials for the old region; every
+                // downstream Datadog call then 401'd.
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
+
                 await db().datadog_integrations.update({
                     where: { id: existing.id },
                     data: {
@@ -210,8 +219,6 @@ export class DatadogIntegrationManager extends Integration<DatadogIntegration, n
                         organization_id: organizationId
                     }
                 })
-
-                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
 
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,
