@@ -42,7 +42,7 @@ npm install terse-sdk zod
 
 `Terse`, `TerseAgent`, and other SDK calls that reach Terse send `Authorization: Bearer …` from **`process.env.TERSE_API_KEY`**. Terse API tokens use the `terse_` prefix.
 
-- **User tokens** are the API tokens you create in the Terse app or get from **`terse login`**. Use them for local runs, the CLI, and self-hosted **`handleTrigger`** servers. They authenticate to the full set of SDK routes your workflow needs (including deploy, codegen, and runtime calls).
+- **User tokens** are the API tokens you create in the Terse app or get from **`terse auth login`**. Each token is scoped to one organization (the active org when it was issued, or after **`terse auth org switch`**). Use them for local runs, the CLI, and self-hosted **`handleTrigger`** servers. They authenticate to the full set of SDK routes your workflow needs (including deploy, codegen, and runtime calls).
 
 - **Project-scoped tokens** are minted automatically inside hosted Modal sandboxes. They are limited to SDK **runtime** endpoints for that project (for example agent runs, tool execution, approvals, and session streams) and cannot stand in for a user token on organization or integration-management routes. Terse removes the sandbox token when the run completes.
 
