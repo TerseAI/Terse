@@ -1,5 +1,5 @@
 import { Request, RequestHandler, Response } from "express"
-import { RateLimiterMemory, RateLimiterRedis, RateLimiterRes, type RateLimiterAbstract } from "rate-limiter-flexible"
+import { type RateLimiterAbstract, RateLimiterMemory, RateLimiterRedis, RateLimiterRes } from "rate-limiter-flexible"
 import { type RedisClientType, createClient } from "redis"
 
 import { settings } from "../config/settings"
