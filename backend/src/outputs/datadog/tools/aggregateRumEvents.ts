@@ -244,7 +244,7 @@ export const aggregateRumEventsTool = defineSessionTool({
                 buckets: formattedBuckets,
                 rumLink,
                 pagination: {
-                    limit: Math.min(pageLimit, 1000),
+                    limit: Math.min(pageLimit ?? 25, 1000),
                     nextCursor,
                     hasMore,
                     showing: `${bucketCount} bucket${bucketCount !== 1 ? "s" : ""}`
