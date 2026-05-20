@@ -104,6 +104,8 @@ const terse = new Terse()
 // Mount TERSE_JOB_WEBHOOK_TRIGGER_PATH on your HTTP server (Express, Hono, Next.js, etc.)
 ```
 
+`handleTrigger` does not return until `onTrigger` finishes. If you run the webhook server yourself, add a health route for your load balancer and drain in-flight requests on **SIGTERM** before exit so deploys do not cut off active runs. See [Production readiness](/self-hosting#production-readiness).
+
 ## `TerseAgent`
 
 Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI. The same context applies to **`TerseAgent.executeTool`** and to generated **`toolbox`** calls.
