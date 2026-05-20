@@ -117,7 +117,7 @@ triggers: [Triggers.gmail.onEmail()]
 
 ### HeyReach
 
-HeyReach fires when LinkedIn outreach events occur (messages, connection requests, campaign milestones, and more). Connect HeyReach under **Integrations** in the Terse app, then run **`terse generate`** so **`Triggers.heyReach`** and typed **`HeyReachCampaign`** constants appear in `src/terse.generated.ts`.
+HeyReach fires when LinkedIn outreach events occur (messages, connection requests, campaign milestones, and more). Connect with `terse integrate connect hey_reach` or under **Integrations** in the Terse app, then run **`terse generate`** so **`Triggers.heyReach`** and typed **`HeyReachCampaign`** constants appear in `src/terse.generated.ts`.
 
 Each helper maps to one **`HeyReachEventType`** value (also exported from **`terse-sdk`**). Use **`Triggers.heyReach.trigger({ eventType: HeyReachEventType.MESSAGE_REPLY_RECEIVED })`** when you want to pick the event type dynamically.
 
