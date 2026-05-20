@@ -85,7 +85,9 @@ Terse can notify you about run outcomes through multiple channels:
 
 Notifications are configured per-workflow. You choose which action types to notify on (creates, updates, deletes, errors, and approval requests) and Terse delivers to your preferred channel. Slack is used when you have an active Slack destination configured; otherwise, notifications fall back to email.
 
-Every notification sent is recorded in your notification history, so you have an audit trail of what was delivered and when.
+Runs that fail before your handler finishes—such as a missing agent prompt, a deploy lookup error, or another platform failure during startup—still appear as **Failed** in Activity and can trigger **error** notifications when your workflow is configured to notify on errors.
+
+Every notification sent is recorded in your notification history, so you have an audit trail of what was delivered and when. When email delivery fails, the history entry shows a short generic message rather than raw provider error text.
 
 ## How observability feeds self-improvement
 

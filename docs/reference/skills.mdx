@@ -10,7 +10,7 @@ In TypeScript, `terse generate` writes a single **`Skills`** object in `src/ters
 
 ## GitHub
 
-Read-only access to repositories.
+Read-only access to repositories. The GitHub App installation and OAuth token Terse uses for these tools belong to the **Terse organization** that owns the workflow run—not your user account globally. If you belong to multiple Terse organizations (for example with different GitHub accounts or installations), connect GitHub in each organization from the app or with `terse integrate connect github` while that organization is active in the CLI (`terse auth org switch`).
 
 ```ts
 skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })]

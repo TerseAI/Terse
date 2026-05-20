@@ -407,12 +407,14 @@ If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
 
 ## Authentication
 
-### `terse login`
+CLI commands use the **active Terse organization** for integrations, deploy, and sample events. OAuth connections (including GitHub) are stored per organization.
+
+### `terse auth login`
 
 Authenticates with Terse using a device authorization flow and saves your API key to a user-level config file.
 
 ```bash
-terse login
+terse auth login
 ```
 
 **How it works:**
@@ -425,12 +427,24 @@ terse login
 
 If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
 
-### `terse logout`
+### `terse auth org list` and `terse auth org switch`
+
+List organizations you belong to or change which organization the CLI targets.
+
+```bash
+terse auth org list
+terse auth org switch
+terse auth org switch org_abc123
+```
+
+Run `terse integrate connect github` (and other OAuth integrations) while the intended organization is active so tokens and generated `Repos` helpers match that org's GitHub installation.
+
+### `terse auth logout`
 
 Removes the saved API key from your user config.
 
 ```bash
-terse logout
+terse auth logout
 ```
 
 ## Help
@@ -450,10 +464,10 @@ If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs.
 Commands that call the Terse API resolve credentials in this order:
 
 1. `TERSE_API_KEY` in the current process environment
-2. The API key saved by `terse login`
+2. The API key saved by `terse auth login` for the active organization
 
 Those values are **user** API tokens (the same kind you create in the Terse app). Hosted executions use separate **project-scoped** tokens that Terse injects for you; you do not paste those into `.env`.
 
-After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
+After `terse init` or `terse auth login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 
 Your runtime still needs `TERSE_API_KEY` in its environment. Set that variable anywhere your Node process runs, such as a local `.env` file, a container secret, or your hosting provider's secret store.
