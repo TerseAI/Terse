@@ -1041,11 +1041,6 @@ async function markWorkspaceUninstalled(team_id: string) {
 }
 
 async function deactivateToken(token: string) {
-    // TODO: actually delete the matching user_slack_integrations row +
-    // GSM secret. We don't currently store a hash of the token alongside
-    // the row, so looking up by token requires scanning every secret for
-    // this org — a follow-up should add a token_prefix column to
-    // user_slack_integrations and key the lookup on that.
     logger.warn("Slack token revoked but not yet cleaned up locally", { tokenLength: token.length })
 }
 
