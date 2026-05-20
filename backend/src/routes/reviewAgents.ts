@@ -239,7 +239,10 @@ export async function reviewAllAgents(req: Request, res: Response) {
                         destination_type: NotificationDestinationType.EMAIL,
                         destination_label: group.emailAddress,
                         status: emailError ? SentNotificationStatus.failed : SentNotificationStatus.sent,
-                        error_message: emailError instanceof Error ? emailError.message : emailError ? String(emailError) : null,
+                        // emailError.message can contain Resend/SES payload text and constraint
+                        // names; sent_notifications is surfaced to end users so we keep only a
+                        // generic label and rely on server-side logs for the real detail.
+                        error_message: emailError ? "Failed to send email" : null,
                         agent_name: agentNames
                     }
                 })
@@ -264,9 +267,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
         })
     } catch (error) {
         logger.error("[ReviewAgents] Weekly review job failed", { error })
-        return res.status(500).json({
-            error: "Internal server error",
-            message: error instanceof Error ? error.message : "Unknown error"
-        })
+        return res.status(500).json({ error: "Internal server error" })
     }
 }

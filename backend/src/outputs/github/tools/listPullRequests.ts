@@ -47,7 +47,7 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
             throw new Error("No context provided")
         }
 
-        const accessToken = await getGitHubAccessToken(runContext.context.user.id)
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id, runContext.context.user.organizationId)
         if (!accessToken) {
             throw new Error(`GitHub access token not found for user`)
         }

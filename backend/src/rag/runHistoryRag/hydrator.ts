@@ -12,8 +12,17 @@ export class RunHistoryRawEventHydrator extends Hydrator<IdentifiableRunHistoryR
     }
 
     async hydrate(ref: Identifiable): Promise<IdentifiableRunHistoryRawEvent> {
-        const event = await db().run_history_raw_events.findUnique({
-            where: { id: ref.entityId },
+        // Org scope is required — without it any authenticated tenant could
+        // request another org's run_history_raw_events by id. Sibling
+        // GithubEventHydrator fails closed the same way.
+        if (!this.ctx.organizationId) {
+            throw new Error("Run history raw event hydrator requires organizationId in context")
+        }
+        const event = await db().run_history_raw_events.findFirst({
+            where: {
+                id: ref.entityId,
+                run_history_record: { automation: { organization_id: this.ctx.organizationId } }
+            },
             include: {
                 run_history_record: {
                     include: {
@@ -35,10 +44,16 @@ export class RunHistoryRawEventHydrator extends Hydrator<IdentifiableRunHistoryR
     }
 
     async hydrateBulk(refs: Identifiable[]): Promise<IdentifiableRunHistoryRawEvent[]> {
+        if (!this.ctx.organizationId) {
+            throw new Error("Run history raw event hydrator requires organizationId in context")
+        }
         const ids = refs.map(ref => ref.entityId)
 
         const events = await db().run_history_raw_events.findMany({
-            where: { id: { in: ids } },
+            where: {
+                id: { in: ids },
+                run_history_record: { automation: { organization_id: this.ctx.organizationId } }
+            },
             include: {
                 run_history_record: {
                     include: {

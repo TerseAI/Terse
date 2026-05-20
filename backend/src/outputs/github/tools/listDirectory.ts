@@ -28,7 +28,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
             throw new Error("No context provided")
         }
 
-        const accessToken = await getGitHubAccessToken(runContext.context.user.id)
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id, runContext.context.user.organizationId)
         if (!accessToken) {
             throw new Error(`GitHub access token not found for user`)
         }
