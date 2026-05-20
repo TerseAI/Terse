@@ -11,9 +11,6 @@ import { db } from "../prismaClient"
 import { SecretService } from "../services/SecretService"
 import { readBearerToken } from "../utility/authDispatch"
 
-// Reusable client for verifying inbound Pub/Sub OIDC tokens against Google's
-// public keys. The library caches the keys internally; reusing the client
-// avoids fetching them per request.
 const pubsubOidcClient = new OAuth2Client()
 
 export async function getGmailIntegrations(req: Request, res: Response) {
@@ -121,16 +118,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
     }
 }
 
-/**
- * Webhook handler for Gmail Pub/Sub notifications
- * Extracts data from request and immediately acknowledges, then processes asynchronously
- */
 export async function handleGmailWebhook(req: Request, res: Response) {
-    // Without OIDC verification this endpoint is unauthenticated — any
-    // attacker who knows a target's Gmail address can push an arbitrary
-    // historyId and (a) trigger paid LLM runs on demand, (b) advance the
-    // integration's history_id far into the future so all legitimate
-    // future deliveries are silently dropped (persistent DoS).
     const verified = await verifyPubsubOidc(req)
     if (!verified) {
         res.status(401).send("Unauthorized")
@@ -159,21 +147,6 @@ export async function handleGmailWebhook(req: Request, res: Response) {
     }
 }
 
-/**
- * Verify the Google-signed OIDC ID token that Pub/Sub push subscriptions
- * attach to every delivery. Returns true on success, false on any miss.
- *
- * - In production: requires GMAIL_PUBSUB_AUDIENCE to be configured and the
- *   token to verify against Google's keys with that audience. If the token
- *   is missing, malformed, expired, signed by the wrong key, or its
- *   audience doesn't match, the delivery is rejected.
- * - In development: if GMAIL_PUBSUB_AUDIENCE isn't set, accepts the call
- *   and logs a loud warning. This keeps local dev usable without GCP
- *   credentials, but means dev environments must never be exposed publicly.
- *
- * If GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL is set, the verified token's
- * `email` claim must match (defense in depth).
- */
 async function verifyPubsubOidc(req: Request): Promise<boolean> {
     const audience = gmailConfig.pubsubAudience
     if (!audience) {
