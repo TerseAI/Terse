@@ -1601,36 +1601,6 @@ async function handleSlackReactionAdded(event: SimplifiedSlackEvent, teamId: str
     }
 }
 
-function isValidSlackSig(req: Request) {
-    const ts = req.headers["x-slack-request-timestamp"] as string
-    const sig = req.headers["x-slack-signature"] as string
-
-    if (!ts || !sig) {
-        logger.warn("Missing timestamp or signature headers")
-        return false
-    }
-
-    // Use SLACK_SIGNING_SECRET for signature verification (fallback to CLIENT_SECRET for backwards compatibility)
-    const signingSecret = slackConfig.signingSecret || slackConfig.clientSecret
-    if (!signingSecret) {
-        logger.warn("No signing secret found - need SLACK_SIGNING_SECRET environment variable")
-        return false
-    }
-
-    // Convert buffer to string for signature validation
-    const body = Buffer.isBuffer(req.body) ? req.body.toString() : req.body
-
-    const baseString = `v0:${ts}:${body}`
-
-    const hmac = crypto.createHmac("sha256", signingSecret).update(baseString).digest("hex")
-
-    const expectedSig = `v0=${hmac}`
-
-    const isValid = sig === expectedSig
-
-    return isValid
-}
-
 /**
  * Returns the Slack access token for the given integration. Use this once then pass the token
  * to validateSlackChannelsExist and validateSlackUserIds to avoid fetching the token twice.
