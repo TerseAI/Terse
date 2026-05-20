@@ -35,5 +35,4 @@ export class Jwt {
             throw new Error("Invalid token")
         }
     }
-
 }
