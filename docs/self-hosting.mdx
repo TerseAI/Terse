@@ -26,7 +26,7 @@ Terse still runs the rest of the platform.
         This authenticates, links the repo to a Terse project, and writes `terse.config.json` with self-hosted mode enabled. See [`terse attach`](/reference/cli#terse-attach) for the full flow.
     </Step>
     <Step title="Point Terse at your server">
-        Set `remoteServerUrl` to the public URL of your service:
+        Set `remoteServerUrl` to the public URL of your service (scheme + host; no path):
 
         ```json terse.config.json
         {
@@ -36,6 +36,8 @@ Terse still runs the rest of the platform.
             "remoteServerUrl": "https://your-app.example.com"
         }
         ```
+
+        Terse validates this URL when you run `terse deploy`. It must use **HTTPS** and resolve to a **public** IP address. Private, link-local, and metadata addresses are rejected. For local development against `http://localhost` or `127.0.0.1`, use a Terse backend running in development mode — production deploys require HTTPS.
     </Step>
     <Step title="Set the required environment variables">
         Your server needs two values from Terse, both available in the dashboard under your project's settings:
@@ -97,6 +99,21 @@ Terse still runs the rest of the platform.
     You can keep using `terse test`, `terse history`, and `terse replay` exactly as you would with hosted workflows. They run your local code against real sample events and the stored event stream
     from the platform.
 </Tip>
+
+## Remote server URL
+
+`remoteServerUrl` in `terse.config.json` is the base URL Terse uses for the deploy handshake and every trigger delivery. The platform appends **`TERSE_JOB_WEBHOOK_TRIGGER_PATH`** from `terse-sdk` when it POSTs to your handler.
+
+| Requirement | Details |
+| ----------- | ------- |
+| **HTTPS** | Required in production. `http://` is allowed only for `localhost`, `127.0.0.1`, or `::1` when the Terse backend runs in development mode. |
+| **Public DNS** | Hostnames must resolve to addresses that are not private or reserved (for example RFC1918, link-local, or cloud metadata ranges). |
+| **No redirects** | Terse does not follow **3xx** responses on the handshake or delivery POST. Your app must answer on the trigger path with a direct **2xx** (or a non-redirect error you intend to surface). |
+| **Failure messages** | When handshake or delivery fails, Activity shows the HTTP status and Terse's error text only — not the body your server returned. |
+
+<Warning>
+    If a reverse proxy or framework redirects POSTs (trailing slash, HTTP→HTTPS, canonical host), fix routing so `TERSE_JOB_WEBHOOK_TRIGGER_PATH` is handled without a redirect. Otherwise deploy or runs fail with "Redirects are not followed."
+</Warning>
 
 ## Identity verification
 

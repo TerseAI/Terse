@@ -55,7 +55,7 @@ Use `terse attach` when you already have an application repo and want Terse to s
 4. Reviews existing integrations and, in an interactive terminal, lets you connect more
 5. Runs `terse generate` when the current directory matches a supported project layout
 
-Before you run `terse deploy`, set `remoteServerUrl` in `terse.config.json` to the URL where your Terse SDK server is running.
+Before you run `terse deploy`, set `remoteServerUrl` in `terse.config.json` to the URL where your Terse SDK server is running. The URL must use HTTPS and resolve to a public address; Terse rejects private or reserved IPs. See [Remote server URL](/self-hosting#remote-server-url) for handshake, redirect, and error-message behavior.
 
 ```json
 {
@@ -179,7 +179,7 @@ terse deploy --entry-file src/server.ts
 **Deployment modes:**
 
 - Hosted: the CLI zips the current project directory, uploads it, and Terse hosts the workflow for you
-- Self-hosted: the CLI reads `remoteServerUrl` from `terse.config.json` and configures Terse to call your own server instead of uploading source
+- Self-hosted: the CLI reads `remoteServerUrl` from `terse.config.json`, validates it with the Terse API, and configures the platform to call your server instead of uploading source
 
 ## Build with workspace context
 
