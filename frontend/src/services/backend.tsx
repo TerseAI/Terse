@@ -138,11 +138,6 @@ interface BackendService {
     getActiveIntegrations(): Promise<IntegrationType[]>
 
     /**
-     * Requests a GitHub app installation URL
-     */
-    requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>
-
-    /**
      * Gets the GitHub repositories for a specific installation
      */
     getGithubRepositoriesForIntegration(installationId: number): Promise<GetGithubRepositoriesForIntegrationResponse>
@@ -678,10 +673,6 @@ export const BackendProvider: BackendService = {
                 withCredentials: true
             })
             .then(response => response.data)
-    },
-
-    requestGitHubAppInstallationUrl: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.GITHUB.INSTALLATION_URL}`, { withCredentials: true }).then(response => response.data)
     },
 
     getCurrentSlackIntegration: () => {
