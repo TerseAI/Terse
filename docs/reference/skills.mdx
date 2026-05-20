@@ -150,10 +150,12 @@ skills: [Skills.posthog({ project: PosthogProject.MyTeam })]
 
 | Tool                         | Description              | Access |
 | ---------------------------- | ------------------------ | ------ |
-| `search_posthog_logs`        | Search logs              | Read   |
-| `search_posthog_sessions`    | Search sessions          | Read   |
-| `get_posthog_session_events` | Get events for a session | Read   |
-| `search_posthog_events`      | Search events            | Read   |
+| `searchPosthogLogs`          | Search logs              | Read   |
+| `searchPosthogSessions`      | Search sessions          | Read   |
+| `getPosthogSessionEvents`    | Get events for a session | Read   |
+| `searchPosthogEvents`        | Search events            | Read   |
+
+When **`searchPosthogEvents`** runs with **`countByEventNameOnly: true`** (the default), optional **`eventName`**, **`dateFrom`**, and **`dateTo`** filters are passed to PostHog as bound HogQL parameters. Format **`dateFrom`** and **`dateTo`** as UTC timestamps: `YYYY-MM-DD HH:mm:ss` (for example `2026-02-06 14:00:00`). Do not use ISO strings with `T`/`Z` or relative values like `-7d`.
 
 ## LaunchDarkly
 
@@ -187,7 +189,9 @@ skills: [Skills.workOS()]
 
 ## Terse (built-in)
 
-Web search and image tools available to all workflows.
+Web search and image editing are separate skills. Add one or both to your workflow.
+
+### Web
 
 ```ts
 skills: [Skills.web()]
@@ -198,4 +202,15 @@ skills: [Skills.web()]
 | `web_search`   | Search the web                          | Read   |
 | `web_extract`  | Extract and process web page content    | Read   |
 | `web_research` | Research and synthesize web information | Read   |
-| `edit_image`   | Edit and manipulate images              | Read   |
+
+### Image edit
+
+```ts
+skills: [Skills.imageEdit()]
+```
+
+| Tool         | Description                | Access |
+| ------------ | -------------------------- | ------ |
+| `image_edit` | Edit and transform images  | Read   |
+
+Terse caches **`image_edit`** results per organization. Reusing the same **`image_url`** and **`prompt`** in the same org returns the cached image; another org with the same inputs gets a separate stored result.
