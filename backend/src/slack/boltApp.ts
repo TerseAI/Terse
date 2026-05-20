@@ -1,4 +1,4 @@
-import { App as SlackApp } from "@slack/bolt"
+import { SlackAction, App as SlackApp, SlackViewAction } from "@slack/bolt"
 // ESM wraps CommonJS default exports, so we need to access .default
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver"
 import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js"
@@ -18,17 +18,9 @@ const ExpressReceiver = ((ExpressReceiverModule as any).default || ExpressReceiv
 
 type SlackClickerCheck = { ok: true; userId: string; organizationId: string } | { ok: false; reason: string }
 
-/**
- * Resolve which Terse user clicked the Slack approval button. Authorization
- * must come from body.user.id (the clicker), NOT from
- * approval_slack_messages.user_slack_integration_id (the destination owner),
- * because approval messages can land in public/private channels where a
- * Slack guest, a member of another Terse org sharing the workspace, or any
- * unauthorized user could click. See [[Terse-acl-check-3267650b2a]].
- */
-async function resolveSlackClicker(body: any, expectedOrganizationId: string): Promise<SlackClickerCheck> {
-    const slackUserId = (body?.user?.id as string | undefined) ?? undefined
-    const slackTeamId = ((body?.team?.id as string | undefined) ?? (body?.team_id as string | undefined)) || undefined
+async function resolveSlackClicker(body: SlackAction | SlackViewAction, expectedOrganizationId: string): Promise<SlackClickerCheck> {
+    const slackUserId = body.user.id
+    const slackTeamId = body.team?.id
     if (!slackUserId || !slackTeamId) {
         return { ok: false, reason: "clicker identity missing from action body" }
     }
@@ -240,8 +232,6 @@ export async function setupSlackBolt() {
                 return
             }
 
-            // Look up the run to discover the org we're guarding, then
-            // authorize the actual clicker against that org.
             const runRecord = await db().run_history_records.findUnique({
                 where: { id: runId },
                 include: { automation: true }
@@ -340,9 +330,6 @@ export async function setupSlackBolt() {
                 return
             }
 
-            // Resolve the actual clicker before opening the modal — so
-            // we don't let an unauthorized user prepare a feedback payload
-            // that the modal submission handler would later process.
             const runRecord = await db().run_history_records.findUnique({
                 where: { id: runId },
                 include: { automation: true }
@@ -452,7 +439,6 @@ export async function setupSlackBolt() {
                 return
             }
 
-            // Resolve the actual clicker against the run's org.
             const runRecord = await db().run_history_records.findUnique({
                 where: { id: runId },
                 include: { automation: true }
@@ -597,8 +583,6 @@ export async function setupSlackBolt() {
                     return
                 }
 
-                // Resolve the actual clicker (modal submitter) against the
-                // run's org. body.user.id is the user who submitted the modal.
                 const runRecord = await db().run_history_records.findUnique({
                     where: { id: runId },
                     include: { automation: true }
