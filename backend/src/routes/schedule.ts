@@ -35,7 +35,7 @@ class SyntheticTriggerRuntime extends TriggerRuntime<Trigger> {
     }
 
     matchesAgentTrigger(_agentTrigger: AgentTriggerWithConfigs): boolean {
-        return true
+        throw new Error("SyntheticTriggerRuntime must not be routed through EventProcessor.process(); use processSingleAgent")
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
