@@ -384,7 +384,7 @@ export class WorkOSTriggerRuntime extends TriggerRuntime<WorkOSTrigger> implemen
         if (!config || !config.event_types || config.event_types.length === 0) {
             return false
         }
-        return !config.event_types || config.event_types.length === 0 || config.event_types.includes(this.data.eventType)
+        return config.event_types.includes(this.data.eventType)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {

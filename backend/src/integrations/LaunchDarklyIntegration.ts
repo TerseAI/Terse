@@ -206,41 +206,12 @@ export class LaunchDarklyIntegrationManager
                 }
             }
 
-            // Token is valid (200)
-            // Try to get token name from /api/v2/tokens endpoint
-            let tokenName: string | null = null
-            try {
-                const tokensResponse = await fetch("https://app.launchdarkly.com/api/v2/tokens", {
-                    method: "GET",
-                    headers: {
-                        Authorization: apiKey,
-                        "Content-Type": "application/json"
-                    }
-                })
-
-                if (tokensResponse.ok) {
-                    const tokensData = await tokensResponse.json()
-                    // Tokens response is typically an object with items array
-                    const tokens = Array.isArray(tokensData) ? tokensData : tokensData.items || tokensData.tokens || []
-
-                    // Try to find the token by matching last 4 chars (only info we can get)
-                    // Since we can't match by full value, we'll use the first token as a best guess
-                    // or try to match by most recently used/created
-                    if (tokens.length > 0) {
-                        // Sort by lastUsed or creationDate descending to get most recent first
-                        const sortedTokens = [...tokens].sort((a: any, b: any) => {
-                            const aTime = a.lastUsed || a.creationDate || 0
-                            const bTime = b.lastUsed || b.creationDate || 0
-                            return bTime - aTime
-                        })
-                        tokenName = sortedTokens[0]?.name || null
-                    }
-                }
-            } catch (tokenError) {
-                logger.warn("Failed to fetch LaunchDarkly token info", {
-                    error: tokenError
-                })
-            }
+            // Token is valid (200). We don't try to identify the calling
+            // token by name — /api/v2/tokens returns every token visible to
+            // the calling key (admin keys see other users' tokens), so any
+            // heuristic over that list can surface another user's name as
+            // the integration label.
+            const tokenName: string | null = null
 
             // Note: We don't extract email here since /projects doesn't return user info
             // Both service tokens and access tokens work with this endpoint

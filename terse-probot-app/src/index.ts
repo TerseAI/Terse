@@ -22,6 +22,12 @@ export default (app: Probot) => {
 
         console.log("🚀 Push event received!")
 
+        const senderLogin = context.payload.sender?.login
+        if (!senderLogin) {
+            console.warn("Skipping push event with no sender.login (bot-driven or app-only event)")
+            return
+        }
+
         let diffs: Commit[] = []
         const installationId = context.payload.installation?.id || 0
 
@@ -62,7 +68,7 @@ export default (app: Probot) => {
         }
 
         try {
-            await VectraInterface.githubUnifiedEvent(context.payload.sender?.login, installationId, context.payload.repository.name, "push", {
+            await VectraInterface.githubUnifiedEvent(senderLogin, installationId, context.payload.repository.name, "push", {
                 branch: context.payload.ref,
                 commits: diffs,
                 repository: {
@@ -72,7 +78,7 @@ export default (app: Probot) => {
                     defaultBranch: context.payload.repository.default_branch
                 },
                 sender: {
-                    login: context.payload.sender?.login,
+                    login: senderLogin,
                     email: context.payload.sender?.email
                 }
             })
@@ -104,6 +110,12 @@ export default (app: Probot) => {
         const { payload } = context
         const github = context.octokit
         const installationId = context.payload.installation?.id || 0
+
+        const senderLogin: string | undefined = context.payload.sender?.login
+        if (!senderLogin) {
+            console.warn(`Skipping ${eventType} with no sender.login (bot-driven or app-only event)`)
+            return
+        }
 
         let diffs: Commit[] = []
 
@@ -144,7 +156,7 @@ export default (app: Probot) => {
                 }
             }
 
-            await VectraInterface.githubUnifiedEvent(payload.sender?.login, installationId, payload.repository.name, eventType, {
+            await VectraInterface.githubUnifiedEvent(senderLogin, installationId, payload.repository.name, eventType, {
                 pullRequest: {
                     id: payload.pull_request.id,
                     number: payload.pull_request.number,
@@ -173,7 +185,7 @@ export default (app: Probot) => {
                     defaultBranch: payload.repository.default_branch
                 },
                 sender: {
-                    login: payload.sender?.login,
+                    login: senderLogin,
                     email: payload.sender?.email
                 }
             })
@@ -186,6 +198,10 @@ export default (app: Probot) => {
         const email = context.payload.sender?.email || ""
         const name = context.payload.sender?.name || ""
         const login = context.payload.sender?.login
+        if (!login) {
+            console.warn("Skipping installation.created with no sender.login")
+            return
+        }
         const installationId = context.payload.installation.id
 
         // Get the account (user or org) where the app was installed
@@ -207,6 +223,10 @@ export default (app: Probot) => {
         console.log("🗑️ GitHub App installation deleted:", context.payload.sender?.login)
 
         const username = context.payload.sender?.login
+        if (!username) {
+            console.warn("Skipping installation.deleted with no sender.login")
+            return
+        }
         const installationId = context.payload.installation.id
 
         try {
