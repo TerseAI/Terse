@@ -520,7 +520,6 @@ export class SdkSandboxImageService {
 
         return `Process exited with code ${result.exitCode}`
     }
-
 }
 
 function normalizeArchivePath(path: string): string {
