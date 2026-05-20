@@ -20,7 +20,13 @@ type SlackClickerCheck = { ok: true; userId: string; organizationId: string } | 
 
 async function resolveSlackClicker(body: SlackAction | SlackViewAction, expectedOrganizationId: string): Promise<SlackClickerCheck> {
     const slackUserId = body.user.id
-    const slackTeamId = body.team?.id
+    // In Slack Connect shared channels, body.team.id is the host workspace
+    // (where the message was posted), but user_slack_integrations.slack_team_id
+    // records the user's home workspace (where they OAuth'd). Prefer
+    // body.user.team_id so external-org members aren't denied; fall back to
+    // body.team.id for payloads (e.g. some view submissions) where user.team_id
+    // is absent.
+    const slackTeamId = body.user.team_id ?? body.team?.id
     if (!slackUserId || !slackTeamId) {
         return { ok: false, reason: "clicker identity missing from action body" }
     }
