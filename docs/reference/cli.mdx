@@ -423,6 +423,8 @@ terse login
 4. Exchanges the token with the Terse backend for an API key
 5. Saves the API key so later CLI commands can reuse it
 
+Each login mints a new **CLI Login** API token for that organization. The token expires **90 days** after it is created. When it expires, API calls return **401** until you run `terse login` again. Logging in from another machine creates a separate token (one per device). You can revoke individual tokens from the API token list in the Terse app.
+
 If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
 
 ### `terse logout`

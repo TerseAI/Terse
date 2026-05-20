@@ -42,11 +42,11 @@ npm install terse-sdk zod
 
 `Terse`, `TerseAgent`, and other SDK calls that reach Terse send `Authorization: Bearer …` from **`process.env.TERSE_API_KEY`**. Terse API tokens use the `terse_` prefix.
 
-- **User tokens** are the API tokens you create in the Terse app or get from **`terse login`**. Use them for local runs, the CLI, and self-hosted **`handleTrigger`** servers. They authenticate to the full set of SDK routes your workflow needs (including deploy, codegen, and runtime calls).
+- **User tokens** are the API tokens you create in the Terse app or receive from the CLI (`terse login`, or a fresh token when you switch organizations). Tokens minted by the CLI are named **CLI Login** and expire **90 days** after creation; run `terse login` again to mint a new one. Use user tokens for local runs, the CLI, and self-hosted **`handleTrigger`** servers. They authenticate to the full set of SDK routes your workflow needs (including deploy, codegen, and runtime calls).
 
 - **Project-scoped tokens** are minted automatically inside hosted Modal sandboxes. They are limited to SDK **runtime** endpoints for that project (for example agent runs, tool execution, approvals, and session streams) and cannot stand in for a user token on organization or integration-management routes. Terse removes the sandbox token when the run completes.
 
-- Tokens with an **expiration** stop working when they expire; the API responds with **401** and an expired-token message.
+- Tokens with an **expiration** stop working when they expire; the API responds with **401** and an expired-token message. Older **CLI Login** tokens and app-created tokens without an expiration keep working until you revoke them.
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
