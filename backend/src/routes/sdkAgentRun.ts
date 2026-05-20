@@ -47,13 +47,19 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         return res.status(400).json(response)
     }
 
+    const headerRunId = req.headers["x-terse-run-id"] as string | undefined
+    const productionRunContext = headerRunId ? await resolveProductionRunContext(headerRunId, user) : null
+    if (headerRunId && !productionRunContext) {
+        return res.status(404).json({ success: false, error: "Run not found" })
+    }
+
     const { data } = parsed
-    const { send, sandboxRunId } = initSseStream(req, res)
+    const { send, sandboxRunId } = initSseStream(req, res, productionRunContext?.organizationId)
     const isProductionRun = !!sandboxRunId
+    const orgId = productionRunContext?.organizationId ?? user.organizationId
 
     try {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
-        const orgId = user.organizationId
 
         const billingForRunner = billingServiceProxyForOrganization(orgId, user.workosId)
 
@@ -72,7 +78,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         send({ type: "run_started", runId })
 
         if (isProductionRun) {
-            void upsertSdkSkills(runId, data.skills ?? []).catch(err => {
+            void upsertSdkSkills(runId, orgId, data.skills ?? []).catch(err => {
                 logger.warn("Failed to persist SDK skills for run", { error: err, runId })
             })
         }
@@ -91,18 +97,8 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
             const decision = await waitForApprovalDecision(runId, stepId, orgId)
             if (decision.hardReject) {
-                if (isProductionRun) {
-                    const record = await db().run_history_records.findUnique({
-                        where: { id: runId },
-                        select: { automation: { select: { id: true, organization_id: true } } }
-                    })
-                    const automationId = record?.automation?.id
-                    const cancelOrgId = record?.automation?.organization_id ?? orgId
-                    if (automationId) {
-                        await markRunCancelledAndInvalidate(runId, automationId, cancelOrgId, user.workosId, CancelReason.HARD_REJECT)
-                    } else {
-                        logger.warn("[sdk-agent-run] hardReject received but no automation found to cancel", { runId })
-                    }
+                if (isProductionRun && productionRunContext) {
+                    await markRunCancelledAndInvalidate(runId, productionRunContext.agentId, productionRunContext.organizationId, user.workosId, CancelReason.HARD_REJECT)
                 }
                 hardRejected = true
                 break
@@ -120,7 +116,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         finishSseStream(res, send, result, sdkRunner)
     } catch (error) {
         if (isProductionRun && sandboxRunId) {
-            await finalizeFailedProductionRun(sandboxRunId, user, error)
+            await finalizeFailedProductionRun(sandboxRunId, orgId, user, error)
         }
 
         if (error instanceof CreditGateDeniedError) {
@@ -142,10 +138,10 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 }
 
-async function finalizeFailedProductionRun(runId: string, user: User, error: unknown): Promise<void> {
+async function finalizeFailedProductionRun(runId: string, organizationId: string, user: User, error: unknown): Promise<void> {
     try {
-        const record = await db().run_history_records.findUnique({
-            where: { id: runId },
+        const record = await db().run_history_records.findFirst({
+            where: { id: runId, automation: { organization_id: organizationId } },
             select: { automation: true }
         })
         if (!record?.automation) return
@@ -153,6 +149,25 @@ async function finalizeFailedProductionRun(runId: string, user: User, error: unk
     } catch (markErr) {
         logger.error("Failed to finalize failed SDK production run", { error: markErr, runId })
     }
+}
+
+async function resolveProductionRunContext(headerRunId: string, user: User): Promise<{ runId: string; agentId: string; organizationId: string } | null> {
+    if (!user.organizationId) return null
+
+    const runRecord = await db().run_history_records.findFirst({
+        where: { id: headerRunId, automation: { organization_id: user.organizationId } },
+        select: { id: true, automation_id: true, automation: { select: { organization_id: true } } }
+    })
+    if (!runRecord?.automation.organization_id) {
+        logger.warn("[sdk/agent-run] Rejecting cross-tenant x-terse-run-id header", {
+            requestedRunId: headerRunId,
+            userId: user.id,
+            organizationId: user.organizationId
+        })
+        return null
+    }
+
+    return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id }
 }
 
 /**
@@ -206,7 +221,8 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
 
 function initSseStream(
     req: Request,
-    res: Response
+    res: Response,
+    verifiedOrganizationId: string | undefined
 ): {
     send: (event: SdkAgentStreamEvent) => void
     sessionId: string | undefined
@@ -218,14 +234,14 @@ function initSseStream(
     res.flushHeaders()
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
-    const sandboxRunId = req.headers["x-terse-run-id"] as string | undefined
+    const sandboxRunId = verifiedOrganizationId ? (req.headers["x-terse-run-id"] as string | undefined) : undefined
 
     const send = (event: SdkAgentStreamEvent) => {
         res.write(`data: ${JSON.stringify(event)}\n\n`)
         if (sessionId) emitSessionEvent(sessionId, event)
 
-        if (sandboxRunId && event.type === "action") {
-            void appendRunAction(sandboxRunId, event.action as RunHistoryAction).catch(err => {
+        if (sandboxRunId && verifiedOrganizationId && event.type === "action") {
+            void appendRunAction(sandboxRunId, event.action, verifiedOrganizationId).catch(err => {
                 logger.warn("Failed to append run action for sandbox run", { error: err, runId: sandboxRunId })
             })
         }

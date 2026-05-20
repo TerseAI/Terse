@@ -236,7 +236,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     protected async savePendingApprovalState(runId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void> {
         this.pendingApprovalState = { serializedState, interruptions }
         if (this.isProductionRun) {
-            await storePendingApprovalState(runId, serializedState, interruptions)
+            await storePendingApprovalState(runId, this.user.organizationId, serializedState, interruptions)
         }
     }
 
@@ -247,7 +247,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     protected async clearPendingApprovalState(runId: string): Promise<void> {
         this.pendingApprovalState = null
         if (this.isProductionRun) {
-            await clearPendingApprovalStateDb(runId)
+            await clearPendingApprovalStateDb(runId, this.user.organizationId)
         }
     }
 
