@@ -32,7 +32,6 @@
     },
     "GITHUB": {
         "INTEGRATIONS": "/github/integrations",
-        "INSTALLATION_URL": "/github/installation-url",
         "GET_REPOSITORIES_FOR_INTEGRATION": "/github/get-repositories-for-integration",
         "INSTALLATION_CALLBACK": "/github/installation-callback",
         "INSTALLATION_DELETED": "/github/installation-deleted",

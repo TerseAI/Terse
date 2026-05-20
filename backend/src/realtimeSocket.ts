@@ -1,6 +1,5 @@
 import { createAdapter } from "@socket.io/redis-adapter"
 import { Server as HttpServer } from "http"
-import { jwtVerify } from "jose"
 import { createClient } from "redis"
 import { Server, Socket } from "socket.io"
 import { SendModelRequest, ToolApprovalResponse } from "terse-types"
@@ -25,7 +24,8 @@ import { Agent, AgentWithRelations } from "./types/prisma"
 import { isCorsOriginAllowed } from "./utility/corsOrigins"
 import { getInputConfigInclude, getOutputConfigInclude } from "./utility/prismaIncludes"
 import { randomString } from "./utility/strings"
-import { getUserForOrg, workos } from "./utility/workos"
+import { getUserForOrg } from "./utility/workos"
+import { verifyWorkosJwt } from "./utility/workosJwt"
 
 // Extended Socket type with userId, organizationId, and WorkOS session ID
 interface AuthenticatedSocket extends Socket {
@@ -108,12 +108,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
         }
 
         try {
-            const jwks = await workos.userManagement.getJWKS()
-            if (!jwks) {
-                logger.warn("Socket.IO auth failed: JWKS not available (missing clientId)")
-                return next(new Error("Authentication failed"))
-            }
-            const { payload } = await jwtVerify(token, jwks)
+            const payload = await verifyWorkosJwt(token)
 
             const workosUserId = payload.sub as string
             const organizationId = payload.org_id as string | undefined

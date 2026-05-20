@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { JWTPayload, jwtVerify } from "jose"
+import { JWTPayload } from "jose"
 import {
     DeviceTokenExchangeResponse,
     IdentifyResponse,
@@ -16,26 +16,14 @@ import { getClaimsFromVerifiedPayload } from "../utility/accessTokenClaims"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { workos } from "../utility/workos"
+import { WorkosTokenError, verifyWorkosJwt } from "../utility/workosJwt"
 
 import { getOrCreateDbUserFromWorkOS } from "./auth"
 
 const featureFlagService = FeatureFlagService.getInstance()
 
-class WorkosTokenError extends Error {
-    constructor(
-        public readonly status: number,
-        message: string
-    ) {
-        super(message)
-    }
-}
-
 async function verifyWorkosAccessToken(accessToken: string): Promise<{ payload: JWTPayload; workosUserId: string }> {
-    const jwks = await workos.userManagement.getJWKS()
-    if (!jwks) {
-        throw new WorkosTokenError(500, "Could not fetch JWKS for token verification")
-    }
-    const { payload } = await jwtVerify(accessToken, jwks)
+    const payload = await verifyWorkosJwt(accessToken)
     const workosUserId = payload.sub as string | undefined
     if (!workosUserId) {
         throw new WorkosTokenError(401, "Invalid access token: missing subject")

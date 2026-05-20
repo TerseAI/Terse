@@ -18,7 +18,7 @@ import { Identifiable } from "../rag/Hydrator"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma"
-import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -261,12 +261,13 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.GMAIL>,
-        additionalStatePayload?: AdditionalStateParams
+        options: InstallationOptionsFor<IntegrationType.GMAIL> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
         const oauth2Client = getOAuth2Client()
 
-        const state = createOAuthStateToken({
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalStatePayload
@@ -294,8 +295,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
         }
 
         try {
-            // Decode state using helper function
-            const stateData = decodeOAuthStateToken(state)
+            const stateData = verifyOAuthState(req, res, state)
             const userId = stateData.userId
             const organizationId = stateData.organizationId
 
