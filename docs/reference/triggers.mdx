@@ -8,6 +8,16 @@ Triggers define the event that starts your workflow. Each trigger is tied to an 
 
 In TypeScript, `terse generate` writes a single **`Triggers`** object in `src/terse.generated.ts`. Import **`Triggers`** and call the nested helpers (for example **`Triggers.github.onPROpened(...)`**, **`Triggers.slack.onMessage(...)`**). System triggers use **`Triggers.schedule`**, **`Triggers.webhook`**, and **`Triggers.webMonitor`** instead of separate `Schedule` / `Webhook` / `WebMonitor` exports.
 
+## How events reach your workflow
+
+| Trigger kind | Where the event lands first | What you configure in code |
+| ------------ | ----------------------------- | -------------------------- |
+| Integration (GitHub, Gmail, Slack, …) | Terse | Connect the integration in the app, then use **`Triggers.*`** from `terse.generated.ts` |
+| `Triggers.webhook.onRequest` | Terse (generated URL) | Point your caller at the webhook URL from **`terse deploy`** |
+| Any trigger with [self-hosting](/self-hosting) | Your HTTP server | Mount **`TERSE_JOB_WEBHOOK_TRIGGER_PATH`** and call **`terse.handleTrigger`** with **`TERSE_SIGNING_SECRET`** |
+
+**GitHub** and **Gmail** integration triggers are not HTTP endpoints you implement. Terse receives provider webhooks, verifies them, then dispatches matching workflows. Connect the integration under **Integrations** in the app—your workflow code only declares the trigger (for example **`Triggers.github.onPROpened`** or **`Triggers.gmail.onEmail`**).
+
 ## Integration triggers
 
 ### GitHub
@@ -18,7 +28,7 @@ In TypeScript, `terse generate` writes a single **`Triggers`** object in `src/te
 | `Triggers.github.onPush()`         | `GithubPushTrigger` | Code is pushed to a branch |
 | `Triggers.github.trigger()`        | `GithubTrigger`     | Other GitHub events you configure |
 
-**Config:** Scoped to specific repositories via `repo` parameter.
+**Config:** Scoped to specific repositories via `repo` parameter. Events flow through the Terse GitHub App; Terse rejects forged deliveries before your workflow runs.
 
 <CodeGroup>
 ```ts TypeScript
@@ -99,6 +109,8 @@ Attio record events are configured in your Terse workspace. After `terse generat
 | Trigger              | Event type   | Description             |
 | -------------------- | ------------ | ----------------------- |
 | `Triggers.gmail.onEmail()` | `GmailTrigger` | A new email is received |
+
+Connect Gmail under **Integrations** so Terse can subscribe to your mailbox. New-mail notifications arrive via Google Pub/Sub; Terse verifies each push before dispatching workflows.
 
 <CodeGroup>
 ```ts TypeScript

@@ -26,7 +26,7 @@ Import these from `terse-sdk`:
 - `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`
 - `EventType`: enum for values on streamed `TerseAgent` results
 - `Trigger`: the base event interface
-- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), HeyReach types such as `HeyReachMessageReplyReceivedTrigger` and `HeyReachTrigger`, and other per-integration exports (see `terse-sdk` package entry)
+- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `GmailTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), HeyReach types such as `HeyReachMessageReplyReceivedTrigger` and `HeyReachTrigger`, and other per-integration exports (see `terse-sdk` package entry)
 - Config helpers re-exported for trigger construction: `HeyReachInputConfig`, and the `HeyReachEventType` object for event-type constants
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
@@ -95,6 +95,15 @@ createJob({
 ## `Terse`
 
 Use a **`Terse`** instance for **`handleTrigger`**, which verifies signed webhook payloads from the Terse backend and runs the matching registered workflow. You do not need `new Terse()` only to call `createJob()`.
+
+`handleTrigger(body, headers)` implements a two-phase protocol:
+
+1. **Challenge** — On first registration, Terse may POST `{ type: "challenge", challenge: "<token>" }`. The SDK re-signs the token with `TERSE_SIGNING_SECRET` and returns `{ challenge, signature }`.
+2. **Trigger** — Real runs POST `{ jobName, runId, event }`. The SDK verifies `x-terse-signature` and `x-terse-timestamp`, opens a session stream, **awaits** your `onTrigger`, then closes the stream.
+
+Both phases require `TERSE_SIGNING_SECRET` and `TERSE_API_KEY` in the process environment. Missing or invalid signatures throw before your handler runs. Return **401** from your HTTP route when verification fails (see [Self-hosting](/self-hosting)).
+
+Integration triggers such as **`Triggers.github.*`** and **`Triggers.gmail.onEmail`** use Terse-managed provider webhooks instead—see [How events reach your workflow](/reference/triggers#how-events-reach-your-workflow).
 
 ```ts
 import { Terse, TERSE_JOB_WEBHOOK_TRIGGER_PATH } from "terse-sdk"
