@@ -1,13 +1,16 @@
 import { Request, Response } from "express"
+import jwt from "jsonwebtoken"
 import { IntegrationType } from "terse-types/Integrations"
 import { GetGithubRepositoriesForIntegrationResponse, User as RuntimeUser } from "terse-types/types"
 import { ZodError } from "zod"
 
+import { githubApp, jwt as jwtConfig } from "../config/settings"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../integrations/GithubIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { GithubAppInstallationRepository } from "../routes/GithubTypes"
 import { SecretService } from "../services/SecretService"
+import { readBearerToken } from "../utility/authDispatch"
 import { getUserForOrg } from "../utility/workos"
 
 import { parseGithubUnifiedEventPayload } from "./githubUnifiedEventParser"
@@ -31,9 +34,30 @@ export async function getGithubIntegrations(req: Request, res: Response) {
 }
 
 /**
- * Handle unified GitHub event webhook
+ * Handle unified GitHub event webhook.
+ *
+ * Authentication: the upstream terse-probot-app signs each call with
+ * `jwt.sign({username}, JWT_SECRET)` and sends it as `Authorization: Bearer <token>`.
+ * We verify that signature here before processing any payload. Without this
+ * check the endpoint is unauthenticated event-spoofing — any attacker who
+ * reaches it can forge GitHub events into arbitrary tenants and trigger
+ * their automations with attacker-controlled prompts.
  */
 export async function githubAppUnifiedEvent(req: Request, res: Response) {
+    const bearer = readBearerToken(req.headers.authorization)
+    if (!bearer) {
+        logger.warn("[github/unified-event] Missing bearer token")
+        res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+    try {
+        jwt.verify(bearer, jwtConfig.secret)
+    } catch (error) {
+        logger.warn("[github/unified-event] Bearer token failed verification", { error: error instanceof Error ? error.message : error })
+        res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+
     let body: ReturnType<typeof parseGithubUnifiedEventPayload>
     try {
         body = parseGithubUnifiedEventPayload(req.body)

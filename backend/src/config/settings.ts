@@ -90,7 +90,11 @@ export const settings = {
         clientSecret: requireEnv("GMAIL_CLIENT_SECRET"),
         redirectUri: requireEnv("GMAIL_REDIRECT_URI"),
         pubsubTopic: requireEnv("GMAIL_PUBSUB_TOPIC"),
-        frontendRedirect: requireEnv("GMAIL_FRONTEND_REDIRECT")
+        frontendRedirect: requireEnv("GMAIL_FRONTEND_REDIRECT"),
+
+        // OIDC verification for inbound Pub/Sub push deliveries.
+        pubsubAudience: optionalEnv("GMAIL_PUBSUB_AUDIENCE"),
+        pubsubServiceAccountEmail: optionalEnv("GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL")
     },
 
     // GitHub App (for repository integration and OAuth)
