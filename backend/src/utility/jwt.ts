@@ -36,12 +36,4 @@ export class Jwt {
         }
     }
 
-    async verifyGitHubApp(token: string): Promise<boolean> {
-        try {
-            let decoded = jwt.verify(token, jwtConfig.secret, { algorithms: ["HS256"] })
-            return true
-        } catch (error) {
-            return false
-        }
-    }
 }
