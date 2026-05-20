@@ -4,6 +4,7 @@ import morgan, { type TokenIndexer } from "morgan"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
+
 import { extractClientIp } from "./clientIp"
 
 export const httpAccessLog = settings.nodeEnv === "development" ? devAccessLog() : prodAccessLog()
