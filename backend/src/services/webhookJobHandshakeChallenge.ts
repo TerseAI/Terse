@@ -8,6 +8,10 @@ import { buildSignatureHeaders, generateChallengeToken, verifyChallengeSignature
 import { joinJobServerPath } from "../utility/webhookUrl"
 
 export const WEBHOOK_JOB_FETCH_TIMEOUT_MS = 30_000
+// Challenge response is ~150 bytes of JSON. A few KB is plenty of slack; we
+// hard-stop the read at 64 KiB to keep a malicious remote server from
+// streaming gigabytes (or trickling forever) after sending headers.
+const WEBHOOK_JOB_MAX_BODY_BYTES = 64 * 1024
 
 export interface WebhookJobHandshakeChallengeParams {
     remoteServerUrl: string
@@ -92,6 +96,7 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
             signal: controller.signal
         })
     } catch (error) {
+        clearTimeout(timeout)
         const aborted = error instanceof Error && error.name === "AbortError"
         return {
             ok: false,
@@ -99,14 +104,13 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
             step: "http",
             message: aborted ? "Webhook handshake request timed out" : extractErrorMessage(error)
         }
-    } finally {
-        clearTimeout(timeout)
     }
 
     // 3xx responses are surfaced as-is (redirects are never followed — see
     // safeFetch comment). Following a Location header could land us on an
     // internal address despite the IP pinning.
     if (response.status >= 300 && response.status < 400) {
+        clearTimeout(timeout)
         return {
             ok: false,
             triggerUrl,
@@ -117,6 +121,7 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     if (!response.ok) {
+        clearTimeout(timeout)
         // Intentionally do NOT echo the response body back to the caller.
         // Echoing the body turns this endpoint into a free SSRF data
         // exfiltration channel (cloud metadata, internal admin pages, etc.).
@@ -129,9 +134,27 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
         }
     }
 
+    // Keep the abort controller active across the body read — fetch resolves
+    // when headers arrive, so without this a malicious remote could stream
+    // unbounded bytes (or trickle forever) while we hold a worker.
+    let bodyText: string
+    try {
+        bodyText = await readResponseBodyWithCap(response, WEBHOOK_JOB_MAX_BODY_BYTES)
+    } catch (error) {
+        const aborted = error instanceof Error && error.name === "AbortError"
+        return {
+            ok: false,
+            triggerUrl,
+            step: "json",
+            message: aborted ? "Webhook handshake body read timed out" : "Webhook handshake body exceeded size limit"
+        }
+    } finally {
+        clearTimeout(timeout)
+    }
+
     let handshakeJson: unknown
     try {
-        handshakeJson = await response.json()
+        handshakeJson = JSON.parse(bodyText)
     } catch {
         return {
             ok: false,
@@ -171,6 +194,35 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     return { ok: true, triggerUrl, validatedTrigger }
+}
+
+/**
+ * Read the response body via its ReadableStream so we can abort as soon as a
+ * cumulative size cap is exceeded. Throws if the body exceeds `maxBytes`.
+ */
+async function readResponseBodyWithCap(response: Response, maxBytes: number): Promise<string> {
+    if (!response.body) {
+        return await response.text()
+    }
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let received = 0
+    let out = ""
+    try {
+        while (true) {
+            const { value, done } = await reader.read()
+            if (done) break
+            received += value.byteLength
+            if (received > maxBytes) {
+                throw new Error(`response body exceeded ${maxBytes} bytes`)
+            }
+            out += decoder.decode(value, { stream: true })
+        }
+        out += decoder.decode()
+        return out
+    } finally {
+        await reader.cancel().catch(() => undefined)
+    }
 }
 
 /**
