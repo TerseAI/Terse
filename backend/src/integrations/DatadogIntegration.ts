@@ -193,9 +193,6 @@ export class DatadogIntegrationManager extends Integration<DatadogIntegration, n
                 }
             }
             const normalizedRegion = region.toLowerCase()
-
-            // One Datadog integration per org. Atomic upsert keyed on the
-            // organization_id unique constraint.
             const integration = await db().datadog_integrations.upsert({
                 where: { organization_id: organizationId },
                 update: {

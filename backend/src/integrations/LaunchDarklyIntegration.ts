@@ -242,15 +242,8 @@ export class LaunchDarklyIntegrationManager
                 })
             }
 
-            // Note: We don't extract email here since /projects doesn't return user info
-            // Both service tokens and access tokens work with this endpoint
             const userEmail: string | null = null
 
-            // One LaunchDarkly integration per org. Atomic upsert via the
-            // organization_id unique constraint — two concurrent submissions
-            // can no longer both create new rows. Secret write happens after
-            // the row exists so a partial failure leaves the row visible
-            // with stale credentials; next submit recovers.
             const integration = await db().launchdarkly_integrations.upsert({
                 where: { organization_id: organizationId },
                 update: {

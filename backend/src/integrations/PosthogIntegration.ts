@@ -195,8 +195,6 @@ export class PosthogIntegrationManager
             const userEmail = userData.email || userData.user?.email || userData.user_email || null
             const orgName = userData.organization?.name || userData.organization_name || userData.org_name || userData.organization?.organization_name || null
 
-            // One Posthog integration per org. Atomic upsert keyed on the
-            // organization_id unique constraint.
             const integration = await db().posthog_integrations.upsert({
                 where: { organization_id: organizationId },
                 update: {
