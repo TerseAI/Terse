@@ -47,16 +47,12 @@ export async function getUserForOrg(userId: string, organizationId: string): Pro
         organizationId: organizationId,
         statuses: ["active"]
     })
-    if (!organizationMemberships.data) {
+    const matchingMembership = organizationMemberships.data?.find(m => m.organizationId === organizationId)
+    if (!matchingMembership) {
         return null
     }
 
-    let roles: Role[] = []
-    organizationMemberships.data.forEach(membership => {
-        if (membership.organizationId === organizationId) {
-            roles = (membership.roles?.map(role => role.slug) as Role[]) || []
-        }
-    })
+    const roles: Role[] = (matchingMembership.roles?.map(role => role.slug) as Role[]) ?? []
 
     return {
         id: dbUser.id,
