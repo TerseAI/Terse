@@ -326,9 +326,13 @@ export function buildGithubFileKey(integraitonId: string, fileId: string): strin
     return `github/${integraitonId}/${hash}`
 }
 
-export function buildImageEditKey(imageUrl: string, prompt: string): string {
-    const hash = md5Hash(`${imageUrl}/${prompt}`)
-    return `image-edits/${hash}`
+export function buildImageEditKey(organizationId: string, imageUrl: string, prompt: string): string {
+    // Compose with NUL separators (none of the inputs can contain NUL) so
+    // (a, b/c) and (a/b, c) hash to distinct keys; SHA-256 over MD5 to remove
+    // chosen-prefix-collision risk; org prefix scopes the cache so no two
+    // tenants can ever resolve to the same row.
+    const hash = crypto.createHash("sha256").update(`${organizationId}\0${imageUrl}\0${prompt}`, "utf8").digest("hex")
+    return `image-edits/${organizationId}/${hash}`
 }
 
 // SDK deploy helpers
