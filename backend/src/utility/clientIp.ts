@@ -7,14 +7,14 @@ export function extractClientIp(req: IncomingMessage | Request): string | undefi
     if (trueClient) return trueClient
     const xff = firstHeaderValue(headers["x-forwarded-for"])
     if (xff) {
-        const first = xff.split(",")[0]?.trim()
+        const first = xff.split(",")[0]
         if (first) return first
     }
     return req.socket?.remoteAddress
 }
 
 function firstHeaderValue(value: string | string[] | undefined): string | undefined {
-    if (Array.isArray(value)) return value[0]?.trim() || undefined
-    if (typeof value === "string" && value.length > 0) return value.trim()
+    if (Array.isArray(value)) return value[0] || undefined
+    if (typeof value === "string" && value.length > 0) return value
     return undefined
 }
