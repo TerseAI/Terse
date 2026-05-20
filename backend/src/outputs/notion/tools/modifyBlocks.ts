@@ -165,7 +165,7 @@ Error recovery: If Notion returns an error that suggests JSON/body/validation in
                         }
                     }
 
-                    logger.info("Updating block", { block_id: op.block_id, block: op.block })
+                    logger.info("Updating block", { block_id: op.block_id, block_type: getBlockTypeName(op.block) })
 
                     const response = await notion.blocks.update({
                         block_id: op.block_id,

@@ -21,7 +21,7 @@ export const imageEditTool = defineSessionTool({
         const mimeType = (downloadResponse.headers["content-type"] || "image/png").split(";")[0].trim()
         const base64Image = imageBuffer.toString("base64")
 
-        logger.info("Sending image to Gemini for editing", { image_url, prompt, mimeType })
+        logger.info("Sending image to Gemini for editing", { image_path: new URL(image_url).pathname, mimeType })
 
         // 2. Call Gemini image model
         const ai = new GoogleGenAI({ apiKey: gemini.apiKey })
@@ -58,7 +58,7 @@ export const imageEditTool = defineSessionTool({
             throw new Error("Failed to store the edited image.")
         }
 
-        logger.info("Image edit complete", { image_url, storageKey, url: storedFile.url })
+        logger.info("Image edit complete", { storageKey })
 
         return {
             success: true,
