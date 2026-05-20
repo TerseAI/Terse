@@ -351,6 +351,8 @@ Common errors:
 
 - 401/403 Not authenticated: run `terse login`
 - 404 Workflow not deployed: run `terse deploy` first
+- 429 Too many requests: you hit an API rate limit; wait for the **`Retry-After`** window (the CLI surfaces this as a stream failure)
+- 429 Too many concurrent SSE connections: you already have five open session streams for this user; close extra terminals or wait ~30 seconds and retry
 
 Press Ctrl-C to stop listening.
 

@@ -104,6 +104,17 @@ const terse = new Terse()
 // Mount TERSE_JOB_WEBHOOK_TRIGGER_PATH on your HTTP server (Express, Hono, Next.js, etc.)
 ```
 
+`handleTrigger` uses a two-phase protocol: a signed **challenge** on first deploy, then signed **trigger** payloads. Each trigger run opens a session SSE stream via **`openSessionStream`** so agent runs and tool calls stay attributed to that run; the stream closes when `onTrigger` finishes.
+
+## Session streams
+
+`openSessionStream` and `openListenStream` open authenticated SSE connections to the Terse backend. They throw **`SessionStreamError`** when the HTTP handshake fails (for example **401**, **404**, or **429**). The error’s **`status`** field matches the HTTP status code.
+
+- **`openSessionStream`**: used internally by **`handleTrigger`**; emits `session_started` then session events for the run.
+- **`openListenStream`**: used by **`terse listen`**; requires `jobName` and `projectId` query params and emits `listen_started` plus forwarded trigger events.
+
+Call **`close()`** on the returned handle when you are done so the backend can release resources. Session event streams are capped at **five concurrent connections per user**; see [Rate limits and errors](#rate-limits-and-errors).
+
 ## `TerseAgent`
 
 Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI. The same context applies to **`TerseAgent.executeTool`** and to generated **`toolbox`** calls.
