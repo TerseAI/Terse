@@ -196,10 +196,6 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     return { ok: true, triggerUrl, validatedTrigger }
 }
 
-/**
- * Read the response body via its ReadableStream so we can abort as soon as a
- * cumulative size cap is exceeded. Throws if the body exceeds `maxBytes`.
- */
 async function readResponseBodyWithCap(response: Response, maxBytes: number): Promise<string> {
     if (!response.body) {
         return await response.text()
@@ -223,52 +219,4 @@ async function readResponseBodyWithCap(response: Response, maxBytes: number): Pr
     } finally {
         await reader.cancel().catch(() => undefined)
     }
-}
-
-/**
- * Extract a human-readable error detail from a response body.
- * Handles JSON `{ error: "..." }` / `{ message: "..." }`, HTML error pages (extracts text from
- * `<pre>` tags or strips all tags), and plain text.
- */
-function extractResponseErrorDetail(body: string): string {
-    const trimmed = body.trim()
-    if (!trimmed) return ""
-
-    // Try JSON first: { error: "...", message: "..." }
-    if (trimmed.startsWith("{")) {
-        try {
-            const json = JSON.parse(trimmed)
-            const msg = json.error || json.message
-            if (typeof msg === "string") return msg.slice(0, 300)
-        } catch {
-            // not JSON, fall through
-        }
-    }
-
-    // HTML response: extract the meaningful error text
-    if (trimmed.includes("<") && trimmed.includes(">")) {
-        // Express wraps errors in <pre>Error: message\n    at ...</pre>
-        const preMatch = trimmed.match(/<pre>([\s\S]*?)<\/pre>/)
-        if (preMatch) {
-            const preText = preMatch[1]
-                .replace(/<br\s*\/?>/gi, "\n")
-                .replace(/&nbsp;/g, " ")
-                .replace(/&amp;/g, "&")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-            // Take only the first line (the error message), skip the stack trace
-            const firstLine = preText.split("\n")[0].trim()
-            // Strip "Error: " prefix since we already show context
-            return firstLine.replace(/^Error:\s*/, "").slice(0, 300)
-        }
-        // Generic HTML: strip all tags
-        const stripped = trimmed
-            .replace(/<[^>]+>/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-        return stripped.slice(0, 300)
-    }
-
-    // Plain text
-    return trimmed.slice(0, 300)
 }

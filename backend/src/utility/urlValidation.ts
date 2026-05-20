@@ -1,62 +1,28 @@
+import ipaddr from "ipaddr.js"
 import dns from "node:dns/promises"
 import net from "node:net"
 import { URL } from "node:url"
 
-import ipaddr from "ipaddr.js"
-
 import { settings } from "../config/settings"
 
-// RFC 6890 (IPv4) + RFC 5156 (IPv6) special-purpose ranges that must never be
-// the target of an outbound fetch from a user-controlled URL.
-const BLOCKED_IPV4_CIDRS: Array<[string, number]> = [
-    ["0.0.0.0", 8], // RFC 1122 — "this network"
-    ["10.0.0.0", 8], // RFC 1918 private
-    ["100.64.0.0", 10], // RFC 6598 CGNAT
-    ["127.0.0.0", 8], // loopback
-    ["169.254.0.0", 16], // link-local incl. cloud metadata 169.254.169.254
-    ["172.16.0.0", 12], // RFC 1918 private
-    ["192.0.0.0", 24], // IETF protocol assignments
-    ["192.0.2.0", 24], // TEST-NET-1
-    ["192.168.0.0", 16], // RFC 1918 private
-    ["198.18.0.0", 15], // network benchmark
-    ["198.51.100.0", 24], // TEST-NET-2
-    ["203.0.113.0", 24], // TEST-NET-3
-    ["224.0.0.0", 4], // multicast
-    ["240.0.0.0", 4], // reserved / class E (covers 255.255.255.255 broadcast)
-]
-
-const BLOCKED_IPV6_CIDRS: Array<[string, number]> = [
-    ["::", 128], // unspecified
-    ["::1", 128], // loopback
-    ["64:ff9b::", 96], // NAT64
-    ["100::", 64], // discard prefix
-    ["2001:db8::", 32], // documentation
-    ["2002::", 16], // 6to4 (can re-enter IPv4 space)
-    ["fc00::", 7], // unique local
-    ["fe80::", 10], // link local
-    ["ff00::", 8], // multicast
-]
-
+// Block every IP that ipaddr.js classifies as anything other than global unicast.
+// Covers RFC 6890 (IPv4) + RFC 5156 (IPv6) special-purpose ranges — loopback,
+// private, CGNAT, link-local (incl. 169.254.169.254 cloud metadata), TEST-NETs,
+// multicast, broadcast, 6to4, Teredo, NAT64, discard, etc.
 function isBlockedIP(ip: string): boolean {
     let parsed: ipaddr.IPv4 | ipaddr.IPv6
     try {
         parsed = ipaddr.parse(ip)
     } catch {
-        // Not a parseable IP — let the higher-level URL validator reject it.
         return true
     }
 
-    // IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1) — collapse to IPv4 first.
     if (parsed.kind() === "ipv6") {
         const v6 = parsed as ipaddr.IPv6
-        if (v6.isIPv4MappedAddress()) {
-            return isBlockedIP(v6.toIPv4Address().toString())
-        }
-        return BLOCKED_IPV6_CIDRS.some(([cidr, bits]) => v6.match(ipaddr.IPv6.parse(cidr), bits))
+        if (v6.isIPv4MappedAddress()) return isBlockedIP(v6.toIPv4Address().toString())
     }
 
-    const v4 = parsed as ipaddr.IPv4
-    return BLOCKED_IPV4_CIDRS.some(([cidr, bits]) => v4.match(ipaddr.IPv4.parse(cidr), bits))
+    return parsed.range() !== "unicast"
 }
 
 export class UrlValidationError extends Error {
@@ -98,10 +64,6 @@ export async function validateRemoteServerUrl(url: string): Promise<ValidatedRem
         throw new UrlValidationError("Invalid URL format")
     }
 
-    // Fail closed: anything that isn't an *explicit* development/test env is
-    // treated as production. Without this, a missing NODE_ENV (common in
-    // containerised/serverless deploys) would default to "development" and
-    // open up the localhost-HTTP escape hatch on a real prod host.
     const explicitDev = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test"
     const isDev = explicitDev && settings.nodeEnv === "development"
     const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "::1"
