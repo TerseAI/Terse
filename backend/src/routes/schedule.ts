@@ -35,11 +35,6 @@ class SyntheticTriggerRuntime extends TriggerRuntime<Trigger> {
     }
 
     matchesAgentTrigger(_agentTrigger: AgentTriggerWithConfigs): boolean {
-        // SyntheticTriggerRuntime is only dispatched via EventProcessor
-        // .processSingleAgent (a single-target path that bypasses matching).
-        // Fail loudly if anyone wires it through the multi-agent fan-out —
-        // otherwise this synthetic event would match every active agent in
-        // the org and broadcast user-supplied payload to all of them.
         throw new Error("SyntheticTriggerRuntime must not be routed through EventProcessor.process(); use processSingleAgent")
     }
 
