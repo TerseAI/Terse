@@ -167,6 +167,9 @@ importers:
       posthog-node:
         specifier: ^4.18.0
         version: 4.18.0
+      rate-limiter-flexible:
+        specifier: ^11.1.0
+        version: 11.1.0
       redis:
         specifier: ^5.9.0
         version: 5.11.0
@@ -5692,6 +5695,9 @@ packages:
   range-parser@1.2.1:
     resolution: {integrity: sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==}
     engines: {node: '>= 0.6'}
+
+  rate-limiter-flexible@11.1.0:
+    resolution: {integrity: sha512-lyyC0SqKz+dE5JoHZ4JMqdrM3LSZKBxzuAFAyKCYAnmHnPz/Rb6iDquxoL4CMipDXoR0G+QRhOzYWL3JKihbNw==}
 
   raw-body@3.0.2:
     resolution: {integrity: sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA==}
@@ -12722,6 +12728,8 @@ snapshots:
       '@types/react-dom': 19.2.3(@types/react@19.2.14)
 
   range-parser@1.2.1: {}
+
+  rate-limiter-flexible@11.1.0: {}
 
   raw-body@3.0.2:
     dependencies:

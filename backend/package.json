@@ -80,6 +80,7 @@
         "openai": "^6.10.0",
         "parallel-web": "^0.3.2",
         "posthog-node": "^4.18.0",
+        "rate-limiter-flexible": "^11.1.0",
         "redis": "^5.9.0",
         "resend": "^6.9.2",
         "snowflake-sdk": "^2.3.5",

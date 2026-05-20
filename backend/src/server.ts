@@ -74,6 +74,8 @@ import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
+import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
+import { RATE_LIMITS } from "./rateLimit/presets"
 import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./utility/analytics"
 import { AuthKind, requireAuth } from "./utility/authMiddleware"
@@ -81,6 +83,12 @@ import { buildCorsAllowedOrigins, isCorsOriginAllowed } from "./utility/corsOrig
 import { workos } from "./utility/workos"
 
 const app = express()
+// On Render the app sits behind a single load-balancer hop. Without this,
+// req.ip is the proxy's IP — every request would key against one "client"
+// for rate-limit purposes and one abuser could lock out everyone. `1` means
+// "trust exactly the last hop" (the Render LB); trusting more would let
+// clients spoof X-Forwarded-For.
+app.set("trust proxy", 1)
 const server = createServer(app)
 
 const corsAllowedOrigins = buildCorsAllowedOrigins()
@@ -94,6 +102,21 @@ try {
     logger.error("❌ Failed to initialize Socket.IO server", { error })
     process.exit(1)
 }
+
+// Initialize rate limiter (Redis-backed in prod, in-memory locally).
+// Must complete before any route is registered.
+const rateLimiter = RateLimiterClient.getInstance()
+try {
+    await rateLimiter.init()
+} catch (error) {
+    logger.error("❌ Failed to initialize rate limiter", { error })
+    process.exit(1)
+}
+
+const limitWebhookByToken = rateLimiter.createLimiter(RATE_LIMITS.WEBHOOK_BY_TOKEN)
+const limitWebhookByIp = rateLimiter.createLimiter(RATE_LIMITS.WEBHOOK_BY_IP)
+const limitHeyReachByTrigger = rateLimiter.createLimiter(RATE_LIMITS.HEYREACH_BY_TRIGGER)
+const limitTokenMinting = rateLimiter.createLimiter(RATE_LIMITS.TOKEN_MINTING)
 
 // Initialize Slack Bolt app
 const slackReceiver: Awaited<ReturnType<typeof setupSlackBolt>> | null = await setupSlackBolt()
@@ -201,7 +224,7 @@ app.post(ApiRoutes.CLEANUP_SDK_IMAGES, requireAuth([AuthKind.CloudScheduler]), a
 
 // MARK: WEBHOOKS (each handler verifies its own provider signature)
 
-app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.GMAIL, limitWebhookByIp, async (req, res) => {
     handleGmailWebhook(req, res)
 })
 
@@ -236,18 +259,18 @@ app.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, async (req, res) => {
     handleWebMonitorWebhook(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, limitWebhookByToken, async (req, res) => {
     handleWebhookTrigger(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.HEY_REACH_BY_INTEGRATION_ID, async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.HEY_REACH_BY_INTEGRATION_ID, limitHeyReachByTrigger, async (req, res) => {
     handleHeyReachWebhook(req, res)
 })
 
 // Attio webhook needs raw body for HMAC-SHA256 signature verification
 app.use(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, express.raw({ type: "application/json" }))
 
-app.post(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, limitWebhookByIp, async (req, res) => {
     handleAttioWebhook(req, res)
 })
 
@@ -260,7 +283,7 @@ app.post(ApiRoutes.SDK.IDENTIFY, async (req, res) => {
     await identify(req, res)
 })
 
-app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
+app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, limitTokenMinting, async (req, res) => {
     await deviceTokenExchange(req, res)
 })
 
