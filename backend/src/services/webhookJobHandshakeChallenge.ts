@@ -1,8 +1,9 @@
 import { ApiRoutes } from "terse-types"
 import { webhookJobChallengeResponseSchema } from "terse-types/types"
 
+import { safeFetch } from "../utility/safeFetch"
 import { extractErrorMessage } from "../utility/strings"
-import { validateRemoteServerUrl } from "../utility/urlValidation"
+import { ValidatedRemoteUrl, validateRemoteServerUrl } from "../utility/urlValidation"
 import { buildSignatureHeaders, generateChallengeToken, verifyChallengeSignature } from "../utility/webhookHmac"
 import { joinJobServerPath } from "../utility/webhookUrl"
 
@@ -23,7 +24,17 @@ export interface WebhookJobHandshakeChallengeParams {
  * proves the remote server holds the correct signing secret.
  */
 export type WebhookJobHandshakeChallengeResult =
-    | { ok: true; triggerUrl: string }
+    | {
+          ok: true
+          triggerUrl: string
+          /**
+           * The validated + IP-pinned context for the trigger URL. Reusable
+           * by the subsequent delivery fetch so the same connect-pinning
+           * applies (and we don't re-validate, which would reopen the TOCTOU
+           * window between handshake and delivery).
+           */
+          validatedTrigger: ValidatedRemoteUrl
+      }
     | {
           ok: false
           triggerUrl: string
@@ -40,8 +51,9 @@ export type WebhookJobHandshakeChallengeResult =
 export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshakeChallengeParams): Promise<WebhookJobHandshakeChallengeResult> {
     const timeoutMs = WEBHOOK_JOB_FETCH_TIMEOUT_MS
 
+    let validated: ValidatedRemoteUrl
     try {
-        await validateRemoteServerUrl(params.remoteServerUrl)
+        validated = await validateRemoteServerUrl(params.remoteServerUrl)
     } catch (error) {
         return {
             ok: false,
@@ -52,6 +64,9 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     const triggerUrl = joinJobServerPath(params.remoteServerUrl, ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER)
+    // safeFetch needs a ValidatedRemoteUrl pointing at the trigger path —
+    // same host as the validated remoteServerUrl, just a different path.
+    const validatedTrigger: ValidatedRemoteUrl = { ...validated, url: triggerUrl, parsedUrl: new URL(triggerUrl) }
     const challengeToken = generateChallengeToken()
     const body = JSON.stringify({ type: "challenge", challenge: challengeToken })
 
@@ -67,7 +82,7 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
 
     let response: Response
     try {
-        response = await fetch(triggerUrl, {
+        response = await safeFetch(validatedTrigger, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -88,14 +103,28 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
         clearTimeout(timeout)
     }
 
-    if (!response.ok) {
-        const responseBody = await response.text().catch(() => "")
-        const detail = extractResponseErrorDetail(responseBody)
+    // 3xx responses are surfaced as-is (redirects are never followed — see
+    // safeFetch comment). Following a Location header could land us on an
+    // internal address despite the IP pinning.
+    if (response.status >= 300 && response.status < 400) {
         return {
             ok: false,
             triggerUrl,
             step: "http",
-            message: detail ? `Server responded ${response.status}: ${detail}` : `Server responded with HTTP ${response.status} (${response.statusText || "error"}).`,
+            message: `Server responded with HTTP ${response.status}. Redirects are not followed; the job server must respond to the handshake directly.`,
+            httpStatus: response.status
+        }
+    }
+
+    if (!response.ok) {
+        // Intentionally do NOT echo the response body back to the caller.
+        // Echoing the body turns this endpoint into a free SSRF data
+        // exfiltration channel (cloud metadata, internal admin pages, etc.).
+        return {
+            ok: false,
+            triggerUrl,
+            step: "http",
+            message: `Server responded with HTTP ${response.status} (${response.statusText || "error"}).`,
             httpStatus: response.status
         }
     }
@@ -141,7 +170,7 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
         }
     }
 
-    return { ok: true, triggerUrl }
+    return { ok: true, triggerUrl, validatedTrigger }
 }
 
 /**
