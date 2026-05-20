@@ -85,15 +85,9 @@ import { httpAccessLog } from "./utility/httpAccessLog"
 import { workos } from "./utility/workos"
 
 const app = express()
-// On Render the app sits behind a single load-balancer hop. Without this,
-// req.ip is the proxy's IP — every request would key against one "client"
-// for rate-limit purposes and one abuser could lock out everyone. `1` means
-// "trust exactly the last hop" (the Render LB); trusting more would let
-// clients spoof X-Forwarded-For.
+
 app.set("trust proxy", 1)
 
-// HTTP access log: must be the first middleware so we capture every request,
-// including ones rejected by CORS or by the body-parser size/syntax checks.
 app.use(httpAccessLog)
 
 const server = createServer(app)
@@ -893,9 +887,6 @@ server.listen(3001, () => {
     logger.info("🚀 Express backend running on http://localhost:3001")
 })
 
-// Graceful shutdown.
-// Render's default shutdown delay is 30s before SIGKILL. Aim to finish a few
-// seconds under that so the force-exit branch can log before Render kills us.
 const SHUTDOWN_GRACE_MS = 25_000
 let shuttingDown = false
 

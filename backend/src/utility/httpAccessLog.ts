@@ -4,6 +4,7 @@ import morgan, { type TokenIndexer } from "morgan"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
+import { extractClientIp } from "./clientIp"
 
 export const httpAccessLog = settings.nodeEnv === "development" ? devAccessLog() : prodAccessLog()
 
@@ -29,7 +30,7 @@ function buildAccessLogEntry(tokens: TokenIndexer, req: IncomingMessage, res: Se
         responseTimeMs: parseTokenNumber(tokens["response-time"](req, res)),
         requestLength: parseTokenNumber(tokens.req(req, res, "content-length")),
         responseLength: parseTokenNumber(tokens.res(req, res, "content-length")),
-        ip: parseTokenString(tokens["remote-addr"](req, res)),
+        ip: extractClientIp(req),
         userAgent: parseTokenString(tokens["user-agent"](req, res)),
         referrer: parseTokenString(tokens.referrer(req, res))
     }
