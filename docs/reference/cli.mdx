@@ -427,6 +427,8 @@ terse login
 
 If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
 
+The device-token exchange step is rate limited to **five attempts per hour** per user or client IP. A sixth attempt within that hour is blocked for one hour and returns **429**.
+
 ### `terse logout`
 
 Removes the saved API key from your user config.
