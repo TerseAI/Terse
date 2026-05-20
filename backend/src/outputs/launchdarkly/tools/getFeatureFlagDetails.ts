@@ -47,7 +47,7 @@ export const getLaunchDarklyFlagDetailsTool = defineSessionTool({
             })
 
             // Call LaunchDarkly API
-            const flagUrl = `${launchDarklyHost}/api/v2/flags/${projectKey}/${flagKey}`
+            const flagUrl = `${launchDarklyHost}/api/v2/flags/${projectKey}/${encodeURIComponent(flagKey)}`
 
             logger.debug("[LaunchDarkly] getFeatureFlagDetails - Fetching flag details from API", {
                 url: flagUrl,
