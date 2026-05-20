@@ -477,34 +477,33 @@ function cloneAgentItem<T extends AgentInputItem>(item: T): T {
     return structuredClone(item)
 }
 
+function dedupKeyFor(item: AgentInputItem): string | undefined {
+    if (!item.id) return undefined
+    const kind = "role" in item ? item.role : item.type
+    return `${kind}:${item.id}`
+}
+
 /**
- * Deduplicates items by their ID, keeping only the last occurrence of each ID.
- * This prevents duplicate item errors when sending items to the OpenAI API.
+ * Dedup by (kind, id) so a user-supplied client_turn_id can't shadow an
+ * assistant/system event with the same id.
  */
 function deduplicateItemsById(items: AgentInputItem[]): AgentInputItem[] {
-    // Track the last index where each ID appears
-    const idToLastIndex = new Map<string, number>()
+    const keyToLastIndex = new Map<string, number>()
 
     for (let i = 0; i < items.length; i++) {
-        const itemAny = items[i]
-        if (itemAny?.id && typeof itemAny.id === "string") {
-            idToLastIndex.set(itemAny.id, i)
-        }
+        const key = dedupKeyFor(items[i])
+        if (key) keyToLastIndex.set(key, i)
     }
 
-    // If no IDs found, no duplicates possible
-    if (idToLastIndex.size === 0) {
+    if (keyToLastIndex.size === 0) {
         return items
     }
 
-    // Filter to keep only items that are either:
-    // 1. The last occurrence of their ID, or
-    // 2. Don't have an ID
     const result: AgentInputItem[] = items
         .map((item, i) => {
-            const itemId = item?.id
-            if (!itemId || typeof itemId !== "string") return item
-            if (idToLastIndex.get(itemId) === i) return item
+            const key = dedupKeyFor(item)
+            if (!key) return item
+            if (keyToLastIndex.get(key) === i) return item
             return undefined
         })
         .filter(item => item !== undefined)

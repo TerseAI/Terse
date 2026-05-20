@@ -13,6 +13,7 @@ import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../realti
 import { AgentWithRelations, project_deploys } from "../types/prisma"
 import { createSandboxToken } from "../utility/apiTokens"
 import { getActiveDeployForProject } from "../utility/projectHelper"
+import { shellQuote } from "../utility/shellEscape"
 import { extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
@@ -361,7 +362,7 @@ export class SdkJobExecutionService {
             runSandboxCommandStreaming: async (label, command) => {
                 return this.runSandboxCommandStreaming(sb, label, command, sandboxEnv, runId, agentId)
             },
-            escapeShellArg: value => this.escapeShellArg(value),
+            escapeShellArg: shellQuote,
             emitSandboxStatus: (stage, status, opts) => this.emitSandboxStatus(stage, status, opts)
         }
     }
@@ -549,10 +550,6 @@ export class SdkJobExecutionService {
         }
 
         return trimmed.slice(0, limit)
-    }
-
-    private escapeShellArg(value: string): string {
-        return `'${value.replace(/'/g, "'\\''")}'`
     }
 
     private parseRuntime(runtime: string): SdkProjectRuntime {

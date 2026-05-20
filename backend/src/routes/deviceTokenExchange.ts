@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { JWTPayload, jwtVerify } from "jose"
+import { JWTPayload } from "jose"
 import {
     DeviceTokenExchangeResponse,
     IdentifyResponse,
@@ -16,26 +16,19 @@ import { getClaimsFromVerifiedPayload } from "../utility/accessTokenClaims"
 import { createApiToken } from "../utility/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../utility/featureFlags"
 import { workos } from "../utility/workos"
+import { WorkosTokenError, verifyWorkosJwt } from "../utility/workosJwt"
 
 import { getOrCreateDbUserFromWorkOS } from "./auth"
 
 const featureFlagService = FeatureFlagService.getInstance()
 
-class WorkosTokenError extends Error {
-    constructor(
-        public readonly status: number,
-        message: string
-    ) {
-        super(message)
-    }
+const CLI_LOGIN_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000
+function cliLoginExpiry(): Date {
+    return new Date(Date.now() + CLI_LOGIN_TOKEN_TTL_MS)
 }
 
 async function verifyWorkosAccessToken(accessToken: string): Promise<{ payload: JWTPayload; workosUserId: string }> {
-    const jwks = await workos.userManagement.getJWKS()
-    if (!jwks) {
-        throw new WorkosTokenError(500, "Could not fetch JWKS for token verification")
-    }
-    const { payload } = await jwtVerify(accessToken, jwks)
+    const payload = await verifyWorkosJwt(accessToken)
     const workosUserId = payload.sub as string | undefined
     if (!workosUserId) {
         throw new WorkosTokenError(401, "Invalid access token: missing subject")
@@ -140,7 +133,7 @@ export async function deviceTokenExchange(req: Request, res: Response) {
         const claims = getClaimsFromVerifiedPayload(payload)
         const { user: dbUser } = await getOrCreateDbUserFromWorkOS({ user: workosUser, organizationId, roles }, claims)
 
-        const { rawToken } = await createApiToken(dbUser.id, organizationId, "CLI Login")
+        const { rawToken } = await createApiToken(dbUser.id, organizationId, "CLI Login", { expiresAt: cliLoginExpiry() })
 
         const displayName = [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || null
 
@@ -221,7 +214,7 @@ export async function switchOrganization(req: Request, res: Response) {
             return res.status(403).json({ error: "You are not a member of that organization" })
         }
 
-        const { rawToken } = await createApiToken(user.id, organizationId, "CLI Login")
+        const { rawToken } = await createApiToken(user.id, organizationId, "CLI Login", { expiresAt: cliLoginExpiry() })
 
         const response: SwitchOrganizationResponse = {
             apiKey: rawToken,

@@ -26,6 +26,31 @@ export function getJobContext(): TerseJobContext | undefined {
     return store.getStore()
 }
 
+// Counts in-process `TerseAgent` runs that have their own `onApprovalRequired`
+// callback. The CLI's session-stream consumer reads this to stay quiet when
+// the agent's own SSE stream is going to handle the same approval — otherwise
+// the user sees two prompts and two POST /sdk/approval-decision calls for one
+// stepId. Pinned process-globally so the CLI's and user job's separate
+// `terse-sdk` copies share one counter.
+const APPROVAL_CLAIM_KEY = Symbol.for("terse.agentApprovalClaim")
+type GlobalWithApprovalClaim = typeof globalThis & {
+    [APPROVAL_CLAIM_KEY]?: { count: number }
+}
+const approvalClaimScope = globalThis as GlobalWithApprovalClaim
+const approvalClaim: { count: number } = approvalClaimScope[APPROVAL_CLAIM_KEY] ?? (approvalClaimScope[APPROVAL_CLAIM_KEY] = { count: 0 })
+
+export function claimAgentApprovalHandling(): void {
+    approvalClaim.count += 1
+}
+
+export function releaseAgentApprovalHandling(): void {
+    if (approvalClaim.count > 0) approvalClaim.count -= 1
+}
+
+export function isAgentApprovalHandlingClaimed(): boolean {
+    return approvalClaim.count > 0
+}
+
 export type EventTransform = (event: unknown) => unknown
 
 const EVENT_TRANSFORMS_KEY = Symbol.for("terse.eventTransforms")

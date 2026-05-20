@@ -9,6 +9,7 @@ import { emitAndPersistSnippetEvent } from "../agent/systemEvents/emitAndPersist
 import logger from "../logger"
 import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../realtimeSocket"
 import { AgentWithRelations } from "../types/prisma"
+import { safeFetch } from "../utility/safeFetch"
 import { extractErrorMessage } from "../utility/strings"
 import { buildSignatureHeaders } from "../utility/webhookHmac"
 
@@ -69,7 +70,10 @@ export class WebhookJobExecutionService {
             const deliverBody = JSON.stringify({ jobName, runId, event })
             let deliverResponse: Response
             try {
-                deliverResponse = await fetch(challenge.triggerUrl, {
+                // Reuse the validated + IP-pinned context from the handshake.
+                // safeFetch enforces redirect: 'manual' and pins TCP connect
+                // to the address the validator approved — closes DNS rebinding.
+                deliverResponse = await safeFetch(challenge.validatedTrigger, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -82,10 +86,11 @@ export class WebhookJobExecutionService {
                 clearTimeout(deliverTimeout)
             }
 
-            if (!deliverResponse.ok) {
-                const body = await deliverResponse.text().catch(() => "")
-                const detail = body.slice(0, 500)
-                const failureMessage = `Webhook delivery returned ${deliverResponse.status}`
+            // 3xx responses are not followed (safeFetch enforces redirect: manual).
+            // Treat them as a failure rather than letting the agent silently miss
+            // the delivery.
+            if (deliverResponse.status >= 300 && deliverResponse.status < 400) {
+                const failureMessage = `Webhook delivery returned HTTP ${deliverResponse.status}. Redirects are not followed; the job server must accept the delivery directly.`
                 await emitWebhookFailureSnippet({
                     runId,
                     orgId,
@@ -93,11 +98,29 @@ export class WebhookJobExecutionService {
                     stage: "delivery",
                     message: failureMessage,
                     triggerUrl: knownTriggerUrl,
-                    httpStatus: deliverResponse.status,
-                    bodySnippet: detail || undefined
+                    httpStatus: deliverResponse.status
                 })
-                await finalizeRunFailure(runId, classifyAgentError(new Error(`${failureMessage}: ${detail}`)), user, agent)
-                logger.error("Webhook job: delivery non-2xx", { runId, agentId: agent.id, status: deliverResponse.status, detail })
+                await finalizeRunFailure(runId, classifyAgentError(new Error(failureMessage)), user, agent)
+                logger.error("Webhook job: delivery 3xx (redirect refused)", { runId, agentId: agent.id, status: deliverResponse.status })
+                return
+            }
+
+            if (!deliverResponse.ok) {
+                // Intentionally do NOT include the response body in the
+                // snippet or error message. Echoing it turns webhook
+                // delivery into an SSRF data-exfiltration channel.
+                const failureMessage = `Webhook delivery returned HTTP ${deliverResponse.status} (${deliverResponse.statusText || "error"}).`
+                await emitWebhookFailureSnippet({
+                    runId,
+                    orgId,
+                    agentId: agent.id,
+                    stage: "delivery",
+                    message: failureMessage,
+                    triggerUrl: knownTriggerUrl,
+                    httpStatus: deliverResponse.status
+                })
+                await finalizeRunFailure(runId, classifyAgentError(new Error(failureMessage)), user, agent)
+                logger.error("Webhook job: delivery non-2xx", { runId, agentId: agent.id, status: deliverResponse.status })
                 return
             }
 

@@ -24,7 +24,7 @@ import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
-import { createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -156,14 +156,15 @@ export class GithubIntegrationManager
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.GITHUB>,
-        additionalStatePayload?: AdditionalStateParams
+        options: InstallationOptionsFor<IntegrationType.GITHUB> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName
         const clientId = githubApp.clientId
         const redirectUri = githubApp.integrateCallbackUrl
 
-        const state = createOAuthStateToken({
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalStatePayload
@@ -193,8 +194,7 @@ export class GithubIntegrationManager
         })
 
         try {
-            // Decode state using helper function (can throw)
-            const stateData = decodeOAuthStateToken(state as string)
+            const stateData = verifyOAuthState(req, res, state as string)
             const user_id = stateData.userId
             const organizationId = stateData.organizationId
 
@@ -343,7 +343,7 @@ export class GithubIntegrationManager
 
         const installationIdNum = installation.installation_id
 
-        const accessToken = await getGitHubAccessToken(userId)
+        const accessToken = await getGitHubAccessToken(userId, organizationId)
         if (!accessToken) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }

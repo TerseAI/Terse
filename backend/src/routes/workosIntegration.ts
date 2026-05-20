@@ -4,7 +4,6 @@ import { webhookWorkOSTriggerParamsSchema, workosWebhookSecretUpdateRequestSchem
 
 import { WorkOSIntegrationManager } from "../integrations/WorkOSIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { SecretService } from "../services/SecretService"
@@ -58,7 +57,7 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
         return
     }
 
-    const { webhookSecret, state: stateToken } = workosWebhookSecretUpdateRequestSchema.parse(req.body)
+    const { webhookSecret } = workosWebhookSecretUpdateRequestSchema.parse(req.body)
 
     try {
         const integration = await db().workos_integrations.findFirst({
@@ -74,9 +73,6 @@ export async function updateWorkOSWebhookSecret(req: Request, res: Response) {
         await secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.WORKOS, recordId: integration.id, value: { webhookSecret: webhookSecret } } })
 
         logger.info("Updated WorkOS webhook secret", { integrationId: integration.id })
-
-        const manager = new WorkOSIntegrationManager()
-        await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, req.session.user.id, req.session.user.organizationId, IntegrationType.WORKOS)
 
         res.status(200).json({ success: true })
     } catch (error) {

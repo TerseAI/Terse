@@ -8,8 +8,15 @@ function getRandomBoundary(): string {
     return `mime_boundary_${randomUUID()}`
 }
 
+export function sanitizeHeaderValue(value: string, fieldName: string): string {
+    if (/[\r\n]/.test(value)) {
+        throw new Error(`Invalid \`${fieldName}\`: header values must not contain CR or LF characters.`)
+    }
+    return value
+}
+
 export function encodeSubjectHeader(subject: string): string {
-    // Keep ASCII subjects unchanged; encode non-ASCII as RFC 2047 UTF-8 Base64 encoded-word.
+    sanitizeHeaderValue(subject, "subject")
     if (/^[\x00-\x7F]*$/.test(subject)) {
         return subject
     }
@@ -36,13 +43,27 @@ function mimeTypeToExt(mimeType: string): string {
     return map[mimeType.toLowerCase()] ?? "png"
 }
 
+const MAX_IMAGE_ATTACHMENTS = 10
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024 // 25 MB per attachment
+
 export async function downloadImageAttachments(imageUrls: string[]): Promise<EmailAttachment[]> {
+    const capped = imageUrls.slice(0, MAX_IMAGE_ATTACHMENTS)
+    if (imageUrls.length > MAX_IMAGE_ATTACHMENTS) {
+        logger.warn("Gmail downloadImageAttachments: truncating to MAX_IMAGE_ATTACHMENTS", {
+            requested: imageUrls.length,
+            cap: MAX_IMAGE_ATTACHMENTS
+        })
+    }
     const results = await Promise.all(
-        imageUrls.map(async (url, index): Promise<{ attachment: EmailAttachment; index: number } | null> => {
+        capped.map(async (url, index): Promise<{ attachment: EmailAttachment; index: number } | null> => {
             assertInternalGcsBucketUrl(url)
 
             try {
-                const response = await axios.get(url, { responseType: "arraybuffer" })
+                const response = await axios.get(url, {
+                    responseType: "arraybuffer",
+                    maxContentLength: MAX_IMAGE_BYTES,
+                    maxBodyLength: MAX_IMAGE_BYTES
+                })
                 const mimeType = (response.headers["content-type"] as string | undefined)?.split(";")[0].trim() || "image/png"
                 return {
                     attachment: { filename: "", mimeType, data: Buffer.from(response.data) },

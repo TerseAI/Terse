@@ -1,9 +1,7 @@
 import { Request, Response } from "express"
-import { IntegrationType } from "terse-types/Integrations"
 
 import { isFormIntegrationInstallation, isOAuthIntegrationInstallation } from "../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 
 /**
@@ -77,8 +75,6 @@ export async function handleSdkIntegrationFormSubmit(req: Request, res: Response
             res.status(result.statusCode || 400).json(result)
             return
         }
-
-        await emitIntegrationFormCompletedTaskIfNeeded(undefined, integration, userId, organizationId, integrationType as IntegrationType)
 
         res.status(result.statusCode ?? 200).json(result)
     } catch (error) {

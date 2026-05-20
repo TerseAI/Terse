@@ -33,27 +33,6 @@ export async function getGithubIntegrations(req: Request, res: Response) {
     }
 }
 
-export async function getInstallationUrl(req: Request, res: Response) {
-    try {
-        const appName = githubApp.appName
-        const clientId = githubApp.clientId
-        const userId = req.session?.user?.id
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" })
-        }
-        const state = Buffer.from(userId).toString("base64")
-        // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories&state=${state}`
-
-        res.json({
-            installationUrl
-        })
-    } catch (error) {
-        logger.error("Error generating installation URL", { error })
-        res.status(500).json({ message: "Failed to generate installation URL" })
-    }
-}
-
 /**
  * Handle unified GitHub event webhook.
  *
@@ -195,7 +174,7 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
         const result = await fetchGithubRepositoriesForIntegration(req.session.user.organizationId, installationId)
         res.status(200).json(result)
     } catch (error) {
-        const routeError = error as RouteError
-        res.status(routeError.statusCode || 500).json({ message: routeError.message || "Failed to fetch repositories" })
+        logger.error("Unhandled error in getGithubRepositoriesForIntegration", { error, installationId })
+        res.status(500).json({ message: "Failed to fetch repositories" })
     }
 }

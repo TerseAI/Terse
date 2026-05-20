@@ -53,7 +53,14 @@ export async function markRunSkipped(runId: string, reason: string): Promise<voi
     })
 }
 
-export async function appendRunAction(runId: string, action: RunHistoryAction, stepId?: string): Promise<string> {
+export async function appendRunAction(runId: string, action: RunHistoryAction, organizationId: string, stepId?: string): Promise<string> {
+    const owned = await db().run_history_records.findFirst({
+        where: { id: runId, automation: { organization_id: organizationId } },
+        select: { id: true }
+    })
+    if (!owned) {
+        throw new Error(`appendRunAction: run ${runId} not found in organization ${organizationId}`)
+    }
     const result = await db().run_history_actions.create({
         data: {
             run_history_record_id: runId,
@@ -210,12 +217,11 @@ export async function markRunCancelled(runId: string, reason: string = CancelRea
     })
 }
 
-export async function storePendingApprovalState(runId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void> {
+export async function storePendingApprovalState(runId: string, organizationId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void> {
     const prisma = db()
 
-    // Get user_id from run_history_record via automation
-    const runRecord = await prisma.run_history_records.findUnique({
-        where: { id: runId },
+    const runRecord = await prisma.run_history_records.findFirst({
+        where: { id: runId, automation: { organization_id: organizationId } },
         include: {
             automation: {
                 select: {
@@ -227,7 +233,7 @@ export async function storePendingApprovalState(runId: string, serializedState: 
     })
 
     if (!runRecord || !runRecord.automation) {
-        throw new Error(`Run record not found or automation not found for runId: ${runId}`)
+        throw new Error(`storePendingApprovalState: run ${runId} not found in organization ${organizationId}`)
     }
 
     // Upsert pending approval record (create or update if exists)
@@ -291,11 +297,11 @@ export async function getPendingApprovalState(runId: string): Promise<{
     }
 }
 
-export async function clearPendingApprovalState(runId: string): Promise<void> {
+export async function clearPendingApprovalState(runId: string, organizationId: string): Promise<void> {
     const prisma = db()
 
-    const runRecord = await prisma.run_history_records.findUnique({
-        where: { id: runId },
+    const runRecord = await prisma.run_history_records.findFirst({
+        where: { id: runId, automation: { organization_id: organizationId } },
         select: {
             automation: {
                 select: {
@@ -304,13 +310,15 @@ export async function clearPendingApprovalState(runId: string): Promise<void> {
             }
         }
     })
+    if (!runRecord) {
+        return
+    }
 
-    // Delete the pending approval record
     await prisma.pending_approvals.deleteMany({
         where: { run_history_record_id: runId }
     })
 
-    if (runRecord?.automation.organization_id) {
+    if (runRecord.automation.organization_id) {
         emitCacheInvalidationWithKey(runRecord.automation.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
     }
 }
@@ -320,19 +328,17 @@ export async function clearPendingApprovalState(runId: string): Promise<void> {
  * job execution are unioned — every config is kept so the correction agent
  * can access everything the original job had.
  */
-export async function upsertSdkSkills(runId: string, incoming: SkillConfigData[]): Promise<void> {
+export async function upsertSdkSkills(runId: string, organizationId: string, incoming: SkillConfigData[]): Promise<void> {
     if (incoming.length === 0) return
     const prisma = db()
-    const record = await prisma.run_history_records.findUnique({
-        where: { id: runId },
-        select: { sdk_skills: true }
-    })
-    const existing = readSdkSkillsFromJson(record?.sdk_skills)
-    const merged = [...existing, ...incoming]
-    await prisma.run_history_records.update({
-        where: { id: runId },
-        data: { sdk_skills: merged as unknown as Prisma.InputJsonValue }
-    })
+    await prisma.$executeRaw`
+        UPDATE run_history_records rhr
+        SET sdk_skills = COALESCE(rhr.sdk_skills, '[]'::jsonb) || ${JSON.stringify(incoming)}::jsonb
+        FROM automations a
+        WHERE rhr.id = ${runId}
+          AND a.id = rhr.automation_id
+          AND a.organization_id = ${organizationId}
+    `
 }
 
 /**

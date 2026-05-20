@@ -24,7 +24,7 @@ import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalid
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
 import { deviceTokenExchange, identify, listMyOrganizations, switchOrganization as sdkSwitchOrganization } from "./routes/deviceTokenExchange"
-import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
+import { getGithubIntegrations, getGithubRepositoriesForIntegration, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations, handleHeyReachWebhook } from "./routes/heyreach"
 import { handleHydrateSampleEvent } from "./routes/hydrateSampleEvent"
@@ -382,10 +382,6 @@ app.get(ApiRoutes.USERS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserTo
 
 app.get(ApiRoutes.GITHUB.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getGithubIntegrations(req, res)
-})
-
-app.get(ApiRoutes.GITHUB.INSTALLATION_URL, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getInstallationUrl(req, res)
 })
 
 app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {

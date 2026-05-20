@@ -71,6 +71,14 @@ export async function updateNotificationSettings(req: Request, res: Response) {
         res.status(400).json({ error: "Organization context is required to apply settings to all agents" })
         return
     }
+    if (applyToAllAgents) {
+        const isAdmin = req.session.user.roles.includes("admin")
+        if (!isAdmin) {
+            logger.warn("🚫 applyToAllAgents blocked: requester is not an org admin", { userId, organizationId })
+            res.status(403).json({ error: "Only organization admins can apply notification settings to all agents" })
+            return
+        }
+    }
 
     try {
         const prisma = db()
