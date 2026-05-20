@@ -242,10 +242,6 @@ export async function getLogoUrl(req: Request, res: Response) {
 
     const { organizationId } = logoParamsSchema.parse(req.params)
 
-    if (organizationId !== user.organizationId) {
-        return res.status(403).json({ error: "Forbidden" })
-    }
-
     try {
         const logoUrl = await getOrgLogoDownloadUrl(organizationId)
         return res.json({ logoUrl })
