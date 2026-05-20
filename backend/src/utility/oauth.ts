@@ -58,14 +58,14 @@ export interface OAuthStatePayloadOptions {
 export function createOAuthStateToken(options: OAuthStatePayloadOptions): string {
     const { userId, organizationId, additionalFields = {}, additionalStatePayload, expiresIn = "10m", encodeAsUriComponent = false } = options
 
+    // Spread the caller-provided fields first, then the authenticated identity
+    // last so userId/organizationId can never be shadowed by a field passed in
+    // additionalFields/additionalStatePayload.
     const statePayload: OAuthStatePayload = {
+        ...additionalFields,
+        ...(additionalStatePayload && typeof additionalStatePayload === "object" ? additionalStatePayload : {}),
         userId,
-        organizationId,
-        ...additionalFields
-    }
-
-    if (additionalStatePayload && typeof additionalStatePayload === "object") {
-        Object.assign(statePayload, additionalStatePayload)
+        organizationId
     }
 
     const encodedState = jwt.sign(statePayload, jwtConfig.secret, {
