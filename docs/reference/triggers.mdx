@@ -96,6 +96,8 @@ Attio record events are configured in your Terse workspace. After `terse generat
 
 ### Gmail
 
+Connect Gmail in your Terse workspace before you deploy (`terse integrate connect gmail`, then `terse generate`). Terse ingests new-mail notifications through Google Pub/Sub on the platform side; your workflow project does not configure Pub/Sub topics or push OIDC settings.
+
 | Trigger              | Event type   | Description             |
 | -------------------- | ------------ | ----------------------- |
 | `Triggers.gmail.onEmail()` | `GmailTrigger` | A new email is received |

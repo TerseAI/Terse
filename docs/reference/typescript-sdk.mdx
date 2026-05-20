@@ -26,7 +26,7 @@ Import these from `terse-sdk`:
 - `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`
 - `EventType`: enum for values on streamed `TerseAgent` results
 - `Trigger`: the base event interface
-- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), HeyReach types such as `HeyReachMessageReplyReceivedTrigger` and `HeyReachTrigger`, and other per-integration exports (see `terse-sdk` package entry)
+- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `GmailTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), HeyReach types such as `HeyReachMessageReplyReceivedTrigger` and `HeyReachTrigger`, and other per-integration exports (see `terse-sdk` package entry)
 - Config helpers re-exported for trigger construction: `HeyReachInputConfig`, and the `HeyReachEventType` object for event-type constants
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
@@ -258,6 +258,7 @@ Event typing depends on the trigger.
 | Trigger source              | Event type                  |
 | --------------------------- | --------------------------- |
 | Attio record events         | `Trigger`                   |
+| Gmail new email             | `GmailTrigger`              |
 | Slack actions               | Typed Slack action payloads |
 | Scheduled cron triggers     | `CronTrigger`               |
 | Scheduled interval triggers | `CronTrigger`               |
