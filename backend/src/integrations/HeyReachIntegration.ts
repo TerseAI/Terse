@@ -94,7 +94,9 @@ export class HeyReachIntegrationManager
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
-        await db().hey_reach_integrations.delete({ where: { id: integrationId } })
+        await db().$transaction(async tx => {
+            await tx.hey_reach_integrations.delete({ where: { id: integrationId } })
+        })
         await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId } })
     }
 
