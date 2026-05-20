@@ -351,6 +351,8 @@ Common errors:
 
 - 401/403 Not authenticated: run `terse login`
 - 404 Workflow not deployed: run `terse deploy` first
+- 429 Too many requests: you hit an API rate limit; wait for the **`Retry-After`** window (the CLI surfaces this as a stream failure)
+- 429 Too many concurrent SSE connections: you already have five open session streams for this user; close extra terminals or wait ~30 seconds and retry
 
 Press Ctrl-C to stop listening.
 
@@ -424,8 +426,6 @@ terse login
 5. Saves the API key so later CLI commands can reuse it
 
 If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
-
-The device-token exchange step is rate limited to **five attempts per hour** per user or client IP. A sixth attempt within that hour is blocked for one hour and returns **429**.
 
 ### `terse logout`
 
