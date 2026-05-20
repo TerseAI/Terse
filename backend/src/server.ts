@@ -355,7 +355,9 @@ app.get(ApiRoutes.WORKOS.WIDGET_TOKEN, rateLimit(RateLimitKind.Default), require
 // MARK: Organizations (WorkOS) - auth without org required so user can create org
 app.post(ApiRoutes.ORGANIZATIONS.CREATE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), (req, res) => createOrganization(req, res))
 
-app.get(ApiRoutes.ORGANIZATIONS.GET_CURRENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), (req, res) => getCurrentOrganization(req, res))
+app.get(ApiRoutes.ORGANIZATIONS.GET_CURRENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), (req, res) =>
+    getCurrentOrganization(req, res)
+)
 
 app.get(ApiRoutes.ORGANIZATIONS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getUserOrganizations(req, res))
 
