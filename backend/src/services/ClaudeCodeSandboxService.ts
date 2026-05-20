@@ -144,7 +144,15 @@ export class ClaudeCodeSandboxService {
             // Write a run script and execute as non-root user
             const claudeEnv = { ANTHROPIC_API_KEY: settings.anthropic.apiKey, ...extraEnv }
             const envExports = Object.entries(claudeEnv)
-                .map(([k, v]) => `export ${k}='${v.replace(/'/g, "'\\''")}'`)
+                .map(([k, v]) => {
+                    // Keys go in unquoted; reject anything that isn't a
+                    // valid POSIX identifier so a caller can't break out
+                    // of the export line with newlines/metachars.
+                    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) {
+                        throw new Error(`Invalid env var name for sandbox: ${JSON.stringify(k)}`)
+                    }
+                    return `export ${k}='${v.replace(/'/g, "'\\''")}'`
+                })
                 .join("\n")
             const escapedArgs = claudeArgs.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")
             const runScript = `#!/bin/bash\n${envExports}\ncd /tmp/project && cat /tmp/prompt.txt | ${escapedArgs} > /tmp/claude-output.json\n`
