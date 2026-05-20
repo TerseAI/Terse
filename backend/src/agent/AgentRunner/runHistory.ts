@@ -332,17 +332,28 @@ export async function upsertSdkSkills(runId: string, organizationId: string, inc
     if (incoming.length === 0) return
     const prisma = db()
 
-    const record = await prisma.run_history_records.findFirst({
-        where: { id: runId, automation: { organization_id: organizationId } },
-        select: { sdk_skills: true }
-    })
-    if (!record) return
+    // Serialize concurrent invocations on the same run via SELECT ... FOR
+    // UPDATE — without the lock, two parallel calls both read the existing
+    // sdk_skills, each merge their own additions, and the second write
+    // overwrites the first's. The contract is union-everything; the lock
+    // makes the contract hold.
+    await prisma.$transaction(async tx => {
+        const rows = await tx.$queryRaw<Array<{ sdk_skills: unknown; ok: boolean }>>`
+            SELECT rhr.sdk_skills, (a.organization_id = ${organizationId}) AS ok
+            FROM run_history_records rhr
+            JOIN automations a ON a.id = rhr.automation_id
+            WHERE rhr.id = ${runId}
+            FOR UPDATE OF rhr
+        `
+        const row = rows[0]
+        if (!row || !row.ok) return
 
-    const existing = readSdkSkillsFromJson(record.sdk_skills)
-    const merged = [...existing, ...incoming]
-    await prisma.run_history_records.updateMany({
-        where: { id: runId, automation: { organization_id: organizationId } },
-        data: { sdk_skills: merged as unknown as Prisma.InputJsonValue }
+        const existing = readSdkSkillsFromJson(row.sdk_skills)
+        const merged = [...existing, ...incoming]
+        await tx.run_history_records.update({
+            where: { id: runId },
+            data: { sdk_skills: merged as unknown as Prisma.InputJsonValue }
+        })
     })
 }
 
