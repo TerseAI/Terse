@@ -31,6 +31,7 @@ Import these from `terse-sdk`:
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 - `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
+- `openSessionStream`, `openListenStream`, `SessionStreamError`, and stream handle/event types: low-level SSE helpers for session events and live listen streams (see [Session streams](#session-streams))
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -103,17 +104,6 @@ const terse = new Terse()
 
 // Mount TERSE_JOB_WEBHOOK_TRIGGER_PATH on your HTTP server (Express, Hono, Next.js, etc.)
 ```
-
-`handleTrigger` uses a two-phase protocol: a signed **challenge** on first deploy, then signed **trigger** payloads. Each trigger run opens a session SSE stream via **`openSessionStream`** so agent runs and tool calls stay attributed to that run; the stream closes when `onTrigger` finishes.
-
-## Session streams
-
-`openSessionStream` and `openListenStream` open authenticated SSE connections to the Terse backend. They throw **`SessionStreamError`** when the HTTP handshake fails (for example **401**, **404**, or **429**). The error’s **`status`** field matches the HTTP status code.
-
-- **`openSessionStream`**: used internally by **`handleTrigger`**; emits `session_started` then session events for the run.
-- **`openListenStream`**: used by **`terse listen`**; requires `jobName` and `projectId` query params and emits `listen_started` plus forwarded trigger events.
-
-Call **`close()`** on the returned handle when you are done so the backend can release resources. Session event streams are capped at **five concurrent connections per user**; see [Rate limits and errors](#rate-limits-and-errors).
 
 ## `TerseAgent`
 
