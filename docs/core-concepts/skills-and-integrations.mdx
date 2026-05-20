@@ -17,6 +17,8 @@ Terse supports two connection types:
 | **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
 | **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
 
+When Terse starts an OAuth flow, it mints a short-lived signed state token that records which Terse user and organization you authenticated as. Optional flow metadata is merged first; your user and organization IDs are written last so they cannot be replaced by extra fields in the state payload.
+
 After connecting, run `terse generate` to turn your active integrations into typed code.
 
 ## Code generation: from credentials to code

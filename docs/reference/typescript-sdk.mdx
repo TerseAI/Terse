@@ -50,6 +50,8 @@ npm install terse-sdk zod
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
 
+Connecting OAuth integrations is not part of the `terse-sdk` API—use the Terse app **Integrations** page or [`terse integrate`](/reference/cli#terse-integrate). Terse mints a short-lived OAuth state JWT when a flow starts; your user and organization IDs are fixed in that token so optional metadata cannot replace them. The SDK surface (`IntegrationType`, trigger types, `TerseAgent`, and related exports) does not expose JWT signing or verification helpers.
+
 ## Trigger payloads
 
 Exported trigger types are the canonical trigger object **plus** two methods used everywhere Terse turns an event into prompts or logging:
