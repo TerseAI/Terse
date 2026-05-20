@@ -331,19 +331,14 @@ export async function clearPendingApprovalState(runId: string, organizationId: s
 export async function upsertSdkSkills(runId: string, organizationId: string, incoming: SkillConfigData[]): Promise<void> {
     if (incoming.length === 0) return
     const prisma = db()
-
-    const record = await prisma.run_history_records.findFirst({
-        where: { id: runId, automation: { organization_id: organizationId } },
-        select: { sdk_skills: true }
-    })
-    if (!record) return
-
-    const existing = readSdkSkillsFromJson(record.sdk_skills)
-    const merged = [...existing, ...incoming]
-    await prisma.run_history_records.updateMany({
-        where: { id: runId, automation: { organization_id: organizationId } },
-        data: { sdk_skills: merged as unknown as Prisma.InputJsonValue }
-    })
+    await prisma.$executeRaw`
+        UPDATE run_history_records rhr
+        SET sdk_skills = COALESCE(rhr.sdk_skills, '[]'::jsonb) || ${JSON.stringify(incoming)}::jsonb
+        FROM automations a
+        WHERE rhr.id = ${runId}
+          AND a.id = rhr.automation_id
+          AND a.organization_id = ${organizationId}
+    `
 }
 
 /**
