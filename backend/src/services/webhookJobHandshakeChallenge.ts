@@ -8,31 +8,18 @@ import { buildSignatureHeaders, generateChallengeToken, verifyChallengeSignature
 import { joinJobServerPath } from "../utility/webhookUrl"
 
 export const WEBHOOK_JOB_FETCH_TIMEOUT_MS = 30_000
+const WEBHOOK_JOB_MAX_BODY_BYTES = 64 * 1024
 
 export interface WebhookJobHandshakeChallengeParams {
     remoteServerUrl: string
     signingSecret: string
-    /**
-     * When set, aborts the handshake fetch if this signal aborts (e.g. HTTP request cancelled).
-     * The timeout still applies.
-     */
     signal?: AbortSignal
 }
 
-/**
- * Outcome of the challenge POST plus server-side verification that the returned signature
- * proves the remote server holds the correct signing secret.
- */
 export type WebhookJobHandshakeChallengeResult =
     | {
           ok: true
           triggerUrl: string
-          /**
-           * The validated + IP-pinned context for the trigger URL. Reusable
-           * by the subsequent delivery fetch so the same connect-pinning
-           * applies (and we don't re-validate, which would reopen the TOCTOU
-           * window between handshake and delivery).
-           */
           validatedTrigger: ValidatedRemoteUrl
       }
     | {
@@ -43,11 +30,6 @@ export type WebhookJobHandshakeChallengeResult =
           httpStatus?: number
       }
 
-/**
- * POSTs `{ type: "challenge", challenge: "<random>" }` (signed) to the job's Terse trigger path,
- * then verifies the server echoed the challenge and provided a valid HMAC signature proving it
- * holds the signing secret.
- */
 export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshakeChallengeParams): Promise<WebhookJobHandshakeChallengeResult> {
     const timeoutMs = WEBHOOK_JOB_FETCH_TIMEOUT_MS
 
@@ -64,8 +46,6 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     const triggerUrl = joinJobServerPath(params.remoteServerUrl, ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER)
-    // safeFetch needs a ValidatedRemoteUrl pointing at the trigger path —
-    // same host as the validated remoteServerUrl, just a different path.
     const validatedTrigger: ValidatedRemoteUrl = { ...validated, url: triggerUrl, parsedUrl: new URL(triggerUrl) }
     const challengeToken = generateChallengeToken()
     const body = JSON.stringify({ type: "challenge", challenge: challengeToken })
@@ -92,6 +72,7 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
             signal: controller.signal
         })
     } catch (error) {
+        clearTimeout(timeout)
         const aborted = error instanceof Error && error.name === "AbortError"
         return {
             ok: false,
@@ -99,14 +80,10 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
             step: "http",
             message: aborted ? "Webhook handshake request timed out" : extractErrorMessage(error)
         }
-    } finally {
-        clearTimeout(timeout)
     }
 
-    // 3xx responses are surfaced as-is (redirects are never followed — see
-    // safeFetch comment). Following a Location header could land us on an
-    // internal address despite the IP pinning.
     if (response.status >= 300 && response.status < 400) {
+        clearTimeout(timeout)
         return {
             ok: false,
             triggerUrl,
@@ -117,9 +94,7 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     }
 
     if (!response.ok) {
-        // Intentionally do NOT echo the response body back to the caller.
-        // Echoing the body turns this endpoint into a free SSRF data
-        // exfiltration channel (cloud metadata, internal admin pages, etc.).
+        clearTimeout(timeout)
         return {
             ok: false,
             triggerUrl,
@@ -129,9 +104,24 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
         }
     }
 
+    let bodyText: string
+    try {
+        bodyText = await readResponseBodyWithCap(response, WEBHOOK_JOB_MAX_BODY_BYTES)
+    } catch (error) {
+        const aborted = error instanceof Error && error.name === "AbortError"
+        return {
+            ok: false,
+            triggerUrl,
+            step: "json",
+            message: aborted ? "Webhook handshake body read timed out" : "Webhook handshake body exceeded size limit"
+        }
+    } finally {
+        clearTimeout(timeout)
+    }
+
     let handshakeJson: unknown
     try {
-        handshakeJson = await response.json()
+        handshakeJson = JSON.parse(bodyText)
     } catch {
         return {
             ok: false,
@@ -173,50 +163,27 @@ export async function runWebhookJobHandshakeChallenge(params: WebhookJobHandshak
     return { ok: true, triggerUrl, validatedTrigger }
 }
 
-/**
- * Extract a human-readable error detail from a response body.
- * Handles JSON `{ error: "..." }` / `{ message: "..." }`, HTML error pages (extracts text from
- * `<pre>` tags or strips all tags), and plain text.
- */
-function extractResponseErrorDetail(body: string): string {
-    const trimmed = body.trim()
-    if (!trimmed) return ""
-
-    // Try JSON first: { error: "...", message: "..." }
-    if (trimmed.startsWith("{")) {
-        try {
-            const json = JSON.parse(trimmed)
-            const msg = json.error || json.message
-            if (typeof msg === "string") return msg.slice(0, 300)
-        } catch {
-            // not JSON, fall through
-        }
+async function readResponseBodyWithCap(response: Response, maxBytes: number): Promise<string> {
+    if (!response.body) {
+        return await response.text()
     }
-
-    // HTML response: extract the meaningful error text
-    if (trimmed.includes("<") && trimmed.includes(">")) {
-        // Express wraps errors in <pre>Error: message\n    at ...</pre>
-        const preMatch = trimmed.match(/<pre>([\s\S]*?)<\/pre>/)
-        if (preMatch) {
-            const preText = preMatch[1]
-                .replace(/<br\s*\/?>/gi, "\n")
-                .replace(/&nbsp;/g, " ")
-                .replace(/&amp;/g, "&")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-            // Take only the first line (the error message), skip the stack trace
-            const firstLine = preText.split("\n")[0].trim()
-            // Strip "Error: " prefix since we already show context
-            return firstLine.replace(/^Error:\s*/, "").slice(0, 300)
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let received = 0
+    let out = ""
+    try {
+        while (true) {
+            const { value, done } = await reader.read()
+            if (done) break
+            received += value.byteLength
+            if (received > maxBytes) {
+                throw new Error(`response body exceeded ${maxBytes} bytes`)
+            }
+            out += decoder.decode(value, { stream: true })
         }
-        // Generic HTML: strip all tags
-        const stripped = trimmed
-            .replace(/<[^>]+>/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-        return stripped.slice(0, 300)
+        out += decoder.decode()
+        return out
+    } finally {
+        await reader.cancel().catch(() => undefined)
     }
-
-    // Plain text
-    return trimmed.slice(0, 300)
 }

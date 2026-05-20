@@ -4,7 +4,7 @@ export default function OAuthSuccess() {
     useEffect(() => {
         // Notify parent window that OAuth was successful
         if (window.opener) {
-            window.opener.postMessage({ type: "oauth-success" }, "*")
+            window.opener.postMessage({ type: "oauth-success" }, window.location.origin)
         }
 
         // Close the popup window after a short delay
