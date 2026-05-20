@@ -4,6 +4,7 @@ import crypto from "crypto"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { shellQuote } from "../utility/shellEscape"
 
 import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
@@ -368,7 +369,7 @@ export class SdkSandboxImageService {
             writeFile: async (path, content) => {
                 await this.writeFileToSandbox(sb, path, content)
             },
-            escapeShellArg: value => this.escapeShellArg(value)
+            escapeShellArg: shellQuote
         }
 
         await executor.buildDependencyImage(buildContext)
@@ -393,9 +394,9 @@ export class SdkSandboxImageService {
         await this.ensureSandboxCommand(
             sb,
             "extract SDK source",
-            `mkdir -p ${this.escapeShellArg(SDK_SOURCE_IMAGE_PROJECT_DIR)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${this.escapeShellArg(
+            `mkdir -p ${shellQuote(SDK_SOURCE_IMAGE_PROJECT_DIR)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(
                 SDK_SOURCE_IMAGE_CODE_ZIP_PATH
-            )} -d ${this.escapeShellArg(SDK_SOURCE_IMAGE_PROJECT_DIR)}`,
+            )} -d ${shellQuote(SDK_SOURCE_IMAGE_PROJECT_DIR)}`,
             executor.runtime
         )
         await executor.prepareSourceImage({
@@ -404,7 +405,7 @@ export class SdkSandboxImageService {
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, executor.runtime)
             },
-            escapeShellArg: value => this.escapeShellArg(value)
+            escapeShellArg: shellQuote
         })
 
         const image = await sb.snapshotFilesystem()
@@ -518,10 +519,6 @@ export class SdkSandboxImageService {
         }
 
         return `Process exited with code ${result.exitCode}`
-    }
-
-    private escapeShellArg(value: string): string {
-        return `'${value.replace(/'/g, `'\\''`)}'`
     }
 }
 
