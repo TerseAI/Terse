@@ -3,10 +3,9 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { DatadogIntegrationManager } from "../integrations/DatadogIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, getSecret } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { getDatadogApiUrl } from "../utility/datadog"
 
 export async function getDatadogIntegrations(req: Request, res: Response) {
@@ -45,10 +44,6 @@ export async function createOrUpdateDatadogIntegration(req: Request, res: Respon
             res.status(result.statusCode ?? 400).json(result)
             return
         }
-
-        const organizationId = req.session.user.organizationId
-        const stateToken = (req.query.state as string) || req.body?.state
-        await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, input.userId, organizationId, IntegrationType.DATADOG)
 
         res.status(result.statusCode ?? 200).json(result)
     } catch (error) {
@@ -89,11 +84,12 @@ export const getDatadogIndexes = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Datadog integration not found" })
         }
 
-        const apiKey = await getSecret(IntegrationType.DATADOG, integration.id, SecretField.ApiKey)
-        const appKey = await getSecret(IntegrationType.DATADOG, integration.id, SecretField.AppKey)
-        if (!apiKey || !appKey) {
-            return res.status(400).json({ error: "Datadog integration is missing credentials. Please reconnect." })
-        }
+        const secretService = SecretService.getInstance()
+        const secrets = await secretService.getSecrets({
+            type: "integration",
+            secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id }
+        })
+        const { apiKey, appKey } = secrets
 
         // Fetch indexes from Datadog API
         // Datadog API endpoint: GET /api/v1/logs/config/indexes

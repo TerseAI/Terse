@@ -71,7 +71,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
         try {
             await deleteAgent(agentId)
             toast.success("Job deleted")
-            navigate(FrontendRoutes.AGENTS.SETUP)
+            navigate(FrontendRoutes.HOME)
         } catch {
             toast.error("Failed to delete job")
         } finally {
@@ -136,7 +136,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     }
 
     const triggers = agent.triggers ?? []
-    const hasSelfHostedJobUrl = agent.source === "SDK" && !!agent.metadata?.remoteServerUrl
+    const hasSelfHostedJobUrl = !!agent.metadata?.remoteServerUrl
     const triggerCount = triggers.length
     const canTrigger = agent.isActive && triggerCount > 0
 
@@ -380,7 +380,7 @@ function ActivitySection({ agentId, pendingCount, selectedTab, onTabChange }: { 
                     <StreamTab label="Improvements" badge={pendingCount} />
                 </TabList>
 
-                <div className="pt-5">{selectedTab === 0 ? <AgentRunHistoryTab agentId={agentId} /> : <AgentImprovementsTab agentId={agentId} source="SDK" />}</div>
+                <div className="pt-5">{selectedTab === 0 ? <AgentRunHistoryTab agentId={agentId} /> : <AgentImprovementsTab agentId={agentId} />}</div>
             </TabGroup>
         </section>
     )

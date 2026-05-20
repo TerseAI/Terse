@@ -3,12 +3,11 @@ import { IntegrationType } from "terse-types/Integrations"
 import { GetGithubRepositoriesForIntegrationResponse, User as RuntimeUser } from "terse-types/types"
 import { ZodError } from "zod"
 
-import { githubApp } from "../config/settings"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../integrations/GithubIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { GithubAppInstallationRepository } from "../routes/GithubTypes"
-import { SecretField, getSecret } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { getUserForOrg } from "../utility/workos"
 
 import { parseGithubUnifiedEventPayload } from "./githubUnifiedEventParser"
@@ -28,27 +27,6 @@ export async function getGithubIntegrations(req: Request, res: Response) {
     } catch (error) {
         logger.error("Error fetching GitHub integrations", { error })
         res.status(500).json({ error: "Failed to fetch GitHub integrations" })
-    }
-}
-
-export async function getInstallationUrl(req: Request, res: Response) {
-    try {
-        const appName = githubApp.appName
-        const clientId = githubApp.clientId
-        const userId = req.session?.user?.id
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" })
-        }
-        const state = Buffer.from(userId).toString("base64")
-        // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories&state=${state}`
-
-        res.json({
-            installationUrl
-        })
-    } catch (error) {
-        logger.error("Error generating installation URL", { error })
-        res.status(500).json({ message: "Failed to generate installation URL" })
     }
 }
 
@@ -119,12 +97,15 @@ export async function fetchGithubRepositoriesForIntegration(organizationId: stri
 
     let targetInstallation: { id: number } | undefined
     let tokenWithAccess: string | null = null
+    const secretService = SecretService.getInstance()
 
     for (const token of orgTokens) {
-        const accessToken = await getSecret(IntegrationType.GITHUB, token.id, SecretField.AccessToken)
-        if (!accessToken) {
+        const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+        if (!secrets) {
+            logger.warn(`Github app token ${token.id} is missing its secret blob; skipping`, { tokenId: token.id })
             continue
         }
+        const accessToken = secrets.accessToken
 
         const installations = await getAppInstallationsForUser(accessToken, {
             userId: token.user_id,
@@ -169,84 +150,7 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
         const result = await fetchGithubRepositoriesForIntegration(req.session.user.organizationId, installationId)
         res.status(200).json(result)
     } catch (error) {
-        const routeError = error as RouteError
-        res.status(routeError.statusCode || 500).json({ message: routeError.message || "Failed to fetch repositories" })
+        logger.error("Unhandled error in getGithubRepositoriesForIntegration", { error, installationId })
+        res.status(500).json({ message: "Failed to fetch repositories" })
     }
-}
-
-// Given an installation and username, resolve a specific user (runtime User type)
-export async function resolveUserForGithubInstallation(installationId: number, username: string): Promise<RuntimeUser | null> {
-    const usersFromInstallation = await resolveUsersForGithubInstallation(installationId)
-    const installationUserIds = usersFromInstallation.map(u => u.id)
-
-    // Match by github_username in github_app_tokens (users table no longer has github_username)
-    const tokenForUsername = await db().github_app_tokens.findFirst({
-        where: {
-            github_username: username,
-            user_id: { in: installationUserIds }
-        }
-    })
-    if (tokenForUsername?.organization_id) {
-        const user = await getUserForOrg(tokenForUsername.user_id, tokenForUsername.organization_id)
-        if (user) return user
-    }
-
-    // User might have token but not be in installation list yet (e.g. new install)
-    const anyTokenForUsername = await db().github_app_tokens.findFirst({
-        where: { github_username: username }
-    })
-    if (anyTokenForUsername?.organization_id && installationUserIds.includes(anyTokenForUsername.user_id)) {
-        const user = await getUserForOrg(anyTokenForUsername.user_id, anyTokenForUsername.organization_id)
-        if (user) return user
-    }
-
-    return null
-}
-
-// Given an installation, we need to fetch all users that are associated with that installation.
-// This doesn't guarantee that they have an active input config, but it's a good start.
-// This is super inefficient, but it's a good start. We need to optimize this.
-async function resolveUsersForGithubInstallation(installationId: number): Promise<import("../types/prisma").User[]> {
-    return db().$transaction(async tx => {
-        // Get all of our github app users.
-        const githubAppUsers = await tx.github_app_tokens.findMany()
-
-        // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
-        const installationResults = await Promise.all(
-            githubAppUsers.map(async user => {
-                const accessToken = await getSecret(IntegrationType.GITHUB, user.id, SecretField.AccessToken)
-                if (!accessToken) {
-                    return {
-                        userId: user.user_id,
-                        installations: []
-                    }
-                }
-
-                const installations = await getAppInstallationsForUser(accessToken, {
-                    userId: user.user_id,
-                    tokenId: user.id,
-                    installationId
-                })
-                return {
-                    userId: user.user_id,
-                    installations: installations.installations
-                }
-            })
-        )
-
-        // Find users who have access to the specific installation
-        const userIds = installationResults.filter(result => result.installations.some(inst => inst.id === installationId)).map(result => result.userId)
-
-        // Fetch and return the User objects
-        const users = await tx.users.findMany({
-            where: { id: { in: userIds } }
-        })
-
-        logger.debug(`Found ${users.length} users for event from installation`, {
-            installationId,
-            userCount: users.length
-        })
-
-        return users
-    })
 }

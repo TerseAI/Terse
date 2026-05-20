@@ -1,6 +1,5 @@
 import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
-import jwt from "jsonwebtoken"
 import {
     AttioEventType,
     AttioRecordPayload,
@@ -23,12 +22,12 @@ import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { attio as attioConfig, jwt as jwtSettings, urls } from "../config/settings"
+import { attio as attioConfig, urls } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretNotFoundError, SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
-import { createOAuthStateToken } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { buildAttioWebhookUrl } from "../utility/webhookUrl"
 import { getUserForOrg } from "../utility/workos"
 
@@ -40,11 +39,14 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 const ATTIO_API_BASE = "https://api.attio.com/v2"
 
-export type AttioWebhookRequest = { triggerId: string; payload: AttioWebhookPayload; idempotencyKey: string }
+type AttioWebhookRequest = { triggerId: string; payload: AttioWebhookPayload; idempotencyKey: string }
 
-export class AttioIntegrationManager implements Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject>, OAuthIntegrationInstallation<IntegrationType.ATTIO> {
-    constructor() {}
-    integrationType: IntegrationType = IntegrationType.ATTIO
+export class AttioIntegrationManager extends Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject> implements OAuthIntegrationInstallation<IntegrationType.ATTIO> {
+    readonly integrationType = IntegrationType.ATTIO
+    readonly secretSchema = z.object({
+        accessToken: z.string(),
+        webhookSecret: z.string().optional()
+    })
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return []
@@ -59,10 +61,13 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         })
         return Promise.all(
             integrations.map(async i => {
-                const accessToken = await getSecret(IntegrationType.ATTIO, i.id, SecretField.AccessToken)
+                const secrets = await this.secretService.tryGetSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.ATTIO, recordId: i.id }
+                })
                 return {
                     id: i.id,
-                    workspaceName: accessToken ? await this.fetchWorkspaceName(accessToken) : undefined
+                    workspaceName: secrets ? await this.fetchWorkspaceName(secrets.accessToken) : undefined
                 }
             })
         )
@@ -139,10 +144,10 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         })
         return Promise.all(
             integrations.map(async i => {
-                const accessToken = await getSecret(IntegrationType.ATTIO, i.id, SecretField.AccessToken)
+                const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: i.id } })
                 return {
                     id: i.id,
-                    workspaceName: accessToken ? await this.fetchWorkspaceName(accessToken) : undefined
+                    workspaceName: secrets ? await this.fetchWorkspaceName(secrets.accessToken) : undefined
                 }
             })
         )
@@ -211,10 +216,11 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.ATTIO>,
-        additionalStatePayload?: AdditionalStateParams
+        options: InstallationOptionsFor<IntegrationType.ATTIO> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
-        const state = createOAuthStateToken({
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
@@ -247,7 +253,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
         }
 
         try {
-            const decoded = jwt.verify(state as string, jwtSettings.secret) as {
+            const decoded = verifyOAuthState(req, res, state as string) as {
                 userId: string
                 organizationId: string
                 timestamp: number
@@ -308,11 +314,14 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                     }
                 })
 
-                await storeSecret(IntegrationType.ATTIO, newIntegration.id, SecretField.AccessToken, access_token)
+                await this.secretService.createSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.ATTIO, recordId: newIntegration.id, value: { accessToken: access_token } }
+                })
 
                 integrationId = newIntegration.id
             } else {
-                await storeSecret(IntegrationType.ATTIO, existing.id, SecretField.AccessToken, access_token)
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: existing.id, value: { accessToken: access_token } } })
 
                 await db().attio_integrations.update({
                     where: { id: existing.id },
@@ -346,7 +355,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
                 await tx.attio_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([{ integrationType: IntegrationType.ATTIO, recordId: integrationId, field: SecretField.AccessToken }])
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
             })
     }
 
@@ -366,7 +375,7 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
             logger.error("Attio teardown: failed to delete webhook", { error, webhookId, integrationId })
         }
 
-        await deleteSecretsBestEffort([{ integrationType: IntegrationType.ATTIO, recordId: automationInput.id, field: SecretField.WebhookSecret }])
+        await this.secretService.deleteSecretFields({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: automationInput.id, keys: ["webhookSecret"] } })
     }
 
     async refreshToken(integrationId: string): Promise<boolean> {
@@ -390,28 +399,33 @@ export class AttioIntegrationManager implements Integration<AttioIntegration, ne
     }
 
     async getAccessToken(integrationId: string): Promise<string | null> {
-        try {
-            const integration = await db().attio_integrations.findUnique({
-                where: { id: integrationId },
-                select: {
-                    id: true
-                }
-            })
+        const integration = await db().attio_integrations.findUnique({
+            where: { id: integrationId },
+            select: { id: true }
+        })
 
-            if (!integration) {
-                logger.error(`Attio integration ${integrationId} not found`, { integrationId })
+        if (!integration) {
+            logger.error(`Attio integration ${integrationId} not found`, { integrationId })
+            return null
+        }
+
+        try {
+            const secrets = await this.secretService.getSecrets({
+                type: "integration",
+                secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId }
+            })
+            return secrets.accessToken
+        } catch (error) {
+            if (error instanceof SecretNotFoundError) {
+                logger.warn(`Attio integration ${integrationId} is missing its secret blob`, { integrationId })
                 return null
             }
-
-            return await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
-        } catch (error) {
-            logger.error(`Error getting Attio access token for integration ${integrationId}`, { error, integrationId })
-            return null
+            throw error
         }
     }
 }
 
-export class AttioTriggerRuntime extends TriggerRuntime<AttioTrigger> {
+class AttioTriggerRuntime extends TriggerRuntime<AttioTrigger> {
     readonly integrationType = IntegrationType.ATTIO
     data: AttioTrigger
     private integrationId: string
@@ -474,9 +488,9 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
     if (!attioRow) {
         throw new Error("Attio integration not found")
     }
-
-    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
-    if (!accessToken) {
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
+    if (!secret.accessToken) {
         throw new Error("Attio access token not found")
     }
 
@@ -489,7 +503,7 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
 
     const response = await fetch(`${ATTIO_API_BASE}/webhooks`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${secret.accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
     })
 
@@ -501,8 +515,7 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
 
     const parsed = attioCreateWebhookResponseSchema.parse(raw)
     const webhookId = parsed.data.id.webhook_id
-
-    await storeSecret(IntegrationType.ATTIO, triggerId, SecretField.WebhookSecret, parsed.data.secret)
+    await secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: triggerId, value: { webhookSecret: parsed.data.secret } } })
 
     logger.info("Attio CreateWebhook succeeded", { webhookId, triggerId })
     return webhookId
@@ -522,13 +535,11 @@ const attioGetWebhookResponseSchema = z.object({
 })
 
 export async function fetchAttioWebhookSubscriptions(integrationId: string, webhookId: string): Promise<AttioSubscription[]> {
-    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
-    if (!accessToken) {
-        throw new Error("Attio access token not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
 
     const response = await fetch(`${ATTIO_API_BASE}/webhooks/${encodeURIComponent(webhookId)}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${secret.accessToken}` }
     })
 
     if (!response.ok) {
@@ -559,13 +570,11 @@ const attioGetRecordResponseSchema = z.object({
 })
 
 async function fetchAttioObjectApiSlug(integrationId: string, objectIdOrSlug: string): Promise<string | null> {
-    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
-    if (!accessToken) {
-        throw new Error("Attio access token not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
 
     const response = await fetch(`${ATTIO_API_BASE}/objects/${encodeURIComponent(objectIdOrSlug)}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${secret.accessToken}` }
     })
 
     if (!response.ok) {
@@ -589,13 +598,11 @@ async function resolveAttioObjectSlugForEvent(integrationId: string, objectId: s
 }
 
 async function fetchAttioRecord(integrationId: string, objectId: string, recordId: string): Promise<AttioRecordPayload> {
-    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
-    if (!accessToken) {
-        throw new Error("Attio access token not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
 
     const response = await fetch(`${ATTIO_API_BASE}/objects/${encodeURIComponent(objectId)}/records/${encodeURIComponent(recordId)}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${secret.accessToken}` }
     })
 
     if (!response.ok) {
@@ -608,14 +615,12 @@ async function fetchAttioRecord(integrationId: string, objectId: string, recordI
 }
 
 async function deleteAttioWebhook(webhookId: string, integrationId: string): Promise<void> {
-    const accessToken = await getSecret(IntegrationType.ATTIO, integrationId, SecretField.AccessToken)
-    if (!accessToken) {
-        throw new Error("Attio access token not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
 
     const response = await fetch(`${ATTIO_API_BASE}/webhooks/${encodeURIComponent(webhookId)}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${secret.accessToken}` }
     })
 
     if (!response.ok && response.status !== 404) {

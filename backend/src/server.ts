@@ -5,7 +5,6 @@ import "dotenv/config"
 import express, { NextFunction, Request, Response } from "express"
 import { createServer } from "http"
 import { ApiRoutes } from "terse-types"
-import { User } from "terse-types"
 
 import { setupLLMAnalytics } from "./agent/openaiInstance"
 // Import settings early to validate environment variables at startup
@@ -15,7 +14,7 @@ import "./integrations/IntegrationTaskHandler"
 // Import to trigger listener registration
 import logger from "./logger"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
-import { createAgent, deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
+import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
@@ -24,8 +23,8 @@ import { changeBillingSubscription, createBillingCheckoutSession, createBillingP
 import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
-import { deviceTokenExchange } from "./routes/deviceTokenExchange"
-import { getGithubIntegrations, getGithubRepositoriesForIntegration, getInstallationUrl, githubAppUnifiedEvent } from "./routes/github"
+import { deviceTokenExchange, identify, listMyOrganizations, switchOrganization as sdkSwitchOrganization } from "./routes/deviceTokenExchange"
+import { getGithubIntegrations, getGithubRepositoriesForIntegration, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations, handleHeyReachWebhook } from "./routes/heyreach"
 import { handleHydrateSampleEvent } from "./routes/hydrateSampleEvent"
@@ -50,6 +49,7 @@ import {
     handleRotateProjectApiKey,
     handleRotateProjectSigningSecret
 } from "./routes/project"
+import { handleDeleteProjectSecret, handleImportProjectSecrets, handleListProjectSecrets, handleUpsertProjectSecret } from "./routes/projectSecrets"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
@@ -256,8 +256,12 @@ app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
 })
 
 // MARK: DEVICE AUTH (uses WorkOS JWT in body, not bearer token)
+app.post(ApiRoutes.SDK.IDENTIFY, async (req, res) => {
+    await identify(req, res)
+})
+
 app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, async (req, res) => {
-    deviceTokenExchange(req, res)
+    await deviceTokenExchange(req, res)
 })
 
 // Billing service callback: uses a service JWT, not bearer API token auth.
@@ -378,10 +382,6 @@ app.get(ApiRoutes.USERS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserTo
 
 app.get(ApiRoutes.GITHUB.INTEGRATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getGithubIntegrations(req, res)
-})
-
-app.get(ApiRoutes.GITHUB.INSTALLATION_URL, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getInstallationUrl(req, res)
 })
 
 app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
@@ -579,10 +579,6 @@ app.get(ApiRoutes.AGENTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserT
     getUserAgent(req, res)
 })
 
-app.post("/agents", requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createAgent(req, res)
-})
-
 app.patch(ApiRoutes.AGENTS.BY_ID, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     updateAgent(req, res)
 })
@@ -699,12 +695,21 @@ app.get(ApiRoutes.SDK.ME, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, 
             firstName: workOSUser.firstName || null,
             lastName: workOSUser.lastName || null,
             displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" ") || null,
-            organizationId: user.organizationId
+            organizationId: user.organizationId,
+            organization: user.organizationId ? { id: user.organizationId, name: user.organizationName } : null
         })
     } catch (error) {
         logger.error("[/sdk/me] Failed to fetch user from WorkOS", { error })
         return res.status(500).json({ error: "Failed to fetch user" })
     }
+})
+
+app.get(ApiRoutes.SDK.ME_ORGANIZATIONS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
+    await listMyOrganizations(req, res)
+})
+
+app.post(ApiRoutes.SDK.SWITCH_ORGANIZATION, requireAuth([AuthKind.UserToken]), async (req, res) => {
+    await sdkSwitchOrganization(req, res)
 })
 
 app.post(ApiRoutes.SDK.SAMPLE_EVENTS, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
@@ -801,6 +806,22 @@ app.post(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, requireAuth([AuthKind.UserCoo
 
 app.post(ApiRoutes.PROJECTS.ROTATE_API_KEY, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleRotateProjectApiKey(req, res)
+})
+
+app.get(ApiRoutes.PROJECT_SECRETS.LIST, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleListProjectSecrets(req, res)
+})
+
+app.post(ApiRoutes.PROJECT_SECRETS.UPSERT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleUpsertProjectSecret(req, res)
+})
+
+app.delete(ApiRoutes.PROJECT_SECRETS.DELETE, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleDeleteProjectSecret(req, res)
+})
+
+app.post(ApiRoutes.PROJECT_SECRETS.IMPORT, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    handleImportProjectSecrets(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS

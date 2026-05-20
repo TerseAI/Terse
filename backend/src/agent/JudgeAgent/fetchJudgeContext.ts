@@ -38,11 +38,10 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
         rawConfig: {
             id: automation.id,
             name: automation.name,
-            source: automation.source,
             isActive: automation.is_active,
             requireApproval: automation.require_approval,
             improvementsEnabled: automation.improvements_enabled,
-            prompt: automation.source === "SDK" ? "[SDK]" : (automation.prompt?.content ?? ""),
+            prompt: "[SDK]",
             inputs: automation.inputs,
             outputs: automation.outputs,
             toolApprovals: automation.tool_approvals.map(row => row.tool_name),

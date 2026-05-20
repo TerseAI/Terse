@@ -7,7 +7,7 @@ import { NotionResource, NotionResourcesResponse } from "terse-types/types"
 import { NotionIntegrationManager } from "../integrations/NotionIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, getSecret } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { extractPageTitle } from "../utility/notion"
 
 export async function getNotionIntegrations(req: Request, res: Response) {
@@ -50,11 +50,12 @@ export const fetchNotionResources = async (organizationId: string, integrationId
     if (!integration) {
         throw new Error("Notion integration not found")
     }
-
-    const integrationToken = await getSecret(IntegrationType.NOTION, integration.id, SecretField.IntegrationToken)
-    if (!integrationToken) {
-        throw new Error("Notion integration is missing credentials. Please reconnect.")
-    }
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({
+        type: "integration",
+        secret: { integrationType: IntegrationType.NOTION, recordId: integration.id }
+    })
+    const integrationToken = secrets.integrationToken
 
     const notionClient = new Client({ auth: integrationToken })
     const searchOptions: Parameters<typeof notionClient.search>[0] = {
@@ -124,9 +125,6 @@ export const getNotionResources = async (req: Request, res: Response) => {
         res.status(200).json(response)
     } catch (error: any) {
         logger.error("Error searching Notion resources:", { error })
-        res.status(500).json({
-            error: "Failed to search resources",
-            details: error.message
-        })
+        res.status(500).json({ error: "Failed to search resources" })
     }
 }

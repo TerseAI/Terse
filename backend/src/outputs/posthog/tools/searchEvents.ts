@@ -63,14 +63,18 @@ export const searchEventsTool = defineSessionTool({
             if (countByEventNameOnly) {
                 const eventsLink = `${posthogHost}/project/${projectId}/events`
                 const whereParts: string[] = []
+                const values: Record<string, string> = {}
                 if (dateFromValue) {
-                    whereParts.push(`timestamp >= '${dateFromValue}'`)
+                    whereParts.push("timestamp >= {date_from}")
+                    values.date_from = dateFromValue
                 }
                 if (dateToValue) {
-                    whereParts.push(`timestamp <= '${dateToValue}'`)
+                    whereParts.push("timestamp <= {date_to}")
+                    values.date_to = dateToValue
                 }
                 if (normalizedEventName) {
-                    whereParts.push(`event = '${normalizedEventName.replace(/'/g, "''")}'`)
+                    whereParts.push("event = {event_name}")
+                    values.event_name = normalizedEventName
                 }
                 // Exclude PostHog built-in events (names start with $). Custom events = what the project tracks.
                 if (customEventsOnly) {
@@ -88,7 +92,7 @@ export const searchEventsTool = defineSessionTool({
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        query: { kind: "HogQLQuery", query: hogql },
+                        query: { kind: "HogQLQuery", query: hogql, values },
                         name: "event_counts_by_name"
                     })
                 })

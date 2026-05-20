@@ -1,5 +1,4 @@
 import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
-import { AutomationSource } from "@prisma/client"
 import { Request, Response } from "express"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
@@ -23,7 +22,6 @@ type EligibleAutomation = {
     name: string
     user_id: string
     organization_id: string
-    source: AutomationSource
     user: User
     runCount: number
 }
@@ -51,15 +49,13 @@ export async function reviewAllAgents(req: Request, res: Response) {
         const automations = await db().automations.findMany({
             where: {
                 is_active: true,
-                improvements_enabled: true,
-                source: AutomationSource.SDK
+                improvements_enabled: true
             },
             select: {
                 id: true,
                 name: true,
                 user_id: true,
-                organization_id: true,
-                source: true
+                organization_id: true
             }
         })
 
@@ -243,7 +239,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                         destination_type: NotificationDestinationType.EMAIL,
                         destination_label: group.emailAddress,
                         status: emailError ? SentNotificationStatus.failed : SentNotificationStatus.sent,
-                        error_message: emailError instanceof Error ? emailError.message : emailError ? String(emailError) : null,
+                        error_message: emailError ? "Failed to send email" : null,
                         agent_name: agentNames
                     }
                 })
@@ -268,9 +264,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
         })
     } catch (error) {
         logger.error("[ReviewAgents] Weekly review job failed", { error })
-        return res.status(500).json({
-            error: "Internal server error",
-            message: error instanceof Error ? error.message : "Unknown error"
-        })
+        return res.status(500).json({ error: "Internal server error" })
     }
 }

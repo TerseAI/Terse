@@ -1,9 +1,7 @@
 import { Request, Response } from "express"
-import { IntegrationType } from "terse-types/Integrations"
 
 import { SnowflakeIntegrationManager } from "../integrations/SnowflakeIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 
 export async function getSnowflakeIntegrations(req: Request, res: Response) {
@@ -42,10 +40,6 @@ export async function createOrUpdateSnowflakeIntegration(req: Request, res: Resp
             res.status(result.statusCode ?? 400).json(result)
             return
         }
-
-        const organizationId = req.session.user.organizationId
-        const stateToken = (req.query.state as string) || req.body?.state
-        await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, input.userId, organizationId, IntegrationType.SNOWFLAKE)
 
         res.status(result.statusCode ?? 200).json(result)
     } catch (error) {

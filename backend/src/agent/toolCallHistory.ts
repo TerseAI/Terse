@@ -67,6 +67,7 @@ export async function persistDeterministicToolCallComplete(
                 step_id: action.step_id || callId,
                 isReadOnly: action.isReadOnly ?? toolMeta.isReadOnly
             },
+            runContext.organizationId,
             callId
         )
     }

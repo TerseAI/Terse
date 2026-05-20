@@ -249,23 +249,6 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
             return next
         }
 
-        case "FilterResult": {
-            const turn = getOrCreateAssistantTurn(next, event.response_id, event.timestamp, disableAnimation)
-            const unit = getOrCreateUnit(turn, event.id, () => ({
-                kind: "filter_result",
-                unitId: event.id,
-                timestamp: event.timestamp,
-                isRelevant: event.isRelevant,
-                reason: event.reason,
-                confidence: event.confidence
-            }))
-            unit.isRelevant = event.isRelevant
-            unit.reason = event.reason
-            unit.confidence = event.confidence
-            turn.status = event.isRelevant ? "generating" : "natural_stop"
-            return next
-        }
-
         case "NaturalStop": {
             const turn = next.find(candidate => candidate.role === "assistant" && candidate.id === event.response_id) ?? findLastAssistantTurn(next)
             if (turn) {

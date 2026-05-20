@@ -3,6 +3,12 @@ import crypto from "node:crypto"
 import { User } from "terse-types/types"
 
 import { onSessionEvent } from "../agent/SessionEventBus"
+import logger from "../logger"
+
+// 15s heartbeat so the proxy/load balancer doesn't kill an idle SSE socket,
+// and so we discover a half-open connection within a window of seconds
+// rather than waiting for the next event to fail.
+const SSE_HEARTBEAT_MS = 15_000
 
 export function handleSessionEvents(req: Request, res: Response) {
     const user = req.session?.user as User | undefined
@@ -17,13 +23,38 @@ export function handleSessionEvents(req: Request, res: Response) {
     res.setHeader("Connection", "keep-alive")
     res.flushHeaders()
 
-    res.write(`data: ${JSON.stringify({ type: "session_started", sessionId })}\n\n`)
+    let closed = false
+    const safeWrite = (line: string): boolean => {
+        if (closed) return false
+        try {
+            return res.write(line)
+        } catch (error) {
+            logger.warn("[sdkSession] write failed; closing SSE stream", { error, sessionId, userId: user.id })
+            teardown()
+            return false
+        }
+    }
+
+    const heartbeat = setInterval(() => {
+        // SSE comment lines start with `:` and are ignored by the parser; used
+        // here as a keep-alive that proxies don't strip.
+        safeWrite(`: keepalive\n\n`)
+    }, SSE_HEARTBEAT_MS)
 
     const unsubscribe = onSessionEvent(sessionId, event => {
-        res.write(`data: ${JSON.stringify(event)}\n\n`)
+        safeWrite(`data: ${JSON.stringify(event)}\n\n`)
     })
 
-    req.on("close", () => {
+    const teardown = () => {
+        if (closed) return
+        closed = true
+        clearInterval(heartbeat)
         unsubscribe()
-    })
+    }
+
+    req.on("close", teardown)
+    req.on("error", teardown)
+    res.on("error", teardown)
+
+    safeWrite(`data: ${JSON.stringify({ type: "session_started", sessionId })}\n\n`)
 }

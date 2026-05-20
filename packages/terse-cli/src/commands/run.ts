@@ -21,7 +21,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 
     const apiKey = readApiKeyOrBail({
         title: "Error: Not authenticated.",
-        detail: "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment."
+        detail: "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment."
     })
     const runId = readRunId()
 

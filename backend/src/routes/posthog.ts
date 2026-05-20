@@ -4,10 +4,9 @@ import { PosthogProjectsResponse } from "terse-types/types"
 
 import { PosthogIntegrationManager } from "../integrations/PosthogIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, getSecret } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 
 export async function getPosthogIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -42,12 +41,6 @@ export async function createOrUpdatePosthogIntegration(req: Request, res: Respon
                 ...(result.data || {})
             })
             return
-        }
-
-        const organizationId = req.session?.user?.organizationId
-        if (organizationId) {
-            const stateToken = (req.query.state as string) || req.body?.state
-            await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, input.userId, organizationId, IntegrationType.POSTHOG)
         }
 
         res.status(result.statusCode || 200).json(result.data || { success: true })
@@ -98,11 +91,9 @@ export const fetchPosthogProjects = async (organizationId: string, integrationId
     if (!integration) {
         throw new Error("Posthog integration not found")
     }
-
-    const apiKey = await getSecret(IntegrationType.POSTHOG, integration.id, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error("Posthog API key not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
+    const apiKey = secret.apiKey
 
     const apiUrl = "https://us.posthog.com/api/projects/"
     const response = await fetch(apiUrl, {

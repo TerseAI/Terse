@@ -60,6 +60,7 @@ import {
     ProjectDetailResponse,
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
+    ProjectSecretsListResponse,
     ProjectSourceFilesResponse,
     ProjectsListResponse,
     RecentAgent,
@@ -135,11 +136,6 @@ interface BackendService {
      * Returns the active integrations for the current user
      */
     getActiveIntegrations(): Promise<IntegrationType[]>
-
-    /**
-     * Requests a GitHub app installation URL
-     */
-    requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>
 
     /**
      * Gets the GitHub repositories for a specific installation
@@ -331,6 +327,16 @@ interface BackendService {
     getProjectDeploys(id: string): Promise<ProjectDeploysResponse>
 
     /**
+     * Lists project secret names and metadata. Never returns values.
+     */
+    getProjectSecrets(id: string): Promise<ProjectSecretsListResponse>
+
+    /**
+     * Deletes one project secret by name.
+     */
+    deleteProjectSecret(id: string, name: string): Promise<void>
+
+    /**
      * Lists the source files of a project's currently-active deploy.
      */
     getProjectSourceFiles(id: string): Promise<ProjectSourceFilesResponse>
@@ -381,11 +387,6 @@ interface BackendService {
      * Toggles whether weekly improvements are enabled for an agent
      */
     toggleImprovementsEnabled(agentId: string, enabled: boolean): Promise<ToggleImprovementsEnabledResponse>
-
-    /**
-     * Creates a new agent
-     */
-    createAgent(data: AgentUpdate): Promise<{ success: boolean; id: string }>
 
     /**
      * Updates an existing agent
@@ -674,10 +675,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
     },
 
-    requestGitHubAppInstallationUrl: () => {
-        return axios.get(`${backendBaseUrl}${ApiRoutes.GITHUB.INSTALLATION_URL}`, { withCredentials: true }).then(response => response.data)
-    },
-
     getCurrentSlackIntegration: () => {
         return axios.get(`${backendBaseUrl}${ApiRoutes.SLACK.GET_CURRENT_INTEGRATION}`, { withCredentials: true }).then(response => response.data)
     },
@@ -913,6 +910,16 @@ export const BackendProvider: BackendService = {
         return axios.get<ProjectDeploysResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
+    getProjectSecrets: (id: string) => {
+        const url = buildRoute(ApiRoutes.PROJECT_SECRETS.LIST, { id })
+        return axios.get<ProjectSecretsListResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    deleteProjectSecret: (id: string, name: string) => {
+        const url = buildRoute(ApiRoutes.PROJECT_SECRETS.DELETE, { id, name })
+        return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(() => undefined)
+    },
+
     getProjectSourceFiles: (id: string) => {
         const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILES, { id })
         return axios.get<ProjectSourceFilesResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
@@ -961,10 +968,6 @@ export const BackendProvider: BackendService = {
     toggleImprovementsEnabled: (agentId: string, enabled: boolean) => {
         const url = buildRoute(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, { agentId })
         return axios.patch<ToggleImprovementsEnabledResponse>(`${backendBaseUrl}${url}`, { enabled }, { withCredentials: true }).then(response => response.data)
-    },
-
-    createAgent: (data: AgentUpdate) => {
-        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}${ApiRoutes.AGENTS.LIST}`, data, { withCredentials: true }).then(response => response.data)
     },
 
     updateAgent: (id: string, data: AgentUpdate) => {

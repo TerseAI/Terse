@@ -1,5 +1,6 @@
 import { Probot } from "probot"
 
+import { safeErrorFields } from "./utility/safeError.js"
 import { Commit, FileDiff, VectraInterface } from "./vectraInterface.js"
 
 // Add this temporarily to debug what URL is being constructed
@@ -56,7 +57,7 @@ export default (app: Probot) => {
                     fileDiffs: fileDiffs
                 })
             } catch (error) {
-                console.error(`Error fetching commit ${commit.id}:`, error)
+                console.error(`Error fetching commit ${commit.id}:`, safeErrorFields(error))
             }
         }
 
@@ -76,7 +77,7 @@ export default (app: Probot) => {
                 }
             })
         } catch (error) {
-            console.error("Error calling githubUnifiedEvent:", error)
+            console.error("Error calling githubUnifiedEvent:", safeErrorFields(error))
         }
     })
 
@@ -139,7 +140,7 @@ export default (app: Probot) => {
                         fileDiffs: fileDiffs
                     })
                 } catch (error) {
-                    console.error(`Error fetching commit ${commit.sha}:`, error)
+                    console.error(`Error fetching commit ${commit.sha}:`, safeErrorFields(error))
                 }
             }
 
@@ -177,7 +178,7 @@ export default (app: Probot) => {
                 }
             })
         } catch (error) {
-            console.error("Error handling unified pull request event:", error)
+            console.error("Error handling unified pull request event:", safeErrorFields(error))
         }
     }
 
@@ -198,7 +199,7 @@ export default (app: Probot) => {
         try {
             await VectraInterface.githubAppInstallationCallback(name, email, login, installationId, accountName, repositories)
         } catch (error) {
-            console.error("Error calling githubAppInstallationCallback:", error)
+            console.error("Error calling githubAppInstallationCallback:", safeErrorFields(error))
         }
     })
 
@@ -211,7 +212,7 @@ export default (app: Probot) => {
         try {
             await VectraInterface.githubAppInstallationDeleted(username, installationId)
         } catch (error) {
-            console.error("Error calling githubAppInstallationDeleted:", error)
+            console.error("Error calling githubAppInstallationDeleted:", safeErrorFields(error))
         }
     })
 }

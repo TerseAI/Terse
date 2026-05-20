@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
@@ -7,18 +7,14 @@ import { useAuth } from "../services/auth"
 
 export default function OrganizationCreationPage() {
     const { user, isLoading } = useAuth()
+    const navigate = useNavigate()
+
+    if (!user || user.organizationId) {
+        navigate(FrontendRoutes.APP, { replace: true })
+    }
 
     if (isLoading) {
         return null
-    }
-
-    if (!user) {
-        return <Navigate to={FrontendRoutes.APP} replace />
-    }
-
-    // If user already has an organization, redirect to app
-    if (user.organizationId) {
-        return <Navigate to={FrontendRoutes.APP} replace />
     }
 
     return (

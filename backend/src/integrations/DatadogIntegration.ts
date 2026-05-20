@@ -1,18 +1,21 @@
 import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "terse-types/Integrations"
+import { z } from "zod"
 
 import logger from "../logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
 import { db } from "../prismaClient"
-import { SecretField, deleteSecretsBestEffort, storeSecret } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../utility/datadog"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 
-export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.DATADOG> {
-    constructor() {}
-    integrationType: IntegrationType = IntegrationType.DATADOG
+export class DatadogIntegrationManager extends Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never> implements FormIntegrationInstallation<IntegrationType.DATADOG> {
+    readonly integrationType = IntegrationType.DATADOG
+    readonly secretSchema = z.object({
+        apiKey: z.string(),
+        appKey: z.string()
+    })
 
     getFormFields(): FormFieldDefinition[] {
         return [
@@ -112,10 +115,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                 await tx.datadog_integrations.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([
-                    { integrationType: IntegrationType.DATADOG, recordId: integrationId, field: SecretField.ApiKey },
-                    { integrationType: IntegrationType.DATADOG, recordId: integrationId, field: SecretField.AppKey }
-                ])
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: integrationId } })
             })
     }
 
@@ -202,7 +202,8 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
             })
 
             if (existing) {
-                // DB-first, then GSM
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
+
                 await db().datadog_integrations.update({
                     where: { id: existing.id },
                     data: {
@@ -210,9 +211,6 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                         organization_id: organizationId
                     }
                 })
-
-                await storeSecret(IntegrationType.DATADOG, existing.id, SecretField.ApiKey, apiKey)
-                await storeSecret(IntegrationType.DATADOG, existing.id, SecretField.AppKey, appKey)
 
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,
@@ -229,8 +227,10 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     }
                 })
 
-                await storeSecret(IntegrationType.DATADOG, integration.id, SecretField.ApiKey, apiKey)
-                await storeSecret(IntegrationType.DATADOG, integration.id, SecretField.AppKey, appKey)
+                await this.secretService.createSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id, value: { apiKey: apiKey, appKey: appKey } }
+                })
 
                 logger.info("✅ Created Datadog integration", {
                     integrationId: integration.id,
@@ -265,12 +265,7 @@ export async function getDatadogCredentialsForOrganization(integrationId: string
         throw new Error(`Datadog integration not found for integrationId: ${integrationId}`)
     }
 
-    const credentials = await getDatadogCredentialsByIntegrationId(datadogIntegration.id)
-    if (!credentials) {
-        throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`)
-    }
-
-    return credentials
+    return getDatadogCredentialsByIntegrationId(datadogIntegration.id)
 }
 
 /**
@@ -279,9 +274,6 @@ export async function getDatadogCredentialsForOrganization(integrationId: string
 export async function validateDatadogIndexesExist(integrationId: string, indexes: string[]): Promise<void> {
     if (!indexes.length) return
     const credentials = await getDatadogCredentialsByIntegrationId(integrationId)
-    if (!credentials) {
-        throw new Error(`Datadog integration ${integrationId} not found or access denied`)
-    }
     const apiUrl = getDatadogApiUrl(credentials.region)
     const response = await fetch(`${apiUrl}/api/v1/logs/config/indexes`, {
         method: "GET",

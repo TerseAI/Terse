@@ -11,6 +11,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, GithubIntegration, GithubIntegrationMetadata, InstallationOptionsFor, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { OAuthInstallationDetails, Repository } from "terse-types/types"
+import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { githubApp, urls } from "../config/settings"
@@ -21,9 +22,9 @@ import { Identifiable } from "../rag/Hydrator"
 import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../routes/GithubTypes"
 import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
-import { OAuthStateEncodingFormat, createOAuthStateToken, decodeOAuthStateToken } from "../utility/oauth"
+import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -32,9 +33,14 @@ import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
-export class GithubIntegrationManager implements Integration<GithubIntegration, GithubTrigger, typeof GithubIntegrationMetadata, Repository>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
-    constructor() {}
-    integrationType: IntegrationType = IntegrationType.GITHUB
+export class GithubIntegrationManager
+    extends Integration<GithubIntegration, GithubTrigger, typeof GithubIntegrationMetadata, Repository>
+    implements OAuthIntegrationInstallation<IntegrationType.GITHUB>
+{
+    readonly integrationType = IntegrationType.GITHUB
+    readonly secretSchema = z.object({
+        accessToken: z.string()
+    })
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return []
@@ -46,12 +52,13 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         })
         const installations = await Promise.all(
             organizationAccounts.map(async oa => {
-                const accessToken = await getSecret(IntegrationType.GITHUB, oa.id, SecretField.AccessToken)
-                if (!accessToken) {
+                const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: oa.id } })
+                if (!secrets) {
+                    logger.warn(`Github app token ${oa.id} is missing its secret blob; skipping`, { integrationId: oa.id })
                     return []
                 }
 
-                const appInstallations = await getAppInstallationsForUser(accessToken, {
+                const appInstallations = await getAppInstallationsForUser(secrets.accessToken, {
                     userId: oa.user_id,
                     tokenId: oa.id
                 })
@@ -132,18 +139,12 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             if (!token?.organization_id) continue
             const fullUser = await getUserForOrg(user.id, token.organization_id)
             if (!fullUser) continue
-
-            const accessToken = await getSecret(IntegrationType.GITHUB, token.id, SecretField.AccessToken)
-            if (!accessToken) {
-                logger.warn("Missing GitHub access token while processing webhook event", {
-                    userId: user.id,
-                    installationId: event.installationId
-                })
+            const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
+            if (!secrets) {
+                logger.warn(`Github app token ${token.id} is missing its secret blob; skipping`, { integrationId: token.id })
                 continue
             }
-
-            // Attach any images or files from the event
-            const storedFiles: StoredFile[] = await getPullRequestFiles(event, accessToken, event.installationId.toString())
+            const storedFiles: StoredFile[] = await getPullRequestFiles(event, secrets.accessToken, event.installationId.toString())
             await runWithUserContext(fullUser, async () => {
                 const githubEvent = new GithubTriggerRuntime(event, storedFiles)
                 const eventProcessor = new EventProcessor(githubEvent, fullUser)
@@ -155,19 +156,18 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options?: InstallationOptionsFor<IntegrationType.GITHUB>,
-        additionalStatePayload?: AdditionalStateParams
+        options: InstallationOptionsFor<IntegrationType.GITHUB> | undefined,
+        additionalStatePayload: AdditionalStateParams | undefined,
+        res: Response
     ): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName
         const clientId = githubApp.clientId
         const redirectUri = githubApp.integrateCallbackUrl
 
-        // Generate state token using helper function (handles merging and encoding)
-        const state = createOAuthStateToken({
+        const state = mintBrowserOAuthState(res, {
             userId,
             organizationId,
-            additionalStatePayload,
-            encodingFormat: OAuthStateEncodingFormat.BASE64
+            additionalStatePayload
         })
 
         const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(
@@ -194,8 +194,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         })
 
         try {
-            // Decode state using helper function (can throw)
-            const stateData = decodeOAuthStateToken(state as string)
+            const stateData = verifyOAuthState(req, res, state as string)
             const user_id = stateData.userId
             const organizationId = stateData.organizationId
 
@@ -260,10 +259,14 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
                 }
             })
 
-            await storeSecret(IntegrationType.GITHUB, githubTokenId, SecretField.AccessToken, authToken.access_token)
-            if (authToken.refresh_token) {
-                await storeSecret(IntegrationType.GITHUB, githubTokenId, SecretField.RefreshToken, authToken.refresh_token)
-            }
+            await this.secretService.createSecrets({
+                type: "integration",
+                secret: {
+                    integrationType: IntegrationType.GITHUB,
+                    recordId: githubTokenId,
+                    value: { accessToken: authToken.access_token }
+                }
+            })
 
             logger.info("[GitHub Setup URL Installation] Upsert completed", {
                 installationId: installation_id_number,
@@ -290,10 +293,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
                 await tx.github_app_tokens.delete({ where: { id: integrationId } })
             })
             .then(async () => {
-                await deleteSecretsBestEffort([
-                    { integrationType: IntegrationType.GITHUB, recordId: integrationId, field: SecretField.AccessToken },
-                    { integrationType: IntegrationType.GITHUB, recordId: integrationId, field: SecretField.RefreshToken }
-                ])
+                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: integrationId } })
             })
     }
 
@@ -343,7 +343,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         const installationIdNum = installation.installation_id
 
-        const accessToken = await getGitHubAccessToken(userId)
+        const accessToken = await getGitHubAccessToken(userId, organizationId)
         if (!accessToken) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }
@@ -651,19 +651,21 @@ export async function getAppInstallationRepositories(oAuthToken: string, install
 
 // Given an installation, we need to fetch all users that are associated with that installation.
 async function resolveUsersForGithubInstallation(installationId: number): Promise<PrismaUser[]> {
+    const secretService = SecretService.getInstance()
     return db().$transaction(async tx => {
         const githubAppUsers = await tx.github_app_tokens.findMany()
         const installationResults = await Promise.all(
             githubAppUsers.map(async user => {
-                const accessToken = await getSecret(IntegrationType.GITHUB, user.id, SecretField.AccessToken)
-                if (!accessToken) {
+                const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
+                if (!secrets) {
+                    logger.warn(`Github app token ${user.id} is missing its secret blob; skipping`, { integrationId: user.id })
                     return {
                         userId: user.user_id,
                         installations: []
                     }
                 }
 
-                const installations = await getAppInstallationsForUser(accessToken, {
+                const installations = await getAppInstallationsForUser(secrets.accessToken, {
                     userId: user.user_id,
                     tokenId: user.id,
                     installationId
@@ -714,11 +716,9 @@ export async function validateGithubRepositoryIds({ userId, integrationId, repos
     if (!accessToken) {
         throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
     }
-
-    const resolvedAccessToken = await getSecret(IntegrationType.GITHUB, accessToken.id, SecretField.AccessToken)
-    if (!resolvedAccessToken) {
-        throw new Error(`Invalid ${contextLabel} config for ${configTypeLabel}: no GitHub access token found for user`)
-    }
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: accessToken.id } })
+    const resolvedAccessToken = secrets.accessToken
 
     const integrationInstallationId = Number(integrationId)
     const installations = await getAppInstallationsForUser(resolvedAccessToken, {

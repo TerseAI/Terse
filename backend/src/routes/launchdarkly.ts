@@ -3,10 +3,9 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { LaunchDarklyIntegrationManager } from "../integrations/LaunchDarklyIntegration"
 import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration"
-import { emitIntegrationFormCompletedTaskIfNeeded } from "../integrations/helpers/emitIntegrationFormCompletedTask"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, getSecret } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -43,12 +42,6 @@ export async function createOrUpdateLaunchDarklyIntegration(req: Request, res: R
             return
         }
 
-        const organizationId = req.session?.user?.organizationId
-        if (organizationId) {
-            const stateToken = (req.query.state as string) || req.body?.state
-            await emitIntegrationFormCompletedTaskIfNeeded(stateToken, manager, input.userId, organizationId, IntegrationType.LAUNCHDARKLY)
-        }
-
         res.status(result.statusCode || 200).json(result.data || { success: true })
     } catch (error) {
         logger.error("Error creating/updating LaunchDarkly integration:", {
@@ -82,7 +75,7 @@ export async function getLaunchDarklyProjects(req: Request, res: Response) {
             error,
             integrationId
         })
-        res.status(500).json({ error: error.message || "Failed to fetch projects" })
+        res.status(500).json({ error: "Failed to fetch projects" })
     }
 }
 
@@ -97,11 +90,9 @@ export async function fetchLaunchDarklyProjects(organizationId: string, integrat
     if (!integration) {
         throw new Error("LaunchDarkly integration not found")
     }
-
-    const apiKey = await getSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error("LaunchDarkly API key not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id } })
+    const apiKey = secret.apiKey
 
     const response = await fetch("https://app.launchdarkly.com/api/v2/projects", {
         method: "GET",
@@ -149,10 +140,12 @@ export async function fetchLaunchDarklyEnvironments(organizationId: string, inte
         throw new Error("LaunchDarkly integration not found")
     }
 
-    const apiKey = await getSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error("LaunchDarkly API key not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({
+        type: "integration",
+        secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id }
+    })
+    const apiKey = secrets.apiKey
 
     const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
         method: "GET",
@@ -215,12 +208,12 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
             res.status(404).json({ error: "Integration not found" })
             return
         }
-
-        const apiKey = await getSecret(IntegrationType.LAUNCHDARKLY, integration.id, SecretField.ApiKey)
-        if (!apiKey) {
-            res.status(404).json({ error: "Integration API key not found" })
-            return
-        }
+        const secretService = SecretService.getInstance()
+        const secrets = await secretService.getSecrets({
+            type: "integration",
+            secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id }
+        })
+        const apiKey = secrets.apiKey
 
         // Fetch environments from LaunchDarkly API
         const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {

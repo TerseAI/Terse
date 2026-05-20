@@ -1,55 +1,35 @@
-import { AgentOutputType, Agent as OpenAIAgent, RunResult } from "@openai/agents"
-import { ConfigData } from "terse-types"
-import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 
 import { Session } from "../../express"
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import logger from "../../logger"
 import { NotificationManager } from "../../notifications/Notification"
-import { Output } from "../../outputs/abstract/Output"
-import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { db } from "../../prismaClient"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../realtimeSocket"
 import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { SdkJobExecutionService } from "../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../services/WebhookJobExecutionService"
-import { AgentWithRelations, Agent as PrismaAgent, SDKAgent, isSDKAgent } from "../../types/prisma"
-import { trackActionTaken, trackAgentTriggered } from "../../utility/analytics"
+import { AgentWithRelations, Agent as PrismaAgent } from "../../types/prisma"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
 import { getActiveDeployForProject } from "../../utility/projectHelper"
 import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
-import { CancelReason } from "../cancellation/RunCancellationTaskQueue"
-import { listenForRunCancellation } from "../cancellation/RunCancellationTaskQueue"
-import { markRunCancelledAndInvalidate } from "../cancellation/runCancellationEffects"
 
-import { AgentRunResultStatus, AgentRunner, ApprovalResult, SessionWithTracking } from "./AgentRunner"
-import { filterEvent } from "./EventFilter"
-import { RunContext } from "./SystemPromptBuilder"
-import { appendRunAction, createRunRecord, evaluateCompletedRun, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from "./runHistory"
+import { createRunRecord, markRunFailed } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
 
-class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
+class ProcessorResult {
     success: boolean
     message: string
     agentConfig: PrismaAgent | null
-    approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null
     runId: string | null
 
-    constructor(
-        success: boolean,
-        message: string,
-        agentConfig: PrismaAgent | null,
-        approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null,
-        runId: string | null = null
-    ) {
+    constructor(success: boolean, message: string, agentConfig: PrismaAgent | null, runId: string | null = null) {
         this.success = success
         this.message = message
         this.agentConfig = agentConfig
-        this.approvalResult = approvalResult
         this.runId = runId
     }
 }
@@ -165,7 +145,7 @@ export class EventProcessor {
                 runId,
                 agentId: agent.id
             })
-            await this.failRunEarly(runId, agent.id, `Background processing failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+            await this.failRunEarly(runId, agent, `Background processing failed: ${error instanceof Error ? error.message : "Unknown error"}`)
         })
 
         return {
@@ -208,17 +188,20 @@ export class EventProcessor {
         return runId
     }
 
-    private async failRunEarly(runId: string, agentId: string, message: string): Promise<void> {
+    private async failRunEarly(runId: string, agent: PrismaAgent, message: string): Promise<void> {
         try {
             await markRunFailed(runId, message, "agent")
-            emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agentId)
+            emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
         } catch (error) {
             logger.error("Failed to mark run as failed during early validation", {
                 error,
                 runId,
-                agentId
+                agentId: agent.id
             })
         }
+        // Notify so users see the failure rather than the run silently
+        // sitting in FAILED state. notifyRunFailure swallows its own errors.
+        await this.notifyRunFailure(agent, runId, message)
     }
 
     private async notifyRunFailure(agent: PrismaAgent, runId: string, errorMessage: string): Promise<void> {
@@ -255,192 +238,29 @@ export class EventProcessor {
 
         if (!agent.prompt) {
             if (existingRunId) {
-                await this.failRunEarly(existingRunId, agent.id, "No prompt found for this agent")
-                await this.notifyRunFailure(agent, existingRunId, "No prompt found for this agent")
+                // failRunEarly notifies internally now.
+                await this.failRunEarly(existingRunId, agent, "No prompt found for this agent")
             }
-            return new ProcessorResult(false, "No prompt found for this agent", agent, undefined, existingRunId ?? null)
+            return new ProcessorResult(false, "No prompt found for this agent", agent, existingRunId ?? null)
         }
 
-        const activeDeploy = agent.project?.id ? await getActiveDeployForProject(agent.project.id) : null
+        const activeDeploy = await getActiveDeployForProject(agent.project.id)
 
         // SDK agents with a remote_server_url trigger the user's own infrastructure via webhook
-        if (isSDKAgent(agent) && agent.project.remote_server_url) {
+        if (agent.project.remote_server_url) {
             return this.processWebhookAgent(agent, existingRunId)
         }
 
         // SDK agents run in a Modal sandbox instead of the normal agent pipeline
-        else if (isSDKAgent(agent) && activeDeploy?.sdk_source_image_id) {
+        if (activeDeploy?.sdk_source_image_id) {
             return this.processSdkAgent(agent, existingRunId)
-        } else if (isSDKAgent(agent)) {
-            logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name, source: agent.source })
-            throw new Error(`Unknown agent source: ${agent.source}`)
-        }
-
-        const runId = existingRunId ?? (await this.createRunForAgent(agent))
-        const trigger = this.inputEvent.createTriggerMetadata()
-
-        // Get the outputs from agent relations (already fetched with config)
-        if (!agent.outputs || agent.outputs.length === 0) {
-            await this.failRunEarly(runId, agent.id, "No output integrations found for this agent")
-            await this.notifyRunFailure(agent, runId, "No output integrations found for this agent")
-            return new ProcessorResult(false, "No output integrations found for this agent", agent, undefined, runId)
-        }
-
-        // Create outputs from agent configuration
-        let outputs: Output<ConfigData>[]
-        try {
-            outputs = OutputFactory.createOutputsFromAgent(agent)
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Unknown error"
-            await this.failRunEarly(runId, agent.id, `Failed to create outputs: ${errorMessage}`)
-            await this.notifyRunFailure(agent, runId, `Failed to create outputs: ${errorMessage}`)
-            return new ProcessorResult(false, `Failed to create outputs: ${errorMessage}`, agent, undefined, runId)
-        }
-
-        // Create base session for AgentRunner
-        const session: Session = {
-            user: this.user
-        }
-
-        // Filter the event using AI to see if it's relevant to this agent
-        let filterResult
-        try {
-            const filterResponse = await filterEvent(this.inputEvent, agent, true, {
-                runId,
-                user: this.user,
-                agentId: agent.id
-            })
-
-            filterResult = filterResponse.result
-        } catch (error) {
-            // Log the error and update run history
-            const errorMessage = error instanceof Error ? error.message : "Unknown error"
-            logger.error(`Error filtering event for agent "${agent.name}"`, {
-                error,
-                agentId: agent.id,
-                agentName: agent.name,
-                runId
-            })
-
-            try {
-                await markRunFailed(runId, errorMessage, "filter")
-                emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
-            } catch (e) {
-                logger.error("Failed to mark run as failed", {
-                    error: e,
-                    runId,
-                    agentId: agent.id
-                })
-            }
-            await this.notifyRunFailure(agent, runId, errorMessage)
-
-            return new ProcessorResult(false, `Error during filtering: ${errorMessage}`, agent, undefined, runId)
-        }
-
-        if (!filterResult.isRelevant) {
-            logger.info(`Event is not relevant to agent "${agent.name}": ${filterResult.reason}`)
-            try {
-                await markRunSkipped(runId, filterResult.reason)
-                // Emit cache invalidation to update UI
-                emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
-            } catch (e) {
-                logger.error("Failed to mark run skipped", {
-                    error: e,
-                    runId,
-                    agentId: agent.id
-                })
-            }
-            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, agent, undefined, runId)
-        }
-
-        try {
-            await markRunProcessed(runId, filterResult.reason)
-        } catch (e) {
-            logger.error("Failed to mark run processed", {
-                error: e,
-                runId,
-                agentId: agent.id
-            })
-        }
-
-        logger.info(`Event is relevant to agent "${agent.name}"`)
-
-        // Track agent triggered analytics event (organization-scoped)
-        trackAgentTriggered(this.user.id, {
-            agentId: agent.id,
-            agentName: agent.name,
-            triggerType: trigger.integration,
-            triggerSource: trigger.source,
-            runId
-        })
-
-        const billing = billingServiceProxyForOrganization(this.user.organizationId, this.user.workosId)
-
-        // Create agent runner with the session and outputs
-        const runContext: RunContext = { runId }
-        const agentRunner = new AgentRunner(session, outputs, agent, runContext, 50, billing)
-        agentRunner.setInputEvent(this.inputEvent)
-        const cancellationController = new AbortController()
-        const cancellationSubscription = listenForRunCancellation(runId, this.user.organizationId, cancellationController)
-
-        // Run the agent runner with streaming parameters
-        let result: ApprovalResult<SessionWithTracking<Session>, OpenAIAgent<SessionWithTracking<Session>, AgentOutputType>>
-        try {
-            await startBillingRun(billing, { organizationId: this.user.organizationId, runId })
-
-            result = await agentRunner.run(
-                {
-                    runId,
-                    agentId: agent.id,
-                    user: this.user
-                },
-                {
-                    signal: cancellationController.signal
-                }
-            )
-        } catch (error) {
-            const wasCancelledOnError = cancellationSubscription.isCancellationRequested()
-            const reason = cancellationSubscription.getReason()
-            cancellationSubscription.unsubscribe()
-
-            if (wasCancelledOnError || (error instanceof Error && error.name === "AbortError")) {
-                await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
-                return new ProcessorResult(false, reason, agent, undefined, runId)
-            }
-
-            const classified = classifyAgentError(error)
-            logger.error(`Error running agent "${agent.name}"`, {
-                error,
-                agentId: agent.id,
-                agentName: agent.name,
-                runId
-            })
-            await finalizeRunFailure(runId, classified, this.user, agent)
-            throw error
-        }
-
-        const wasCancelled = cancellationSubscription.isCancellationRequested()
-        const reason = cancellationSubscription.getReason()
-        cancellationSubscription.unsubscribe()
-
-        if (wasCancelled) {
-            await markRunCancelledAndInvalidate(runId, agent.id, this.user.organizationId, this.user.id, reason)
-            return new ProcessorResult(false, reason, agent, undefined, runId)
-        }
-
-        if (result.status === AgentRunResultStatus.COMPLETED) {
-            logger.info(`Agent "${agent.name}" completed:`, {
-                finalOutput: result.result.finalOutput,
-                endedWithToolFailure: result.endedWithToolFailure
-            })
-            return persistRunResult(runId, result.result, session, agent, result.endedWithToolFailure, result)
         } else {
-            logger.info(`Agent "${agent.name}" awaiting approval:`)
-            return new ProcessorResult<SessionWithTracking<Session>>(false, "Agent awaiting approval", agent, result, runId)
+            logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name })
+            throw new Error("Unknown agent source")
         }
     }
 
-    private async processSdkAgent(agent: SDKAgent, existingRunId?: string): Promise<ProcessorResult> {
+    private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
         let gcsKey: string
@@ -459,7 +279,7 @@ export class EventProcessor {
         } catch (error) {
             logger.error(`SDK sandbox failed to start for agent "${agent.name}"`, { error, runId, agentId: agent.id })
             await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
-            return new ProcessorResult(false, error instanceof Error ? error.message : "SDK job failed to start", agent, undefined, runId)
+            return new ProcessorResult(false, error instanceof Error ? error.message : "SDK job failed to start", agent, runId)
         }
 
         // Fire-and-forget: sandbox runs asynchronously
@@ -483,10 +303,10 @@ export class EventProcessor {
                 await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
             })
 
-        return new ProcessorResult(true, "SDK job execution started", agent, undefined, runId)
+        return new ProcessorResult(true, "SDK job execution started", agent, runId)
     }
 
-    private async processWebhookAgent(agent: SDKAgent, existingRunId?: string): Promise<ProcessorResult> {
+    private async processWebhookAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
         const event = this.inputEvent.getSerializedEvent()
@@ -496,7 +316,7 @@ export class EventProcessor {
         if (!remoteServerUrl || !signingSecret) {
             const reason = !remoteServerUrl ? `Webhook agent "${agent.name}" is missing remote_server_url` : `Webhook agent "${agent.name}" is missing signing_secret`
             await finalizeRunFailure(runId, classifyAgentError(new Error(reason)), this.user, agent)
-            return new ProcessorResult(false, reason, agent, undefined, runId)
+            return new ProcessorResult(false, reason, agent, runId)
         }
 
         logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, remoteServerUrl })
@@ -523,68 +343,6 @@ export class EventProcessor {
                 await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
             })
 
-        return new ProcessorResult(true, "Webhook job execution started", agent, undefined, runId)
+        return new ProcessorResult(true, "Webhook job execution started", agent, runId)
     }
-}
-
-async function persistRunResult<T extends Session>(
-    runId: string,
-    result: RunResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>>,
-    session: T,
-    agent: PrismaAgent,
-    endedWithToolFailure: boolean,
-    approvalResult?: ApprovalResult<SessionWithTracking<T>, OpenAIAgent<SessionWithTracking<T>, AgentOutputType>> | null
-): Promise<ProcessorResult<SessionWithTracking<T>>> {
-    // Finalize run status
-    const completion = evaluateCompletedRun(result.finalOutput, endedWithToolFailure)
-    try {
-        await finalizeRunStatus(runId, completion.status)
-        // Invalidate all run history queries for this agent when status changes
-        emitCacheInvalidationWithWildcard(session.user.organizationId, "runHistory", agent.id)
-        if (!completion.isSuccessful) {
-            try {
-                await new NotificationManager(session.user, agent).notifyRunFailure(runId, completion.failureReason)
-            } catch (notificationError) {
-                logger.error("Failed to send run failure notification", {
-                    error: notificationError,
-                    runId,
-                    agentId: agent.id
-                })
-            }
-        }
-    } catch (e) {
-        logger.error("Failed to finalize run status", {
-            error: e,
-            runId,
-            agentId: agent.id
-        })
-    }
-
-    const finalOutput = typeof result.finalOutput === "string" ? result.finalOutput : ""
-    return new ProcessorResult<SessionWithTracking<T>>(completion.isSuccessful, finalOutput, agent, approvalResult, runId)
-}
-
-export async function persistRunAction<T extends Session>(runId: string, agent: PrismaAgent, session: T, action: RunHistoryAction): Promise<string | undefined> {
-    try {
-        const actionId = await appendRunAction(runId, action)
-        emitCacheInvalidationWithWildcard(session.user.organizationId, "runHistory", agent.id)
-        emitCacheInvalidationWithKey(session.user.organizationId, "recentActions")
-
-        trackActionTaken(session.user.id, {
-            runId,
-            actionType: action.type,
-            integration: action.integration,
-            target: action.target,
-            isReadOnly: action.isReadOnly
-        })
-
-        return actionId
-    } catch (e) {
-        logger.error("Failed to append run action", {
-            error: e,
-            runId,
-            agentId: agent.id
-        })
-    }
-    return undefined
 }

@@ -1,5 +1,6 @@
 import { users as PrismaUser } from "@prisma/client"
 import { User as WorkOSUser } from "@workos-inc/node"
+import crypto from "crypto"
 import { Request, Response } from "express"
 import { ApiRoutes, UserMetadata, userMetadataSchema } from "terse-types"
 import { Role, User } from "terse-types/types"
@@ -12,6 +13,7 @@ import { extractErrorMessage } from "../utility/strings"
 import { workos } from "../utility/workos"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
+const WORKOS_OAUTH_STATE_COOKIE_NAME = "TERSE_WORKOS_OAUTH_STATE"
 
 export function setSessionCookie(res: Response, sealedSession: string) {
     res.cookie(WORKOS_SESSION_COOKIE_NAME, sealedSession, WORKOS_SESSION_COOKIE_OPTIONS)
@@ -22,6 +24,7 @@ export function clearSessionCookies(res: Response) {
 }
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
+const TEN_MINUTES_MS = 10 * 60 * 1000
 
 const workosSessionCookieBaseOptions = {
     path: "/",
@@ -33,20 +36,28 @@ const workosSessionCookieBaseOptions = {
 
 const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
 
-function getDirectWorkOSLoginUrl(): string {
+const WORKOS_OAUTH_STATE_COOKIE_OPTIONS = {
+    ...WORKOS_SESSION_COOKIE_OPTIONS,
+    maxAge: TEN_MINUTES_MS
+}
+
+function getDirectWorkOSLoginUrl(res: Response): string {
+    const state = crypto.randomBytes(32).toString("hex")
+    res.cookie(WORKOS_OAUTH_STATE_COOKIE_NAME, state, WORKOS_OAUTH_STATE_COOKIE_OPTIONS)
     return workos.userManagement.getAuthorizationUrl({
         provider: "authkit",
-        redirectUri: settings.workos.redirectUri
+        redirectUri: settings.workos.redirectUri,
+        state
     })
 }
 
 export async function login(req: Request, res: Response) {
-    const authorizationUrl = getDirectWorkOSLoginUrl()
+    const authorizationUrl = getDirectWorkOSLoginUrl(res)
     res.redirect(authorizationUrl)
 }
 
 export async function loginUrl(req: Request, res: Response) {
-    const authorizationUrl = getDirectWorkOSLoginUrl()
+    const authorizationUrl = getDirectWorkOSLoginUrl(res)
     return res.json({ loginUrl: authorizationUrl })
 }
 
@@ -154,6 +165,11 @@ export async function me(req: Request, res: Response) {
 
 export async function callback(req: Request, res: Response) {
     const code = req.query.code as string
+    const state = typeof req.query.state === "string" ? req.query.state : undefined
+    const expectedState = req.cookies?.[WORKOS_OAUTH_STATE_COOKIE_NAME] as string | undefined
+
+    // Clear the state cookie immediately — it's single-use.
+    res.clearCookie(WORKOS_OAUTH_STATE_COOKIE_NAME, WORKOS_OAUTH_STATE_COOKIE_OPTIONS)
 
     if (!code) {
         if (req.query.error) {
@@ -162,6 +178,14 @@ export async function callback(req: Request, res: Response) {
             })
         }
         return res.status(400).send("No code provided")
+    }
+
+    if (!state || !expectedState || state.length !== expectedState.length || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(expectedState))) {
+        logger.warn("[/callback] OAuth state mismatch — possible CSRF or stale flow", {
+            hasState: Boolean(state),
+            hasExpectedState: Boolean(expectedState)
+        })
+        return res.status(400).send("Invalid OAuth state")
     }
 
     try {
@@ -316,7 +340,7 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
     return { user }
 }
 
-export async function setDefaultUserMetadata(workosUserId: string, dbUserId: string): Promise<UserWithMetadata> {
+async function setDefaultUserMetadata(workosUserId: string, dbUserId: string): Promise<UserWithMetadata> {
     const metadata = userMetadataSchema.parse({
         db_id: dbUserId
     })
@@ -330,7 +354,7 @@ export async function setDefaultUserMetadata(workosUserId: string, dbUserId: str
     }
 }
 
-export type UserWithMetadata = Omit<WorkOSUser, "metadata"> & {
+type UserWithMetadata = Omit<WorkOSUser, "metadata"> & {
     metadata: UserMetadata
 }
 

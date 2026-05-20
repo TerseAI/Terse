@@ -1,7 +1,17 @@
 {
     "name": "terse-cli",
-    "version": "0.1.50",
+    "version": "0.1.54",
     "type": "module",
+    "license": "SEE LICENSE IN LICENSE.md",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/TerseAI/Terse.git",
+        "directory": "packages/terse-cli"
+    },
+    "homepage": "https://docs.useterse.ai",
+    "bugs": {
+        "url": "https://github.com/TerseAI/Terse/issues"
+    },
     "bin": {
         "terse": "dist/index.js"
     },

@@ -5,11 +5,11 @@ import { GmailOutputConfig, IntegrationType } from "terse-types"
 import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/GmailIntegration"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
-import { SecretField, getSecret } from "../../../services/SecretService"
+import { SecretService } from "../../../services/SecretService"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 
-import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders } from "./mime"
+import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubjectHeader, sanitizeCustomHeaders, sanitizeHeaderValue } from "./mime"
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.
@@ -45,28 +45,27 @@ export const gmailSendEmailTool = defineSessionTool({
             if (!accessToken) {
                 throw new Error("Failed to get Gmail access token")
             }
-
-            const refreshToken = await getSecret(IntegrationType.GMAIL, gmailIntegration.id, SecretField.RefreshToken)
+            const secretService = SecretService.getInstance()
+            const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: gmailIntegration.id } })
 
             // Set up OAuth2 client
             const oauth2Client = getOAuth2Client()
             oauth2Client.setCredentials({
                 access_token: accessToken,
-                ...(refreshToken ? { refresh_token: refreshToken } : {})
+                ...(secrets ? { refresh_token: secrets.refreshToken } : {})
             })
 
             const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
 
             // Build email headers
-            // Subject is encoded per RFC 2047 to handle non-ASCII characters (e.g., em-dashes)
-            const headers: string[] = [`To: ${to}`, `Subject: ${encodeSubjectHeader(subject)}`]
+            const headers: string[] = [`To: ${sanitizeHeaderValue(to, "to")}`, `Subject: ${encodeSubjectHeader(subject)}`]
 
             if (cc) {
-                headers.push(`Cc: ${cc}`)
+                headers.push(`Cc: ${sanitizeHeaderValue(cc, "cc")}`)
             }
 
             if (bcc) {
-                headers.push(`Bcc: ${bcc}`)
+                headers.push(`Bcc: ${sanitizeHeaderValue(bcc, "bcc")}`)
             }
 
             // Add custom headers (e.g., List-Unsubscribe).

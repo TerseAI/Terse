@@ -4,7 +4,6 @@ import type { ConfigData, SerializedEvent, Trigger } from "terse-types"
 import { getEventTransform } from "./context.js"
 
 export { registerEventTransform } from "./context.js"
-export type { EventTransform } from "./context.js"
 
 /**
  * Lightweight interface for toolbox entries.

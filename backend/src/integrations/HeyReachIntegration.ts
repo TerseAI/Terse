@@ -9,7 +9,7 @@ import { z } from "zod"
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, deleteSecretsBestEffort, getSecret, storeSecret } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
 import { buildHeyReachWebhookUrl } from "../utility/webhookUrl"
 import { getUserForOrg } from "../utility/workos"
@@ -19,15 +19,19 @@ import { TriggerRuntime } from "./abstract/TriggerRuntime"
 
 const HEYREACH_API_BASE = "https://api.heyreach.io/api/public"
 
-export interface HeyReachWebhookRequest {
+interface HeyReachWebhookRequest {
     triggerId: string
     payload: HeyReachWebhookPayload
 }
 
 export class HeyReachIntegrationManager
-    implements Integration<HeyReachIntegration, HeyReachWebhookRequest, typeof HeyReachIntegrationMetadata, never>, FormIntegrationInstallation<IntegrationType.HEY_REACH>
+    extends Integration<HeyReachIntegration, HeyReachWebhookRequest, typeof HeyReachIntegrationMetadata, never>
+    implements FormIntegrationInstallation<IntegrationType.HEY_REACH>
 {
-    integrationType: IntegrationType = IntegrationType.HEY_REACH
+    readonly integrationType = IntegrationType.HEY_REACH
+    readonly secretSchema = z.object({
+        apiKey: z.string()
+    })
 
     async getInstancesForOrganization(organizationId: string): Promise<HeyReachIntegration[]> {
         const integrations = await db().hey_reach_integrations.findMany({
@@ -90,8 +94,10 @@ export class HeyReachIntegrationManager
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
-        await db().hey_reach_integrations.delete({ where: { id: integrationId } })
-        await deleteSecretsBestEffort([{ integrationType: IntegrationType.HEY_REACH, recordId: integrationId, field: SecretField.ApiKey }])
+        await db().$transaction(async tx => {
+            await tx.hey_reach_integrations.delete({ where: { id: integrationId } })
+        })
+        await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId } })
     }
 
     async setupAgentTrigger(_integrationId: string, _agentTrigger: AgentTriggerWithConfigs): Promise<void> {}
@@ -166,12 +172,12 @@ export class HeyReachIntegrationManager
 
             let integrationId: string
             if (existing) {
-                await storeSecret(IntegrationType.HEY_REACH, existing.id, SecretField.ApiKey, apiKey)
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.HEY_REACH, recordId: existing.id, value: { apiKey: apiKey } } })
                 integrationId = existing.id
                 logger.info("Updated HeyReach integration", { integrationId })
             } else {
                 const integration = await db().hey_reach_integrations.create({ data: { organization_id: organizationId } })
-                await storeSecret(IntegrationType.HEY_REACH, integration.id, SecretField.ApiKey, apiKey)
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.HEY_REACH, recordId: integration.id, value: { apiKey: apiKey } } })
                 integrationId = integration.id
                 logger.info("Created HeyReach integration", { integrationId })
             }
@@ -195,7 +201,7 @@ export class HeyReachIntegrationManager
     }
 }
 
-export class HeyReachTriggerRuntime extends TriggerRuntime<HeyReachTrigger> {
+class HeyReachTriggerRuntime extends TriggerRuntime<HeyReachTrigger> {
     readonly integrationType = IntegrationType.HEY_REACH
     data: HeyReachTrigger
     private integrationId: string
@@ -307,10 +313,9 @@ export async function fetchHeyReachCampaigns(organizationId: string, integration
     if (!integration) {
         throw new Error("HeyReach integration not found")
     }
-    const apiKey = await getSecret(IntegrationType.HEY_REACH, integration.id, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error("HeyReach API key not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.HEY_REACH, recordId: integration.id } })
+    const apiKey = secrets.apiKey
 
     const requestBody = heyReachCampaignsRequestSchema.parse({ offset: 0, limit: 100, keyword: null })
     const response = await fetch(`${HEYREACH_API_BASE}/campaign/GetAll`, {
@@ -351,10 +356,9 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
         throw new Error("HeyReach integration not found")
     }
 
-    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error("HeyReach API key not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId } })
+    const apiKey = secrets.apiKey
 
     const webhookName = clipHeyReachWebhookName(eventType)
     const webhookUrl = buildHeyReachWebhookUrl(triggerId)
@@ -378,10 +382,9 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
 }
 
 async function deleteHeyReachWebhook(webhookId: number, integrationId: string) {
-    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error("HeyReach API key not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId } })
+    const apiKey = secrets.apiKey
 
     const url = new URL(`${HEYREACH_API_BASE}/webhooks/DeleteWebhook`)
     url.searchParams.set("webhookId", String(webhookId))
@@ -409,10 +412,9 @@ const heyReachUpdateWebhookRequestSchema = z.object({
 })
 
 async function updateHeyReachWebhook(webhookId: number, integrationId: string, isActive: boolean) {
-    const apiKey = await getSecret(IntegrationType.HEY_REACH, integrationId, SecretField.ApiKey)
-    if (!apiKey) {
-        throw new Error("HeyReach API key not found")
-    }
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.HEY_REACH, recordId: integrationId } })
+    const apiKey = secrets.apiKey
 
     const url = new URL(`${HEYREACH_API_BASE}/webhooks/UpdateWebhook`)
     url.searchParams.set("webhookId", String(webhookId))

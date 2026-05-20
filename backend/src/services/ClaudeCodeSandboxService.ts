@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 
 import { settings } from "../config/settings"
 import logger from "../logger"
+import { assertValidEnvVarName, shellQuote, shellQuoteArgs } from "../utility/shellEscape"
 
 import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
 
@@ -144,9 +145,15 @@ export class ClaudeCodeSandboxService {
             // Write a run script and execute as non-root user
             const claudeEnv = { ANTHROPIC_API_KEY: settings.anthropic.apiKey, ...extraEnv }
             const envExports = Object.entries(claudeEnv)
-                .map(([k, v]) => `export ${k}='${v.replace(/'/g, "'\\''")}'`)
+                .map(([k, v]) => {
+                    // Keys go in unquoted, so they must be valid POSIX
+                    // identifiers — otherwise a caller could break out
+                    // of the export line with newlines/metachars.
+                    assertValidEnvVarName(k)
+                    return `export ${k}=${shellQuote(v)}`
+                })
                 .join("\n")
-            const escapedArgs = claudeArgs.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")
+            const escapedArgs = shellQuoteArgs(claudeArgs)
             const runScript = `#!/bin/bash\n${envExports}\ncd /tmp/project && cat /tmp/prompt.txt | ${escapedArgs} > /tmp/claude-output.json\n`
             const scriptHandle = await sb.open("/tmp/run-claude.sh", "w")
             await scriptHandle.write(new TextEncoder().encode(runScript))

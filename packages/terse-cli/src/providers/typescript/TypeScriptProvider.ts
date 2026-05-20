@@ -4,18 +4,19 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
-import type { CreateJobParameters } from "terse-sdk"
-import { __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, runWithJobContext } from "terse-sdk"
+import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
+import { __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
 import { readApiKeyOrBail } from "../../api.js"
 import { CliError } from "../../cliError.js"
 import { BACKEND_URL } from "../../config.js"
+import { ensureDotenvLoaded } from "../../dotenv.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
-import { openSessionStream } from "../shared/sessionStream.js"
+import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
 
 import { prepareTemplateContext } from "./prepareCodegenData.js"
 import { renderGeneratedCode } from "./templateEngine.js"
@@ -104,6 +105,11 @@ class TypeScriptProvider implements LanguageProvider {
         // without this reset the retry would see both the old and new instances.
         __resetRegisteredTerseInstances()
 
+        // Load the project .env into process.env so the user's entry file
+        // (and any top-level process.env reads) see local values during
+        // `terse test`, `terse run`, `terse listen`, and `terse deploy`.
+        ensureDotenvLoaded(cwd)
+
         try {
             await tsImport(entryPath, parentURL)
         } catch (error) {
@@ -130,8 +136,18 @@ class TypeScriptProvider implements LanguageProvider {
         return registry
     }
 
-    async executeJob(job: CreateJobParameters, runId: string | null, event: SerializedEvent, opts?: { verbose?: boolean; entryFile?: string }): Promise<void> {
+    async executeJob(
+        job: CreateJobParameters,
+        runId: string | null,
+        event: SerializedEvent,
+        opts?: {
+            verbose?: boolean
+            entryFile?: string
+            pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+        }
+    ): Promise<void> {
         const isVerbose = opts?.verbose ?? true
+        const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
 
         const serializedEventRuntime = createSDKTrigger(event)
 
@@ -140,9 +156,61 @@ class TypeScriptProvider implements LanguageProvider {
             detail: "Please set it in your environment variables."
         })
 
+        // Track the latest agent run id seen on the session stream so we can
+        // pair an incoming tool_approval_requested with the right run. The
+        // backend's approval gate keys decisions on (runId, stepId, orgId);
+        // tool_approval_requested itself only carries stepId, so we read
+        // runId from the most recent run_started in this session.
+        let latestRunId: string | null = null
+
+        const handleSessionEvent = async (event: SessionStreamEvent): Promise<void> => {
+            if (event.type === "run_started") {
+                latestRunId = event.runId
+                return
+            }
+            if (event.type !== "tool_approval_requested") return
+
+            // If a TerseAgent in this process defined its own onApprovalRequired,
+            // it will handle and submit the decision on its own SSE stream.
+            // Skip here to avoid double-prompting and duplicate decision posts.
+            if (isAgentApprovalHandlingClaimed()) return
+
+            const runId = latestRunId
+            if (!runId) {
+                console.error(chalk.red("  Received approval request before run_started — cannot route decision."))
+                return
+            }
+
+            const { toolName, arguments: rawArguments, stepId } = event.toolApprovalRequested
+
+            if (!process.stdout.isTTY) {
+                console.error(chalk.red(`  Approval required for "${toolName}" but no TTY is attached — auto-rejecting.`))
+                console.error(chalk.dim("  In non-interactive contexts, set TerseAgent.onApprovalRequired in your job code."))
+                try {
+                    await submitApprovalDecision(apiKey, { runId, stepId, approved: false })
+                } catch (error) {
+                    console.error(chalk.red(`  Failed to submit auto-reject: ${(error as Error).message}`))
+                }
+                return
+            }
+
+            sessionPaused = true
+            try {
+                await pauseUiAround(async () => {
+                    const approved = await promptForToolApproval(toolName, rawArguments)
+                    await submitApprovalDecision(apiKey, { runId, stepId, approved })
+                })
+            } catch (error) {
+                console.error(chalk.red(`  Failed to submit approval decision: ${(error as Error).message}`))
+            } finally {
+                sessionPaused = false
+            }
+        }
+
         const session = await openSessionStream(apiKey, {
             verbose: isVerbose,
-            isPaused: () => sessionPaused
+            isPaused: () => sessionPaused,
+            onEvent: handleSessionEvent
         })
         const closeSession = session.close
 

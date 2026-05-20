@@ -12,7 +12,11 @@ export const imageEditTool = defineSessionTool({
     name: "image_edit",
     description:
         "Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see.",
-    execute: async ({ image_url, prompt }) => {
+    execute: async ({ image_url, prompt }, runContext) => {
+        if (!runContext?.context) {
+            throw new Error("No context provided")
+        }
+        const organizationId = runContext.context.user.organizationId
         assertInternalGcsBucketUrl(image_url)
 
         // 1. Download source image
@@ -21,7 +25,7 @@ export const imageEditTool = defineSessionTool({
         const mimeType = (downloadResponse.headers["content-type"] || "image/png").split(";")[0].trim()
         const base64Image = imageBuffer.toString("base64")
 
-        logger.info("Sending image to Gemini for editing", { image_url, prompt, mimeType })
+        logger.info("Sending image to Gemini for editing", { image_path: new URL(image_url).pathname, mimeType })
 
         // 2. Call Gemini image model
         const ai = new GoogleGenAI({ apiKey: gemini.apiKey })
@@ -47,7 +51,7 @@ export const imageEditTool = defineSessionTool({
         const ext = outputMimeType.split("/")[1] || "png"
 
         // 4. Upload to GCS
-        const storageKey = buildImageEditKey(image_url, prompt)
+        const storageKey = buildImageEditKey(organizationId, image_url, prompt)
         const storedFile = await ensureStoredWithMetadata(storageKey, async () => ({
             data: outputBuffer,
             mimeType: outputMimeType,
@@ -58,7 +62,7 @@ export const imageEditTool = defineSessionTool({
             throw new Error("Failed to store the edited image.")
         }
 
-        logger.info("Image edit complete", { image_url, storageKey, url: storedFile.url })
+        logger.info("Image edit complete", { storageKey })
 
         return {
             success: true,

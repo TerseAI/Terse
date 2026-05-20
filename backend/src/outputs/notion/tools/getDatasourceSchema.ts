@@ -116,6 +116,6 @@ The schema information returned by this tool should be used to properly format p
     }
 })
 
-export const validateNotionGetSchema: ToolACLValidator<"notion_get_schema", NotionConfig> = async ({ args, configs }) => {
-    return verifyNotionDatabaseInScope(args.integrationId, args.databaseId, configs)
+export const validateNotionGetSchema: ToolACLValidator<"notion_get_schema", NotionConfig> = async ({ args, configs, runContext }) => {
+    return verifyNotionDatabaseInScope(args.integrationId, runContext.context.user.organizationId, args.databaseId, configs)
 }

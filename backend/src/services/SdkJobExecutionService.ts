@@ -10,14 +10,16 @@ import { settings } from "../config/settings"
 import logger from "../logger"
 import { db } from "../prismaClient"
 import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../realtimeSocket"
-import { SDKAgent, project_deploys } from "../types/prisma"
+import { AgentWithRelations, project_deploys } from "../types/prisma"
 import { createSandboxToken } from "../utility/apiTokens"
 import { getActiveDeployForProject } from "../utility/projectHelper"
+import { shellQuote } from "../utility/shellEscape"
 import { extractErrorMessage } from "../utility/strings"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 import { SdkSandboxImageService } from "./SdkSandboxImageService"
+import { SecretService } from "./SecretService"
 import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
@@ -26,7 +28,7 @@ import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLay
 interface SdkJobExecutionParams {
     gcsKey: string
     runId: string
-    agent: SDKAgent
+    agent: AgentWithRelations
     orgId: string
     userId: string
     user: User
@@ -109,7 +111,13 @@ export class SdkJobExecutionService {
             sandboxTokenId = tokenId
             logger.info("SDK sandbox: created temp API token", { runId, agentId: agent.id })
 
+            const secretService = SecretService.getInstance()
+            const projectSecretValues = await secretService.getSecrets({ type: "project", secret: { projectId: agent.project.id } })
+
             const sandboxEnv = {
+                // Make sure to keep this first as the sandbox env,
+                // so that the following env variables take precedence.
+                ...projectSecretValues,
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: settings.urls.backend,
                 TERSE_RUN_ID: runId,
@@ -159,7 +167,7 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async resolveOrPrepareSourceImage(params: { agent: SDKAgent; gcsKey: string; orgId: string; runId: string }): Promise<ResolvedSdkSourceImage> {
+    private async resolveOrPrepareSourceImage(params: { agent: AgentWithRelations; gcsKey: string; orgId: string; runId: string }): Promise<ResolvedSdkSourceImage> {
         const { agent, gcsKey, orgId, runId } = params
         const activeDeploy = await getActiveDeployForProject(agent.project.id)
         if (!activeDeploy) {
@@ -186,7 +194,7 @@ export class SdkJobExecutionService {
     }
 
     private async prepareAndLinkSourceImage(params: {
-        agent: SDKAgent
+        agent: AgentWithRelations
         gcsKey: string
         orgId: string
         runId: string
@@ -354,7 +362,7 @@ export class SdkJobExecutionService {
             runSandboxCommandStreaming: async (label, command) => {
                 return this.runSandboxCommandStreaming(sb, label, command, sandboxEnv, runId, agentId)
             },
-            escapeShellArg: value => this.escapeShellArg(value),
+            escapeShellArg: shellQuote,
             emitSandboxStatus: (stage, status, opts) => this.emitSandboxStatus(stage, status, opts)
         }
     }
@@ -542,10 +550,6 @@ export class SdkJobExecutionService {
         }
 
         return trimmed.slice(0, limit)
-    }
-
-    private escapeShellArg(value: string): string {
-        return `'${value.replace(/'/g, "'\\''")}'`
     }
 
     private parseRuntime(runtime: string): SdkProjectRuntime {

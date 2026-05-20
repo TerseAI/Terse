@@ -9,7 +9,7 @@ import { z } from "zod"
 import { AttioIntegrationManager } from "../integrations/AttioIntegration"
 import logger from "../logger"
 import { db } from "../prismaClient"
-import { SecretField, getSecret } from "../services/SecretService"
+import { SecretService } from "../services/SecretService"
 
 const webhookParamsSchema = z.object({ triggerId: z.string() })
 
@@ -104,16 +104,16 @@ export async function handleAttioWebhook(req: Request, res: Response) {
             res.status(404).json({ error: "Trigger not found" })
             return
         }
-
-        const secret = await getSecret(IntegrationType.ATTIO, triggerId, SecretField.WebhookSecret)
-        if (!secret) {
+        const secretService = SecretService.getInstance()
+        const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: triggerId } })
+        if (!secret.webhookSecret) {
             logger.error("Attio webhook: signing secret not found", { triggerId })
             res.status(500).json({ error: "Webhook secret missing" })
             return
         }
 
         const headerSignature = req.get("attio-signature") ?? req.get("x-attio-signature")
-        if (!verifyAttioSignature(headerSignature, rawBody, secret)) {
+        if (!verifyAttioSignature(headerSignature, rawBody, secret.webhookSecret)) {
             logger.error("Attio webhook: invalid signature", { triggerId })
             res.status(401).json({ error: "Invalid signature" })
             return

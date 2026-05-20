@@ -21,7 +21,7 @@ function isGrpcError(error: unknown): error is GrpcError {
     return typeof error === "object" && error !== null && "code" in error
 }
 
-export function isSecretManagerNotFoundError(error: unknown): boolean {
+function isSecretManagerNotFoundError(error: unknown): boolean {
     if (!isGrpcError(error)) {
         return false
     }
@@ -29,7 +29,7 @@ export function isSecretManagerNotFoundError(error: unknown): boolean {
     return error.code === GRPC_NOT_FOUND || error.code === "5"
 }
 
-export function isSecretManagerDestroyedError(error: unknown): boolean {
+function isSecretManagerDestroyedError(error: unknown): boolean {
     return isGrpcError(error) && error.code === GRPC_FAILED_PRECONDITION && typeof error.message === "string" && error.message.includes("DESTROYED")
 }
 
@@ -48,10 +48,18 @@ type SecretVersionCleanupReport = {
 }
 
 export class SecretManagerClient {
+    private static instance: SecretManagerClient
     private client: SecretManagerServiceClient
     private projectId: string
 
-    constructor() {
+    public static getInstance(): SecretManagerClient {
+        if (!SecretManagerClient.instance) {
+            SecretManagerClient.instance = new SecretManagerClient()
+        }
+        return SecretManagerClient.instance
+    }
+
+    private constructor() {
         try {
             const serviceAccountBase64 = gcp.serviceAccountBase64
 
@@ -299,38 +307,6 @@ export class SecretManagerClient {
     }
 
     /**
-     * Best-effort cleanup of old secret versions after a new version is added.
-     * Destroys all ENABLED versions except the one just created.
-     */
-    private async destroyPreviousVersions(secretPath: string, currentVersionName: string): Promise<void> {
-        try {
-            const [versions] = await this.client.listSecretVersions({
-                parent: secretPath,
-                filter: "state:ENABLED"
-            })
-
-            const oldVersions = versions.filter(v => v.name && v.name !== currentVersionName)
-            if (oldVersions.length === 0) {
-                return
-            }
-
-            await Promise.allSettled(
-                oldVersions.map(async v => {
-                    try {
-                        await this.client.destroySecretVersion({ name: v.name! })
-                    } catch (error) {
-                        logger.warn("Failed to destroy old secret version", { version: v.name, error })
-                    }
-                })
-            )
-
-            logger.debug("Destroyed old secret versions", { secretPath, count: oldVersions.length })
-        } catch (error) {
-            logger.warn("Failed to list/destroy old secret versions", { secretPath, error })
-        }
-    }
-
-    /**
      * Creates a new secret or adds a new version
      */
     async createOrUpdateSecret(secretId: string, value: string): Promise<void> {
@@ -394,6 +370,17 @@ export class SecretManagerClient {
         }
     }
 
+    async getSecretOrNull(secretId: string): Promise<string | null> {
+        try {
+            return await this.getSecret(secretId)
+        } catch (error) {
+            if (isSecretManagerNotFoundError(error) || isSecretManagerDestroyedError(error)) {
+                return null
+            }
+            throw error
+        }
+    }
+
     async deleteSecret(secretId: string): Promise<void> {
         try {
             await this.client.deleteSecret({
@@ -410,17 +397,4 @@ export class SecretManagerClient {
             throw error
         }
     }
-}
-
-function createSecretManagerClient(): SecretManagerClient {
-    return new SecretManagerClient()
-}
-
-let secretManagerClient: SecretManagerClient | null = null
-
-export function getSecretManagerClient(): SecretManagerClient {
-    if (!secretManagerClient) {
-        secretManagerClient = createSecretManagerClient()
-    }
-    return secretManagerClient
 }

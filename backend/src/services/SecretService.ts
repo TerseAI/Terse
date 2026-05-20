@@ -1,182 +1,232 @@
-import { IntegrationType } from "terse-types/Integrations"
+import { z } from "zod"
 
-import { gcp } from "../config/settings"
+import { INTEGRATION_REGISTRY, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../logger"
-import { SecretManagerClient, getSecretManagerClient, isSecretManagerDestroyedError, isSecretManagerNotFoundError } from "../utility/secretManagerClient"
+import { SecretManagerClient } from "../utility/secretManagerClient"
 
-/** System integrations that do not store secrets in GCP Secret Manager. */
-type SystemIntegration = IntegrationType.TERSE | IntegrationType.CRON_JOB
+export class SecretService {
+    private static instance: SecretService
+    private constructor(private readonly secretManagerClient: SecretManagerClient = SecretManagerClient.getInstance()) {}
 
-/**
- * Integration types that store secrets. Derived from IntegrationType via Exclude,
- * so adding a new IntegrationType automatically includes it here unless it is
- * added to SystemIntegration.
- */
-export type SecretIntegrationType = Exclude<IntegrationType, SystemIntegration>
-
-export enum SecretField {
-    AccessToken = "access_token",
-    RefreshToken = "refresh_token",
-    ApiKey = "api_key",
-    AppKey = "app_key",
-    IntegrationToken = "integration_token",
-    WebhookSecret = "webhook_secret",
-    AuthedUserAccessToken = "authed_user_access_token",
-    PrivateKey = "private_key",
-    PrivateKeyPassphrase = "private_key_passphrase"
-}
-
-const SECRET_CACHE_TTL_MS = 5 * 60 * 1000
-
-interface CachedSecret {
-    value: string
-    expiresAt: number
-}
-
-class SecretService {
-    private cache = new Map<string, CachedSecret>()
-    private secretManagerClient: SecretManagerClient | null = null
-    private clientInitializationFailed = false
-
-    isGsmAvailable(): boolean {
-        return Boolean(gcp.serviceAccountBase64 && gcp.projectId)
+    public static getInstance(): SecretService {
+        if (!SecretService.instance) {
+            SecretService.instance = new SecretService()
+        }
+        return SecretService.instance
     }
 
-    private getClient(): SecretManagerClient {
-        if (!this.isGsmAvailable()) {
-            throw new Error("GSM is not configured. Hard cutover requires GCP_SERVICE_ACCOUNT_BASE64 and GCP_PROJECT_ID.")
-        }
+    async createSecrets(arg: CreateSecretsArg): Promise<void> {
+        const value = arg.secret.value
+        if (Object.keys(value).length === 0) return
 
-        if (this.secretManagerClient) {
-            return this.secretManagerClient
-        }
+        const blobId = this.blobIdFor(arg)
+        const existing = await this.readBlob(blobId)
 
-        if (this.clientInitializationFailed) {
-            throw new Error("Secret Manager client initialization previously failed")
+        const merged: Record<string, unknown> = { ...existing }
+        for (const [k, v] of Object.entries(value)) {
+            if (v !== undefined) merged[k] = v
         }
+        const validated = this.partialSchemaFor(arg).parse(merged) as Record<string, unknown>
 
+        await this.writeBlob(blobId, validated)
+    }
+
+    async getSecrets<A extends GetSecretsArg>(arg: A): Promise<GetSecretsReturn<A>> {
+        switch (arg.type) {
+            case "integration":
+                return this.getIntegrationSecrets(arg.secret) as Promise<GetSecretsReturn<A>>
+            case "project":
+                return this.getProjectSecrets(arg.secret) as Promise<GetSecretsReturn<A>>
+            default:
+                throw arg satisfies never
+        }
+    }
+
+    async tryGetSecrets<A extends GetSecretsArg>(arg: A): Promise<GetSecretsReturn<A> | null> {
         try {
-            this.secretManagerClient = getSecretManagerClient()
-            return this.secretManagerClient
+            return await this.getSecrets(arg)
         } catch (error) {
-            this.clientInitializationFailed = true
-            logger.error("Failed to initialize Secret Manager client.", { error })
+            if (error instanceof SecretNotFoundError) return null
             throw error
         }
     }
 
-    private sanitizeSecretIdComponent(component: string): string {
-        return component.replace(/[^a-zA-Z0-9_-]/g, "-")
+    async deleteSecrets(arg: GetSecretsArg | GetSecretsArg[]): Promise<void> {
+        const list = Array.isArray(arg) ? arg : [arg]
+        if (list.length === 0) return
+
+        const results = await Promise.allSettled(list.map(a => this.deleteBlob(this.blobIdFor(a))))
+
+        const failures = results.flatMap((r, i) => (r.status === "rejected" ? [{ arg: list[i], reason: r.reason }] : []))
+        if (failures.length > 0) {
+            logger.error("Failed to delete some secret blobs", { failureCount: failures.length, totalCount: list.length, failures })
+        }
     }
 
-    private buildSecretId(integrationType: SecretIntegrationType, recordId: string, field: SecretField): string {
-        const secretId = `${this.sanitizeSecretIdComponent(integrationType)}-${this.sanitizeSecretIdComponent(recordId)}-${this.sanitizeSecretIdComponent(field)}`
-        return secretId.slice(0, 255)
-    }
+    async deleteSecretFields(arg: DeleteSecretFieldsArg): Promise<boolean> {
+        const blobId = this.blobIdFor(arg)
+        const blob = await this.readBlob(blobId)
 
-    private getCachedSecret(secretId: string): string | null {
-        const cached = this.cache.get(secretId)
-        if (!cached) {
-            return null
+        let mutated = false
+        for (const key of arg.secret.keys) {
+            if (key in blob) {
+                delete blob[key]
+                mutated = true
+            }
         }
 
-        if (Date.now() >= cached.expiresAt) {
-            this.cache.delete(secretId)
-            return null
+        if (!mutated) return false
+        if (Object.keys(blob).length === 0) {
+            await this.deleteBlob(blobId)
+            return true
         }
 
-        return cached.value
+        const validated = this.partialSchemaFor(arg).parse(blob) as Record<string, unknown>
+        await this.writeBlob(blobId, validated)
+        return true
     }
 
-    private setCachedSecret(secretId: string, value: string): void {
-        this.cache.set(secretId, {
-            value,
-            expiresAt: Date.now() + SECRET_CACHE_TTL_MS
-        })
+    async listSecretKeys(arg: GetSecretsArg): Promise<string[]> {
+        const blob = await this.readBlob(this.blobIdFor(arg))
+        return Object.keys(blob).sort()
     }
 
-    async storeSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField, value: string): Promise<void> {
-        const client = this.getClient()
-        const secretId = this.buildSecretId(integrationType, recordId, field)
-        await client.createOrUpdateSecret(secretId, value)
-        this.cache.delete(secretId)
-    }
-
-    async getSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<string | null> {
-        const client = this.getClient()
-        const secretId = this.buildSecretId(integrationType, recordId, field)
-
-        const cached = this.getCachedSecret(secretId)
-        if (cached !== null) {
-            return cached
+    private async getIntegrationSecrets<T extends IntegrationKey>(arg: { integrationType: T; recordId: string }): Promise<IntegrationBlob<T>> {
+        const blobId = this.blobIdFor({ type: "integration", secret: arg })
+        const validated = await this.readAndValidateOrNull(blobId, this.schemaFor(arg.integrationType))
+        if (!validated) {
+            throw new SecretNotFoundError(`Integration secret ${blobId} not found`)
         }
+        return validated as IntegrationBlob<T>
+    }
 
+    private async getProjectSecrets(arg: ProjectGetSecretsArg["secret"]): Promise<Record<string, string>> {
+        const blobId = this.blobIdFor({ type: "project", secret: arg })
+        const validated = await this.readAndValidateOrNull(blobId, projectBlobSchema)
+        return validated ?? {}
+    }
+
+    private blobIdFor(arg: GetSecretsArg): string {
+        switch (arg.type) {
+            case "integration":
+                return [arg.secret.integrationType.toLowerCase(), arg.secret.recordId].join("-")
+            case "project":
+                return ["project", arg.secret.projectId].join("-").slice(0, 255)
+            default:
+                throw arg satisfies never
+        }
+    }
+
+    private async readBlob(blobId: string): Promise<Record<string, unknown>> {
+        return (await this.readBlobOrNull(blobId)) ?? {}
+    }
+
+    private async readBlobOrNull(blobId: string): Promise<Record<string, unknown> | null> {
+        const raw = await this.secretManagerClient.getSecretOrNull(blobId)
+        if (raw === null) return null
         try {
-            const value = await client.getSecret(secretId)
-            this.setCachedSecret(secretId, value)
-            return value
-        } catch (error) {
-            if (isSecretManagerNotFoundError(error) || isSecretManagerDestroyedError(error)) {
+            const parsed = JSON.parse(raw)
+            if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+                logger.error("Secret blob is not a JSON object", { blobId })
                 return null
             }
-            throw error
+            return parsed as Record<string, unknown>
+        } catch (error) {
+            logger.error("Failed to parse secret blob JSON", { blobId, error })
+            return null
         }
     }
 
-    async deleteSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<void> {
-        const secretId = this.buildSecretId(integrationType, recordId, field)
-        this.cache.delete(secretId)
+    private partialSchemaFor(arg: GetSecretsArg): z.ZodType {
+        switch (arg.type) {
+            case "integration":
+                return this.schemaFor(arg.secret.integrationType).partial()
+            case "project":
+                return projectBlobSchema
+            default:
+                throw arg satisfies never
+        }
+    }
 
-        const client = this.getClient()
-        await client.deleteSecret(secretId)
+    private schemaFor(integrationType: IntegrationKey): z.ZodObject {
+        const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
+        if (!manager || !("secretSchema" in manager) || !manager.secretSchema) {
+            throw new Error(`No secret schema registered for integration type: ${integrationType}`)
+        }
+        return manager.secretSchema
+    }
+
+    private async writeBlob(blobId: string, blob: Record<string, unknown>): Promise<void> {
+        const serialized = JSON.stringify(blob)
+        if (Buffer.byteLength(serialized, "utf8") > MAX_BLOB_BYTES) {
+            throw new Error(`Secret blob exceeds ${MAX_BLOB_BYTES} bytes`)
+        }
+
+        await this.secretManagerClient.createOrUpdateSecret(blobId, serialized)
+    }
+
+    private async deleteBlob(blobId: string): Promise<void> {
+        await this.secretManagerClient.deleteSecret(blobId)
+    }
+
+    private async readAndValidateOrNull<S extends z.ZodTypeAny>(blobId: string, schema: S): Promise<z.infer<S> | null> {
+        const blob = await this.readBlobOrNull(blobId)
+        if (blob === null) return null
+        const result = schema.safeParse(blob)
+        if (!result.success) {
+            logger.error("Secret blob failed schema validation", { blobId, issues: result.error.issues })
+            return null
+        }
+        return result.data
     }
 }
 
-let secretService: SecretService | null = null
+const MAX_BLOB_BYTES = 60 * 1024
 
-function getSecretService(): SecretService {
-    if (!secretService) {
-        secretService = new SecretService()
+const projectBlobSchema = z.record(z.string(), z.string())
+
+type RegistryEntry = IntegrationManagers[number]
+type ManagerWithSchema = Extract<RegistryEntry, { secretSchema: unknown }>
+
+type IntegrationKey = ManagerWithSchema["integrationType"]
+type IntegrationBlob<T extends IntegrationKey> = z.infer<Extract<ManagerWithSchema, { integrationType: T }>["secretSchema"]>
+type IntegrationField<T extends IntegrationKey> = keyof IntegrationBlob<T>
+
+export type GetSecretsArg = IntegrationGetSecretsArg | ProjectGetSecretsArg
+
+type IntegrationGetSecretsArg<T extends IntegrationKey = IntegrationKey> = {
+    type: "integration"
+    secret: { integrationType: T; recordId: string }
+}
+
+type ProjectGetSecretsArg = {
+    type: "project"
+    secret: { projectId: string }
+}
+
+type GetSecretsReturn<A> = A extends IntegrationGetSecretsArg<infer T> ? IntegrationBlob<T> : A extends ProjectGetSecretsArg ? Record<string, string> : never
+
+type WithSecretField<A, F> = A extends { secret: infer S } ? Omit<A, "secret"> & { secret: S & F } : never
+
+type CreateSecretsArg = IntegrationCreateSecretsArg | ProjectCreateSecretsArg
+
+type IntegrationCreateSecretsArg = {
+    [K in IntegrationKey]: WithSecretField<IntegrationGetSecretsArg<K>, { value: Partial<IntegrationBlob<K>> }>
+}[IntegrationKey]
+
+type ProjectCreateSecretsArg = WithSecretField<ProjectGetSecretsArg, { value: Record<string, string> }>
+
+type DeleteSecretFieldsArg = IntegrationDeleteSecretFieldsArg | ProjectDeleteSecretFieldsArg
+
+type IntegrationDeleteSecretFieldsArg = {
+    [K in IntegrationKey]: WithSecretField<IntegrationGetSecretsArg<K>, { keys: readonly IntegrationField<K>[] }>
+}[IntegrationKey]
+
+type ProjectDeleteSecretFieldsArg = WithSecretField<ProjectGetSecretsArg, { keys: readonly string[] }>
+
+export class SecretNotFoundError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "SecretNotFoundError"
     }
-    return secretService
-}
-
-export async function storeSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField, value: string): Promise<void> {
-    return getSecretService().storeSecret(integrationType, recordId, field, value)
-}
-
-export async function getSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<string | null> {
-    return getSecretService().getSecret(integrationType, recordId, field)
-}
-
-async function deleteSecret(integrationType: SecretIntegrationType, recordId: string, field: SecretField): Promise<void> {
-    return getSecretService().deleteSecret(integrationType, recordId, field)
-}
-
-function isGsmAvailable(): boolean {
-    return getSecretService().isGsmAvailable()
-}
-
-/**
- * Best-effort secret cleanup for use after DB deletes.
- * Logs errors instead of throwing so the caller's DB delete is never rolled back
- * due to a GSM failure. Orphaned GSM secrets are harmless since the DB record
- * they belonged to no longer exists.
- */
-export async function deleteSecretsBestEffort(entries: Array<{ integrationType: SecretIntegrationType; recordId: string; field: SecretField }>): Promise<void> {
-    const service = getSecretService()
-    await Promise.allSettled(
-        entries.map(async entry => {
-            try {
-                await service.deleteSecret(entry.integrationType, entry.recordId, entry.field)
-            } catch (error) {
-                logger.error("Best-effort GSM secret cleanup failed (orphaned secret)", {
-                    integrationType: entry.integrationType,
-                    recordId: entry.recordId,
-                    field: entry.field,
-                    error
-                })
-            }
-        })
-    )
 }

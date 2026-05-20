@@ -43,10 +43,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             throw new Error("package.json is required to build the TypeScript sandbox image")
         }
 
-        await context.ensureSandboxCommand(
-            "prepare TypeScript image filesystem",
-            `export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -y -qq unzip >/dev/null && mkdir -p ${templateDir}`
-        )
+        await context.ensureSandboxCommand("prepare TypeScript image filesystem", `mkdir -p ${templateDir}`)
 
         await context.writeFile(`${context.templateDir}/package.json`, packageJson)
 
@@ -78,7 +75,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, () => context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`))
 
         await runSandboxStage(context, SandboxStage.INSTALLING_CLI, () =>
-            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`)
+            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`)
         )
 
         return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --no-verbose`))

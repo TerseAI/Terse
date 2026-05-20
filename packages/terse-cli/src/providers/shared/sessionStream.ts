@@ -9,8 +9,6 @@ import { BACKEND_URL } from "../../config.js"
 
 export type SessionHandle = SessionStreamHandle
 
-export type { SessionStreamEvent }
-
 type SessionStreamOptions = {
     verbose?: boolean
     isPaused?: () => boolean
@@ -127,7 +125,7 @@ function mapSessionStreamError(error: unknown): unknown {
     if (error instanceof SessionStreamError) {
         if (error.status === 401 || error.status === 403) {
             return new CliError("not_authenticated", "Not authenticated.", {
-                detail: "Your TERSE_API_KEY is missing, expired, or invalid. Run `terse login` to re-authenticate, or set a valid TERSE_API_KEY in your environment.",
+                detail: "Your TERSE_API_KEY is missing, expired, or invalid. Run `terse auth login` to re-authenticate, or set a valid TERSE_API_KEY in your environment.",
                 actionRequired: true,
                 exitCode: ErrorCode.BAD_ARGUMENTS
             })

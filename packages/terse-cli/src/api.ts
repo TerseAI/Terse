@@ -6,6 +6,7 @@ import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHis
 
 import { CliError, ErrorCode } from "./cliError.js"
 import { BACKEND_URL } from "./config.js"
+import { ensureDotenvLoaded } from "./dotenv.js"
 import { getStoredApiKey } from "./userConfig.js"
 
 /** Thrown by `fetchWithAuth` on any non-2xx. Exposes `status` and the parsed body so callers can branch on specific failures. */
@@ -17,17 +18,6 @@ export class ApiError extends Error {
         super(`HTTP ${status} — ${body.error || JSON.stringify(body)}`)
         this.name = "ApiError"
     }
-}
-
-let dotenvLoadedFor: string | null = null
-
-function ensureDotenvLoaded(cwd: string = process.cwd()): void {
-    if (dotenvLoadedFor === cwd) return
-    const envPath = path.resolve(cwd, ".env")
-    if (fs.existsSync(envPath)) {
-        dotenv.config({ path: envPath, quiet: true })
-    }
-    dotenvLoadedFor = cwd
 }
 
 function readEnvVar(name: string): string | null {
@@ -65,8 +55,8 @@ export function readApiKeyOrBail(options?: { title?: string; detail?: string }):
     const apiKey = readApiKey()
     if (apiKey) return apiKey
 
-    throw new CliError("not_authenticated", options?.title?.trim() || "Not authenticated. Run `terse login` first.", {
-        detail: options?.detail?.trim() || "Run `terse login` to authenticate, or set TERSE_API_KEY in your environment.",
+    throw new CliError("not_authenticated", options?.title?.trim() || "Not authenticated. Run `terse auth login` first.", {
+        detail: options?.detail?.trim() || "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment.",
         actionRequired: true,
         exitCode: ErrorCode.BAD_ARGUMENTS
     })

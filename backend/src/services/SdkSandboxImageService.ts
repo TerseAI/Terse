@@ -4,6 +4,7 @@ import crypto from "crypto"
 
 import logger from "../logger"
 import { db } from "../prismaClient"
+import { shellQuote } from "../utility/shellEscape"
 
 import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
@@ -23,6 +24,8 @@ const ACTIVE_RUN_STATUSES = [PrismaRunHistoryStatus.in_progress, PrismaRunHistor
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
 const DEFAULT_CLEANUP_BATCH_SIZE = 50
+
+const APT_GET_INSTALL_FLAGS = "apt-get -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3 -o DPkg::Lock::Timeout=120"
 
 interface PreparedSdkSandboxImages {
     runtime: SdkProjectRuntime
@@ -366,7 +369,7 @@ export class SdkSandboxImageService {
             writeFile: async (path, content) => {
                 await this.writeFileToSandbox(sb, path, content)
             },
-            escapeShellArg: value => this.escapeShellArg(value)
+            escapeShellArg: shellQuote
         }
 
         await executor.buildDependencyImage(buildContext)
@@ -391,9 +394,9 @@ export class SdkSandboxImageService {
         await this.ensureSandboxCommand(
             sb,
             "extract SDK source",
-            `mkdir -p ${this.escapeShellArg(SDK_SOURCE_IMAGE_PROJECT_DIR)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -y -qq unzip >/dev/null)) && unzip -o ${this.escapeShellArg(
+            `mkdir -p ${shellQuote(SDK_SOURCE_IMAGE_PROJECT_DIR)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(
                 SDK_SOURCE_IMAGE_CODE_ZIP_PATH
-            )} -d ${this.escapeShellArg(SDK_SOURCE_IMAGE_PROJECT_DIR)}`,
+            )} -d ${shellQuote(SDK_SOURCE_IMAGE_PROJECT_DIR)}`,
             executor.runtime
         )
         await executor.prepareSourceImage({
@@ -402,7 +405,7 @@ export class SdkSandboxImageService {
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, executor.runtime)
             },
-            escapeShellArg: value => this.escapeShellArg(value)
+            escapeShellArg: shellQuote
         })
 
         const image = await sb.snapshotFilesystem()
@@ -457,9 +460,39 @@ export class SdkSandboxImageService {
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, runtime: SdkProjectRuntime): Promise<void> {
-        const result = await this.runSandboxCommand(sb, command)
+        let result: SandboxCommandResult
+        try {
+            result = await this.runSandboxCommand(sb, command)
+        } catch (error) {
+            await this.terminateSandboxAfterFailure(sb, label, runtime, error)
+            throw error
+        }
+
         if (result.exitCode !== 0) {
-            throw new Error(`${label} failed for ${runtime}: ${this.buildFailureMessage(result)}`)
+            const failureMessage = this.buildFailureMessage(result)
+            await this.terminateSandboxAfterFailure(sb, label, runtime, failureMessage)
+            throw new Error(`${label} failed for ${runtime}: ${failureMessage}`)
+        }
+    }
+
+    // Terminate the build sandbox so the next deploy starts from a clean image rather than reusing
+    // a poisoned filesystem (e.g. held apt locks, partial extraction, half-installed packages).
+    private async terminateSandboxAfterFailure(sb: Sandbox, label: string, runtime: SdkProjectRuntime, reason: unknown): Promise<void> {
+        try {
+            await sb.terminate()
+            logger.warn("SDK image build: terminated sandbox after failure", {
+                label,
+                runtime,
+                sandboxId: sb.sandboxId,
+                reason: reason instanceof Error ? reason.message : String(reason).slice(0, 200)
+            })
+        } catch (terminateError) {
+            logger.warn("SDK image build: terminate after failure failed", {
+                label,
+                runtime,
+                sandboxId: sb.sandboxId,
+                errorMessage: terminateError instanceof Error ? terminateError.message : String(terminateError)
+            })
         }
     }
 
@@ -486,10 +519,6 @@ export class SdkSandboxImageService {
         }
 
         return `Process exited with code ${result.exitCode}`
-    }
-
-    private escapeShellArg(value: string): string {
-        return `'${value.replace(/'/g, `'\\''`)}'`
     }
 }
 

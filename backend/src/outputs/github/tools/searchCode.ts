@@ -2,13 +2,15 @@ import type { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { GitHubConfig, IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner"
+import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../../express"
 import logger from "../../../logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../utility/strings"
-import { ToolACLValidator, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
+import { ToolACLValidator, denyToolACL, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
 import { createGitHubClient, getAllowedRepoNamesForConfigs, getGitHubAccessToken, searchCode } from "../githubApiClient"
+
+import { assertNoSearchQualifiers, assertSimpleQualifierValue } from "./searchSanitize"
 
 /**
  * Tool for semantic code search in GitHub repositories.
@@ -46,24 +48,25 @@ Tips:
             throw new Error("No repositories provided. The repositoryNames parameter must contain at least one repository.")
         }
 
-        const accessToken = await getGitHubAccessToken(runContext.context.user.id)
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id, runContext.context.user.organizationId)
         if (!accessToken) {
             throw new Error(`GitHub access token not found for user`)
         }
 
         const client = createGitHubClient(accessToken)
 
-        // Build enhanced query with optional filters
-        let enhancedQuery = query
-        if (language) {
-            enhancedQuery += ` language:${language}`
-        }
-        if (filename) {
-            enhancedQuery += ` filename:${filename}`
-        }
-        if (path) {
-            enhancedQuery += ` path:${path}`
-        }
+        // Reject GitHub search qualifiers smuggled into the user-controlled
+        // query / filter fields (the admin's `repo:<allowed>` filters are
+        // OR'd, so an unsanitized `repo:victim/secret` here bypasses the ACL).
+        assertNoSearchQualifiers(query, "query")
+        const enhancedQuery = [
+            query,
+            assertSimpleQualifierValue(language, "language") ? `language:${language}` : null,
+            assertSimpleQualifierValue(filename, "filename") ? `filename:${filename}` : null,
+            assertSimpleQualifierValue(path, "path") ? `path:${path}` : null
+        ]
+            .filter(Boolean)
+            .join(" ")
 
         const pageNumber = Math.max(1, page ?? 1)
         const normalizedPerPage = Math.min(perPage || 10, 100)
@@ -156,7 +159,7 @@ Tips:
             }
 
             logger.debug("[github_searchCode] Returning action in result", {
-                userId: runContext?.context?.user?.id || "unknown",
+                userId: runContext.context.user.id,
                 action
             })
 
@@ -182,16 +185,18 @@ export const validateSearchGitHubCode: ToolACLValidator<"searchGitHubCode", GitH
 // GitHub repository names (owner/repo) are case-insensitive, so we lowercase both sides before comparison.
 const normalizeGitHubRepoName = (name: string): string => name.toLowerCase()
 
-export async function validateGitHubRepositoryNames(repositoryNames: readonly string[], configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>> | undefined) {
-    const userId = runContext?.context?.user?.id
-    if (!userId) return { ok: true }
-    const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
+export async function validateGitHubRepositoryNames(repositoryNames: readonly string[], configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>>) {
+    const userId = runContext.context.user.id
+    const organizationId = runContext.context.user.organizationId
+    if (!userId || !organizationId) return denyToolACL("missing user context")
+    const allowed = await getAllowedRepoNamesForConfigs(configs, userId, organizationId)
     return requireAllInAllowedList(repositoryNames.map(normalizeGitHubRepoName), Array.from(allowed, normalizeGitHubRepoName), "repositoryNames")
 }
 
-export async function validateGitHubRepository(repository: string, configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>> | undefined) {
-    const userId = runContext?.context?.user?.id
-    if (!userId) return { ok: true }
-    const allowed = await getAllowedRepoNamesForConfigs(configs, userId)
+export async function validateGitHubRepository(repository: string, configs: GitHubConfig[], runContext: RunContext<SessionWithTracking<Session>>) {
+    const userId = runContext.context.user.id
+    const organizationId = runContext.context.user.organizationId
+    if (!userId || !organizationId) return denyToolACL("missing user context")
+    const allowed = await getAllowedRepoNamesForConfigs(configs, userId, organizationId)
     return requireInAllowedList(normalizeGitHubRepoName(repository), Array.from(allowed, normalizeGitHubRepoName), "repository")
 }
