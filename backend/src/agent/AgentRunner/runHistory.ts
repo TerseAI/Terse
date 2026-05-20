@@ -331,30 +331,14 @@ export async function clearPendingApprovalState(runId: string, organizationId: s
 export async function upsertSdkSkills(runId: string, organizationId: string, incoming: SkillConfigData[]): Promise<void> {
     if (incoming.length === 0) return
     const prisma = db()
-
-    // Serialize concurrent invocations on the same run via SELECT ... FOR
-    // UPDATE — without the lock, two parallel calls both read the existing
-    // sdk_skills, each merge their own additions, and the second write
-    // overwrites the first's. The contract is union-everything; the lock
-    // makes the contract hold.
-    await prisma.$transaction(async tx => {
-        const rows = await tx.$queryRaw<Array<{ sdk_skills: unknown; ok: boolean }>>`
-            SELECT rhr.sdk_skills, (a.organization_id = ${organizationId}) AS ok
-            FROM run_history_records rhr
-            JOIN automations a ON a.id = rhr.automation_id
-            WHERE rhr.id = ${runId}
-            FOR UPDATE OF rhr
-        `
-        const row = rows[0]
-        if (!row || !row.ok) return
-
-        const existing = readSdkSkillsFromJson(row.sdk_skills)
-        const merged = [...existing, ...incoming]
-        await tx.run_history_records.update({
-            where: { id: runId },
-            data: { sdk_skills: merged as unknown as Prisma.InputJsonValue }
-        })
-    })
+    await prisma.$executeRaw`
+        UPDATE run_history_records rhr
+        SET sdk_skills = COALESCE(rhr.sdk_skills, '[]'::jsonb) || ${JSON.stringify(incoming)}::jsonb
+        FROM automations a
+        WHERE rhr.id = ${runId}
+          AND a.id = rhr.automation_id
+          AND a.organization_id = ${organizationId}
+    `
 }
 
 /**
