@@ -343,7 +343,7 @@ export class GithubIntegrationManager
 
         const installationIdNum = installation.installation_id
 
-        const accessToken = await getGitHubAccessToken(userId)
+        const accessToken = await getGitHubAccessToken(userId, organizationId)
         if (!accessToken) {
             throw new Error("No GitHub token found for user. Please connect your GitHub account.")
         }

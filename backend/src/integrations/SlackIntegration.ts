@@ -5,7 +5,6 @@ import { Channel as SlackChannel } from "@slack/web-api/dist/types/response/Conv
 import { User as SlackUser } from "@slack/web-api/dist/types/response/UsersInfoResponse"
 import { Member as SlackUserMember } from "@slack/web-api/dist/types/response/UsersListResponse"
 import axios from "axios"
-import crypto from "crypto"
 import { Request, Response } from "express"
 import { ConfigData, ConfigType, SlackAttachments, SlackBlocks, SlackConfigSchema, SlackEventType, SlackFile, SlackFiles, SlackMessage, SlackTrigger } from "terse-types"
 import { ConfigurationFieldDefinition } from "terse-types"
@@ -1599,36 +1598,6 @@ async function handleSlackReactionAdded(event: SimplifiedSlackEvent, teamId: str
     } catch (error) {
         logger.error("Error handling Slack reaction_added", { error, teamId })
     }
-}
-
-function isValidSlackSig(req: Request) {
-    const ts = req.headers["x-slack-request-timestamp"] as string
-    const sig = req.headers["x-slack-signature"] as string
-
-    if (!ts || !sig) {
-        logger.warn("Missing timestamp or signature headers")
-        return false
-    }
-
-    // Use SLACK_SIGNING_SECRET for signature verification (fallback to CLIENT_SECRET for backwards compatibility)
-    const signingSecret = slackConfig.signingSecret || slackConfig.clientSecret
-    if (!signingSecret) {
-        logger.warn("No signing secret found - need SLACK_SIGNING_SECRET environment variable")
-        return false
-    }
-
-    // Convert buffer to string for signature validation
-    const body = Buffer.isBuffer(req.body) ? req.body.toString() : req.body
-
-    const baseString = `v0:${ts}:${body}`
-
-    const hmac = crypto.createHmac("sha256", signingSecret).update(baseString).digest("hex")
-
-    const expectedSig = `v0=${hmac}`
-
-    const isValid = sig === expectedSig
-
-    return isValid
 }
 
 /**

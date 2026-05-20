@@ -28,7 +28,7 @@ Note: This reads from the default branch (main/master). Large files may be trunc
             throw new Error("No context provided")
         }
 
-        const accessToken = await getGitHubAccessToken(runContext.context.user.id)
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id, runContext.context.user.organizationId)
         if (!accessToken) {
             throw new Error(`GitHub access token not found for user`)
         }
