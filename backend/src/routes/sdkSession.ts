@@ -35,10 +35,34 @@ export async function handleSessionEvents(req: Request, res: Response) {
     res.setHeader("Connection", "keep-alive")
     res.flushHeaders()
 
-    let cleanedUp = false
-    const cleanup = () => {
-        if (cleanedUp) return
-        cleanedUp = true
+    let closed = false
+    const safeWrite = (line: string): boolean => {
+        if (closed) return false
+        try {
+            return res.write(line)
+        } catch (error) {
+            logger.warn("[sdkSession] write failed; closing SSE stream", { error, sessionId, userId: user.id })
+            teardown()
+            return false
+        }
+    }
+
+    // Heartbeat refreshes the Redis TTL on the connection-cap set so a
+    // crashed process can't leak slots forever. SSE comment lines start
+    // with `:` and are ignored by the parser — used here as a keep-alive
+    // that proxies don't strip and that surfaces half-open sockets.
+    const heartbeat = setInterval(() => {
+        safeWrite(`: keepalive\n\n`)
+        void slot.refresh().catch(error => logger.warn("[sdkSession] slot.refresh failed", { error, sessionId, userId: user.id }))
+    }, CONNECTION_CAPS.SSE_SESSION.heartbeatIntervalMs)
+
+    const unsubscribe = onSessionEvent(sessionId, event => {
+        safeWrite(`data: ${JSON.stringify(event)}\n\n`)
+    })
+
+    const teardown = () => {
+        if (closed) return
+        closed = true
         clearInterval(heartbeat)
         unsubscribe()
         void slot.release().catch(error => logger.warn("[sdkSession] slot.release failed", { error, sessionId, userId: user.id }))
@@ -49,34 +73,10 @@ export async function handleSessionEvents(req: Request, res: Response) {
         }
     }
 
-    // Heartbeat refreshes the Redis TTL on the connection-cap set so a
-    // crashed process can't leak slots forever, and the try/catch on write
-    // is how we detect a half-open socket on which Node otherwise wouldn't
-    // surface a close event.
-    const heartbeat = setInterval(() => {
-        try {
-            res.write(`: ping\n\n`)
-            void slot.refresh().catch(error => logger.warn("[sdkSession] slot.refresh failed", { error, sessionId, userId: user.id }))
-        } catch {
-            cleanup()
-        }
-    }, CONNECTION_CAPS.SSE_SESSION.heartbeatIntervalMs)
+    req.on("close", teardown)
+    req.on("error", teardown)
+    req.on("aborted", teardown)
+    res.on("error", teardown)
 
-    const unsubscribe = onSessionEvent(sessionId, event => {
-        try {
-            res.write(`data: ${JSON.stringify(event)}\n\n`)
-        } catch {
-            cleanup()
-        }
-    })
-
-    req.on("close", cleanup)
-    req.on("error", cleanup)
-    req.on("aborted", cleanup)
-
-    try {
-        res.write(`data: ${JSON.stringify({ type: "session_started", sessionId })}\n\n`)
-    } catch {
-        cleanup()
-    }
+    safeWrite(`data: ${JSON.stringify({ type: "session_started", sessionId })}\n\n`)
 }

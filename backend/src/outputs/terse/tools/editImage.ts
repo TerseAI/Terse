@@ -12,7 +12,11 @@ export const imageEditTool = defineSessionTool({
     name: "image_edit",
     description:
         "Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see.",
-    execute: async ({ image_url, prompt }) => {
+    execute: async ({ image_url, prompt }, runContext) => {
+        if (!runContext?.context) {
+            throw new Error("No context provided")
+        }
+        const organizationId = runContext.context.user.organizationId
         assertInternalGcsBucketUrl(image_url)
 
         // 1. Download source image
@@ -47,7 +51,7 @@ export const imageEditTool = defineSessionTool({
         const ext = outputMimeType.split("/")[1] || "png"
 
         // 4. Upload to GCS
-        const storageKey = buildImageEditKey(image_url, prompt)
+        const storageKey = buildImageEditKey(organizationId, image_url, prompt)
         const storedFile = await ensureStoredWithMetadata(storageKey, async () => ({
             data: outputBuffer,
             mimeType: outputMimeType,

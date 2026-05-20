@@ -71,7 +71,7 @@ Use this information to understand temporal context.`
                 continue
             }
 
-            const instructions = await output.getRuntimeSystemInstructions({ userId: this.deps.session.user.id })
+            const instructions = await output.getRuntimeSystemInstructions({ userId: this.deps.session.user.id, organizationId: this.deps.session.user.organizationId })
             outputSections.push(instructions)
         }
 

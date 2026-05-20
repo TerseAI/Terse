@@ -64,4 +64,5 @@ export interface ToolboxEntry<TConfig extends ConfigData> {
 
 export interface RuntimeSystemInstructionsContext {
     userId: string
+    organizationId: string
 }

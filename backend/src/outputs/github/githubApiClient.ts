@@ -15,16 +15,13 @@ export function createGitHubClient(accessToken: string): Octokit {
     })
 }
 
-/**
- * Get the user's GitHub OAuth access token
- */
-export async function getGitHubAccessToken(userId: string): Promise<string | null> {
+export async function getGitHubAccessToken(userId: string, organizationId: string): Promise<string | null> {
     const githubToken = await db().github_app_tokens.findFirst({
-        where: { user_id: userId }
+        where: { user_id: userId, organization_id: organizationId }
     })
 
     if (!githubToken) {
-        logger.warn("No GitHub OAuth token found for user", { userId })
+        logger.warn("No GitHub OAuth token found for user in organization", { userId, organizationId })
         return null
     }
 
@@ -77,9 +74,9 @@ export async function getRepositoryNamesByIds(client: Octokit, repositoryIds: nu
     return new Map(pairs.filter((pair): pair is readonly [number, string] => pair !== null))
 }
 
-export async function getAllowedRepoNamesForConfigs(configs: GitHubConfig[], userId: string): Promise<Set<string>> {
+export async function getAllowedRepoNamesForConfigs(configs: GitHubConfig[], userId: string, organizationId: string): Promise<Set<string>> {
     const ids = Array.from(new Set(configs.flatMap(c => c.repositoryIds ?? []))).sort((a, b) => a - b)
-    const token = await getGitHubAccessToken(userId)
+    const token = await getGitHubAccessToken(userId, organizationId)
     if (!token) return new Set<string>()
     const client = createGitHubClient(token)
     const map = await getRepositoryNamesByIds(client, ids)

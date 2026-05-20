@@ -51,7 +51,7 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
     }
 
     async getRuntimeSystemInstructions(context: RuntimeSystemInstructionsContext): Promise<string> {
-        const accessToken = await getGitHubAccessToken(context.userId)
+        const accessToken = await getGitHubAccessToken(context.userId, context.organizationId)
         if (!accessToken) {
             logger.warn("Skipping GitHub repo-name hydration because no token was found", { userId: context.userId })
             return this.getSystemInstructions()
