@@ -1,169 +1,83 @@
-import { type JSX, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
+import ReactMarkdown from "react-markdown"
 
-interface Token {
-    id: string
-    value: string
+import remarkGfm from "remark-gfm"
+
+const markdownComponents = {
+    h1: ({ children }: { children?: React.ReactNode }) => <h1 className="text-2xl font-bold mb-4 mt-8">{children}</h1>,
+    h2: ({ children }: { children?: React.ReactNode }) => <h2 className="text-xl font-bold mb-3 mt-6">{children}</h2>,
+    h3: ({ children }: { children?: React.ReactNode }) => <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>,
+    h4: ({ children }: { children?: React.ReactNode }) => <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>,
+    strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-bold">{children}</strong>,
+    em: ({ children }: { children?: React.ReactNode }) => <em className="italic">{children}</em>,
+    code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
+        const isBlock = (className ?? "").includes("language-")
+        if (isBlock) {
+            return <code className={className}>{children}</code>
+        }
+        return <code className="px-1 rounded font-mono text-sm">{children}</code>
+    },
+    pre: ({ children }: { children?: React.ReactNode }) => <pre className="rounded p-4 overflow-x-auto my-4 font-mono">{children}</pre>,
+    ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside">{children}</ul>,
+    ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside">{children}</ol>
 }
 
-function TokenStream({ text, disableAnimation = false, onComplete }: { text: string; disableAnimation?: boolean; onComplete?: () => void }) {
-    const previousTextRef = useRef<string>("")
-    const [tokens, setTokens] = useState<Token[]>([])
-    const [buffer, setBuffer] = useState<string[]>([])
-    const [finalText, setFinalText] = useState<string>("")
-    const [showFormatted, setShowFormatted] = useState(false)
-    const lastTextChangeRef = useRef<number>(Date.now())
-    const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const bufferRef = useRef<string[]>([])
-    const lastCompletedTextRef = useRef<string>("")
+// Reveal pacing in characters per tick. Tuned to feel like the previous
+// per-token throttle (~3 tokens / 20ms ≈ 15-30 chars / 20ms for typical English).
+const REVEAL_TICK_MS = 20
+const REVEAL_MIN_CHARS = 3
+const REVEAL_CATCHUP_DIVISOR = 8
 
-    // If animation is disabled, immediately show formatted text
+function TokenStream({ text, disableAnimation = false }: { text: string; disableAnimation?: boolean }) {
+    // `visibleText` is the throttled prefix of `text`. We render Markdown
+    // on this string directly — same render path while streaming and after,
+    // so headings, bold, code fences, etc. form *live* as characters arrive
+    // (the Claude / ChatGPT UX). No mode switch means no flicker.
+    const [visibleText, setVisibleText] = useState(disableAnimation ? text : "")
+
+    // When animation is disabled (e.g. historical messages on initial load),
+    // jump straight to the full text.
     useEffect(() => {
-        if (disableAnimation && text) {
-            setFinalText(text)
-            setShowFormatted(true)
-            setTokens([])
-            setBuffer([])
-            bufferRef.current = []
+        if (disableAnimation) {
+            setVisibleText(text)
         }
     }, [text, disableAnimation])
 
-    // Track when text changes to detect streaming completion
+    // If text shrinks (e.g. switching to a different message) or was cleared,
+    // reset visibleText so we re-stream from the start instead of showing a
+    // mismatched prefix.
     useEffect(() => {
-        lastTextChangeRef.current = Date.now()
-        // If we were showing formatted and text changed, reset to streaming mode
-        if (showFormatted && text !== finalText && !disableAnimation) {
-            setShowFormatted(false)
+        if (disableAnimation) return
+        if (text.length < visibleText.length || (text.length === 0 && visibleText.length > 0)) {
+            setVisibleText("")
         }
-    }, [text])
+    }, [text, disableAnimation, visibleText.length])
 
-    // Process markdown
-    const processMarkdown = (text: string): JSX.Element => {
-        let processed = text
-
-        // Handle code blocks ```
-        processed = processed.replace(/```([\s\S]*?)```/g, '<pre class="rounded p-4 overflow-x-auto my-4 font-mono"><code>$1</code></pre>')
-
-        // Handle bold **text**
-        processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')
-
-        // Handle italic *text* (but not **text**)
-        processed = processed.replace(/(?<!\*)\*(?!\*)([^*]+?)(?<!\*)\*(?!\*)/g, '<em class="italic">$1</em>')
-
-        // Handle inline code `text`
-        processed = processed.replace(/`([^`]+)`/g, '<code class="px-1 rounded font-mono text-sm">$1</code>')
-
-        // Handle headers
-        processed = processed.replace(/^#### (.*$)/gm, '<h3 class="text-lg font-bold mb-2 mt-4">$1</h3>')
-        processed = processed.replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mb-2 mt-4">$1</h3>')
-        processed = processed.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mb-3 mt-6">$1</h2>')
-        processed = processed.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mb-4 mt-8">$1</h1>')
-
-        // Handle bullet lists - simple approach
-        processed = processed.replace(/^\* (.*)$/gm, "• $1")
-        processed = processed.replace(/^- (.*)$/gm, "• $1")
-        processed = processed.replace(/^\+ (.*)$/gm, "• $1")
-
-        // Handle numbered lists - simple approach
-        processed = processed.replace(/^(\d+)\. (.*)$/gm, "$1. $2")
-
-        return <span dangerouslySetInnerHTML={{ __html: processed }} />
-    }
-
-    // Diff text and buffer the new tokens
+    // Reveal more of `text` on a steady interval. Catches up faster on long
+    // bursts so we never lag visibly behind the producer.
     useEffect(() => {
         if (disableAnimation) return
-
-        const prev = previousTextRef.current
-        if (text === prev || text.length < prev.length) return
-
-        const diff = text.slice(prev.length)
-        const newTokens = diff.split(/(\s+|\n+)/)
-
-        setBuffer(prev => {
-            const newBuffer = [...prev, ...newTokens]
-            bufferRef.current = newBuffer
-            return newBuffer
-        })
-        previousTextRef.current = text
-    }, [text, disableAnimation])
-
-    // Pop 1-3 tokens into `tokens` array every interval
-    useEffect(() => {
-        if (disableAnimation) return
-        if (buffer.length === 0) return
-
+        if (visibleText === text) return
         const interval = setInterval(() => {
-            const next = buffer.slice(0, 3).map(value => ({
-                id: crypto.randomUUID(),
-                value
-            }))
-
-            setTokens(prev => [...prev, ...next])
-            setBuffer(prev => {
-                const newBuffer = prev.slice(3)
-                bufferRef.current = newBuffer
-                return newBuffer
-            })
-        }, 20)
-
-        return () => clearInterval(interval)
-    }, [buffer])
-
-    // Handle when streaming finishes - use debounce approach for reliability
-    useEffect(() => {
-        if (disableAnimation) return
-        if (text.length === 0) return
-
-        // Clear any existing completion timer
-        if (completionTimerRef.current) {
-            clearTimeout(completionTimerRef.current)
-            completionTimerRef.current = null
-        }
-
-        // Only check for completion when buffer is empty (all tokens rendered)
-        if (buffer.length === 0) {
-            // Check if enough time has passed since last text change (debounce)
-            const timeSinceLastChange = Date.now() - lastTextChangeRef.current
-            const delay = Math.max(0, 300 - timeSinceLastChange)
-
-            completionTimerRef.current = setTimeout(() => {
-                // Final check: buffer still empty (use ref to avoid stale closure)
-                if (bufferRef.current.length === 0) {
-                    setFinalText(text)
-                    setShowFormatted(true)
+            setVisibleText(current => {
+                if (current === text) return current
+                if (!text.startsWith(current)) {
+                    // Producer text drifted (e.g. message swap) — snap to current text.
+                    return text
                 }
-            }, delay + 200) // Add buffer for animation to settle
-        }
+                const remaining = text.length - current.length
+                const chunk = Math.min(remaining, Math.max(REVEAL_MIN_CHARS, Math.floor(remaining / REVEAL_CATCHUP_DIVISOR)))
+                return text.slice(0, current.length + chunk)
+            })
+        }, REVEAL_TICK_MS)
+        return () => clearInterval(interval)
+    }, [text, visibleText, disableAnimation])
 
-        return () => {
-            if (completionTimerRef.current) {
-                clearTimeout(completionTimerRef.current)
-                completionTimerRef.current = null
-            }
-        }
-    }, [tokens, text, buffer.length, disableAnimation])
-
-    // Fire onComplete when animation settles on the current text
-    useEffect(() => {
-        if (showFormatted && finalText === text && text.length > 0 && lastCompletedTextRef.current !== text) {
-            lastCompletedTextRef.current = text
-            onComplete?.()
-        }
-    }, [showFormatted, finalText, text, onComplete])
-
-    // Show formatted version (only if finalText matches current text to avoid stale content)
-    if (showFormatted && finalText === text) {
-        return <div className="text-foreground text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty select-text">{processMarkdown(finalText)}</div>
-    }
-
-    // Show streaming tokens
     return (
-        <div className="text-foreground text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty select-text">
-            {tokens.map(token => (
-                <span key={token.id} className="animate-in fade-in-0 duration-150">
-                    {token.value}
-                </span>
-            ))}
+        <div className="text-foreground text-md leading-relaxed text-wrap-pretty select-text">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {visibleText}
+            </ReactMarkdown>
         </div>
     )
 }
