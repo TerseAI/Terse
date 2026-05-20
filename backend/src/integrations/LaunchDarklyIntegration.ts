@@ -246,49 +246,33 @@ export class LaunchDarklyIntegrationManager
             // Both service tokens and access tokens work with this endpoint
             const userEmail: string | null = null
 
-            // Check if integration already exists for this organization
-            const existing = await db().launchdarkly_integrations.findFirst({
-                where: { organization_id: organizationId }
+            // One LaunchDarkly integration per org. Atomic upsert via the
+            // organization_id unique constraint — two concurrent submissions
+            // can no longer both create new rows. Secret write happens after
+            // the row exists so a partial failure leaves the row visible
+            // with stale credentials; next submit recovers.
+            const integration = await db().launchdarkly_integrations.upsert({
+                where: { organization_id: organizationId },
+                update: {
+                    user_email: userEmail,
+                    token_name: tokenName
+                },
+                create: {
+                    user_id: userId,
+                    organization_id: organizationId,
+                    user_email: userEmail,
+                    token_name: tokenName
+                }
             })
 
-            if (existing) {
-                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: existing.id, value: { apiKey: apiKey } } })
+            await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id, value: { apiKey: apiKey } } })
 
-                // Update existing integration
-                await db().launchdarkly_integrations.update({
-                    where: { id: existing.id },
-                    data: {
-                        user_email: userEmail,
-                        token_name: tokenName,
-                        organization_id: organizationId
-                    }
-                })
-                logger.info("✅ Updated LaunchDarkly integration", {
-                    integrationId: existing.id,
-                    userId,
-                    email: userEmail,
-                    tokenName
-                })
-            } else {
-                // Create new integration
-                const integration = await db().launchdarkly_integrations.create({
-                    data: {
-                        user_id: userId,
-                        organization_id: organizationId,
-                        user_email: userEmail,
-                        token_name: tokenName
-                    }
-                })
-
-                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.LAUNCHDARKLY, recordId: integration.id, value: { apiKey: apiKey } } })
-
-                logger.info("✅ Created LaunchDarkly integration", {
-                    integrationId: integration.id,
-                    userId,
-                    email: userEmail,
-                    tokenName
-                })
-            }
+            logger.info("✅ Upserted LaunchDarkly integration", {
+                integrationId: integration.id,
+                userId,
+                email: userEmail,
+                tokenName
+            })
 
             return {
                 success: true,

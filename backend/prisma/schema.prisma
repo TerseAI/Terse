@@ -171,6 +171,7 @@ model notion_integrations {
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  @@unique([organization_id, workspace_id])
   @@index([user_id])
   @@index([organization_id])
   @@index([workspace_id])
@@ -179,7 +180,7 @@ model notion_integrations {
 model posthog_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String
+  organization_id String @unique
   user_email      String?
   org_name        String?
   created_at      DateTime @default(now())
@@ -188,7 +189,6 @@ model posthog_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
-  @@index([organization_id])
 }
 
 model hey_reach_integrations {
@@ -204,7 +204,7 @@ model hey_reach_integrations {
 model launchdarkly_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String
+  organization_id String @unique
   user_email      String?
   token_name      String?
   created_at      DateTime @default(now())
@@ -213,13 +213,12 @@ model launchdarkly_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
-  @@index([organization_id])
 }
 
 model datadog_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  organization_id String
+  organization_id String @unique
   region          String
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -227,7 +226,6 @@ model datadog_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
-  @@index([organization_id])
 }
 
 // WorkOS Integration (customer's own WorkOS account for user lifecycle triggers)

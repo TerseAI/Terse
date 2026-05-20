@@ -195,47 +195,29 @@ export class PosthogIntegrationManager
             const userEmail = userData.email || userData.user?.email || userData.user_email || null
             const orgName = userData.organization?.name || userData.organization_name || userData.org_name || userData.organization?.organization_name || null
 
-            // Check if integration already exists for this organization
-            const existing = await db().posthog_integrations.findFirst({
-                where: { organization_id: organizationId }
+            // One Posthog integration per org. Atomic upsert keyed on the
+            // organization_id unique constraint.
+            const integration = await db().posthog_integrations.upsert({
+                where: { organization_id: organizationId },
+                update: {
+                    user_email: userEmail,
+                    org_name: orgName
+                },
+                create: {
+                    user_id: userId,
+                    organization_id: organizationId,
+                    user_email: userEmail,
+                    org_name: orgName
+                }
             })
 
-            if (existing) {
-                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: existing.id, value: { apiKey: apiKey } } })
+            await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id, value: { apiKey: apiKey } } })
 
-                // Update existing integration
-                await db().posthog_integrations.update({
-                    where: { id: existing.id },
-                    data: {
-                        user_email: userEmail,
-                        org_name: orgName,
-                        organization_id: organizationId
-                    }
-                })
-                logger.info("✅ Updated Posthog integration", {
-                    integrationId: existing.id,
-                    userId,
-                    email: userEmail
-                })
-            } else {
-                // Create new integration
-                const integration = await db().posthog_integrations.create({
-                    data: {
-                        user_id: userId,
-                        organization_id: organizationId,
-                        user_email: userEmail,
-                        org_name: orgName
-                    }
-                })
-
-                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id, value: { apiKey: apiKey } } })
-
-                logger.info("✅ Created Posthog integration", {
-                    integrationId: integration.id,
-                    userId,
-                    email: userEmail
-                })
-            }
+            logger.info("✅ Upserted Posthog integration", {
+                integrationId: integration.id,
+                userId,
+                email: userEmail
+            })
 
             return {
                 success: true,

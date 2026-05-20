@@ -200,48 +200,51 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
                 workspaceName: workspace_name || workspace_id
             })
 
-            // Check if a connection for this workspace already exists
-            const existing = await db().notion_integrations.findFirst({
+            // Refuse to write rows without a workspace_id — the
+            // @@unique([organization_id, workspace_id]) constraint treats
+                // NULL workspace_ids as distinct (Postgres NULLS DISTINCT
+                // semantics), so legacy null rows could shadow each other.
+                // New rows MUST carry the workspace id from Notion.
+            if (!workspace_id) {
+                logger.error("Notion OAuth response missing workspace_id; refusing to persist", {
+                    userId: decoded.userId,
+                    organizationId: decoded.organizationId
+                })
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`)
+                return
+            }
+
+            // One Notion integration per (org, workspace). Atomic upsert via
+            // the composite unique constraint.
+            const integration = await db().notion_integrations.upsert({
                 where: {
+                    organization_id_workspace_id: {
+                        organization_id: decoded.organizationId,
+                        workspace_id
+                    }
+                },
+                update: {
+                    workspace_name: workspace_name || null
+                },
+                create: {
+                    user_id: decoded.userId,
                     organization_id: decoded.organizationId,
-                    workspace_id: workspace_id || null
+                    workspace_id,
+                    workspace_name: workspace_name || null
                 }
             })
 
-            let integrationId: string
-            if (!existing) {
-                const newIntegration = await db().notion_integrations.create({
-                    data: {
-                        user_id: decoded.userId,
-                        organization_id: decoded.organizationId,
-                        workspace_id: workspace_id || null,
-                        workspace_name: workspace_name || null
-                    }
-                })
+            await this.secretService.createSecrets({
+                type: "integration",
+                secret: { integrationType: IntegrationType.NOTION, recordId: integration.id, value: { integrationToken: access_token } }
+            })
 
-                await this.secretService.createSecrets({
-                    type: "integration",
-                    secret: { integrationType: IntegrationType.NOTION, recordId: newIntegration.id, value: { integrationToken: access_token } }
-                })
-
-                integrationId = newIntegration.id
-            } else {
-                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: existing.id, value: { integrationToken: access_token } } })
-
-                // Update existing connection with new token (in case it was revoked and re-authorized)
-                await db().notion_integrations.update({
-                    where: { id: existing.id },
-                    data: {
-                        organization_id: decoded.organizationId
-                    }
-                })
-                integrationId = existing.id
-                logger.info("✅ Updated Notion connection token", {
-                    workspaceName: workspace_name || "Workspace",
-                    integrationId: existing.id,
-                    userId: decoded.userId
-                })
-            }
+            const integrationId = integration.id
+            logger.info("✅ Upserted Notion connection token", {
+                workspaceName: workspace_name || workspace_id,
+                integrationId,
+                userId: decoded.userId
+            })
 
             logger.info("✅ Notion OAuth completed for user", {
                 userId: decoded.userId,

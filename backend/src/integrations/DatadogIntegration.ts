@@ -194,51 +194,30 @@ export class DatadogIntegrationManager extends Integration<DatadogIntegration, n
             }
             const normalizedRegion = region.toLowerCase()
 
-            // Check if integration already exists for this organization
-            const existing = await db().datadog_integrations.findFirst({
-                where: {
-                    organization_id: organizationId
+            // One Datadog integration per org. Atomic upsert keyed on the
+            // organization_id unique constraint.
+            const integration = await db().datadog_integrations.upsert({
+                where: { organization_id: organizationId },
+                update: {
+                    region: normalizedRegion
+                },
+                create: {
+                    user_id: userId,
+                    organization_id: organizationId,
+                    region: normalizedRegion
                 }
             })
 
-            if (existing) {
-                // DB-first, then GSM
-                await db().datadog_integrations.update({
-                    where: { id: existing.id },
-                    data: {
-                        region: normalizedRegion,
-                        organization_id: organizationId
-                    }
-                })
+            await this.secretService.createSecrets({
+                type: "integration",
+                secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id, value: { apiKey: apiKey, appKey: appKey } }
+            })
 
-                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
-
-                logger.info("✅ Updated Datadog integration", {
-                    integrationId: existing.id,
-                    userId,
-                    region: normalizedRegion
-                })
-            } else {
-                // Create new integration
-                const integration = await db().datadog_integrations.create({
-                    data: {
-                        user_id: userId,
-                        organization_id: organizationId,
-                        region: normalizedRegion
-                    }
-                })
-
-                await this.secretService.createSecrets({
-                    type: "integration",
-                    secret: { integrationType: IntegrationType.DATADOG, recordId: integration.id, value: { apiKey: apiKey, appKey: appKey } }
-                })
-
-                logger.info("✅ Created Datadog integration", {
-                    integrationId: integration.id,
-                    userId,
-                    region: normalizedRegion
-                })
-            }
+            logger.info("✅ Upserted Datadog integration", {
+                integrationId: integration.id,
+                userId,
+                region: normalizedRegion
+            })
 
             return {
                 success: true,
