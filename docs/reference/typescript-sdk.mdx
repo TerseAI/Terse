@@ -108,6 +108,10 @@ const terse = new Terse()
 
 Create the agent inside `onTrigger` with **`TerseAgent.create()`**. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI. The same context applies to **`TerseAgent.executeTool`** and to generated **`toolbox`** calls.
 
+### Skills recorded on the run
+
+On **hosted** workflow runs (deployed with `terse deploy`, not local `terse test`), Terse stores the `skills` from each `TerseAgent` you invoke with `run()` or `runAndWait()`. If your handler starts more than one agent call in the same execution—whether you reuse one agent or call `TerseAgent.create()` again with different `skills`—Terse **unions** every skill config on that run instead of replacing earlier entries. Follow-up turns in [Activity](/core-concepts/activity-and-observability) (for example a new message in the run drawer) use that combined scope so the model keeps access to every integration your handler granted during the original run.
+
 ### `run(userMessage)`
 
 Streams the model run. Returns an async iterable of result objects (`TextResult`, `FinalOutputResult`, tool events, and so on).
