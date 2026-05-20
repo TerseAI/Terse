@@ -13,7 +13,7 @@ function generateRawToken(): string {
     return `terse_${crypto.randomBytes(32).toString("hex")}`
 }
 
-export async function createApiToken(userId: string, organizationId: string, name: string): Promise<ApiTokenCreateResponse> {
+export async function createApiToken(userId: string, organizationId: string, name: string, opts?: { expiresAt?: Date }): Promise<ApiTokenCreateResponse> {
     const rawToken = generateRawToken()
     const tokenHash = hashToken(rawToken)
     const tokenPrefix = rawToken.slice(0, 14)
@@ -25,7 +25,8 @@ export async function createApiToken(userId: string, organizationId: string, nam
             name: name.trim(),
             token_hash: tokenHash,
             token_prefix: tokenPrefix,
-            kind: TokenKind.USER
+            kind: TokenKind.USER,
+            ...(opts?.expiresAt ? { expires_at: opts.expiresAt } : {})
         }
     })
 
