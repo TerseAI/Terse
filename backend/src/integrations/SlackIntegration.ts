@@ -197,8 +197,7 @@ export class SlackIntegrationManager
                     const tokensEvent = eventData as {
                         tokens?: { bot?: string[]; oauth?: string[] }
                     }
-                    await tokensEvent.tokens?.bot?.forEach(deactivateToken)
-                    await tokensEvent.tokens?.oauth?.forEach(deactivateToken)
+                    await Promise.all([...(tokensEvent.tokens?.bot ?? []), ...(tokensEvent.tokens?.oauth ?? [])].map(deactivateToken))
                     break
                 case "message":
                 case "app_mention":
@@ -222,8 +221,7 @@ export class SlackIntegrationManager
             const tokensEvent = event as {
                 tokens?: { bot?: string[]; oauth?: string[] }
             }
-            await tokensEvent.tokens?.bot?.forEach(deactivateToken)
-            await tokensEvent.tokens?.oauth?.forEach(deactivateToken)
+            await Promise.all([...(tokensEvent.tokens?.bot ?? []), ...(tokensEvent.tokens?.oauth ?? [])].map(deactivateToken))
         }
     }
 
@@ -1043,7 +1041,12 @@ async function markWorkspaceUninstalled(team_id: string) {
 }
 
 async function deactivateToken(token: string) {
-    logger.warn("Token deactivated", { tokenLength: token.length })
+    // TODO: actually delete the matching user_slack_integrations row +
+    // GSM secret. We don't currently store a hash of the token alongside
+    // the row, so looking up by token requires scanning every secret for
+    // this org — a follow-up should add a token_prefix column to
+    // user_slack_integrations and key the lookup on that.
+    logger.warn("Slack token revoked but not yet cleaned up locally", { tokenLength: token.length })
 }
 
 /**

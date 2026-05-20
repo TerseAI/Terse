@@ -72,6 +72,17 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         })
     }
 
+    // Hoist the mutual-exclusion check above the project_deploys.create call
+    // — otherwise a request with neither/both fields creates an IN_PROGRESS
+    // row that never finalises (the early return inside the try block does
+    // not throw, so markDeployFailed is bypassed).
+    if (!sourceZipBase64 && !remoteServerUrl) {
+        return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
+    }
+    if (sourceZipBase64 && remoteServerUrl) {
+        return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
+    }
+
     const deploy = await prisma.project_deploys.create({
         data: {
             project_id: projectId,
@@ -81,12 +92,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     })
     try {
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
-
-        if (!sourceZipBase64 && !remoteServerUrl) {
-            return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
-        } else if (sourceZipBase64 && remoteServerUrl) {
-            return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
-        }
 
         const results: SdkDeployResponseBody["results"] = []
 

@@ -9,7 +9,7 @@ import { ToolACLValidator, denyToolACL } from "../../abstract/acl"
 
 const VALID_PAGE_ID_MIN_LENGTH = 30
 
-function isValidPageId(pageId: string | null | undefined): pageId is string {
+export function isValidPageId(pageId: string | null | undefined): pageId is string {
     return !!(pageId && pageId.length >= VALID_PAGE_ID_MIN_LENGTH && !pageId.includes("/") && pageId !== ".")
 }
 

@@ -8,6 +8,8 @@ import { defineSessionTool } from "../../../tools/toolUtils"
 import { verifyNotionDatabaseInScope, verifyNotionPageInScope } from "../../../utility/notionAcl"
 import { ToolACLValidator } from "../../abstract/acl"
 
+import { isValidPageId } from "./createOrUpdatePage"
+
 export const notionCreateOrUpdateDatabaseRowTool = defineSessionTool({
     name: "notion_create_or_update_database_row",
     description: `Create or update a **row** (entry) in a Notion database. Use with databaseId and properties_json. Not for standalone pages — use notion_create_or_update_page for those.
@@ -30,7 +32,7 @@ Use notion_get_schema first to understand property names and types. Use notion_q
 
         const notion = new Client({ auth: accessToken })
 
-        const validPageId = page_id && page_id.length > 30 && !page_id.includes("/") && page_id !== "." ? page_id : null
+        const validPageId = isValidPageId(page_id) ? page_id : null
 
         const getDatabaseName = async (dataSourceId: string): Promise<string> => {
             try {

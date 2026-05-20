@@ -75,10 +75,7 @@ export class LinearAdapter {
                 email: { eq: email }
             }
         })
-        if (!user) {
-            return null
-        }
-        return user.nodes[0].id
+        return user.nodes[0]?.id ?? null
     }
 
     async getStates(teamId?: string): Promise<

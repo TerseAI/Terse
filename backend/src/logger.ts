@@ -165,10 +165,13 @@ class Logger {
         const colorFn = levelColors[upperLevel] || chalk.white
         const levelTag = colorFn(`[${upperLevel}]`)
 
-        if (upperLevel === "ERROR" || upperLevel === "FATAL" || upperLevel === "WARN") {
-            console.log(`${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(attributes, null, 2)}`)
+        const line = `${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(attributes, null, 2)}`
+        if (upperLevel === "ERROR" || upperLevel === "FATAL") {
+            console.error(line)
+        } else if (upperLevel === "WARN") {
+            console.warn(line)
         } else {
-            console.log(`${chalk.dim(time)} ${levelTag} ${message}, ${JSON.stringify(attributes, null, 2)}`)
+            console.log(line)
         }
     }
 

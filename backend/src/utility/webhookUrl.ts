@@ -5,8 +5,16 @@ import { settings } from "../config/settings"
 /**
  * Append a root-absolute path (e.g. `/webhook/...`) to the remote server URL without duplicating slashes,
  * and resolve correctly when the job URL includes a path prefix.
+ *
+ * pathFromRoot MUST be a root-absolute path (starts with `/`). Anything that
+ * parses as an absolute URL — `https://…`, `//…`, schemes with `://` — is
+ * rejected: `new URL(absolute, base)` returns `absolute` verbatim, which
+ * would silently hijack the base if pathFromRoot were ever attacker-influenced.
  */
 export function joinJobServerPath(jobBaseUrl: string, pathFromRoot: string): string {
+    if (pathFromRoot.startsWith("//") || pathFromRoot.includes("://")) {
+        throw new Error(`joinJobServerPath: pathFromRoot must be a root-absolute path (got ${JSON.stringify(pathFromRoot)})`)
+    }
     const relative = pathFromRoot.replace(/^\/+/, "")
     return new URL(relative, jobBaseUrl).href
 }
