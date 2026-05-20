@@ -253,7 +253,7 @@ terse integrate connect slack
 
 Use `--fields-stdin` for secrets so passwords and tokens do not end up in shell history.
 
-For form-based integrations, `connect` submits the provided field values immediately. For OAuth integrations, `connect` opens the authorization URL in your default browser and exits 2 with a handoff payload (`{ "handoff": "oauth", "url", "waitCommand" }` in `--json` mode, or an `ACTION REQUIRED` line otherwise). Run the printed `waitCommand` (e.g. `terse integrate wait slack`) to block until authorization completes.
+For form-based integrations, `connect` submits the provided field values immediately. For OAuth integrations, `connect` opens the authorization URL in your default browser when it is **http** or **https**, then exits 2 with a handoff payload (`{ "handoff": "oauth", "url", "waitCommand" }` in `--json` mode, or an `ACTION REQUIRED` line otherwise). If auto-open is skipped, use the printed URL. Run the printed `waitCommand` (e.g. `terse integrate wait slack`) to block until authorization completes.
 
 #### `terse integrate disconnect <type>`
 
@@ -393,6 +393,10 @@ When you pass `job-name`, the CLI matches your local workflow name to the deploy
 
 Use `--triggers` when you want the serialized input event for each run. Use `--events` when you want the full stored conversation, including the trigger payload.
 
+### Opening URLs in your browser
+
+`terse login`, OAuth flows in `terse integrate connect`, `terse dashboard`, and `terse docs` can launch your default browser. The CLI only auto-opens **http** or **https** URLs. If a URL uses another scheme or does not parse, the CLI skips auto-open and still prints the link in the terminal.
+
 ### `terse dashboard`
 
 Opens the Terse web app in your default browser.
@@ -401,7 +405,7 @@ Opens the Terse web app in your default browser.
 terse dashboard
 ```
 
-If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
+If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production. Use an **http** or **https** value so auto-open works; otherwise copy the printed URL from the terminal.
 
  
 
@@ -418,7 +422,7 @@ terse login
 **How it works:**
 
 1. Requests a device code from WorkOS
-2. Opens your browser to a verification page
+2. Opens your browser to a verification page when the URL is **http** or **https** (otherwise open the printed link manually)
 3. Polls until you complete the browser authorization
 4. Exchanges the token with the Terse backend for an API key
 5. Saves the API key so later CLI commands can reuse it
@@ -443,7 +447,7 @@ Opens the Terse documentation site in your default browser.
 terse docs
 ```
 
-If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs.
+If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs. Use an **http** or **https** value so auto-open works; otherwise copy the printed URL from the terminal.
 
 ## API key resolution
 
