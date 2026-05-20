@@ -137,6 +137,8 @@ Each helper maps to one **`HeyReachEventType`** value (also exported from **`ter
 
 **Config:** Pass **`campaigns`** with generated **`HeyReachCampaign`** instances to handle only those campaigns; omit it to receive events from all campaigns.
 
+**Inbound delivery:** When you **`terse deploy`** a workflow that includes a HeyReach trigger, Terse registers a Terse-hosted webhook URL with HeyReach. The URL embeds that trigger's id and is the only credential HeyReach uses to call Terse—HeyReach does not sign outbound webhooks today. Terse accepts deliveries only for HeyReach triggers on your workflow; any other trigger id gets the same **`404`** as an unknown id. Treat the registered URL like a secret and redeploy if it leaks.
+
 <CodeGroup>
 ```ts TypeScript
 import { Triggers } from "./terse.generated"
