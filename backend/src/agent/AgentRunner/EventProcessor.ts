@@ -145,7 +145,7 @@ export class EventProcessor {
                 runId,
                 agentId: agent.id
             })
-            await this.failRunEarly(runId, agent.id, `Background processing failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+            await this.failRunEarly(runId, agent, `Background processing failed: ${error instanceof Error ? error.message : "Unknown error"}`)
         })
 
         return {
@@ -188,17 +188,20 @@ export class EventProcessor {
         return runId
     }
 
-    private async failRunEarly(runId: string, agentId: string, message: string): Promise<void> {
+    private async failRunEarly(runId: string, agent: PrismaAgent, message: string): Promise<void> {
         try {
             await markRunFailed(runId, message, "agent")
-            emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agentId)
+            emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
         } catch (error) {
             logger.error("Failed to mark run as failed during early validation", {
                 error,
                 runId,
-                agentId
+                agentId: agent.id
             })
         }
+        // Notify so users see the failure rather than the run silently
+        // sitting in FAILED state. notifyRunFailure swallows its own errors.
+        await this.notifyRunFailure(agent, runId, message)
     }
 
     private async notifyRunFailure(agent: PrismaAgent, runId: string, errorMessage: string): Promise<void> {
@@ -235,8 +238,8 @@ export class EventProcessor {
 
         if (!agent.prompt) {
             if (existingRunId) {
-                await this.failRunEarly(existingRunId, agent.id, "No prompt found for this agent")
-                await this.notifyRunFailure(agent, existingRunId, "No prompt found for this agent")
+                // failRunEarly notifies internally now.
+                await this.failRunEarly(existingRunId, agent, "No prompt found for this agent")
             }
             return new ProcessorResult(false, "No prompt found for this agent", agent, existingRunId ?? null)
         }
