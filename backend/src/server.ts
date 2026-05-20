@@ -9,12 +9,16 @@ import { ApiRoutes } from "terse-types"
 import { setupLLMAnalytics } from "./agent/openaiInstance"
 // Import settings early to validate environment variables at startup
 import { requestSessionSocketToken } from "./agent/socket"
-import "./config/settings"
+import { settings } from "./config/settings"
 import "./integrations/IntegrationTaskHandler"
 // Import to trigger listener registration
 import logger from "./logger"
+<<<<<<< Updated upstream
 import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
+=======
+import { db } from "./prismaClient"
+>>>>>>> Stashed changes
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
@@ -138,6 +142,10 @@ app.use(
         }
     })
 )
+
+app.get(settings.health.checkPath, async (_req, res) => {
+    res.status(200).json({ ok: true })
+})
 
 if (slackReceiver?.receiver) {
     app.use("/slack", slackReceiver.receiver.router)
@@ -888,8 +896,61 @@ server.listen(3001, () => {
     logger.info("🚀 Express backend running on http://localhost:3001")
 })
 
-// Graceful shutdown
-process.on("SIGTERM", async () => {
-    await analytics.shutdown()
-    server.close()
-})
+// Graceful shutdown.
+// Render's default shutdown delay is 30s before SIGKILL. Aim to finish a few
+// seconds under that so the force-exit branch can log before Render kills us.
+const SHUTDOWN_GRACE_MS = 25_000
+let shuttingDown = false
+
+async function gracefulShutdown(signal: string) {
+    if (shuttingDown) return
+    shuttingDown = true
+    logger.info(`🛑 ${signal} received — starting graceful shutdown (grace ${SHUTDOWN_GRACE_MS}ms)`)
+
+    const forceExit = setTimeout(() => {
+        logger.error("⏰ Graceful shutdown timed out — forcing exit")
+        process.exit(1)
+    }, SHUTDOWN_GRACE_MS)
+    forceExit.unref()
+
+    try {
+        const io = getRealtimeSocket()
+        const httpClosed = io
+            ? new Promise<void>(resolve => io.close(() => resolve())) // disconnects Socket.IO clients AND closes underlying HTTP server
+            : new Promise<void>((resolve, reject) => server.close(err => (err ? reject(err) : resolve())))
+
+        if (typeof server.closeIdleConnections === "function") {
+            server.closeIdleConnections()
+            logger.info("Evicted idle keep-alive connections")
+        }
+
+        logger.info("Waiting for in-flight requests to drain")
+        await httpClosed
+        logger.info("✅ HTTP server closed")
+
+        try {
+            await analytics.shutdown()
+            logger.info("✅ Analytics flushed")
+        } catch (error) {
+            logger.error("Analytics shutdown failed", { error })
+        }
+
+        try {
+            await db().$disconnect()
+            logger.info("✅ Prisma disconnected")
+        } catch (error) {
+            logger.error("Prisma disconnect failed", { error })
+        }
+
+        logger.info("👋 Graceful shutdown complete")
+        clearTimeout(forceExit)
+        process.exit(0)
+    } catch (error) {
+        logger.error("Graceful shutdown error", { error })
+        clearTimeout(forceExit)
+        process.exit(1)
+    }
+}
+
+process.on("SIGTERM", () => void gracefulShutdown("SIGTERM"))
+process.on("SIGINT", () => void gracefulShutdown("SIGINT"))
