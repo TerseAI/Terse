@@ -202,7 +202,8 @@ export class DatadogIntegrationManager extends Integration<DatadogIntegration, n
             })
 
             if (existing) {
-                // DB-first, then GSM
+                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
+
                 await db().datadog_integrations.update({
                     where: { id: existing.id },
                     data: {
@@ -210,8 +211,6 @@ export class DatadogIntegrationManager extends Integration<DatadogIntegration, n
                         organization_id: organizationId
                     }
                 })
-
-                await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.DATADOG, recordId: existing.id, value: { apiKey: apiKey, appKey: appKey } } })
 
                 logger.info("✅ Updated Datadog integration", {
                     integrationId: existing.id,

@@ -1,7 +1,9 @@
+import { randomBytes } from "node:crypto"
+
 export const randomString = (length: number) => {
-    return Math.random()
-        .toString(36)
-        .substring(2, 2 + length)
+    return randomBytes(Math.ceil((length * 3) / 4))
+        .toString("base64url")
+        .slice(0, length)
 }
 
 export function extractErrorMessage(error: unknown): string {

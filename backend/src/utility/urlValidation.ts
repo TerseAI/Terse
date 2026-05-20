@@ -1,38 +1,28 @@
+import ipaddr from "ipaddr.js"
 import dns from "node:dns/promises"
 import net from "node:net"
 import { URL } from "node:url"
 
 import { settings } from "../config/settings"
 
-const BLOCKED_IPV4_RANGES = [{ prefix: "127." }, { prefix: "10." }, { prefix: "0." }, { prefix: "169.254." }, { prefix: "224." }]
-
-function isBlockedIPv4(ip: string): boolean {
-    if (BLOCKED_IPV4_RANGES.some(r => ip.startsWith(r.prefix))) return true
-
-    // 172.16.0.0/12
-    if (ip.startsWith("172.")) {
-        const second = parseInt(ip.split(".")[1], 10)
-        if (second >= 16 && second <= 31) return true
-    }
-
-    // 192.168.0.0/16
-    if (ip.startsWith("192.168.")) return true
-
-    return false
-}
-
+// Block every IP that ipaddr.js classifies as anything other than global unicast.
+// Covers RFC 6890 (IPv4) + RFC 5156 (IPv6) special-purpose ranges — loopback,
+// private, CGNAT, link-local (incl. 169.254.169.254 cloud metadata), TEST-NETs,
+// multicast, broadcast, 6to4, Teredo, NAT64, discard, etc.
 function isBlockedIP(ip: string): boolean {
-    if (net.isIPv4(ip)) return isBlockedIPv4(ip)
-
-    if (ip === "::1" || ip === "::" || ip.startsWith("fe80:") || ip.startsWith("fc") || ip.startsWith("fd")) return true
-
-    // IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1)
-    if (ip.startsWith("::ffff:")) {
-        const v4 = ip.slice(7)
-        if (net.isIPv4(v4)) return isBlockedIPv4(v4)
+    let parsed: ipaddr.IPv4 | ipaddr.IPv6
+    try {
+        parsed = ipaddr.parse(ip)
+    } catch {
+        return true
     }
 
-    return false
+    if (parsed.kind() === "ipv6") {
+        const v6 = parsed as ipaddr.IPv6
+        if (v6.isIPv4MappedAddress()) return isBlockedIP(v6.toIPv4Address().toString())
+    }
+
+    return parsed.range() !== "unicast"
 }
 
 export class UrlValidationError extends Error {
@@ -74,7 +64,8 @@ export async function validateRemoteServerUrl(url: string): Promise<ValidatedRem
         throw new UrlValidationError("Invalid URL format")
     }
 
-    const isDev = settings.nodeEnv === "development"
+    const explicitDev = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test"
+    const isDev = explicitDev && settings.nodeEnv === "development"
     const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "::1"
 
     // In dev, allow http for localhost only
