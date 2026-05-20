@@ -201,6 +201,8 @@ Use `runAndWait(message, schema)` when you need typed, validated JSON. Use `runA
 
 Use `filter` to skip runs for events that don't match your criteria. Return `true` to run, `false` to skip.
 
+For GitHub triggers, deliveries without `sender.login` never reach your handler (see [GitHub trigger payloads](/reference/triggers#github)). Use `filter` to skip bot-authored events when `sender.login` is present, for example `!event.sender.login.includes("[bot]")`.
+
 ```ts
 type ContractPayload = { record: { values: { stage: string; company_name: string } } }
 

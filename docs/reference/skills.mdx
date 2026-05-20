@@ -137,6 +137,8 @@ skills: [Skills.datadog()]
 | `search_rum_events`    | Search RUM events        | Read   |
 | `aggregate_rum_events` | Aggregate RUM event data | Read   |
 
+`aggregate_rum_events` accepts optional `pageLimit` for pagination buckets (default **25**, max **1000**), matching the other Datadog RUM tools.
+
 ## PostHog
 
 Read-only access to product analytics.
@@ -165,6 +167,8 @@ import { LaunchDarklyProject, Skills } from "./terse.generated"
 // Use a `LaunchDarklyProject.*` static emitted for your workspace.
 skills: [Skills.launchDarkly({ project: LaunchDarklyProject.MyFlags, environmentKeys: ["production"] })]
 ```
+
+After `terse integrate connect launchdarkly`, Terse does not infer a token name from the LaunchDarkly API. The connection is labeled by integration id (and email when available) in the app and in `terse integrate list`.
 
 | Tool                            | Description        | Access |
 | ------------------------------- | ------------------ | ------ |

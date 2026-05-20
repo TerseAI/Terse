@@ -31,8 +31,12 @@ triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })]
 **All GitHub events include:**
 
 - `repository` - `{ id, name, owner, defaultBranch }`
-- `sender` - `{ login, email }`
+- `sender` - `{ login, email }` (`login` is always set on events Terse delivers)
 - `commits` - array of `{ sha, message, fileDiffs: [{ filename, diff }] }`
+
+<Note>
+    Some GitHub webhook deliveries (bot-driven or app-only events) do not include `sender.login`. Terse ignores those deliveries, so your workflow will not run and they will not appear in `terse test` sample lists.
+</Note>
 
 **PR events add:**
 
