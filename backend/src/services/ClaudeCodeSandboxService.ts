@@ -40,7 +40,7 @@ interface ClaudeCodeSandboxParams {
     maxTurns?: number
     /** Sandbox timeout in ms (default: 10 minutes) */
     timeoutMs?: number
-    /** Additional env vars to pass to the Claude Code process. ANTHROPIC_API_KEY must be supplied via this map. */
+    /** Additional env vars to pass to the Claude Code process. */
     env?: Record<string, string>
     /** JSON Schema to enforce structured output from Claude Code */
     jsonSchema?: Record<string, unknown>
