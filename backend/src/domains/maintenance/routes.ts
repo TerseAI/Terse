@@ -1,6 +1,7 @@
 import { Router } from "express"
 
 import { AuthKind, requireAuth } from "../../utility/authMiddleware"
+
 import { clearOldSecretVersions, refreshAllTokens } from "./controller"
 
 // Mounted at root — cron callbacks (CloudScheduler auth)

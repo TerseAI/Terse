@@ -10,14 +10,14 @@ import { setupLLMAnalytics } from "./agent/openaiInstance"
 // Import settings early to validate environment variables at startup
 import { requestSessionSocketToken } from "./agent/socket"
 import { settings } from "./config/settings"
+import agentsReviewRouter from "./domains/agents/review/routes"
+import agentsRouter from "./domains/agents/routes"
 import apiTokensRouter from "./domains/api-tokens/routes"
 import approvalsRouter from "./domains/approvals/routes"
 import authRouter from "./domains/auth/routes"
-import agentsReviewRouter from "./domains/agents/review/routes"
 import billingCacheInvalidationRouter from "./domains/billing/cache-invalidation/routes"
 import billingRouter from "./domains/billing/routes"
 import improvementsRouter from "./domains/improvements/routes"
-import maintenanceRouter from "./domains/maintenance/routes"
 import attioRouter from "./domains/integrations/attio/routes"
 import datadogRouter from "./domains/integrations/datadog/routes"
 import githubVendorRouter from "./domains/integrations/github/routes"
@@ -31,6 +31,7 @@ import integrationsRouter from "./domains/integrations/routes"
 import slackVendorRouter from "./domains/integrations/slack/routes"
 import snowflakeRouter from "./domains/integrations/snowflake/routes"
 import workosIntegrationRouter from "./domains/integrations/workosIntegration/routes"
+import maintenanceRouter from "./domains/maintenance/routes"
 import notificationDestinationsRouter from "./domains/notifications/destinations/routes"
 import sentNotificationsRouter from "./domains/notifications/sent/routes"
 import notificationSettingsRouter from "./domains/notifications/settings/routes"
@@ -43,6 +44,7 @@ import sdkMaintenanceRouter from "./domains/sdk/maintenance/routes"
 import sdkRouter from "./domains/sdk/routes"
 import statsRouter from "./domains/stats/routes"
 import toolsRouter from "./domains/tools/routes"
+import triggersRouter from "./domains/triggers/routes"
 import usersRouter from "./domains/users/routes"
 import "./integrations/IntegrationTaskHandler"
 // Import to trigger listener registration
@@ -51,14 +53,11 @@ import { db } from "./prismaClient"
 import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
-import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { handleAttioWebhook } from "./routes/attio"
 import { githubAppUnifiedEvent } from "./routes/github"
 import { handleGmailWebhook } from "./routes/gmail"
 import { handleHeyReachWebhook } from "./routes/heyreach"
 import { handleLinearWebhook } from "./routes/linear"
-import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebMonitorWebhook } from "./routes/schedule"
-import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { handleWorkOSTriggerWebhook } from "./routes/workosIntegration"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
@@ -216,20 +215,6 @@ app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, rateLimit(RateLimi
     handleWorkOSTriggerWebhook(req, res)
 })
 
-app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
-    handleScheduleWebhook(req, res)
-})
-
-app.use(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, express.raw({ type: "application/json", limit: LARGE_BODY_LIMIT }))
-
-app.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-    handleWebMonitorWebhook(req, res)
-})
-
-app.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, rateLimit(RateLimitKind.WebhookByToken), async (req, res) => {
-    handleWebhookTrigger(req, res)
-})
-
 app.post(ApiRoutes.WEBHOOKS.HEY_REACH_BY_INTEGRATION_ID, rateLimit(RateLimitKind.HeyReachByTrigger), async (req, res) => {
     handleHeyReachWebhook(req, res)
 })
@@ -259,7 +244,9 @@ app.use("/projects", projectsRouter)
 app.use("/api-tokens", apiTokensRouter)
 app.use("/organizations", organizationsRouter)
 app.use("/agents/:agentId", improvementsRouter)
+app.use("/agents", agentsRouter)
 app.use("/tools", toolsRouter)
+app.use(triggersRouter)
 app.use("/integrations", integrationsRouter)
 app.use("/sdk", sdkRouter)
 app.use(sdkMaintenanceRouter)
@@ -285,45 +272,6 @@ app.use("/workos-integration", workosIntegrationRouter)
 
 app.get(ApiRoutes.SESSION.TOKEN, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     requestSessionSocketToken(req, res)
-})
-
-// Manual trigger endpoints (authenticated, used by SDK and UI)
-app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleManualTrigger(req, res)
-})
-
-app.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleTriggerWithEvent(req, res)
-})
-
-// MARK: AGENTS
-
-app.get("/agents", rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getUserAgents(req, res)
-})
-
-app.get("/agents/recent", rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getRecentAgents(req, res)
-})
-
-app.get(ApiRoutes.AGENTS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getUserAgent(req, res)
-})
-
-app.patch(ApiRoutes.AGENTS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    updateAgent(req, res)
-})
-
-app.delete(ApiRoutes.AGENTS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    deleteAgent(req, res)
-})
-
-app.get(ApiRoutes.AGENTS.FILES, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getAgentFiles(req, res)
-})
-
-app.get(ApiRoutes.AGENTS.FILE_CONTENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getAgentFileContent(req, res)
 })
 
 /**
