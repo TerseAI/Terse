@@ -5,11 +5,11 @@ import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import logger from "../../common/logger"
 import { FailureState } from "../../domains/agents/AgentRunner/runHistory"
+import { SlackApprovalMessageStatus } from "../../integrations/slack/ApprovalStatus"
+import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../../integrations/slack/blockKitHelpers"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "../../integrations/slack/client"
 import { db } from "../../loaders/prisma"
 import { settings } from "../../settings"
-import { SlackApprovalMessageStatus } from "../../integrations/slack/ApprovalStatus"
-import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../../integrations/slack/blockKitHelpers"
 
 export interface SlackMessage {
     text: string

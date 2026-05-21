@@ -5,7 +5,7 @@ import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/linear/integration"
 import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../../outputs/abstract/acl"
-import { LinearAdapter } from "../../../ticketing/linear"
+import { LinearAdapter } from "../../../integrations/linear/ticketing"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 export const linearGetStatesTool = defineSessionTool({

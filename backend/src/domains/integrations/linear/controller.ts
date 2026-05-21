@@ -7,7 +7,7 @@ import logger from "../../../common/logger"
 import { LinearIntegrationManager } from "../../../integrations/linear/integration"
 import { db } from "../../../loaders/prisma"
 import { settings } from "../../../settings"
-import { LinearAdapter } from "../../../ticketing/linear"
+import { LinearAdapter } from "../../../integrations/linear/ticketing"
 
 /**
  * Verify Linear webhook signature

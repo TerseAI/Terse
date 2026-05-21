@@ -50,10 +50,10 @@ import statsRouter from "./domains/stats/routes"
 import toolsRouter from "./domains/tools/routes"
 import triggersRouter from "./domains/triggers/routes"
 import usersRouter from "./domains/users/routes"
+import { setupSlackBolt } from "./integrations/slack/boltApp"
 import { httpAccessLog } from "./middlewares/httpAccessLog"
 import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
 import { settings } from "./settings"
-import { setupSlackBolt } from "./integrations/slack/boltApp"
 
 type SlackReceiver = Awaited<ReturnType<typeof setupSlackBolt>>
 
