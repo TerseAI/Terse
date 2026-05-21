@@ -38,11 +38,12 @@ Get set up on Terse from scratch. The skill:
 
 Create a new Terse SDK job. Describe what the job should do and the skill will:
 
-1. Inspect connected integrations with `terse integrate list --json` / `terse integrate describe <type> --json` and confirm the generated helpers in `terse.generated.ts`
+1. Read `src/terse.generated.ts` for connected integrations, triggers, skills, and resources
 2. Pick the right triggers and resources for the events you want to react to
-3. Configure skills for the services the agent needs, using the canonical `src/terse.jobs.ts` entry file
+3. Configure skills for the services the agent needs in `src/terse.jobs.ts`
 4. Write the `onTrigger` handler with proper typing, prompts, and deterministic tool usage where appropriate
 5. Verify with `terse test list|show|run` in non-interactive contexts, and reserve bare `terse test` for manual TTY sessions
+6. Ask whether to run `terse deploy` — never deploy without confirmation
 
 **Example:**
 
@@ -64,7 +65,8 @@ Improve an existing Terse SDK job. The skill:
    - **Skill configuration** — completeness, scope, unnecessary skills
 3. Implements the changes in `src/terse.jobs.ts` (or the repo's configured `--entry-file`).
 4. Verifies locally with `terse replay <run-id>` against the failing run, or `terse test list|show|run` against fresh sample events.
-5. Runs the project's typechecker (`tsc --noEmit` for TypeScript) before reporting back.
+5. Runs `tsc --noEmit` before reporting back
+6. Asks whether to run `terse deploy` — never deploy without confirmation
 
 **Example:**
 
