@@ -256,7 +256,7 @@ function isProbablyAttioMultiValue(attr: AttioAttributeData): boolean {
         type.includes("array") ||
         type.includes("list") ||
         slug === "email_addresses" ||
-        slug === "modules" ||
+        slug === "domains" ||
         slug === "phone_numbers" ||
         slug === "social_profiles" ||
         slug === "links" ||
@@ -291,7 +291,7 @@ function attioAttributeBaseType(attr: AttioAttributeData): string {
     if (type.includes("location") || type.includes("address") || type.includes("reference") || type.includes("record") || type.includes("actor")) {
         return "Record<string, unknown>"
     }
-    if (slug === "email_addresses" || slug === "modules" || slug === "phone_numbers" || slug === "name") {
+    if (slug === "email_addresses" || slug === "domains" || slug === "phone_numbers" || slug === "name") {
         return "string"
     }
     return "unknown"
