@@ -24,6 +24,8 @@ import { handleProjectCreate } from "./domains/projects/controller"
 import projectsRouter from "./domains/projects/routes"
 import projectSecretsRouter from "./domains/projects/secrets/routes"
 import runsRouter from "./domains/runs/routes"
+import sdkMaintenanceRouter from "./domains/sdk/maintenance/routes"
+import sdkRouter from "./domains/sdk/routes"
 import statsRouter from "./domains/stats/routes"
 import toolsRouter from "./domains/tools/routes"
 import usersRouter from "./domains/users/routes"
@@ -37,30 +39,17 @@ import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
 import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
-import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
-import { deviceTokenExchange, identify, listMyOrganizations, switchOrganization as sdkSwitchOrganization } from "./routes/deviceTokenExchange"
 import { getGithubIntegrations, getGithubRepositoriesForIntegration, githubAppUnifiedEvent } from "./routes/github"
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations, handleHeyReachWebhook } from "./routes/heyreach"
-import { handleHydrateSampleEvent } from "./routes/hydrateSampleEvent"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearProjects, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
-import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebMonitorWebhook } from "./routes/schedule"
-import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
-import { handleSdkDeploy } from "./routes/sdkDeploy"
-import { handleSdkIntegrationFields, handleSdkIntegrationFormSubmit } from "./routes/sdkIntegrations"
-import { handleVerifySdkJobServer } from "./routes/sdkJobServer"
-import { handleSdkListen } from "./routes/sdkListen"
-import { handleSdkRunTriggerEvent } from "./routes/sdkRunTriggerEvent"
-import { handleSessionEvents } from "./routes/sdkSession"
-import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
-import { handleToolExecute } from "./routes/sdkToolExecute"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { createOrUpdateSnowflakeIntegration, getSnowflakeIntegrations } from "./routes/snowflake"
 import { handleWebhookTrigger } from "./routes/webhookTrigger"
@@ -208,10 +197,6 @@ app.post(ApiRoutes.REVIEW_AGENTS, requireAuth([AuthKind.CloudScheduler]), async 
     reviewAllAgents(req, res)
 })
 
-app.post(ApiRoutes.CLEANUP_SDK_IMAGES, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
-    cleanupSdkImages(req, res)
-})
-
 // MARK: WEBHOOKS (each handler verifies its own provider signature)
 
 app.post(ApiRoutes.WEBHOOKS.GMAIL, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
@@ -268,15 +253,6 @@ app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, rateLimit(RateLimitKind.WebhookByIp), a
     await githubAppUnifiedEvent(req, res)
 })
 
-// MARK: DEVICE AUTH (uses WorkOS JWT in body, not bearer token)
-app.post(ApiRoutes.SDK.IDENTIFY, rateLimit(RateLimitKind.Identify), async (req, res) => {
-    await identify(req, res)
-})
-
-app.post(ApiRoutes.SDK.DEVICE_TOKEN_EXCHANGE, rateLimit(RateLimitKind.TokenMinting), async (req, res) => {
-    await deviceTokenExchange(req, res)
-})
-
 // Billing service callback: uses a service JWT, not bearer API token auth.
 app.post(ApiRoutes.BILLING.CACHE_INVALIDATION, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
     await invalidateBillingCachesFromService(req, res)
@@ -298,6 +274,8 @@ app.use("/organizations", organizationsRouter)
 app.use("/agents/:agentId", improvementsRouter)
 app.use("/tools", toolsRouter)
 app.use("/integrations", integrationsRouter)
+app.use("/sdk", sdkRouter)
+app.use(sdkMaintenanceRouter)
 app.use(authRouter)
 
 // MARK: SESSION
@@ -521,95 +499,6 @@ app.get(ApiRoutes.AGENTS.FILES, rateLimit(RateLimitKind.Default), requireAuth([A
 
 app.get(ApiRoutes.AGENTS.FILE_CONTENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAgentFileContent(req, res)
-})
-
-// MARK: SDK
-
-app.get(ApiRoutes.SDK.ME, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req: Request, res: Response) => {
-    const user = req.session?.user
-    if (!user) {
-        return res.status(401).json({ error: "Unauthorized" })
-    }
-
-    try {
-        const workOSUser = await workos.userManagement.getUser(user.workosId)
-        return res.json({
-            id: user.id,
-            email: workOSUser.email,
-            firstName: workOSUser.firstName || null,
-            lastName: workOSUser.lastName || null,
-            displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" ") || null,
-            organizationId: user.organizationId,
-            organization: user.organizationId ? { id: user.organizationId, name: user.organizationName } : null
-        })
-    } catch (error) {
-        logger.error("[/sdk/me] Failed to fetch user from WorkOS", { error })
-        return res.status(500).json({ error: "Failed to fetch user" })
-    }
-})
-
-app.get(ApiRoutes.SDK.ME_ORGANIZATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    await listMyOrganizations(req, res)
-})
-
-app.post(ApiRoutes.SDK.SWITCH_ORGANIZATION, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserToken]), async (req, res) => {
-    await sdkSwitchOrganization(req, res)
-})
-
-app.post(ApiRoutes.SDK.SAMPLE_EVENTS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleSampleEvents(req, res)
-})
-
-app.post(ApiRoutes.SDK.HYDRATE_SAMPLE_EVENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleHydrateSampleEvent(req, res)
-})
-
-app.post(ApiRoutes.SDK.VERIFY_JOB_SERVER, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleVerifySdkJobServer(req, res)
-})
-
-app.post(ApiRoutes.SDK.TOOL_EXECUTE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    handleToolExecute(req, res)
-})
-
-app.get(ApiRoutes.SDK.TOOL_DEFINITIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    handleToolDefinitions(req, res)
-})
-
-app.get(ApiRoutes.SDK.RUN_TRIGGER_EVENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    handleSdkRunTriggerEvent(req, res)
-})
-
-app.post(ApiRoutes.SDK.AGENT_RUN, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    handleSdkAgentRun(req, res)
-})
-
-app.post(ApiRoutes.SDK.APPROVAL_DECISION, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    handleSdkApprovalDecision(req, res)
-})
-
-app.get(ApiRoutes.SDK.SESSION_EVENTS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    handleSessionEvents(req, res)
-})
-
-app.get(ApiRoutes.SDK.LISTEN, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken]), async (req, res) => {
-    handleSdkListen(req, res)
-})
-
-app.post(ApiRoutes.SDK.DEPLOY, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleSdkDeploy(req, res)
-})
-
-app.get(ApiRoutes.SDK.INTEGRATION_FIELDS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleSdkIntegrationFields(req, res)
-})
-
-app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleSdkIntegrationFormSubmit(req, res)
-})
-
-app.post(ApiRoutes.SDK.CREATE_PROJECT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleProjectCreate(req, res)
 })
 
 /**
