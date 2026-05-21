@@ -255,4 +255,3 @@ interface SandboxLike {
     exec(command: string[], params?: { stdout?: "pipe" | "ignore"; stderr?: "pipe" | "ignore" }): Promise<{ wait(): Promise<number> }>
     open(path: string, mode: "r" | "w"): Promise<{ write(data: Uint8Array): Promise<void>; close(): Promise<void> }>
 }
-
