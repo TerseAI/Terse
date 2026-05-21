@@ -19,19 +19,17 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 ## Steps
 
-### 1. Detect the project language and find the job
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
 
-Use project markers to detect the language:
+`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
-- TypeScript: `package.json` and `tsconfig.json`
+If `src/terse.generated.ts` is missing or stale for the integrations the job uses, rerun `terse generate` instead of guessing at missing helpers. Never edit the generated file directly.
 
-Then open the right files:
+### 1. Find the job
 
-- TypeScript: `src/terse.jobs.ts` and `src/terse.generated.ts`
+Open `src/terse.jobs.ts` and `src/terse.generated.ts`. Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
 
-Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
 The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
-If the generated file is missing or stale for the requested integration, rerun `terse generate` instead of guessing at missing helpers.
 
 ### 2. Pull production run history
 
@@ -57,19 +55,27 @@ What to look for:
 - **Failed or cancelled runs** — the trigger event shows the input that broke the job.
 - **Repeated patterns** — the same kind of event misbehaving suggests a missing filter, a vague prompt, or a missing skill.
 - **Wasted runs** — bot events, drafts, or no-op events that should have been filtered out.
-- **Wrong tool choices** — the agent reaching for `runAndWait` when a deterministic `agent.tools.*` call would have been correct (or vice versa).
+- **Agentic overreach** — `runAndWait` doing deterministic work (`toolbox` / `agent.tools` would be correct). Check chat history for wrong tool picks or hallucinated parameters.
 
 If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus sample events from `terse test list`.
 
 ### 3. Analyze for improvements
 
-Evaluate each area below. Not every area will need changes — focus on the ones that make the biggest difference.
+Evaluate each area below. Not every area will need changes — focus on the ones that make the biggest difference. Start with **Tool usage** — moving work from the agent to `toolbox` is usually the highest-impact fix.
+
+#### Tool Usage
+
+- **Deterministic vs AI**: For actions with known parameters, use `toolbox` (no agent) or `agent.tools.*` — not `runAndWait`. Read available methods in `src/terse.generated.ts`.
+- **Unnecessary agents**: If the handler only runs deterministic tools, remove `TerseAgent` entirely and call `toolbox` directly.
+- **Prompts doing integration work**: Phrases like "post to Slack", "create a Linear issue", or "add label X" in a prompt usually mean that step should be code. Keep prompts for judgment only (summarize, triage, draft).
+- **Model access vs code access**: Missing entries in `skills` break model-driven tool use inside `run()` / `runAndWait()`, but they do not limit `toolbox` or `agent.tools.*`.
+- **Multi-step**: Deterministic setup first (`toolbox.slack.sendMessage`), then a narrow `runAndWait` for the part that needs reasoning (thread reply with summary).
+- **Tool results**: Capture return values from deterministic calls when later steps need them (e.g. `message.message_ts` for threading).
 
 #### Prompt Quality
 
 - **Specificity**: Does the prompt tell the agent exactly what to do? Vague prompts like "handle this event" waste tokens and produce inconsistent results. Be specific: "Summarize the PR changes in 3 bullet points and post to Slack."
-- **Event context**: Does it include the full event payload?
-TypeScript: `event.formatForAgentRunner()`
+- **Event context**: Does it include the full event payload via `event.formatForAgentRunner()`?
 - **Edge cases**: Does the prompt explain what to do when things are ambiguous? E.g., "If the PR has no description, summarize from the diff only."
 - **Format instructions**: Does it specify the output format? "Format as Block Kit JSON" vs leaving it open.
 - **Length**: Is the prompt too long? Split multi-step instructions into separate agent runs or use deterministic tool calls for the predictable parts.
@@ -83,7 +89,7 @@ TypeScript: `event.formatForAgentRunner()`
 
 #### Tool Usage
 
-- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers over an agent run. Use `agent.tools.*` / `agent.executeTool()` in TypeScript.
+- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers from `src/terse.generated.ts` over an agent run. Use `agent.tools.*` or `agent.executeTool()`.
 - **Model access vs code access**: Missing entries in `skills` break model-driven tool use inside `run()` / `runAndWait()`, but they do not automatically prevent direct deterministic calls from code.
 - **Multi-step**: Could a two-step approach work better? E.g., send a Slack message first with `agent.tools.slack.sendMessage()`, then use `agent.runAndWait()` to post an AI-generated summary as a thread reply.
 - **Tool results**: When using `agent.tools.*`, capture the return value if subsequent steps need it (e.g., `message.message_ts` for threading).
@@ -102,7 +108,7 @@ TypeScript: `event.formatForAgentRunner()`
 
 ### 4. Implement improvements
 
-Edit the language-specific entry file directly. Make the changes. Never edit the generated file by hand; rerun `terse generate` if the helper surface needs to change.
+Edit `src/terse.jobs.ts` (or the repo's configured `--entry-file`). Make the changes. If you connected a new integration or need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
 
 ### 5. Verify the changes locally
 
@@ -135,15 +141,28 @@ For all of these commands, see https://docs.useterse.ai/reference/cli for the fu
 
 ### 6. Typecheck the project
 
-After local execution looks healthy, run the project's typechecker so the change is statically valid before deploy:
+After local execution looks healthy, run the typechecker so the change is statically valid before deploy:
 
-- TypeScript: `pnpm exec tsc --noEmit` (or `npx tsc --noEmit`, or `pnpm run build` if the scaffolded `build` script is unchanged).
+```bash
+pnpm exec tsc --noEmit
+```
 
-Fix any errors before reporting back. If the project uses a different typechecker (mypy, pyright, etc.), use whatever the repo is configured for.
+Use `npx tsc --noEmit` or `pnpm run build` if that matches how the project is set up. Fix any errors before reporting back.
 
 ### 7. Explain changes
 
 After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test list/show/run` invocations confirmed the fix.
+
+### 8. Ask before deploying
+
+Do not run `terse deploy` automatically. After explaining the changes, ask the user whether to deploy them now.
+
+Example prompt:
+
+> The improvements are verified locally. Deploy to production with `terse deploy`? (This syncs all jobs in the project — removed jobs are deleted remotely.)
+
+- If the user says yes, run `terse deploy` and report the outcome.
+- If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
 
 ## Common Improvement Patterns
 
