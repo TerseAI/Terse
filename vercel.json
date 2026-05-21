@@ -5,6 +5,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://api.useterse.ai/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
