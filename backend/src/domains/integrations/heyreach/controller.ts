@@ -4,8 +4,8 @@ import { heyReachWebhookPayloadSchema } from "terse-types"
 import { z } from "zod"
 
 import logger from "../../../common/logger"
-import { HeyReachIntegrationManager, fetchHeyReachCampaigns } from "../../../integrations/heyreach/integration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
+import { HeyReachIntegrationManager, fetchHeyReachCampaigns } from "../../../integrations/heyreach/integration"
 import { db } from "../../../loaders/prisma"
 
 const webhookParamsSchema = z.object({ triggerId: z.string() })

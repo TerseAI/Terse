@@ -8,7 +8,6 @@ import { fetchPosthogProjects } from "../../domains/integrations/posthog/control
 import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
-
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import {
     FormIntegrationInstallation,

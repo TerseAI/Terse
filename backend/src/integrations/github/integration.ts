@@ -26,7 +26,6 @@ import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMet
 import { SecretService } from "../../services/SecretService"
 import { githubApp, urls } from "../../settings"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../../types/prisma"
-
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"

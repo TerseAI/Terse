@@ -23,7 +23,6 @@ import { SecretNotFoundError } from "../../services/SecretService"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, settings, urls } from "../../settings"
 import { LinearAdapter } from "../../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
-
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"

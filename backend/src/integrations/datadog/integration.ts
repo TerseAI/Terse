@@ -7,7 +7,6 @@ import { getDatadogApiUrl } from "../../integrations/datadog/helpers"
 import { db } from "../../loaders/prisma"
 import { getDatadogCredentialsByIntegrationId } from "../../outputs/datadog/datadogApiClient"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
-
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 
 export class DatadogIntegrationManager extends Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never> implements FormIntegrationInstallation<IntegrationType.DATADOG> {

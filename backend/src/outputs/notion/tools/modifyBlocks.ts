@@ -4,9 +4,9 @@ import { IntegrationType, NotionConfig } from "terse-types"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { verifyNotionPageInScope } from "../../../integrations/notion/acl"
 import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../integrations/notion/helpers"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 

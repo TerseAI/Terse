@@ -20,7 +20,7 @@ import { appendRunHistoryErrorSystemEvent } from "../domains/agents/systemEvents
 import { getUserForOrg } from "../integrations/workos/helpers"
 import { verifyWorkosJwt } from "../integrations/workos/jwt"
 import { db } from "../loaders/prisma"
-import { NotificationManager } from "../notifications/Notification"
+import { NotificationManager } from "../domains/notifications/Notification"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { billingServiceProxyForOrganization } from "../services/BillingService"
 import { invalidateRunAndChatHistory } from "../services/CacheInvalidationService"

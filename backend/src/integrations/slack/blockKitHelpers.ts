@@ -2,8 +2,8 @@ import type { AppMentionEvent, Button, GenericMessageEvent, KnownBlock, ModalVie
 import { WebClient } from "@slack/web-api"
 import { SlackAttachment, SlackBlock, SlackFile, SlackFiles, SlackTrigger } from "terse-types"
 
-import logger from "../common/logger"
-import { extractErrorMessage } from "../common/strings"
+import logger from "../../common/logger"
+import { extractErrorMessage } from "../../common/strings"
 
 import { SlackApprovalMessageStatus } from "./ApprovalStatus"
 

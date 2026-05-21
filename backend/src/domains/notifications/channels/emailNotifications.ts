@@ -6,9 +6,9 @@ import { RunHistoryAction } from "terse-types"
 import { User } from "terse-types"
 import { fileURLToPath } from "url"
 
-import { FailureState } from "../../domains/agents/AgentRunner/runHistory"
-import { settings } from "../../settings"
-import { Agent, UserNotificationDestination } from "../../types/prisma"
+import { FailureState } from "../../../domains/agents/AgentRunner/runHistory"
+import { settings } from "../../../settings"
+import { Agent, UserNotificationDestination } from "../../../types/prisma"
 import { loadTemplate } from "../emails/templating"
 import { formatApprovalNotificationFor } from "../utils"
 

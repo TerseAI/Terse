@@ -5,8 +5,8 @@ import { IntegrationType } from "terse-types/Integrations"
 import { NotionResource, NotionResourcesResponse } from "terse-types/types"
 
 import logger from "../../../common/logger"
-import { NotionIntegrationManager } from "../../../integrations/notion/integration"
 import { extractPageTitle } from "../../../integrations/notion/helpers"
+import { NotionIntegrationManager } from "../../../integrations/notion/integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
 

@@ -12,7 +12,7 @@ import { db } from "./loaders/prisma"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
 import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
-import { setupSlackBolt } from "./slack/boltApp"
+import { setupSlackBolt } from "./integrations/slack/boltApp"
 
 // MARK: ASYNC INITIALIZATION
 // Bootstrap async dependencies before the Express app is built.

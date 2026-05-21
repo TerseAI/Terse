@@ -13,7 +13,6 @@ import { db } from "../../loaders/prisma"
 import { SecretNotFoundError } from "../../services/SecretService"
 import { notion as notionConfig, urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
-
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"

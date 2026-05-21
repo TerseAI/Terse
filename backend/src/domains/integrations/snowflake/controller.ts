@@ -1,8 +1,8 @@
 import { Request, Response } from "express"
 
 import logger from "../../../common/logger"
-import { SnowflakeIntegrationManager } from "../../../integrations/snowflake/integration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
+import { SnowflakeIntegrationManager } from "../../../integrations/snowflake/integration"
 
 export async function getSnowflakeIntegrations(req: Request, res: Response) {
     if (!req.session?.user) return res.status(401).json({ error: "Unauthorized" })

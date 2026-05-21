@@ -3,8 +3,8 @@ import Handlebars from "handlebars"
 import path from "path"
 import { fileURLToPath } from "url"
 
-import logger from "../../common/logger"
-import { extractErrorMessage } from "../../common/strings"
+import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const templatesDir = path.resolve(moduleDir, "templates")

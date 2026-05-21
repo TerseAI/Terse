@@ -23,15 +23,15 @@ import { db } from "../../loaders/prisma"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { GetSecretsArg, SecretService } from "../../services/SecretService"
 import { slack as slackConfig, urls } from "../../settings"
-import { extractImagesFromMessage, pickSlackFileUrl } from "../../slack/blockKitHelpers"
+import { extractImagesFromMessage, pickSlackFileUrl } from "../../integrations/slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../../types/prisma"
-
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
-import { initializeSlackWebClient, resolveSlackAccessToken } from "./client"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
+
+import { initializeSlackWebClient, resolveSlackAccessToken } from "./client"
 
 export class SlackIntegrationManager
     extends Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>

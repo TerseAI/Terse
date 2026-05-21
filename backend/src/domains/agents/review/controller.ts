@@ -12,7 +12,7 @@ import { MAX_IMPROVEMENTS_PER_AGENT } from "../../../domains/agents/JudgeAgent/J
 import { fetchFullJudgeContext } from "../../../domains/agents/JudgeAgent/fetchJudgeContext"
 import { getUserForOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
-import { sendWeeklyReviewEmail } from "../../../notifications/channels/emailNotifications"
+import { sendWeeklyReviewEmail } from "../../../domains/notifications/channels/emailNotifications"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
 import { SdkImprovementService } from "../../../services/SdkImprovementService"
 import { settings } from "../../../settings"

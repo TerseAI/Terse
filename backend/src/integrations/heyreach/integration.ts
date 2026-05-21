@@ -13,7 +13,6 @@ import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../../types/prisma"
-
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
 

@@ -3,8 +3,8 @@ import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
 import { IntegrationType, NotionConfig } from "terse-types"
 
 import logger from "../../../common/logger"
-import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { verifyNotionDatabaseInScope } from "../../../integrations/notion/acl"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 

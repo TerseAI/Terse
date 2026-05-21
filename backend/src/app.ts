@@ -53,7 +53,7 @@ import usersRouter from "./domains/users/routes"
 import { httpAccessLog } from "./middlewares/httpAccessLog"
 import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
 import { settings } from "./settings"
-import { setupSlackBolt } from "./slack/boltApp"
+import { setupSlackBolt } from "./integrations/slack/boltApp"
 
 type SlackReceiver = Awaited<ReturnType<typeof setupSlackBolt>>
 

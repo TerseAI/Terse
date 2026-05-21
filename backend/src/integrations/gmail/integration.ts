@@ -20,7 +20,6 @@ import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMeta
 import { SecretService } from "../../services/SecretService"
 import { gmail as gmailConfig, urls } from "../../settings"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../../types/prisma"
-
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { Integration, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"

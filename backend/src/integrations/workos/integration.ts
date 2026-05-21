@@ -15,7 +15,6 @@ import { db } from "../../loaders/prisma"
 import { getWorkOSUser } from "../../outputs/workos/workosApiClient"
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
-
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
 

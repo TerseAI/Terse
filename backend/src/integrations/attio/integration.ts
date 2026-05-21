@@ -30,7 +30,6 @@ import { db } from "../../loaders/prisma"
 import { SecretNotFoundError, SecretService } from "../../services/SecretService"
 import { attio as attioConfig, urls } from "../../settings"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../../types/prisma"
-
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
