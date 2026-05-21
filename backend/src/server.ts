@@ -39,7 +39,6 @@ import { createNotificationDestination, deleteNotificationDestination, getNotifi
 import { getNotificationSettings, updateNotificationSettings } from "./routes/notificationSettings"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
-import { getPendingApprovals } from "./routes/pendingApprovals"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import {
     handleGetProjectById,
@@ -55,7 +54,6 @@ import {
 import { handleDeleteProjectSecret, handleImportProjectSecrets, handleListProjectSecrets, handleUpsertProjectSecret } from "./routes/projectSecrets"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
-import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./routes/runHistory"
 import { handleSampleEvents } from "./routes/sampleEvents"
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebMonitorWebhook } from "./routes/schedule"
 import { handleSdkAgentRun, handleSdkApprovalDecision } from "./routes/sdkAgentRun"
@@ -70,9 +68,11 @@ import { handleToolExecute } from "./routes/sdkToolExecute"
 import { getSentNotifications } from "./routes/sentNotifications"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { createOrUpdateSnowflakeIntegration, getSnowflakeIntegrations } from "./routes/snowflake"
-import { getStats } from "./routes/stats"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
-import { getUserById } from "./routes/users"
+import approvalsRouter from "./domains/approvals/routes"
+import runsRouter from "./domains/runs/routes"
+import statsRouter from "./domains/stats/routes"
+import usersRouter from "./domains/users/routes"
 import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
@@ -368,39 +368,16 @@ app.get(ApiRoutes.ORGANIZATIONS.LOGO_UPLOAD_URL, rateLimit(RateLimitKind.Default
 
 app.get(ApiRoutes.ORGANIZATIONS.LOGO, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getLogoUrl(req, res))
 
-// MARK: STATS
-app.get(ApiRoutes.STATS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getStats(req, res)
-})
-
-// MARK: RUN HISTORY
-
-app.get(ApiRoutes.RUN_HISTORY.ACTIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getRunHistoryActions(req, res)
-})
-
-app.get(ApiRoutes.RUN_HISTORY.ALL, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getAllRunHistory(req, res)
-})
-
-app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getRunHistory(req, res)
-})
-
-app.get(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getChatHistory(req, res)
-})
+// MARK: DOMAIN ROUTERS (MVC — controller/service/repository per domain)
+app.use("/stats", statsRouter)
+app.use("/run-history", runsRouter)
+app.use("/users", usersRouter)
+app.use("/pending-approvals", approvalsRouter)
 
 // MARK: SESSION
 
 app.get(ApiRoutes.SESSION.TOKEN, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     requestSessionSocketToken(req, res)
-})
-
-// MARK: USERS
-
-app.get(ApiRoutes.USERS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getUserById(req, res)
 })
 
 // MARK: GITHUB APP
@@ -791,10 +768,6 @@ app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, rateLimit(RateLimitKind.Default)
 
 app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getSentNotifications(req, res)
-})
-
-app.get(ApiRoutes.PENDING_APPROVALS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getPendingApprovals(req, res)
 })
 
 app.post(ApiRoutes.SDK.CREATE_PROJECT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
