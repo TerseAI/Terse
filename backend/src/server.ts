@@ -11,7 +11,10 @@ import { setupLLMAnalytics } from "./agent/openaiInstance"
 import { requestSessionSocketToken } from "./agent/socket"
 import { settings } from "./config/settings"
 import approvalsRouter from "./domains/approvals/routes"
+import billingRouter from "./domains/billing/routes"
 import notificationDestinationsRouter from "./domains/notifications/destinations/routes"
+import projectSecretsRouter from "./domains/projects/secrets/routes"
+import projectsRouter from "./domains/projects/routes"
 import notificationSettingsRouter from "./domains/notifications/settings/routes"
 import sentNotificationsRouter from "./domains/notifications/sent/routes"
 import runsRouter from "./domains/runs/routes"
@@ -29,7 +32,6 @@ import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
-import { changeBillingSubscription, createBillingCheckoutSession, createBillingPortalSession, getBillingCatalog, getBillingContext, getBillingStatus, getBillingUsageBuckets } from "./routes/billing"
 import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
@@ -45,18 +47,7 @@ import { getLinearIntegrations, getLinearProjects, getLinearTeams, handleLinearW
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
-import {
-    handleGetProjectById,
-    handleGetProjectDeploys,
-    handleGetProjectSourceFileContent,
-    handleGetProjectSourceFiles,
-    handleListProjects,
-    handleProjectCreate,
-    handleProjectDelete,
-    handleRotateProjectApiKey,
-    handleRotateProjectSigningSecret
-} from "./routes/project"
-import { handleDeleteProjectSecret, handleImportProjectSecrets, handleListProjectSecrets, handleUpsertProjectSecret } from "./routes/projectSecrets"
+import { handleProjectCreate } from "./domains/projects/controller"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
 import { reviewAllAgents } from "./routes/reviewAgents"
 import { handleSampleEvents } from "./routes/sampleEvents"
@@ -292,34 +283,6 @@ app.post(ApiRoutes.BILLING.CACHE_INVALIDATION, rateLimit(RateLimitKind.WebhookBy
     await invalidateBillingCachesFromService(req, res)
 })
 
-app.post(ApiRoutes.BILLING.CHECKOUT_SESSION, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
-    await createBillingCheckoutSession(req, res)
-})
-
-app.post(ApiRoutes.BILLING.CHANGE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
-    await changeBillingSubscription(req, res)
-})
-
-app.post(ApiRoutes.BILLING.PORTAL_SESSION, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
-    await createBillingPortalSession(req, res)
-})
-
-app.get(ApiRoutes.BILLING.CONTEXT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
-    await getBillingContext(req, res)
-})
-
-app.get(ApiRoutes.BILLING.USAGE_BUCKETS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
-    await getBillingUsageBuckets(req, res)
-})
-
-app.get(ApiRoutes.BILLING.CATALOG, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
-    await getBillingCatalog(req, res)
-})
-
-app.get(ApiRoutes.BILLING.STATUS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { requireAdmin: true }), async (req, res) => {
-    await getBillingStatus(req, res)
-})
-
 // MARK: AUTH
 
 app.get(ApiRoutes.AUTH.ME, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), me)
@@ -376,6 +339,9 @@ app.use("/pending-approvals", approvalsRouter)
 app.use("/notification-destinations", notificationDestinationsRouter)
 app.use("/notification-settings", notificationSettingsRouter)
 app.use("/sent-notifications", sentNotificationsRouter)
+app.use("/billing", billingRouter)
+app.use("/projects/:id/secrets", projectSecretsRouter)
+app.use("/projects", projectsRouter)
 
 // MARK: SESSION
 
@@ -745,54 +711,6 @@ app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, rateLimit(RateLimitKind.Default)
 
 app.post(ApiRoutes.SDK.CREATE_PROJECT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleProjectCreate(req, res)
-})
-
-app.get(ApiRoutes.PROJECTS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleListProjects(req, res)
-})
-
-app.get(ApiRoutes.PROJECTS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleGetProjectById(req, res)
-})
-
-app.delete(ApiRoutes.PROJECTS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleProjectDelete(req, res)
-})
-
-app.get(ApiRoutes.PROJECTS.DEPLOYS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleGetProjectDeploys(req, res)
-})
-
-app.get(ApiRoutes.PROJECTS.SOURCE_FILES, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleGetProjectSourceFiles(req, res)
-})
-
-app.get(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleGetProjectSourceFileContent(req, res)
-})
-
-app.post(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleRotateProjectSigningSecret(req, res)
-})
-
-app.post(ApiRoutes.PROJECTS.ROTATE_API_KEY, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleRotateProjectApiKey(req, res)
-})
-
-app.get(ApiRoutes.PROJECT_SECRETS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleListProjectSecrets(req, res)
-})
-
-app.post(ApiRoutes.PROJECT_SECRETS.UPSERT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleUpsertProjectSecret(req, res)
-})
-
-app.delete(ApiRoutes.PROJECT_SECRETS.DELETE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleDeleteProjectSecret(req, res)
-})
-
-app.post(ApiRoutes.PROJECT_SECRETS.IMPORT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    handleImportProjectSecrets(req, res)
 })
 
 // MARK: TOOLS THAT REQUIRE APPROVALS
