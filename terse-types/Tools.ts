@@ -1842,7 +1842,7 @@ export const workOSOrganizationSummarySchema = z.object({
     id: z.string(),
     name: z.string(),
     externalId: z.string().nullable().optional(),
-    modules: z.array(z.string()),
+    domains: z.array(z.string()),
     createdAt: z.string(),
     updatedAt: z.string()
 })

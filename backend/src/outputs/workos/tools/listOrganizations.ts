@@ -29,7 +29,7 @@ export const listWorkOSOrganizationsTool = defineSessionTool({
                 id: org.id,
                 name: org.name,
                 externalId: org.externalId,
-                modules: (org.domains ?? []).map(d => d.domain),
+                domains: (org.domains ?? []).map(d => d.domain),
                 createdAt: org.createdAt,
                 updatedAt: org.updatedAt
             }))
