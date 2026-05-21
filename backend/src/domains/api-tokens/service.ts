@@ -1,9 +1,9 @@
 import { apiTokensKey } from "terse-types/InvalidationKeys"
 import { ApiToken } from "terse-types/types"
 
-import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
-import { createApiToken as createTokenInDb, getApiTokensForUser } from "../../domains/auth/helpers/apiTokens"
 import { FeatureFlag, FeatureFlagService } from "../../common/featureFlags"
+import { createApiToken as createTokenInDb, getApiTokensForUser } from "../../domains/auth/helpers/apiTokens"
+import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
 
 import { deleteApiTokenById, findUserApiToken, updateApiTokenName } from "./repository"
 

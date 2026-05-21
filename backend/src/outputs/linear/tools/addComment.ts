@@ -2,10 +2,10 @@ import { LinearClient } from "@linear/sdk"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, LinearOutputConfig } from "terse-types"
 
-import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../common/logger"
-import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../common/strings"
+import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 import { verifyLinearIssueInScope } from "../linearAcl"
 

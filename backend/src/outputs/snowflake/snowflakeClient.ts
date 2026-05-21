@@ -3,9 +3,9 @@ import snowflake from "snowflake-sdk"
 import { IntegrationType } from "terse-types"
 
 import logger from "../../common/logger"
+import { extractErrorMessage } from "../../common/strings"
 import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
-import { extractErrorMessage } from "../../common/strings"
 
 snowflake.configure({ logLevel: "OFF" })
 

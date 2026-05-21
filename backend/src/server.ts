@@ -1,18 +1,18 @@
 import "dotenv/config"
 import { createServer } from "http"
 
-import { setupLLMAnalytics } from "./agent/openaiInstance"
+import { setupLLMAnalytics } from "./domains/agents/openaiInstance"
 import { createApp } from "./app"
-import "./integrations/IntegrationTaskHandler"
-// Import to trigger listener registration
-import logger from "./common/logger"
-import { db } from "./loaders/prisma"
-import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
-import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
-import { registerSocketGetter } from "./services/CacheInvalidationService"
-import { setupSlackBolt } from "./slack/boltApp"
 import { analytics } from "./common/analytics"
 import { buildCorsAllowedOrigins } from "./common/corsOrigins"
+// Import to trigger listener registration
+import logger from "./common/logger"
+import "./integrations/IntegrationTaskHandler"
+import { db } from "./loaders/prisma"
+import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
+import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
+import { registerSocketGetter } from "./services/CacheInvalidationService"
+import { setupSlackBolt } from "./slack/boltApp"
 
 // MARK: ASYNC INITIALIZATION
 // Bootstrap async dependencies before the Express app is built.

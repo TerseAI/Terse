@@ -1,8 +1,8 @@
 import { Router } from "express"
 
+import { AuthKind, requireAuth } from "../../../domains/auth/helpers/authMiddleware"
 import { handleProjectCreate } from "../../../domains/projects/controller"
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { AuthKind, requireAuth } from "../../../domains/auth/helpers/authMiddleware"
 
 import { handleSdkDeploy } from "./controller"
 

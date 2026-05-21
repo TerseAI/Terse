@@ -2,12 +2,12 @@ import type { Event as WorkOSEvent } from "@workos-inc/node"
 import { Request, Response } from "express"
 import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
-import { settings } from "../../../settings"
 import logger from "../../../common/logger"
+import { workos } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { getRealtimeSocket } from "../../../loaders/socket"
 import { emitBillingCachesInvalidated } from "../../../services/CacheInvalidationService"
-import { workos } from "../../../integrations/workos/helpers"
+import { settings } from "../../../settings"
 
 /**
  * Map WorkOS user ID to local database user ID.

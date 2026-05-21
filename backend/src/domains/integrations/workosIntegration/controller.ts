@@ -2,12 +2,12 @@ import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
 import { webhookWorkOSTriggerParamsSchema, workosWebhookSecretUpdateRequestSchema } from "terse-types/types"
 
+import logger from "../../../common/logger"
 import { WorkOSIntegrationManager } from "../../../integrations/WorkOSIntegration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
-import logger from "../../../common/logger"
+import { workos } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
-import { workos } from "../../../integrations/workos/helpers"
 
 export async function getWorkOSIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

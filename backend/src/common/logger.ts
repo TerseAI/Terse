@@ -7,8 +7,8 @@ import { AsyncLocalStorage } from "async_hooks"
 import chalk from "chalk"
 import { User } from "terse-types"
 
-import { settings } from "../settings"
 import { extractErrorMessage } from "../common/strings"
+import { settings } from "../settings"
 
 const config: LoggerConfig = {
     isDevelopment: settings.nodeEnv === "development",

@@ -1,8 +1,8 @@
 import { z } from "zod"
 
-import { INTEGRATION_REGISTRY, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
 import logger from "../common/logger"
 import { SecretManagerClient } from "../common/secretManagerClient"
+import { INTEGRATION_REGISTRY, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
 
 export class SecretService {
     private static instance: SecretService

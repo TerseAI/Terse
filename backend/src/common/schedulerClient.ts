@@ -1,8 +1,8 @@
 import { CloudSchedulerClient } from "@google-cloud/scheduler"
 import type { protos } from "@google-cloud/scheduler"
 
-import { cloudScheduler, gcp } from "../settings"
 import logger from "../common/logger"
+import { cloudScheduler, gcp } from "../settings"
 
 type Job = protos.google.cloud.scheduler.v1.IJob
 type CreateJobRequest = protos.google.cloud.scheduler.v1.ICreateJobRequest

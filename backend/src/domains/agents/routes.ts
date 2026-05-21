@@ -1,7 +1,7 @@
 import { Router } from "express"
 
-import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 import { AuthKind, requireAuth } from "../../domains/auth/helpers/authMiddleware"
+import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
 // Handlers still live in routes/agents.ts (842 LOC); a future PR can decompose
 // them into routes/controller/service/repository within this domain folder.

@@ -6,8 +6,8 @@ import { IntegrationType } from "terse-types/Integrations"
 import type { AttioAttribute, AttioObject, AttioObjectWithAttributes } from "terse-types/types"
 import { z } from "zod"
 
-import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../common/logger"
+import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
 

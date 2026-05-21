@@ -3,8 +3,8 @@ import type { EventName } from "@workos-inc/node"
 import { WorkOSEventType } from "terse-types/Configs"
 import { Role, User } from "terse-types/types"
 
-import { settings } from "../../settings"
 import { db } from "../../loaders/prisma"
+import { settings } from "../../settings"
 
 // Compile-time check: every WorkOSEventType must be a valid @workos-inc/node EventName
 const _assertValidEventNames: readonly EventName[] = Object.values(WorkOSEventType)

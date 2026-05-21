@@ -1,11 +1,11 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, LinearOutputConfig } from "terse-types"
 
-import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
+import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../common/strings"
 import { ToolACLValidator } from "../../abstract/acl"
 
 import { validateLinearOptionalTeam } from "./getStates"

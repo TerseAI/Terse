@@ -3,11 +3,11 @@ import { IntegrationType, type SdkSampleEventRef as SampleEventRef, type SdkSamp
 import { sdkHydrateSampleEventRequestSchema, sdkHydrateSampleEventResponseSchema, sdkSampleEventsRequestSchema, sdkSampleEventsResponseSchema } from "terse-types/types"
 
 import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
 import { HydrationError } from "../../../hydrators/Hydrator"
 import { requireHydrator } from "../../../hydrators/HydratorRegistry"
 import { fetchSampleEvents } from "../../../integrations/abstract/sampleEvents"
 import { requireHydratorType } from "../../../types/rag"
-import { extractErrorMessage } from "../../../common/strings"
 
 export async function handleSampleEvents(req: Request, res: Response) {
     const user = req.session?.user as User | undefined

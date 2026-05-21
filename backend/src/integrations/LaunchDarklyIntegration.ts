@@ -4,8 +4,8 @@ import { LaunchDarklyProject } from "terse-types/types"
 import { z } from "zod"
 
 import logger from "../common/logger"
-import { db } from "../loaders/prisma"
 import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../domains/integrations/launchdarkly/controller"
+import { db } from "../loaders/prisma"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 

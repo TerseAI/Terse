@@ -5,20 +5,20 @@ import { User } from "terse-types/types"
 import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { z } from "zod"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
-import { emitSessionEvent } from "../../../agent/SessionEventBus"
+import { SessionWithTracking } from "../../../domains/agents/AgentRunner/BaseAgentRunner"
+import { emitSessionEvent } from "../../../domains/agents/SessionEventBus"
 import {
     type DeterministicToolCallRunContext,
     extractRunHistoryActions,
     persistDeterministicToolCallComplete,
     persistDeterministicToolCallFailure,
     persistDeterministicToolCallStart
-} from "../../../agent/toolCallHistory"
+} from "../../../domains/agents/toolCallHistory"
 import logger from "../../../common/logger"
+import { extractErrorMessage, randomString } from "../../../common/strings"
 import { Session } from "../../../express"
 import { db } from "../../../loaders/prisma"
 import { OutputFactory } from "../../../outputs/abstract/OutputFactory"
-import { extractErrorMessage, randomString } from "../../../common/strings"
 
 type SdkFunctionTool = FunctionTool<SessionWithTracking<Session>, z.ZodObject<any>, unknown>
 type SdkToolDescriptor = {

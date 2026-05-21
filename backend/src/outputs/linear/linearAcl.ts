@@ -3,10 +3,10 @@ import { RunContext } from "@openai/agents"
 import { LinearOutputConfig } from "terse-types"
 import { validate as isValidUuid } from "uuid"
 
-import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
+import { SessionWithTracking } from "../../domains/agents/AgentRunner/BaseAgentRunner"
+import logger from "../../common/logger"
 import { Session } from "../../express"
 import { getLinearAccessTokenForOrganization } from "../../integrations/LinearIntegration"
-import logger from "../../common/logger"
 import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../abstract/acl"
 
 type LinearIssueScope = { teamId: string | null; projectId: string | null }

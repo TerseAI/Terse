@@ -2,8 +2,8 @@ import type { ConfigData, SdkSampleEventRef as SampleEventRef, SdkSampleEventsRe
 import { IntegrationType } from "terse-types"
 
 import logger from "../../common/logger"
-import { validateUserOwnsIntegration } from "../../domains/agents/controller"
 import { fetchWebhookSampleEvents } from "../../common/webhookSampleEvents"
+import { validateUserOwnsIntegration } from "../../domains/agents/controller"
 
 import { INTEGRATION_REGISTRY } from "./IntegrationRegistry"
 

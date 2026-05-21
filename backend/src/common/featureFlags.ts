@@ -1,7 +1,7 @@
 import { PostHog } from "posthog-node"
 
-import { settings } from "../settings"
 import logger from "../common/logger"
+import { settings } from "../settings"
 
 export enum FeatureFlag {
     WEEKLY_REVIEW_EMAILS = "Weekly-review-emails",

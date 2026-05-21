@@ -3,10 +3,10 @@ import { IssueCreateInput } from "@linear/sdk/dist/_generated_documents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, LinearOutputConfig } from "terse-types"
 
-import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../common/logger"
-import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../common/strings"
+import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
 
 export const linearCreateTicketTool = defineSessionTool({

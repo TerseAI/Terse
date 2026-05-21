@@ -1,9 +1,9 @@
 import { RunContext, ToolGuardrailFunctionOutputFactory, ToolInputGuardrailDefinition, defineToolInputGuardrail } from "@openai/agents-core"
 import { ConfigData, ToolInputByName, ToolName, toolsWithIntegrationId } from "terse-types"
 
-import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
-import { Session } from "../../express"
+import { SessionWithTracking } from "../../domains/agents/AgentRunner/BaseAgentRunner"
 import logger from "../../common/logger"
+import { Session } from "../../express"
 
 import { Output, ToolboxEntry } from "./Output"
 

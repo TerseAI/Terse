@@ -3,10 +3,10 @@ import type { IssueFilter, IssuesQueryVariables, PaginationOrderBy as Pagination
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, LinearOutputConfig } from "terse-types"
 
-import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
 import logger from "../../../common/logger"
-import { defineSessionTool } from "../../../tools/toolUtils"
 import { extractErrorMessage } from "../../../common/strings"
+import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 
 export const linearSearchTicketTool = defineSessionTool({

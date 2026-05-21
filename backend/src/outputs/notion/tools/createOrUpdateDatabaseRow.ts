@@ -2,10 +2,10 @@ import { Client } from "@notionhq/client"
 import { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints"
 import { IntegrationType, NotionConfig } from "terse-types"
 
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import logger from "../../../common/logger"
-import { defineSessionTool } from "../../../tools/toolUtils"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
 import { verifyNotionDatabaseInScope, verifyNotionPageInScope } from "../../../integrations/notion/acl"
+import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionCreateOrUpdateDatabaseRowTool = defineSessionTool({

@@ -5,17 +5,17 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { User } from "terse-types/types"
 
-import { MAX_IMPROVEMENTS_PER_AGENT } from "../../../agent/JudgeAgent/JudgeAgent"
-import { fetchFullJudgeContext } from "../../../agent/JudgeAgent/fetchJudgeContext"
+import { MAX_IMPROVEMENTS_PER_AGENT } from "../../../domains/agents/JudgeAgent/JudgeAgent"
+import { fetchFullJudgeContext } from "../../../domains/agents/JudgeAgent/fetchJudgeContext"
+import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
-import { settings } from "../../../settings"
+import { extractErrorMessage } from "../../../common/strings"
+import { getUserForOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { sendWeeklyReviewEmail } from "../../../notifications/channels/emailNotifications"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
 import { SdkImprovementService } from "../../../services/SdkImprovementService"
-import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
-import { extractErrorMessage } from "../../../common/strings"
-import { getUserForOrg } from "../../../integrations/workos/helpers"
+import { settings } from "../../../settings"
 
 type EligibleAutomation = {
     id: string

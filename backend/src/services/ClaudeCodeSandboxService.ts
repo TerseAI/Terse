@@ -1,8 +1,8 @@
 import crypto from "node:crypto"
 
-import { settings } from "../settings"
 import logger from "../common/logger"
 import { assertValidEnvVarName, shellQuote, shellQuoteArgs } from "../common/shellEscape"
+import { settings } from "../settings"
 
 import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
 

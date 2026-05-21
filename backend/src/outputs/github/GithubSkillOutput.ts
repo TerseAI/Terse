@@ -2,8 +2,8 @@ import { OutputConfigType } from "@prisma/client"
 import { GitHubConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import logger from "../../common/logger"
+import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
 

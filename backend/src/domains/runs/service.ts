@@ -3,7 +3,7 @@ import { serializedEventSchema } from "terse-types"
 import { type TriggerPayload } from "terse-types"
 import { type GetRunHistoryParams, type RunHistoryModelEvent, type RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
-import { getRunHistoryModelEventsWithActions } from "../../agent/runHistoryModelEvents"
+import { getRunHistoryModelEventsWithActions } from "../../domains/agents/runHistoryModelEvents"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../../common/typeConverters"
 
 import { RunHistoryWhere, countAndListRunHistory, findActionsByIdsInOrg, findAgentInOrg, findRunRecordForChat } from "./repository"

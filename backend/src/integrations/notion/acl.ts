@@ -2,8 +2,8 @@ import { Client } from "@notionhq/client"
 import { DataSourceObjectResponse, GetDataSourceResponse, GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints"
 import { NotionConfig } from "terse-types"
 
-import { getNotionAccessTokenForOrganization } from "../../integrations/NotionIntegration"
 import logger from "../../common/logger"
+import { getNotionAccessTokenForOrganization } from "../../integrations/NotionIntegration"
 import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../../outputs/abstract/acl"
 
 type NotionScope = { databaseIds: readonly string[]; pageIds: readonly string[] }

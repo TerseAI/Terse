@@ -3,10 +3,10 @@ import { Request, Response } from "express"
 import { linearWebhookPayloadSchema } from "terse-types"
 import { LinearProjectSummary, LinearTeam } from "terse-types/types"
 
-import { settings } from "../../../settings"
-import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import logger from "../../../common/logger"
+import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
 import { db } from "../../../loaders/prisma"
+import { settings } from "../../../settings"
 import { LinearAdapter } from "../../../ticketing/linear"
 
 /**

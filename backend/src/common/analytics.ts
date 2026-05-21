@@ -1,7 +1,7 @@
 import { PostHog } from "posthog-node"
 
-import { settings } from "../settings"
 import logger from "../common/logger"
+import { settings } from "../settings"
 
 enum AnalyticsEvent {
     NEW_USER_ADDED = "new_user_added",

@@ -11,10 +11,10 @@ import {
 } from "terse-types/types"
 import { ZodError } from "zod"
 
+import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { getClaimsFromVerifiedPayload } from "../../../domains/auth/helpers/accessTokenClaims"
 import { createApiToken } from "../../../domains/auth/helpers/apiTokens"
-import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import { workos } from "../../../integrations/workos/helpers"
 import { WorkosTokenError, verifyWorkosJwt } from "../../../integrations/workos/jwt"
 import { getOrCreateDbUserFromWorkOS } from "../../auth/service"

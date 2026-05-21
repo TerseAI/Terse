@@ -2,8 +2,8 @@ import { RunHistoryActionType } from "@prisma/client"
 import { AttioOutputConfig, IntegrationType } from "terse-types"
 import type { AttioRecord } from "terse-types"
 
-import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import logger from "../../../common/logger"
+import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 import { ToolACLValidator, findConfigsByIntegrationId, requireValueInAnyConfig } from "../../abstract/acl"
 

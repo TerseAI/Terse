@@ -3,10 +3,10 @@ import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } f
 import { z } from "zod"
 
 import logger from "../common/logger"
-import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
-import { db } from "../loaders/prisma"
-import { AgentTriggerWithConfigs } from "../types/prisma"
 import { extractErrorMessage } from "../common/strings"
+import { db } from "../loaders/prisma"
+import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
+import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 

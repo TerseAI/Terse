@@ -1,0 +1,361 @@
+import { Agent, AgentInputItem, AgentOutputType, RunResult, RunState, RunStreamEvent, RunToolApprovalItem, StreamedRunResult, Tool } from "@openai/agents"
+import type { Session as AgentMemorySession, CallModelInputFilter, GuardrailFunctionOutput, InputGuardrail, InputGuardrailFunctionArgs, ModelSettings } from "@openai/agents-core"
+import { AiSdkModel } from "@openai/agents-extensions/ai-sdk"
+import { ConfigData, Decision, completedEventUsageSchema } from "terse-types"
+import { ChangedItem, ModelEvent } from "terse-types"
+import { RunHistoryAction } from "terse-types"
+import { BillingError, CompletedEventUsage, ModelReference } from "terse-types"
+
+import logger from "../../../common/logger"
+import { Session as AppSession } from "../../../express"
+import type { BillingService } from "../../../services/BillingService"
+import { settings } from "../../../settings"
+import { billingHook, billingInputGuardrail } from "../billingHook"
+import { parseModelReference } from "../modelRegistry"
+import { transformAgentStreamToModelEvents } from "../streaming"
+import { isFailedToolExecutionStatus } from "../toolExecution"
+
+import { SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
+
+export type SessionWithTracking<T extends AppSession> = T & {
+    agent: {
+        toolApprovals?: string[]
+    }
+    runId: string
+    agentId: string
+}
+
+/**
+ * SDK `InputGuardrail` is not generic; use this for a typed `execute`, then cast at `runner.run`
+ * (same idea as `CallModelInputFilter<TSession>` vs `CallModelInputFilter`).
+ */
+export type InputGuardrailForSession<TContext> = {
+    name: string
+    execute: (args: InputGuardrailFunctionArgs<TContext>) => Promise<GuardrailFunctionOutput>
+    runInParallel?: boolean
+}
+
+export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> {
+    private runId: string
+    private endedWithToolFailure = false
+    protected agent?: TAgent
+    // Protect lazy initialization from double-build races when run/resume are called concurrently.
+    private buildAgentPromise?: Promise<TAgent>
+    private readonly billing: BillingService
+
+    constructor(params: { runId: string; billing: BillingService }) {
+        this.runId = params.runId
+        this.billing = params.billing
+    }
+
+    protected abstract onModelEvent(event: ModelEvent, timestamp: number): Promise<void>
+    protected abstract onToolCallComplete(callId: string, toolName: string, actions?: RunHistoryAction[]): Promise<ChangedItem[]>
+    protected abstract onApprovalRequest(params: { runId: string; stepId: string; name: string; arguments: string; interruption: RunToolApprovalItem }): Promise<void>
+    protected abstract savePendingApprovalState(runId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void>
+    protected abstract loadPendingApprovalState(runId: string): Promise<PendingApprovalState | null>
+    protected abstract clearPendingApprovalState(runId: string): Promise<void>
+    protected abstract markRunInProgress(runId: string): Promise<void>
+    protected abstract getAgentInitializationParams(): AgentInitializationParams<TSession>
+
+    protected async initializeLoopIfNeeded(): Promise<void> {
+        if (this.agent) return
+        if (!this.buildAgentPromise) {
+            this.buildAgentPromise = this.buildAgent(this.getAgentInitializationParams()).finally(() => {
+                this.buildAgentPromise = undefined
+            })
+        }
+        await this.buildAgentPromise
+    }
+
+    protected abstract buildAgent(params: AgentInitializationParams<TSession>): Promise<TAgent>
+
+    async runAgent(userHistory: AgentInputItem[], settings: RunExecutionSettings<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
+        // Base run charges happen at explicit run-start call sites (SDK route, EventProcessor).
+        // Still gate every loop entry so unpaid orgs cannot continue on a new turn.
+        await this.initializeLoopIfNeeded()
+        this.resetRunOutcomeTracking()
+        const result = await settings.runner.run(this.requireAgent(), userHistory, {
+            context: settings.context,
+            stream: true,
+            session: settings.memorySession,
+            sessionInputCallback: settings.sessionInputCallback,
+            maxTurns: settings.maxTurns,
+            signal: settings.signal,
+            callModelInputFilter: this.getCallModelInputFilter(),
+            inputGuardrails: this.getInputGuardrails()
+        })
+
+        await this.processStream(result, settings)
+        return this.buildResult(result)
+    }
+
+    async resumeAgent(params: {
+        decision: Decision
+        stepId: string
+        settings: RunExecutionSettings<TSession, TAgent>
+        rejectionReason?: string
+        responseId?: string
+        prepareResumeState?: (state: RunState<TSession, TAgent>) => Promise<void> | void
+    }): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
+        await this.initializeLoopIfNeeded()
+        this.resetRunOutcomeTracking()
+        const pendingState = await this.loadPendingApprovalState(this.runId)
+        if (!pendingState) {
+            throw new Error(`No pending approval state found for run ${this.runId}`)
+        }
+        if (!pendingState.serializedState || typeof pendingState.serializedState !== "string") {
+            throw new Error(`Invalid serialized state format for run ${this.runId}. Expected string, got ${typeof pendingState.serializedState}`)
+        }
+
+        const agent = this.requireAgent()
+        const state = await RunState.fromString<TSession, TAgent>(agent, pendingState.serializedState)
+        const interruption = pendingState.interruptions.find(interruptionItem => (interruptionItem.rawItem as any)?.callId === params.stepId)
+        if (!interruption) {
+            throw new Error(`Could not find matching interruption for step_id ${params.stepId}`)
+        }
+
+        const seedResponseId = params.responseId ?? (interruption.rawItem as any)?.providerData?.responseId
+
+        if (params.decision === "approve") {
+            // https://github.com/openai/openai-agents-js/pull/1098 Once this gets in, we should support it
+            state.approve(interruption)
+        } else {
+            state.reject(interruption, { message: params.rejectionReason })
+        }
+
+        await this.markRunInProgress(this.runId)
+        await this.clearPendingApprovalState(this.runId)
+        await params.prepareResumeState?.(state)
+
+        const result = await params.settings.runner.run(agent, state, {
+            context: params.settings.context,
+            stream: true,
+            session: params.settings.memorySession,
+            sessionInputCallback: params.settings.sessionInputCallback,
+            maxTurns: params.settings.maxTurns,
+            signal: params.settings.signal,
+            callModelInputFilter: this.getCallModelInputFilter(),
+            inputGuardrails: this.getInputGuardrails()
+        })
+
+        const approvalDecision: ApprovalDecision = { decision: params.decision, rejectionReason: params.rejectionReason, responseId: seedResponseId }
+
+        await this.processStream(result, params.settings, { approvalDecision })
+        return this.buildResult(result)
+    }
+
+    private async processStream(result: StreamedRunResult<TSession, TAgent>, settings: RunExecutionSettings<TSession, TAgent>, options: { approvalDecision?: ApprovalDecision } = {}): Promise<void> {
+        const eventStream = transformAgentStreamToModelEvents(result, {
+            onToolCallComplete: (callId, toolName, actions) => this.onToolCallComplete(callId, toolName, actions),
+            onRawStreamEvent: async streamEvent => {
+                await this.recordLLMUsage(settings, streamEvent)
+            },
+            approvalDecision: options.approvalDecision
+        })
+
+        for await (const event of this.trackEventStream(eventStream)) {
+            await this.onModelEvent(event, Date.now())
+        }
+    }
+
+    private async buildResult(result: StreamedRunResult<TSession, TAgent>): Promise<AgentRunnerLoopResult<TSession, TAgent>> {
+        const hasInterruptions = result.interruptions && result.interruptions.length > 0
+        if (hasInterruptions) {
+            const serializedState = JSON.stringify(result.state)
+            await this.savePendingApprovalState(this.runId, serializedState, result.interruptions)
+
+            for (const interruption of result.interruptions) {
+                const stepId = (interruption.rawItem as any)?.callId
+                if (!stepId) {
+                    logger.warn("Skipping approval request event because interruption has no callId", {
+                        runId: this.runId,
+                        toolName: interruption.name
+                    })
+                    continue
+                }
+                const responseId = (interruption.rawItem as any)?.providerData?.responseId ?? stepId
+                const approvalRequest: ModelEvent = {
+                    id: stepId,
+                    response_id: responseId,
+                    type: "ToolApprovalRequest",
+                    timestamp: Date.now(),
+                    name: interruption.name ?? "unknown_tool",
+                    arguments: interruption.arguments ?? "{}"
+                }
+                await this.onModelEvent(approvalRequest, Date.now())
+                await this.onApprovalRequest({
+                    runId: this.runId,
+                    stepId,
+                    name: interruption.name ?? "unknown_tool",
+                    arguments: interruption.arguments ?? "{}",
+                    interruption
+                })
+            }
+
+            return {
+                status: "awaiting_approval",
+                state: result.state,
+                interruptions: result.interruptions
+            }
+        }
+
+        await this.clearPendingApprovalState(this.runId)
+
+        return {
+            status: "completed",
+            result,
+            endedWithToolFailure: this.endedWithToolFailure
+        }
+    }
+
+    private resetRunOutcomeTracking(): void {
+        this.endedWithToolFailure = false
+    }
+
+    private trackFailedToolCalls(event: ModelEvent): void {
+        if (event.type !== "ToolCallComplete") return
+        const toolFailed = isFailedToolExecutionStatus(event.status) || Boolean(event.errorContext)
+        this.endedWithToolFailure = toolFailed
+    }
+
+    private async *trackEventStream(eventStream: AsyncGenerator<ModelEvent, void, unknown>): AsyncGenerator<ModelEvent, void, unknown> {
+        for await (const event of eventStream) {
+            this.trackFailedToolCalls(event)
+            yield event
+        }
+    }
+
+    private requireAgent(): TAgent {
+        if (!this.agent) {
+            throw new Error("Agent not initialized. Call initializeAgent() before running the loop.")
+        }
+        return this.agent
+    }
+
+    private getCallModelInputFilter(): CallModelInputFilter {
+        /**
+         * Workaround casting due to limitation of SDK doesn't make the
+         * generic available
+         */
+        const typedBillingHook: CallModelInputFilter<TSession> = billingHook
+        return typedBillingHook as CallModelInputFilter
+    }
+
+    protected getInputGuardrails(): InputGuardrail[] {
+        /**
+         * Workaround casting due to limitation of SDK doesn't make the
+         * generic available
+         */
+        const typed: InputGuardrailForSession<TSession>[] = [billingInputGuardrail]
+        return typed as InputGuardrail[]
+    }
+
+    private getModel(): ModelReference {
+        const defaultModel = settings.aisdk.default
+        if (!defaultModel) {
+            throw new Error("Default model not set")
+        }
+        const resolved = parseModelReference(defaultModel)
+        return resolved
+    }
+
+    private recordLLMUsage = async (settings: RunExecutionSettings<TSession, TAgent>, event: RunStreamEvent): Promise<void> => {
+        if (event.type !== "raw_model_stream_event") return
+
+        const data = (event as any).data
+        const completedEvent = data.type === "response_done" ? data : null
+        if (!completedEvent) return
+
+        const usage = normalizeCompletedEventUsage(completedEvent.response?.usage)
+        if (!usage) {
+            logger.warn("BaseAgentRunner: No usage found for completed event", { event })
+            return
+        }
+
+        const responseId = completedEvent.response?.id
+        if (!responseId) {
+            logger.warn("BaseAgentRunner: No response ID found for completed event", { event })
+            return
+        }
+
+        try {
+            await this.billing.recordLLMCall({
+                organizationId: settings.context.user.organizationId,
+                runId: settings.context.runId,
+                responseId,
+                model: this.getModel(),
+                usage
+            })
+        } catch (error) {
+            if (error instanceof BillingError) {
+                logger.error("BaseAgentRunner: billing provider error; failing run", { runId: settings.context.runId, error })
+            } else {
+                logger.error("BaseAgentRunner: unexpected charge failure", { runId: settings.context.runId, error })
+            }
+            throw error
+        }
+    }
+}
+
+function normalizeCompletedEventUsage(raw: unknown): CompletedEventUsage | null {
+    if (!raw || typeof raw !== "object") return null
+    const rawUsage = raw as Record<string, unknown>
+    const parsed = completedEventUsageSchema.safeParse(rawUsage)
+    if (!parsed.success) {
+        logger.error("BaseAgentRunner: Failed to parse LLM usage", { error: parsed.error, rawUsage })
+        throw new Error("Failed to parse LLM usage")
+    }
+
+    return parsed.data
+}
+
+type SessionInputCallback = (history: AgentInputItem[], newItems: AgentInputItem[]) => AgentInputItem[]
+
+type LoopRunner<TSession, TAgent extends Agent<TSession, AgentOutputType>> = {
+    run: (
+        agent: TAgent,
+        input: AgentInputItem[] | RunState<TSession, TAgent>,
+        options: {
+            context: TSession
+            stream: true
+            session: AgentMemorySession
+            sessionInputCallback?: SessionInputCallback
+            maxTurns: number
+            signal?: AbortSignal
+            callModelInputFilter: CallModelInputFilter
+            inputGuardrails: InputGuardrail[]
+        }
+    ) => Promise<StreamedRunResult<TSession, TAgent>>
+}
+
+export type PendingApprovalState = {
+    serializedState: string
+    interruptions: RunToolApprovalItem[]
+}
+
+export type AgentRunnerLoopResult<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> =
+    | { status: "completed"; result: RunResult<TSession, TAgent>; endedWithToolFailure: boolean }
+    | { status: "awaiting_approval"; state: RunState<TSession, TAgent>; interruptions: RunToolApprovalItem[] }
+
+type RunExecutionSettings<TSession extends SessionWithTracking<AppSession>, TAgent extends Agent<TSession, AgentOutputType>> = {
+    runner: LoopRunner<TSession, TAgent>
+    context: TSession
+    memorySession: AgentMemorySession
+    sessionInputCallback?: SessionInputCallback
+    maxTurns: number
+    signal?: AbortSignal
+}
+
+type AgentInitializationParams<TSession extends AppSession> = {
+    name: string
+    systemPromptDeps: SystemPromptBuilderDependencies<TSession, ConfigData>
+    model: AiSdkModel
+    tools: Tool<TSession>[]
+    modelSettings?: ModelSettings
+}
+
+export type ApprovalDecision = {
+    decision: Decision
+    rejectionReason?: string
+    responseId: string
+}

@@ -6,13 +6,13 @@ import { HeyReachIntegration, HeyReachIntegrationMetadata, IntegrationType } fro
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { z } from "zod"
 
-import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
+import { EventProcessor } from "../domains/agents/AgentRunner/EventProcessor"
 import logger from "../common/logger"
+import { buildHeyReachWebhookUrl } from "../common/webhookUrl"
+import { getUserForOrg } from "../integrations/workos/helpers"
 import { db } from "../loaders/prisma"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../types/prisma"
-import { buildHeyReachWebhookUrl } from "../common/webhookUrl"
-import { getUserForOrg } from "../integrations/workos/helpers"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"

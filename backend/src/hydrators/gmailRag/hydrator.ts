@@ -1,10 +1,10 @@
 import { gmail as createGmailClient } from "@googleapis/gmail"
 import { IntegrationType } from "terse-types"
 
+import logger from "../../common/logger"
 import { GmailTriggerRuntime, fetchAndParseEmail, getOAuth2Client } from "../../integrations/GmailIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
-import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"

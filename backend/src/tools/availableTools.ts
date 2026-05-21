@@ -2,9 +2,9 @@ import { Tool, tool } from "@openai/agents-core"
 import { CONFIG_DETAILS, ConfigData, ConfigType } from "terse-types/Configs"
 import type { TerseTool, TerseToolSource } from "terse-types/ToolsTypes"
 
+import { convertConfigTypeToOutputConfigType } from "../common/typeConverters"
 import type { ToolboxEntry } from "../outputs/abstract/Output"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { convertConfigTypeToOutputConfigType } from "../common/typeConverters"
 
 type CollectedEntry = {
     entry: ToolboxEntry<ConfigData>

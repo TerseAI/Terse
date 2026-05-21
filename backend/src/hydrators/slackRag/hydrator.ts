@@ -1,8 +1,8 @@
 import { IntegrationType, SlackChannelType, SlackEventType, SlackTrigger } from "terse-types"
 
+import logger from "../../common/logger"
 import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import { SlackTriggerRuntime } from "../../integrations/SlackIntegration"
-import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 

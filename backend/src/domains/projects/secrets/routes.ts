@@ -1,7 +1,7 @@
 import { Router } from "express"
 
-import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 import { AuthKind, requireAuth } from "../../../domains/auth/helpers/authMiddleware"
+import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 
 import { handleDeleteProjectSecret, handleImportProjectSecrets, handleListProjectSecrets, handleUpsertProjectSecret } from "./controller"
 

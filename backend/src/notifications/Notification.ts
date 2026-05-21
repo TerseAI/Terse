@@ -3,7 +3,7 @@ import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
 
-import { recordAgentFailureAndMaybePause } from "../agent/AgentRunner/runHistory"
+import { recordAgentFailureAndMaybePause } from "../domains/agents/AgentRunner/runHistory"
 import logger from "../common/logger"
 import { db } from "../loaders/prisma"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"

@@ -2,9 +2,9 @@ import { GoogleGenAI } from "@google/genai"
 import axios from "axios"
 import { ImageEditConfig } from "terse-types"
 
-import { gemini } from "../../../settings"
 import logger from "../../../common/logger"
 import { assertInternalGcsBucketUrl, buildImageEditKey, ensureStoredWithMetadata } from "../../../services/FileStorageService"
+import { gemini } from "../../../settings"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 

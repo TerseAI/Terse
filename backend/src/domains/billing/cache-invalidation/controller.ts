@@ -1,9 +1,9 @@
 import { Request, Response } from "express"
 import { billingCacheInvalidationBodySchema } from "terse-types"
 
+import { readBearerToken } from "../../../domains/auth/helpers/authDispatch"
 import { emitBillingCachesInvalidated } from "../../../services/CacheInvalidationService"
 import { verifyBillingServiceCallbackJwt } from "../../../services/billingJwt"
-import { readBearerToken } from "../../../domains/auth/helpers/authDispatch"
 
 export async function invalidateBillingCachesFromService(req: Request, res: Response) {
     const token = readBearerToken(req.headers.authorization)

@@ -3,10 +3,10 @@ import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from 
 import { z } from "zod"
 
 import logger from "../common/logger"
-import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
-import { db } from "../loaders/prisma"
-import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getDatadogApiUrl } from "../integrations/datadog/helpers"
+import { db } from "../loaders/prisma"
+import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
+import { AgentTriggerWithConfigs } from "../types/prisma"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 

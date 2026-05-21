@@ -2,9 +2,9 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { JudgeAgentOutputType } from "../agent/JudgeAgent/JudgeAgent"
-import { buildClaudeCodePrompt } from "../agent/JudgeAgent/buildClaudeCodePrompt"
-import { JudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
+import { JudgeAgentOutputType } from "../domains/agents/JudgeAgent/JudgeAgent"
+import { buildClaudeCodePrompt } from "../domains/agents/JudgeAgent/buildClaudeCodePrompt"
+import { JudgeContext } from "../domains/agents/JudgeAgent/fetchJudgeContext"
 import logger from "../common/logger"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
