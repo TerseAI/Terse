@@ -303,6 +303,8 @@ terse generate
 
 `terse generate` writes `src/terse.generated.ts`.
 
+When you write or edit workflows, treat that file as the source of truth for available triggers, skills, resources, and deterministic wrappers. Read it (or let your coding agent read it) instead of running `terse integrate list` or `describe` to discover what your project can import. Re-run `terse generate` when integrations change or when a helper you need is missing. Use `terse integrate list` / `describe` to manage connections from the terminal, not to enumerate codegen exports.
+
 **What the generated file contains:**
 
 | Category                    | Examples                                                                                       |

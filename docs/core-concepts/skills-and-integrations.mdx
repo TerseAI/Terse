@@ -32,11 +32,13 @@ This is the key distinction:
 |                   | Skills (model access)                                | Deterministic tools (code access)    |
 | ----------------- | ---------------------------------------------------- | ------------------------------------ |
 | **Who decides**   | The model chooses which tools to call                | Your code calls tools directly       |
-| **Controlled by** | `skills` array on `TerseAgent.create()`              | Always available via `agent.tools.*` |
+| **Controlled by** | `skills` array on `TerseAgent.create()`              | `toolbox.*` or `agent.tools.*` (no agent required for `toolbox`) |
 | **Scope**         | Only integrations declared as skills                 | Any connected integration            |
 | **Token cost**    | Tokens consumed per call                             | Zero LLM tokens                      |
 
-Deterministic tool wrappers (`agent.tools.*`) are not gated by the skills list. If you have Slack connected and generated, you can always call `agent.tools.slack.sendMessage()` from your handler code, even if Slack isn't in the agent's `skills` array. The `skills` array only controls what the model sees when it's reasoning.
+Add a skill only when the model needs that integration during `run()` or `runAndWait()`. If every action is deterministic, you may need few or no skills — call `toolbox` or `agent.tools.*` instead.
+
+Deterministic tool wrappers are not gated by the skills list. If you have Slack connected and generated, you can call `toolbox.slack.sendMessage()` or `agent.tools.slack.sendMessage()` from your handler even when Slack is not in the agent's `skills` array. The `skills` array only controls what the model sees when it is reasoning.
 
 This means you can be precise about the model's reach while keeping full programmatic access to all your integrations:
 

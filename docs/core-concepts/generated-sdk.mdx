@@ -79,35 +79,38 @@ export class AttioList {
 
 ### Trigger builders and skills
 
-Each integration becomes a namespace of typed trigger builders and a `skill()` constructor. The parameters take resource constants, not strings.
+Codegen groups trigger builders under **`Triggers`** and skill factories under **`Skills`**. Parameters take resource constants, not strings.
 
 ```ts src/terse.generated.ts
-export const Slack = {
-    /** Trigger on any message in a channel */
-    onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
-        /* … */
+export const Triggers = {
+    slack: {
+        onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
+            /* … */
+        },
+        onAppMention(opts: { channel: SlackChannel }): TypedTrigger<SlackAppMentionTrigger> {
+            /* … */
+        }
     },
-    /** Trigger when the Slack app is directly mentioned */
-    onAppMention(opts: { channel: SlackChannel }): TypedTrigger<SlackAppMentionTrigger> {
-        /* … */
+    github: {
+        onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> {
+            /* … */
+        },
+        onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> {
+            /* … */
+        }
     },
-    /** Use in `skills[]` */
-    skill(opts: { channel: SlackChannel }): TypedSkill<SlackTools> {
-        /* … */
+    schedule: {
+        cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
+            /* … */
+        }
     }
 }
 
-export const GitHub = {
-    /** Trigger when a pull request is opened */
-    onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> {
+export const Skills = {
+    slack(opts: { channel: SlackChannel }): TypedSkill<SlackTools> {
         /* … */
     },
-    /** Trigger when a pull request is merged */
-    onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> {
-        /* … */
-    },
-    /** Use in `skills[]` */
-    skill(opts: { repos: Repos[] }): TypedSkill<GitHubTools> {
+    github(opts: { repos: Repos[] }): TypedSkill<GitHubTools> {
         /* … */
     }
 }
@@ -154,26 +157,28 @@ declare module "terse-sdk" {
 
 Because every resource, trigger, skill, and tool is an export, your workflow code reads like a description of your business, not a scavenger hunt through admin UIs.
 
-```ts src/index.ts
-import { TerseAgent, Trigger, createJob } from "terse-sdk"
+```ts src/terse.jobs.ts
+import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
 
-import { GitHub, Repos, Slack, SlackChannel } from "./terse.generated"
+import { Repos, Skills, SlackChannel, Triggers, toolbox } from "./terse.generated"
 
 createJob({
     name: "pr-summary-to-slack",
-    triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
-    onTrigger: async (event: Trigger) => {
-        const agent = TerseAgent.create({
-            prompt: "You summarize PRs and post concise thread replies in Slack.",
-            skills: [GitHub.skill({ repos: [Repos.TerseAI.Terse] }), Slack.skill({ channel: SlackChannel.Engineering })]
-        })
-
-        const message = await agent.tools.slack.sendMessage({
+    triggers: [Triggers.github.onPROpened({ repo: Repos.TerseAI.Terse })],
+    onTrigger: async (event: GithubPRTrigger) => {
+        const message = await toolbox.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pull_request.title}`
         })
 
-        await agent.runAndWait(`Summarize this PR and reply in thread (ts: ${message.message_ts}).`)
+        const agent = TerseAgent.create({
+            prompt: "You summarize pull requests and post concise thread replies in Slack.",
+            skills: [Skills.github({ repos: [Repos.TerseAI.Terse] }), Skills.slack({ channel: SlackChannel.Engineering })]
+        })
+
+        await agent.runAndWait(
+            `Summarize this PR and reply in thread (ts: ${message.message_ts}). Context: ${event.formatForAgentRunner()}`
+        )
     }
 })
 ```
@@ -198,6 +203,7 @@ The generated SDK is the difference between an agent that guesses and an agent t
 - **Hallucinations stop compiling.** If an agent invents `SlackChannel.SalesTeam` or `Repos.TerseAI.Website`, the TypeScript compiler rejects the build. `terse deploy` refuses to ship code that doesn't type-check. There is no path to production for a made-up resource.
 - **Tool parameters are typed end-to-end.** `agent.tools.slack.sendMessage` requires `message` plus either `channelId` or `slackUserId` (or both; `channelId` wins). An agent can't accidentally pass `channel_name` or forget `message` — the signature is enforced.
 - **The agent can read the same file you do.** Point your coding assistant at `src/terse.generated.ts` and it instantly has a complete map of the integrations, resources, and tools available in your workspace. No documentation gap.
+- **Skip redundant CLI discovery.** Do not run `terse integrate list` or `describe` to learn what triggers or tools exist — the generated file already reflects connected integrations. Use those commands only when you need to connect, disconnect, or inspect install metadata.
 
 The net effect: coding agents ship working workflows on the first try, without a human looping through "here is the channel ID, here is the list ID, here is the repo name" every time.
 
