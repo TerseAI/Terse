@@ -1920,7 +1920,7 @@ export const attioQueryRecordsInputSchema = z.object({
 export const attioUpsertRecordInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
     objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
-    matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'modules' for companies)."),
+    matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
     records: z
         .string()
         .describe(

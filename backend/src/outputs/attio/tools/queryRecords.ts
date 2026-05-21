@@ -15,7 +15,7 @@ Filter syntax uses shorthand or verbose form:
 - Shorthand: {"email_addresses": "test@example.com"} (implicit $eq on email_address property)
 - Verbose: {"email_addresses": {"email_address": {"$eq": "test@example.com"}}}
 - Text fields: {"name": {"first_name": {"$eq": "John"}}} or shorthand {"name": "John Smith"}
-- modules: {"modules": "example.com"} or {"modules": {"domain": {"$contains": "example"}}}
+- domains: {"domains": "example.com"} or {"domains": {"domain": {"$contains": "example"}}}
 - Operators: $eq, $contains, $starts_with, $ends_with
 - Combine with $and/$or: {"$and": [{"name": "John"}, {"email_addresses": "john@example.com"}]}`,
     execute: async ({ integrationId, objectSlug, filter, limit }, runContext) => {
