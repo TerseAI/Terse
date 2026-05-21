@@ -1127,7 +1127,7 @@ async function downloadGithubFile(url: string, token: string): Promise<GithubFil
             },
             responseType: "arraybuffer"
         })
-        const contentType = response.headers["content-type"] || "application/octet-stream"
+        const contentType = response.headers["content-type"]?.toString() || "application/octet-stream"
         const filename = url.split("/").pop() || "file"
         return {
             filename,
