@@ -75,8 +75,10 @@ import {
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "../constants/storageKeys"
 import { User } from "../types/User"
 
-const backendBaseUrl = import.meta.env.VITE_API_BASE_URL
-const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || backendBaseUrl
+const backendBaseUrl = "/api"
+// For browser redirects (login/logout), we need the actual backend URL since window.location.href
+// bypasses Vite's proxy. Falls back to /api for production where the proxy is handled by nginx/etc.
+const backendRedirectUrl = import.meta.env.VITE_BACKEND_REDIRECT_URL || "/api"
 let loginRedirectInProgress = false
 
 // Global 401 handler: when session is invalidated (e.g., user revokes session in WorkOS widget),
