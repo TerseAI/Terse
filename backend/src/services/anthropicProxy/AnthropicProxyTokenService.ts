@@ -1,5 +1,4 @@
 import crypto from "node:crypto"
-
 import { type RedisClientType, createClient } from "redis"
 
 import { settings } from "../../config/settings"

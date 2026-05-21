@@ -98,9 +98,6 @@ export class ClaudeCodeSandboxService {
             extraToolDenyRules = []
         } = params
 
-        // Modal forwards env structurally to the spawned process, so shell
-        // metacharacters in keys cannot break the boundary. We still validate
-        // here to keep callers honest and to fail closed on bad input.
         for (const k of Object.keys(extraEnv)) {
             assertValidEnvVarName(k)
         }
