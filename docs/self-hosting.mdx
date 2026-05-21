@@ -98,6 +98,42 @@ Terse still runs the rest of the platform.
     from the platform.
 </Tip>
 
+## Production readiness
+
+When you operate the Node process that serves `handleTrigger`, add a health endpoint for your load balancer and drain in-flight trigger requests before exit.
+
+### Health checks
+
+Terse verifies your server once at deploy time through the signed challenge on `TERSE_JOB_WEBHOOK_TRIGGER_PATH`. Ongoing uptime checks are yours—expose a simple GET route that returns HTTP 200 so your orchestrator can tell the process is alive:
+
+```ts
+app.get("/healthz", (_req, res) => {
+    res.status(200).json({ ok: true })
+})
+```
+
+Point your platform health probe at that path (or whatever you choose). Do not reuse `TERSE_JOB_WEBHOOK_TRIGGER_PATH` for health checks; it expects signed Terse payloads.
+
+### Graceful shutdown
+
+`handleTrigger` **awaits** your `onTrigger` handler—including agent runs and tool calls—before it responds. If the process exits mid-run, Terse may treat the delivery as failed.
+
+On **SIGTERM** or **SIGINT** (rolling deploy, container stop, local Ctrl+C), stop accepting new connections, let active `handleTrigger` requests finish, then close the HTTP server:
+
+```ts
+const server = app.listen(3000)
+
+function shutdown(signal: string) {
+    console.log(`${signal}: draining in-flight requests`)
+    server.close(() => process.exit(0))
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"))
+process.on("SIGINT", () => shutdown("SIGINT"))
+```
+
+Node 18.2+ also provides `server.closeIdleConnections()` if you need to evict keep-alive clients faster during drain.
+
 ## Identity verification
 
 Every request Terse sends to your server is signed with HMAC-SHA256 using `TERSE_SIGNING_SECRET`. `handleTrigger` does the verification for you, but it's worth understanding what it checks so you can debug failures and make informed decisions about middleware order.
