@@ -21,7 +21,7 @@ import { StoredFile } from "../services/FileStorageService"
 import { SecretNotFoundError } from "../services/SecretService"
 import { LinearAdapter } from "../ticketing/linear"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -176,10 +176,10 @@ export class LinearIntegrationManager
         organizationId: string,
         options: InstallationOptionsFor<IntegrationType.LINEAR> | undefined,
         additionalStatePayload: AdditionalStateParams | undefined,
+        req: Request,
         res: Response
     ): Promise<OAuthInstallationDetails> {
-        // Bind state to a single-use cookie nonce.
-        const state = mintBrowserOAuthState(res, {
+        const state = mintOAuthState(req, res, {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },

@@ -12,7 +12,7 @@ import { db } from "../prismaClient"
 import { fetchNotionResources } from "../routes/notion"
 import { SecretNotFoundError } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintOAuthState, verifyOAuthState } from "../utility/oauth"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
@@ -115,9 +115,10 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
         organizationId: string,
         options: InstallationOptionsFor<IntegrationType.NOTION> | undefined,
         additionalStatePayload: AdditionalStateParams | undefined,
+        req: Request,
         res: Response
     ): Promise<OAuthInstallationDetails> {
-        const state = mintBrowserOAuthState(res, {
+        const state = mintOAuthState(req, res, {
             userId,
             organizationId,
             additionalFields: { timestamp: Date.now() },
