@@ -11,6 +11,9 @@ import { setupLLMAnalytics } from "./agent/openaiInstance"
 import { requestSessionSocketToken } from "./agent/socket"
 import { settings } from "./config/settings"
 import approvalsRouter from "./domains/approvals/routes"
+import notificationDestinationsRouter from "./domains/notifications/destinations/routes"
+import notificationSettingsRouter from "./domains/notifications/settings/routes"
+import sentNotificationsRouter from "./domains/notifications/sent/routes"
 import runsRouter from "./domains/runs/routes"
 import statsRouter from "./domains/stats/routes"
 import usersRouter from "./domains/users/routes"
@@ -39,8 +42,6 @@ import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImpro
 import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearProjects, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
-import { createNotificationDestination, deleteNotificationDestination, getNotificationDestinations, updateNotificationDestination } from "./routes/notificationDestinations"
-import { getNotificationSettings, updateNotificationSettings } from "./routes/notificationSettings"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
 import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
@@ -69,7 +70,6 @@ import { handleSdkRunTriggerEvent } from "./routes/sdkRunTriggerEvent"
 import { handleSessionEvents } from "./routes/sdkSession"
 import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
 import { handleToolExecute } from "./routes/sdkToolExecute"
-import { getSentNotifications } from "./routes/sentNotifications"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { createOrUpdateSnowflakeIntegration, getSnowflakeIntegrations } from "./routes/snowflake"
 import { toolsThatRequireApprovalsRoute } from "./routes/tools"
@@ -373,6 +373,9 @@ app.use("/stats", statsRouter)
 app.use("/run-history", runsRouter)
 app.use("/users", usersRouter)
 app.use("/pending-approvals", approvalsRouter)
+app.use("/notification-destinations", notificationDestinationsRouter)
+app.use("/notification-settings", notificationSettingsRouter)
+app.use("/sent-notifications", sentNotificationsRouter)
 
 // MARK: SESSION
 
@@ -637,32 +640,6 @@ app.get("/integrations/active", rateLimit(RateLimitKind.Default), requireAuth([A
     getActiveIntegrations(req, res)
 })
 
-// MARK: NOTIFICATION DESTINATIONS
-
-app.get(ApiRoutes.NOTIFICATION_DESTINATIONS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getNotificationDestinations(req, res)
-})
-
-app.post(ApiRoutes.NOTIFICATION_DESTINATIONS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createNotificationDestination(req, res)
-})
-
-app.get(ApiRoutes.NOTIFICATION_SETTINGS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getNotificationSettings(req, res)
-})
-
-app.post(ApiRoutes.NOTIFICATION_SETTINGS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    updateNotificationSettings(req, res)
-})
-
-app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    updateNotificationDestination(req, res)
-})
-
-app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    deleteNotificationDestination(req, res)
-})
-
 // MARK: API TOKENS
 
 app.get(ApiRoutes.API_TOKENS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
@@ -764,10 +741,6 @@ app.get(ApiRoutes.SDK.INTEGRATION_FIELDS, rateLimit(RateLimitKind.Default), requ
 
 app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleSdkIntegrationFormSubmit(req, res)
-})
-
-app.get(ApiRoutes.SENT_NOTIFICATIONS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getSentNotifications(req, res)
 })
 
 app.post(ApiRoutes.SDK.CREATE_PROJECT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
