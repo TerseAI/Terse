@@ -44,7 +44,7 @@
 ## Content boundaries
 
 - Prioritize external developer docs for TypeScript workflows, CLI workflows, templates, and the parts of the web UI needed to operate them.
-- Document the user-visible app areas that matter for code workflows: Home, Workflows, Integrations, Activity, Stats, Notifications, and Profile.
+- Document the user-visible app areas that matter for code workflows: Home, Workflows, Integrations, Activity, Stats, Notifications, Account Settings (profile, sessions, security), and API Tokens. Mention **Billing** only for org-admin flows.
 - Mention UI agents only when users need orientation or migration context.
 - Treat templates and comparison pages as first-class product docs, not side content.
 - Frame planned GTM integrations as waitlist or coming soon. Keep the current path clear.
