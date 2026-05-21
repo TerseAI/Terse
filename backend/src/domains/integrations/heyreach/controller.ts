@@ -4,7 +4,7 @@ import { heyReachWebhookPayloadSchema } from "terse-types"
 import { z } from "zod"
 
 import logger from "../../../common/logger"
-import { HeyReachIntegrationManager, fetchHeyReachCampaigns } from "../../../integrations/HeyReachIntegration"
+import { HeyReachIntegrationManager, fetchHeyReachCampaigns } from "../../../integrations/heyreach/integration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
 import { db } from "../../../loaders/prisma"
 

@@ -3,7 +3,7 @@ import { IntegrationType } from "terse-types/Integrations"
 import { webhookWorkOSTriggerParamsSchema, workosWebhookSecretUpdateRequestSchema } from "terse-types/types"
 
 import logger from "../../../common/logger"
-import { WorkOSIntegrationManager } from "../../../integrations/WorkOSIntegration"
+import { WorkOSIntegrationManager } from "../../../integrations/workos/integration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
 import { workos } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"

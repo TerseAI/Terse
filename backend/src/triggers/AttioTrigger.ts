@@ -1,6 +1,6 @@
 import { AttioInputConfigData, ConfigType } from "terse-types/Configs"
 
-import { createAttioWebhook } from "../integrations/AttioIntegration"
+import { createAttioWebhook } from "../integrations/attio/integration"
 import { db } from "../loaders/prisma"
 import { PrismaTransaction } from "../types/prisma"
 

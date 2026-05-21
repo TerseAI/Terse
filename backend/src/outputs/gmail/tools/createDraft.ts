@@ -3,7 +3,7 @@ import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
 
 import logger from "../../../common/logger"
-import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/GmailIntegration"
+import { GmailIntegrationManager, getOAuth2Client } from "../../../integrations/gmail/integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
 import { defineSessionTool } from "../../../tools/toolUtils"

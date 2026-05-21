@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
 
 import logger from "../../../common/logger"
-import { LaunchDarklyIntegrationManager } from "../../../integrations/LaunchDarklyIntegration"
+import { LaunchDarklyIntegrationManager } from "../../../integrations/launchdarkly/integration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"

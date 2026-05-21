@@ -1,6 +1,6 @@
 import { ConfigType, HeyReachInputConfigData } from "terse-types/Configs"
 
-import { createHeyReachWebhook } from "../integrations/HeyReachIntegration"
+import { createHeyReachWebhook } from "../integrations/heyreach/integration"
 import { db } from "../loaders/prisma"
 import { PrismaTransaction } from "../types/prisma"
 

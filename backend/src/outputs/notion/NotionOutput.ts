@@ -2,7 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 import { NotionConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/NotionIntegration"
+import { getNotionAccessTokenOrThrow, validateNotionDatabasesExist, validateNotionPagesExist } from "../../integrations/notion/integration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 import { unrestricted } from "../abstract/acl"

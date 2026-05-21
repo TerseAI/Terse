@@ -4,7 +4,7 @@ import { IntegrationType, NotionConfig } from "terse-types"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 

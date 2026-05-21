@@ -5,7 +5,7 @@ import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse
 
 import logger from "../../../common/logger"
 import { isValidEpochTimestamp } from "../../../common/strings"
-import { initializeSlackWebClient } from "../../../integrations/SlackClient"
+import { initializeSlackWebClient } from "../../../integrations/slack/client"
 import { resolveSlackChannelIdForDestination, resolveSlackDmCounterpartUser } from "../../../integrations/slack/helpers"
 import { db } from "../../../loaders/prisma"
 import { defineSessionTool } from "../../../tools/toolUtils"

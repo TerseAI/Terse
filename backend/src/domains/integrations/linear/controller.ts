@@ -4,7 +4,7 @@ import { linearWebhookPayloadSchema } from "terse-types"
 import { LinearProjectSummary, LinearTeam } from "terse-types/types"
 
 import logger from "../../../common/logger"
-import { LinearIntegrationManager } from "../../../integrations/LinearIntegration"
+import { LinearIntegrationManager } from "../../../integrations/linear/integration"
 import { db } from "../../../loaders/prisma"
 import { settings } from "../../../settings"
 import { LinearAdapter } from "../../../ticketing/linear"

@@ -3,7 +3,7 @@ import { IntegrationType } from "terse-types/Integrations"
 import { PosthogProjectsResponse } from "terse-types/types"
 
 import logger from "../../../common/logger"
-import { PosthogIntegrationManager } from "../../../integrations/PosthogIntegration"
+import { PosthogIntegrationManager } from "../../../integrations/posthog/integration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"

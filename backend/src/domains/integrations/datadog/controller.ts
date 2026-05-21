@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
 
 import logger from "../../../common/logger"
-import { DatadogIntegrationManager } from "../../../integrations/DatadogIntegration"
+import { DatadogIntegrationManager } from "../../../integrations/datadog/integration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
 import { getDatadogApiUrl } from "../../../integrations/datadog/helpers"
 import { db } from "../../../loaders/prisma"

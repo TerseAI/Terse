@@ -5,16 +5,16 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
-import { EventProcessor } from "../domains/agents/AgentRunner/EventProcessor"
-import logger, { runWithUserContext } from "../common/logger"
-import { SchedulerClient, createSchedulerClient } from "../common/schedulerClient"
-import { getUserForOrg } from "../integrations/workos/helpers"
-import { db } from "../loaders/prisma"
-import { settings } from "../settings"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import logger, { runWithUserContext } from "../../common/logger"
+import { SchedulerClient, createSchedulerClient } from "../../common/schedulerClient"
+import { EventProcessor } from "../../domains/agents/AgentRunner/EventProcessor"
+import { getUserForOrg } from "../../integrations/workos/helpers"
+import { db } from "../../loaders/prisma"
+import { settings } from "../../settings"
+import { AgentTriggerWithConfigs } from "../../types/prisma"
 
-import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
-import { TriggerRuntime } from "./abstract/TriggerRuntime"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "../abstract/Integration"
+import { TriggerRuntime } from "../abstract/TriggerRuntime"
 
 interface ScheduleWebhookEvent {
     inputId: string

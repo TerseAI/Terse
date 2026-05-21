@@ -5,7 +5,7 @@ import { User } from "terse-types/types"
 import logger from "../../common/logger"
 import { extractErrorMessage } from "../../common/strings"
 import { getClaimsFromAuthResult } from "../../domains/auth/helpers/accessTokenClaims"
-import { GithubIntegrationManager } from "../../integrations/GithubIntegration"
+import { GithubIntegrationManager } from "../../integrations/github/integration"
 import { workos } from "../../integrations/workos/helpers"
 import { settings } from "../../settings"
 

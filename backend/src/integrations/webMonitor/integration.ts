@@ -15,16 +15,16 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { IntegrationInstance, IntegrationType, WebMonitorIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
-import { EventProcessor } from "../domains/agents/AgentRunner/EventProcessor"
-import logger, { runWithUserContext } from "../common/logger"
-import { Identifiable } from "../hydrators/Hydrator"
-import { getUserForOrg } from "../integrations/workos/helpers"
-import { db } from "../loaders/prisma"
-import { settings } from "../settings"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import logger, { runWithUserContext } from "../../common/logger"
+import { EventProcessor } from "../../domains/agents/AgentRunner/EventProcessor"
+import { Identifiable } from "../../hydrators/Hydrator"
+import { getUserForOrg } from "../../integrations/workos/helpers"
+import { db } from "../../loaders/prisma"
+import { settings } from "../../settings"
+import { AgentTriggerWithConfigs } from "../../types/prisma"
 
-import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
-import { TriggerRuntime } from "./abstract/TriggerRuntime"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "../abstract/Integration"
+import { TriggerRuntime } from "../abstract/TriggerRuntime"
 
 export class WebMonitorIntegrationManager
     extends Integration<IntegrationInstance, WebMonitorWebhookPayload, typeof WebMonitorIntegrationMetadata, never>

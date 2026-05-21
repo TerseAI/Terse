@@ -3,7 +3,7 @@ import { IntegrationType, LinearOutputConfig } from "terse-types"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
+import { getLinearAccessTokenForOrganization } from "../../../integrations/linear/integration"
 import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"

@@ -2,7 +2,7 @@ import { Client } from "@notionhq/client"
 import { IntegrationType, NotionConfig } from "terse-types"
 
 import logger from "../../../common/logger"
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { verifyNotionPageInScope } from "../../../integrations/notion/acl"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator, denyToolACL } from "../../abstract/acl"

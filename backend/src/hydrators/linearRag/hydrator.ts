@@ -3,7 +3,7 @@ import { IntegrationType } from "terse-types"
 import { LinearTrigger } from "terse-types"
 
 import logger from "../../common/logger"
-import { LinearTriggerRuntime } from "../../integrations/LinearIntegration"
+import { LinearTriggerRuntime } from "../../integrations/linear/integration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { db } from "../../loaders/prisma"

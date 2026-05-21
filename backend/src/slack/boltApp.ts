@@ -6,7 +6,7 @@ import { GenericMessageEvent, ReactionAddedEvent } from "@slack/types"
 import { IntegrationType } from "terse-types/Integrations"
 
 import logger from "../common/logger"
-import { SimplifiedSlackEvent, SlackIntegrationManager } from "../integrations/SlackIntegration"
+import { SimplifiedSlackEvent, SlackIntegrationManager } from "../integrations/slack/integration"
 import { db } from "../loaders/prisma"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { SecretService } from "../services/SecretService"

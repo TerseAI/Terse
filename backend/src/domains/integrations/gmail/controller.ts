@@ -6,7 +6,7 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import logger from "../../../common/logger"
 import { readBearerToken } from "../../../domains/auth/helpers/authDispatch"
-import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../../../integrations/GmailIntegration"
+import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../../../integrations/gmail/integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
 import { gmail as gmailConfig, settings } from "../../../settings"

@@ -3,7 +3,7 @@ import { GitHubConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import logger from "../../common/logger"
-import { validateGithubRepositoryIds } from "../../integrations/GithubIntegration"
+import { validateGithubRepositoryIds } from "../../integrations/github/integration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
 

@@ -2,7 +2,7 @@ import { IntegrationType } from "terse-types"
 import { WorkOSWebhookPayload } from "terse-types"
 
 import logger from "../../common/logger"
-import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSTriggerRuntime, enrichWorkOSEventPayload } from "../../integrations/WorkOSIntegration"
+import { WORKOS_SUPPORTED_EVENT_NAMES, WorkOSTriggerRuntime, enrichWorkOSEventPayload } from "../../integrations/workos/integration"
 import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"

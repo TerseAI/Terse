@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
 
 import logger from "../../../common/logger"
-import { SnowflakeIntegrationManager } from "../../../integrations/SnowflakeIntegration"
+import { SnowflakeIntegrationManager } from "../../../integrations/snowflake/integration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
 
 export async function getSnowflakeIntegrations(req: Request, res: Response) {

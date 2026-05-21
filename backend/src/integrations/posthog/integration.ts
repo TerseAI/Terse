@@ -3,13 +3,13 @@ import { IntegrationType, PosthogIntegration, PosthogIntegrationMetadata } from 
 import { PosthogProject } from "terse-types/types"
 import { z } from "zod"
 
-import logger from "../common/logger"
-import { fetchPosthogProjects } from "../domains/integrations/posthog/controller"
-import { db } from "../loaders/prisma"
-import { SecretService } from "../services/SecretService"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import logger from "../../common/logger"
+import { fetchPosthogProjects } from "../../domains/integrations/posthog/controller"
+import { db } from "../../loaders/prisma"
+import { SecretService } from "../../services/SecretService"
+import { AgentTriggerWithConfigs } from "../../types/prisma"
 
-import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
+import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import {
     FormIntegrationInstallation,
     FormSubmissionInput,
@@ -18,7 +18,7 @@ import {
     IntegrationWithResources,
     createConnectedCliDisplayState,
     createNotConnectedCliDisplayState
-} from "./abstract/Integration"
+} from "../abstract/Integration"
 
 export class PosthogIntegrationManager
     extends Integration<PosthogIntegration, never, typeof PosthogIntegrationMetadata, PosthogProject>

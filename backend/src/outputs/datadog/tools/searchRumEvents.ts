@@ -3,10 +3,10 @@ import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../domains/agents/AgentRunner/BaseAgentRunner"
 import logger from "../../../common/logger"
+import { SessionWithTracking } from "../../../domains/agents/AgentRunner/BaseAgentRunner"
 import { Session } from "../../../express"
-import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
+import { getDatadogCredentialsForOrganization } from "../../../integrations/datadog/integration"
 import { getDatadogRumDeepLink, getDatadogSite } from "../../../integrations/datadog/helpers"
 import { defineSessionTool } from "../../../tools/toolUtils"
 

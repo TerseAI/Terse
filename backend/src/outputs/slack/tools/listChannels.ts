@@ -3,7 +3,7 @@ import { IntegrationType, SlackOutputConfig } from "terse-types"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { initializeSlackWebClient } from "../../../integrations/SlackClient"
+import { initializeSlackWebClient } from "../../../integrations/slack/client"
 import { db } from "../../../loaders/prisma"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"

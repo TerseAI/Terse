@@ -7,17 +7,17 @@ import { IntegrationType, WorkOSIntegration, WorkOSIntegrationMetadata } from "t
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { z } from "zod"
 
-import { EventProcessor } from "../domains/agents/AgentRunner/EventProcessor"
-import logger from "../common/logger"
-import { Identifiable } from "../hydrators/Hydrator"
-import { getUserForOrg } from "../integrations/workos/helpers"
-import { db } from "../loaders/prisma"
-import { getWorkOSUser } from "../outputs/workos/workosApiClient"
-import { urls } from "../settings"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import logger from "../../common/logger"
+import { EventProcessor } from "../../domains/agents/AgentRunner/EventProcessor"
+import { Identifiable } from "../../hydrators/Hydrator"
+import { getUserForOrg } from "../../integrations/workos/helpers"
+import { db } from "../../loaders/prisma"
+import { getWorkOSUser } from "../../outputs/workos/workosApiClient"
+import { urls } from "../../settings"
+import { AgentTriggerWithConfigs } from "../../types/prisma"
 
-import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
-import { TriggerRuntime } from "./abstract/TriggerRuntime"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
+import { TriggerRuntime } from "../abstract/TriggerRuntime"
 
 export const WORKOS_SUPPORTED_EVENT_NAMES = Object.values(WorkOSEventType) as [WorkOSEventType, ...WorkOSEventType[]]
 

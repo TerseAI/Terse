@@ -7,7 +7,7 @@ import type { AttioAttribute, AttioObject, AttioObjectWithAttributes } from "ter
 import { z } from "zod"
 
 import logger from "../../../common/logger"
-import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
+import { AttioIntegrationManager } from "../../../integrations/attio/integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
 

@@ -6,18 +6,18 @@ import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionI
 import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
-import logger from "../common/logger"
-import { mintOAuthState, verifyOAuthState } from "../domains/auth/helpers/oauth"
-import { fetchNotionResources } from "../domains/integrations/notion/controller"
-import { db } from "../loaders/prisma"
-import { SecretNotFoundError } from "../services/SecretService"
-import { notion as notionConfig, urls } from "../settings"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import logger from "../../common/logger"
+import { mintOAuthState, verifyOAuthState } from "../../domains/auth/helpers/oauth"
+import { fetchNotionResources } from "../../domains/integrations/notion/controller"
+import { db } from "../../loaders/prisma"
+import { SecretNotFoundError } from "../../services/SecretService"
+import { notion as notionConfig, urls } from "../../settings"
+import { AgentTriggerWithConfigs } from "../../types/prisma"
 
-import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
-import { integrationTaskQueue } from "./IntegrationTaskQueues"
-import { FetchResourcesOptions } from "./abstract/FetchResourcesOptions"
-import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
+import { integrationTaskQueue } from "../IntegrationTaskQueues"
+import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
+import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 
 export class NotionIntegrationManager extends Integration<NotionIntegration, never, typeof NotionIntegrationMetadata, NotionResource> implements OAuthIntegrationInstallation<IntegrationType.NOTION> {
     readonly integrationType = IntegrationType.NOTION

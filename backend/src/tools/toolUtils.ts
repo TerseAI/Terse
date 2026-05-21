@@ -1,8 +1,8 @@
 import { RunContext, ToolOptions, UnknownContext } from "@openai/agents"
 import { ToolDefinitions, ToolInputByName, ToolInputSchemaByName, ToolName, ToolOutputByName } from "terse-types"
 
-import { SessionWithTracking } from "../domains/agents/AgentRunner/BaseAgentRunner"
 import logger from "../common/logger"
+import { SessionWithTracking } from "../domains/agents/AgentRunner/BaseAgentRunner"
 import { Session } from "../express"
 
 // Extend OpenAI's ToolOptions — override execute to enforce output type

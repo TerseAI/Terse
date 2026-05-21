@@ -1,12 +1,12 @@
 import "dotenv/config"
 import { createServer } from "http"
 
-import { setupLLMAnalytics } from "./domains/agents/openaiInstance"
 import { createApp } from "./app"
 import { analytics } from "./common/analytics"
 import { buildCorsAllowedOrigins } from "./common/corsOrigins"
 // Import to trigger listener registration
 import logger from "./common/logger"
+import { setupLLMAnalytics } from "./domains/agents/openaiInstance"
 import "./integrations/IntegrationTaskHandler"
 import { db } from "./loaders/prisma"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"

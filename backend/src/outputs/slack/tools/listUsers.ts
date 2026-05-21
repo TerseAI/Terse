@@ -3,7 +3,7 @@ import { IntegrationType, SlackOutputConfig } from "terse-types"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegration"
+import { fetchSlackUsersForIntegration } from "../../../integrations/slack/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 

@@ -2,13 +2,13 @@ import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "terse-types/Integrations"
 import { z } from "zod"
 
-import logger from "../common/logger"
-import { extractErrorMessage } from "../common/strings"
-import { db } from "../loaders/prisma"
-import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
-import { AgentTriggerWithConfigs } from "../types/prisma"
+import logger from "../../common/logger"
+import { extractErrorMessage } from "../../common/strings"
+import { db } from "../../loaders/prisma"
+import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../../outputs/snowflake/snowflakeClient"
+import { AgentTriggerWithConfigs } from "../../types/prisma"
 
-import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
+import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 
 export class SnowflakeIntegrationManager
     extends Integration<SnowflakeIntegration, never, typeof SnowflakeIntegrationMetadata, never>
