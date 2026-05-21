@@ -3,6 +3,7 @@ import { ApplyImprovementResponse, DismissImprovementResponse, ToggleImprovement
 import { agentAndImprovementParamsSchema, agentIdParamsSchema, toggleImprovementsEnabledRequestSchema } from "terse-types/types"
 
 import logger from "../../common/logger"
+
 import {
     AgentNotFoundError,
     ImprovementConflictError,

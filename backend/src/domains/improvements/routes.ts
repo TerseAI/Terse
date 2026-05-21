@@ -2,6 +2,7 @@ import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 import { AuthKind, requireAuth } from "../../utility/authMiddleware"
+
 import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./controller"
 
 // Mounted at /agents/:agentId — mergeParams pulls :agentId from the parent

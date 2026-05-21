@@ -2,6 +2,7 @@ import { AgentImprovementStatus } from "@prisma/client"
 import { AgentImprovement, AgentReview, GetAgentImprovementsResponse } from "terse-types/types"
 
 import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
+
 import {
     applyImprovementInDb,
     dismissImprovementInDb,
@@ -37,7 +38,16 @@ export class ImprovementConflictError extends Error {
     }
 }
 
-function mapReview(review: { id: string; automation_id: string; title: string; summary: string; runs_analyzed: number; review_period_start: Date; review_period_end: Date; created_at: Date }): AgentReview {
+function mapReview(review: {
+    id: string
+    automation_id: string
+    title: string
+    summary: string
+    runs_analyzed: number
+    review_period_start: Date
+    review_period_end: Date
+    created_at: Date
+}): AgentReview {
     return {
         id: review.id,
         automationId: review.automation_id,
