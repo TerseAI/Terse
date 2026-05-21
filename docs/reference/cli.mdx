@@ -197,8 +197,12 @@ The interactive flow fetches your current integrations, shows provider-specific 
 
 | Type  | Flow                                                                       | Integrations                                     |
 | ----- | -------------------------------------------------------------------------- | ------------------------------------------------ |
-| OAuth | Opens a browser for authorization and waits for the connection to complete | GitHub, Slack, Gmail, Linear, Notion, WorkOS     |
-| Form  | Prompts for credentials or account details in the terminal                 | Datadog, PostHog, Snowflake, LaunchDarkly, Attio |
+| OAuth | Opens a browser for authorization and waits for the connection to complete | Attio, GitHub, Slack, Gmail, Linear, Notion, WorkOS |
+| Form  | Prompts for credentials or account details in the terminal                 | Datadog, PostHog, Snowflake, LaunchDarkly          |
+
+<Note>
+    OAuth from the CLI authenticates to Terse with your **user API token** (`terse login` or `TERSE_API_KEY`). Complete authorization in the provider window that opens (GitHub, Slack, Attio, and so on). You do not need to be logged into the Terse web app in that browser.
+</Note>
 
 #### `terse integrate list`
 
