@@ -187,7 +187,9 @@ skills: [Skills.workOS()]
 
 ## Terse (built-in)
 
-Web search and image tools available to all workflows.
+### Web
+
+Web search and extraction tools available to all workflows.
 
 ```ts
 skills: [Skills.web()]
@@ -198,4 +200,15 @@ skills: [Skills.web()]
 | `web_search`   | Search the web                          | Read   |
 | `web_extract`  | Extract and process web page content    | Read   |
 | `web_research` | Research and synthesize web information | Read   |
-| `edit_image`   | Edit and manipulate images              | Read   |
+
+### Image edit
+
+Image editing is a separate built-in skill. Use **`Skills.imageEdit()`** when you want the agent to call **`edit_image`**; you do not need **`Skills.web()`** for that tool alone.
+
+```ts
+skills: [Skills.imageEdit()]
+```
+
+| Tool         | Description                | Access |
+| ------------ | -------------------------- | ------ |
+| `edit_image` | Edit and manipulate images | Read   |
