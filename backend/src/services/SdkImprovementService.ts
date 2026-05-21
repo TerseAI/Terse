@@ -6,13 +6,11 @@ import { fileURLToPath } from "node:url"
 import { JudgeAgentOutputType } from "../agent/JudgeAgent/JudgeAgent"
 import { buildClaudeCodePrompt } from "../agent/JudgeAgent/buildClaudeCodePrompt"
 import { JudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
-import { settings } from "../config/settings"
 import logger from "../logger"
 
 import { AnthropicAdminService } from "./AnthropicAdminService"
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"
-import { AnthropicProxyTokenService } from "./anthropicProxy/AnthropicProxyTokenService"
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDir = path.dirname(currentFilePath)
@@ -77,12 +75,11 @@ const IMPROVEMENTS_SCHEMA = {
 }
 
 const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
-const PROXY_TOKEN_TTL_SECONDS = Math.min((SANDBOX_TIMEOUT_MS * 2) / 1000, 30 * 60)
+const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23", "2607:6bc0::/48"]
 
 export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
     private adminService = new AnthropicAdminService()
-    private tokenService = new AnthropicProxyTokenService()
 
     async evaluate(automationId: string, context: JudgeContext): Promise<JudgeAgentOutputType> {
         const gcsKey = context.agentConfig.gcsKey
@@ -108,17 +105,11 @@ export class SdkImprovementService {
 
         const jobId = `${automationId}-${crypto.randomBytes(8).toString("hex")}`
         let mintedKeyId: string | null = null
-        let proxyToken: string | null = null
 
         try {
             const minted = await this.adminService.mintEphemeralKey({ label: jobId })
             mintedKeyId = minted.keyId
             await this.adminService.probeKey(minted.apiKey)
-            proxyToken = await this.tokenService.mintToken({
-                jobId,
-                ttlSeconds: PROXY_TOKEN_TTL_SECONDS,
-                ephemeralApiKey: minted.apiKey
-            })
 
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
@@ -128,10 +119,9 @@ export class SdkImprovementService {
                 jsonSchema: IMPROVEMENTS_SCHEMA,
                 timeoutMs: SANDBOX_TIMEOUT_MS,
                 env: {
-                    ANTHROPIC_API_KEY: proxyToken,
-                    ANTHROPIC_BASE_URL: settings.terseAnthropicProxy.baseUrl
+                    ANTHROPIC_API_KEY: minted.apiKey
                 },
-                egressCidrAllowlist: [settings.terseAnthropicProxy.cidr],
+                egressCidrAllowlist: ANTHROPIC_INBOUND_CIDRS,
                 plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined
             })
 
@@ -145,7 +135,7 @@ export class SdkImprovementService {
             logger.error("[SdkImprovementService] Evaluation failed", { automationId, jobId, error })
             return { title: "Review failed", summary: "An error occurred during the review.", improvements: [] }
         } finally {
-            await Promise.allSettled([mintedKeyId ? this.adminService.revokeKey(mintedKeyId) : Promise.resolve(), proxyToken ? this.tokenService.revokeJobToken(jobId) : Promise.resolve()])
+            if (mintedKeyId) await this.adminService.revokeKey(mintedKeyId)
         }
     }
 }

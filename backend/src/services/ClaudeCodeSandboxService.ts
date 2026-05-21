@@ -108,9 +108,6 @@ export class ClaudeCodeSandboxService {
 
         let t = performance.now()
         const app = await sandboxService.getOrCreateApp("terse-claude-code-sandbox")
-        // Bake git + unzip + Claude Code CLI into the image so the sandbox does
-        // not need apt/npm network access at runtime. With cidrAllowlist locking
-        // egress to the Terse proxy, runtime apt/npm would fail anyway.
         const baseImage = sandboxService.getImageFromRegistry("node:22-slim") as ModalImage
         const image = baseImage.dockerfileCommands([
             "RUN apt-get update -qq && apt-get install -y -qq git unzip ca-certificates && rm -rf /var/lib/apt/lists/*",

@@ -175,12 +175,6 @@ export const settings = {
         improvementWorkspaceId: requireEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
     },
 
-    terseAnthropicProxy: {
-        cidr: requireEnv("TERSE_ANTHROPIC_PROXY_CIDR"),
-        baseUrl: requireEnv("TERSE_ANTHROPIC_PROXY_BASE_URL"),
-        hmacSecret: requireEnv("TERSE_ANTHROPIC_PROXY_HMAC_SECRET")
-    },
-
     // Modal (sandbox execution for SDK jobs)
     modal: {
         tokenId: requireEnv("MODAL_TOKEN_ID"),

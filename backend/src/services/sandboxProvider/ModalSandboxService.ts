@@ -201,15 +201,7 @@ export class ModalSandboxService implements SandboxService {
             attempt
         })
 
-        const sandbox = await this.modal.sandboxes.create(appRef, imageRef, {
-            timeoutMs: params?.timeoutMs,
-            idleTimeoutMs: params?.idleTimeoutMs,
-            blockNetwork: params?.blockNetwork,
-            cidrAllowlist: params?.cidrAllowlist,
-            proxy: params?.proxy as ModalProxy | undefined,
-            secrets: params?.secrets as ModalSecret[] | undefined,
-            name
-        })
+        const sandbox = await this.modal.sandboxes.create(appRef, imageRef, params)
 
         logger.info("Modal sandbox: created new", {
             app: app.name,
