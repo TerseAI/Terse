@@ -94,8 +94,6 @@ export class AnthropicAdminService {
         } catch (error) {
             const status = error instanceof AxiosError ? error.response?.status : undefined
             logger.error("[AnthropicAdmin] Failed to revoke ephemeral key", { keyId, status, error: errorMessage(error) })
-            // Don't rethrow — caller is in a finally{} block, and the reaper
-            // will catch any orphans later.
         }
     }
 
@@ -133,11 +131,6 @@ export class AnthropicAdminService {
         return out
     }
 
-    /**
-     * Anthropic does not document propagation delay for newly minted Admin-API
-     * keys. We probe the key with a 1-token messages.create before handing it
-     * to the proxy so the actual Claude Code run does not race a stale 401.
-     */
     async probeKey(apiKey: string): Promise<void> {
         const url = `${ANTHROPIC_ADMIN_BASE}/messages`
         const body = {

@@ -1,8 +1,9 @@
 import crypto from "node:crypto"
 
+import { type RedisClientType, createClient } from "redis"
+
 import { settings } from "../../config/settings"
 import logger from "../../logger"
-import { RateLimiterClient } from "../../rateLimit/RateLimiterClient"
 
 const TOKEN_PREFIX = "terse_jobk_"
 const REDIS_DENYLIST_KEY = (jobId: string) => `anth-proxy:revoked:${jobId}`
@@ -24,6 +25,12 @@ export class AnthropicProxyTokenService {
     private readonly inMemoryDenylist = new Map<string, number>()
     private readonly inMemoryBinding = new Map<string, { apiKey: string; expiresAt: number }>()
 
+    // Owned per-instance Redis client. Initialized lazily on first use so the
+    // service does not require a startup hook; falls back to in-process maps
+    // when REDIS_URL is unset or unreachable.
+    private redisClient: RedisClientType | null = null
+    private redisInitPromise: Promise<RedisClientType | null> | null = null
+
     constructor() {
         this.hmacSecret = settings.terseAnthropicProxy.hmacSecret
     }
@@ -40,11 +47,6 @@ export class AnthropicProxyTokenService {
         return token
     }
 
-    /**
-     * Verifies a token's signature, expiry, and revocation status. Returns
-     * the bound ephemeral Anthropic API key when valid; null otherwise.
-     * Used by the proxy service — not by backend application code.
-     */
     async verifyAndResolve(token: string): Promise<{ jobId: string; apiKey: string } | null> {
         const payload = this.verifySignature(token)
         if (!payload) return null
@@ -57,7 +59,7 @@ export class AnthropicProxyTokenService {
     }
 
     async revokeJobToken(jobId: string): Promise<void> {
-        const redis = RateLimiterClient.getInstance().getRedis()
+        const redis = await this.getRedis()
         const ttlSec = 24 * 60 * 60 // outlive any possible token TTL
         if (redis) {
             try {
@@ -73,7 +75,7 @@ export class AnthropicProxyTokenService {
     }
 
     private async bindEphemeralKey(jobId: string, apiKey: string, ttlSeconds: number): Promise<void> {
-        const redis = RateLimiterClient.getInstance().getRedis()
+        const redis = await this.getRedis()
         if (redis) {
             try {
                 await redis.set(REDIS_KEY_BINDING(jobId), apiKey, { EX: ttlSeconds })
@@ -87,7 +89,7 @@ export class AnthropicProxyTokenService {
     }
 
     private async lookupEphemeralKey(jobId: string): Promise<string | null> {
-        const redis = RateLimiterClient.getInstance().getRedis()
+        const redis = await this.getRedis()
         if (redis) {
             try {
                 return (await redis.get(REDIS_KEY_BINDING(jobId))) ?? null
@@ -105,7 +107,7 @@ export class AnthropicProxyTokenService {
     }
 
     private async isRevoked(jobId: string): Promise<boolean> {
-        const redis = RateLimiterClient.getInstance().getRedis()
+        const redis = await this.getRedis()
         if (redis) {
             try {
                 const v = await redis.get(REDIS_DENYLIST_KEY(jobId))
@@ -121,6 +123,32 @@ export class AnthropicProxyTokenService {
             return false
         }
         return true
+    }
+
+    private async getRedis(): Promise<RedisClientType | null> {
+        if (this.redisClient) return this.redisClient
+        if (this.redisInitPromise) return this.redisInitPromise
+
+        this.redisInitPromise = (async (): Promise<RedisClientType | null> => {
+            const url = settings.optional.redisUrl?.trim()
+            if (!url) {
+                logger.info("[AnthropicProxyToken] REDIS_URL not set — using in-memory store")
+                return null
+            }
+            try {
+                new URL(url)
+                const client = createClient({ url }) as RedisClientType
+                client.on("error", err => logger.error("[AnthropicProxyToken] Redis error", { err }))
+                await client.connect()
+                this.redisClient = client
+                logger.info("[AnthropicProxyToken] Redis connected")
+                return client
+            } catch (err) {
+                logger.warn("[AnthropicProxyToken] Redis connect failed — falling back to in-memory", { err })
+                return null
+            }
+        })()
+        return this.redisInitPromise
     }
 
     private memoryRevoke(jobId: string, ttlSec: number): void {

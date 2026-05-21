@@ -5,12 +5,6 @@ import { AnthropicAdminService } from "../services/AnthropicAdminService"
 
 const ORPHAN_AGE_MS = 30 * 60 * 1000
 
-/**
- * Closes the leak window when the SDK improvement Node process crashes
- * before the finally{} can revoke its ephemeral key. Scheduled separately
- * from the improvement cron so a hung process or rolling deploy does not
- * leave a usable key alive.
- */
 export async function reapOrphanAnthropicKeys(_req: Request, res: Response): Promise<Response> {
     logger.info("[AnthropicKeyReaper] Starting reap")
     try {

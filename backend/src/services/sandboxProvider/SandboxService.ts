@@ -72,13 +72,9 @@ type SandboxExecParams = {
 type SandboxCreateParams = {
     timeoutMs?: number
     idleTimeoutMs?: number
-    /** Block all network access from the Sandbox. Mutually exclusive with cidrAllowlist. */
     blockNetwork?: boolean
-    /** Allowlist of CIDRs the Sandbox can reach. Use a single proxy /32 to force all egress through it. */
     cidrAllowlist?: string[]
-    /** Provider-side proxy reference for static outbound IPs (not L7 hostname filtering). */
     proxy?: SandboxProxy
-    /** Provider-side secret references to inject as environment variables. */
     secrets?: Secret[]
 }
 

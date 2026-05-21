@@ -8,12 +8,6 @@ import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
 
 const CLAUDE_CODE_VERSION = "2.1.81"
 
-/**
- * Deny rules for the Claude Code tool layer. Defense-in-depth on top of the
- * network egress lockdown — these block tools the improvement agent has no
- * legitimate reason to use (curl/wget/WebFetch for exfil, node -e/python -c
- * for arbitrary code execution).
- */
 const DEFAULT_TOOL_DENY_RULES = [
     "Bash(curl:*)",
     "Bash(wget:*)",
