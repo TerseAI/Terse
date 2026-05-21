@@ -7,6 +7,29 @@ on:
         branches: [main]
 
 jobs:
+    # ── Skip E2E when a PR only touches docs (no runtime code) ────────────────
+    changes:
+        name: Detect runtime changes
+        if: github.event_name == 'pull_request'
+        runs-on: ubuntu-latest
+        outputs:
+            runtime: ${{ steps.filter.outputs.runtime }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dorny/paths-filter@v3
+              id: filter
+              with:
+                  filters: |
+                      runtime:
+                          - "backend/**"
+                          - "frontend/**"
+                          - "packages/**"
+                          - "terse-types/**"
+                          - "terse-probot-app/**"
+                          - "vercel.json"
+                          - "pnpm-lock.yaml"
+                          - "package.json"
+
     # ── Wait for Render PR preview ────────────────────────────────────────────
     # On pull_request events, Render spins up a preview of the backend service
     # at a URL like https://terse-pr-<N>.onrender.com. This job polls the
@@ -16,9 +39,13 @@ jobs:
 
     wait-for-render-preview:
         name: Wait for Render Preview
+        needs: [changes]
         # Skip on fork PRs — secrets aren't available, and a maintainer will re-run e2e
-        # on a branch in this repo after review.
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork != true
+        # on a branch in this repo after review. Skip docs-only PRs (no backend to preview).
+        if: >
+            github.event_name == 'pull_request' &&
+            github.event.pull_request.head.repo.fork != true &&
+            needs.changes.outputs.runtime == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 20
         outputs:
@@ -96,14 +123,15 @@ jobs:
 
     e2e:
         name: End-to-End Tests
-        needs: [wait-for-render-preview]
-        # Run when the wait job succeeded OR was skipped (push to main).
+        needs: [changes, wait-for-render-preview]
+        # Run when the wait job succeeded OR was skipped (push to main, or docs-only PR).
         # Skip on fork PRs — TERSE_API_KEY isn't available, and a maintainer can re-run on a branch.
         if: >
             always() &&
+            (github.event_name != 'pull_request' || needs.changes.outputs.runtime == 'true') &&
             needs.wait-for-render-preview.result != 'failure' &&
             needs.wait-for-render-preview.result != 'cancelled' &&
-            github.event.pull_request.head.repo.fork != true
+            (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true)
         runs-on: blacksmith-4vcpu-ubuntu-2404
         env:
             TERSE_BACKEND_URL: ${{ needs.wait-for-render-preview.outputs.backend_url || 'https://terse.onrender.com' }}
