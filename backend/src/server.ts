@@ -75,9 +75,7 @@ async function gracefulShutdown(signal: string) {
 
     try {
         const io = getRealtimeSocket()
-        const httpClosed = io
-            ? new Promise<void>(resolve => io.close(() => resolve()))
-            : new Promise<void>((resolve, reject) => server.close(err => (err ? reject(err) : resolve())))
+        const httpClosed = io ? new Promise<void>(resolve => io.close(() => resolve())) : new Promise<void>((resolve, reject) => server.close(err => (err ? reject(err) : resolve())))
 
         if (typeof server.closeIdleConnections === "function") {
             server.closeIdleConnections()
