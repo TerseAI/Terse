@@ -77,10 +77,6 @@ const IMPROVEMENTS_SCHEMA = {
 }
 
 const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
-// Token TTL is capped at 30 minutes regardless of sandbox timeout — the
-// ephemeral key gets revoked in the finally{} block, and the proxy denylist
-// catches anything that escaped before then. 30 min is the upper bound for
-// a leaked token to be useful.
 const PROXY_TOKEN_TTL_SECONDS = Math.min((SANDBOX_TIMEOUT_MS * 2) / 1000, 30 * 60)
 
 export class SdkImprovementService {
@@ -110,10 +106,6 @@ export class SdkImprovementService {
             logger.warn("[SdkImprovementService] Terse plugin files not found, running without plugin", { automationId })
         }
 
-        // Per-job ephemeral Anthropic key + opaque bearer token. The sandbox
-        // sees the bearer token via ANTHROPIC_API_KEY and routes all Anthropic
-        // traffic through the Terse proxy, which maps the token back to the
-        // ephemeral key and forwards to api.anthropic.com.
         const jobId = `${automationId}-${crypto.randomBytes(8).toString("hex")}`
         let mintedKeyId: string | null = null
         let proxyToken: string | null = null
@@ -153,9 +145,6 @@ export class SdkImprovementService {
             logger.error("[SdkImprovementService] Evaluation failed", { automationId, jobId, error })
             return { title: "Review failed", summary: "An error occurred during the review.", improvements: [] }
         } finally {
-            // Revoke the Anthropic key first (kills the actual credential) and
-            // the proxy token second (kills the lookup handle). Both can fail
-            // independently — the reaper cron will sweep up any orphans.
             await Promise.allSettled([mintedKeyId ? this.adminService.revokeKey(mintedKeyId) : Promise.resolve(), proxyToken ? this.tokenService.revokeJobToken(jobId) : Promise.resolve()])
         }
     }

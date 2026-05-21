@@ -2,7 +2,7 @@ import { Image as ModalImage } from "modal"
 import crypto from "node:crypto"
 
 import logger from "../logger"
-import { assertValidEnvVarName } from "../utility/shellEscape"
+import { assertValidEnvVarName, shellQuoteArgs } from "../utility/shellEscape"
 
 import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
 
@@ -176,8 +176,6 @@ export class ClaudeCodeSandboxService {
                 logger.info(`[ClaudeCodeSandbox:${label}] Git baseline created`, { duration: this.elapsed(t) })
             }
 
-            // Hand ownership of the project dir to the non-root coder user (the
-            // user itself is baked into the image).
             const chownProc = await sb.exec(["chown", "-R", "coder:coder", "/tmp/project"], { stdout: "pipe", stderr: "pipe" })
             await chownProc.wait()
 
@@ -196,10 +194,7 @@ export class ClaudeCodeSandboxService {
                 claudeArgs.push("--json-schema", JSON.stringify(jsonSchema))
             }
 
-            // Modal forwards `env` to the spawned process structurally — the key
-            // never lands on disk in a chmod-readable script. `su -p` preserves
-            // the env across the user switch so the coder user sees ANTHROPIC_*.
-            const claudeProc = await sb.exec(["su", "-p", "coder", "-c", `cd /tmp/project && exec ${shellJoin(claudeArgs)} < /tmp/prompt.txt > /tmp/claude-output.json`], {
+            const claudeProc = await sb.exec(["su", "-p", "coder", "-c", `cd /tmp/project && exec ${shellQuoteArgs(claudeArgs)} < /tmp/prompt.txt > /tmp/claude-output.json`], {
                 stdout: "pipe",
                 stderr: "pipe",
                 env: extraEnv
@@ -256,20 +251,8 @@ export class ClaudeCodeSandboxService {
     }
 }
 
-/**
- * Structural type for the Modal Sandbox we exec against — kept narrow so the
- * tool denylist helper above doesn't pull in the full Modal class.
- */
 interface SandboxLike {
     exec(command: string[], params?: { stdout?: "pipe" | "ignore"; stderr?: "pipe" | "ignore" }): Promise<{ wait(): Promise<number> }>
     open(path: string, mode: "r" | "w"): Promise<{ write(data: Uint8Array): Promise<void>; close(): Promise<void> }>
 }
 
-/**
- * Quote an argv vector for `bash -c "..."`. Each arg is wrapped in single
- * quotes with embedded single quotes escaped via the standard `'\''` trick,
- * so newlines and shell metacharacters cannot break the wrapper.
- */
-function shellJoin(args: readonly string[]): string {
-    return args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")
-}
