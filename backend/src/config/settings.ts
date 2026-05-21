@@ -141,13 +141,6 @@ export const settings = {
         redirectUri: requireEnv("ATTIO_REDIRECT_URI")
     },
 
-    // Atlassian OAuth
-    atlassian: {
-        clientId: requireEnv("ATLASSIAN_CLIENT_ID"),
-        clientSecret: requireEnv("ATLASSIAN_CLIENT_SECRET"),
-        callbackUrl: requireEnv("ATLASSIAN_CALLBACK_URL")
-    },
-
     // Google Cloud Platform (GCP)
     gcp: {
         serviceAccountBase64: optionalEnv("GCP_SERVICE_ACCOUNT_BASE64"),
