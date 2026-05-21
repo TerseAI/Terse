@@ -1,7 +1,7 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "../../../routes/datadog"
+import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./controller"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
 
 const router = Router()

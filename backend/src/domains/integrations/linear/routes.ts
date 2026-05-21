@@ -1,7 +1,7 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { getLinearIntegrations, getLinearProjects, getLinearTeams, linearOAuthCallback } from "../../../routes/linear"
+import { getLinearIntegrations, getLinearProjects, getLinearTeams, linearOAuthCallback } from "./controller"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
 
 const router = Router()

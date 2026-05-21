@@ -1,7 +1,7 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "../../../routes/attio"
+import { attioOAuthCallback, getAttioIntegrations, getAttioObjects } from "./controller"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
 
 const router = Router()

@@ -1,7 +1,7 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, updateWorkOSWebhookSecret } from "../../../routes/workosIntegration"
+import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, updateWorkOSWebhookSecret } from "./controller"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
 
 const router = Router()

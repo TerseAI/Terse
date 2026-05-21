@@ -1,7 +1,7 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations } from "../../../routes/heyreach"
+import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations } from "./controller"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
 
 const router = Router()

@@ -1,7 +1,7 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { deleteGmailIntegration, getGmailIntegrations, gmailCallback } from "../../../routes/gmail"
+import { deleteGmailIntegration, getGmailIntegrations, gmailCallback } from "./controller"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
 
 const router = Router()
