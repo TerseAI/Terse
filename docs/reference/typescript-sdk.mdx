@@ -30,7 +30,7 @@ Import these from `terse-sdk`:
 - Config helpers re-exported for trigger construction: `HeyReachInputConfig`, and the `HeyReachEventType` object for event-type constants
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
-- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
+- `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://api.useterse.ai`**) and optionally **`TERSE_RUN_ID`** for run attribution.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -49,6 +49,12 @@ npm install terse-sdk zod
 - Tokens with an **expiration** stop working when they expire; the API responds with **401** and an expired-token message.
 
 The API token list in the app shows **user** tokens only. Short-lived project tokens do not appear there.
+
+## Terse API URL
+
+`Terse`, `TerseAgent`, and self-hosted **`handleTrigger`** servers call the Terse API at **`https://api.useterse.ai`** by default (same as the CLI). Set **`TERSE_BACKEND_URL`** when you point at a preview stack, a local backend, or another Terse control plane. Do not use `https://app.useterse.ai/api`; the web app no longer proxies API traffic.
+
+Hosted Modal runs receive **`TERSE_BACKEND_URL`** from Terse automatically.
 
 ## Trigger payloads
 
@@ -71,9 +77,8 @@ Duplicate **`name`** values throw an error when the second job registers. At mos
 | `triggers`       | typed trigger array                             | One or more triggers that start the workflow.                                                     |
 | `filter`         | `(event) => boolean \| Promise<boolean>`        | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger`      | `(event) => Promise<void>`                      | The workflow handler. Called once per trigger event.                                              |
-| `remoteServerUrl` | `string`                                       | Optional override for the Terse API base URL (otherwise `TERSE_BACKEND_URL` or `https://app.useterse.ai/api`).      |
 
-Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`.
+Pass **`skills`**, **`toolApprovals`**, and the agent **`prompt`** to **`TerseAgent.create()`** inside `onTrigger`, not on `createJob`. For self-hosted deployments, set the public URL of your webhook server in **`remoteServerUrl`** inside **`terse.config.json`** (see [`terse deploy`](/reference/cli#terse-deploy)), not on `createJob`.
 
 ```ts
 import { GithubPRTrigger, createJob, TerseAgent } from "terse-sdk"
