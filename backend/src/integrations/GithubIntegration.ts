@@ -24,7 +24,7 @@ import { fetchGithubRepositoriesForIntegration } from "../routes/github"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
-import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -158,13 +158,14 @@ export class GithubIntegrationManager
         organizationId: string,
         options: InstallationOptionsFor<IntegrationType.GITHUB> | undefined,
         additionalStatePayload: AdditionalStateParams | undefined,
+        req: Request,
         res: Response
     ): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName
         const clientId = githubApp.clientId
         const redirectUri = githubApp.integrateCallbackUrl
 
-        const state = mintBrowserOAuthState(res, {
+        const state = mintOAuthState(req, res, {
             userId,
             organizationId,
             additionalStatePayload

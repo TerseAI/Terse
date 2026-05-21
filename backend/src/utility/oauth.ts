@@ -93,7 +93,14 @@ function getOauthStateCookieOptions() {
     return settings.optional.cookieDomain ? { ...base, domain: settings.optional.cookieDomain } : base
 }
 
-export function mintBrowserOAuthState(res: Response, options: OAuthStatePayloadOptions): string {
+export function mintOAuthState(req: Request, res: Response, options: OAuthStatePayloadOptions): string {
+    if (req.session?.authMethod?.kind === "api_token") {
+        return createOAuthStateToken({
+            ...options,
+            additionalFields: { ...(options.additionalFields ?? {}), cliOrigin: true }
+        })
+    }
+
     const nonce = crypto.randomBytes(32).toString("hex")
     res.cookie(OAUTH_STATE_COOKIE_NAME, nonce, getOauthStateCookieOptions())
     return createOAuthStateToken({
@@ -108,6 +115,11 @@ export function verifyOAuthState(req: Request, res: Response, state: string): OA
     res.clearCookie(OAUTH_STATE_COOKIE_NAME, getOauthStateCookieOptions())
 
     const payload = decodeOAuthStateToken(state)
+
+    if (payload.cliOrigin === true) {
+        return payload
+    }
+
     const jwtNonce = typeof payload.nonce === "string" ? payload.nonce : undefined
     if (!cookieNonce || !jwtNonce || cookieNonce.length !== jwtNonce.length) {
         throw new Error("OAuth state nonce mismatch — possible CSRF or stale flow")

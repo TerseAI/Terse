@@ -23,7 +23,7 @@ import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensure
 import { GetSecretsArg, SecretService } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
-import { mintBrowserOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintOAuthState, verifyOAuthState } from "../utility/oauth"
 import { getUserForOrg } from "../utility/workos"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
@@ -247,6 +247,7 @@ export class SlackIntegrationManager
         organizationId: string,
         options: InstallationOptionsFor<IntegrationType.SLACK> | undefined,
         additionalStatePayload: AdditionalStateParams | undefined,
+        req: Request,
         res: Response
     ): Promise<OAuthInstallationDetails> {
         if (!options) {
@@ -260,7 +261,7 @@ export class SlackIntegrationManager
         const user_scope = isBotUser
             ? ""
             : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write,reactions:read,reactions:write,files:read"
-        const state = mintBrowserOAuthState(res, {
+        const state = mintOAuthState(req, res, {
             userId,
             organizationId,
             additionalFields: { isBotUser },

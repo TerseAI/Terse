@@ -84,13 +84,21 @@ export const settings = {
     // Environment
     nodeEnv: optionalEnv("NODE_ENV", "development") as "development" | "production" | "test",
 
+    health: {
+        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")!
+    },
+
     // Gmail OAuth
     gmail: {
         clientId: requireEnv("GMAIL_CLIENT_ID"),
         clientSecret: requireEnv("GMAIL_CLIENT_SECRET"),
         redirectUri: requireEnv("GMAIL_REDIRECT_URI"),
         pubsubTopic: requireEnv("GMAIL_PUBSUB_TOPIC"),
-        frontendRedirect: requireEnv("GMAIL_FRONTEND_REDIRECT")
+        frontendRedirect: requireEnv("GMAIL_FRONTEND_REDIRECT"),
+
+        // OIDC verification for inbound Pub/Sub push deliveries.
+        pubsubAudience: optionalEnv("GMAIL_PUBSUB_AUDIENCE"),
+        pubsubServiceAccountEmail: optionalEnv("GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL")
     },
 
     // GitHub App (for repository integration and OAuth)
@@ -131,13 +139,6 @@ export const settings = {
         clientId: requireEnv("ATTIO_CLIENT_ID"),
         clientSecret: requireEnv("ATTIO_CLIENT_SECRET"),
         redirectUri: requireEnv("ATTIO_REDIRECT_URI")
-    },
-
-    // Atlassian OAuth
-    atlassian: {
-        clientId: requireEnv("ATLASSIAN_CLIENT_ID"),
-        clientSecret: requireEnv("ATLASSIAN_CLIENT_SECRET"),
-        callbackUrl: requireEnv("ATLASSIAN_CALLBACK_URL")
     },
 
     // Google Cloud Platform (GCP)
