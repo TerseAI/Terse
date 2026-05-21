@@ -1,8 +1,8 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, updateWorkOSWebhookSecret } from "../../../routes/workosIntegration"
+import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
 
 const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])
