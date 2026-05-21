@@ -13,8 +13,11 @@ import { settings } from "./config/settings"
 import apiTokensRouter from "./domains/api-tokens/routes"
 import approvalsRouter from "./domains/approvals/routes"
 import authRouter from "./domains/auth/routes"
+import agentsReviewRouter from "./domains/agents/review/routes"
+import billingCacheInvalidationRouter from "./domains/billing/cache-invalidation/routes"
 import billingRouter from "./domains/billing/routes"
 import improvementsRouter from "./domains/improvements/routes"
+import maintenanceRouter from "./domains/maintenance/routes"
 import attioRouter from "./domains/integrations/attio/routes"
 import datadogRouter from "./domains/integrations/datadog/routes"
 import githubVendorRouter from "./domains/integrations/github/routes"
@@ -50,13 +53,10 @@ import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { handleAttioWebhook } from "./routes/attio"
-import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
 import { githubAppUnifiedEvent } from "./routes/github"
 import { handleGmailWebhook } from "./routes/gmail"
 import { handleHeyReachWebhook } from "./routes/heyreach"
 import { handleLinearWebhook } from "./routes/linear"
-import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
-import { reviewAllAgents } from "./routes/reviewAgents"
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebMonitorWebhook } from "./routes/schedule"
 import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleWorkOSWebhook } from "./routes/workos"
@@ -189,20 +189,6 @@ app.use((err: Error & { type?: string; statusCode?: number }, req: Request, res:
 })
 app.use(cookieParser())
 
-// MARK: CRON JOBS
-
-app.post(ApiRoutes.REFRESH_TOKENS, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
-    refreshAllTokens(req, res)
-})
-
-app.post(ApiRoutes.CLEAR_OLD_SECRET_VERSIONS, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
-    clearOldSecretVersions(req, res)
-})
-
-app.post(ApiRoutes.REVIEW_AGENTS, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
-    reviewAllAgents(req, res)
-})
-
 // MARK: WEBHOOKS (each handler verifies its own provider signature)
 
 app.post(ApiRoutes.WEBHOOKS.GMAIL, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
@@ -259,11 +245,6 @@ app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, rateLimit(RateLimitKind.WebhookByIp), a
     await githubAppUnifiedEvent(req, res)
 })
 
-// Billing service callback: uses a service JWT, not bearer API token auth.
-app.post(ApiRoutes.BILLING.CACHE_INVALIDATION, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-    await invalidateBillingCachesFromService(req, res)
-})
-
 // MARK: DOMAIN ROUTERS (MVC — controller/service/repository per domain)
 app.use("/stats", statsRouter)
 app.use("/run-history", runsRouter)
@@ -282,6 +263,9 @@ app.use("/tools", toolsRouter)
 app.use("/integrations", integrationsRouter)
 app.use("/sdk", sdkRouter)
 app.use(sdkMaintenanceRouter)
+app.use(agentsReviewRouter)
+app.use(maintenanceRouter)
+app.use(billingCacheInvalidationRouter)
 app.use(authRouter)
 // Per-vendor integration routers (mounted at vendor-specific prefixes)
 app.use("/attio", attioRouter)
