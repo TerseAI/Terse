@@ -13,6 +13,8 @@ import { settings } from "./config/settings"
 import apiTokensRouter from "./domains/api-tokens/routes"
 import approvalsRouter from "./domains/approvals/routes"
 import billingRouter from "./domains/billing/routes"
+import improvementsRouter from "./domains/improvements/routes"
+import toolsRouter from "./domains/tools/routes"
 import notificationDestinationsRouter from "./domains/notifications/destinations/routes"
 import sentNotificationsRouter from "./domains/notifications/sent/routes"
 import notificationSettingsRouter from "./domains/notifications/settings/routes"
@@ -42,7 +44,6 @@ import { getGithubIntegrations, getGithubRepositoriesForIntegration, githubAppUn
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations, handleHeyReachWebhook } from "./routes/heyreach"
 import { handleHydrateSampleEvent } from "./routes/hydrateSampleEvent"
-import { applyImprovement, dismissImprovement, getAgentImprovements, toggleImprovementsEnabled, undoDismissImprovement } from "./routes/improvements"
 import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearProjects, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
@@ -63,7 +64,6 @@ import { handleToolDefinitions } from "./routes/sdkToolDefinitions"
 import { handleToolExecute } from "./routes/sdkToolExecute"
 import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./routes/slack"
 import { createOrUpdateSnowflakeIntegration, getSnowflakeIntegrations } from "./routes/snowflake"
-import { toolsThatRequireApprovalsRoute } from "./routes/tools"
 import { handleWebhookTrigger } from "./routes/webhookTrigger"
 import { handleWorkOSWebhook } from "./routes/workos"
 import { createOrUpdateWorkOSIntegration, getWorkOSIntegrations, handleWorkOSTriggerWebhook, updateWorkOSWebhookSecret } from "./routes/workosIntegration"
@@ -327,6 +327,8 @@ app.use("/projects/:id/secrets", projectSecretsRouter)
 app.use("/projects", projectsRouter)
 app.use("/api-tokens", apiTokensRouter)
 app.use("/organizations", organizationsRouter)
+app.use("/agents/:agentId", improvementsRouter)
+app.use("/tools", toolsRouter)
 
 // MARK: SESSION
 
@@ -551,28 +553,6 @@ app.get(ApiRoutes.AGENTS.FILE_CONTENT, rateLimit(RateLimitKind.Default), require
     getAgentFileContent(req, res)
 })
 
-// MARK: IMPROVEMENTS
-
-app.get(ApiRoutes.IMPROVEMENTS.BY_AGENT_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getAgentImprovements(req, res)
-})
-
-app.post(ApiRoutes.IMPROVEMENTS.APPLY, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    applyImprovement(req, res)
-})
-
-app.post(ApiRoutes.IMPROVEMENTS.DISMISS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    dismissImprovement(req, res)
-})
-
-app.post(ApiRoutes.IMPROVEMENTS.UNDO_DISMISS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    undoDismissImprovement(req, res)
-})
-
-app.patch(ApiRoutes.IMPROVEMENTS.TOGGLE_ENABLED, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    toggleImprovementsEnabled(req, res)
-})
-
 // MARK: INTEGRATIONS
 
 app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
@@ -678,12 +658,6 @@ app.post(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, rateLimit(RateLimitKind.Default)
 
 app.post(ApiRoutes.SDK.CREATE_PROJECT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleProjectCreate(req, res)
-})
-
-// MARK: TOOLS THAT REQUIRE APPROVALS
-
-app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    toolsThatRequireApprovalsRoute(req, res)
 })
 
 /**
