@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
 
 import logger from "../../common/logger"
+
 import { UserNotFoundError, getUserInOrganization } from "./service"
 
 export async function getUserById(req: Request, res: Response) {

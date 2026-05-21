@@ -1,6 +1,7 @@
 import { HydratorType } from "terse-types"
 import { hydratorTypeEnum } from "terse-types"
 
+import type { IdentifiableRunHistoryRawEvent } from "../hydrators/runHistoryRag/hydrator"
 import type { GithubTriggerRuntime } from "../integrations/GithubIntegration"
 import type { GmailTriggerRuntime } from "../integrations/GmailIntegration"
 import type { LinearTriggerRuntime } from "../integrations/LinearIntegration"
@@ -8,7 +9,6 @@ import type { SlackTriggerRuntime } from "../integrations/SlackIntegration"
 import type { WebMonitorTriggerRuntime } from "../integrations/WebMonitorIntegration"
 import type { WorkOSTriggerRuntime } from "../integrations/WorkOSIntegration"
 import logger from "../logger"
-import type { IdentifiableRunHistoryRawEvent } from "../hydrators/runHistoryRag/hydrator"
 
 function isHydratorType(value: string): value is HydratorType {
     return hydratorTypeEnum.safeParse(value).success

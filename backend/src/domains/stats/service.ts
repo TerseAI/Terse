@@ -3,6 +3,7 @@ import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
 import { AgentActivityItem, CountByString, RecentAction, StatsInterval, StatsResponse } from "terse-types/types"
 
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../../utility/typeConverters"
+
 import { ChartBucketUnit, fetchAgentNamesByIds, fetchStatsRawData } from "./repository"
 
 const DEFAULT_CHART_TIME_WINDOW_DAYS = 7

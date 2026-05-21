@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 
 import logger from "../../common/logger"
+
 import { listPendingApprovals, parseApprovalFilter } from "./service"
 
 export async function getPendingApprovals(req: Request, res: Response) {

@@ -3,6 +3,7 @@ import { ApprovalRequest, ApprovalRequestFilter, ApprovalRequestStatus, encodeDe
 
 import logger from "../../common/logger"
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../../utility/typeConverters"
+
 import { ApprovalFilter, fetchApprovalRows } from "./repository"
 
 const VALID_FILTERS: ApprovalRequestFilter[] = ["all", "pending", "in_progress", "completed"]

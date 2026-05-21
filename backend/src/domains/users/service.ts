@@ -1,6 +1,7 @@
 import { Role, User } from "terse-types/types"
 
 import { workos } from "../../utility/workos"
+
 import { findUserById } from "./repository"
 
 export class UserNotFoundError extends Error {

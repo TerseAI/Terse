@@ -9,10 +9,10 @@ import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { urls } from "../config/settings"
+import { Identifiable } from "../hydrators/Hydrator"
 import logger from "../logger"
 import { getWorkOSUser } from "../outputs/workos/workosApiClient"
 import { db } from "../prismaClient"
-import { Identifiable } from "../hydrators/Hydrator"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 

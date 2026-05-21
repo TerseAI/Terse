@@ -17,9 +17,9 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { settings } from "../config/settings"
+import { Identifiable } from "../hydrators/Hydrator"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
-import { Identifiable } from "../hydrators/Hydrator"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 
