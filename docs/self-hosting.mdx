@@ -82,7 +82,7 @@ Terse still runs the rest of the platform.
         The side-effect import of `./terse.jobs` (or whichever entry file holds your `createJob()` calls) is what makes the registry available at request time. `handleTrigger` reads `TERSE_SIGNING_SECRET` and `TERSE_API_KEY` from the process env on every call. See [`Terse`](/reference/typescript-sdk#terse) in the SDK reference for the full client surface.
     </Step>
     <Step title="Deploy your code, then sync workflows">
-        Ship your service the way you normally ship Node code (Render, Fly, ECS, your own Kubernetes, …). Once it's reachable at `remoteServerUrl`, run:
+        Ship your service the way you normally ship Node code (Render, Fly, ECS, your own Kubernetes, …). Use **Node.js 20 or later** on the host (22 recommended). If you mount **`handleTrigger`** with Hono, confirm your `@hono/node-server` version’s engine requirement—current releases expect Node 20+. Once the service is reachable at `remoteServerUrl`, run:
 
         ```bash
         terse deploy
