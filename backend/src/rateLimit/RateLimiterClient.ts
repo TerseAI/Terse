@@ -94,6 +94,17 @@ export class RateLimiterClient {
         return new ConnectionCap(this.redisClient, opts)
     }
 
+    /**
+     * Exposes the underlying Redis client for services that need
+     * short-lived shared state (e.g. per-job token revocation). Returns
+     * null when Redis is unavailable and the caller should fall back to
+     * an in-process implementation.
+     */
+    public getRedis(): RedisClientType | null {
+        this.assertInitialized()
+        return this.redisClient
+    }
+
     private buildLimiter(opts: RateLimitOptions): RateLimiterAbstract {
         const base = {
             points: opts.points,

@@ -1,4 +1,4 @@
-import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, NotFoundError, SandboxCreateParams } from "modal"
+import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, NotFoundError, Proxy as ModalProxy, SandboxCreateParams, Secret as ModalSecret } from "modal"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"
@@ -204,6 +204,10 @@ export class ModalSandboxService implements SandboxService {
         const sandbox = await this.modal.sandboxes.create(appRef, imageRef, {
             timeoutMs: params?.timeoutMs,
             idleTimeoutMs: params?.idleTimeoutMs,
+            blockNetwork: params?.blockNetwork,
+            cidrAllowlist: params?.cidrAllowlist,
+            proxy: params?.proxy as ModalProxy | undefined,
+            secrets: params?.secrets as ModalSecret[] | undefined,
             name
         })
 

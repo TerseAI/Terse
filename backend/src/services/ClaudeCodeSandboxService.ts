@@ -1,10 +1,38 @@
 import crypto from "node:crypto"
 
-import { settings } from "../config/settings"
+import { Image as ModalImage } from "modal"
+
 import logger from "../logger"
-import { assertValidEnvVarName, shellQuote, shellQuoteArgs } from "../utility/shellEscape"
+import { assertValidEnvVarName } from "../utility/shellEscape"
 
 import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
+
+const CLAUDE_CODE_VERSION = "2.1.81"
+
+/**
+ * Deny rules for the Claude Code tool layer. Defense-in-depth on top of the
+ * network egress lockdown — these block tools the improvement agent has no
+ * legitimate reason to use (curl/wget/WebFetch for exfil, node -e/python -c
+ * for arbitrary code execution).
+ */
+const DEFAULT_TOOL_DENY_RULES = [
+    "Bash(curl:*)",
+    "Bash(wget:*)",
+    "Bash(nc:*)",
+    "Bash(ncat:*)",
+    "Bash(socat:*)",
+    "Bash(ssh:*)",
+    "Bash(scp:*)",
+    "Bash(rsync:*)",
+    "Bash(node -e:*)",
+    "Bash(node --eval:*)",
+    "Bash(python -c:*)",
+    "Bash(python3 -c:*)",
+    "Bash(perl -e:*)",
+    "Bash(ruby -e:*)",
+    "WebFetch",
+    "WebSearch"
+]
 
 interface ClaudeCodeSandboxParams {
     /** Identifier for logging */
@@ -19,7 +47,7 @@ interface ClaudeCodeSandboxParams {
     maxTurns?: number
     /** Sandbox timeout in ms (default: 10 minutes) */
     timeoutMs?: number
-    /** Additional env vars to pass to the Claude Code process */
+    /** Additional env vars to pass to the Claude Code process. ANTHROPIC_API_KEY must be supplied via this map. */
     env?: Record<string, string>
     /** JSON Schema to enforce structured output from Claude Code */
     jsonSchema?: Record<string, unknown>
@@ -27,6 +55,10 @@ interface ClaudeCodeSandboxParams {
     outputFiles?: string[]
     /** Optional plugin to install in the sandbox. Files are written at absolute paths, dir is passed as --plugin-dir. */
     plugin?: { files: Record<string, string>; dir: string }
+    /** Single proxy /32 CIDR forced as the only outbound destination. When unset, sandbox keeps default open egress. */
+    egressCidrAllowlist?: string[]
+    /** Additional deny-rules to merge into .claude/settings.json. Defaults applied automatically. */
+    extraToolDenyRules?: string[]
 }
 
 interface ClaudeCodeSandboxResult {
@@ -45,8 +77,40 @@ export class ClaudeCodeSandboxService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
+    private async writeClaudeSettings(sb: SandboxLike, label: string, extraDenyRules: string[]): Promise<void> {
+        const mkdir = await sb.exec(["mkdir", "-p", "/tmp/project/.claude"], { stdout: "pipe", stderr: "pipe" })
+        await mkdir.wait()
+
+        const denyRules = [...DEFAULT_TOOL_DENY_RULES, ...extraDenyRules]
+        const settingsBody = JSON.stringify({ permissions: { deny: denyRules } }, null, 2)
+        const handle = await sb.open("/tmp/project/.claude/settings.json", "w")
+        await handle.write(new TextEncoder().encode(settingsBody))
+        await handle.close()
+        logger.info(`[ClaudeCodeSandbox:${label}] Wrote Claude Code denylist`, { ruleCount: denyRules.length })
+    }
+
     async run(params: ClaudeCodeSandboxParams): Promise<ClaudeCodeSandboxResult> {
-        const { label, prompt, sourceZip, gitInit = true, maxTurns = 30, timeoutMs = 10 * 60 * 1000, env: extraEnv = {}, jsonSchema, outputFiles: outputFilePaths = [], plugin } = params
+        const {
+            label,
+            prompt,
+            sourceZip,
+            gitInit = true,
+            maxTurns = 30,
+            timeoutMs = 10 * 60 * 1000,
+            env: extraEnv = {},
+            jsonSchema,
+            outputFiles: outputFilePaths = [],
+            plugin,
+            egressCidrAllowlist,
+            extraToolDenyRules = []
+        } = params
+
+        // Modal forwards env structurally to the spawned process, so shell
+        // metacharacters in keys cannot break the boundary. We still validate
+        // here to keep callers honest and to fail closed on bad input.
+        for (const k of Object.keys(extraEnv)) {
+            assertValidEnvVarName(k)
+        }
 
         const executionStart = performance.now()
 
@@ -54,18 +118,28 @@ export class ClaudeCodeSandboxService {
 
         let t = performance.now()
         const app = await sandboxService.getOrCreateApp("terse-claude-code-sandbox")
-        const image = sandboxService.getImageFromRegistry("node:22-slim")
+        // Bake git + unzip + Claude Code CLI into the image so the sandbox does
+        // not need apt/npm network access at runtime. With cidrAllowlist locking
+        // egress to the Terse proxy, runtime apt/npm would fail anyway.
+        const baseImage = sandboxService.getImageFromRegistry("node:22-slim") as ModalImage
+        const image = baseImage.dockerfileCommands([
+            "RUN apt-get update -qq && apt-get install -y -qq git unzip ca-certificates && rm -rf /var/lib/apt/lists/*",
+            `RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} && npm cache clean --force`,
+            "RUN useradd -m -s /bin/bash coder"
+        ])
+
         const uniqueName = `cc-${crypto.randomBytes(14).toString("hex")}`
-        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, { timeoutMs })
-        logger.info(`[ClaudeCodeSandbox:${label}] Created sandbox`, { sandboxId: sb.sandboxId, duration: this.elapsed(t) })
+        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, {
+            timeoutMs,
+            cidrAllowlist: egressCidrAllowlist
+        })
+        logger.info(`[ClaudeCodeSandbox:${label}] Created sandbox`, {
+            sandboxId: sb.sandboxId,
+            duration: this.elapsed(t),
+            egressLocked: Boolean(egressCidrAllowlist?.length)
+        })
 
         try {
-            // Install system deps (git required for git init/diff, unzip for source code)
-            t = performance.now()
-            const depsProc = await sb.exec(["sh", "-c", "apt-get update -qq && apt-get install -y -qq git unzip > /dev/null 2>&1"], { stdout: "pipe", stderr: "pipe" })
-            await depsProc.wait()
-            logger.info(`[ClaudeCodeSandbox:${label}] Installed system deps`, { duration: this.elapsed(t) })
-
             // Upload & extract source code if provided
             if (sourceZip) {
                 t = performance.now()
@@ -81,6 +155,10 @@ export class ClaudeCodeSandboxService {
                 const mkdirProc = await sb.exec(["mkdir", "-p", "/tmp/project"], { stdout: "pipe", stderr: "pipe" })
                 await mkdirProc.wait()
             }
+
+            // Write the tool denylist AFTER unzip so we overwrite any
+            // attacker-supplied .claude/settings.json planted in the source zip.
+            await this.writeClaudeSettings(sb, label, extraToolDenyRules)
 
             // Write plugin files into the sandbox
             if (plugin) {
@@ -108,23 +186,10 @@ export class ClaudeCodeSandboxService {
                 logger.info(`[ClaudeCodeSandbox:${label}] Git baseline created`, { duration: this.elapsed(t) })
             }
 
-            // Create non-root user (Claude Code refuses --dangerously-skip-permissions as root)
-            t = performance.now()
-            const userProc = await sb.exec(["sh", "-c", "useradd -m -s /bin/bash coder && chown -R coder:coder /tmp/project"], { stdout: "pipe", stderr: "pipe" })
-            await userProc.wait()
-            logger.info(`[ClaudeCodeSandbox:${label}] Created non-root user`, { duration: this.elapsed(t) })
-
-            // Install Claude Code CLI
-            t = performance.now()
-            const installProc = await sb.exec(["sh", "-c", "npm install -g @anthropic-ai/claude-code@2.1.81 2>&1"], { stdout: "pipe", stderr: "pipe" })
-            const installExit = await installProc.wait()
-            if (installExit !== 0) {
-                const installStderr = await installProc.stderr.readText()
-                logger.error(`[ClaudeCodeSandbox:${label}] Failed to install Claude Code CLI`, { stderr: installStderr.slice(0, 500) })
-                await sb.terminate()
-                return { stdout: "", stderr: installStderr, exitCode: installExit, outputFiles: {} }
-            }
-            logger.info(`[ClaudeCodeSandbox:${label}] Installed Claude Code CLI`, { duration: this.elapsed(t) })
+            // Hand ownership of the project dir to the non-root coder user (the
+            // user itself is baked into the image).
+            const chownProc = await sb.exec(["chown", "-R", "coder:coder", "/tmp/project"], { stdout: "pipe", stderr: "pipe" })
+            await chownProc.wait()
 
             // Write prompt to a file to avoid ARG_MAX limits
             const promptHandle = await sb.open("/tmp/prompt.txt", "w")
@@ -133,7 +198,6 @@ export class ClaudeCodeSandboxService {
 
             // Run Claude Code
             t = performance.now()
-            // Build Claude Code command args
             const claudeArgs = ["claude", "-p", "--output-format", "json", "--max-turns", String(maxTurns), "--dangerously-skip-permissions"]
             if (plugin) {
                 claudeArgs.push("--plugin-dir", plugin.dir)
@@ -142,28 +206,13 @@ export class ClaudeCodeSandboxService {
                 claudeArgs.push("--json-schema", JSON.stringify(jsonSchema))
             }
 
-            // Write a run script and execute as non-root user
-            const claudeEnv = { ANTHROPIC_API_KEY: settings.anthropic.apiKey, ...extraEnv }
-            const envExports = Object.entries(claudeEnv)
-                .map(([k, v]) => {
-                    // Keys go in unquoted, so they must be valid POSIX
-                    // identifiers — otherwise a caller could break out
-                    // of the export line with newlines/metachars.
-                    assertValidEnvVarName(k)
-                    return `export ${k}=${shellQuote(v)}`
-                })
-                .join("\n")
-            const escapedArgs = shellQuoteArgs(claudeArgs)
-            const runScript = `#!/bin/bash\n${envExports}\ncd /tmp/project && cat /tmp/prompt.txt | ${escapedArgs} > /tmp/claude-output.json\n`
-            const scriptHandle = await sb.open("/tmp/run-claude.sh", "w")
-            await scriptHandle.write(new TextEncoder().encode(runScript))
-            await scriptHandle.close()
-            const chmodProc = await sb.exec(["chmod", "+x", "/tmp/run-claude.sh"], { stdout: "pipe", stderr: "pipe" })
-            await chmodProc.wait()
-
-            const claudeProc = await sb.exec(["su", "coder", "-c", "/tmp/run-claude.sh"], {
+            // Modal forwards `env` to the spawned process structurally — the key
+            // never lands on disk in a chmod-readable script. `su -p` preserves
+            // the env across the user switch so the coder user sees ANTHROPIC_*.
+            const claudeProc = await sb.exec(["su", "-p", "coder", "-c", `cd /tmp/project && exec ${shellJoin(claudeArgs)} < /tmp/prompt.txt > /tmp/claude-output.json`], {
                 stdout: "pipe",
-                stderr: "pipe"
+                stderr: "pipe",
+                env: extraEnv
             })
 
             const stderr = await claudeProc.stderr.readText()
@@ -215,4 +264,22 @@ export class ClaudeCodeSandboxService {
             throw error
         }
     }
+}
+
+/**
+ * Structural type for the Modal Sandbox we exec against — kept narrow so the
+ * tool denylist helper above doesn't pull in the full Modal class.
+ */
+interface SandboxLike {
+    exec(command: string[], params?: { stdout?: "pipe" | "ignore"; stderr?: "pipe" | "ignore" }): Promise<{ wait(): Promise<number> }>
+    open(path: string, mode: "r" | "w"): Promise<{ write(data: Uint8Array): Promise<void>; close(): Promise<void> }>
+}
+
+/**
+ * Quote an argv vector for `bash -c "..."`. Each arg is wrapped in single
+ * quotes with embedded single quotes escaped via the standard `'\''` trick,
+ * so newlines and shell metacharacters cannot break the wrapper.
+ */
+function shellJoin(args: readonly string[]): string {
+    return args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")
 }

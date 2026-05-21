@@ -1,3 +1,4 @@
+import crypto from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -5,10 +6,13 @@ import { fileURLToPath } from "node:url"
 import { JudgeAgentOutputType } from "../agent/JudgeAgent/JudgeAgent"
 import { buildClaudeCodePrompt } from "../agent/JudgeAgent/buildClaudeCodePrompt"
 import { JudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
+import { settings } from "../config/settings"
 import logger from "../logger"
 
+import { AnthropicAdminService } from "./AnthropicAdminService"
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"
+import { AnthropicProxyTokenService } from "./anthropicProxy/AnthropicProxyTokenService"
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDir = path.dirname(currentFilePath)
@@ -72,8 +76,17 @@ const IMPROVEMENTS_SCHEMA = {
     required: ["title", "summary", "improvements"]
 }
 
+const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
+// Token TTL is capped at 30 minutes regardless of sandbox timeout — the
+// ephemeral key gets revoked in the finally{} block, and the proxy denylist
+// catches anything that escaped before then. 30 min is the upper bound for
+// a leaked token to be useful.
+const PROXY_TOKEN_TTL_SECONDS = Math.min((SANDBOX_TIMEOUT_MS * 2) / 1000, 30 * 60)
+
 export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
+    private adminService = new AnthropicAdminService()
+    private tokenService = new AnthropicProxyTokenService()
 
     async evaluate(automationId: string, context: JudgeContext): Promise<JudgeAgentOutputType> {
         const gcsKey = context.agentConfig.gcsKey
@@ -97,13 +110,36 @@ export class SdkImprovementService {
             logger.warn("[SdkImprovementService] Terse plugin files not found, running without plugin", { automationId })
         }
 
+        // Per-job ephemeral Anthropic key + opaque bearer token. The sandbox
+        // sees the bearer token via ANTHROPIC_API_KEY and routes all Anthropic
+        // traffic through the Terse proxy, which maps the token back to the
+        // ephemeral key and forwards to api.anthropic.com.
+        const jobId = `${automationId}-${crypto.randomBytes(8).toString("hex")}`
+        let mintedKeyId: string | null = null
+        let proxyToken: string | null = null
+
         try {
+            const minted = await this.adminService.mintEphemeralKey({ label: jobId })
+            mintedKeyId = minted.keyId
+            await this.adminService.probeKey(minted.apiKey)
+            proxyToken = await this.tokenService.mintToken({
+                jobId,
+                ttlSeconds: PROXY_TOKEN_TTL_SECONDS,
+                ephemeralApiKey: minted.apiKey
+            })
+
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
                 prompt,
                 sourceZip: zipBuffer,
                 gitInit: true,
                 jsonSchema: IMPROVEMENTS_SCHEMA,
+                timeoutMs: SANDBOX_TIMEOUT_MS,
+                env: {
+                    ANTHROPIC_API_KEY: proxyToken,
+                    ANTHROPIC_BASE_URL: settings.terseAnthropicProxy.baseUrl
+                },
+                egressCidrAllowlist: [settings.terseAnthropicProxy.cidr],
                 plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined
             })
 
@@ -114,8 +150,16 @@ export class SdkImprovementService {
 
             return parseResults(result.stdout, automationId)
         } catch (error) {
-            logger.error("[SdkImprovementService] Evaluation failed", { automationId, error })
+            logger.error("[SdkImprovementService] Evaluation failed", { automationId, jobId, error })
             return { title: "Review failed", summary: "An error occurred during the review.", improvements: [] }
+        } finally {
+            // Revoke the Anthropic key first (kills the actual credential) and
+            // the proxy token second (kills the lookup handle). Both can fail
+            // independently — the reaper cron will sweep up any orphans.
+            await Promise.allSettled([
+                mintedKeyId ? this.adminService.revokeKey(mintedKeyId) : Promise.resolve(),
+                proxyToken ? this.tokenService.revokeJobToken(jobId) : Promise.resolve()
+            ])
         }
     }
 }

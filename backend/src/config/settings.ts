@@ -171,7 +171,20 @@ export const settings = {
 
     // Anthropic (Claude Code CLI in sandboxes)
     anthropic: {
-        apiKey: requireEnv("ANTHROPIC_API_KEY")
+        apiKey: requireEnv("ANTHROPIC_API_KEY"),
+        // Admin API key + workspace used to mint per-job ephemeral keys for the
+        // SDK improvement sandbox so the platform-wide key never lands inside.
+        adminApiKey: requireEnv("ANTHROPIC_ADMIN_API_KEY"),
+        improvementWorkspaceId: requireEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
+    },
+
+    // Terse-hosted forward proxy for Anthropic traffic from the SDK improvement
+    // sandbox. The sandbox's egress is locked to `cidr` (a single proxy /32) so
+    // any successful prompt-injection has no exfil destination.
+    terseAnthropicProxy: {
+        cidr: requireEnv("TERSE_ANTHROPIC_PROXY_CIDR"),
+        baseUrl: requireEnv("TERSE_ANTHROPIC_PROXY_BASE_URL"),
+        hmacSecret: requireEnv("TERSE_ANTHROPIC_PROXY_HMAC_SECRET")
     },
 
     // Modal (sandbox execution for SDK jobs)
