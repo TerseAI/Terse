@@ -76,6 +76,7 @@ export interface OAuthIntegrationInstallation<T extends IntegrationType> {
         organizationId: string,
         options: InstallationOptionsFor<T> | undefined,
         additionalStatePayload: AdditionalStateParams | undefined,
+        req: Request,
         res: Response
     ): Promise<OAuthInstallationDetails>
     processInstallationCallback(req: Request, res: Response): Promise<void>
