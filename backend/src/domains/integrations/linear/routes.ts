@@ -1,8 +1,9 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { getLinearIntegrations, getLinearProjects, getLinearTeams, linearOAuthCallback } from "./controller"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
+
+import { getLinearIntegrations, getLinearProjects, getLinearTeams, linearOAuthCallback } from "./controller"
 
 const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])

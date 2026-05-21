@@ -4,7 +4,7 @@ import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 // Handlers still live in routes/agents.ts (842 LOC); a future PR can decompose
 // them into routes/controller/service/repository within this domain folder.
 // For now we just consolidate the routing into a domain router.
-import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "../../routes/agents"
+import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./controller"
 import { AuthKind, requireAuth } from "../../utility/authMiddleware"
 
 const router = Router()

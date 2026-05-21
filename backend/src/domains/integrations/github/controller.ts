@@ -8,12 +8,11 @@ import { githubApp, jwt as jwtConfig } from "../../../config/settings"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../../../integrations/GithubIntegration"
 import logger from "../../../logger"
 import { db } from "../../../prismaClient"
-import { GithubAppInstallationRepository } from "../../../routes/GithubTypes"
+import { GithubAppInstallationRepository } from "./types"
+import { parseGithubUnifiedEventPayload } from "./eventParser"
 import { SecretService } from "../../../services/SecretService"
 import { readBearerToken } from "../../../utility/authDispatch"
 import { getUserForOrg } from "../../../utility/workos"
-
-import { parseGithubUnifiedEventPayload } from "../../../routes/githubUnifiedEventParser"
 
 // MARK: - Route Handlers
 

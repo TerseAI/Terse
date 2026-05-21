@@ -1,8 +1,9 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { deleteGmailIntegration, getGmailIntegrations, gmailCallback } from "./controller"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
+
+import { deleteGmailIntegration, getGmailIntegrations, gmailCallback } from "./controller"
 
 const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])
