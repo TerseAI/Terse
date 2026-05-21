@@ -14,13 +14,13 @@ import { OAuthInstallationDetails, Repository } from "terse-types/types"
 import { z } from "zod"
 
 import logger, { runWithUserContext } from "../../common/logger"
-import { EventProcessor } from "../../domains/agents/AgentRunner/EventProcessor"
-import { mintOAuthState, verifyOAuthState } from "../../domains/auth/helpers/oauth"
-import { fetchGithubRepositoriesForIntegration } from "../../domains/integrations/github/controller"
-import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../../domains/integrations/github/types"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
+import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
+import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
+import { fetchGithubRepositoriesForIntegration } from "../../modules/integrations/github/controller"
+import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../../modules/integrations/github/types"
 import { getGitHubAccessToken } from "../../outputs/github/githubApiClient"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../../services/FileStorageService"
 import { SecretService } from "../../services/SecretService"
@@ -478,7 +478,7 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
  * Pure builder for the RunHistory trigger metadata shown in the UI for a GitHub event.
  *
  * Exported so synthetic / sample-event flows (e.g. `SyntheticTriggerRuntime` in
- * `domains/triggers/schedule.ts`) can produce the same rich title/subheader/url as real webhook
+ * `modules/triggers/schedule.ts`) can produce the same rich title/subheader/url as real webhook
  * deliveries, rather than falling back to a bare `debugLog()` string like
  * "GitHub Event: pull_request.merged - owner/repo - user".
  */

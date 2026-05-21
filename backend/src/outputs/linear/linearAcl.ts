@@ -4,9 +4,9 @@ import { LinearOutputConfig } from "terse-types"
 import { validate as isValidUuid } from "uuid"
 
 import logger from "../../common/logger"
-import { SessionWithTracking } from "../../domains/agents/AgentRunner/BaseAgentRunner"
 import { Session } from "../../express"
 import { getLinearAccessTokenForOrganization } from "../../integrations/linear/integration"
+import { SessionWithTracking } from "../../modules/agents/AgentRunner/BaseAgentRunner"
 import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../abstract/acl"
 
 type LinearIssueScope = { teamId: string | null; projectId: string | null }

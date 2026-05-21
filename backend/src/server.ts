@@ -6,11 +6,11 @@ import { analytics } from "./common/analytics"
 import { buildCorsAllowedOrigins } from "./common/corsOrigins"
 // Import to trigger listener registration
 import logger from "./common/logger"
-import { setupLLMAnalytics } from "./domains/agents/openaiInstance"
 import "./integrations/IntegrationTaskHandler"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
 import { db } from "./loaders/prisma"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
+import { setupLLMAnalytics } from "./modules/agents/openaiInstance"
 import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
 

@@ -15,12 +15,12 @@ import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChan
 import { z } from "zod"
 
 import logger, { runWithUserContext } from "../../common/logger"
-import { EventProcessor } from "../../domains/agents/AgentRunner/EventProcessor"
-import { mintOAuthState, verifyOAuthState } from "../../domains/auth/helpers/oauth"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../../integrations/slack/blockKitHelpers"
 import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
+import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
+import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { GetSecretsArg, SecretService } from "../../services/SecretService"
 import { slack as slackConfig, urls } from "../../settings"
@@ -746,7 +746,7 @@ const getSlackToken = async (integration: UserSlackIntegrationWithUser) => {
 
 /**
  * Fetches Slack channels for an integration.
- * Moved here from domains/integrations/slack/controller.ts to avoid circular dependency.
+ * Moved here from modules/integrations/slack/controller.ts to avoid circular dependency.
  */
 export const fetchSlackChannelsForIntegration = async (userId: string, organizationId: string, integrationId: string): Promise<SlackChannelsResponse> => {
     if (!integrationId) {

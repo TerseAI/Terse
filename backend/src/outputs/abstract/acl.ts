@@ -2,8 +2,8 @@ import { RunContext, ToolGuardrailFunctionOutputFactory, ToolInputGuardrailDefin
 import { ConfigData, ToolInputByName, ToolName, toolsWithIntegrationId } from "terse-types"
 
 import logger from "../../common/logger"
-import { SessionWithTracking } from "../../domains/agents/AgentRunner/BaseAgentRunner"
 import { Session } from "../../express"
+import { SessionWithTracking } from "../../modules/agents/AgentRunner/BaseAgentRunner"
 
 import { Output, ToolboxEntry } from "./Output"
 

@@ -3,7 +3,7 @@ import { IntegrationType } from "terse-types"
 
 import logger from "../../common/logger"
 import { fetchWebhookSampleEvents } from "../../common/webhookSampleEvents"
-import { validateUserOwnsIntegration } from "../../domains/agents/controller"
+import { validateUserOwnsIntegration } from "../../modules/agents/controller"
 
 import { INTEGRATION_REGISTRY } from "./IntegrationRegistry"
 

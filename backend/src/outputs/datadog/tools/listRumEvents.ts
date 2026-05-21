@@ -4,10 +4,10 @@ import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
 
 import logger from "../../../common/logger"
-import { SessionWithTracking } from "../../../domains/agents/AgentRunner/BaseAgentRunner"
 import { Session } from "../../../express"
 import { getDatadogRumDeepLink, getDatadogSite, parseDatadogTimeString } from "../../../integrations/datadog/helpers"
 import { getDatadogCredentialsForOrganization } from "../../../integrations/datadog/integration"
+import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 /**

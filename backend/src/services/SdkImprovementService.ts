@@ -3,9 +3,9 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import logger from "../common/logger"
-import { JudgeAgentOutputType } from "../domains/agents/JudgeAgent/JudgeAgent"
-import { buildClaudeCodePrompt } from "../domains/agents/JudgeAgent/buildClaudeCodePrompt"
-import { JudgeContext } from "../domains/agents/JudgeAgent/fetchJudgeContext"
+import { JudgeAgentOutputType } from "../modules/agents/JudgeAgent/JudgeAgent"
+import { buildClaudeCodePrompt } from "../modules/agents/JudgeAgent/buildClaudeCodePrompt"
+import { JudgeContext } from "../modules/agents/JudgeAgent/fetchJudgeContext"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"

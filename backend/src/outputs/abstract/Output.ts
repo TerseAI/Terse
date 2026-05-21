@@ -2,8 +2,8 @@ import { OutputConfigType } from "@prisma/client"
 import { ConfigData, ToolName } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../domains/agents/AgentRunner/BaseAgentRunner"
 import { Session } from "../../express"
+import { SessionWithTracking } from "../../modules/agents/AgentRunner/BaseAgentRunner"
 import { TypedToolOptions } from "../../tools/toolUtils"
 import { PrismaTransaction } from "../../types/prisma"
 
