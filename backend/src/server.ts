@@ -14,6 +14,7 @@ import apiTokensRouter from "./domains/api-tokens/routes"
 import approvalsRouter from "./domains/approvals/routes"
 import billingRouter from "./domains/billing/routes"
 import improvementsRouter from "./domains/improvements/routes"
+import integrationsRouter from "./domains/integrations/routes"
 import notificationDestinationsRouter from "./domains/notifications/destinations/routes"
 import sentNotificationsRouter from "./domains/notifications/sent/routes"
 import notificationSettingsRouter from "./domains/notifications/settings/routes"
@@ -44,7 +45,6 @@ import { getGithubIntegrations, getGithubRepositoriesForIntegration, githubAppUn
 import { deleteGmailIntegration, getGmailIntegrations, gmailCallback, handleGmailWebhook } from "./routes/gmail"
 import { createOrUpdateHeyReachIntegration, getHeyReachCampaigns, getHeyReachIntegrations, handleHeyReachWebhook } from "./routes/heyreach"
 import { handleHydrateSampleEvent } from "./routes/hydrateSampleEvent"
-import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations"
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearProjects, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
@@ -329,6 +329,7 @@ app.use("/api-tokens", apiTokensRouter)
 app.use("/organizations", organizationsRouter)
 app.use("/agents/:agentId", improvementsRouter)
 app.use("/tools", toolsRouter)
+app.use("/integrations", integrationsRouter)
 
 // MARK: SESSION
 
@@ -551,24 +552,6 @@ app.get(ApiRoutes.AGENTS.FILES, rateLimit(RateLimitKind.Default), requireAuth([A
 
 app.get(ApiRoutes.AGENTS.FILE_CONTENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getAgentFileContent(req, res)
-})
-
-// MARK: INTEGRATIONS
-
-app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getIntegrationInstallationDetails(req, res)
-})
-
-app.get("/integrations", rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getAllIntegrations(req, res)
-})
-
-app.delete(ApiRoutes.INTEGRATIONS.DISCONNECT_BY_TYPE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    disconnectIntegration(req, res)
-})
-
-app.get("/integrations/active", rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getActiveIntegrations(req, res)
 })
 
 // MARK: SDK
