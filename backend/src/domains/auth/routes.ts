@@ -1,0 +1,28 @@
+import { Router } from "express"
+
+import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
+import { AuthKind, requireAuth } from "../../utility/authMiddleware"
+import { callback, getWorkOSWidgetToken, githubAppCallbackIntegrate, login, loginUrl, logout, logoutUrl, me } from "./controller"
+
+const router = Router()
+
+const authEndpointLimit = rateLimit(RateLimitKind.AuthEndpoint)
+const defaultLimit = rateLimit(RateLimitKind.Default)
+
+// /me — authenticated, allows users without an organization
+router.get("/me", defaultLimit, requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), me)
+
+// /login + /logout endpoints — public, OAuth flow
+router.get("/login", authEndpointLimit, login)
+router.get("/login/url", authEndpointLimit, loginUrl)
+router.get("/logout", authEndpointLimit, logout)
+router.get("/logout/url", authEndpointLimit, logoutUrl)
+
+// /auth/* OAuth callbacks — public, signature/state-verified
+router.get("/auth/github-app/callback", authEndpointLimit, githubAppCallbackIntegrate)
+router.get("/auth/workos/callback", authEndpointLimit, callback)
+
+// /auth/workos/widget-token — authenticated, returns widget JWT
+router.get("/auth/workos/widget-token", defaultLimit, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), getWorkOSWidgetToken)
+
+export default router

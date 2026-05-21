@@ -11,6 +11,7 @@ import { setupLLMAnalytics } from "./agent/openaiInstance"
 import { requestSessionSocketToken } from "./agent/socket"
 import { settings } from "./config/settings"
 import apiTokensRouter from "./domains/api-tokens/routes"
+import authRouter from "./domains/auth/routes"
 import approvalsRouter from "./domains/approvals/routes"
 import billingRouter from "./domains/billing/routes"
 import improvementsRouter from "./domains/improvements/routes"
@@ -35,8 +36,6 @@ import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
-import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
-import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
 import { invalidateBillingCachesFromService } from "./routes/billingCacheInvalidation"
 import { cleanupSdkImages } from "./routes/cleanupSdkImages"
 import { createOrUpdateDatadogIntegration, getDatadogIndexes, getDatadogIntegrations } from "./routes/datadog"
@@ -283,37 +282,6 @@ app.post(ApiRoutes.BILLING.CACHE_INVALIDATION, rateLimit(RateLimitKind.WebhookBy
     await invalidateBillingCachesFromService(req, res)
 })
 
-// MARK: AUTH
-
-app.get(ApiRoutes.AUTH.ME, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), me)
-
-// GITHUB Will call this immediately after the user installs the app.
-app.get(ApiRoutes.AUTH.GITHUB_APP_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    githubAppCallbackIntegrate(req, res)
-})
-
-app.get(ApiRoutes.AUTH.LOGIN, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    login(req, res)
-})
-
-app.get(ApiRoutes.AUTH.LOGIN_URL, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    await loginUrl(req, res)
-})
-
-app.get(ApiRoutes.AUTH.LOGOUT, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    await logout(req, res)
-})
-
-app.get(ApiRoutes.AUTH.LOGOUT_URL, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    await logoutUrl(req, res)
-})
-
-app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), (req, res) => {
-    callback(req, res)
-})
-
-app.get(ApiRoutes.WORKOS.WIDGET_TOKEN, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getWorkOSWidgetToken(req, res))
-
 // MARK: DOMAIN ROUTERS (MVC — controller/service/repository per domain)
 app.use("/stats", statsRouter)
 app.use("/run-history", runsRouter)
@@ -330,6 +298,7 @@ app.use("/organizations", organizationsRouter)
 app.use("/agents/:agentId", improvementsRouter)
 app.use("/tools", toolsRouter)
 app.use("/integrations", integrationsRouter)
+app.use(authRouter)
 
 // MARK: SESSION
 
