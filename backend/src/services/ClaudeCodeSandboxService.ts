@@ -4,7 +4,7 @@ import crypto from "node:crypto"
 import logger from "../logger"
 import { assertValidEnvVarName, shellQuoteArgs } from "../utility/shellEscape"
 
-import { ModalSandboxService } from "./sandboxProvider/ModalSandboxService"
+import { ModalSandboxService, Sandbox } from "./sandboxProvider/ModalSandboxService"
 
 const CLAUDE_CODE_VERSION = "2.1.81"
 
@@ -70,7 +70,7 @@ export class ClaudeCodeSandboxService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
-    private async writeClaudeSettings(sb: SandboxLike, label: string, extraDenyRules: string[]): Promise<void> {
+    private async writeClaudeSettings(sb: Sandbox, label: string, extraDenyRules: string[]): Promise<void> {
         const mkdir = await sb.exec(["mkdir", "-p", "/tmp/project/.claude"], { stdout: "pipe", stderr: "pipe" })
         await mkdir.wait()
 
@@ -246,9 +246,4 @@ export class ClaudeCodeSandboxService {
             throw error
         }
     }
-}
-
-interface SandboxLike {
-    exec(command: string[], params?: { stdout?: "pipe" | "ignore"; stderr?: "pipe" | "ignore" }): Promise<{ wait(): Promise<number> }>
-    open(path: string, mode: "r" | "w"): Promise<{ write(data: Uint8Array): Promise<void>; close(): Promise<void> }>
 }

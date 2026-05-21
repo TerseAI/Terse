@@ -75,10 +75,6 @@ const IMPROVEMENTS_SCHEMA = {
 }
 
 const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
-
-// Anthropic publishes these as stable inbound CIDRs; they don't change
-// without notice. Allowlisting them lets the sandbox call api.anthropic.com
-// directly. https://platform.claude.com/docs/en/api/ip-addresses
 const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23", "2607:6bc0::/48"]
 
 export class SdkImprovementService {
@@ -117,8 +113,6 @@ export class SdkImprovementService {
                 jsonSchema: IMPROVEMENTS_SCHEMA,
                 timeoutMs: SANDBOX_TIMEOUT_MS,
                 env: {
-                    // Workspace-scoped key with a spend cap. See
-                    // config/settings.ts for the threat-model commentary.
                     ANTHROPIC_API_KEY: settings.anthropic.improvementApiKey
                 },
                 egressCidrAllowlist: ANTHROPIC_INBOUND_CIDRS,
