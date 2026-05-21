@@ -2,11 +2,12 @@ import express, { Router } from "express"
 import { ApiRoutes } from "terse-types"
 
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
+import { AuthKind, requireAuth } from "../../utility/authMiddleware"
+
 // Handlers still live in routes/schedule.ts and routes/webhookTrigger.ts.
 // A future PR can decompose them into controller/service files within this folder.
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebMonitorWebhook } from "./schedule"
 import { handleWebhookTrigger } from "./webhookTrigger"
-import { AuthKind, requireAuth } from "../../utility/authMiddleware"
 
 const LARGE_BODY_LIMIT = "10mb"
 

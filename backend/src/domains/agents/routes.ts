@@ -1,11 +1,12 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
+import { AuthKind, requireAuth } from "../../utility/authMiddleware"
+
 // Handlers still live in routes/agents.ts (842 LOC); a future PR can decompose
 // them into routes/controller/service/repository within this domain folder.
 // For now we just consolidate the routing into a domain router.
 import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./controller"
-import { AuthKind, requireAuth } from "../../utility/authMiddleware"
 
 const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])

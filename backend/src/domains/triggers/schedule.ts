@@ -17,7 +17,6 @@ import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { verifyParallelWebhookSignature } from "../../utility/parallelWebhookSignature"
 import { extractErrorMessage } from "../../utility/strings"
 import { getUserForOrg } from "../../utility/workos"
-
 import { fetchEventFromRunId } from "../sdk/run-trigger/controller"
 
 interface ManualTriggerRequest {
