@@ -5,9 +5,9 @@ import { LinearProjectSummary, LinearTeam } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { LinearIntegrationManager } from "../../../integrations/linear/integration"
+import { LinearAdapter } from "../../../integrations/linear/ticketing"
 import { db } from "../../../loaders/prisma"
 import { settings } from "../../../settings"
-import { LinearAdapter } from "../../../integrations/linear/ticketing"
 
 /**
  * Verify Linear webhook signature

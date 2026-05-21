@@ -4,8 +4,8 @@ import { IntegrationType, LinearOutputConfig } from "terse-types"
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
 import { getLinearAccessTokenForOrganization } from "../../../integrations/linear/integration"
-import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../../outputs/abstract/acl"
 import { LinearAdapter } from "../../../integrations/linear/ticketing"
+import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../../outputs/abstract/acl"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 export const linearGetStatesTool = defineSessionTool({
