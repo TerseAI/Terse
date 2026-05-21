@@ -2,26 +2,18 @@ import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
 import { Repos, Skills, SlackChannel, Triggers } from "./terse.generated"
 
 createJob({
-    name: "Summarize PR and send slack message",
-    triggers: [Triggers.github.onPROpened({ repo: Repos.TerseAI.Terse })],
-    onTrigger: async (event: GithubPRTrigger) => {
+    name: "Tell a programming joke example job",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    onTrigger: async (event) => {
         const agent = TerseAgent.create({
-            prompt: "You summarise GitHub pull requests and post concise updates to Slack.",
-            skills: [Skills.github({ repos: [Repos.TerseAI.LandingPage, Repos.TerseAI.Terse] }), Skills.slack({ channel: SlackChannel.AllTerseInc })]
+            prompt: "You are a helpful assistant that tells programming jokes.",
+            skills: []
         })
 
-        const message = await agent.tools.slack.sendMessage({
-            channelId: SlackChannel.AllTerseInc.channelId,
-            message: "New PR from " + event.sender.login + "!"
-        })
-
-        const prompt =
-            `Summarize this PR ` +
-            event.formatForAgentRunner() +
-            `. Go look at the code and summarize the changes at a high level. Keep it short and concise, and call out the first file to review. Reply in a thread to the message with ts: ` +
-            message.message_ts +
-            `. Format the summary using Block Kit, and include any images found in the PR (screenshots, diagrams, etc.) as image blocks.`
-
-        await agent.runAndWait(prompt)
+        const response = await agent.runAndWait("Tell me a programming joke.", z.object({
+            joke: z.string()
+        }))
+        
+        console.log(response.joke)
     }
 })
