@@ -8,6 +8,7 @@ import { GithubIntegrationManager } from "../../integrations/GithubIntegration"
 import { getClaimsFromAuthResult } from "../../utility/accessTokenClaims"
 import { extractErrorMessage } from "../../utility/strings"
 import { workos } from "../../utility/workos"
+
 import {
     WORKOS_OAUTH_STATE_COOKIE_NAME,
     WORKOS_OAUTH_STATE_COOKIE_OPTIONS,
@@ -144,9 +145,7 @@ export async function callback(req: Request, res: Response) {
         })
 
         clearSessionCookies(res)
-        return res
-            .status(500)
-            .send(`Authentication failed. Please <a href="${settings.urls.frontend}">return to the app</a> and try again. If the problem persists, clear your cookies for this site.`)
+        return res.status(500).send(`Authentication failed. Please <a href="${settings.urls.frontend}">return to the app</a> and try again. If the problem persists, clear your cookies for this site.`)
     }
 }
 

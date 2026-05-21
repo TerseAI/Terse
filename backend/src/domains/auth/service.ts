@@ -9,6 +9,7 @@ import { settings } from "../../config/settings"
 import { AccessTokenClaims } from "../../utility/accessTokenClaims"
 import { extractErrorMessage } from "../../utility/strings"
 import { workos } from "../../utility/workos"
+
 import { createUserWithDefaultNotifications, findUserByWorkosId } from "./repository"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
@@ -25,9 +26,7 @@ const workosSessionCookieBaseOptions = {
     maxAge: ONE_DAY_MS
 }
 
-export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain
-    ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain }
-    : workosSessionCookieBaseOptions
+export const WORKOS_SESSION_COOKIE_OPTIONS = settings.optional.cookieDomain ? { ...workosSessionCookieBaseOptions, domain: settings.optional.cookieDomain } : workosSessionCookieBaseOptions
 
 export const WORKOS_OAUTH_STATE_COOKIE_OPTIONS = {
     ...WORKOS_SESSION_COOKIE_OPTIONS,
