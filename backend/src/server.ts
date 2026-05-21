@@ -10,9 +10,11 @@ import { setupLLMAnalytics } from "./agent/openaiInstance"
 // Import settings early to validate environment variables at startup
 import { requestSessionSocketToken } from "./agent/socket"
 import { settings } from "./config/settings"
+import apiTokensRouter from "./domains/api-tokens/routes"
 import approvalsRouter from "./domains/approvals/routes"
 import billingRouter from "./domains/billing/routes"
 import notificationDestinationsRouter from "./domains/notifications/destinations/routes"
+import organizationsRouter from "./domains/organizations/routes"
 import projectSecretsRouter from "./domains/projects/secrets/routes"
 import projectsRouter from "./domains/projects/routes"
 import notificationSettingsRouter from "./domains/notifications/settings/routes"
@@ -28,7 +30,6 @@ import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
-import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
 import { githubAppCallbackIntegrate } from "./routes/auth/githubAuth"
@@ -45,7 +46,6 @@ import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIn
 import { createOrUpdateLaunchDarklyIntegration, getLaunchDarklyEnvironments, getLaunchDarklyIntegrations, getLaunchDarklyProjects } from "./routes/launchdarkly"
 import { getLinearIntegrations, getLinearProjects, getLinearTeams, handleLinearWebhook, linearOAuthCallback } from "./routes/linear"
 import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "./routes/notion"
-import { createOrganization, getCurrentOrganization, getLogoUploadUrl, getLogoUrl, getUserOrganizations, switchOrganization, updateOrganization } from "./routes/organization"
 import { createOrUpdatePosthogIntegration, getPosthogIntegrations, getPosthogProjects } from "./routes/posthog"
 import { handleProjectCreate } from "./domains/projects/controller"
 import { clearOldSecretVersions, refreshAllTokens } from "./routes/refreshTokens"
@@ -314,23 +314,6 @@ app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), (
 
 app.get(ApiRoutes.WORKOS.WIDGET_TOKEN, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getWorkOSWidgetToken(req, res))
 
-// MARK: Organizations (WorkOS) - auth without org required so user can create org
-app.post(ApiRoutes.ORGANIZATIONS.CREATE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), (req, res) => createOrganization(req, res))
-
-app.get(ApiRoutes.ORGANIZATIONS.GET_CURRENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken], { allowNoOrg: true }), (req, res) =>
-    getCurrentOrganization(req, res)
-)
-
-app.get(ApiRoutes.ORGANIZATIONS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getUserOrganizations(req, res))
-
-app.post(ApiRoutes.ORGANIZATIONS.SWITCH, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => switchOrganization(req, res))
-
-app.put(ApiRoutes.ORGANIZATIONS.UPDATE, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => updateOrganization(req, res))
-
-app.get(ApiRoutes.ORGANIZATIONS.LOGO_UPLOAD_URL, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getLogoUploadUrl(req, res))
-
-app.get(ApiRoutes.ORGANIZATIONS.LOGO, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => getLogoUrl(req, res))
-
 // MARK: DOMAIN ROUTERS (MVC — controller/service/repository per domain)
 app.use("/stats", statsRouter)
 app.use("/run-history", runsRouter)
@@ -342,6 +325,8 @@ app.use("/sent-notifications", sentNotificationsRouter)
 app.use("/billing", billingRouter)
 app.use("/projects/:id/secrets", projectSecretsRouter)
 app.use("/projects", projectsRouter)
+app.use("/api-tokens", apiTokensRouter)
+app.use("/organizations", organizationsRouter)
 
 // MARK: SESSION
 
@@ -604,24 +589,6 @@ app.delete(ApiRoutes.INTEGRATIONS.DISCONNECT_BY_TYPE, rateLimit(RateLimitKind.De
 
 app.get("/integrations/active", rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     getActiveIntegrations(req, res)
-})
-
-// MARK: API TOKENS
-
-app.get(ApiRoutes.API_TOKENS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getApiTokens(req, res)
-})
-
-app.post(ApiRoutes.API_TOKENS.LIST, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createApiToken(req, res)
-})
-
-app.patch(ApiRoutes.API_TOKENS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    updateApiToken(req, res)
-})
-
-app.delete(ApiRoutes.API_TOKENS.BY_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    deleteApiToken(req, res)
 })
 
 // MARK: SDK
