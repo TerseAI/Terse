@@ -1,15 +1,15 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
+import { getNotionIntegrations, getNotionResources, notionOAuthCallback } from "../../../routes/notion"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
-
-import { handleHydrateSampleEvent, handleSampleEvents } from "./controller"
 
 const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])
 const limit = rateLimit(RateLimitKind.Default)
 
-router.post("/sample-events", limit, auth, handleSampleEvents)
-router.post("/sample-events/hydrate", limit, auth, handleHydrateSampleEvent)
+router.get("/integrations", limit, auth, getNotionIntegrations)
+router.get("/oauth-callback", rateLimit(RateLimitKind.AuthEndpoint), notionOAuthCallback)
+router.get("/resources", limit, auth, getNotionResources)
 
 export default router

@@ -7,7 +7,13 @@ import { z } from "zod"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { emitSessionEvent } from "../../../agent/SessionEventBus"
-import { type DeterministicToolCallRunContext, extractRunHistoryActions, persistDeterministicToolCallComplete, persistDeterministicToolCallFailure, persistDeterministicToolCallStart } from "../../../agent/toolCallHistory"
+import {
+    type DeterministicToolCallRunContext,
+    extractRunHistoryActions,
+    persistDeterministicToolCallComplete,
+    persistDeterministicToolCallFailure,
+    persistDeterministicToolCallStart
+} from "../../../agent/toolCallHistory"
 import logger from "../../../common/logger"
 import { Session } from "../../../express"
 import { db } from "../../../loaders/prisma"

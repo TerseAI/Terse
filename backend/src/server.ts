@@ -15,7 +15,19 @@ import approvalsRouter from "./domains/approvals/routes"
 import authRouter from "./domains/auth/routes"
 import billingRouter from "./domains/billing/routes"
 import improvementsRouter from "./domains/improvements/routes"
+import attioRouter from "./domains/integrations/attio/routes"
+import datadogRouter from "./domains/integrations/datadog/routes"
+import githubVendorRouter from "./domains/integrations/github/routes"
+import gmailRouter from "./domains/integrations/gmail/routes"
+import heyreachRouter from "./domains/integrations/heyreach/routes"
+import launchdarklyRouter from "./domains/integrations/launchdarkly/routes"
+import linearRouter from "./domains/integrations/linear/routes"
+import notionRouter from "./domains/integrations/notion/routes"
+import posthogRouter from "./domains/integrations/posthog/routes"
 import integrationsRouter from "./domains/integrations/routes"
+import slackVendorRouter from "./domains/integrations/slack/routes"
+import snowflakeRouter from "./domains/integrations/snowflake/routes"
+import workosIntegrationRouter from "./domains/integrations/workosIntegration/routes"
 import notificationDestinationsRouter from "./domains/notifications/destinations/routes"
 import sentNotificationsRouter from "./domains/notifications/sent/routes"
 import notificationSettingsRouter from "./domains/notifications/settings/routes"
@@ -277,6 +289,19 @@ app.use("/integrations", integrationsRouter)
 app.use("/sdk", sdkRouter)
 app.use(sdkMaintenanceRouter)
 app.use(authRouter)
+// Per-vendor integration routers (mounted at vendor-specific prefixes)
+app.use("/attio", attioRouter)
+app.use("/datadog", datadogRouter)
+app.use("/github", githubVendorRouter)
+app.use("/gmail", gmailRouter)
+app.use("/heyreach", heyreachRouter)
+app.use("/launchdarkly", launchdarklyRouter)
+app.use("/linear", linearRouter)
+app.use("/notion", notionRouter)
+app.use("/posthog", posthogRouter)
+app.use("/slack", slackVendorRouter)
+app.use("/snowflake", snowflakeRouter)
+app.use("/workos-integration", workosIntegrationRouter)
 
 // MARK: SESSION
 
@@ -284,191 +309,13 @@ app.get(ApiRoutes.SESSION.TOKEN, rateLimit(RateLimitKind.Default), requireAuth([
     requestSessionSocketToken(req, res)
 })
 
-// MARK: GITHUB APP
-
-app.get(ApiRoutes.GITHUB.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getGithubIntegrations(req, res)
-})
-
-app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getGithubRepositoriesForIntegration(req, res)
-})
-
-// MARK: GMAIL
-app.get(ApiRoutes.GMAIL.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getGmailIntegrations(req, res)
-})
-
-app.get(ApiRoutes.GMAIL.CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    gmailCallback(req, res)
-})
-
-app.delete(ApiRoutes.GMAIL.DELETE_INTEGRATION, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    deleteGmailIntegration(req, res)
-})
-
-// MARK: NOTION
-
-app.get(ApiRoutes.NOTION.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getNotionIntegrations(req, res)
-})
-
-// OAuth endpoints
-
-app.get(ApiRoutes.NOTION.OAUTH_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    notionOAuthCallback(req, res)
-})
-
-app.get(ApiRoutes.NOTION.RESOURCES, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getNotionResources(req, res)
-})
-
-// MARK: ATTIO
-
-app.get(ApiRoutes.ATTIO.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getAttioIntegrations(req, res)
-})
-
-app.get(ApiRoutes.ATTIO.OAUTH_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    attioOAuthCallback(req, res)
-})
-
-app.get(ApiRoutes.ATTIO.OBJECTS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getAttioObjects(req, res)
-})
-
-// MARK: LINEAR
-
-app.get(ApiRoutes.LINEAR.OAUTH_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    linearOAuthCallback(req, res)
-})
-
-app.get(ApiRoutes.LINEAR.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getLinearIntegrations(req, res)
-})
-
-app.get(ApiRoutes.LINEAR.TEAMS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getLinearTeams(req, res)
-})
-
-app.get(ApiRoutes.LINEAR.PROJECTS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getLinearProjects(req, res)
-})
-
-// Manual trigger endpoint (authenticated)
+// Manual trigger endpoints (authenticated, used by SDK and UI)
 app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleManualTrigger(req, res)
 })
 
-// Trigger with a specific event payload (authenticated)
 app.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
     handleTriggerWithEvent(req, res)
-})
-
-// MARK: SLACK
-
-app.get(ApiRoutes.SLACK.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getSlackIntegrations(req, res)
-})
-
-app.get(ApiRoutes.SLACK.GET_CURRENT_INTEGRATION, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getCurrentSlackIntegration(req, res)
-})
-
-app.get(ApiRoutes.SLACK.OAUTH_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
-    slackOAuthCallback(req, res)
-})
-
-app.get(ApiRoutes.SLACK.CHANNELS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getSlackChannels(req, res)
-})
-
-app.get(ApiRoutes.SLACK.USERS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    await getSlackUsers(req, res)
-})
-
-// MARK: HEYREACH
-
-app.get(ApiRoutes.HEY_REACH.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getHeyReachIntegrations(req, res)
-})
-
-app.post(ApiRoutes.HEY_REACH.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createOrUpdateHeyReachIntegration(req, res)
-})
-
-app.get(ApiRoutes.HEY_REACH.CAMPAIGNS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getHeyReachCampaigns(req, res)
-})
-
-// MARK: POSTHOG
-
-app.get(ApiRoutes.POSTHOG.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getPosthogIntegrations(req, res)
-})
-
-app.post(ApiRoutes.POSTHOG.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createOrUpdatePosthogIntegration(req, res)
-})
-
-app.get(ApiRoutes.POSTHOG.PROJECTS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getPosthogProjects(req, res)
-})
-
-// MARK: LAUNCHDARKLY
-
-app.get(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getLaunchDarklyIntegrations(req, res)
-})
-
-app.post(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createOrUpdateLaunchDarklyIntegration(req, res)
-})
-
-app.get(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getLaunchDarklyProjects(req, res)
-})
-
-app.get(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getLaunchDarklyEnvironments(req, res)
-})
-
-// MARK: DATADOG
-
-app.get(ApiRoutes.DATADOG.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getDatadogIntegrations(req, res)
-})
-
-app.post(ApiRoutes.DATADOG.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createOrUpdateDatadogIntegration(req, res)
-})
-
-app.get(ApiRoutes.DATADOG.INDEXES, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getDatadogIndexes(req, res)
-})
-
-// MARK: SNOWFLAKE
-
-app.get(ApiRoutes.SNOWFLAKE.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getSnowflakeIntegrations(req, res)
-})
-
-app.post(ApiRoutes.SNOWFLAKE.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createOrUpdateSnowflakeIntegration(req, res)
-})
-
-// MARK: WORKOS INTEGRATION (customer's own WorkOS account)
-
-app.get(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    getWorkOSIntegrations(req, res)
-})
-
-app.post(ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    createOrUpdateWorkOSIntegration(req, res)
-})
-
-app.patch(ApiRoutes.WORKOS_INTEGRATION.WEBHOOK_SECRET, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-    updateWorkOSWebhookSecret(req, res)
 })
 
 // MARK: AGENTS
