@@ -4,6 +4,7 @@ import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSc
 import logger from "../../common/logger"
 import { settings } from "../../config/settings"
 import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../routes/auth"
+
 import {
     BadRequestError,
     ForbiddenError,

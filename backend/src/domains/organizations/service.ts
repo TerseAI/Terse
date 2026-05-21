@@ -1,5 +1,5 @@
-import { settings } from "../../config/settings"
 import logger from "../../common/logger"
+import { settings } from "../../config/settings"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../../services/FileStorageService"
 import { workos } from "../../utility/workos"
 
@@ -36,7 +36,14 @@ export interface CreateOrgResult {
     sealedSession: string
 }
 
-export async function createOrganizationForUser(input: { workosUserId: string; userId: string; name: string; firstName?: string | null; lastName?: string | null; sealedSessionData: string | undefined }): Promise<CreateOrgResult> {
+export async function createOrganizationForUser(input: {
+    workosUserId: string
+    userId: string
+    name: string
+    firstName?: string | null
+    lastName?: string | null
+    sealedSessionData: string | undefined
+}): Promise<CreateOrgResult> {
     const { workosUserId, userId, name, firstName, lastName, sealedSessionData } = input
 
     if (firstName || lastName) {

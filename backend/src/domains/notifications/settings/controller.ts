@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { UpdateNotificationSettingsRequest } from "terse-types/Notifications"
 
 import logger from "../../../common/logger"
+
 import { ApplyToAllAgentsForbiddenError, NotificationSettingsNotFoundError, getNotificationSettingsForUser, updateNotificationSettingsForUser } from "./service"
 
 export async function getNotificationSettings(req: Request, res: Response) {

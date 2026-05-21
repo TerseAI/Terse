@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 
 import logger from "../../../common/logger"
 import { parsePageParams } from "../../../utility/pagination"
+
 import { listSentNotificationsForOrganization } from "./service"
 
 export async function getSentNotifications(req: Request, res: Response) {

@@ -6,6 +6,7 @@ import { z } from "zod"
 import logger from "../../../common/logger"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../../services/CacheInvalidationService"
 import { UserNotificationSettings } from "../../../types/prisma"
+
 import { applySettingsToAllAgentsInOrganization, findUserNotificationSettings, updateUserNotificationSettings } from "./repository"
 
 const NOTIFICATION_SETTINGS_INVALIDATION_KEY = notificationSettingsKey()[0]

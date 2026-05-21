@@ -2,6 +2,7 @@ import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
+
 import { getNotificationSettings, updateNotificationSettings } from "./controller"
 
 const router = Router()

@@ -5,6 +5,7 @@ import { EmailNotificationDestination, NotificationDestinationType as SharedNoti
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
 import { UserNotificationDestination, UserSlackIntegrationWithUser } from "../../../types/prisma"
+
 import { createDestination, deleteDestination, findDestinationById, findDestinationsForUser, findSlackIntegrationForOrganization, updateDestination } from "./repository"
 
 const EXACTLY_ONE_SLACK_TARGET_ERROR = "Exactly one Slack destination must be selected: either a channel or a user."
@@ -31,9 +32,7 @@ export class SlackIntegrationNotFoundError extends Error {
     }
 }
 
-type SlackTargetSelection =
-    | { targetType: "channel"; slackChannelId: string; slackChannelName?: string }
-    | { targetType: "user"; slackUserId: string; slackUserName?: string }
+type SlackTargetSelection = { targetType: "channel"; slackChannelId: string; slackChannelName?: string } | { targetType: "user"; slackUserId: string; slackUserName?: string }
 
 type ResolvedSlackDestination = {
     slackChannelId: string

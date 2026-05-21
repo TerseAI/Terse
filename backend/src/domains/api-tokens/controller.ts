@@ -2,15 +2,8 @@ import { Request, Response } from "express"
 import { apiTokenCreateRequestSchema, apiTokenUpdateRequestSchema } from "terse-types/types"
 
 import logger from "../../common/logger"
-import {
-    ApiTokenNotFoundError,
-    SdkInterfaceDisabledError,
-    assertSdkInterfaceEnabled,
-    createApiTokenForUser,
-    deleteApiTokenForUser,
-    listApiTokensForUser,
-    updateApiTokenForUser
-} from "./service"
+
+import { ApiTokenNotFoundError, SdkInterfaceDisabledError, assertSdkInterfaceEnabled, createApiTokenForUser, deleteApiTokenForUser, listApiTokensForUser, updateApiTokenForUser } from "./service"
 
 function handleError(error: unknown, res: Response, defaultMessage: string, logContext: Record<string, unknown>): Response | undefined {
     if (error instanceof ApiTokenNotFoundError) return res.status(404).json({ error: error.message })

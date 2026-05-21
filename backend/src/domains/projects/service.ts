@@ -1,17 +1,18 @@
 import { Prisma } from "@prisma/client"
-import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectsListResponse, ProjectSourceFilesResponse } from "terse-types/types"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
+import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectSourceFilesResponse, ProjectsListResponse } from "terse-types/types"
 
 import logger from "../../common/logger"
+import { db } from "../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../realtimeSocket"
-import { SecretService } from "../../services/SecretService"
 import { tearDownAgentTriggers } from "../../routes/agents"
+import { SecretService } from "../../services/SecretService"
 import { createProjectScopedToken } from "../../utility/apiTokens"
 import { getActiveSourceCodeGcsKeyForProject } from "../../utility/projectHelper"
 import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from "../../utility/sdkZipReader"
 import { generateWebhookSecret } from "../../utility/webhookSecrets"
 import { workos } from "../../utility/workos"
-import { db } from "../../loaders/prisma"
+
 import {
     DeployRow,
     createProjectRow,
@@ -198,10 +199,7 @@ export async function rotateProjectApiKey(projectId: string, organizationId: str
 
     const { rawToken } = await db().$transaction(async tx => {
         await tx.api_tokens.deleteMany({ where: { project_id: projectId, organization_id: organizationId } })
-        return createProjectScopedToken(
-            { projectId, projectName: project.name, organizationId, createdByUserId: userId },
-            tx
-        )
+        return createProjectScopedToken({ projectId, projectName: project.name, organizationId, createdByUserId: userId }, tx)
     })
 
     emitCacheInvalidationWithWildcard(organizationId, "project", projectId)
