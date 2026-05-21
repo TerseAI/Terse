@@ -171,7 +171,13 @@ export const settings = {
 
     anthropic: {
         apiKey: requireEnv("ANTHROPIC_API_KEY"),
-        adminApiKey: requireEnv("ANTHROPIC_ADMIN_API_KEY"),
+        // Separate key, minted manually in a dedicated workspace with a
+        // spend limit. The SDK-improvement sandbox runs untrusted user code
+        // with this key in its env; workspace isolation + the spend cap
+        // bound the blast radius if the key is exfiltrated. Anthropic's
+        // Admin API doesn't expose programmatic key creation (POST returns
+        // 405), so the workspace + key are provisioned in the dashboard.
+        improvementApiKey: requireEnv("ANTHROPIC_IMPROVEMENT_API_KEY"),
         improvementWorkspaceId: requireEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
     },
 

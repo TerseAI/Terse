@@ -191,7 +191,6 @@
     "CLEAR_OLD_SECRET_VERSIONS": "/clear-old-secret-versions",
     "REVIEW_AGENTS": "/review-agents",
     "CLEANUP_SDK_IMAGES": "/cleanup-sdk-images",
-    "REAP_ANTHROPIC_KEYS": "/reap-anthropic-keys",
     "USERS": {
         "CREATE": "/users",
         "BY_ID": "/users/:id"

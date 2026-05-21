@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url"
 import { JudgeAgentOutputType } from "../agent/JudgeAgent/JudgeAgent"
 import { buildClaudeCodePrompt } from "../agent/JudgeAgent/buildClaudeCodePrompt"
 import { JudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
+import { settings } from "../config/settings"
 import logger from "../logger"
 
-import { AnthropicAdminService } from "./AnthropicAdminService"
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"
 
@@ -75,11 +75,14 @@ const IMPROVEMENTS_SCHEMA = {
 }
 
 const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
+
+// Anthropic publishes these as stable inbound CIDRs; they don't change
+// without notice. Allowlisting them lets the sandbox call api.anthropic.com
+// directly. https://platform.claude.com/docs/en/api/ip-addresses
 const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23", "2607:6bc0::/48"]
 
 export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
-    private adminService = new AnthropicAdminService()
 
     async evaluate(automationId: string, context: JudgeContext): Promise<JudgeAgentOutputType> {
         const gcsKey = context.agentConfig.gcsKey
@@ -104,13 +107,8 @@ export class SdkImprovementService {
         }
 
         const jobId = `${automationId}-${crypto.randomBytes(8).toString("hex")}`
-        let mintedKeyId: string | null = null
 
         try {
-            const minted = await this.adminService.mintEphemeralKey({ label: jobId })
-            mintedKeyId = minted.keyId
-            await this.adminService.probeKey(minted.apiKey)
-
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
                 prompt,
@@ -119,14 +117,16 @@ export class SdkImprovementService {
                 jsonSchema: IMPROVEMENTS_SCHEMA,
                 timeoutMs: SANDBOX_TIMEOUT_MS,
                 env: {
-                    ANTHROPIC_API_KEY: minted.apiKey
+                    // Workspace-scoped key with a spend cap. See
+                    // config/settings.ts for the threat-model commentary.
+                    ANTHROPIC_API_KEY: settings.anthropic.improvementApiKey
                 },
                 egressCidrAllowlist: ANTHROPIC_INBOUND_CIDRS,
                 plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined
             })
 
             if (!result.stdout) {
-                logger.error("[SdkImprovementService] No stdout from Claude Code", { automationId, exitCode: result.exitCode })
+                logger.error("[SdkImprovementService] No stdout from Claude Code", { automationId, exitCode: result.exitCode, jobId })
                 return { title: "Review failed", summary: "Claude Code did not produce results.", improvements: [] }
             }
 
@@ -134,8 +134,6 @@ export class SdkImprovementService {
         } catch (error) {
             logger.error("[SdkImprovementService] Evaluation failed", { automationId, jobId, error })
             return { title: "Review failed", summary: "An error occurred during the review.", improvements: [] }
-        } finally {
-            if (mintedKeyId) await this.adminService.revokeKey(mintedKeyId)
         }
     }
 }

@@ -18,7 +18,6 @@ import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
 import { deleteAgent, getAgentFileContent, getAgentFiles, getRecentAgents, getUserAgent, getUserAgents, updateAgent } from "./routes/agents"
-import { reapOrphanAnthropicKeys } from "./routes/anthropicKeyReaper"
 import { createApiToken, deleteApiToken, getApiTokens, updateApiToken } from "./routes/apiTokens"
 import { attioOAuthCallback, getAttioIntegrations, getAttioObjects, handleAttioWebhook } from "./routes/attio"
 import { callback, getWorkOSWidgetToken, login, loginUrl, logout, logoutUrl, me } from "./routes/auth"
@@ -221,10 +220,6 @@ app.post(ApiRoutes.REVIEW_AGENTS, requireAuth([AuthKind.CloudScheduler]), async 
 
 app.post(ApiRoutes.CLEANUP_SDK_IMAGES, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
     cleanupSdkImages(req, res)
-})
-
-app.post(ApiRoutes.REAP_ANTHROPIC_KEYS, requireAuth([AuthKind.CloudScheduler]), async (req, res) => {
-    reapOrphanAnthropicKeys(req, res)
 })
 
 // MARK: WEBHOOKS (each handler verifies its own provider signature)
