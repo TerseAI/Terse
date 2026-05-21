@@ -3,11 +3,11 @@ import { Request, Response } from "express"
 import { User } from "terse-types/types"
 
 import logger from "../../common/logger"
-import { settings } from "../../config/settings"
+import { settings } from "../../settings"
 import { GithubIntegrationManager } from "../../integrations/GithubIntegration"
-import { getClaimsFromAuthResult } from "../../utility/accessTokenClaims"
-import { extractErrorMessage } from "../../utility/strings"
-import { workos } from "../../utility/workos"
+import { getClaimsFromAuthResult } from "../../domains/auth/helpers/accessTokenClaims"
+import { extractErrorMessage } from "../../common/strings"
+import { workos } from "../../integrations/workos/helpers"
 
 import {
     WORKOS_OAUTH_STATE_COOKIE_NAME,

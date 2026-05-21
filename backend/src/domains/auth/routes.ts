@@ -1,7 +1,7 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
-import { AuthKind, requireAuth } from "../../utility/authMiddleware"
+import { AuthKind, requireAuth } from "../../domains/auth/helpers/authMiddleware"
 
 import { callback, getWorkOSWidgetToken, githubAppCallbackIntegrate, login, loginUrl, logout, logoutUrl, me } from "./controller"
 

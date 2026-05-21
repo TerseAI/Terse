@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 
 import logger from "../../../common/logger"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
-import { deleteExpiredApiTokens } from "../../../utility/apiTokens"
+import { deleteExpiredApiTokens } from "../../../domains/auth/helpers/apiTokens"
 
 function parseOptionalNumber(value: unknown): number | undefined {
     if (value === undefined || value === null || value === "") return undefined

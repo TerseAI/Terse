@@ -2,7 +2,7 @@ import { TokenKind } from "@prisma/client"
 import crypto from "crypto"
 import { ApiToken, ApiTokenCreateResponse } from "terse-types/types"
 
-import { db } from "../../../prismaClient"
+import { db } from "../../../loaders/prisma"
 import { PrismaTransaction } from "../../../types/prisma"
 
 export function hashToken(rawToken: string): string {

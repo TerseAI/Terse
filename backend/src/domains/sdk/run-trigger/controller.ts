@@ -3,8 +3,8 @@ import { SdkRunTriggerEventResponse } from "terse-types"
 
 import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
-import { extractErrorMessage } from "../../../utility/strings"
-import { parseSerializedTriggerPayload } from "../../../utility/triggerPayload"
+import { extractErrorMessage } from "../../../common/strings"
+import { parseSerializedTriggerPayload } from "../../../common/triggerPayload"
 
 export async function handleSdkRunTriggerEvent(req: Request, res: Response) {
     const user = req.session?.user

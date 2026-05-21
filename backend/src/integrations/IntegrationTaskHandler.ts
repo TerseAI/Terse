@@ -1,5 +1,5 @@
-import logger from "../logger"
-import { trackIntegrationAdded } from "../utility/analytics"
+import logger from "../common/logger"
+import { trackIntegrationAdded } from "../common/analytics"
 
 import { INTEGRATION_COMPLETED_TASK_NAME, IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"

@@ -2,8 +2,8 @@ import { IntegrationType, SlackChannelType, SlackEventType, SlackTrigger } from 
 
 import { initializeSlackWebClient } from "../../integrations/SlackClient"
 import { SlackTriggerRuntime } from "../../integrations/SlackIntegration"
-import logger from "../../logger"
-import { db } from "../../prismaClient"
+import logger from "../../common/logger"
+import { db } from "../../loaders/prisma"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 // Derive SlackChannelType from conversations.info channel object

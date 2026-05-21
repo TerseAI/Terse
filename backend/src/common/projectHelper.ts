@@ -1,4 +1,4 @@
-import { db } from "../prismaClient"
+import { db } from "../loaders/prisma"
 import { AgentWithRelations, project_deploys } from "../types/prisma"
 
 export async function getActiveDeployForProject(projectId: string): Promise<project_deploys | null> {

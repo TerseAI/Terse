@@ -7,7 +7,7 @@ import { HydrationError } from "../../../hydrators/Hydrator"
 import { requireHydrator } from "../../../hydrators/HydratorRegistry"
 import { fetchSampleEvents } from "../../../integrations/abstract/sampleEvents"
 import { requireHydratorType } from "../../../types/rag"
-import { extractErrorMessage } from "../../../utility/strings"
+import { extractErrorMessage } from "../../../common/strings"
 
 export async function handleSampleEvents(req: Request, res: Response) {
     const user = req.session?.user as User | undefined

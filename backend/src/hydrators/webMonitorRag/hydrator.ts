@@ -1,6 +1,6 @@
 import { WebMonitorTriggerRuntime, getEventGroup, getMonitor } from "../../integrations/WebMonitorIntegration"
-import logger from "../../logger"
-import { db } from "../../prismaClient"
+import logger from "../../common/logger"
+import { db } from "../../loaders/prisma"
 import { HydrationContext, HydrationError, Hydrator, Identifiable } from "../Hydrator"
 
 export class WebMonitorEventHydrator extends Hydrator<WebMonitorTriggerRuntime> {

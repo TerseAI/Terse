@@ -5,10 +5,10 @@ import { ApiRoutes, UserMetadata, userMetadataSchema } from "terse-types"
 import { Role, User } from "terse-types/types"
 
 import logger from "../../common/logger"
-import { settings } from "../../config/settings"
-import { AccessTokenClaims } from "../../utility/accessTokenClaims"
-import { extractErrorMessage } from "../../utility/strings"
-import { workos } from "../../utility/workos"
+import { settings } from "../../settings"
+import { AccessTokenClaims } from "../../domains/auth/helpers/accessTokenClaims"
+import { extractErrorMessage } from "../../common/strings"
+import { workos } from "../../integrations/workos/helpers"
 
 import { createUserWithDefaultNotifications, findUserByWorkosId } from "./repository"
 

@@ -3,7 +3,7 @@ import { ConfigData, ToolInputByName, ToolName, toolsWithIntegrationId } from "t
 
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../express"
-import logger from "../../logger"
+import logger from "../../common/logger"
 
 import { Output, ToolboxEntry } from "./Output"
 

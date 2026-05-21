@@ -1,7 +1,7 @@
 import logger from "../../common/logger"
-import { settings } from "../../config/settings"
+import { settings } from "../../settings"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../../services/FileStorageService"
-import { workos } from "../../utility/workos"
+import { workos } from "../../integrations/workos/helpers"
 
 export class UnauthorizedError extends Error {
     constructor() {

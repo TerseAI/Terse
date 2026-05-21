@@ -4,10 +4,10 @@ import { GitHubConfig, IntegrationType } from "terse-types"
 
 import { AgentType, builderProviderDataModelSettings, runnerFactory } from "../../../agent/runner"
 import { buildUserMessage } from "../../../agent/userMessage"
-import { settings } from "../../../config/settings"
-import logger from "../../../logger"
+import { settings } from "../../../settings"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../utility/strings"
+import { extractErrorMessage } from "../../../common/strings"
 import { ToolACLValidator } from "../../abstract/acl"
 import { createGitHubClient, getGitHubAccessToken, getPullRequestDiff, parseRepoFullName } from "../githubApiClient"
 

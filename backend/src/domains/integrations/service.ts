@@ -5,7 +5,7 @@ import { OAuthInstallationDetails } from "terse-types/types"
 import logger from "../../common/logger"
 import { Integration, isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
-import { decodeOAuthStateToken } from "../../utility/oauth"
+import { decodeOAuthStateToken } from "../../domains/auth/helpers/oauth"
 
 export class IntegrationNotFoundError extends Error {
     constructor(integrationType: string) {

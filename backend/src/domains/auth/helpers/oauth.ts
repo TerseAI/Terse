@@ -2,7 +2,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 
-import { jwt as jwtConfig, settings } from "../../../config/settings"
+import { jwt as jwtConfig, settings } from "../../../settings"
 
 export interface OAuthStatePayload {
     /**

@@ -6,12 +6,12 @@ import { SdkJobServerCheckStep, User, webhookJobTriggerResponseSchema } from "te
 import { finalizeRunStatus, markRunSkipped } from "../agent/AgentRunner/runHistory"
 import { classifyAgentError } from "../agent/agentErrorUtils"
 import { emitAndPersistSnippetEvent } from "../agent/systemEvents/emitAndPersistSnippetEvent"
-import logger from "../logger"
-import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../realtimeSocket"
+import logger from "../common/logger"
+import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../loaders/socket"
 import { AgentWithRelations } from "../types/prisma"
-import { safeFetch } from "../utility/safeFetch"
-import { extractErrorMessage } from "../utility/strings"
-import { buildSignatureHeaders } from "../utility/webhookHmac"
+import { safeFetch } from "../common/safeFetch"
+import { extractErrorMessage } from "../common/strings"
+import { buildSignatureHeaders } from "../common/webhookHmac"
 
 import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from "./webhookJobHandshakeChallenge"
 

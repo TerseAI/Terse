@@ -15,9 +15,9 @@ import { markRunCancelledAndInvalidate } from "../../../agent/cancellation/runCa
 import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
-import { finalizeRunFailure } from "../../../realtimeSocket"
+import { finalizeRunFailure } from "../../../loaders/socket"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
-import { extractErrorMessage } from "../../../utility/strings"
+import { extractErrorMessage } from "../../../common/strings"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
 
 const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({ prompt: z.string().min(1) })

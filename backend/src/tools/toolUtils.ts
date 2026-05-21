@@ -3,7 +3,7 @@ import { ToolDefinitions, ToolInputByName, ToolInputSchemaByName, ToolName, Tool
 
 import { SessionWithTracking } from "../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../express"
-import logger from "../logger"
+import logger from "../common/logger"
 
 // Extend OpenAI's ToolOptions — override execute to enforce output type
 export type TypedToolOptions<TName extends ToolName, Context = UnknownContext> = Omit<ToolOptions<ToolInputSchemaByName[TName], Context>, "execute" | "name" | "parameters" | "strict"> & {

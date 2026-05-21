@@ -3,7 +3,7 @@ import { sdkJobServerCheckStepSchema } from "terse-types"
 import type { ChatSnippet } from "terse-types"
 import { z } from "zod"
 
-import { randomString } from "../../utility/strings"
+import { randomString } from "../../common/strings"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
 import { appendSystemEventToRunHistory } from "./systemEventSessions"

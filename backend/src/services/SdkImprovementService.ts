@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url"
 import { JudgeAgentOutputType } from "../agent/JudgeAgent/JudgeAgent"
 import { buildClaudeCodePrompt } from "../agent/JudgeAgent/buildClaudeCodePrompt"
 import { JudgeContext } from "../agent/JudgeAgent/fetchJudgeContext"
-import logger from "../logger"
+import logger from "../common/logger"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"

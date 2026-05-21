@@ -3,7 +3,7 @@ import { AttioOutputConfig, IntegrationType } from "terse-types"
 import type { AttioAttribute, AttioObject } from "terse-types"
 
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 

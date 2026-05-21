@@ -7,7 +7,7 @@ import { User } from "terse-types"
 import { fileURLToPath } from "url"
 
 import { FailureState } from "../../agent/AgentRunner/runHistory"
-import { settings } from "../../config/settings"
+import { settings } from "../../settings"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
 import { loadTemplate } from "../emails/templating"
 import { formatApprovalNotificationFor } from "../utils"

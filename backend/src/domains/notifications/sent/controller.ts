@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
 
 import logger from "../../../common/logger"
-import { parsePageParams } from "../../../utility/pagination"
+import { parsePageParams } from "../../../common/pagination"
 
 import { listSentNotificationsForOrganization } from "./service"
 

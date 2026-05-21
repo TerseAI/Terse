@@ -6,13 +6,13 @@ import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionI
 import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
-import { notion as notionConfig, urls } from "../config/settings"
-import logger from "../logger"
-import { db } from "../prismaClient"
-import { fetchNotionResources } from "../routes/notion"
+import { notion as notionConfig, urls } from "../settings"
+import logger from "../common/logger"
+import { db } from "../loaders/prisma"
+import { fetchNotionResources } from "../domains/integrations/notion/controller"
 import { SecretNotFoundError } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { mintOAuthState, verifyOAuthState } from "../utility/oauth"
+import { mintOAuthState, verifyOAuthState } from "../domains/auth/helpers/oauth"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"

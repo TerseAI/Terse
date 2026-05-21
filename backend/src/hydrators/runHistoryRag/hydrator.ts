@@ -1,4 +1,4 @@
-import { db } from "../../prismaClient"
+import { db } from "../../loaders/prisma"
 import { RunHistoryRawEventWithRelations } from "../../types/prisma"
 import { HydrationContext, Hydrator, Identifiable, WithIdentity } from "../Hydrator"
 

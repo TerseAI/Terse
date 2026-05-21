@@ -2,7 +2,7 @@ import { DateTime } from "luxon"
 import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
 import { AgentActivityItem, CountByString, RecentAction, StatsInterval, StatsResponse } from "terse-types/types"
 
-import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../../utility/typeConverters"
+import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../../common/typeConverters"
 
 import { ChartBucketUnit, fetchAgentNamesByIds, fetchStatsRawData } from "./repository"
 

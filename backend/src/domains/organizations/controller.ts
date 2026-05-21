@@ -2,8 +2,8 @@ import { Request, Response } from "express"
 import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSchema, organizationSwitchRequestSchema, organizationUpdateRequestSchema } from "terse-types/types"
 
 import logger from "../../common/logger"
-import { settings } from "../../config/settings"
-import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../routes/auth"
+import { settings } from "../../settings"
+import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../domains/auth/service"
 
 import {
     BadRequestError,

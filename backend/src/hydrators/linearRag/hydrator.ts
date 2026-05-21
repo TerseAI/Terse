@@ -5,8 +5,8 @@ import { LinearTrigger } from "terse-types"
 import { LinearTriggerRuntime } from "../../integrations/LinearIntegration"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
-import logger from "../../logger"
-import { db } from "../../prismaClient"
+import logger from "../../common/logger"
+import { db } from "../../loaders/prisma"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
 
 export class LinearEventHydrator extends Hydrator<LinearTriggerRuntime> {

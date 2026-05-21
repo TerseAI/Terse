@@ -1,6 +1,6 @@
 import { Router } from "express"
 
-import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
+import { AuthKind, requireAuth } from "../../../domains/auth/helpers/authMiddleware"
 
 import { cleanupSdkImages } from "./controller"
 

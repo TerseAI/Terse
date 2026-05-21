@@ -8,7 +8,7 @@ import {
     terseBillingJwtClaimsSchema
 } from "terse-types"
 
-import { settings } from "../config/settings"
+import { settings } from "../settings"
 
 const BILLING_JWT_MAX_AGE_SEC = 300
 

@@ -3,11 +3,11 @@ import { ConfigType } from "terse-types"
 import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../utility/notion"
-import { verifyNotionPageInScope } from "../../../utility/notionAcl"
-import { extractErrorMessage } from "../../../utility/strings"
+import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../integrations/notion/helpers"
+import { verifyNotionPageInScope } from "../../../integrations/notion/acl"
+import { extractErrorMessage } from "../../../common/strings"
 import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionModifyBlocksTool = defineSessionTool({

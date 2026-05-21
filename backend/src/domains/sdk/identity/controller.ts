@@ -12,11 +12,11 @@ import {
 import { ZodError } from "zod"
 
 import logger from "../../../common/logger"
-import { getClaimsFromVerifiedPayload } from "../../../utility/accessTokenClaims"
-import { createApiToken } from "../../../utility/apiTokens"
-import { FeatureFlag, FeatureFlagService } from "../../../utility/featureFlags"
-import { workos } from "../../../utility/workos"
-import { WorkosTokenError, verifyWorkosJwt } from "../../../utility/workosJwt"
+import { getClaimsFromVerifiedPayload } from "../../../domains/auth/helpers/accessTokenClaims"
+import { createApiToken } from "../../../domains/auth/helpers/apiTokens"
+import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
+import { workos } from "../../../integrations/workos/helpers"
+import { WorkosTokenError, verifyWorkosJwt } from "../../../integrations/workos/jwt"
 import { getOrCreateDbUserFromWorkOS } from "../../auth/service"
 
 const featureFlagService = FeatureFlagService.getInstance()

@@ -3,9 +3,9 @@ import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/
 import { IntegrationType, NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { verifyNotionPageInScope } from "../../../utility/notionAcl"
+import { verifyNotionPageInScope } from "../../../integrations/notion/acl"
 import { ToolACLValidator } from "../../abstract/acl"
 
 // Helper function to extract readable values from Notion page property objects

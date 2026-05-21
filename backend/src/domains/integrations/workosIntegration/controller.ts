@@ -4,10 +4,10 @@ import { webhookWorkOSTriggerParamsSchema, workosWebhookSecretUpdateRequestSchem
 
 import { WorkOSIntegrationManager } from "../../../integrations/WorkOSIntegration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
-import { workos } from "../../../utility/workos"
+import { workos } from "../../../integrations/workos/helpers"
 
 export async function getWorkOSIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

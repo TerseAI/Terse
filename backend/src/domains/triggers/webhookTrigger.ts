@@ -6,10 +6,10 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../../agent/AgentRunner/EventProcessor"
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
-import logger, { runWithUserContext } from "../../logger"
-import { db } from "../../prismaClient"
+import logger, { runWithUserContext } from "../../common/logger"
+import { db } from "../../loaders/prisma"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
-import { getUserForOrg } from "../../utility/workos"
+import { getUserForOrg } from "../../integrations/workos/helpers"
 
 class WebhookTriggerRuntime extends TriggerRuntime<WebhookTrigger> {
     readonly integrationType = IntegrationType.WEBHOOK

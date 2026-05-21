@@ -5,10 +5,10 @@ import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import { ApprovalDecision } from "../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../express"
-import logger from "../logger"
+import logger from "../common/logger"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
 import { ErrorContext } from "../tools/toolUtils"
-import { randomString } from "../utility/strings"
+import { randomString } from "../common/strings"
 
 import { AssistantDeltaProjector, CanonicalModelEvent } from "./DeltaProjector"
 import { parseToolExecutionResult } from "./toolExecution"

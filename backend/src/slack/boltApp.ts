@@ -5,10 +5,10 @@ import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js
 import { GenericMessageEvent, ReactionAddedEvent } from "@slack/types"
 import { IntegrationType } from "terse-types/Integrations"
 
-import { settings } from "../config/settings"
+import { settings } from "../settings"
 import { SimplifiedSlackEvent, SlackIntegrationManager } from "../integrations/SlackIntegration"
-import logger from "../logger"
-import { db } from "../prismaClient"
+import logger from "../common/logger"
+import { db } from "../loaders/prisma"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { SecretService } from "../services/SecretService"
 

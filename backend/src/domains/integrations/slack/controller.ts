@@ -3,8 +3,8 @@ import { Request, Response } from "express"
 import { User } from "terse-types/types"
 
 import { SlackIntegrationManager, fetchSlackChannelsForIntegration, fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegration"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 
 // MARK: - Route Handlers
 

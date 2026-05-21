@@ -6,9 +6,9 @@ import { IntegrationType } from "terse-types"
 import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../../express"
 import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
+import { getDatadogRumDeepLink, getDatadogSite } from "../../../integrations/datadog/helpers"
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.

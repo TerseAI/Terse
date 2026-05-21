@@ -2,7 +2,7 @@ import AdmZip from "adm-zip"
 import mime from "mime"
 import { AgentFileContentResponse, File } from "terse-types/types"
 
-import logger from "../logger"
+import logger from "../common/logger"
 import { downloadSdkDeployZip } from "../services/FileStorageService"
 
 const MAX_SDK_ZIP_SIZE_BYTES = 50 * 1024 * 1024 // 50 MB

@@ -4,8 +4,8 @@ import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 import { User } from "terse-types/types"
 
 import { recordAgentFailureAndMaybePause } from "../agent/AgentRunner/runHistory"
-import logger from "../logger"
-import { db } from "../prismaClient"
+import logger from "../common/logger"
+import { db } from "../loaders/prisma"
 import { emitCacheInvalidationWithKey } from "../services/CacheInvalidationService"
 import { Agent, AutomationNotificationSettings, UserNotificationDestination } from "../types/prisma"
 

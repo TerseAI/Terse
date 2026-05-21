@@ -2,9 +2,9 @@ import express, { Router } from "express"
 import { ApiRoutes } from "terse-types"
 
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
-import { AuthKind, requireAuth } from "../../utility/authMiddleware"
+import { AuthKind, requireAuth } from "../../domains/auth/helpers/authMiddleware"
 
-// Handlers still live in routes/schedule.ts and routes/webhookTrigger.ts.
+// Handlers still live in domains/triggers/schedule.ts and domains/triggers/webhookTrigger.ts.
 // A future PR can decompose them into controller/service files within this folder.
 import { handleManualTrigger, handleScheduleWebhook, handleTriggerWithEvent, handleWebMonitorWebhook } from "./schedule"
 import { handleWebhookTrigger } from "./webhookTrigger"

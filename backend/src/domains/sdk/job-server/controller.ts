@@ -3,7 +3,7 @@ import { SdkJobServerCheckResponse, agentIdParamsSchema } from "terse-types/type
 
 import { db } from "../../../loaders/prisma"
 import { runWebhookJobHandshakeChallenge } from "../../../services/webhookJobHandshakeChallenge"
-import { extractErrorMessage } from "../../../utility/strings"
+import { extractErrorMessage } from "../../../common/strings"
 
 export async function handleVerifySdkJobServer(req: Request, res: Response) {
     const { agentId } = agentIdParamsSchema.parse(req.params)

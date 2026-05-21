@@ -1,7 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import { randomString } from "../../utility/strings"
+import { randomString } from "../../common/strings"
 import type { ClassifiedError } from "../agentErrorUtils"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"

@@ -1,8 +1,8 @@
 import { File, Storage } from "@google-cloud/storage"
 import crypto from "crypto"
 
-import { gcp, gcs } from "../config/settings"
-import logger from "../logger"
+import { gcp, gcs } from "../settings"
+import logger from "../common/logger"
 
 // Check if GCS is configured
 if (!gcp.serviceAccountBase64 || !gcp.projectId || !gcs.imageBucket) {

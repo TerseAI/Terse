@@ -4,8 +4,8 @@ import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams }
 import { SocketEvents, SocketRooms } from "terse-types"
 import { User } from "terse-types"
 
-import logger from "../../logger"
-import { randomString } from "../../utility/strings"
+import logger from "../../common/logger"
+import { randomString } from "../../common/strings"
 
 export class StreamEventEmitter {
     private io: Server | null

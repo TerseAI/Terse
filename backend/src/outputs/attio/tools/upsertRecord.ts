@@ -4,7 +4,7 @@ import type { AttioAttribute, AttioRecord } from "terse-types"
 import { z } from "zod"
 
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator } from "../../abstract/acl"
 

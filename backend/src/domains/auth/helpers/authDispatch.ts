@@ -2,17 +2,17 @@ import { TokenKind } from "@prisma/client"
 import { Request, Response } from "express"
 import { User } from "terse-types/types"
 
-import { cloudScheduler, settings } from "../../../config/settings"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
-import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../../routes/auth"
-import { getOrCreateDbUserFromWorkOS } from "../../../routes/auth"
+import { cloudScheduler, settings } from "../../../settings"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
+import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../../domains/auth/service"
+import { getOrCreateDbUserFromWorkOS } from "../../../domains/auth/service"
+import { secretsMatch } from "../../../common/crypto"
+import { workos } from "../../../integrations/workos/helpers"
+import { getUserForOrg } from "../../../integrations/workos/helpers"
 
 import { getClaimsFromAuthResult } from "./accessTokenClaims"
 import { hashToken } from "./apiTokens"
-import { secretsMatch } from "../../../utility/cryptoUtils"
-import { workos } from "../../../utility/workos"
-import { getUserForOrg } from "../../../utility/workos"
 
 export type CookieAuthOutcome = { ok: true; user: User } | { ok: false; reason: "no_cookie" | "auth_failed" }
 

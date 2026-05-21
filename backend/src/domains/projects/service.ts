@@ -4,14 +4,14 @@ import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetail
 
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
-import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../realtimeSocket"
-import { tearDownAgentTriggers } from "../../routes/agents"
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../loaders/socket"
+import { tearDownAgentTriggers } from "../../domains/agents/controller"
 import { SecretService } from "../../services/SecretService"
-import { createProjectScopedToken } from "../../utility/apiTokens"
-import { getActiveSourceCodeGcsKeyForProject } from "../../utility/projectHelper"
-import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from "../../utility/sdkZipReader"
-import { generateWebhookSecret } from "../../utility/webhookSecrets"
-import { workos } from "../../utility/workos"
+import { createProjectScopedToken } from "../../domains/auth/helpers/apiTokens"
+import { getActiveSourceCodeGcsKeyForProject } from "../../common/projectHelper"
+import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from "../../common/sdkZipReader"
+import { generateWebhookSecret } from "../../common/webhookSecrets"
+import { workos } from "../../integrations/workos/helpers"
 
 import {
     DeployRow,

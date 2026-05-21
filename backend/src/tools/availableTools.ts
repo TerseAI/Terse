@@ -4,7 +4,7 @@ import type { TerseTool, TerseToolSource } from "terse-types/ToolsTypes"
 
 import type { ToolboxEntry } from "../outputs/abstract/Output"
 import { OutputFactory } from "../outputs/abstract/OutputFactory"
-import { convertConfigTypeToOutputConfigType } from "../utility/typeConverters"
+import { convertConfigTypeToOutputConfigType } from "../common/typeConverters"
 
 type CollectedEntry = {
     entry: ToolboxEntry<ConfigData>

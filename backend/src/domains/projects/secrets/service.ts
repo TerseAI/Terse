@@ -1,7 +1,7 @@
 import { ProjectSecretsImportResponse, ProjectSecretsListResponse, validateSecretName, validateSecretValue } from "terse-types/types"
 
 import logger from "../../../common/logger"
-import { emitCacheInvalidationWithWildcard } from "../../../realtimeSocket"
+import { emitCacheInvalidationWithWildcard } from "../../../loaders/socket"
 import { SecretService } from "../../../services/SecretService"
 
 import { ProjectAccess, findProjectForSecretAccess } from "./repository"

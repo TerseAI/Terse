@@ -5,8 +5,8 @@ import { z } from "zod"
 
 import { HeyReachIntegrationManager, fetchHeyReachCampaigns } from "../../../integrations/HeyReachIntegration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 
 const webhookParamsSchema = z.object({ triggerId: z.string() })
 

@@ -3,7 +3,7 @@ import dns from "node:dns/promises"
 import net from "node:net"
 import { URL } from "node:url"
 
-import { settings } from "../config/settings"
+import { settings } from "../settings"
 
 function isBlockedIP(ip: string): boolean {
     let parsed: ipaddr.IPv4 | ipaddr.IPv6

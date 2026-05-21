@@ -3,10 +3,10 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { DatadogIntegrationManager } from "../../../integrations/DatadogIntegration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
-import { getDatadogApiUrl } from "../../../utility/datadog"
+import { getDatadogApiUrl } from "../../../integrations/datadog/helpers"
 
 export async function getDatadogIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

@@ -1,6 +1,6 @@
 import { ApiRoutes, buildRoute } from "terse-types"
 
-import { settings } from "../config/settings"
+import { settings } from "../settings"
 
 export function joinJobServerPath(jobBaseUrl: string, pathFromRoot: string): string {
     const relative = pathFromRoot.replace(/^\/+/, "")

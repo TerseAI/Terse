@@ -1,4 +1,4 @@
-import { db } from "../prismaClient"
+import { db } from "../loaders/prisma"
 
 import { extractErrorMessage } from "./strings"
 

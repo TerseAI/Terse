@@ -1,7 +1,7 @@
 import { Router } from "express"
 
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
-import { AuthKind, requireAuth } from "../../../utility/authMiddleware"
+import { AuthKind, requireAuth } from "../../../domains/auth/helpers/authMiddleware"
 
 import { handleSdkAgentRun, handleSdkApprovalDecision, handleSdkListen, handleSessionEvents } from "./controller"
 

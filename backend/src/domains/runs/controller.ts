@@ -2,8 +2,8 @@ import { Request, Response } from "express"
 import { type GetRunHistoryResponse } from "terse-types/RunHistoryTypes"
 
 import logger from "../../common/logger"
-import { parsePageParams } from "../../utility/pagination"
-import { extractErrorMessage } from "../../utility/strings"
+import { parsePageParams } from "../../common/pagination"
+import { extractErrorMessage } from "../../common/strings"
 
 import { AgentNotFoundError, RunNotFoundError, fetchActionsByIds, fetchChatHistoryForRun, listAllRunHistory, listRunHistoryForAgent, parseGetRunHistoryParams } from "./service"
 

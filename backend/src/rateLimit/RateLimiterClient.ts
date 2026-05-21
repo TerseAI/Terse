@@ -2,8 +2,8 @@ import { Request, RequestHandler, Response } from "express"
 import { type RateLimiterAbstract, RateLimiterMemory, RateLimiterRedis, RateLimiterRes } from "rate-limiter-flexible"
 import { type RedisClientType, createClient } from "redis"
 
-import { settings } from "../config/settings"
-import logger from "../logger"
+import { settings } from "../settings"
+import logger from "../common/logger"
 
 import { ConnectionCap } from "./ConnectionCap"
 

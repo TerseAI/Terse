@@ -19,7 +19,7 @@ import {
 import { IntegrationType } from "terse-types/Integrations"
 
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
-import { convertPrismaOutputConfigToConfigData } from "../../utility/typeConverters"
+import { convertPrismaOutputConfigToConfigData } from "../../common/typeConverters"
 import { AttioOutput } from "../attio/AttioOutput"
 import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
 import { GithubSkillOutput } from "../github/GithubSkillOutput"

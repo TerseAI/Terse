@@ -5,14 +5,14 @@ import { setupLLMAnalytics } from "./agent/openaiInstance"
 import { createApp } from "./app"
 import "./integrations/IntegrationTaskHandler"
 // Import to trigger listener registration
-import logger from "./logger"
-import { db } from "./prismaClient"
+import logger from "./common/logger"
+import { db } from "./loaders/prisma"
 import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
-import { getRealtimeSocket, initializeRealtimeSocket } from "./realtimeSocket"
+import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
 import { setupSlackBolt } from "./slack/boltApp"
-import { analytics } from "./utility/analytics"
-import { buildCorsAllowedOrigins } from "./utility/corsOrigins"
+import { analytics } from "./common/analytics"
+import { buildCorsAllowedOrigins } from "./common/corsOrigins"
 
 // MARK: ASYNC INITIALIZATION
 // Bootstrap async dependencies before the Express app is built.

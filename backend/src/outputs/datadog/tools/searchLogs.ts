@@ -6,9 +6,9 @@ import { DatadogConfig, IntegrationType } from "terse-types"
 import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../../express"
 import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { getDatadogLogsDeepLink, getDatadogSite } from "../../../utility/datadog"
+import { getDatadogLogsDeepLink, getDatadogSite } from "../../../integrations/datadog/helpers"
 import { ToolACLValidator, requireAllValuesInAnyConfig } from "../../abstract/acl"
 
 /**

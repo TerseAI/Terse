@@ -2,7 +2,7 @@ import { IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRun
 import { ApprovalRequest, ApprovalRequestFilter, ApprovalRequestStatus, encodeDeepLink } from "terse-types/ApprovalTypes"
 
 import logger from "../../common/logger"
-import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../../utility/typeConverters"
+import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../../common/typeConverters"
 
 import { ApprovalFilter, fetchApprovalRows } from "./repository"
 

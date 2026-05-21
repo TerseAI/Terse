@@ -15,16 +15,16 @@ import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChan
 import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { slack as slackConfig, urls } from "../config/settings"
+import { slack as slackConfig, urls } from "../settings"
 import { Identifiable } from "../hydrators/Hydrator"
-import logger, { runWithUserContext } from "../logger"
-import { db } from "../prismaClient"
+import logger, { runWithUserContext } from "../common/logger"
+import { db } from "../loaders/prisma"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../services/FileStorageService"
 import { GetSecretsArg, SecretService } from "../services/SecretService"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../slack/blockKitHelpers"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma"
-import { mintOAuthState, verifyOAuthState } from "../utility/oauth"
-import { getUserForOrg } from "../utility/workos"
+import { mintOAuthState, verifyOAuthState } from "../domains/auth/helpers/oauth"
+import { getUserForOrg } from "../integrations/workos/helpers"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
@@ -746,7 +746,7 @@ const getSlackToken = async (integration: UserSlackIntegrationWithUser) => {
 
 /**
  * Fetches Slack channels for an integration.
- * Moved here from routes/slack.ts to avoid circular dependency.
+ * Moved here from domains/integrations/slack/controller.ts to avoid circular dependency.
  */
 export const fetchSlackChannelsForIntegration = async (userId: string, organizationId: string, integrationId: string): Promise<SlackChannelsResponse> => {
     if (!integrationId) {

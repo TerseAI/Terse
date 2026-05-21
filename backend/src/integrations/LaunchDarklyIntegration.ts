@@ -3,9 +3,9 @@ import { IntegrationType, LaunchDarklyIntegration, LaunchDarklyIntegrationMetada
 import { LaunchDarklyProject } from "terse-types/types"
 import { z } from "zod"
 
-import logger from "../logger"
-import { db } from "../prismaClient"
-import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../routes/launchdarkly"
+import logger from "../common/logger"
+import { db } from "../loaders/prisma"
+import { fetchLaunchDarklyEnvironments, fetchLaunchDarklyProjects } from "../domains/integrations/launchdarkly/controller"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 

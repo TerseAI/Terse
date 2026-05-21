@@ -1,7 +1,7 @@
 import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, NotFoundError, SandboxCreateParams } from "modal"
 
-import { settings } from "../../config/settings"
-import logger from "../../logger"
+import { settings } from "../../settings"
+import logger from "../../common/logger"
 
 import { Sandbox, SandboxApp, SandboxImage, SandboxService } from "./SandboxService"
 

@@ -3,7 +3,7 @@ import { DataSourceObjectResponse, GetDataSourceResponse, GetPageResponse, PageO
 import { NotionConfig } from "terse-types"
 
 import { getNotionAccessTokenForOrganization } from "../../integrations/NotionIntegration"
-import logger from "../../logger"
+import logger from "../../common/logger"
 import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../../outputs/abstract/acl"
 
 type NotionScope = { databaseIds: readonly string[]; pageIds: readonly string[] }

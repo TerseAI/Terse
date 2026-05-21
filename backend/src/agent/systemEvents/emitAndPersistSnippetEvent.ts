@@ -3,9 +3,9 @@ import type { RunHistoryModelEvent, RunHistoryModelSocketEvent } from "terse-typ
 import { SocketEvents, SocketRooms } from "terse-types"
 import { z } from "zod"
 
-import logger from "../../logger"
+import logger from "../../common/logger"
 import { getSocketIO } from "../../services/CacheInvalidationService"
-import { randomString } from "../../utility/strings"
+import { randomString } from "../../common/strings"
 
 import { appendSnippetSystemEvent, buildSnippetSystemEventId, chatSnippetPayloadSchema } from "./snippetSystemEvent"
 

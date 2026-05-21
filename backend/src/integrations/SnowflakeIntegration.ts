@@ -2,11 +2,11 @@ import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { IntegrationType, SnowflakeIntegration, SnowflakeIntegrationMetadata } from "terse-types/Integrations"
 import { z } from "zod"
 
-import logger from "../logger"
+import logger from "../common/logger"
 import { SnowflakePrivateKeyValidationError, normalizeSnowflakePrivateKey, validateSnowflakeCredentials } from "../outputs/snowflake/snowflakeClient"
-import { db } from "../prismaClient"
+import { db } from "../loaders/prisma"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { extractErrorMessage } from "../utility/strings"
+import { extractErrorMessage } from "../common/strings"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 

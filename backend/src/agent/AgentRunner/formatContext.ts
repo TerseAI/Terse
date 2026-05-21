@@ -1,8 +1,8 @@
 import { formatConfigForAgent } from "terse-types"
 
-import logger from "../../logger"
+import logger from "../../common/logger"
 import { AgentOutput, AgentOutputWithConfigs, AgentPrompt, AgentTrigger, AgentTriggerWithConfigs } from "../../types/prisma"
-import { convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../../utility/typeConverters"
+import { convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../../common/typeConverters"
 
 type FormattableAgent = {
     id: string

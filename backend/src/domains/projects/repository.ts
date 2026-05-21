@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client"
 import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 
 import { db } from "../../loaders/prisma"
-import { getInputConfigInclude } from "../../utility/prismaIncludes"
+import { getInputConfigInclude } from "../../common/prismaIncludes"
 
 export async function findProjectsForOrganization(organizationId: string) {
     return db().projects.findMany({

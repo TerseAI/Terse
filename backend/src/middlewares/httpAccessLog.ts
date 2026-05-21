@@ -3,8 +3,8 @@ import type { IncomingMessage, ServerResponse } from "http"
 import morgan, { type TokenIndexer } from "morgan"
 
 import { extractClientIp } from "../common/clientIp"
-import { settings } from "../config/settings"
-import logger from "../logger"
+import { settings } from "../settings"
+import logger from "../common/logger"
 
 export const httpAccessLog = settings.nodeEnv === "development" ? devAccessLog() : prodAccessLog()
 

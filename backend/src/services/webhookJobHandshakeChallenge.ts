@@ -1,11 +1,11 @@
 import { ApiRoutes } from "terse-types"
 import { webhookJobChallengeResponseSchema } from "terse-types/types"
 
-import { safeFetch } from "../utility/safeFetch"
-import { extractErrorMessage } from "../utility/strings"
-import { ValidatedRemoteUrl, validateRemoteServerUrl } from "../utility/urlValidation"
-import { buildSignatureHeaders, generateChallengeToken, verifyChallengeSignature } from "../utility/webhookHmac"
-import { joinJobServerPath } from "../utility/webhookUrl"
+import { safeFetch } from "../common/safeFetch"
+import { extractErrorMessage } from "../common/strings"
+import { ValidatedRemoteUrl, validateRemoteServerUrl } from "../common/urlValidation"
+import { buildSignatureHeaders, generateChallengeToken, verifyChallengeSignature } from "../common/webhookHmac"
+import { joinJobServerPath } from "../common/webhookUrl"
 
 export const WEBHOOK_JOB_FETCH_TIMEOUT_MS = 30_000
 const WEBHOOK_JOB_MAX_BODY_BYTES = 64 * 1024

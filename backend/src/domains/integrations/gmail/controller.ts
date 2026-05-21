@@ -4,12 +4,12 @@ import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { IntegrationType } from "terse-types/Integrations"
 
-import { gmail as gmailConfig, settings } from "../../../config/settings"
+import { gmail as gmailConfig, settings } from "../../../settings"
 import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../../../integrations/GmailIntegration"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
-import { readBearerToken } from "../../../utility/authDispatch"
+import { readBearerToken } from "../../../domains/auth/helpers/authDispatch"
 
 const pubsubOidcClient = new OAuth2Client()
 

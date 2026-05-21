@@ -1,5 +1,5 @@
-import { settings } from "../config/settings"
-import logger from "../logger"
+import { settings } from "../settings"
+import logger from "../common/logger"
 
 export function buildCorsAllowedOrigins(): Set<string> {
     const origins = new Set<string>()

@@ -18,7 +18,7 @@ import logger from "../../../common/logger"
 import { Session } from "../../../express"
 import { db } from "../../../loaders/prisma"
 import { OutputFactory } from "../../../outputs/abstract/OutputFactory"
-import { extractErrorMessage, randomString } from "../../../utility/strings"
+import { extractErrorMessage, randomString } from "../../../common/strings"
 
 type SdkFunctionTool = FunctionTool<SessionWithTracking<Session>, z.ZodObject<any>, unknown>
 type SdkToolDescriptor = {

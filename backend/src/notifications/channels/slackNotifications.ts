@@ -1,9 +1,9 @@
 import { RunHistoryAction } from "terse-types"
 
 import { FailureState } from "../../agent/AgentRunner/runHistory"
-import logger from "../../logger"
+import logger from "../../common/logger"
 import { Agent, UserNotificationDestination } from "../../types/prisma"
-import { formatNotificationMessage, formatRunFailureNotificationMessage, resolveSlackChannelIdForDestination, sendSlackApprovalMessage, sendSlackMessage } from "../../utility/slack"
+import { formatNotificationMessage, formatRunFailureNotificationMessage, resolveSlackChannelIdForDestination, sendSlackApprovalMessage, sendSlackMessage } from "../../integrations/slack/helpers"
 import { formatApprovalNotificationFor } from "../utils"
 
 export async function sendSlackNotification(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, agent: Agent): Promise<string | undefined> {

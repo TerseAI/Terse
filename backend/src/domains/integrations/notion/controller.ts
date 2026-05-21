@@ -5,10 +5,10 @@ import { IntegrationType } from "terse-types/Integrations"
 import { NotionResource, NotionResourcesResponse } from "terse-types/types"
 
 import { NotionIntegrationManager } from "../../../integrations/NotionIntegration"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
-import { extractPageTitle } from "../../../utility/notion"
+import { extractPageTitle } from "../../../integrations/notion/helpers"
 
 export async function getNotionIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

@@ -1,7 +1,7 @@
 import type { AgentInputItem } from "@openai/agents-core"
 import { z } from "zod"
 
-import { randomString } from "../../utility/strings"
+import { randomString } from "../../common/strings"
 
 import { BaseSystemEvent } from "./BaseSystemEvent"
 import { appendSystemEventToRunHistory } from "./systemEventSessions"

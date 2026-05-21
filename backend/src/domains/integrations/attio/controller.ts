@@ -7,8 +7,8 @@ import type { AttioAttribute, AttioObject, AttioObjectWithAttributes } from "ter
 import { z } from "zod"
 
 import { AttioIntegrationManager } from "../../../integrations/AttioIntegration"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
 
 const webhookParamsSchema = z.object({ triggerId: z.string() })

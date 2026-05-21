@@ -1,6 +1,6 @@
 import { SandboxStage } from "terse-types"
 
-import { extractErrorMessage } from "../../utility/strings"
+import { extractErrorMessage } from "../../common/strings"
 import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export { SandboxStage }

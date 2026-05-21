@@ -1,8 +1,8 @@
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager"
 import Bottleneck from "bottleneck"
 
-import { gcp } from "../config/settings"
-import logger from "../logger"
+import { gcp } from "../settings"
+import logger from "../common/logger"
 
 const GRPC_NOT_FOUND = 5
 const GRPC_ALREADY_EXISTS = 6

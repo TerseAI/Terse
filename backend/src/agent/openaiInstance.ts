@@ -2,8 +2,8 @@ import { setDefaultOpenAIClient } from "@openai/agents"
 import { OpenAI as PostHogOpenAI } from "@posthog/ai"
 import { OpenAI as OpenAIApi } from "openai"
 
-import logger from "../logger"
-import { analytics } from "../utility/analytics"
+import logger from "../common/logger"
+import { analytics } from "../common/analytics"
 
 export function setupLLMAnalytics(): void {
     const openaiKey = process.env.OPENAI_API_KEY

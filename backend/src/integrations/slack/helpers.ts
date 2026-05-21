@@ -4,10 +4,10 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
 
 import { FailureState } from "../../agent/AgentRunner/runHistory"
-import { settings } from "../../config/settings"
+import { settings } from "../../settings"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "../../integrations/SlackClient"
-import logger from "../../logger"
-import { db } from "../../prismaClient"
+import logger from "../../common/logger"
+import { db } from "../../loaders/prisma"
 import { SlackApprovalMessageStatus } from "../../slack/ApprovalStatus"
 import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../../slack/blockKitHelpers"
 

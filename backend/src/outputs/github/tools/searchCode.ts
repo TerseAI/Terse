@@ -4,9 +4,9 @@ import { GitHubConfig, IntegrationType } from "terse-types"
 
 import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../../express"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../utility/strings"
+import { extractErrorMessage } from "../../../common/strings"
 import { ToolACLValidator, denyToolACL, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
 import { createGitHubClient, getAllowedRepoNamesForConfigs, getGitHubAccessToken, searchCode } from "../githubApiClient"
 

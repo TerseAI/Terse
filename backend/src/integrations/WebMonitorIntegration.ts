@@ -16,12 +16,12 @@ import { IntegrationInstance, IntegrationType, WebMonitorIntegrationMetadata } f
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { settings } from "../config/settings"
+import { settings } from "../settings"
 import { Identifiable } from "../hydrators/Hydrator"
-import logger, { runWithUserContext } from "../logger"
-import { db } from "../prismaClient"
+import logger, { runWithUserContext } from "../common/logger"
+import { db } from "../loaders/prisma"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { getUserForOrg } from "../utility/workos"
+import { getUserForOrg } from "../integrations/workos/helpers"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"

@@ -2,7 +2,7 @@ import type { AgentInputItem } from "@openai/agents-core"
 import { EntityType } from "terse-types/Entities"
 import { ChangeEventType, type ModelEvent } from "terse-types/ModelEvents"
 
-import { db } from "../prismaClient"
+import { db } from "../loaders/prisma"
 
 import { type ConvertAgentInputItemsToModelEventsOptions, type TimestampedAgentInputItem, convertAgentInputItemsToModelEvents } from "./agentInputItemsToModelEvents"
 

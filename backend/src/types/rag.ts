@@ -8,7 +8,7 @@ import type { LinearTriggerRuntime } from "../integrations/LinearIntegration"
 import type { SlackTriggerRuntime } from "../integrations/SlackIntegration"
 import type { WebMonitorTriggerRuntime } from "../integrations/WebMonitorIntegration"
 import type { WorkOSTriggerRuntime } from "../integrations/WorkOSIntegration"
-import logger from "../logger"
+import logger from "../common/logger"
 
 function isHydratorType(value: string): value is HydratorType {
     return hydratorTypeEnum.safeParse(value).success

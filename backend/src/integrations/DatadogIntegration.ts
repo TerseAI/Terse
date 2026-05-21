@@ -2,11 +2,11 @@ import { FormFieldDefinition, FormIntegrationSetup } from "terse-types"
 import { DatadogIntegration, DatadogIntegrationMetadata, IntegrationType } from "terse-types/Integrations"
 import { z } from "zod"
 
-import logger from "../logger"
+import logger from "../common/logger"
 import { getDatadogCredentialsByIntegrationId } from "../outputs/datadog/datadogApiClient"
-import { db } from "../prismaClient"
+import { db } from "../loaders/prisma"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { getDatadogApiUrl } from "../utility/datadog"
+import { getDatadogApiUrl } from "../integrations/datadog/helpers"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "./abstract/Integration"
 

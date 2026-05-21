@@ -1,7 +1,7 @@
-import logger from "../../logger"
-import { db } from "../../prismaClient"
-import { getInputConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes"
-import { getActiveSourceCodeGcsKeyForAutomation } from "../../utility/projectHelper"
+import logger from "../../common/logger"
+import { db } from "../../loaders/prisma"
+import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
+import { getActiveSourceCodeGcsKeyForAutomation } from "../../common/projectHelper"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
 
 import { computeAverageRunDurationMs } from "./runMetrics"

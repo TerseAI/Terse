@@ -6,7 +6,7 @@ import { validate as isValidUuid } from "uuid"
 import { SessionWithTracking } from "../../agent/AgentRunner/BaseAgentRunner"
 import { Session } from "../../express"
 import { getLinearAccessTokenForOrganization } from "../../integrations/LinearIntegration"
-import logger from "../../logger"
+import logger from "../../common/logger"
 import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../abstract/acl"
 
 type LinearIssueScope = { teamId: string | null; projectId: string | null }

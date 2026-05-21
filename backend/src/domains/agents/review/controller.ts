@@ -8,14 +8,14 @@ import { User } from "terse-types/types"
 import { MAX_IMPROVEMENTS_PER_AGENT } from "../../../agent/JudgeAgent/JudgeAgent"
 import { fetchFullJudgeContext } from "../../../agent/JudgeAgent/fetchJudgeContext"
 import logger from "../../../common/logger"
-import { settings } from "../../../config/settings"
+import { settings } from "../../../settings"
 import { db } from "../../../loaders/prisma"
 import { sendWeeklyReviewEmail } from "../../../notifications/channels/emailNotifications"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
 import { SdkImprovementService } from "../../../services/SdkImprovementService"
-import { FeatureFlag, FeatureFlagService } from "../../../utility/featureFlags"
-import { extractErrorMessage } from "../../../utility/strings"
-import { getUserForOrg } from "../../../utility/workos"
+import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
+import { extractErrorMessage } from "../../../common/strings"
+import { getUserForOrg } from "../../../integrations/workos/helpers"
 
 type EligibleAutomation = {
     id: string

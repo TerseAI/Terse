@@ -5,7 +5,7 @@ import { z } from "zod"
 import logger from "../../common/logger"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
-import { SecretManagerClient } from "../../utility/secretManagerClient"
+import { SecretManagerClient } from "../../common/secretManagerClient"
 
 const clearOldSecretVersionsRequestSchema = z.object({
     dryRun: z.preprocess(value => {

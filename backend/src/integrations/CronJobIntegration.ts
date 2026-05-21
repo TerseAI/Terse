@@ -6,12 +6,12 @@ import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { settings } from "../config/settings"
-import logger, { runWithUserContext } from "../logger"
-import { db } from "../prismaClient"
+import { settings } from "../settings"
+import logger, { runWithUserContext } from "../common/logger"
+import { db } from "../loaders/prisma"
 import { AgentTriggerWithConfigs } from "../types/prisma"
-import { SchedulerClient, createSchedulerClient } from "../utility/schedulerClient"
-import { getUserForOrg } from "../utility/workos"
+import { SchedulerClient, createSchedulerClient } from "../common/schedulerClient"
+import { getUserForOrg } from "../integrations/workos/helpers"
 
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "./abstract/Integration"
 import { TriggerRuntime } from "./abstract/TriggerRuntime"

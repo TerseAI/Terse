@@ -2,10 +2,10 @@ import crypto from "crypto"
 import snowflake from "snowflake-sdk"
 import { IntegrationType } from "terse-types"
 
-import logger from "../../logger"
-import { db } from "../../prismaClient"
+import logger from "../../common/logger"
+import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
-import { extractErrorMessage } from "../../utility/strings"
+import { extractErrorMessage } from "../../common/strings"
 
 snowflake.configure({ logLevel: "OFF" })
 

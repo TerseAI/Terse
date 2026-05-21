@@ -3,8 +3,8 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { LaunchDarklyIntegrationManager } from "../../../integrations/LaunchDarklyIntegration"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {

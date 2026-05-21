@@ -2,10 +2,10 @@ import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, SlackOutputConfig } from "terse-types"
 
 import { initializeSlackWebClient } from "../../../integrations/SlackClient"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { db } from "../../../loaders/prisma"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../utility/strings"
+import { extractErrorMessage } from "../../../common/strings"
 import { ToolACLValidator } from "../../abstract/acl"
 
 const SLACK_TYPES_MAP: Record<string, string> = {

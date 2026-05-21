@@ -14,18 +14,18 @@ import { OAuthInstallationDetails, Repository } from "terse-types/types"
 import { z } from "zod"
 
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
-import { githubApp, urls } from "../config/settings"
+import { githubApp, urls } from "../settings"
 import { Identifiable } from "../hydrators/Hydrator"
-import logger, { runWithUserContext } from "../logger"
+import logger, { runWithUserContext } from "../common/logger"
 import { getGitHubAccessToken } from "../outputs/github/githubApiClient"
-import { db } from "../prismaClient"
-import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../routes/GithubTypes"
-import { fetchGithubRepositoriesForIntegration } from "../routes/github"
+import { db } from "../loaders/prisma"
+import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUser } from "../domains/integrations/github/types"
+import { fetchGithubRepositoriesForIntegration } from "../domains/integrations/github/controller"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../services/FileStorageService"
 import { SecretService } from "../services/SecretService"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../types/prisma"
-import { mintOAuthState, verifyOAuthState } from "../utility/oauth"
-import { getUserForOrg } from "../utility/workos"
+import { mintOAuthState, verifyOAuthState } from "../domains/auth/helpers/oauth"
+import { getUserForOrg } from "../integrations/workos/helpers"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
@@ -479,7 +479,7 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
  * Pure builder for the RunHistory trigger metadata shown in the UI for a GitHub event.
  *
  * Exported so synthetic / sample-event flows (e.g. `SyntheticTriggerRuntime` in
- * `routes/schedule.ts`) can produce the same rich title/subheader/url as real webhook
+ * `domains/triggers/schedule.ts`) can produce the same rich title/subheader/url as real webhook
  * deliveries, rather than falling back to a bare `debugLog()` string like
  * "GitHub Event: pull_request.merged - owner/repo - user".
  */

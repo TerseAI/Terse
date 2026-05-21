@@ -3,8 +3,8 @@ import type { RunStreamEvent } from "@openai/agents"
 import type { AgentInputItem, Session } from "@openai/agents-core"
 import { createHash } from "crypto"
 
-import logger from "../logger"
-import { db } from "../prismaClient"
+import logger from "../common/logger"
+import { db } from "../loaders/prisma"
 
 type BaseMemorySessionOptions = {
     sessionId: string

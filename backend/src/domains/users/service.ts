@@ -1,6 +1,6 @@
 import { Role, User } from "terse-types/types"
 
-import { workos } from "../../utility/workos"
+import { workos } from "../../integrations/workos/helpers"
 
 import { findUserById } from "./repository"
 

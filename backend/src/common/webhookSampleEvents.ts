@@ -1,8 +1,8 @@
 import { Prisma, IntegrationType as PrismaIntegrationType } from "@prisma/client"
 import type { SdkSampleEventRef as SampleEventRef, SdkSampleEventsResponse } from "terse-types"
 
-import logger from "../logger"
-import { db } from "../prismaClient"
+import logger from "../common/logger"
+import { db } from "../loaders/prisma"
 
 import { parseSerializedTriggerPayload } from "./triggerPayload"
 import { buildWebhookUrl } from "./webhookUrl"
