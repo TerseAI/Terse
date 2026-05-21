@@ -1,4 +1,4 @@
-import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, NotFoundError, Proxy as ModalProxy, SandboxCreateParams, Secret as ModalSecret } from "modal"
+import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, Proxy as ModalProxy, Secret as ModalSecret, NotFoundError, SandboxCreateParams } from "modal"
 
 import { settings } from "../../config/settings"
 import logger from "../../logger"

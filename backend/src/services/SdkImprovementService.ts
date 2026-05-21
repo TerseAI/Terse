@@ -156,10 +156,7 @@ export class SdkImprovementService {
             // Revoke the Anthropic key first (kills the actual credential) and
             // the proxy token second (kills the lookup handle). Both can fail
             // independently — the reaper cron will sweep up any orphans.
-            await Promise.allSettled([
-                mintedKeyId ? this.adminService.revokeKey(mintedKeyId) : Promise.resolve(),
-                proxyToken ? this.tokenService.revokeJobToken(jobId) : Promise.resolve()
-            ])
+            await Promise.allSettled([mintedKeyId ? this.adminService.revokeKey(mintedKeyId) : Promise.resolve(), proxyToken ? this.tokenService.revokeJobToken(jobId) : Promise.resolve()])
         }
     }
 }
