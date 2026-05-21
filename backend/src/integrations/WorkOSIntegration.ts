@@ -12,7 +12,7 @@ import { urls } from "../config/settings"
 import logger from "../logger"
 import { getWorkOSUser } from "../outputs/workos/workosApiClient"
 import { db } from "../prismaClient"
-import { Identifiable } from "../rag/Hydrator"
+import { Identifiable } from "../hydrators/Hydrator"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 

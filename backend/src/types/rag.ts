@@ -8,7 +8,7 @@ import type { SlackTriggerRuntime } from "../integrations/SlackIntegration"
 import type { WebMonitorTriggerRuntime } from "../integrations/WebMonitorIntegration"
 import type { WorkOSTriggerRuntime } from "../integrations/WorkOSIntegration"
 import logger from "../logger"
-import type { IdentifiableRunHistoryRawEvent } from "../rag/runHistoryRag/hydrator"
+import type { IdentifiableRunHistoryRawEvent } from "../hydrators/runHistoryRag/hydrator"
 
 function isHydratorType(value: string): value is HydratorType {
     return hydratorTypeEnum.safeParse(value).success

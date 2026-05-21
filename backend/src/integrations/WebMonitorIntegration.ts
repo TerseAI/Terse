@@ -19,7 +19,7 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor"
 import { settings } from "../config/settings"
 import logger, { runWithUserContext } from "../logger"
 import { db } from "../prismaClient"
-import { Identifiable } from "../rag/Hydrator"
+import { Identifiable } from "../hydrators/Hydrator"
 import { AgentTriggerWithConfigs } from "../types/prisma"
 import { getUserForOrg } from "../utility/workos"
 

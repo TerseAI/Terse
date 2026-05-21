@@ -2,8 +2,8 @@ import { Request, Response } from "express"
 import type { SerializedEvent, User } from "terse-types"
 import { sdkHydrateSampleEventRequestSchema, sdkHydrateSampleEventResponseSchema } from "terse-types/types"
 
-import { HydrationError } from "../rag/Hydrator"
-import { requireHydrator } from "../rag/HydratorRegistry"
+import { HydrationError } from "../hydrators/Hydrator"
+import { requireHydrator } from "../hydrators/HydratorRegistry"
 import { requireHydratorType } from "../types/rag"
 
 export async function handleHydrateSampleEvent(req: Request, res: Response) {

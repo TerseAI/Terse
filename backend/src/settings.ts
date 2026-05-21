@@ -1,0 +1,221 @@
+/**
+ * Centralized environment variable configuration
+ *
+ * This module validates all required environment variables at startup
+ * and provides a single source of truth for environment configuration.
+ * The application will fail to start if any required variables are missing.
+ */
+
+function requireEnv(name: string): string {
+    const value = process.env[name]
+    if (!value || value.trim() === "") {
+        throw new Error(`Missing required environment variable: ${name}. ` + `Please set ${name} in your environment configuration.`)
+    }
+    return value
+}
+
+function optionalEnv(name: string, defaultValue?: string): string | undefined {
+    const value = process.env[name]
+    if (value && value.trim() !== "") {
+        return value
+    }
+    return defaultValue
+}
+
+function optionalBoolEnv(name: string, defaultValue = false): boolean {
+    const value = optionalEnv(name)
+
+    if (value === undefined) {
+        return defaultValue
+    }
+
+    if (value === "true") {
+        return true
+    }
+
+    if (value === "false") {
+        return false
+    }
+
+    throw new Error(`Invalid boolean environment variable: ${name}. Expected "true" or "false".`)
+}
+
+// Core configuration
+export const settings = {
+    // Core secrets and keys
+    jwt: {
+        secret: requireEnv("JWT_SECRET")
+    },
+
+    // Database connections
+    database: {
+        url: requireEnv("DATABASE_URL")
+    },
+
+    workos: {
+        clientId: requireEnv("WORKOS_CLIENT_ID"),
+        apiKey: requireEnv("WORKOS_API_KEY"),
+        cookiePassword: requireEnv("WORKOS_COOKIE_PASSWORD"),
+        redirectUri: requireEnv("WORKOS_REDIRECT_URI"),
+        webhookSecret: optionalEnv("WORKOS_WEBHOOK_SECRET")
+    },
+
+    // API keys
+    openai: {
+        apiKey: requireEnv("OPENAI_API_KEY")
+    },
+
+    tavily: {
+        apiKey: requireEnv("TAVILY_API_KEY")
+    },
+
+    gemini: {
+        apiKey: requireEnv("GEMINI_API_KEY")
+    },
+
+    // Application URLs
+    urls: {
+        socketFrontend: optionalEnv("SOCKET_FRONTEND_URL"),
+        frontend: requireEnv("FRONTEND_URL"),
+        backend: requireEnv("BACKEND_URL"),
+        backendProxy: optionalEnv("BACKEND_PROXY_URL")
+    },
+
+    // Environment
+    nodeEnv: optionalEnv("NODE_ENV", "development") as "development" | "production" | "test",
+
+    health: {
+        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")!
+    },
+
+    // Gmail OAuth
+    gmail: {
+        clientId: requireEnv("GMAIL_CLIENT_ID"),
+        clientSecret: requireEnv("GMAIL_CLIENT_SECRET"),
+        redirectUri: requireEnv("GMAIL_REDIRECT_URI"),
+        pubsubTopic: requireEnv("GMAIL_PUBSUB_TOPIC"),
+        frontendRedirect: requireEnv("GMAIL_FRONTEND_REDIRECT"),
+
+        // OIDC verification for inbound Pub/Sub push deliveries.
+        pubsubAudience: optionalEnv("GMAIL_PUBSUB_AUDIENCE"),
+        pubsubServiceAccountEmail: optionalEnv("GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL")
+    },
+
+    // GitHub App (for repository integration and OAuth)
+    githubApp: {
+        clientId: requireEnv("GITHUB_CLIENT_ID"),
+        clientSecret: requireEnv("GITHUB_CLIENT_SECRET"),
+        integrateCallbackUrl: requireEnv("GITHUB_APP_CALLBACK_URL"),
+        loginCallbackUrl: optionalEnv("GITHUB_LOGIN_CALLBACK_URL"),
+        appName: requireEnv("GITHUB_APP_NAME"),
+        loginRedirect: optionalEnv("GITHUB_LOGIN_REDIRECT")
+    },
+
+    // Notion OAuth
+    notion: {
+        clientId: requireEnv("NOTION_OAUTH_CLIENT_ID"),
+        clientSecret: requireEnv("NOTION_OAUTH_CLIENT_SECRET"),
+        redirectUri: requireEnv("NOTION_OAUTH_REDIRECT_URI")
+    },
+
+    // Slack OAuth
+    slack: {
+        clientId: requireEnv("SLACK_CLIENT_ID"),
+        clientSecret: requireEnv("SLACK_CLIENT_SECRET"),
+        oauthCallbackUrl: requireEnv("SLACK_OAUTH_CALLBACK_URL"),
+        signingSecret: optionalEnv("SLACK_SIGNING_SECRET")
+    },
+
+    // Linear OAuth
+    linear: {
+        clientId: requireEnv("LINEAR_CLIENT_ID"),
+        clientSecret: requireEnv("LINEAR_CLIENT_SECRET_ID"),
+        oauthCallbackUrl: requireEnv("LINEAR_OAUTH_CALLBACK_URL"),
+        signingSecret: requireEnv("LINEAR_WEBHOOK_SIGNING_SECRET")
+    },
+
+    // Attio OAuth
+    attio: {
+        clientId: requireEnv("ATTIO_CLIENT_ID"),
+        clientSecret: requireEnv("ATTIO_CLIENT_SECRET"),
+        redirectUri: requireEnv("ATTIO_REDIRECT_URI")
+    },
+
+    // Google Cloud Platform (GCP)
+    gcp: {
+        serviceAccountBase64: optionalEnv("GCP_SERVICE_ACCOUNT_BASE64"),
+        projectId: optionalEnv("GCP_PROJECT_ID"),
+        region: optionalEnv("GCP_REGION", "us-central1")
+    },
+
+    // Google Cloud Storage
+    gcs: {
+        imageBucket: optionalEnv("GCS_IMAGE_BUCKET", "terse-documents"),
+        imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images"),
+        codeBucket: optionalEnv("GCS_CODE_BUCKET", "terse-sdk-zips"),
+        codePrefix: optionalEnv("GCS_CODE_PREFIX", "sdk-zips")
+    },
+
+    // Cloud Scheduler (for cron jobs)
+    cloudScheduler: {
+        secret: requireEnv("CLOUD_SCHEDULER_SECRET")
+    },
+
+    // Posthog Logs
+    posthog: {
+        apiKey: requireEnv("POSTHOG_API_KEY"),
+        serviceName: optionalEnv("POSTHOG_SERVICE_NAME", "terse-backend"),
+        enableInDevelopment: optionalEnv("POSTHOG_ENABLE_IN_DEV", "false") === "true",
+        host: optionalEnv("POSTHOG_HOST", "https://us.i.posthog.com")
+    },
+
+    // Anthropic (Claude Code CLI in sandboxes)
+    anthropic: {
+        apiKey: requireEnv("ANTHROPIC_API_KEY")
+    },
+
+    // Modal (sandbox execution for SDK jobs)
+    modal: {
+        tokenId: requireEnv("MODAL_TOKEN_ID"),
+        tokenSecret: requireEnv("MODAL_TOKEN_SECRET")
+    },
+
+    // Resend SMTP (for email notifications)
+    resend: {
+        apiKey: requireEnv("RESEND_API_KEY"),
+        fromEmail: optionalEnv("RESEND_FROM_EMAIL", "notifications@updates.useterse.ai")
+    },
+
+    // Optional configuration
+    optional: {
+        redisUrl: optionalEnv("REDIS_URL"),
+        cookieDomain: optionalEnv("COOKIE_DOMAIN"),
+        corsAllowedOrigins: optionalEnv("CORS_ALLOWED_ORIGINS")
+    },
+
+    // Parallel (Web Event monitors + webhook verification)
+    parallel: {
+        apiKey: requireEnv("PARALLEL_API_KEY"),
+        webhookSecret: requireEnv("PARALLEL_WEBHOOK_SECRET")
+    },
+
+    aisdk: {
+        default: optionalEnv("MODEL_DEFAULT", "anthropic:claude-opus-4-7")
+    },
+
+    billing: {
+        enabled: optionalBoolEnv("BILLING_ENABLED"),
+        url: optionalEnv("BILLING_SERVICE_URL"),
+        jwtSecret: optionalEnv("BILLING_JWT_SECRET")
+    }
+} as const
+
+// Export individual settings for convenience
+export const { jwt, gemini, urls, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
+
+// Type exports
+type Settings = typeof settings
+
+// OAuth token refresh threshold
+// If a token is expiring within this time window, it will be refreshed proactively
+export const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 12 * 60 * 60 * 1000 // 12 hours in milliseconds

@@ -1,7 +1,7 @@
 import type { RunHistoryTrigger, SerializedEvent, Trigger } from "terse-types"
 import { debugTrigger, displayTrigger, formatTriggerForAgent } from "terse-types"
 
-import { Identifiable } from "../../rag/Hydrator"
+import { Identifiable } from "../../hydrators/Hydrator"
 import { StoredFile } from "../../services/FileStorageService"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
