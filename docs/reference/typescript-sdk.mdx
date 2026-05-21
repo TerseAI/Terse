@@ -9,7 +9,7 @@ Terse workflows combine two sources:
 - the public `terse-sdk` package
 - the generated helpers in `src/terse.generated.ts`
 
-After `terse generate`, integration trigger builders and skill factories are grouped under top-level **`Triggers`** and **`Skills`** objects (for example `Triggers.github.onPROpened(...)`, `Triggers.heyReach.onMessageReplyReceived(...)`, `Skills.slack({ channel: ... })`). System-style helpers live there too: `Triggers.schedule.cron(...)`, `Triggers.webhook.onRequest()`, and `Triggers.webMonitor.onEvent(...)`. Prefer these namespaces instead of older per-integration root exports such as `GitHub.*`, `Slack.*`, or `Schedule.*` / `Webhook.*`.
+After `terse generate`, integration trigger builders and skill factories are grouped under top-level **`Triggers`** and **`Skills`** objects (for example `Triggers.github.onPROpened(...)`, `Triggers.attio.onRecordCreated(...)`, `Triggers.heyReach.onMessageReplyReceived(...)`, `Skills.slack({ channel: ... })`). System-style helpers live there too: `Triggers.schedule.cron(...)`, `Triggers.webhook.onRequest()`, and `Triggers.webMonitor.onEvent(...)`. Prefer these namespaces instead of older per-integration root exports such as `GitHub.*`, `Slack.*`, or `Schedule.*` / `Webhook.*`.
 
 <Note>
     Hosted workflow runs use the **Node.js** runtime (`terse-sdk` and your generated `src/terse.generated.ts`). Terse does **not** ship a Python runtime or Python workflow SDK.
@@ -26,8 +26,8 @@ Import these from `terse-sdk`:
 - `TerseAgent`: create with `TerseAgent.create()` inside `onTrigger`
 - `EventType`: enum for values on streamed `TerseAgent` results
 - `Trigger`: the base event interface
-- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), HeyReach types such as `HeyReachMessageReplyReceivedTrigger` and `HeyReachTrigger`, and other per-integration exports (see `terse-sdk` package entry)
-- Config helpers re-exported for trigger construction: `HeyReachInputConfig`, and the `HeyReachEventType` object for event-type constants
+- Specific event types: `GithubTrigger`, `GithubPRTrigger`, `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger` (optionally generic over the JSON body type), Attio types such as `AttioRecordCreatedTrigger`, `AttioRecordUpdatedTrigger`, and `AttioTrigger` (union), HeyReach types such as `HeyReachMessageReplyReceivedTrigger` and `HeyReachTrigger`, and other per-integration exports (see `terse-sdk` package entry)
+- Config helpers re-exported for trigger construction: `AttioInputConfig`, `HeyReachInputConfig`, and the `AttioEventType` / `HeyReachEventType` objects for event-type constants
 - Run history types (re-exported for Activity and API payloads): `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`
 - `formatTriggerForAgent` and `debugTrigger`: helpers re-exported from `terse-types` for plain trigger payloads (without the SDK methods below)
 - `getJobContext`, `runWithJobContext`, type `TerseJobContext`: async job context (session id, run id, API base URL). The SDK reads this **when each request is made** so agent runs and deterministic tool calls stay attributed to the right session and run. Outside `runWithJobContext`, set **`TERSE_BACKEND_URL`** if needed (default **`https://app.useterse.ai/api`**) and optionally **`TERSE_RUN_ID`** for run attribution.
@@ -257,7 +257,7 @@ Event typing depends on the trigger.
 
 | Trigger source              | Event type                  |
 | --------------------------- | --------------------------- |
-| Attio record events         | `Trigger`                   |
+| Attio events                | The matching `Attio*Trigger` for your helper, or `AttioTrigger` when using `Triggers.attio.trigger()` |
 | Slack actions               | Typed Slack action payloads |
 | Scheduled cron triggers     | `CronTrigger`               |
 | Scheduled interval triggers | `CronTrigger`               |
@@ -273,7 +273,7 @@ Event typing depends on the trigger.
 
 It exports:
 
-- **`Triggers`**: per-integration trigger builders (when connected), including **`Triggers.heyReach`** when HeyReach is connected, plus **`Triggers.schedule`**, **`Triggers.webhook`**, and **`Triggers.webMonitor`**
+- **`Triggers`**: per-integration trigger builders (when connected), including **`Triggers.attio`** when Attio input triggers are available and **`Triggers.heyReach`** when HeyReach is connected, plus **`Triggers.schedule`**, **`Triggers.webhook`**, and **`Triggers.webMonitor`**
 - **`Skills`**: per-integration skill factories (when connected) plus built-in **`Skills.web()`** and **`Skills.imageEdit()`**
 - Workspace resource constants (for example **`Repos`**, **`SlackChannel`**, **`SlackUser`**, **`AttioObject.*`** statics) and other typed prelude exports your workspace needs
 - **`toolbox`**: deterministic tool wrappers without an agent or **`skills`** filter
