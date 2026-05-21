@@ -19,6 +19,8 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 ## Steps
 
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+
 `src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
 If `src/terse.generated.ts` is missing or stale for the integrations the job uses, rerun `terse generate` instead of guessing at missing helpers. Never edit the generated file directly.
@@ -53,13 +55,22 @@ What to look for:
 - **Failed or cancelled runs** — the trigger event shows the input that broke the job.
 - **Repeated patterns** — the same kind of event misbehaving suggests a missing filter, a vague prompt, or a missing skill.
 - **Wasted runs** — bot events, drafts, or no-op events that should have been filtered out.
-- **Wrong tool choices** — the agent reaching for `runAndWait` when a deterministic `agent.tools.*` call would have been correct (or vice versa).
+- **Agentic overreach** — `runAndWait` doing deterministic work (`toolbox` / `agent.tools` would be correct). Check chat history for wrong tool picks or hallucinated parameters.
 
 If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus sample events from `terse test list`.
 
 ### 3. Analyze for improvements
 
-Evaluate each area below. Not every area will need changes — focus on the ones that make the biggest difference.
+Evaluate each area below. Not every area will need changes — focus on the ones that make the biggest difference. Start with **Tool usage** — moving work from the agent to `toolbox` is usually the highest-impact fix.
+
+#### Tool Usage
+
+- **Deterministic vs AI**: For actions with known parameters, use `toolbox` (no agent) or `agent.tools.*` — not `runAndWait`. Read available methods in `src/terse.generated.ts`.
+- **Unnecessary agents**: If the handler only runs deterministic tools, remove `TerseAgent` entirely and call `toolbox` directly.
+- **Prompts doing integration work**: Phrases like "post to Slack", "create a Linear issue", or "add label X" in a prompt usually mean that step should be code. Keep prompts for judgment only (summarize, triage, draft).
+- **Model access vs code access**: Missing entries in `skills` break model-driven tool use inside `run()` / `runAndWait()`, but they do not limit `toolbox` or `agent.tools.*`.
+- **Multi-step**: Deterministic setup first (`toolbox.slack.sendMessage`), then a narrow `runAndWait` for the part that needs reasoning (thread reply with summary).
+- **Tool results**: Capture return values from deterministic calls when later steps need them (e.g. `message.message_ts` for threading).
 
 #### Prompt Quality
 

@@ -19,6 +19,8 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 ## Steps
 
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+
 `src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it before choosing triggers or skills. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
 If `src/terse.generated.ts` is missing in an existing project, run `terse generate` before inventing helpers. If it exists but does not expose the helper you need, rerun `terse generate`. Never edit the generated file directly.
@@ -44,9 +46,9 @@ Only use triggers and resources that actually exist in `src/terse.generated.ts`.
 
 ### 3. Pick skills and connect missing integrations
 
-Add skill configs for every integration the model needs during `run()` or `runAndWait()`. Include all services mentioned in the user's request plus any integrations the model will need while reasoning.
+**Skills are only for agentic steps.** Add skill configs only for integrations the model needs during `run()` or `runAndWait()`. If every action is deterministic via `toolbox` or `agent.tools`, you may need few or no skills.
 
-Deterministic wrappers like `agent.tools.*` and `agent.executeTool()` are separate: they are direct code paths, not model-selected tools. Do not use the `skills` list as a proxy for whether direct code can call a generated wrapper.
+Do not add skills for integrations you only call deterministically. `toolbox` and `agent.tools.*` are direct code paths — not model-selected tools.
 
 If a required integration is missing from `src/terse.generated.ts`:
 
@@ -67,16 +69,35 @@ Filters prevent unnecessary agent runs and save cost.
 
 ### 5. Write the onTrigger handler
 
-Use the appropriate event type from `terse-sdk`.
+Use the appropriate event type from `terse-sdk`. Plan the handler as a pipeline: filters and deterministic steps first, agent last (if at all).
 
-**Always** include the full event context in your prompt via `event.formatForAgentRunner()`.
+**Deterministic steps** — map each known action to `toolbox` or `agent.tools`:
 
-Choose the right approach for the handler:
-- **AI decision-making**: `agent.runAndWait(prompt, event)`
-- **Deterministic actions**: `agent.tools.*` or `agent.executeTool()`
-- **Combined**: Do a deterministic action first, then pass the result into an agent prompt
+```typescript
+import { toolbox, SlackChannel } from "./terse.generated"
 
-Write clear, specific prompts. Tell the agent exactly what to do and what format to use. Avoid vague instructions like "handle this event."
+// No agent required for a fixed Slack post
+await toolbox.slack.sendMessage({
+    channelId: SlackChannel.Engineering.channelId,
+    message: `New PR: ${event.pullRequest.title}`,
+    thread_ts: "",
+    blocks: "",
+})
+```
+
+**Agentic steps** — use `TerseAgent` only where judgment is required. Include full event context via `event.formatForAgentRunner()`. Write clear, specific prompts; avoid vague instructions like "handle this event."
+
+**Combined pattern** — deterministic setup, then a narrow agent task:
+
+```typescript
+const message = await toolbox.slack.sendMessage({ ... })
+await agent.runAndWait(
+    `Summarize this PR and reply in thread (thread_ts: ${message.message_ts}). ` +
+    `Context: ${event.formatForAgentRunner()}`
+)
+```
+
+If the user's request is fully deterministic (e.g. "post X to Slack when Y happens"), do not create an agent at all.
 
 ### 6. Verify in an agent-friendly way
 
@@ -102,10 +123,11 @@ Verify:
 - Imports reference actual exports from `terse-sdk` and `./terse.generated`
 - The job lives in `src/terse.jobs.ts` unless the repo intentionally uses a custom or legacy entry file
 - The job `name` is unique and descriptive
-- Every integration the agent needs is in `skills`
+- Predictable actions use `toolbox` or `agent.tools`, not `runAndWait` prompts
+- `skills` only lists integrations used in agentic steps
 - The event type in `onTrigger` matches the trigger type
-- Triggers, skills, and resources used in the job exist in `src/terse.generated.ts`
-- The prompt includes full event context via `event.formatForAgentRunner()`
+- Triggers, skills, resources, and tool calls exist in `src/terse.generated.ts`
+- Agent prompts include full event context via `event.formatForAgentRunner()`
 - Verification uses `terse test list/show/run` when the agent is not in an interactive terminal
 
 ### 8. Ask before deploying
@@ -123,7 +145,7 @@ Example prompt:
 
 ```typescript
 import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
-import { GitHub, Slack, Repos, SlackChannel } from "./terse.generated"
+import { GitHub, Slack, Repos, SlackChannel, toolbox } from "./terse.generated"
 
 createJob({
     name: "Summarize PR and notify Slack",
@@ -132,19 +154,18 @@ createJob({
         return !event.sender.login.includes("[bot]")
     },
     onTrigger: async (event: GithubPRTrigger) => {
-        const agent = TerseAgent.create({
-            prompt: "You summarize pull requests and send concise Slack updates.",
-            skills: [
-                GitHub.skill({ repos: [Repos.MyOrg.MyRepo] }),
-                Slack.skill({ channel: SlackChannel.Engineering }),
-            ],
-        })
-
-        const message = await agent.tools.slack.sendMessage({
+        // Deterministic: fixed channel, fixed opener — no agent needed
+        const message = await toolbox.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
             thread_ts: "",
             blocks: "",
+        })
+
+        // Agentic: only the summary needs judgment
+        const agent = TerseAgent.create({
+            prompt: "You summarize pull requests concisely.",
+            skills: [GitHub.skill({ repos: [Repos.MyOrg.MyRepo] })],
         })
 
         await agent.runAndWait(
