@@ -288,10 +288,6 @@ export class GithubIntegrationManager
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
-        // Best-effort: revoke the user's OAuth token at GitHub before deleting
-        // our local copy. The endpoint is DELETE /applications/{client_id}/token
-        // with HTTP Basic auth (client_id:client_secret). Failures are logged
-        // but don't block local cleanup.
         try {
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: integrationId } })
             if (secrets?.accessToken) {
