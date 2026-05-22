@@ -404,11 +404,6 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
 
     async deleteInstallation(integrationId: string): Promise<void> {
         const integration = await db().gmail_integrations.findUnique({ where: { id: integrationId } })
-
-        // Best-effort: stop the Gmail watch and revoke the OAuth token at Google
-        // BEFORE we delete our local copy of the credentials. Each step logs and
-        // continues on failure — the user's intent is to disconnect, and stale
-        // Google-side state still expires (watch) or can be revoked manually.
         if (integration) {
             try {
                 const secrets = await this.secretService.getSecrets({
@@ -430,8 +425,6 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
                     logger.warn("Failed to stop Gmail watch on disconnect", { error, integrationId })
                 }
 
-                // Revoking the refresh token invalidates every access token issued
-                // from it, so one call covers both.
                 try {
                     const oauth2Client = getOAuth2Client()
                     await oauth2Client.revokeToken(secrets.refreshToken)

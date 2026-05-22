@@ -356,10 +356,6 @@ export class LinearIntegrationManager
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
-        // Best-effort: revoke the OAuth token at Linear before deleting our
-        // local copy. Failures are logged but don't block the local cleanup —
-        // the user's intent is to disconnect, and stale tokens at Linear can be
-        // revoked manually if needed.
         try {
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.LINEAR, recordId: integrationId } })
             if (secrets?.accessToken) {

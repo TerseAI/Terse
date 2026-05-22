@@ -522,10 +522,6 @@ export class SlackIntegrationManager
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
-        // Best-effort: revoke the Slack token(s) at Slack before deleting our
-        // local copy. Slack's auth.revoke revokes whichever bearer token is
-        // presented, so we call it once per stored token (bot/user). Failures
-        // are logged but don't block local cleanup.
         try {
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: integrationId } })
             const tokensToRevoke = [secrets?.accessToken, secrets?.authedUserAccessToken].filter((t): t is string => !!t)

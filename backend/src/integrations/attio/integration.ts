@@ -350,8 +350,6 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
-        // Best-effort: revoke the OAuth token at Attio before deleting our
-        // local copy. Failures are logged but don't block local cleanup.
         try {
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
             if (secrets?.accessToken) {

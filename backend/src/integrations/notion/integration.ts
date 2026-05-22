@@ -260,10 +260,6 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
-        // Best-effort: revoke the OAuth token at Notion before deleting our
-        // local copy. Notion's revoke endpoint uses Basic auth with the OAuth
-        // client credentials and accepts the access token in the body. Failures
-        // are logged but don't block local cleanup.
         try {
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
             if (secrets?.integrationToken) {
