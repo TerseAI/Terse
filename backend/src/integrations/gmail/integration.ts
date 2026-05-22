@@ -1,5 +1,5 @@
 import { gmail as createGmailClient, gmail_v1 } from "@googleapis/gmail"
-import { InputConfigType } from "@prisma/client"
+import { InputConfigType, OutputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { ConfigData, ConfigType, GmailEventType, GmailMessagePayload, GmailParsedAttachment, GmailTrigger } from "terse-types"
@@ -24,6 +24,7 @@ import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { Integration, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
+import { markDependentAutomationsDisconnected } from "../abstract/disconnect"
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose"]
@@ -402,14 +403,69 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
         }
     }
 
-    deleteInstallation(integrationId: string): Promise<void> {
-        return db()
-            .$transaction(async tx => {
-                await tx.gmail_integrations.delete({ where: { id: integrationId } })
-            })
-            .then(async () => {
-                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integrationId } })
-            })
+    async deleteInstallation(integrationId: string): Promise<void> {
+        const integration = await db().gmail_integrations.findUnique({ where: { id: integrationId } })
+
+        // Best-effort: stop the Gmail watch and revoke the OAuth token at Google
+        // BEFORE we delete our local copy of the credentials. Failures here are
+        // logged but don't block local cleanup — the user's intent is to
+        // disconnect, and stale Google-side state still expires (watch) or can
+        // be revoked by the user manually (token).
+        if (integration) {
+            try {
+                const secrets = await this.secretService.getSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.GMAIL, recordId: integrationId }
+                })
+
+                try {
+                    const oauth2Client = getOAuth2Client()
+                    oauth2Client.setCredentials({
+                        access_token: secrets.accessToken,
+                        refresh_token: secrets.refreshToken,
+                        expiry_date: integration.token_expiry?.getTime()
+                    })
+                    const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
+                    await gmail.users.stop({ userId: "me" })
+                    logger.info(`Gmail watch stopped for ${integration.email}`, { integrationId })
+                } catch (error) {
+                    logger.warn("Failed to stop Gmail watch on disconnect", { error, integrationId })
+                }
+
+                // Revoking the refresh token also invalidates every access token
+                // issued from it, so one call covers both.
+                try {
+                    const oauth2Client = getOAuth2Client()
+                    await oauth2Client.revokeToken(secrets.refreshToken)
+                    logger.info(`Revoked Gmail OAuth token for ${integration.email}`, { integrationId })
+                } catch (error) {
+                    logger.warn("Failed to revoke Gmail OAuth token on disconnect", { error, integrationId })
+                }
+            } catch (error) {
+                logger.warn("Failed to load Gmail secrets during disconnect; skipping watch stop and token revoke", { error, integrationId })
+            }
+        }
+
+        await db().$transaction(async tx => {
+            // Mark dependent automation inputs/outputs as disconnected rather
+            // than deleting them — the agent runner short-circuits on this flag
+            // and writes a BLOCKED run-history record until the user reconfigures.
+            // Skip if we couldn't load the integration row above (orphaned secret cleanup).
+            if (integration) {
+                await markDependentAutomationsDisconnected(
+                    {
+                        organizationId: integration.organization_id,
+                        integrationId,
+                        inputConfigTypes: [InputConfigType.GMAIL],
+                        outputConfigTypes: [OutputConfigType.GMAIL, OutputConfigType.GMAIL_DRAFT]
+                    },
+                    tx
+                )
+            }
+            await tx.gmail_integrations.delete({ where: { id: integrationId } })
+        })
+
+        await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integrationId } })
     }
 
     async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {

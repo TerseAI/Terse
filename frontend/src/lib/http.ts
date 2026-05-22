@@ -136,6 +136,13 @@ interface BackendService {
     getActiveIntegrations(): Promise<IntegrationType[]>
 
     /**
+     * Disconnects an integration. The backend revokes any OAuth tokens, tears
+     * down provider-side state, and marks dependent agent inputs/outputs as
+     * disconnected so the agent runner blocks them until the user reconfigures.
+     */
+    disconnectIntegration(integrationType: IntegrationType): Promise<{ success: boolean }>
+
+    /**
      * Gets the GitHub repositories for a specific installation
      */
     getGithubRepositoriesForIntegration(installationId: number): Promise<GetGithubRepositoriesForIntegrationResponse>
@@ -662,6 +669,11 @@ export const BackendProvider: BackendService = {
 
     getActiveIntegrations: () => {
         return axios.get(`${backendBaseUrl}${ApiRoutes.INTEGRATIONS.ACTIVE}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    disconnectIntegration: (integrationType: IntegrationType) => {
+        const url = buildRoute(ApiRoutes.INTEGRATIONS.DISCONNECT_BY_TYPE, { integrationType })
+        return axios.delete(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getGithubRepositoriesForIntegration: (installationId: number) => {

@@ -53,6 +53,18 @@ export async function markRunSkipped(runId: string, reason: string): Promise<voi
     })
 }
 
+export async function markRunBlocked(runId: string, reason: string): Promise<void> {
+    const prisma = db()
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: {
+            decision_action: "skipped",
+            decision_reason: reason,
+            status: RunHistoryStatus.BLOCKED
+        }
+    })
+}
+
 export async function appendRunAction(runId: string, action: RunHistoryAction, organizationId: string, stepId?: string): Promise<string> {
     const owned = await db().run_history_records.findFirst({
         where: { id: runId, automation: { organization_id: organizationId } },

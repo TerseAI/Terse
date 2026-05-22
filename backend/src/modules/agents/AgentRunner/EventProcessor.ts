@@ -15,7 +15,7 @@ import { AgentWithRelations, Agent as PrismaAgent } from "../../../types/prisma"
 import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
 
-import { createRunRecord, markRunFailed } from "./runHistory"
+import { createRunRecord, markRunBlocked, markRunFailed } from "./runHistory"
 
 // The job of this class is to take an Input Event, and check if it's a match for an Agent.
 // It will then create a Session, and summon the Agent Runner with the create user data.
@@ -236,6 +236,15 @@ export class EventProcessor {
             })
         }
 
+        const blockedReason = describeDisconnectedConfigs(agent)
+        if (blockedReason) {
+            const runId = existingRunId ?? (await this.createRunForAgent(agent))
+            await markRunBlocked(runId, blockedReason)
+            emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
+            logger.info(`Blocked run for agent "${agent.name}" — ${blockedReason}`, { agentId: agent.id, runId })
+            return new ProcessorResult(false, blockedReason, agent, runId)
+        }
+
         if (!agent.prompt) {
             if (existingRunId) {
                 // failRunEarly notifies internally now.
@@ -345,4 +354,18 @@ export class EventProcessor {
 
         return new ProcessorResult(true, "Webhook job execution started", agent, runId)
     }
+}
+
+// If any of the agent's inputs or outputs reference a disconnected integration,
+// return a human-readable reason string. Otherwise return null. Caller uses this
+// to short-circuit execution and write a BLOCKED run-history record.
+function describeDisconnectedConfigs(agent: AgentWithRelations): string | null {
+    const brokenInputCount = agent.inputs.filter(i => i.disconnected_at !== null).length
+    const brokenOutputCount = agent.outputs.filter(o => o.disconnected_at !== null).length
+    if (brokenInputCount === 0 && brokenOutputCount === 0) return null
+
+    const parts: string[] = []
+    if (brokenInputCount > 0) parts.push(`${brokenInputCount} input${brokenInputCount > 1 ? "s" : ""}`)
+    if (brokenOutputCount > 0) parts.push(`${brokenOutputCount} output${brokenOutputCount > 1 ? "s" : ""}`)
+    return `Agent is blocked — ${parts.join(" and ")} reference a disconnected integration. Reconfigure to resume.`
 }

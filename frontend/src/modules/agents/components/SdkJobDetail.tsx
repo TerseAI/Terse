@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Loader2, MoreVertical, Pause, Play, Server, Trash2, Zap } from "lucide-react"
+import { AlertTriangle, Loader2, MoreVertical, Pause, Play, Server, Trash2, Zap } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { CONFIG_DETAILS, ConfigType, FrontendRoutes } from "terse-types"
@@ -223,7 +223,7 @@ function JobHeading({
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                         <h1 className="text-foreground truncate text-[clamp(1.625rem,2.5vw,2rem)] leading-tight font-semibold tracking-tight">{agent.name}</h1>
-                        {agent.isActive ? <ActiveBadge /> : <PausedBadge />}
+                        {agent.needsReconfiguration ? <NeedsReconfigurationBadge /> : agent.isActive ? <ActiveBadge /> : <PausedBadge />}
                     </div>
 
                     <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
@@ -321,6 +321,15 @@ function primaryTriggerSummary(triggers: AgentTrigger[]): string | null {
     if (type === ConfigType.WEBMONITOR) return "Web monitor"
     const details = CONFIG_DETAILS[type as keyof typeof CONFIG_DETAILS]
     return details?.name ?? null
+}
+
+function NeedsReconfigurationBadge() {
+    return (
+        <Badge variant="secondary" className="text-warning shrink-0 gap-1.5">
+            <AlertTriangle aria-hidden className="h-3 w-3" />
+            Needs reconfiguration
+        </Badge>
+    )
 }
 
 function TriggersSection({ triggers }: { triggers: AgentTrigger[] }) {
