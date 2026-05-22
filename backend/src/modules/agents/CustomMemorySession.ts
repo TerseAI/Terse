@@ -1,5 +1,4 @@
 import { system } from "@openai/agents"
-import type { RunStreamEvent } from "@openai/agents"
 import type { AgentInputItem, Session } from "@openai/agents-core"
 import { createHash } from "crypto"
 
@@ -13,10 +12,6 @@ type BaseMemorySessionOptions = {
 }
 
 interface RunHistoryChatMemorySessionOptions extends BaseMemorySessionOptions {}
-
-interface ChatMemorySessionOptions extends BaseMemorySessionOptions {
-    sessionId: string // chat_session_id from chat_sessions table
-}
 
 type StoredRawEvent = {
     id: string
@@ -127,101 +122,6 @@ const runHistoryStorageStrategy: RawEventStorageStrategy = {
     }
 }
 
-const chatStorageStrategy: RawEventStorageStrategy = {
-    async getItems(sessionId, limit) {
-        const prisma = db()
-        const items = await prisma.chat_raw_events.findMany({
-            where: {
-                chat_session_id: sessionId
-            },
-            orderBy: [
-                { sequence_order: "asc" },
-                { created_at: "asc" } // Fallback for items without sequence_order (backward compatibility)
-            ],
-            take: limit,
-            select: {
-                raw_event_json: true
-            }
-        })
-        return items.map(item => item.raw_event_json as AgentInputItem)
-    },
-
-    async upsertByEventKey(sessionId, eventKey, item, sequenceOrder) {
-        const prisma = db()
-        await prisma.chat_raw_events.upsert({
-            where: {
-                chat_session_id_event_key: {
-                    chat_session_id: sessionId,
-                    event_key: eventKey
-                }
-            },
-            update: {
-                raw_event_json: item as any
-            },
-            create: {
-                chat_session_id: sessionId,
-                event_key: eventKey,
-                raw_event_json: item as any,
-                sequence_order: sequenceOrder
-            }
-        })
-    },
-
-    async getLatestItem(sessionId) {
-        const prisma = db()
-        const lastEvent = await prisma.chat_raw_events.findFirst({
-            where: {
-                chat_session_id: sessionId
-            },
-            orderBy: [
-                { sequence_order: "desc" },
-                { created_at: "desc" } // Fallback for items without sequence_order (backward compatibility)
-            ]
-        })
-        if (!lastEvent) {
-            return null
-        }
-        return {
-            id: lastEvent.id,
-            rawEvent: lastEvent.raw_event_json as AgentInputItem
-        }
-    },
-
-    async deleteById(id) {
-        const prisma = db()
-        await prisma.chat_raw_events.delete({
-            where: {
-                id
-            }
-        })
-    },
-
-    async clear(sessionId) {
-        const prisma = db()
-        await prisma.chat_raw_events.deleteMany({
-            where: {
-                chat_session_id: sessionId
-            }
-        })
-    },
-
-    async getMaxSequenceOrder(sessionId) {
-        const prisma = db()
-        const maxSequence = await prisma.chat_raw_events.findFirst({
-            where: {
-                chat_session_id: sessionId
-            },
-            orderBy: {
-                sequence_order: "desc"
-            },
-            select: {
-                sequence_order: true
-            }
-        })
-        return maxSequence?.sequence_order ?? null
-    }
-}
-
 class BaseChatMemorySession implements Session {
     private readonly sessionId: string
     private readonly skipSave: boolean
@@ -299,16 +199,6 @@ class BaseChatMemorySession implements Session {
 export class RunHistoryChatMemorySession extends BaseChatMemorySession {
     constructor(options: RunHistoryChatMemorySessionOptions) {
         super(options, runHistoryStorageStrategy)
-    }
-}
-
-/**
- * Session implementation for general chat sessions (uses chat_raw_events table)
- * For chats not tied to run history records (e.g., Slack threads, direct chats)
- */
-class ChatMemorySession extends BaseChatMemorySession {
-    constructor(options: ChatMemorySessionOptions) {
-        super(options, chatStorageStrategy)
     }
 }
 
