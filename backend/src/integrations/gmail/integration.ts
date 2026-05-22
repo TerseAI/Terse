@@ -402,14 +402,46 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
         }
     }
 
-    deleteInstallation(integrationId: string): Promise<void> {
-        return db()
-            .$transaction(async tx => {
-                await tx.gmail_integrations.delete({ where: { id: integrationId } })
-            })
-            .then(async () => {
-                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integrationId } })
-            })
+    async deleteInstallation(integrationId: string): Promise<void> {
+        const integration = await db().gmail_integrations.findUnique({ where: { id: integrationId } })
+        if (integration) {
+            try {
+                const secrets = await this.secretService.getSecrets({
+                    type: "integration",
+                    secret: { integrationType: IntegrationType.GMAIL, recordId: integrationId }
+                })
+
+                try {
+                    const oauth2Client = getOAuth2Client()
+                    oauth2Client.setCredentials({
+                        access_token: secrets.accessToken,
+                        refresh_token: secrets.refreshToken,
+                        expiry_date: integration.token_expiry?.getTime()
+                    })
+                    const gmail = createGmailClient({ version: "v1", auth: oauth2Client })
+                    await gmail.users.stop({ userId: "me" })
+                    logger.info(`Gmail watch stopped for ${integration.email}`, { integrationId })
+                } catch (error) {
+                    logger.warn("Failed to stop Gmail watch on disconnect", { error, integrationId })
+                }
+
+                try {
+                    const oauth2Client = getOAuth2Client()
+                    await oauth2Client.revokeToken(secrets.refreshToken)
+                    logger.info(`Revoked Gmail OAuth token for ${integration.email}`, { integrationId })
+                } catch (error) {
+                    logger.warn("Failed to revoke Gmail OAuth token on disconnect", { error, integrationId })
+                }
+            } catch (error) {
+                logger.warn("Failed to load Gmail secrets during disconnect; skipping watch stop and token revoke", { error, integrationId })
+            }
+        }
+
+        await db().$transaction(async tx => {
+            await tx.gmail_integrations.delete({ where: { id: integrationId } })
+        })
+
+        await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GMAIL, recordId: integrationId } })
     }
 
     async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {

@@ -29,7 +29,7 @@ import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { SecretNotFoundError, SecretService } from "../../services/SecretService"
-import { attio as attioConfig, urls } from "../../settings"
+import { attio as attioConfig, settings, urls } from "../../settings"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
@@ -350,14 +350,12 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
         }
     }
 
-    deleteInstallation(integrationId: string): Promise<void> {
-        return db()
-            .$transaction(async tx => {
-                await tx.attio_integrations.delete({ where: { id: integrationId } })
-            })
-            .then(async () => {
-                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
-            })
+    async deleteInstallation(integrationId: string): Promise<void> {
+        // Attio doesn't expose a programmatic token revocation endpoint — users must remove the connection from their Attio workspace settings to fully revoke access.
+        await db().$transaction(async tx => {
+            await tx.attio_integrations.delete({ where: { id: integrationId } })
+        })
+        await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
     }
 
     async setupAgentTrigger(_integrationId: string, _automationInput: AgentTriggerWithConfigs): Promise<void> {

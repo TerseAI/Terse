@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 
 import { ExternalLink, Github } from "lucide-react"
 import { IntegrationType } from "terse-types/Integrations"
+import { githubIntegrationsKey } from "terse-types/InvalidationKeys"
 import { Repository } from "terse-types/types"
 
 import DropdownSelect from "@/components/ui/DropdownSelect"
@@ -85,7 +86,11 @@ function GithubIntegrationCard({ className, isActive = true, stateToken, compact
                         </>
                     )}
                 </CardContent>
-                <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
+                <IntegrationCardFooter
+                    connect={connect}
+                    isConnecting={isConnecting}
+                    disconnect={isConnected ? { integrationType: IntegrationType.GITHUB, revalidateKeys: [githubIntegrationsKey()] } : undefined}
+                />
             </Card>
             <RepositoriesDialog repositories={repositories} open={isDialogOpen} onOpenChange={setIsDialogOpen} />
         </>

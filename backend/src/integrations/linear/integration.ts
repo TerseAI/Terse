@@ -355,14 +355,30 @@ export class LinearIntegrationManager
         }
     }
 
-    deleteInstallation(integrationId: string): Promise<void> {
-        return db()
-            .$transaction(async tx => {
-                await tx.linear_integrations.delete({ where: { id: integrationId } })
-            })
-            .then(async () => {
-                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.LINEAR, recordId: integrationId } })
-            })
+    async deleteInstallation(integrationId: string): Promise<void> {
+        try {
+            const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.LINEAR, recordId: integrationId } })
+            if (secrets?.accessToken) {
+                const params = new URLSearchParams({ access_token: secrets.accessToken })
+                const response = await fetch("https://api.linear.app/oauth/revoke", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: params.toString()
+                })
+                if (!response.ok) {
+                    logger.warn("Linear token revocation returned non-OK", { status: response.status, integrationId })
+                } else {
+                    logger.info(`Revoked Linear OAuth token`, { integrationId })
+                }
+            }
+        } catch (error) {
+            logger.warn("Failed to revoke Linear OAuth token on disconnect", { error, integrationId })
+        }
+
+        await db().$transaction(async tx => {
+            await tx.linear_integrations.delete({ where: { id: integrationId } })
+        })
+        await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.LINEAR, recordId: integrationId } })
     }
 
     async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
