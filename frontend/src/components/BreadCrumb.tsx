@@ -2,9 +2,9 @@ import { Link, useLocation, useParams } from "react-router-dom"
 
 import { ChevronDownIcon } from "lucide-react"
 
-import { useAgent } from "@/hooks/api/useAgents"
-import { useAgents } from "@/hooks/api/useAgents"
-import { useProject } from "@/hooks/api/useProject"
+import { useAgent } from "@/modules/agents/api/useAgents"
+import { useAgents } from "@/modules/agents/api/useAgents"
+import { useProject } from "@/modules/projects/api/useProject"
 
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "./ui/breadcrumb"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu"

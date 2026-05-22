@@ -214,9 +214,8 @@ terse deploy             # ship it
 ### Fresh Project Agent-Friendly Workflow
 ```bash
 terse init               # or: terse init my-project
-terse integrate list --json
-terse integrate describe github --json
-terse generate
+terse generate           # if src/terse.generated.ts is not already present
+# read src/terse.generated.ts for connected integrations, triggers, and skills
 # edit src/terse.jobs.ts
 terse test list "my-job" --json
 terse test show <id> "my-job" --json
@@ -228,9 +227,8 @@ When the target directory is brand-new, missing `package.json`, `tsconfig.json`,
 
 ### Existing Project Agent-Friendly Workflow
 ```bash
-terse integrate list --json
-terse integrate describe github --json
-terse generate
+# read src/terse.generated.ts for connected integrations, triggers, and skills
+# run terse generate if the file is missing or stale
 # edit src/terse.jobs.ts
 terse test list "my-job" --json
 terse test show <id> "my-job" --json

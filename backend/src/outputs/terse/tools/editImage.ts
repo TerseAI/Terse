@@ -22,7 +22,7 @@ export const imageEditTool = defineSessionTool({
         // 1. Download source image
         const downloadResponse = await axios.get(image_url, { responseType: "arraybuffer" })
         const imageBuffer = Buffer.from(downloadResponse.data)
-        const mimeType = (downloadResponse.headers["content-type"] || "image/png").split(";")[0].trim()
+        const mimeType = (downloadResponse.headers["content-type"]?.toString() || "image/png").split(";")[0].trim()
         const base64Image = imageBuffer.toString("base64")
 
         logger.info("Sending image to Gemini for editing", { image_path: new URL(image_url).pathname, mimeType })
