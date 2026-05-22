@@ -522,27 +522,53 @@ export class SlackIntegrationManager
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
+        const existing = await db().user_slack_integrations.findUnique({
+            where: { id: integrationId },
+            include: { slack_integration: true }
+        })
+
+        if (!existing) {
+            return
+        }
+
+        const otherConnections = await db().user_slack_integrations.count({
+            where: { slack_team_id: existing.slack_team_id, NOT: { id: integrationId } }
+        })
+        const isLastConnection = otherConnections === 0
+        const slackIntegrationId = existing.slack_integration?.id ?? null
+
+        const tokensToRevoke: string[] = []
         try {
-            const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: integrationId } })
-            const tokensToRevoke = [secrets?.accessToken, secrets?.authedUserAccessToken].filter((t): t is string => !!t)
-            for (const token of tokensToRevoke) {
-                try {
-                    const response = await fetch("https://slack.com/api/auth.revoke", {
-                        method: "POST",
-                        headers: { Authorization: `Bearer ${token}` }
-                    })
-                    const body = (await response.json().catch(() => null)) as { ok?: boolean; revoked?: boolean; error?: string } | null
-                    if (body?.ok && body.revoked) {
-                        logger.info("Revoked Slack token", { integrationId })
-                    } else {
-                        logger.warn("Slack auth.revoke returned non-OK", { status: response.status, body, integrationId })
-                    }
-                } catch (error) {
-                    logger.warn("Failed to revoke Slack token on disconnect", { error, integrationId })
-                }
-            }
+            const userSecrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: integrationId } })
+            if (userSecrets?.authedUserAccessToken) tokensToRevoke.push(userSecrets.authedUserAccessToken)
         } catch (error) {
-            logger.warn("Failed to load Slack secrets during disconnect; skipping token revoke", { error, integrationId })
+            logger.warn("Failed to load Slack user secrets during disconnect; skipping user token revoke", { error, integrationId })
+        }
+
+        if (isLastConnection && slackIntegrationId) {
+            try {
+                const workspaceSecrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: slackIntegrationId } })
+                if (workspaceSecrets?.accessToken) tokensToRevoke.push(workspaceSecrets.accessToken)
+            } catch (error) {
+                logger.warn("Failed to load Slack workspace secrets during disconnect; skipping bot token revoke", { error, integrationId, slackIntegrationId })
+            }
+        }
+
+        for (const token of tokensToRevoke) {
+            try {
+                const response = await fetch("https://slack.com/api/auth.revoke", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                const body = (await response.json().catch(() => null)) as { ok?: boolean; revoked?: boolean; error?: string } | null
+                if (body?.ok && body.revoked) {
+                    logger.info("Revoked Slack token", { integrationId })
+                } else {
+                    logger.warn("Slack auth.revoke returned non-OK", { status: response.status, body, integrationId })
+                }
+            } catch (error) {
+                logger.warn("Failed to revoke Slack token on disconnect", { error, integrationId })
+            }
         }
 
         const userSlackIntegration = await db().$transaction(async tx => {
@@ -573,8 +599,8 @@ export class SlackIntegrationManager
         }
 
         const queries: GetSecretsArg[] = [{ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: integrationId } }]
-        if (userSlackIntegration.slack_integration?.id) {
-            queries.push({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: userSlackIntegration.slack_integration.id } })
+        if (isLastConnection && slackIntegrationId) {
+            queries.push({ type: "integration", secret: { integrationType: IntegrationType.SLACK, recordId: slackIntegrationId } })
         }
         await this.secretService.deleteSecrets(queries)
     }
