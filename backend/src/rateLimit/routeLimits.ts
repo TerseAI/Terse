@@ -8,6 +8,7 @@ export enum RateLimitKind {
     AuthEndpoint = "auth_endpoint",
     Identify = "identify",
     TokenMinting = "token_minting",
+    SessionToken = "session_token",
     WebhookByToken = "webhook_by_token",
     WebhookByIp = "webhook_by_ip",
     HeyReachByTrigger = "heyreach_by_trigger"
@@ -39,6 +40,7 @@ const PROFILES: Record<RateLimitKind, Omit<RateLimitOptions, "name">> = {
     [RateLimitKind.AuthEndpoint]: { points: 20, duration: 60, keyBy: byIp },
     [RateLimitKind.Identify]: { points: 10, duration: 60, keyBy: byIp },
     [RateLimitKind.TokenMinting]: { points: 5, duration: 3600, blockDuration: 3600, keyBy: byUserOrIp },
+    [RateLimitKind.SessionToken]: { points: 30, duration: 60, keyBy: byUserOrIp },
     [RateLimitKind.WebhookByToken]: { points: 100, duration: 60, keyBy: byParam("webhookToken") },
     [RateLimitKind.WebhookByIp]: { points: 300, duration: 60, keyBy: byIp },
     [RateLimitKind.HeyReachByTrigger]: { points: 60, duration: 60, keyBy: byParam("triggerId") }

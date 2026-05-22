@@ -15,6 +15,8 @@ import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChan
 import { z } from "zod"
 
 import logger, { runWithUserContext } from "../../common/logger"
+import { safeFetch } from "../../common/safeFetch"
+import { UrlValidationError, validateRemoteServerUrl } from "../../common/urlValidation"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../../integrations/slack/blockKitHelpers"
 import { getUserForOrg } from "../../integrations/workos/helpers"
@@ -1772,7 +1774,17 @@ async function hasFilesReadScope(botToken: string): Promise<boolean> {
 async function downloadSlackFile(args: { downloadUrl: string; botToken: string; file: SlackFile }): Promise<FileDownloadResult> {
     const { downloadUrl, botToken, file } = args
 
-    const response = await fetch(downloadUrl, {
+    let validated
+    try {
+        validated = await validateRemoteServerUrl(downloadUrl)
+    } catch (error) {
+        if (error instanceof UrlValidationError) {
+            throw new Error(`Refused to download Slack file from unsafe URL: ${error.message}`)
+        }
+        throw error
+    }
+
+    const response = await safeFetch(validated, {
         headers: { Authorization: `Bearer ${botToken}` }
     })
 

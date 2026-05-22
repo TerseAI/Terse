@@ -73,7 +73,7 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
             // Revoking "Chrome on Mac" should not log out "Safari on iPhone".
             const revokedSessionId = data.id
             if (!revokedSessionId) {
-                logger.warn("[WorkOS webhook] session.revoked: no session id in payload", { data: JSON.stringify(data) })
+                logger.warn("[WorkOS webhook] session.revoked: no session id in payload")
                 break
             }
             const sessionRoom = SocketRooms.session(revokedSessionId)

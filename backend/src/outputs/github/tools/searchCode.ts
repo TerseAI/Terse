@@ -140,7 +140,6 @@ Tips:
                 totalCount: results.totalCount,
                 resultsReturned: formattedResults.length
             })
-            logger.debug("[GitHub KB] searchGitHubCode - Full response", { response })
 
             // Build URL with repository filter
             const repoFilter = repositoryNames.map((repo: string) => `repo:${repo}`).join(" ")

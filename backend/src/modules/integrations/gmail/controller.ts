@@ -125,7 +125,10 @@ export async function handleGmailWebhook(req: Request, res: Response) {
         return
     }
 
-    logger.info("Gmail webhook received", { body: req.body })
+    logger.info("Gmail webhook received", {
+        messageId: req.body?.message?.messageId,
+        subscription: req.body?.subscription
+    })
 
     // Extract and validate webhook data
     const webhookData = extractWebhookData(req)

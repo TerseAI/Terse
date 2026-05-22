@@ -14,6 +14,14 @@ function requireEnv(name: string): string {
     return value
 }
 
+function requireSecretMinLength(name: string, minLen = 32): string {
+    const value = requireEnv(name)
+    if (value.length < minLen) {
+        throw new Error(`Environment variable ${name} is too short (got ${value.length} chars, need at least ${minLen}). Use a high-entropy value.`)
+    }
+    return value
+}
+
 function optionalEnv(name: string, defaultValue?: string): string | undefined {
     const value = process.env[name]
     if (value && value.trim() !== "") {
@@ -44,7 +52,7 @@ function optionalBoolEnv(name: string, defaultValue = false): boolean {
 export const settings = {
     // Core secrets and keys
     jwt: {
-        secret: requireEnv("JWT_SECRET")
+        secret: requireSecretMinLength("JWT_SECRET")
     },
 
     // Database connections
@@ -55,12 +63,11 @@ export const settings = {
     workos: {
         clientId: requireEnv("WORKOS_CLIENT_ID"),
         apiKey: requireEnv("WORKOS_API_KEY"),
-        cookiePassword: requireEnv("WORKOS_COOKIE_PASSWORD"),
+        cookiePassword: requireSecretMinLength("WORKOS_COOKIE_PASSWORD"),
         redirectUri: requireEnv("WORKOS_REDIRECT_URI"),
-        webhookSecret: optionalEnv("WORKOS_WEBHOOK_SECRET")
+        webhookSecret: requireSecretMinLength("WORKOS_WEBHOOK_SECRET")
     },
 
-    // API keys
     openai: {
         apiKey: requireEnv("OPENAI_API_KEY")
     },
@@ -131,7 +138,7 @@ export const settings = {
         clientId: requireEnv("LINEAR_CLIENT_ID"),
         clientSecret: requireEnv("LINEAR_CLIENT_SECRET_ID"),
         oauthCallbackUrl: requireEnv("LINEAR_OAUTH_CALLBACK_URL"),
-        signingSecret: requireEnv("LINEAR_WEBHOOK_SIGNING_SECRET")
+        signingSecret: requireSecretMinLength("LINEAR_WEBHOOK_SIGNING_SECRET")
     },
 
     // Attio OAuth
@@ -158,7 +165,7 @@ export const settings = {
 
     // Cloud Scheduler (for cron jobs)
     cloudScheduler: {
-        secret: requireEnv("CLOUD_SCHEDULER_SECRET")
+        secret: requireSecretMinLength("CLOUD_SCHEDULER_SECRET")
     },
 
     // Posthog Logs
@@ -197,7 +204,7 @@ export const settings = {
     // Parallel (Web Event monitors + webhook verification)
     parallel: {
         apiKey: requireEnv("PARALLEL_API_KEY"),
-        webhookSecret: requireEnv("PARALLEL_WEBHOOK_SECRET")
+        webhookSecret: requireSecretMinLength("PARALLEL_WEBHOOK_SECRET")
     },
 
     aisdk: {
@@ -211,11 +218,12 @@ export const settings = {
     }
 } as const
 
+if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtSecret)) {
+    throw new Error("BILLING_ENABLED is true but BILLING_SERVICE_URL or BILLING_JWT_SECRET is missing. Set both, or unset BILLING_ENABLED.")
+}
+
 // Export individual settings for convenience
 export const { jwt, gemini, urls, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
-
-// Type exports
-type Settings = typeof settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively

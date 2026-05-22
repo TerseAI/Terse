@@ -652,7 +652,7 @@ export async function setupSlackBolt() {
         try {
             const teamId = body.team_id
             if (!teamId) {
-                logger.error("app_uninstalled event missing team_id", { body })
+                logger.error("app_uninstalled event missing team_id", { eventType: body?.event?.type })
                 return
             }
 
@@ -667,7 +667,7 @@ export async function setupSlackBolt() {
             await slackIntegrationManager.processWebhookEvent(slackMessageEvent)
             logger.info("Successfully processed app_uninstalled event", { teamId })
         } catch (error) {
-            logger.error("Error processing app_uninstalled event:", { error, body })
+            logger.error("Error processing app_uninstalled event:", { error, teamId: body?.team_id })
         }
     })
 
@@ -676,7 +676,7 @@ export async function setupSlackBolt() {
         try {
             const teamId = body.team_id
             if (!teamId) {
-                logger.error("tokens_revoked event missing team_id", { body })
+                logger.error("tokens_revoked event missing team_id", { eventType: body?.event?.type })
                 return
             }
 
@@ -702,7 +702,7 @@ export async function setupSlackBolt() {
                 }
             })
         } catch (error) {
-            logger.error("Error processing tokens_revoked event:", { error, body })
+            logger.error("Error processing tokens_revoked event:", { error, teamId: body?.team_id })
         }
     })
 

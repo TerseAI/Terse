@@ -268,13 +268,13 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
 
         const usage = normalizeCompletedEventUsage(completedEvent.response?.usage)
         if (!usage) {
-            logger.warn("BaseAgentRunner: No usage found for completed event", { event })
+            logger.warn("BaseAgentRunner: No usage found for completed event")
             return
         }
 
         const responseId = completedEvent.response?.id
         if (!responseId) {
-            logger.warn("BaseAgentRunner: No response ID found for completed event", { event })
+            logger.warn("BaseAgentRunner: No response ID found for completed event")
             return
         }
 

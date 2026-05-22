@@ -117,7 +117,6 @@ The tool returns commit details including message, author, date, and SHA.`,
                 total: formattedResults.length,
                 authorCount: Object.keys(authorCounts).length
             })
-            logger.debug("[GitHub KB] listGitHubCommits - Full response", { response })
 
             // Return action as part of the result
             const action = {
