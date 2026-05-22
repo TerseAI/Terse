@@ -1,5 +1,6 @@
-import { AlertTriangle } from "lucide-react"
 import { useState } from "react"
+
+import { AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { type Key, useSWRConfig } from "swr"
 import { IntegrationType } from "terse-types/Integrations"
@@ -68,8 +69,8 @@ export function DisconnectButton({ integrationType, summary, revalidateKeys, siz
                     <DialogHeader>
                         <DialogTitle>Disconnect {providerLabel}?</DialogTitle>
                         <DialogDescription>
-                            Terse will lose access to {summary ? <span className="text-foreground font-medium">{summary}</span> : `your ${providerLabel} account`}, and any stored credentials or
-                            tokens will be cleared.
+                            Terse will lose access to {summary ? <span className="text-foreground font-medium">{summary}</span> : `your ${providerLabel} account`}, and any stored credentials or tokens
+                            will be cleared.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="border-warning/40 bg-warning/5 text-foreground flex items-start gap-2.5 rounded-md border p-3 text-sm">

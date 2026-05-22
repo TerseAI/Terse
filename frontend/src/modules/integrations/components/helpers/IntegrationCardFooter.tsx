@@ -27,7 +27,9 @@ export function IntegrationCardFooter({ connect, isConnecting = false, buttonTex
             <Button variant="outline" size={compact ? "sm" : "default"} disabled={isConnecting || !connect} onClick={connect || undefined}>
                 {compact ? "Connect" : buttonText}
             </Button>
-            {disconnect ? <DisconnectButton integrationType={disconnect.integrationType} summary={disconnect.summary} revalidateKeys={disconnect.revalidateKeys} size={compact ? "sm" : "default"} /> : null}
+            {disconnect ? (
+                <DisconnectButton integrationType={disconnect.integrationType} summary={disconnect.summary} revalidateKeys={disconnect.revalidateKeys} size={compact ? "sm" : "default"} />
+            ) : null}
         </CardFooter>
     )
 }
