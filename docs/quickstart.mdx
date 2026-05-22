@@ -28,7 +28,7 @@ terse init my-project
 
 1. Scaffolds your TypeScript project files (`src/index.ts`, config, etc.)
 2. Installs dependencies
-3. Opens the browser to authenticate via `terse login`
+3. Opens the browser to authenticate via `terse auth login`
 4. Checks your connected integrations and prompts you to add more if needed
 5. Runs `terse generate` to produce a typed SDK from your workspace
 
@@ -47,7 +47,7 @@ my-project/
 ```
 </CodeGroup>
 
-`terse login` during init stores CLI credentials in your **user config**, not in the project folder. Copy **`.env.example`** to **`.env`** when you want `TERSE_API_KEY` (or other secrets) available to your app or tooling as environment variables.
+`terse auth login` during init stores CLI credentials in your **user config**, not in the project folder. Copy **`.env.example`** to **`.env`** when you want `TERSE_API_KEY` (or other secrets) available to your app or tooling as environment variables.
 
   </Step>
   <Step title="Write your workflow">

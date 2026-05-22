@@ -32,7 +32,7 @@ If you omit `project-name`, the CLI scaffolds into the current directory. If you
 
 1. Creates the target directory and scaffolds `package.json`, `tsconfig.json`, `src/terse.jobs.ts`, `.env.example`, and `.gitignore`
 2. Detects `pnpm` or `npm` and installs dependencies
-3. Runs `terse login`
+3. Runs `terse auth login`
 4. Creates a Terse project and writes `terse.config.json`
 5. Reviews your current integrations
 6. Runs `terse generate`
@@ -336,7 +336,7 @@ What it does:
 
 Requirements:
 
-- You’re authenticated (`terse login`) or `TERSE_API_KEY` is set
+- You’re authenticated (`terse auth login`) or `TERSE_API_KEY` is set
 - The workflow is deployed in this project (`terse deploy`)
 - `terse.config.json` exists with a valid `projectId`
 
@@ -349,10 +349,12 @@ Options:
 
 Common errors:
 
-- 401/403 Not authenticated: run `terse login`
+- 401/403 Not authenticated: run `terse auth login`
 - 404 Workflow not deployed: run `terse deploy` first
 
 Press Ctrl-C to stop listening.
+
+The CLI uses **`openListenStream`** from **`terse-sdk`** against **`/sdk/listen`**. See the [TypeScript SDK reference](/reference/typescript-sdk#live-event-streams) if you wire your own listener.
 
 ### `terse replay [run-id]`
 
@@ -403,16 +405,40 @@ terse dashboard
 
 If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
 
- 
+## Improvements
+
+Weekly workflow reviews produce patch suggestions in the Terse app (**Improvements** tab on each workflow). Apply them from your repo with:
+
+### `terse list improvements`
+
+Lists pending improvement cards across all workflows in your organization.
+
+```bash
+terse list improvements
+```
+
+### `terse apply [improvement-id]`
+
+Downloads the suggested patch, runs **`git apply`** locally (with 3-way and **`--reject`** fallbacks if your tree has drifted), and marks the improvement **Applied** in Terse.
+
+```bash
+terse apply
+terse apply imp_abc123
+terse apply imp_abc123 --non-interactive
+```
+
+Omit **`improvement-id`** to pick from an interactive list. In **`--non-interactive`** mode, pass the id explicitly (use **`terse list improvements`** to find ids).
+
+See [Self-improvement](/core-concepts/self-improvement) for how reviews are generated and when workflows are skipped.
 
 ## Authentication
 
-### `terse login`
+### `terse auth login`
 
 Authenticates with Terse using a device authorization flow and saves your API key to a user-level config file.
 
 ```bash
-terse login
+terse auth login
 ```
 
 **How it works:**
@@ -425,12 +451,42 @@ terse login
 
 If a valid API key is already saved, the CLI asks whether you want to log in again with a different account.
 
-### `terse logout`
+You can also create **user** API tokens in the app under **Settings > API Tokens** (when your workspace has the SDK interface enabled) and set **`TERSE_API_KEY`** yourself. See [Authentication and `TERSE_API_KEY`](/reference/typescript-sdk#authentication-and-terse_api_key).
+
+### `terse auth logout`
 
 Removes the saved API key from your user config.
 
 ```bash
-terse logout
+terse auth logout
+```
+
+### `terse auth status`
+
+Prints the signed-in user and active organization.
+
+```bash
+terse auth status
+```
+
+### `terse auth org`
+
+#### `terse auth org list`
+
+Lists organizations you belong to.
+
+```bash
+terse auth org list
+terse auth org list --json
+```
+
+#### `terse auth org switch [org-id]`
+
+Switches the active organization for CLI commands. Omit **`org-id`** to pick interactively.
+
+```bash
+terse auth org switch
+terse auth org switch org_abc123
 ```
 
 ## Help
@@ -450,10 +506,10 @@ If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs.
 Commands that call the Terse API resolve credentials in this order:
 
 1. `TERSE_API_KEY` in the current process environment
-2. The API key saved by `terse login`
+2. The API key saved by `terse auth login`
 
-Those values are **user** API tokens (the same kind you create in the Terse app). Hosted executions use separate **project-scoped** tokens that Terse injects for you; you do not paste those into `.env`.
+Those values are **user** API tokens (the same kind you create under **Settings > API Tokens** in the app). Hosted executions use separate **project-scoped** tokens that Terse injects for you; you do not paste those into `.env`.
 
-After `terse init` or `terse login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
+After `terse init` or `terse auth login`, you usually do not need a project `.env` file for the CLI because authentication is stored per user on your machine.
 
 Your runtime still needs `TERSE_API_KEY` in its environment. Set that variable anywhere your Node process runs, such as a local `.env` file, a container secret, or your hosting provider's secret store.

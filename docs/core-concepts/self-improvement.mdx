@@ -6,7 +6,7 @@ icon: "sparkles"
 
 Once a week, a cron sweeps each workflow with **improvements enabled**, reads the last seven days of runs alongside your deployed source, and produces patches — real `git diff`s against the prompt, trigger, skills, or code in your workflow file.
 
-Patches show up in the **Improvements** tab and in a weekly summary email. Apply them locally with the CLI:
+Patches show up in the **Improvements** tab and in a weekly summary email. Apply them locally with the CLI ([`terse list improvements`](/reference/cli#terse-list-improvements), [`terse apply`](/reference/cli#terse-apply-improvement-id)):
 
 ```bash
 terse list improvements
