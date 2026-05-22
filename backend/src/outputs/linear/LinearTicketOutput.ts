@@ -2,7 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 import { LinearOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/LinearIntegration"
+import { validateLinearProjectExists, validateLinearTeamExists } from "../../integrations/linear/integration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 import { unrestricted } from "../abstract/acl"

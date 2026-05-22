@@ -2,8 +2,8 @@ import { type Organization, type User, WorkOS } from "@workos-inc/node"
 import { IntegrationType } from "terse-types"
 import { User as TerseUser } from "terse-types"
 
-import logger from "../../logger"
-import { db } from "../../prismaClient"
+import logger from "../../common/logger"
+import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
 
 /**

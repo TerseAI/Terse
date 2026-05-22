@@ -2,10 +2,10 @@ import { Client } from "@notionhq/client"
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints"
 import { IntegrationType, NotionConfig } from "terse-types"
 
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
+import { verifyNotionPageInScope } from "../../../integrations/notion/acl"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { verifyNotionPageInScope } from "../../../utility/notionAcl"
 import { ToolACLValidator } from "../../abstract/acl"
 
 // Helper function to extract readable values from Notion page property objects

@@ -4,7 +4,7 @@
  */
 import { gunzipSync, strFromU8, strToU8 } from "fflate"
 
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 
 // rrweb event types (from @rrweb/types)
 enum EventType {

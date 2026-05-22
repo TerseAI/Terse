@@ -3,12 +3,12 @@ import { KnownBlock } from "@slack/web-api"
 import { IntegrationType, SlackOutputConfig } from "terse-types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse-types"
 
-import { initializeSlackWebClient } from "../../../integrations/SlackClient"
-import logger from "../../../logger"
-import { db } from "../../../prismaClient"
+import logger from "../../../common/logger"
+import { isValidEpochTimestamp } from "../../../common/strings"
+import { initializeSlackWebClient } from "../../../integrations/slack/client"
+import { resolveSlackChannelIdForDestination, resolveSlackDmCounterpartUser } from "../../../integrations/slack/helpers"
+import { db } from "../../../loaders/prisma"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { resolveSlackChannelIdForDestination, resolveSlackDmCounterpartUser } from "../../../utility/slack"
-import { isValidEpochTimestamp } from "../../../utility/strings"
 import { ToolACLValidationResult, ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
 
 /**

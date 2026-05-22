@@ -2,7 +2,7 @@ import { Server } from "socket.io"
 import { billingCatalogKey, billingContextKey, billingStatusKey, billingUsageBucketsKey } from "terse-types/InvalidationKeys"
 import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
-import logger from "../logger"
+import logger from "../common/logger"
 
 type SocketGetter = () => Server | null
 let getSocket: SocketGetter | null = null

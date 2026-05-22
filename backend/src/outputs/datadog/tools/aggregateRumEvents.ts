@@ -3,12 +3,12 @@ import { RunContext } from "@openai/agents"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
 
-import { SessionWithTracking } from "../../../agent/AgentRunner/BaseAgentRunner"
+import logger from "../../../common/logger"
 import { Session } from "../../../express"
-import { getDatadogCredentialsForOrganization } from "../../../integrations/DatadogIntegration"
-import logger from "../../../logger"
+import { getDatadogRumDeepLink, getDatadogSite } from "../../../integrations/datadog/helpers"
+import { getDatadogCredentialsForOrganization } from "../../../integrations/datadog/integration"
+import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { getDatadogRumDeepLink, getDatadogSite } from "../../../utility/datadog"
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.

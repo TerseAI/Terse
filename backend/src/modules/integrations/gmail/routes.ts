@@ -1,0 +1,16 @@
+import { Router } from "express"
+
+import { AuthKind, requireAuth } from "../../../modules/auth/helpers/authMiddleware"
+import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
+
+import { deleteGmailIntegration, getGmailIntegrations, gmailCallback } from "./controller"
+
+const router = Router()
+const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])
+const limit = rateLimit(RateLimitKind.Default)
+
+router.get("/integrations", limit, auth, getGmailIntegrations)
+router.get("/callback", rateLimit(RateLimitKind.AuthEndpoint), gmailCallback)
+router.delete("/delete-integration", limit, auth, deleteGmailIntegration)
+
+export default router

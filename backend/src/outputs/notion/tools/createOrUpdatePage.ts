@@ -1,10 +1,10 @@
 import { Client } from "@notionhq/client"
 import { IntegrationType, NotionConfig } from "terse-types"
 
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
+import { verifyNotionPageInScope } from "../../../integrations/notion/acl"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { verifyNotionPageInScope } from "../../../utility/notionAcl"
 import { ToolACLValidator, denyToolACL } from "../../abstract/acl"
 
 const VALID_PAGE_ID_MIN_LENGTH = 30

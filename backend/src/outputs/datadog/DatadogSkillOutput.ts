@@ -2,7 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 import { DatadogConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { validateDatadogIndexesExist } from "../../integrations/DatadogIntegration"
+import { validateDatadogIndexesExist } from "../../integrations/datadog/integration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 import { unrestricted } from "../abstract/acl"

@@ -2,7 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 import { SlackOutputConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/SlackIntegration"
+import { getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../../integrations/slack/integration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 import { unrestricted } from "../abstract/acl"

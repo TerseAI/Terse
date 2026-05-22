@@ -30,7 +30,7 @@ import {
 } from "terse-types"
 import type { User } from "terse-types/types"
 
-import { settings } from "../config/settings"
+import { settings } from "../settings"
 
 import { signTerseBillingJwt } from "./billingJwt"
 

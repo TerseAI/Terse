@@ -1,9 +1,9 @@
 import type { ConfigData, SdkSampleEventRef as SampleEventRef, SdkSampleEventsResponse } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import logger from "../../logger"
-import { validateUserOwnsIntegration } from "../../routes/agents"
-import { fetchWebhookSampleEvents } from "../../utility/webhookSampleEvents"
+import logger from "../../common/logger"
+import { fetchWebhookSampleEvents } from "../../common/webhookSampleEvents"
+import { validateUserOwnsIntegration } from "../../modules/agents/controller"
 
 import { INTEGRATION_REGISTRY } from "./IntegrationRegistry"
 

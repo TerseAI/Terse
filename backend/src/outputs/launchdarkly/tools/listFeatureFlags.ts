@@ -1,6 +1,6 @@
 import { IntegrationType, LaunchDarklyConfig } from "terse-types"
 
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId, requireAllInAllowedList, requireInAllowedList } from "../../abstract/acl"
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"

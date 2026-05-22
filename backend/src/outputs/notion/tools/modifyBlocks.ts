@@ -2,12 +2,12 @@ import { Client } from "@notionhq/client"
 import { ConfigType } from "terse-types"
 import { IntegrationType, NotionConfig } from "terse-types"
 
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
+import { verifyNotionPageInScope } from "../../../integrations/notion/acl"
+import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../integrations/notion/helpers"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { describeBlocks, extractPageTitle, getBlockTypeName } from "../../../utility/notion"
-import { verifyNotionPageInScope } from "../../../utility/notionAcl"
-import { extractErrorMessage } from "../../../utility/strings"
 import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionModifyBlocksTool = defineSessionTool({

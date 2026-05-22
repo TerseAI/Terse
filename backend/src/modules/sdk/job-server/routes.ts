@@ -1,0 +1,12 @@
+import { Router } from "express"
+
+import { AuthKind, requireAuth } from "../../../modules/auth/helpers/authMiddleware"
+import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
+
+import { handleVerifySdkJobServer } from "./controller"
+
+// Mounted under /sdk — relative path is /agents/:agentId/verify-job-server
+const router = Router()
+router.post("/agents/:agentId/verify-job-server", rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), handleVerifySdkJobServer)
+
+export default router
