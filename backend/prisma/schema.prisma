@@ -956,21 +956,6 @@ enum ChatSessionType {
   DIRECT_CHAT
 }
 
-// Raw AgentStreamEvent stored as JSON for general chat sessions
-model chat_raw_events {
-  id              String   @id @default(cuid())
-  chat_session_id String
-  event_key       String
-  raw_event_json  Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
-  sequence_order  Int // Order of items within a session to preserve exact sequence
-  created_at      DateTime @default(now())
-
-  @@unique([chat_session_id, event_key])
-  @@index([chat_session_id])
-  @@index([chat_session_id, sequence_order])
-  @@index([created_at])
-}
-
 // MARK: - Notifications
 
 model automation_notification_settings {
