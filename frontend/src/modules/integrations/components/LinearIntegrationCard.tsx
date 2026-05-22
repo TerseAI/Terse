@@ -1,5 +1,6 @@
 import { Target } from "lucide-react"
 import { IntegrationType } from "terse-types/Integrations"
+import { linearIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,7 +30,11 @@ function LinearIntegrationCard({ className, isActive = true, stateToken, compact
             <CardContent>
                 <LinearCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
+            <IntegrationCardFooter
+                connect={connect}
+                isConnecting={isConnecting}
+                disconnect={isConnected ? { integrationType: IntegrationType.LINEAR, summary, revalidateKeys: [linearIntegrationsKey()] } : undefined}
+            />
         </Card>
     )
 }

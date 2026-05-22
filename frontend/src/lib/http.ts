@@ -136,9 +136,10 @@ interface BackendService {
     getActiveIntegrations(): Promise<IntegrationType[]>
 
     /**
-     * Disconnects an integration. The backend revokes any OAuth tokens, tears
-     * down provider-side state, and marks dependent agent inputs/outputs as
-     * disconnected so the agent runner blocks them until the user reconfigures.
+     * Disconnects an integration. The backend revokes any OAuth tokens at the
+     * provider, stops provider-side state (webhooks, watches), and clears the
+     * stored credentials. Agents that depended on the integration may stop
+     * working until reconfigured.
      */
     disconnectIntegration(integrationType: IntegrationType): Promise<{ success: boolean }>
 

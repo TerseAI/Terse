@@ -11,7 +11,6 @@ import { isCorsOriginAllowed } from "../common/corsOrigins"
 import logger from "../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
 import { randomString } from "../common/strings"
-import { describeDroppedSkills, filterDisconnectedSkills } from "../integrations/abstract/disconnect"
 import { getUserForOrg } from "../integrations/workos/helpers"
 import { verifyWorkosJwt } from "../integrations/workos/jwt"
 import { db } from "../loaders/prisma"
@@ -286,18 +285,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
             const billing = billingServiceProxyForOrganization(user.organizationId, user.workosId)
 
             try {
-                const persistedSkills = readSdkSkillsFromJson(runRecord.sdk_skills)
-                const { skills, dropped } = await filterDisconnectedSkills(persistedSkills, organizationIdForRun)
-                if (dropped.length > 0) {
-                    logger.info("[agent:chat:message] Dropping disconnected skills from chat run", {
-                        runId,
-                        agentId: agent.id,
-                        droppedCount: dropped.length,
-                        droppedConfigTypes: dropped.map(s => s.configType)
-                    })
-                }
-                const droppedNote = describeDroppedSkills(dropped)
-                const effectiveUserMessage = droppedNote ? `${droppedNote}\n\n${userMessage}` : userMessage
+                const skills = readSdkSkillsFromJson(runRecord.sdk_skills)
 
                 const sdkRunner = new SdkAgentRunner({
                     runId,
@@ -313,7 +301,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                     billing
                 })
 
-                const sdkResult = await sdkRunner.userMessageRun(effectiveUserMessage, {
+                const sdkResult = await sdkRunner.userMessageRun(userMessage, {
                     signal: cancellationController.signal,
                     clientTurnId: message.client_turn_id
                 })

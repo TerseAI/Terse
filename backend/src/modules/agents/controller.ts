@@ -629,25 +629,20 @@ async function transformAgentToFrontendFormat(agent: AgentWithRelations & Partia
         agent.inputs.map(async trigger => ({
             id: trigger.id,
             config: await rehydrateTriggerConfig(trigger),
-            disconnectedAt: trigger.disconnected_at?.toISOString() ?? null,
             ...buildTriggerMetadata(trigger)
         }))
     )
-    const outputs = (agent.outputs ?? []).map(output => ({
-        id: output.id,
-        config: convertPrismaOutputConfigToConfigData(output),
-        disconnectedAt: output.disconnected_at?.toISOString() ?? null
-    }))
-    const needsReconfiguration = triggers.some(t => t.disconnectedAt !== null) || outputs.some(o => o.disconnectedAt !== null)
     return {
         id: agent.id,
         name: agent.name,
         isActive: agent.is_active,
-        needsReconfiguration,
         requireApproval: agent.require_approval ?? false,
         prompt: agent.prompt ? { text: agent.prompt.content } : { text: "" },
         triggers,
-        outputs,
+        outputs: (agent.outputs ?? []).map(output => ({
+            id: output.id,
+            config: convertPrismaOutputConfigToConfigData(output)
+        })),
         notificationSettings: agent.notification_settings
             ? {
                   enabled: agent.notification_settings.enabled,

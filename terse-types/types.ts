@@ -257,15 +257,13 @@ export type TriggerMetadata = z.infer<typeof triggerMetadataSchema>
 export const agentTriggerSchema = z.object({
     id: z.string(),
     config: configInstanceDataSchema,
-    metadata: triggerMetadataSchema.nullable().optional(),
-    disconnectedAt: z.string().nullable().optional()
+    metadata: triggerMetadataSchema.nullable().optional()
 })
 export type AgentTrigger = z.infer<typeof agentTriggerSchema>
 
 export const agentOutputSchema = z.object({
     id: z.string(),
-    config: configInstanceDataSchema,
-    disconnectedAt: z.string().nullable().optional()
+    config: configInstanceDataSchema
 })
 export type AgentOutput = z.infer<typeof agentOutputSchema>
 
@@ -378,7 +376,6 @@ export const agentSchema = z.object({
     id: z.string(),
     name: z.string(),
     isActive: z.boolean(),
-    needsReconfiguration: z.boolean(),
     requireApproval: z.boolean(),
     prompt: agentPromptSchema,
     triggers: z.array(agentTriggerSchema),

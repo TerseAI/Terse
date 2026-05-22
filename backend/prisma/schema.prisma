@@ -419,15 +419,12 @@ enum DeployStatus {
 
 // Polymorphic inputs - can reference any integration type
 model automation_inputs {
-  id              String          @id @default(cuid())
-  automation_id   String
-  config_type     InputConfigType
-  integration_id  String
-  // Set when the underlying integration is disconnected. While non-null, the
-  // automation is blocked from running until the user reconfigures this input.
-  disconnected_at DateTime?
-  created_at      DateTime        @default(now())
-  updated_at      DateTime        @updatedAt
+  id             String          @id @default(cuid())
+  automation_id  String
+  config_type    InputConfigType
+  integration_id String
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
@@ -451,15 +448,12 @@ model automation_inputs {
 
 // Multiple outputs per automation
 model automation_outputs {
-  id              String           @id @default(cuid())
-  automation_id   String
-  config_type     OutputConfigType
-  integration_id  String
-  // Set when the underlying integration is disconnected. While non-null, the
-  // automation is blocked from running until the user reconfigures this output.
-  disconnected_at DateTime?
-  created_at      DateTime         @default(now())
-  updated_at      DateTime         @updatedAt
+  id             String           @id @default(cuid())
+  automation_id  String
+  config_type    OutputConfigType
+  integration_id String
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
@@ -819,7 +813,6 @@ enum RunHistoryStatus {
   skipped
   in_progress
   awaiting_approval
-  blocked
 }
 
 enum RunHistoryDecisionAction {

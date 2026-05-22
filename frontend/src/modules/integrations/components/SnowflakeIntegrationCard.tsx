@@ -2,6 +2,7 @@ import { useState } from "react"
 
 import { Database } from "lucide-react"
 import { INTEGRATION_METADATA, IntegrationType, SnowflakeIntegration } from "terse-types/Integrations"
+import { snowflakeIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { useSnowflakeIntegrations } from "@/modules/integrations/api/useSnowflakeIntegrations"
 
 import CompactIntegrationRow from "./CompactIntegrationRow"
+import { DisconnectButton } from "./helpers/DisconnectButton"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"
 
@@ -160,10 +162,11 @@ function SnowflakeIntegrationCard({ className, isActive = true, stateToken, comp
                 <CardContent>
                     <SnowflakeCardContent integrations={integrations} isLoading={isLoading} />
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex items-center justify-between gap-2">
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.SNOWFLAKE} summary={summary} revalidateKeys={[snowflakeIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

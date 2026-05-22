@@ -212,8 +212,6 @@ export const convertPrismaRunHistoryStatusToShared = (status: PrismaRunHistorySt
             return SharedRunHistoryStatus.IN_PROGRESS
         case PrismaRunHistoryStatus.awaiting_approval:
             return SharedRunHistoryStatus.AWAITING_APPROVAL
-        case PrismaRunHistoryStatus.blocked:
-            return SharedRunHistoryStatus.BLOCKED
         default:
             throw status satisfies never
     }

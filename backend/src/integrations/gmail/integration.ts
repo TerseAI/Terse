@@ -1,5 +1,5 @@
 import { gmail as createGmailClient, gmail_v1 } from "@googleapis/gmail"
-import { InputConfigType, OutputConfigType } from "@prisma/client"
+import { InputConfigType } from "@prisma/client"
 import { Request, Response } from "express"
 import { OAuth2Client } from "google-auth-library"
 import { ConfigData, ConfigType, GmailEventType, GmailMessagePayload, GmailParsedAttachment, GmailTrigger } from "terse-types"
@@ -24,7 +24,6 @@ import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { Integration, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
-import { markDependentAutomationsDisconnected } from "../abstract/disconnect"
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose"]
@@ -407,10 +406,9 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
         const integration = await db().gmail_integrations.findUnique({ where: { id: integrationId } })
 
         // Best-effort: stop the Gmail watch and revoke the OAuth token at Google
-        // BEFORE we delete our local copy of the credentials. Failures here are
-        // logged but don't block local cleanup — the user's intent is to
-        // disconnect, and stale Google-side state still expires (watch) or can
-        // be revoked by the user manually (token).
+        // BEFORE we delete our local copy of the credentials. Each step logs and
+        // continues on failure — the user's intent is to disconnect, and stale
+        // Google-side state still expires (watch) or can be revoked manually.
         if (integration) {
             try {
                 const secrets = await this.secretService.getSecrets({
@@ -432,8 +430,8 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
                     logger.warn("Failed to stop Gmail watch on disconnect", { error, integrationId })
                 }
 
-                // Revoking the refresh token also invalidates every access token
-                // issued from it, so one call covers both.
+                // Revoking the refresh token invalidates every access token issued
+                // from it, so one call covers both.
                 try {
                     const oauth2Client = getOAuth2Client()
                     await oauth2Client.revokeToken(secrets.refreshToken)
@@ -447,21 +445,6 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
         }
 
         await db().$transaction(async tx => {
-            // Mark dependent automation inputs/outputs as disconnected rather
-            // than deleting them — the agent runner short-circuits on this flag
-            // and writes a BLOCKED run-history record until the user reconfigures.
-            // Skip if we couldn't load the integration row above (orphaned secret cleanup).
-            if (integration) {
-                await markDependentAutomationsDisconnected(
-                    {
-                        organizationId: integration.organization_id,
-                        integrationId,
-                        inputConfigTypes: [InputConfigType.GMAIL],
-                        outputConfigTypes: [OutputConfigType.GMAIL, OutputConfigType.GMAIL_DRAFT]
-                    },
-                    tx
-                )
-            }
             await tx.gmail_integrations.delete({ where: { id: integrationId } })
         })
 

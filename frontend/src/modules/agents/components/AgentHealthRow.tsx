@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 
-import { AlertTriangle, PauseCircle } from "lucide-react"
+import { PauseCircle } from "lucide-react"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { type RunHistoryRecordWithAgent, RunHistoryStatus } from "terse-types/RunHistoryTypes"
@@ -24,7 +24,7 @@ export const ALL_RUN_STATUSES = new Set([
     RunHistoryStatus.AWAITING_APPROVAL
 ])
 
-export type HealthStatus = "failing" | "healthy" | "no_runs" | "paused" | "needs_reconfiguration"
+export type HealthStatus = "failing" | "healthy" | "no_runs" | "paused"
 
 export type AgentHealth = {
     status: HealthStatus
@@ -36,11 +36,10 @@ export type AgentHealth = {
 }
 
 export const HEALTH_RANK: Record<HealthStatus, number> = {
-    needs_reconfiguration: 0,
-    failing: 1,
-    paused: 2,
-    no_runs: 3,
-    healthy: 4
+    failing: 0,
+    paused: 1,
+    no_runs: 2,
+    healthy: 3
 }
 
 export function AgentRow({ agent, health }: { agent: Agent; health: AgentHealth }) {
@@ -57,12 +56,6 @@ export function AgentRow({ agent, health }: { agent: Agent; health: AgentHealth 
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-foreground truncate text-sm font-medium">{agent.name}</span>
                             {health.status === "failing" && <span className="text-danger text-xs font-medium">Failing</span>}
-                            {health.status === "needs_reconfiguration" && (
-                                <span className="text-warning flex items-center gap-1 text-xs font-medium">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    Needs reconfiguration
-                                </span>
-                            )}
                             {health.status === "paused" && (
                                 <span className="text-muted-foreground flex items-center gap-1 text-xs">
                                     <PauseCircle className="h-3 w-3" />
@@ -156,17 +149,6 @@ export function groupRunsByAgent(runs: RunHistoryRecordWithAgent[]) {
 export function computeHealth(agent: Agent, runs: RunHistoryRecordWithAgent[]): AgentHealth {
     const recent = runs.slice(0, HEALTH_WINDOW)
 
-    if (agent.needsReconfiguration) {
-        return {
-            status: "needs_reconfiguration",
-            successRate: null,
-            successCount: 0,
-            failureCount: 0,
-            lastRun: recent[0] ?? null,
-            strip: recent.slice(0, STRIP_LENGTH)
-        }
-    }
-
     if (!agent.isActive) {
         return {
             status: "paused",
@@ -219,8 +201,6 @@ function healthDotColor(status: HealthStatus) {
     switch (status) {
         case "failing":
             return "bg-danger"
-        case "needs_reconfiguration":
-            return "bg-warning"
         case "healthy":
             return "bg-success"
         case "paused":

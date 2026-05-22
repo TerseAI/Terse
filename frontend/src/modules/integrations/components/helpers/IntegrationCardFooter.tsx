@@ -1,28 +1,33 @@
+import { type Key } from "swr"
+import { IntegrationType } from "terse-types/Integrations"
+
 import { Button } from "@/components/ui/button"
 import { CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+
+import { DisconnectButton } from "./DisconnectButton"
+
+interface DisconnectConfig {
+    integrationType: IntegrationType
+    summary?: string
+    revalidateKeys?: Key[]
+}
 
 interface IntegrationCardFooterProps {
     connect?: () => void
     isConnecting?: boolean
     buttonText?: string
     compact?: boolean
-    onDisconnect?: () => void
-    isDisconnecting?: boolean
-    showDisconnect?: boolean
+    disconnect?: DisconnectConfig
 }
 
-export function IntegrationCardFooter({ connect, isConnecting = false, buttonText = "Manage Connection", compact = false, onDisconnect, isDisconnecting = false, showDisconnect = false }: IntegrationCardFooterProps) {
+export function IntegrationCardFooter({ connect, isConnecting = false, buttonText = "Manage Connection", compact = false, disconnect }: IntegrationCardFooterProps) {
     return (
         <CardFooter className={cn("flex items-center justify-between gap-2", compact && "py-3 px-4")}>
             <Button variant="outline" size={compact ? "sm" : "default"} disabled={isConnecting || !connect} onClick={connect || undefined}>
                 {compact ? "Connect" : buttonText}
             </Button>
-            {showDisconnect && onDisconnect && (
-                <Button variant="ghost" size={compact ? "sm" : "default"} disabled={isDisconnecting} onClick={onDisconnect} className="text-danger/80 hover:text-danger hover:bg-danger/10">
-                    {isDisconnecting ? "Disconnecting…" : "Disconnect"}
-                </Button>
-            )}
+            {disconnect ? <DisconnectButton integrationType={disconnect.integrationType} summary={disconnect.summary} revalidateKeys={disconnect.revalidateKeys} size={compact ? "sm" : "default"} /> : null}
         </CardFooter>
     )
 }

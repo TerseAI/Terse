@@ -1,17 +1,10 @@
 import { Mail } from "lucide-react"
-import { useState } from "react"
-import { toast } from "sonner"
-import { useSWRConfig } from "swr"
 import { IntegrationType } from "terse-types/Integrations"
-import { gmailIntegrationsKey, integrationsKey } from "terse-types/InvalidationKeys"
+import { gmailIntegrationsKey } from "terse-types/InvalidationKeys"
 
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BackendProvider } from "@/lib/http"
 import { cn } from "@/lib/utils"
-import { useAgentMutations } from "@/modules/agents/api/useAgents"
 import { useOAuthConnection } from "@/modules/auth/hooks/useOAuthConnection"
 import { useGmailIntegrations } from "@/modules/integrations/api/useGmailIntegrations"
 
@@ -23,27 +16,9 @@ import { IntegrationItem } from "./helpers/IntegrationItem"
 function GmailIntegrationCard({ className, isActive = true, stateToken, compact = false }: { className?: string; isActive?: boolean; stateToken?: string; compact?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {}, stateToken)
     const { integrations, isLoading } = useGmailIntegrations()
-    const { mutate } = useSWRConfig()
-    const { invalidateAgentLists } = useAgentMutations()
-    const [confirmOpen, setConfirmOpen] = useState(false)
-    const [isDisconnecting, setIsDisconnecting] = useState(false)
 
     const isConnected = integrations.length > 0
     const summary = integrations[0]?.email
-
-    const handleDisconnect = async () => {
-        setIsDisconnecting(true)
-        try {
-            await BackendProvider.disconnectIntegration(IntegrationType.GMAIL)
-            await Promise.all([mutate(integrationsKey()), mutate(gmailIntegrationsKey()), invalidateAgentLists()])
-            toast.success("Gmail disconnected. Agents that used it are blocked until you reconnect.")
-            setConfirmOpen(false)
-        } catch {
-            toast.error("Failed to disconnect Gmail. Please try again.")
-        } finally {
-            setIsDisconnecting(false)
-        }
-    }
 
     if (compact) {
         return <CompactIntegrationRow integration={IntegrationType.GMAIL} isConnected={isConnected} summary={summary} connect={connect} isConnecting={isConnecting} className={className} />
@@ -55,26 +30,11 @@ function GmailIntegrationCard({ className, isActive = true, stateToken, compact 
             <CardContent>
                 <GmailCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} showDisconnect={isConnected} onDisconnect={() => setConfirmOpen(true)} isDisconnecting={isDisconnecting} />
-            <Dialog open={confirmOpen} onOpenChange={open => !isDisconnecting && setConfirmOpen(open)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Disconnect Gmail?</DialogTitle>
-                        <DialogDescription>
-                            Terse will lose access to <span className="text-foreground font-medium">{summary}</span> at Google. Agents that read from or write to this account will be blocked until
-                            you reconnect.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={isDisconnecting}>
-                            Cancel
-                        </Button>
-                        <Button variant="destructive" onClick={handleDisconnect} disabled={isDisconnecting}>
-                            {isDisconnecting ? "Disconnecting…" : "Disconnect"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <IntegrationCardFooter
+                connect={connect}
+                isConnecting={isConnecting}
+                disconnect={isConnected ? { integrationType: IntegrationType.GMAIL, summary, revalidateKeys: [gmailIntegrationsKey()] } : undefined}
+            />
         </Card>
     )
 }

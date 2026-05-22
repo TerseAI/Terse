@@ -1,9 +1,7 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
 
-import { AlertTriangle, Check, Copy } from "lucide-react"
+import { Check, Copy } from "lucide-react"
 import { CONFIG_DETAILS, ConfigType } from "terse-types"
-import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type {
     AgentTrigger,
     AttioFilter,
@@ -40,63 +38,41 @@ export function TriggerDetailCard({ trigger }: { trigger: AgentTrigger }) {
     const type = config.configType
     const label = CONFIG_DETAILS[type as keyof typeof CONFIG_DETAILS]?.name ?? type
 
-    const body = (() => {
-        switch (config.configType) {
-            case ConfigType.WEBHOOK_INPUT:
-                return <WebhookBody webhookUrl={trigger.metadata?.webhookUrl || undefined} label={label} type={type} />
-            case ConfigType.WEBMONITOR:
-                return <WebMonitorBody config={config} label={label} type={type} />
-            case ConfigType.SLACK:
-                return <SlackBody config={config} label={label} type={type} />
-            case ConfigType.GITHUB: {
-                const normalizedConfig: GitHubConfigData = {
-                    ...config,
-                    eventTypes: "eventTypes" in config ? (config.eventTypes ?? null) : null
-                }
-                return <GitHubBody config={normalizedConfig} label={label} type={type} />
+    switch (config.configType) {
+        case ConfigType.WEBHOOK_INPUT:
+            return <WebhookBody webhookUrl={trigger.metadata?.webhookUrl || undefined} label={label} type={type} />
+        case ConfigType.WEBMONITOR:
+            return <WebMonitorBody config={config} label={label} type={type} />
+        case ConfigType.SLACK:
+            return <SlackBody config={config} label={label} type={type} />
+        case ConfigType.GITHUB: {
+            const normalizedConfig: GitHubConfigData = {
+                ...config,
+                eventTypes: "eventTypes" in config ? (config.eventTypes ?? null) : null
             }
-            case ConfigType.LINEAR_INPUT:
-                return <LinearBody config={config} label={label} type={type} />
-            case ConfigType.GMAIL:
-                return <GmailBody config={config} label={label} type={type} />
-            case ConfigType.TIME_TRIGGER:
-                return <TimeBody config={config} label={label} type={type} />
-            case ConfigType.WORKOS_INPUT:
-                return <WorkOSBody config={config} label={label} type={type} />
-            case ConfigType.POSTHOG:
-                return <PosthogBody config={config} label={label} type={type} />
-            case ConfigType.DATADOG:
-                return <DatadogBody config={config} label={label} type={type} />
-            case ConfigType.LAUNCHDARKLY:
-                return <LaunchDarklyBody config={config} label={label} type={type} />
-            case ConfigType.HEY_REACH_INPUT:
-                return <HeyReachBody config={config} label={label} type={type} />
-            case ConfigType.ATTIO_INPUT:
-                return <AttioBody config={config} label={label} type={type} />
-            default:
-                return <Frame type={type} label={label} />
+            return <GitHubBody config={normalizedConfig} label={label} type={type} />
         }
-    })()
-
-    if (!trigger.disconnectedAt) return body
-    return (
-        <div className="space-y-2.5">
-            <DisconnectedWarning label={label} />
-            {body}
-        </div>
-    )
-}
-
-function DisconnectedWarning({ label }: { label: string }) {
-    return (
-        <div className="border-warning/40 bg-warning/5 flex items-center gap-2.5 rounded-md border px-3 py-2 text-xs">
-            <AlertTriangle aria-hidden className="text-warning h-3.5 w-3.5 shrink-0" />
-            <span className="text-foreground font-medium">{label} disconnected.</span>
-            <Link to={FrontendRoutes.INTEGRATIONS} className="text-warning ml-auto font-medium underline-offset-2 hover:underline">
-                Reconnect
-            </Link>
-        </div>
-    )
+        case ConfigType.LINEAR_INPUT:
+            return <LinearBody config={config} label={label} type={type} />
+        case ConfigType.GMAIL:
+            return <GmailBody config={config} label={label} type={type} />
+        case ConfigType.TIME_TRIGGER:
+            return <TimeBody config={config} label={label} type={type} />
+        case ConfigType.WORKOS_INPUT:
+            return <WorkOSBody config={config} label={label} type={type} />
+        case ConfigType.POSTHOG:
+            return <PosthogBody config={config} label={label} type={type} />
+        case ConfigType.DATADOG:
+            return <DatadogBody config={config} label={label} type={type} />
+        case ConfigType.LAUNCHDARKLY:
+            return <LaunchDarklyBody config={config} label={label} type={type} />
+        case ConfigType.HEY_REACH_INPUT:
+            return <HeyReachBody config={config} label={label} type={type} />
+        case ConfigType.ATTIO_INPUT:
+            return <AttioBody config={config} label={label} type={type} />
+        default:
+            return <Frame type={type} label={label} />
+    }
 }
 
 function WebhookBody({ webhookUrl, label, type }: { webhookUrl: string | undefined; label: string; type: ConfigType }) {

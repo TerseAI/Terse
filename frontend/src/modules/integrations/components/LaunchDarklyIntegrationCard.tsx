@@ -2,6 +2,7 @@ import { useState } from "react"
 
 import { Eye, EyeOff, Flag } from "lucide-react"
 import { INTEGRATION_METADATA, IntegrationType, LaunchDarklyIntegration } from "terse-types/Integrations"
+import { launchdarklyIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { useLaunchdarklyIntegrations } from "@/modules/integrations/api/useLaunchdarklyIntegrations"
 
 import CompactIntegrationRow from "./CompactIntegrationRow"
+import { DisconnectButton } from "./helpers/DisconnectButton"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"
 
@@ -100,10 +102,11 @@ function LaunchDarklyIntegrationCard({ className, isActive = true, stateToken, c
                 <CardContent>
                     <LaunchDarklyCardContent integrations={integrations} isLoading={isLoading} />
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex items-center justify-between gap-2">
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.LAUNCHDARKLY} summary={summary} revalidateKeys={[launchdarklyIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

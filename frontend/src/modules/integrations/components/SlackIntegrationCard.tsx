@@ -2,6 +2,7 @@ import { useState } from "react"
 
 import { Hash, MessageSquare } from "lucide-react"
 import { IntegrationType, SlackIntegration } from "terse-types/Integrations"
+import { slackIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -71,7 +72,14 @@ function SlackIntegrationCard({ className, isActive = true, stateToken, compact 
                     <SlackCardContent integrations={integrations} isLoading={integrationsLoading} />
                 )}
             </CardContent>
-            {!showConnectionOptions && <IntegrationCardFooter connect={handleConnectClick} isConnecting={isConnecting} buttonText="Connect Another Slack" />}
+            {!showConnectionOptions && (
+                <IntegrationCardFooter
+                    connect={handleConnectClick}
+                    isConnecting={isConnecting}
+                    buttonText="Connect Another Slack"
+                    disconnect={isConnected ? { integrationType: IntegrationType.SLACK, summary, revalidateKeys: [slackIntegrationsKey()] } : undefined}
+                />
+            )}
         </Card>
     )
 }

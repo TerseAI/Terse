@@ -1,5 +1,6 @@
 import { Users } from "lucide-react"
 import { IntegrationType } from "terse-types/Integrations"
+import { attioIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,7 +30,11 @@ function AttioIntegrationCard({ className, isActive = true, stateToken, compact 
             <CardContent>
                 <AttioCardContent integrations={integrations} isLoading={integrationsLoading} />
             </CardContent>
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
+            <IntegrationCardFooter
+                connect={connect}
+                isConnecting={isConnecting}
+                disconnect={isConnected ? { integrationType: IntegrationType.ATTIO, summary, revalidateKeys: [attioIntegrationsKey()] } : undefined}
+            />
         </Card>
     )
 }
