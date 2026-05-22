@@ -26,7 +26,7 @@ terse init my-project
 
 `terse init` handles the full setup in one command:
 
-1. Scaffolds your TypeScript project files (`src/index.ts`, config, etc.)
+1. Scaffolds your TypeScript project files (`src/terse.jobs.ts`, config, etc.)
 2. Installs dependencies
 3. Opens the browser to authenticate via `terse login`
 4. Checks your connected integrations and prompts you to add more if needed
@@ -38,7 +38,7 @@ After init, your project looks like this:
 ```text TypeScript
 my-project/
   src/
-    index.ts              # your job definitions
+    terse.jobs.ts         # your workflow definitions
     terse.generated.ts    # generated SDK (do not edit)
   package.json
   tsconfig.json
@@ -52,7 +52,7 @@ my-project/
   </Step>
   <Step title="Write your workflow">
 
-Open `src/index.ts` and define a job. The scaffolded file includes a starter example. Your generated SDK gives you typed helpers for every integration you connected: trigger builders, skill constructors, resource constants, and deterministic tool wrappers.
+Open `src/terse.jobs.ts`. The scaffolded starter workflow imports `createJob` and `TerseAgent` from `terse-sdk`, `Triggers` from `./terse.generated`, and `z` from `zod` for structured output in `runAndWait`—it type-checks with `npm run build` right after init. As you connect integrations and run `terse generate`, add trigger builders, skill factories, resource constants, and deterministic tool wrappers from `src/terse.generated.ts`.
 
   </Step>
   <Step title="Test locally">

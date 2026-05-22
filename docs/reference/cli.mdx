@@ -37,6 +37,8 @@ If you omit `project-name`, the CLI scaffolds into the current directory. If you
 5. Reviews your current integrations
 6. Runs `terse generate`
 
+The scaffolded `src/terse.jobs.ts` includes a minimal starter workflow: `createJob` and `TerseAgent` from `terse-sdk`, `Triggers` from `./terse.generated`, and `z` from `zod` (already in the scaffolded `package.json`) for the example `runAndWait` schema. It type-checks with `npm run build` immediately after init.
+
 ### `terse attach`
 
 Links an existing repo to Terse in self-hosted mode.
