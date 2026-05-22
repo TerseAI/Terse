@@ -146,7 +146,6 @@ This is more precise than semantic search - use it when you know exactly what te
                 totalCount: results.totalCount,
                 resultsReturned: formattedResults.length
             })
-            logger.debug("[GitHub KB] grepGitHubCode - Full response", { response })
 
             // Return action as part of the result
             const action = {

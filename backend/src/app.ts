@@ -2,6 +2,7 @@ import bodyParser from "body-parser"
 import cookieParser from "cookie-parser"
 import cors from "cors"
 import express, { NextFunction, Request, Response } from "express"
+import helmet from "helmet"
 import { ApiRoutes } from "terse-types"
 
 import { isCorsOriginAllowed } from "./common/corsOrigins"
@@ -58,9 +59,7 @@ import { settings } from "./settings"
 type SlackReceiver = Awaited<ReturnType<typeof setupSlackBolt>>
 
 export interface CreateAppOptions {
-    /** Cors allowlist built by buildCorsAllowedOrigins(). */
     corsAllowedOrigins: Set<string>
-    /** Slack Bolt receiver from setupSlackBolt(). Mounted at /slack if provided. */
     slackReceiver: SlackReceiver | null
 }
 
@@ -68,18 +67,10 @@ const LARGE_BODY_LIMIT_ROUTES: string[] = [ApiRoutes.GITHUB.UNIFIED_EVENT, ApiRo
 const LARGE_BODY_LIMIT = "10mb"
 const DEFAULT_BODY_LIMIT = "1mb"
 
-/**
- * Build the Express application with all middleware + routes wired up.
- * Pure function — no async init, no listen, no process-level side effects.
- *
- * Async dependencies (Socket.IO, rate limiter, Slack Bolt, LLM analytics)
- * are initialized in server.ts and either passed in here as options or
- * registered as singletons before this function is called.
- */
 export function createApp(options: CreateAppOptions) {
     const { corsAllowedOrigins, slackReceiver } = options
     const app = express()
-
+    app.use(helmet())
     app.set("trust proxy", 1)
     app.use(httpAccessLog)
 
@@ -149,6 +140,14 @@ export function createApp(options: CreateAppOptions) {
         next(err)
     })
     app.use(cookieParser())
+
+    // Mark authed responses no-store so a future CDN/proxy doesn't retain them.
+    app.use((req, res, next) => {
+        if (req.headers.cookie || req.headers.authorization) {
+            res.setHeader("Cache-Control", "no-store")
+        }
+        next()
+    })
 
     // MARK: WEBHOOKS — each handler verifies its own provider signature, some need raw body
 
@@ -223,7 +222,7 @@ export function createApp(options: CreateAppOptions) {
     app.use("/workos-integration", workosIntegrationRouter)
 
     // MARK: SESSION
-    app.get(ApiRoutes.SESSION.TOKEN, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    app.get(ApiRoutes.SESSION.TOKEN, rateLimit(RateLimitKind.SessionToken), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
         requestSessionSocketToken(req, res)
     })
 

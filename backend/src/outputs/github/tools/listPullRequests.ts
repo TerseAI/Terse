@@ -137,7 +137,6 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
                 merged: summary.merged,
                 open: summary.open
             })
-            logger.debug("[GitHub KB] listGitHubPullRequests - Full response", { response })
 
             // Return action as part of the result
             const action = {

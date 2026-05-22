@@ -7,6 +7,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { z } from "zod"
 
 import logger from "../../common/logger"
+import { previewError } from "../../common/redact"
 import { buildHeyReachWebhookUrl } from "../../common/webhookUrl"
 import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
@@ -371,7 +372,7 @@ export async function createHeyReachWebhook(tx: PrismaTransaction, triggerId: st
 
     const data = heyReachWebhookResponseSchema.parse(await response.json())
     if (!response.ok) {
-        logger.error("HeyReach CreateWebhook failed", { status: response.status, body: data, webhookName, eventType })
+        logger.error("HeyReach CreateWebhook failed", { status: response.status, bodyPreview: previewError(data), webhookName, eventType })
         throw new Error(response.status === 400 ? `HeyReach rejected webhook: ${data}` : "Failed to create HeyReach webhook")
     }
 
@@ -399,7 +400,7 @@ async function deleteHeyReachWebhook(webhookId: number, integrationId: string) {
 
     const responseText = await response.text()
     if (!response.ok) {
-        logger.error("HeyReach DeleteWebhook failed", { status: response.status, body: responseText, webhookId })
+        logger.error("HeyReach DeleteWebhook failed", { status: response.status, bodyPreview: previewError(responseText), webhookId })
         throw new Error(response.status === 400 ? `HeyReach rejected webhook: ${responseText}` : "Failed to delete HeyReach webhook")
     }
 
@@ -431,7 +432,7 @@ async function updateHeyReachWebhook(webhookId: number, integrationId: string, i
 
     const responseText = await response.text()
     if (!response.ok) {
-        logger.error("HeyReach UpdateWebhook failed", { status: response.status, body: responseText, webhookId })
+        logger.error("HeyReach UpdateWebhook failed", { status: response.status, bodyPreview: previewError(responseText), webhookId })
         throw new Error(response.status === 400 ? `HeyReach rejected webhook update: ${responseText}` : "Failed to update HeyReach webhook")
     }
 

@@ -127,7 +127,6 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     fileCount: files.length,
                     truncated: treeResult.truncated
                 })
-                logger.debug("[GitHub KB] listGitHubDirectory - Full response", { response })
 
                 // Return action as part of the result
                 const action = {
@@ -190,7 +189,6 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     dirCount: directories.length,
                     fileCount: files.length
                 })
-                logger.debug("[GitHub KB] listGitHubDirectory - Full response", { response })
 
                 // Return action as part of the result
                 const repoInfo = await getRepositoryInfo(client, owner, repo)

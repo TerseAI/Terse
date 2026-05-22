@@ -63,7 +63,7 @@ export class WebhookJobExecutionService {
             }
 
             currentStage = "delivery"
-            logger.info("Challenge successful, delivering event", { runId, agentId: agent.id, event })
+            logger.info("Challenge successful, delivering event", { runId, agentId: agent.id })
 
             const deliverController = new AbortController()
             const deliverTimeout = setTimeout(() => deliverController.abort(), WEBHOOK_JOB_FETCH_TIMEOUT_MS)

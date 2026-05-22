@@ -22,6 +22,7 @@ import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
 import logger from "../../common/logger"
+import { previewError } from "../../common/redact"
 import { buildAttioWebhookUrl } from "../../common/webhookUrl"
 import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
@@ -509,7 +510,7 @@ export async function createAttioWebhook(tx: PrismaTransaction, triggerId: strin
 
     const raw = await response.json()
     if (!response.ok) {
-        logger.error("Attio CreateWebhook failed", { status: response.status, body: raw, triggerId })
+        logger.error("Attio CreateWebhook failed", { status: response.status, bodyPreview: previewError(raw), triggerId })
         throw new Error(`Attio rejected webhook: ${JSON.stringify(raw)}`)
     }
 
@@ -625,7 +626,7 @@ async function deleteAttioWebhook(webhookId: string, integrationId: string): Pro
 
     if (!response.ok && response.status !== 404) {
         const text = await response.text()
-        logger.error("Attio DeleteWebhook failed", { status: response.status, body: text, webhookId })
+        logger.error("Attio DeleteWebhook failed", { status: response.status, bodyPreview: previewError(text), webhookId })
         throw new Error(`Failed to delete Attio webhook: ${text}`)
     }
 
