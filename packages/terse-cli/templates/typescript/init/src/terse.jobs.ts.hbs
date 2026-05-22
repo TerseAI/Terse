@@ -1,5 +1,6 @@
-import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
-import { Repos, Skills, SlackChannel, Triggers } from "./terse.generated"
+import { createJob, TerseAgent } from "terse-sdk"
+import { z } from "zod"
+import { Triggers } from "./terse.generated"
 
 createJob({
     name: "Tell a programming joke example job",
@@ -13,7 +14,7 @@ createJob({
         const response = await agent.runAndWait("Tell me a programming joke.", z.object({
             joke: z.string()
         }))
-        
+
         console.log(response.joke)
     }
 })
