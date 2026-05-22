@@ -17,6 +17,23 @@ terse apply <improvement-id>
 
 <Note>Workflows with no runs in the period, or four or more pending improvements, are skipped. Manual and test runs are ignored.</Note>
 
+## How reviews run
+
+Weekly reviews do not execute inside your hosted workflow runtime. Terse unpacks the **deployed source** from your last `terse deploy` into an isolated [Modal](https://modal.com) sandbox, runs Claude Code against that tree, and returns structured patch suggestions. That path is separate from [hosted trigger runs](/hosting), which use a pre-built image and a **project-scoped** `TERSE_API_KEY` injected for your `onTrigger` handler.
+
+Terse treats everything the reviewer sees as potentially hostile:
+
+- **Your workflow source** (including any files in the deploy ZIP, such as a `.claude/settings.json` you shipped) is data to analyze, not instructions to obey.
+- **Run history and trigger text** (titles, decision reasons, action logs, and raw events) are wrapped as untrusted fields in the review prompt so prompt-injection text in a trigger payload cannot redirect the reviewer.
+
+The improvement sandbox adds guardrails on top of that model:
+
+- **Egress** is limited to Anthropic API address ranges so arbitrary outbound calls (for example `curl` to a third-party URL) cannot reach the open internet.
+- **Claude Code tool deny rules** block common exfiltration paths (`curl`, `wget`, `WebFetch`, `node -e`, `python -c`, and similar) and are written **after** your ZIP is extracted, so a file in the archive cannot weaken the denylist.
+- **Credentials** are passed through the sandbox process environment, not written to a shell script on disk inside the container.
+
+These controls do not change the `terse-sdk` or `terse-cli` APIs you use in workflow code. They only affect the platform-side job that proposes improvements.
+
 ## Where to go next
 
 <CardGroup cols={2}>

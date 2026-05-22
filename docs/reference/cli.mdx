@@ -354,6 +354,30 @@ Common errors:
 
 Press Ctrl-C to stop listening.
 
+## Self-improvement
+
+Commands for [weekly improvement patches](/core-concepts/self-improvement) suggested against deployed workflows. Requires authentication (`terse login` or `TERSE_API_KEY`).
+
+### `terse list improvements`
+
+Lists pending improvement cards across workflows in your Terse organization.
+
+```bash
+terse list improvements
+```
+
+### `terse apply [improvement-id]`
+
+Downloads a suggested patch and applies it locally with `git apply` (3-way merge and `--reject` fallbacks when your branch has drifted), then marks the improvement **Applied** in the app.
+
+```bash
+terse apply
+terse apply <improvement-id>
+terse apply <improvement-id> --non-interactive
+```
+
+Omit `improvement-id` to pick from an interactive list. Use **`--non-interactive`** in CI or agent scripts so the command fails fast instead of prompting; you must pass the improvement id explicitly.
+
 ### `terse replay [run-id]`
 
 Fetches the stored trigger event for one past run and re-executes the matching local workflow on your machine with verbose output.
