@@ -2,6 +2,7 @@ import { useState } from "react"
 
 import { BarChart3, Eye, EyeOff } from "lucide-react"
 import { DatadogIntegration, INTEGRATION_METADATA, IntegrationType } from "terse-types/Integrations"
+import { datadogIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { useDatadogIntegrations } from "@/modules/integrations/api/useDatadogIntegrations"
 
 import CompactIntegrationRow from "./CompactIntegrationRow"
+import { DisconnectButton } from "./helpers/DisconnectButton"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"
 
@@ -115,10 +117,11 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken, compac
                 <CardContent>
                     <DatadogCardContent integrations={integrations} isLoading={isLoading} />
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex items-center justify-between gap-2">
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.DATADOG} revalidateKeys={[datadogIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

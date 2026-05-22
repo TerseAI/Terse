@@ -259,14 +259,33 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
         }
     }
 
-    deleteInstallation(integrationId: string): Promise<void> {
-        return db()
-            .$transaction(async tx => {
-                await tx.notion_integrations.delete({ where: { id: integrationId } })
-            })
-            .then(async () => {
-                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
-            })
+    async deleteInstallation(integrationId: string): Promise<void> {
+        try {
+            const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
+            if (secrets?.integrationToken) {
+                const basic = Buffer.from(`${notionConfig.clientId}:${notionConfig.clientSecret}`).toString("base64")
+                const response = await fetch("https://api.notion.com/v1/oauth/revoke", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Basic ${basic}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ token: secrets.integrationToken })
+                })
+                if (!response.ok) {
+                    logger.warn("Notion token revocation returned non-OK", { status: response.status, integrationId })
+                } else {
+                    logger.info("Revoked Notion OAuth token", { integrationId })
+                }
+            }
+        } catch (error) {
+            logger.warn("Failed to revoke Notion OAuth token on disconnect", { error, integrationId })
+        }
+
+        await db().$transaction(async tx => {
+            await tx.notion_integrations.delete({ where: { id: integrationId } })
+        })
+        await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
     }
 
     async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {

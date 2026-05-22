@@ -1,5 +1,6 @@
 import { Mail } from "lucide-react"
 import { IntegrationType } from "terse-types/Integrations"
+import { gmailIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,7 +30,11 @@ function GmailIntegrationCard({ className, isActive = true, stateToken, compact 
             <CardContent>
                 <GmailCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
+            <IntegrationCardFooter
+                connect={connect}
+                isConnecting={isConnecting}
+                disconnect={isConnected ? { integrationType: IntegrationType.GMAIL, revalidateKeys: [gmailIntegrationsKey()] } : undefined}
+            />
         </Card>
     )
 }

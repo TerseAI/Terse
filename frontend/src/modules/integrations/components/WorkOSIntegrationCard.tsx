@@ -2,6 +2,7 @@ import { useState } from "react"
 
 import { CheckIcon, CopyIcon, ExternalLinkIcon, Eye, EyeOff, Shield } from "lucide-react"
 import { INTEGRATION_METADATA, IntegrationType, WorkOSIntegration } from "terse-types/Integrations"
+import { workosIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { useWorkOSIntegrations } from "@/modules/integrations/api/useWorkOSIntegrations"
 
 import CompactIntegrationRow from "./CompactIntegrationRow"
+import { DisconnectButton } from "./helpers/DisconnectButton"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader"
 import { IntegrationItem } from "./helpers/IntegrationItem"
 
@@ -299,10 +301,11 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                 <CardContent>
                     <WorkOSCardContent integrations={integrations} isLoading={isLoading} />
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex items-center justify-between gap-2">
                     <Button variant="outline" onClick={isConnected ? handleManage : handleConnect}>
                         {isConnected ? "Manage" : "Connect"}
                     </Button>
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.WORKOS} revalidateKeys={[workosIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

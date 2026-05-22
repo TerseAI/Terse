@@ -1,5 +1,6 @@
 import { BookOpen } from "lucide-react"
 import { IntegrationType } from "terse-types/Integrations"
+import { notionIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,7 +30,11 @@ function NotionIntegrationCard({ className, isActive = true, stateToken, compact
             <CardContent>
                 <NotionCardContent integrations={integrations} isLoading={integrationsLoading} />
             </CardContent>
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
+            <IntegrationCardFooter
+                connect={connect}
+                isConnecting={isConnecting}
+                disconnect={isConnected ? { integrationType: IntegrationType.NOTION, revalidateKeys: [notionIntegrationsKey()] } : undefined}
+            />
         </Card>
     )
 }

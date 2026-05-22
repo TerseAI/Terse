@@ -287,14 +287,36 @@ export class GithubIntegrationManager
         }
     }
 
-    deleteInstallation(integrationId: string): Promise<void> {
-        return db()
-            .$transaction(async tx => {
-                await tx.github_app_tokens.delete({ where: { id: integrationId } })
-            })
-            .then(async () => {
-                await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: integrationId } })
-            })
+    async deleteInstallation(integrationId: string): Promise<void> {
+        try {
+            const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: integrationId } })
+            if (secrets?.accessToken) {
+                const basic = Buffer.from(`${githubApp.clientId}:${githubApp.clientSecret}`).toString("base64")
+                const response = await fetch(`https://api.github.com/applications/${githubApp.clientId}/token`, {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Basic ${basic}`,
+                        Accept: "application/vnd.github+json",
+                        "Content-Type": "application/json",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    body: JSON.stringify({ access_token: secrets.accessToken })
+                })
+                if (!response.ok && response.status !== 422 && response.status !== 404) {
+                    // 422/404 mean the token was already invalidated; treat as success.
+                    logger.warn("GitHub token revocation returned non-OK", { status: response.status, integrationId })
+                } else {
+                    logger.info(`Revoked GitHub OAuth token`, { integrationId })
+                }
+            }
+        } catch (error) {
+            logger.warn("Failed to revoke GitHub OAuth token on disconnect", { error, integrationId })
+        }
+
+        await db().$transaction(async tx => {
+            await tx.github_app_tokens.delete({ where: { id: integrationId } })
+        })
+        await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: integrationId } })
     }
 
     async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
