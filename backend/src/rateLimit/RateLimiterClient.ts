@@ -23,6 +23,22 @@ export interface ConnectionCapOptions {
     heartbeatIntervalMs: number
 }
 
+export interface KeyLimitOptions {
+    name: string
+    points: number
+    duration: number
+    blockDuration?: number
+}
+
+export interface KeyLimiter {
+    /**
+     * Try to consume one point for the given key. Returns true if the call
+     * is allowed, false if the limit has been hit. Re-raises non-limit errors
+     * (e.g. Redis outages) so they aren't silently masked as a rate-limit.
+     */
+    tryConsume(key: string): Promise<boolean>
+}
+
 export class RateLimiterClient {
     private static instance: RateLimiterClient
     private redisClient: RedisClientType | null = null
@@ -92,6 +108,30 @@ export class RateLimiterClient {
     public createConnectionCap(opts: ConnectionCapOptions): ConnectionCap {
         this.assertInitialized()
         return new ConnectionCap(this.redisClient, opts)
+    }
+
+    /**
+     * Non-HTTP key-based limiter. Use when you need rate limiting outside an
+     * Express handler — e.g. throttling outbound replies to Slack DMs.
+     */
+    public createKeyLimiter(opts: KeyLimitOptions): KeyLimiter {
+        this.assertInitialized()
+        // buildLimiter only reads points/duration/blockDuration/name, but its
+        // signature still requires keyBy — caller supplies its own key.
+        const limiter = this.buildLimiter({ ...opts, keyBy: () => null })
+        return {
+            async tryConsume(key: string): Promise<boolean> {
+                try {
+                    await limiter.consume(key)
+                    return true
+                } catch (rejection) {
+                    if (rejection instanceof RateLimiterRes) {
+                        return false
+                    }
+                    throw rejection
+                }
+            }
+        }
     }
 
     private buildLimiter(opts: RateLimitOptions): RateLimiterAbstract {

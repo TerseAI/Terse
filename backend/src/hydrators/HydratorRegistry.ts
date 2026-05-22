@@ -7,7 +7,7 @@ import { GithubEventHydrator } from "./githubRag/hydrator"
 import { GmailEventHydrator } from "./gmailRag/hydrator"
 import { LinearEventHydrator } from "./linearRag/hydrator"
 import { RunHistoryRawEventHydrator } from "./runHistoryRag/hydrator"
-import { SlackEventHydrator } from "./slackRag/hydrator"
+import { SlackEventHydrator } from "./slackEvent/hydrator"
 import { WebMonitorEventHydrator } from "./webMonitorRag/hydrator"
 import { WorkOSEventHydrator } from "./workosRag/hydrator"
 

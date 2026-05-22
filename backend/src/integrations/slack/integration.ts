@@ -22,6 +22,7 @@ import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
+import { KeyLimiter, RateLimiterClient } from "../../rateLimit/RateLimiterClient"
 import { GetSecretsArg, SecretService } from "../../services/SecretService"
 import { slack as slackConfig, urls } from "../../settings"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../../types/prisma"
@@ -196,8 +197,10 @@ export class SlackIntegrationManager
                     const tokensEvent = eventData as {
                         tokens?: { bot?: string[]; oauth?: string[] }
                     }
-                    await tokensEvent.tokens?.bot?.forEach(deactivateToken)
-                    await tokensEvent.tokens?.oauth?.forEach(deactivateToken)
+                    await Promise.all([
+                        ...(tokensEvent.tokens?.bot ?? []).map(userId => deactivateToken(team_id, userId, true)),
+                        ...(tokensEvent.tokens?.oauth ?? []).map(userId => deactivateToken(team_id, userId, false))
+                    ])
                     break
                 case "message":
                 case "app_mention":
@@ -221,8 +224,10 @@ export class SlackIntegrationManager
             const tokensEvent = event as {
                 tokens?: { bot?: string[]; oauth?: string[] }
             }
-            await tokensEvent.tokens?.bot?.forEach(deactivateToken)
-            await tokensEvent.tokens?.oauth?.forEach(deactivateToken)
+            await Promise.all([
+                ...(tokensEvent.tokens?.bot ?? []).map(userId => deactivateToken(team_id, userId, true)),
+                ...(tokensEvent.tokens?.oauth ?? []).map(userId => deactivateToken(team_id, userId, false))
+            ])
         }
     }
 
@@ -257,10 +262,10 @@ export class SlackIntegrationManager
         const redirect_uri = slackConfig.oauthCallbackUrl
         const isBotUser = options.isBotUser
         const scope =
-            "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read,chat:write,app_mentions:read,reactions:read,reactions:write,files:read"
+            "channels:history,groups:history,im:history,channels:read,groups:read,im:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
         const user_scope = isBotUser
             ? ""
-            : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write,reactions:read,reactions:write,files:read"
+            : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,chat:write,im:write,reactions:read,reactions:write,files:read"
         const state = mintOAuthState(req, res, {
             userId,
             organizationId,
@@ -1063,8 +1068,55 @@ async function markWorkspaceUninstalled(team_id: string) {
     })
 }
 
-async function deactivateToken(token: string) {
-    logger.warn("Token deactivated", { tokenLength: token.length })
+/**
+ * Handle a Slack `tokens_revoked` event for a specific user.
+ *
+ * The Slack payload's `tokens.bot` and `tokens.oauth` arrays contain
+ * authed_user_ids — the Slack user whose grant was revoked — NOT raw token
+ * strings. For each revoked grant we look up the matching
+ * `user_slack_integrations` row (by team_id + authed_user_id + is_bot_user),
+ * delete its secret from Google Secret Manager, and remove the DB row so
+ * Terse stops attempting to use a token Slack has already invalidated.
+ */
+async function deactivateToken(teamId: string, authedUserId: string, isBotUser: boolean) {
+    const matches = await db().user_slack_integrations.findMany({
+        where: {
+            slack_team_id: teamId,
+            authed_user_id: authedUserId,
+            is_bot_user: isBotUser
+        },
+        select: { id: true }
+    })
+
+    if (matches.length === 0) {
+        logger.info("tokens_revoked: no matching user_slack_integrations row to deactivate", {
+            teamId,
+            authedUserId,
+            isBotUser
+        })
+        return
+    }
+
+    await db().user_slack_integrations.deleteMany({
+        where: {
+            id: { in: matches.map(m => m.id) }
+        }
+    })
+
+    const secretService = SecretService.getInstance()
+    await secretService.deleteSecrets(
+        matches.map<GetSecretsArg>(m => ({
+            type: "integration",
+            secret: { integrationType: IntegrationType.SLACK, recordId: m.id }
+        }))
+    )
+
+    logger.info("tokens_revoked: deactivated Slack user integration(s)", {
+        teamId,
+        authedUserId,
+        isBotUser,
+        deletedCount: matches.length
+    })
 }
 
 /**
@@ -1416,7 +1468,7 @@ async function processSlackAutomationForUsers(args: {
     storedFiles?: StoredFile[]
     teamId: string
     sourceChannelId?: string
-}) {
+}): Promise<number> {
     const { filteredWorkspaceUserIntegrations, slackEventData, storedFiles, teamId, sourceChannelId } = args
     let totalMatches = 0
     for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
@@ -1453,6 +1505,62 @@ async function processSlackAutomationForUsers(args: {
         teamId,
         channel: sourceChannelId
     })
+    return totalMatches
+}
+
+// Rate-limits the unrecognized-DM / @mention fallback so a chatty user can't
+// turn it into a flood. One reply per (team, channel) per hour is enough to
+// satisfy reviewer tests without spamming.
+let fallbackReplyLimiter: KeyLimiter | null = null
+function getFallbackReplyLimiter(): KeyLimiter {
+    if (!fallbackReplyLimiter) {
+        fallbackReplyLimiter = RateLimiterClient.getInstance().createKeyLimiter({
+            name: "slack_unrecognized_fallback",
+            points: 1,
+            duration: 60 * 60,
+            blockDuration: 60 * 60
+        })
+    }
+    return fallbackReplyLimiter
+}
+
+const SLACK_FALLBACK_TEXT =
+    "Hi! I'm Terse. I run automations configured in your workspace's Terse dashboard. I don't have a workflow set up to respond to this message. Visit https://useterse.ai for setup, or contact your admin."
+
+async function sendSlackUnrecognizedFallback(args: {
+    teamId: string
+    channelId: string
+    threadTs?: string | null
+    slackIntegrationId: string
+}) {
+    const allowed = await getFallbackReplyLimiter().tryConsume(`${args.teamId}:${args.channelId}`)
+    if (!allowed) return
+
+    const secretService = SecretService.getInstance()
+    const secrets = await secretService.tryGetSecrets({
+        type: "integration",
+        secret: { integrationType: IntegrationType.SLACK, recordId: args.slackIntegrationId }
+    })
+    const botToken = secrets?.accessToken
+    if (!botToken) {
+        logger.warn("Cannot send Slack fallback reply — bot token unavailable", { teamId: args.teamId })
+        return
+    }
+
+    const client = new WebClient(botToken, { logLevel: LogLevel.ERROR })
+    try {
+        await client.chat.postMessage({
+            channel: args.channelId,
+            thread_ts: args.threadTs || undefined,
+            text: SLACK_FALLBACK_TEXT
+        })
+    } catch (error) {
+        logger.warn("Failed to send Slack fallback reply", {
+            error,
+            teamId: args.teamId,
+            channelId: args.channelId
+        })
+    }
 }
 
 async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: string) {
@@ -1544,13 +1652,30 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             files: enrichedMessage.files || null
         })
 
-        await processSlackAutomationForUsers({
+        const totalMatches = await processSlackAutomationForUsers({
             filteredWorkspaceUserIntegrations,
             slackEventData,
             storedFiles,
             teamId,
             sourceChannelId: messageEvent.channel
         })
+
+        // Slack reviewers test "DM the bot with random text" and "@mention the
+        // bot in a channel with no workflow" — both need a non-silent reply.
+        // Stay silent for ordinary channel messages (no trigger match is the
+        // common case there and we'd be spamming).
+        const isAppMention = messageEvent.type === "app_mention"
+        const isDirectMessage = messageEvent.channel_type === SlackChannelType.IM
+        const isFromHumanUser = !messageEvent.bot_id && messageEvent.subtype !== "bot_message"
+
+        if (totalMatches === 0 && isFromHumanUser && (isAppMention || isDirectMessage) && messageEvent.channel) {
+            await sendSlackUnrecognizedFallback({
+                teamId,
+                channelId: messageEvent.channel,
+                threadTs: messageEvent.thread_ts,
+                slackIntegrationId: slackIntegration.id
+            })
+        }
     } catch (error) {
         logger.error("Error handling Slack message-like event", { error, teamId })
     }
