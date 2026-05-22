@@ -89,7 +89,7 @@ function GithubIntegrationCard({ className, isActive = true, stateToken, compact
                 <IntegrationCardFooter
                     connect={connect}
                     isConnecting={isConnecting}
-                    disconnect={isConnected ? { integrationType: IntegrationType.GITHUB, summary, revalidateKeys: [githubIntegrationsKey()] } : undefined}
+                    disconnect={isConnected ? { integrationType: IntegrationType.GITHUB, revalidateKeys: [githubIntegrationsKey()] } : undefined}
                 />
             </Card>
             <RepositoriesDialog repositories={repositories} open={isDialogOpen} onOpenChange={setIsDialogOpen} />

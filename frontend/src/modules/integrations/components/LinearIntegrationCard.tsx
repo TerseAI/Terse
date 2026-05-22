@@ -33,7 +33,7 @@ function LinearIntegrationCard({ className, isActive = true, stateToken, compact
             <IntegrationCardFooter
                 connect={connect}
                 isConnecting={isConnecting}
-                disconnect={isConnected ? { integrationType: IntegrationType.LINEAR, summary, revalidateKeys: [linearIntegrationsKey()] } : undefined}
+                disconnect={isConnected ? { integrationType: IntegrationType.LINEAR, revalidateKeys: [linearIntegrationsKey()] } : undefined}
             />
         </Card>
     )

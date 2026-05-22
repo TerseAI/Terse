@@ -77,7 +77,7 @@ function SlackIntegrationCard({ className, isActive = true, stateToken, compact 
                     connect={handleConnectClick}
                     isConnecting={isConnecting}
                     buttonText="Connect Another Slack"
-                    disconnect={isConnected ? { integrationType: IntegrationType.SLACK, summary, revalidateKeys: [slackIntegrationsKey()] } : undefined}
+                    disconnect={isConnected ? { integrationType: IntegrationType.SLACK, revalidateKeys: [slackIntegrationsKey()] } : undefined}
                 />
             )}
         </Card>

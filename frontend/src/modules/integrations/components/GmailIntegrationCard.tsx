@@ -33,7 +33,7 @@ function GmailIntegrationCard({ className, isActive = true, stateToken, compact 
             <IntegrationCardFooter
                 connect={connect}
                 isConnecting={isConnecting}
-                disconnect={isConnected ? { integrationType: IntegrationType.GMAIL, summary, revalidateKeys: [gmailIntegrationsKey()] } : undefined}
+                disconnect={isConnected ? { integrationType: IntegrationType.GMAIL, revalidateKeys: [gmailIntegrationsKey()] } : undefined}
             />
         </Card>
     )

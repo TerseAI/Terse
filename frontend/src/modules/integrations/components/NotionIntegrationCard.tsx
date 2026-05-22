@@ -33,7 +33,7 @@ function NotionIntegrationCard({ className, isActive = true, stateToken, compact
             <IntegrationCardFooter
                 connect={connect}
                 isConnecting={isConnecting}
-                disconnect={isConnected ? { integrationType: IntegrationType.NOTION, summary, revalidateKeys: [notionIntegrationsKey()] } : undefined}
+                disconnect={isConnected ? { integrationType: IntegrationType.NOTION, revalidateKeys: [notionIntegrationsKey()] } : undefined}
             />
         </Card>
     )

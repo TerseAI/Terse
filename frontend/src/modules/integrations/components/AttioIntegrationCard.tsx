@@ -33,7 +33,7 @@ function AttioIntegrationCard({ className, isActive = true, stateToken, compact 
             <IntegrationCardFooter
                 connect={connect}
                 isConnecting={isConnecting}
-                disconnect={isConnected ? { integrationType: IntegrationType.ATTIO, summary, revalidateKeys: [attioIntegrationsKey()] } : undefined}
+                disconnect={isConnected ? { integrationType: IntegrationType.ATTIO, revalidateKeys: [attioIntegrationsKey()] } : undefined}
             />
         </Card>
     )
