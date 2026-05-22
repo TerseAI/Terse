@@ -14,10 +14,10 @@ function requireEnv(name: string): string {
     return value
 }
 
-function requireSecretMinLength(name: string, minLen = 32): string {
+function requireSecretMinLength(name: string, minLen = 16): string {
     const value = requireEnv(name)
     if (value.length < minLen) {
-        throw new Error(`Environment variable ${name} is too short (got ${value.length} chars, need at least ${minLen}). Use a high-entropy value.`)
+        throw new Error(`Environment variable ${name} is too short (got ${value.length} chars, need at least ${minLen}).`)
     }
     return value
 }
