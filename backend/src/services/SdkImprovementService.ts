@@ -1,3 +1,4 @@
+import crypto from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -6,6 +7,7 @@ import logger from "../common/logger"
 import { JudgeAgentOutputType } from "../modules/agents/JudgeAgent/JudgeAgent"
 import { buildClaudeCodePrompt } from "../modules/agents/JudgeAgent/buildClaudeCodePrompt"
 import { JudgeContext } from "../modules/agents/JudgeAgent/fetchJudgeContext"
+import { settings } from "../settings"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
 import { downloadSdkDeployZip } from "./FileStorageService"
@@ -72,6 +74,9 @@ const IMPROVEMENTS_SCHEMA = {
     required: ["title", "summary", "improvements"]
 }
 
+const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
+const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23", "2607:6bc0::/48"]
+
 export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
 
@@ -97,6 +102,8 @@ export class SdkImprovementService {
             logger.warn("[SdkImprovementService] Terse plugin files not found, running without plugin", { automationId })
         }
 
+        const jobId = `${automationId}-${crypto.randomBytes(8).toString("hex")}`
+
         try {
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
@@ -104,17 +111,22 @@ export class SdkImprovementService {
                 sourceZip: zipBuffer,
                 gitInit: true,
                 jsonSchema: IMPROVEMENTS_SCHEMA,
+                timeoutMs: SANDBOX_TIMEOUT_MS,
+                env: {
+                    ANTHROPIC_API_KEY: settings.anthropic.improvementApiKey
+                },
+                egressCidrAllowlist: ANTHROPIC_INBOUND_CIDRS,
                 plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined
             })
 
             if (!result.stdout) {
-                logger.error("[SdkImprovementService] No stdout from Claude Code", { automationId, exitCode: result.exitCode })
+                logger.error("[SdkImprovementService] No stdout from Claude Code", { automationId, exitCode: result.exitCode, jobId })
                 return { title: "Review failed", summary: "Claude Code did not produce results.", improvements: [] }
             }
 
             return parseResults(result.stdout, automationId)
         } catch (error) {
-            logger.error("[SdkImprovementService] Evaluation failed", { automationId, error })
+            logger.error("[SdkImprovementService] Evaluation failed", { automationId, jobId, error })
             return { title: "Review failed", summary: "An error occurred during the review.", improvements: [] }
         }
     }
