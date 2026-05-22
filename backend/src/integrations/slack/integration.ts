@@ -1,5 +1,5 @@
 import { InputConfigType } from "@prisma/client"
-import { LogLevel, WebClient } from "@slack/web-api"
+import { LogLevel, TokensRevokedEvent, WebClient } from "@slack/web-api"
 import { Reaction } from "@slack/web-api/dist/types/response/ChannelsHistoryResponse"
 import { Channel as SlackChannel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse"
 import { User as SlackUser } from "@slack/web-api/dist/types/response/UsersInfoResponse"
@@ -194,12 +194,10 @@ export class SlackIntegrationManager
                     await markWorkspaceUninstalled(team_id) // delete tokens, close queues
                     break
                 case "tokens_revoked":
-                    const tokensEvent = eventData as {
-                        tokens?: { bot?: string[]; oauth?: string[] }
-                    }
+                    const tokensEvent = eventData as TokensRevokedEvent
                     await Promise.all([
-                        ...(tokensEvent.tokens?.bot ?? []).map(userId => deactivateToken(team_id, userId, true)),
-                        ...(tokensEvent.tokens?.oauth ?? []).map(userId => deactivateToken(team_id, userId, false))
+                        ...(tokensEvent.tokens.bot ?? []).map(userId => deactivateToken(team_id, userId, true)),
+                        ...(tokensEvent.tokens.oauth ?? []).map(userId => deactivateToken(team_id, userId, false))
                     ])
                     break
                 case "message":
@@ -1093,16 +1091,6 @@ async function markWorkspaceUninstalled(team_id: string) {
     })
 }
 
-/**
- * Handle a Slack `tokens_revoked` event for a specific user.
- *
- * The Slack payload's `tokens.bot` and `tokens.oauth` arrays contain
- * authed_user_ids — the Slack user whose grant was revoked — NOT raw token
- * strings. For each revoked grant we look up the matching
- * `user_slack_integrations` row (by team_id + authed_user_id + is_bot_user),
- * delete its secret from Google Secret Manager, and remove the DB row so
- * Terse stops attempting to use a token Slack has already invalidated.
- */
 async function deactivateToken(teamId: string, authedUserId: string, isBotUser: boolean) {
     const matches = await db().user_slack_integrations.findMany({
         where: {
@@ -1680,10 +1668,6 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             sourceChannelId: messageEvent.channel
         })
 
-        // Slack reviewers test "DM the bot with random text" and "@mention the
-        // bot in a channel with no workflow" — both need a non-silent reply.
-        // Stay silent for ordinary channel messages (no trigger match is the
-        // common case there and we'd be spamming).
         const isAppMention = messageEvent.type === "app_mention"
         const isDirectMessage = messageEvent.channel_type === SlackChannelType.IM
         const isFromHumanUser = !messageEvent.bot_id && messageEvent.subtype !== "bot_message"
