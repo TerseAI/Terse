@@ -1,4 +1,4 @@
-import { wrapUntrusted } from "../../utility/promptSanitize"
+import { wrapUntrusted } from "../../../common/promptSanitize"
 
 import { MAX_IMPROVEMENTS_PER_AGENT } from "./JudgeAgent"
 import { JudgeContext } from "./fetchJudgeContext"
