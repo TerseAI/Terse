@@ -3,13 +3,13 @@ import { HydratorType } from "terse-types"
 import { HydratorTypeMap, RAGNamespace } from "../types/rag"
 
 import { CompositeHydrator, HydrationContext, Hydrator, Identifiable } from "./Hydrator"
-import { GithubEventHydrator } from "./githubRag/hydrator"
-import { GmailEventHydrator } from "./gmailRag/hydrator"
-import { LinearEventHydrator } from "./linearRag/hydrator"
-import { RunHistoryRawEventHydrator } from "./runHistoryRag/hydrator"
-import { SlackEventHydrator } from "./slackEvent/hydrator"
-import { WebMonitorEventHydrator } from "./webMonitorRag/hydrator"
-import { WorkOSEventHydrator } from "./workosRag/hydrator"
+import { GithubEventHydrator } from "./github/hydrator"
+import { GmailEventHydrator } from "./gmail/hydrator"
+import { LinearEventHydrator } from "./linear/hydrator"
+import { RunHistoryRawEventHydrator } from "./runhistory/hydrator"
+import { SlackEventHydrator } from "./slack/hydrator"
+import { WebMonitorEventHydrator } from "./webmonitor/hydrator"
+import { WorkOSEventHydrator } from "./workos/hydrator"
 
 // Type-safe hydrator factory map
 const HYDRATOR_FACTORIES: {
