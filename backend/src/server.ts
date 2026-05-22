@@ -57,11 +57,6 @@ process.on("unhandledRejection", (reason: unknown) => {
     logger.error("❌ Unhandled Promise Rejection (safety net)", { error: errorMessage, stack })
 })
 
-process.on("uncaughtException", (err: Error) => {
-    captureException(err, { source: "uncaughtException" })
-    logger.error("❌ Uncaught Exception (safety net)", { error: err.message, stack: err.stack })
-})
-
 server.listen(3001, () => {
     logger.info("🚀 Express backend running on http://localhost:3001")
 })
