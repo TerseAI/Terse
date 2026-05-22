@@ -305,7 +305,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                     <Button variant="outline" onClick={isConnected ? handleManage : handleConnect}>
                         {isConnected ? "Manage" : "Connect"}
                     </Button>
-                    {isConnected ? <DisconnectButton integrationType={IntegrationType.WORKOS} summary={summary} revalidateKeys={[workosIntegrationsKey()]} /> : null}
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.WORKOS} revalidateKeys={[workosIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

@@ -166,7 +166,7 @@ function SnowflakeIntegrationCard({ className, isActive = true, stateToken, comp
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
-                    {isConnected ? <DisconnectButton integrationType={IntegrationType.SNOWFLAKE} summary={summary} revalidateKeys={[snowflakeIntegrationsKey()]} /> : null}
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.SNOWFLAKE} revalidateKeys={[snowflakeIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

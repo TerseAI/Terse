@@ -106,7 +106,7 @@ function LaunchDarklyIntegrationCard({ className, isActive = true, stateToken, c
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
-                    {isConnected ? <DisconnectButton integrationType={IntegrationType.LAUNCHDARKLY} summary={summary} revalidateKeys={[launchdarklyIntegrationsKey()]} /> : null}
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.LAUNCHDARKLY} revalidateKeys={[launchdarklyIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

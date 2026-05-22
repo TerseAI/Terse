@@ -9,7 +9,6 @@ import { DisconnectButton } from "./DisconnectButton"
 
 interface DisconnectConfig {
     integrationType: IntegrationType
-    summary?: string
     revalidateKeys?: Key[]
 }
 
@@ -28,7 +27,7 @@ export function IntegrationCardFooter({ connect, isConnecting = false, buttonTex
                 {compact ? "Connect" : buttonText}
             </Button>
             {disconnect ? (
-                <DisconnectButton integrationType={disconnect.integrationType} summary={disconnect.summary} revalidateKeys={disconnect.revalidateKeys} size={compact ? "sm" : "default"} />
+                <DisconnectButton integrationType={disconnect.integrationType} revalidateKeys={disconnect.revalidateKeys} size={compact ? "sm" : "default"} />
             ) : null}
         </CardFooter>
     )

@@ -121,7 +121,7 @@ function DatadogIntegrationCard({ className, isActive = true, stateToken, compac
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
-                    {isConnected ? <DisconnectButton integrationType={IntegrationType.DATADOG} summary={summary} revalidateKeys={[datadogIntegrationsKey()]} /> : null}
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.DATADOG} revalidateKeys={[datadogIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

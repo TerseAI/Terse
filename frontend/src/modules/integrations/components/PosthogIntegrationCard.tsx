@@ -99,7 +99,7 @@ function PosthogIntegrationCard({ className, isActive = true, stateToken, compac
                     <Button variant="outline" onClick={handleConnect}>
                         {integrations.length > 0 ? "Update" : "Connect"}
                     </Button>
-                    {isConnected ? <DisconnectButton integrationType={IntegrationType.POSTHOG} summary={summary} revalidateKeys={[posthogIntegrationsKey()]} /> : null}
+                    {isConnected ? <DisconnectButton integrationType={IntegrationType.POSTHOG} revalidateKeys={[posthogIntegrationsKey()]} /> : null}
                 </CardFooter>
             </Card>
             {formDialog}

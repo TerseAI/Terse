@@ -350,29 +350,7 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
-        try {
-            const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.ATTIO, recordId: integrationId } })
-            if (secrets?.accessToken) {
-                const params = new URLSearchParams({
-                    token: secrets.accessToken,
-                    client_id: settings.attio.clientId,
-                    client_secret: settings.attio.clientSecret
-                })
-                const response = await fetch("https://app.attio.com/oauth/revoke", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: params.toString()
-                })
-                if (!response.ok) {
-                    logger.warn("Attio token revocation returned non-OK", { status: response.status, integrationId })
-                } else {
-                    logger.info(`Revoked Attio OAuth token`, { integrationId })
-                }
-            }
-        } catch (error) {
-            logger.warn("Failed to revoke Attio OAuth token on disconnect", { error, integrationId })
-        }
-
+        // Attio doesn't expose a programmatic token revocation endpoint — users must remove the connection from their Attio workspace settings to fully revoke access.
         await db().$transaction(async tx => {
             await tx.attio_integrations.delete({ where: { id: integrationId } })
         })
