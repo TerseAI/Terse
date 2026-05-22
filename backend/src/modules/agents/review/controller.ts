@@ -5,6 +5,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { User } from "terse-types/types"
 
+import { cronCompleted, cronFailed, cronStarted } from "../../../common/cronInstrumentation"
 import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
@@ -40,6 +41,7 @@ type EmailGroup = {
 
 export async function reviewAllAgents(req: Request, res: Response) {
     logger.info("[ReviewAgents] Weekly review job triggered")
+    const { startedAt } = cronStarted("review-agents")
 
     const featureFlagService = FeatureFlagService.getInstance()
     const periodEnd = new Date()
@@ -220,6 +222,16 @@ export async function reviewAllAgents(req: Request, res: Response) {
             }
         }
 
+        cronCompleted("review-agents", startedAt, {
+            scannedAgents: automations.length,
+            reviewedAgents,
+            skippedNoRuns,
+            skippedTooManyImprovements,
+            improvementsCreated,
+            emailsSent,
+            failures: failures.length
+        })
+
         return res.status(200).json({
             success: true,
             summary: { scannedAgents: automations.length, reviewedAgents, skippedNoRuns, skippedTooManyImprovements, improvementsCreated, emailsSent, failures: failures.length },
@@ -227,6 +239,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
         })
     } catch (error) {
         logger.error("[ReviewAgents] Weekly review job failed", { error })
+        cronFailed("review-agents", startedAt, error)
         return res.status(500).json({ error: "Internal server error" })
     }
 }

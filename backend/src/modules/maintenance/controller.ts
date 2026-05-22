@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
 import { z } from "zod"
 
+import { cronCompleted, cronFailed, cronStarted } from "../../common/cronInstrumentation"
 import logger from "../../common/logger"
 import { SecretManagerClient } from "../../common/secretManagerClient"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
@@ -15,6 +16,7 @@ const clearOldSecretVersionsRequestSchema = z.object({
 
 export async function refreshAllTokens(req: Request, res: Response) {
     logger.info("Token refresh cron job triggered")
+    const { startedAt } = cronStarted("refresh-tokens")
 
     try {
         const results: { integrationType: IntegrationType; total: number; refreshed: number; failed: number; failures: Array<{ integrationId: string; error: string }> }[] = []
@@ -73,6 +75,8 @@ export async function refreshAllTokens(req: Request, res: Response) {
 
         logger.info(`Token refresh completed: ${totalRefreshed} refreshed, ${totalFailed} failed across ${totalIntegrations} total integrations`)
 
+        cronCompleted("refresh-tokens", startedAt, { total: totalIntegrations, refreshed: totalRefreshed, failed: totalFailed })
+
         return res.json({
             message: "Token refresh completed",
             summary: { total: totalIntegrations, refreshed: totalRefreshed, failed: totalFailed },
@@ -80,6 +84,7 @@ export async function refreshAllTokens(req: Request, res: Response) {
         })
     } catch (error) {
         logger.error("Error in token refresh cron job:", { error })
+        cronFailed("refresh-tokens", startedAt, error)
         return res.status(500).json({ error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" })
     }
 }
@@ -95,12 +100,20 @@ export async function clearOldSecretVersions(req: Request, res: Response) {
         return res.status(400).json({ error: "Invalid request", details: parsedInput.error.flatten() })
     }
 
+    const { startedAt } = cronStarted("clear-old-secret-versions")
     const secretService = SecretManagerClient.getInstance()
 
     try {
         const report = await secretService.clearOldSecretVersions(parsedInput.data)
 
         logger.info("Clear old secret versions completed", {
+            dryRun: report.dryRun,
+            numberOfSecretsCleared: report.numberOfSecretsCleared,
+            numberOfVersionsCleared: report.numberOfVersionsCleared,
+            numberOfErrors: report.numberOfErrors
+        })
+
+        cronCompleted("clear-old-secret-versions", startedAt, {
             dryRun: report.dryRun,
             numberOfSecretsCleared: report.numberOfSecretsCleared,
             numberOfVersionsCleared: report.numberOfVersionsCleared,
@@ -120,6 +133,7 @@ export async function clearOldSecretVersions(req: Request, res: Response) {
         })
     } catch (error) {
         logger.error("Error in clear old secret versions cron job:", { error })
+        cronFailed("clear-old-secret-versions", startedAt, error)
         return res.status(500).json({ error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" })
     }
 }

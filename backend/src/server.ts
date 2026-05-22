@@ -4,6 +4,7 @@ import { createServer } from "http"
 import { createApp } from "./app"
 import { analytics } from "./common/analytics"
 import { buildCorsAllowedOrigins } from "./common/corsOrigins"
+import { captureException } from "./common/errorCapture"
 // Import to trigger listener registration
 import logger from "./common/logger"
 import "./integrations/IntegrationTaskHandler"
@@ -50,9 +51,15 @@ try {
 // MARK: LIFECYCLE
 
 process.on("unhandledRejection", (reason: unknown) => {
+    captureException(reason, { source: "unhandledRejection" })
     const errorMessage = reason instanceof Error ? reason.message : String(reason)
     const stack = reason instanceof Error ? reason.stack : undefined
     logger.error("❌ Unhandled Promise Rejection (safety net)", { error: errorMessage, stack })
+})
+
+process.on("uncaughtException", (err: Error) => {
+    captureException(err, { source: "uncaughtException" })
+    logger.error("❌ Uncaught Exception (safety net)", { error: err.message, stack: err.stack })
 })
 
 server.listen(3001, () => {

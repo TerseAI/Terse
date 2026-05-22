@@ -6,6 +6,7 @@ import helmet from "helmet"
 import { ApiRoutes } from "terse-types"
 
 import { isCorsOriginAllowed } from "./common/corsOrigins"
+import { captureException } from "./common/errorCapture"
 import logger from "./common/logger"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
 import { httpAccessLog } from "./middlewares/httpAccessLog"
@@ -231,11 +232,17 @@ export function createApp(options: CreateAppOptions) {
      * Catches errors from async route handlers.
      */
     app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+        const userId = req.session?.user?.id
+        captureException(err, { userId, route: req.route?.path, path: req.path, method: req.method })
         logger.error("❌ Express Error Handler", {
             error: err.message,
+            errorType: err.constructor.name,
             stack: err.stack,
+            status: 500,
+            route: req.route?.path,
             path: req.path,
-            method: req.method
+            method: req.method,
+            userId
         })
         res.status(500).json({ error: "Internal server error" })
     })
