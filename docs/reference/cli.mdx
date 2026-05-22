@@ -307,7 +307,7 @@ terse generate
 
 | Category                    | Examples                                                                                       |
 | --------------------------- | ---------------------------------------------------------------------------------------------- |
-| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioList.Pipeline.NewDeals`                |
+| Resource constants          | `Repos.MyOrg.MyRepo`, `SlackChannel.Engineering`, `AttioObject.People`                         |
 | Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.slack.onMessage()`, `Triggers.attio.onRecordCreated()`, `Triggers.heyReach.onMessageReplyReceived()`, `Triggers.schedule.cron()`, `Triggers.webhook.onRequest<BodyType>()` |
 | Skill constructors          | `Skills.github()`, `Skills.slack()`, `Skills.attio()`                                       |
 | Deterministic tool wrappers | `toolbox.slack.sendMessage()` (no `TerseAgent`, not limited by **skills**), `agent.tools.slack.sendMessage()` (same tools, limited by **skills**) |
