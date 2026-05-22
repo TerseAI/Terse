@@ -21,8 +21,8 @@ import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
-import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { KeyLimiter, RateLimiterClient } from "../../rateLimit/RateLimiterClient"
+import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { GetSecretsArg, SecretService } from "../../services/SecretService"
 import { slack as slackConfig, urls } from "../../settings"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../../types/prisma"
@@ -261,8 +261,7 @@ export class SlackIntegrationManager
         const client_id = slackConfig.clientId
         const redirect_uri = slackConfig.oauthCallbackUrl
         const isBotUser = options.isBotUser
-        const scope =
-            "channels:history,groups:history,im:history,channels:read,groups:read,im:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
+        const scope = "channels:history,groups:history,im:history,channels:read,groups:read,im:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
         const user_scope = isBotUser
             ? ""
             : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,chat:write,im:write,reactions:read,reactions:write,files:read"
@@ -1527,12 +1526,7 @@ function getFallbackReplyLimiter(): KeyLimiter {
 const SLACK_FALLBACK_TEXT =
     "Hi! I'm Terse. I run automations configured in your workspace's Terse dashboard. I don't have a workflow set up to respond to this message. Visit https://useterse.ai for setup, or contact your admin."
 
-async function sendSlackUnrecognizedFallback(args: {
-    teamId: string
-    channelId: string
-    threadTs?: string | null
-    slackIntegrationId: string
-}) {
+async function sendSlackUnrecognizedFallback(args: { teamId: string; channelId: string; threadTs?: string | null; slackIntegrationId: string }) {
     const allowed = await getFallbackReplyLimiter().tryConsume(`${args.teamId}:${args.channelId}`)
     if (!allowed) return
 
