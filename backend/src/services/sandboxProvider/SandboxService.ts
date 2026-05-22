@@ -72,6 +72,14 @@ type SandboxExecParams = {
 type SandboxCreateParams = {
     timeoutMs?: number
     idleTimeoutMs?: number
+    blockNetwork?: boolean
+    cidrAllowlist?: string[]
+    proxy?: SandboxProxy
+    secrets?: Secret[]
+}
+
+interface SandboxProxy {
+    proxyId?: string
 }
 
 interface Secret {
