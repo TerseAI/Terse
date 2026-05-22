@@ -13,10 +13,6 @@ type BaseMemorySessionOptions = {
 
 interface RunHistoryChatMemorySessionOptions extends BaseMemorySessionOptions {}
 
-interface ChatMemorySessionOptions extends BaseMemorySessionOptions {
-    sessionId: string // chat_session_id from chat_sessions table
-}
-
 type StoredRawEvent = {
     id: string
     rawEvent: AgentInputItem
