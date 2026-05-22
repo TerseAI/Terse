@@ -6,6 +6,9 @@ on:
     push:
         branches: [main]
 
+permissions:
+    contents: read
+
 jobs:
     # ── Wait for Render PR preview ────────────────────────────────────────────
     # On pull_request events, Render spins up a preview of the backend service

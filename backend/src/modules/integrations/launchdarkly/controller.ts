@@ -147,7 +147,7 @@ export async function fetchLaunchDarklyEnvironments(organizationId: string, inte
     })
     const apiKey = secrets.apiKey
 
-    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
+    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${encodeURIComponent(projectKey)}/environments`, {
         method: "GET",
         headers: {
             Authorization: apiKey,
@@ -216,7 +216,7 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
         const apiKey = secrets.apiKey
 
         // Fetch environments from LaunchDarkly API
-        const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
+        const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${encodeURIComponent(projectKey)}/environments`, {
             method: "GET",
             headers: {
                 Authorization: apiKey,

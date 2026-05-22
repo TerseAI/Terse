@@ -328,7 +328,7 @@ export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): 
  * Verifies that the given LaunchDarkly project exists and is accessible with the provided API key.
  */
 export async function validateLaunchDarklyProjectExists(apiKey: string, projectKey: string): Promise<void> {
-    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}`, {
+    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${encodeURIComponent(projectKey)}`, {
         method: "GET",
         headers: {
             Authorization: apiKey,
@@ -347,7 +347,7 @@ export async function validateLaunchDarklyProjectExists(apiKey: string, projectK
  */
 export async function validateLaunchDarklyEnvironmentsExist(apiKey: string, projectKey: string, environmentKeys: string[]): Promise<void> {
     if (!environmentKeys.length) return
-    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
+    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${encodeURIComponent(projectKey)}/environments`, {
         method: "GET",
         headers: {
             Authorization: apiKey,

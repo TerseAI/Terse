@@ -5,6 +5,8 @@ on:
             - "backend/**"
             - "terse-types/**"
             - ".github/workflows/backend-build.yml"
+permissions:
+    contents: read
 jobs:
     build:
         runs-on: blacksmith-4vcpu-ubuntu-2404
