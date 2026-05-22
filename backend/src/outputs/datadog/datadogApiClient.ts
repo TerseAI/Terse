@@ -1,6 +1,6 @@
 import { IntegrationType } from "terse-types"
 
-import { db } from "../../prismaClient"
+import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
 
 export async function getDatadogCredentialsByIntegrationId(integrationId: string): Promise<{ apiKey: string; appKey: string; region: string }> {

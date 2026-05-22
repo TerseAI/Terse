@@ -1,6 +1,6 @@
 import { Request } from "express"
 
-import { extractClientIp } from "../utility/clientIp"
+import { extractClientIp } from "../common/clientIp"
 
 export const byIp = (req: Request): string => extractClientIp(req) ?? "unknown"
 

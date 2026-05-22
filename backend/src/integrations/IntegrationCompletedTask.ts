@@ -1,7 +1,7 @@
 import { IntegrationType } from "terse-types/Integrations"
 
+import { OAuthStatePayload } from "../modules/auth/helpers/oauth"
 import { Task } from "../tasks/abstract/tasks"
-import { OAuthStatePayload } from "../utility/oauth"
 
 export const INTEGRATION_COMPLETED_TASK_NAME = "INTEGRATION_COMPLETED_TASK" as const
 

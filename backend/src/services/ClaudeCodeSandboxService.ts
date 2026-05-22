@@ -1,8 +1,8 @@
 import { Image as ModalImage } from "modal"
 import crypto from "node:crypto"
 
-import logger from "../logger"
-import { assertValidEnvVarName, shellQuoteArgs } from "../utility/shellEscape"
+import logger from "../common/logger"
+import { assertValidEnvVarName, shellQuoteArgs } from "../common/shellEscape"
 
 import { ModalSandboxService, Sandbox } from "./sandboxProvider/ModalSandboxService"
 

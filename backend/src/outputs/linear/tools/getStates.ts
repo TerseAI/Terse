@@ -1,12 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, LinearOutputConfig } from "terse-types"
 
-import { getLinearAccessTokenForOrganization } from "../../../integrations/LinearIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
+import { getLinearAccessTokenForOrganization } from "../../../integrations/linear/integration"
+import { LinearAdapter } from "../../../integrations/linear/ticketing"
 import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../../outputs/abstract/acl"
-import { LinearAdapter } from "../../../ticketing/linear"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../utility/strings"
 
 export const linearGetStatesTool = defineSessionTool({
     name: "linear_get_states",

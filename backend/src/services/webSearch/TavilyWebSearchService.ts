@@ -1,6 +1,6 @@
 import { tavily } from "@tavily/core"
 
-import logger from "../../logger"
+import logger from "../../common/logger"
 
 import type { WebSearchService } from "./WebSearchService"
 import type { WebExtractRequest, WebExtractResponse, WebResearchRequest, WebResearchResponse, WebSearchRequest, WebSearchResponse } from "./types"

@@ -1,7 +1,7 @@
 import axios from "axios"
 import { randomUUID } from "crypto"
 
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { assertInternalGcsBucketUrl } from "../../../services/FileStorageService"
 
 function getRandomBoundary(): string {

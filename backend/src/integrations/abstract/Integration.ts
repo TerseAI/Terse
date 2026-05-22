@@ -4,7 +4,7 @@ import type { ConfigData, ConfigurationFieldDefinition, FormFieldDefinition, For
 import { OAuthInstallationDetails } from "terse-types"
 import { z } from "zod"
 
-import logger from "../../logger"
+import logger from "../../common/logger"
 import { SecretService } from "../../services/SecretService"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 

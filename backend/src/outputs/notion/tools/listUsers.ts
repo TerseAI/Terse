@@ -2,10 +2,10 @@ import { Client } from "@notionhq/client"
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, NotionConfig } from "terse-types"
 
-import { getNotionAccessTokenForOrganization } from "../../../integrations/NotionIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
+import { getNotionAccessTokenForOrganization } from "../../../integrations/notion/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../utility/strings"
 import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionListUsersTool = defineSessionTool({

@@ -2,7 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 import { LaunchDarklyConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/LaunchDarklyIntegration"
+import { getLaunchDarklyAccessTokenOrThrow, validateLaunchDarklyEnvironmentsExist, validateLaunchDarklyProjectExists } from "../../integrations/launchdarkly/integration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 

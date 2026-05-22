@@ -1,4 +1,4 @@
-import { settings } from "../../config/settings"
+import { settings } from "../../settings"
 
 import { TavilyWebSearchService } from "./TavilyWebSearchService"
 import type { WebSearchService } from "./WebSearchService"

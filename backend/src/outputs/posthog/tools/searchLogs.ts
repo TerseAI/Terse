@@ -1,7 +1,7 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, PosthogConfig } from "terse-types"
 
-import logger from "../../../logger"
+import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidator, requireValueInAnyConfig } from "../../abstract/acl"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"

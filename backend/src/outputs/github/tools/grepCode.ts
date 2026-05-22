@@ -1,9 +1,9 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { GitHubConfig, IntegrationType } from "terse-types"
 
-import logger from "../../../logger"
+import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../utility/strings"
 import { ToolACLValidator } from "../../abstract/acl"
 import { createGitHubClient, getGitHubAccessToken, searchCode } from "../githubApiClient"
 

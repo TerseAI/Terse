@@ -2,7 +2,7 @@ import { OutputConfigType } from "@prisma/client"
 import { PosthogConfig } from "terse-types"
 import { IntegrationType } from "terse-types"
 
-import { validatePosthogProjectExists } from "../../integrations/PosthogIntegration"
+import { validatePosthogProjectExists } from "../../integrations/posthog/integration"
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 

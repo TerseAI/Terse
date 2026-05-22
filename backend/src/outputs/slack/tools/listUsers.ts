@@ -1,10 +1,10 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, SlackOutputConfig } from "terse-types"
 
-import { fetchSlackUsersForIntegration } from "../../../integrations/SlackIntegration"
-import logger from "../../../logger"
+import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
+import { fetchSlackUsersForIntegration } from "../../../integrations/slack/integration"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { extractErrorMessage } from "../../../utility/strings"
 import { ToolACLValidator } from "../../abstract/acl"
 
 export const slackListUsersTool = defineSessionTool({

@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { ConfigType, WebMonitorConfig, WebMonitorConfigSchema, WebMonitorOutputSchema } from "terse-types/Configs"
 
-import { buildWebhookUrl, createMonitor } from "../integrations/WebMonitorIntegration"
+import { buildWebhookUrl, createMonitor } from "../integrations/webMonitor/integration"
 import { PrismaTransaction } from "../types/prisma"
 
 import { Trigger } from "./Trigger"

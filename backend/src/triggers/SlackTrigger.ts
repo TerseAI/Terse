@@ -1,6 +1,6 @@
 import { ConfigType, SlackConfig } from "terse-types/Configs"
 
-import { SlackIntegrationManager, getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../integrations/SlackIntegration"
+import { SlackIntegrationManager, getSlackAccessTokenOrThrow, validateSlackChannelsExist, validateSlackUserIds } from "../integrations/slack/integration"
 import { PrismaTransaction } from "../types/prisma"
 
 import { Trigger } from "./Trigger"
