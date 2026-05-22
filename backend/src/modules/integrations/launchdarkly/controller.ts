@@ -3,7 +3,7 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import logger from "../../../common/logger"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
-import { LaunchDarklyIntegrationManager, assertLDKey } from "../../../integrations/launchdarkly/integration"
+import { LaunchDarklyIntegrationManager } from "../../../integrations/launchdarkly/integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
 
@@ -129,7 +129,6 @@ export async function fetchLaunchDarklyProjects(organizationId: string, integrat
 }
 
 export async function fetchLaunchDarklyEnvironments(organizationId: string, integrationId: string, projectKey: string): Promise<{ environments: Array<{ key: string; name: string }> }> {
-    assertLDKey(projectKey, "projectKey")
     const integration = await db().launchdarkly_integrations.findFirst({
         where: {
             id: integrationId,
@@ -148,7 +147,7 @@ export async function fetchLaunchDarklyEnvironments(organizationId: string, inte
     })
     const apiKey = secrets.apiKey
 
-    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
+    const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${encodeURIComponent(projectKey)}/environments`, {
         method: "GET",
         headers: {
             Authorization: apiKey,
@@ -192,13 +191,6 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
     }
 
     try {
-        assertLDKey(projectKey, "projectKey")
-    } catch {
-        res.status(400).json({ error: "Invalid projectKey" })
-        return
-    }
-
-    try {
         const organizationId = req.session.user.organizationId
         if (!organizationId) {
             return res.status(400).json({ error: "Organization context is required" })
@@ -224,7 +216,7 @@ export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
         const apiKey = secrets.apiKey
 
         // Fetch environments from LaunchDarkly API
-        const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
+        const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${encodeURIComponent(projectKey)}/environments`, {
             method: "GET",
             headers: {
                 Authorization: apiKey,
