@@ -222,7 +222,7 @@ export function createApp(options: CreateAppOptions) {
     app.use("/workos-integration", workosIntegrationRouter)
 
     // MARK: SESSION
-    app.get(ApiRoutes.SESSION.TOKEN, rateLimit(RateLimitKind.SessionToken), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
+    app.get(ApiRoutes.SESSION.TOKEN, requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), rateLimit(RateLimitKind.SessionToken), async (req, res) => {
         requestSessionSocketToken(req, res)
     })
 
