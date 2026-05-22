@@ -11,6 +11,7 @@ import { IconForIntegration } from "@/modules/agents/components/Integration"
 import { formatTimestamp } from "@/utils/time"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
+import { ScrubbedNotice } from "./ScrubbedNotice"
 
 interface RunHistoryRowProps {
     run: RunHistoryRecordWithAgent
@@ -46,6 +47,7 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                             <ExternalLink className="w-3 h-3" aria-hidden="true" />
                         </a>
                     )}
+                    {run.piiScrubbedAt && <ScrubbedNotice scrubbedAt={run.piiScrubbedAt} variant="marker" />}
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                     <button

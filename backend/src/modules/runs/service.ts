@@ -142,7 +142,8 @@ export async function listAllRunHistory(organizationId: string, params: GetRunHi
         },
         actions: mapActions(runRecord.actions),
         status: convertPrismaRunHistoryStatusToShared(runRecord.status),
-        isManuallyTriggered: runRecord.is_manually_triggered
+        isManuallyTriggered: runRecord.is_manually_triggered,
+        piiScrubbedAt: runRecord.pii_scrubbed_at?.toISOString() ?? null
     }))
     return { items, total }
 }
@@ -171,7 +172,8 @@ export async function listRunHistoryForAgent(agentId: string, organizationId: st
         },
         actions: mapActions(runRecord.actions),
         status: convertPrismaRunHistoryStatusToShared(runRecord.status),
-        isManuallyTriggered: runRecord.is_manually_triggered
+        isManuallyTriggered: runRecord.is_manually_triggered,
+        piiScrubbedAt: runRecord.pii_scrubbed_at?.toISOString() ?? null
     }))
     return { items, total }
 }
@@ -201,6 +203,21 @@ export async function fetchChatHistoryForRun(runId: string, organizationId: stri
     const runRecord = await findRunRecordForChat(runId, organizationId)
     if (!runRecord) throw new RunNotFoundError()
 
+    const piiScrubbedAt = runRecord.pii_scrubbed_at?.toISOString() ?? null
+
+    if (piiScrubbedAt) {
+        return {
+            events: [],
+            startTimestamp: runRecord.timestamp.toISOString(),
+            endTimestamp: runRecord.updated_at.toISOString(),
+            status: runRecord.status,
+            triggerEvent: null,
+            triggerEventType: null,
+            isTriggerEventTruncated: false,
+            piiScrubbedAt
+        }
+    }
+
     const modelEvents = await getRunHistoryModelEventsWithActions(runId, { includeScaffoldedUserMessages: false })
     const events: RunHistoryModelEvent[] = modelEvents.map((event, index) => ({
         ...event,
@@ -217,7 +234,8 @@ export async function fetchChatHistoryForRun(runId: string, organizationId: stri
         status: runRecord.status,
         triggerEvent,
         triggerEventType,
-        isTriggerEventTruncated
+        isTriggerEventTruncated,
+        piiScrubbedAt
     }
 }
 

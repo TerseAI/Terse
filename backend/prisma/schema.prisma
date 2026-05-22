@@ -865,6 +865,7 @@ model run_history_records {
   sdk_skills            Json?
   created_at            DateTime                 @default(now())
   updated_at            DateTime                 @updatedAt
+  pii_scrubbed_at       DateTime?
 
   automation              automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   project_deploy          project_deploys?          @relation(fields: [project_deploy_id], references: [id], onDelete: SetNull)

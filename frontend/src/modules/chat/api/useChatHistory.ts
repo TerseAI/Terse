@@ -9,6 +9,7 @@ type ChatHistoryResponse = {
     startTimestamp?: string
     endTimestamp?: string
     status?: RunHistoryStatus
+    piiScrubbedAt?: string | null
 } & Partial<TriggerPayload>
 
 export function useChatHistory(runId: string | null | undefined) {
@@ -35,6 +36,7 @@ export function useChatHistory(runId: string | null | undefined) {
         triggerEvent: data?.triggerEvent ?? null,
         triggerEventType: data?.triggerEventType ?? null,
         isTriggerEventTruncated: data?.isTriggerEventTruncated ?? false,
+        piiScrubbedAt: data?.piiScrubbedAt ?? null,
         isLoading: isLoading && !!runId,
         isError: error,
         isValidating,

@@ -18,6 +18,8 @@ type Props = {
 export default function RunHistoryActionItem({ runId, index, action, runStatus, isExpanded, onToggle }: Props) {
     const actionKey = `${runId}-action-${index}`
 
+    const isScrubbed = action.action === "" && action.target === "" && action.details === ""
+
     const formatAction = (s: string) => {
         return s
             .split("_")
@@ -36,10 +38,16 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-foreground">
-                                        {formatAction(action.action)} on {capitalize(action.integration)} → {action.target}
-                                    </span>
-                                    {action.url && (
+                                    {isScrubbed ? (
+                                        <span className="text-muted-foreground">
+                                            {capitalize(action.integration)} · {capitalize(action.type)} action
+                                        </span>
+                                    ) : (
+                                        <span className="text-foreground">
+                                            {formatAction(action.action)} on {capitalize(action.integration)} → {action.target}
+                                        </span>
+                                    )}
+                                    {!isScrubbed && action.url && (
                                         <a href={action.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-primary hover:opacity-80 transition-opacity">
                                             <ExternalLink className="w-3 h-3" />
                                         </a>
@@ -49,7 +57,11 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                         </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                        <div className={cn("p-2", runStatus === RunHistoryStatus.FAILED ? "text-danger" : "text-muted-foreground")}>{action.details}</div>
+                        {isScrubbed ? (
+                            <div className="px-2 pb-2 text-xs text-muted-foreground/80">Action details removed after 30 days</div>
+                        ) : (
+                            <div className={cn("p-2", runStatus === RunHistoryStatus.FAILED ? "text-danger" : "text-muted-foreground")}>{action.details}</div>
+                        )}
                     </AccordionContent>
                 </AccordionItem>
             </div>

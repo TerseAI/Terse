@@ -350,7 +350,8 @@ export const runHistoryRecordSchema = z.object({
     decision: runHistoryDecisionSchema,
     actions: z.array(runHistoryActionBaseSchema).optional(),
     status: runHistoryStatusSchema,
-    isManuallyTriggered: z.boolean()
+    isManuallyTriggered: z.boolean(),
+    piiScrubbedAt: z.string().nullable().optional()
 })
 export type RunHistoryRecord = z.infer<typeof runHistoryRecordSchema>
 

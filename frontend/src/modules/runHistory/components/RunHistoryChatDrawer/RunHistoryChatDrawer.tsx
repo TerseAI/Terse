@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils"
 import { AwaitingResponseAnimation } from "@/modules/chat/components/AwaitingResponseAnimation"
 import { Chat, type ChatHandle } from "@/modules/chat/components/Chat"
 
+import { ScrubbedNotice } from "../ScrubbedNotice"
+
 import RunHistoryChatAdapter from "./RunHistoryChatAdapter"
 import RunHistoryChatDrawerHeader from "./RunHistoryChatDrawerHeader"
 import { RunHistoryChatEmptyMessages } from "./RunHistoryChatEmptyMessages"
@@ -75,9 +77,11 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                         isRunPending,
                         triggerEvent,
                         triggerEventType,
-                        isTriggerEventTruncated
+                        isTriggerEventTruncated,
+                        piiScrubbedAt
                     }) => {
                         const isFiltered = currentStatus === RunHistoryStatus.SKIPPED
+                        const isScrubbed = !!piiScrubbedAt
                         const formattedTriggerEventType = formatEventTypeLabel(triggerEventType)
                         const emptyPlaceholder =
                             initialTurns.length === 0 && isRunPending ? (
@@ -105,26 +109,38 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                         onNavigate={onNavigate}
                                         isFullscreen={isFullscreen}
                                         onFullscreenChange={handleFullscreenChange}
-                                        hasTriggerPayload={!!triggerEvent}
+                                        hasTriggerPayload={isScrubbed || !!triggerEvent}
                                         isTriggerPayloadOpen={isTriggerPayloadOpen}
                                         onToggleTriggerPayload={() => setIsTriggerPayloadOpen(open => !open)}
                                     />
-                                    <TriggerPayloadViewer event={triggerEvent} eventType={formattedTriggerEventType} isTruncated={isTriggerEventTruncated} isOpen={isTriggerPayloadOpen} />
+                                    <TriggerPayloadViewer
+                                        event={triggerEvent}
+                                        eventType={formattedTriggerEventType}
+                                        isTruncated={isTriggerEventTruncated}
+                                        isOpen={isTriggerPayloadOpen}
+                                        piiScrubbedAt={piiScrubbedAt}
+                                    />
                                 </div>
                                 <div className={cn("flex-1 overflow-hidden min-h-0 bg-background select-text", isFullscreen && "mx-auto w-full")}>
                                     <div className="flex flex-col h-full relative">
                                         <div className="flex-1 min-h-0">
-                                            <Chat
-                                                ref={chatRef}
-                                                initialTurns={initialTurns}
-                                                subscribeToEvents={subscribeToEvents}
-                                                sendMessage={sendMessage}
-                                                addUserTurnsLocally={true}
-                                                onHandleApprove={handleApprove}
-                                                onHandleReject={handleReject}
-                                                onHandleCancellation={handleCancellation}
-                                                EmptyContentPlaceholder={emptyPlaceholder}
-                                            />
+                                            {isScrubbed ? (
+                                                <div className="flex h-full items-center justify-center p-6">
+                                                    <ScrubbedNotice scrubbedAt={piiScrubbedAt!} variant="panel" className="max-w-md" />
+                                                </div>
+                                            ) : (
+                                                <Chat
+                                                    ref={chatRef}
+                                                    initialTurns={initialTurns}
+                                                    subscribeToEvents={subscribeToEvents}
+                                                    sendMessage={sendMessage}
+                                                    addUserTurnsLocally={true}
+                                                    onHandleApprove={handleApprove}
+                                                    onHandleReject={handleReject}
+                                                    onHandleCancellation={handleCancellation}
+                                                    EmptyContentPlaceholder={emptyPlaceholder}
+                                                />
+                                            )}
                                         </div>
                                     </div>
                                 </div>

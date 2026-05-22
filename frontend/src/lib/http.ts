@@ -417,6 +417,7 @@ interface BackendService {
         triggerEvent?: string | null
         triggerEventType?: string | null
         isTriggerEventTruncated?: boolean
+        piiScrubbedAt?: string | null
     }>
 
     /**
@@ -1015,6 +1016,7 @@ export const BackendProvider: BackendService = {
                 triggerEvent?: string | null
                 triggerEventType?: string | null
                 isTriggerEventTruncated?: boolean
+                piiScrubbedAt?: string | null
             }>(url, {
                 withCredentials: true
             })

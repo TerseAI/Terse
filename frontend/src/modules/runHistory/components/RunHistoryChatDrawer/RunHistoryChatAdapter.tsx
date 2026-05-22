@@ -27,6 +27,7 @@ type RunHistoryChatAdapterProps = {
         triggerEvent: string | null
         triggerEventType: string | null
         isTriggerEventTruncated: boolean
+        piiScrubbedAt: string | null
         subscribeToEvents?: ChatEventSubscription | null
         sendMessage: (message: ModelRequest) => void
         handleApprove: (stepId: string) => void
@@ -39,7 +40,7 @@ type RunHistoryChatAdapterProps = {
 
 export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus, triggerEvent, triggerEventType, isTriggerEventTruncated } = useChatHistory(runId)
+    const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus, triggerEvent, triggerEventType, isTriggerEventTruncated, piiScrubbedAt } = useChatHistory(runId)
 
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = apiStatus ?? status
@@ -98,6 +99,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
                     triggerEvent,
                     triggerEventType,
                     isTriggerEventTruncated,
+                    piiScrubbedAt,
                     subscribeToEvents,
                     sendMessage,
                     currentStatus,

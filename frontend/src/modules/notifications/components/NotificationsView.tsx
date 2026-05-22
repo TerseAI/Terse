@@ -434,7 +434,7 @@ function SentNotificationRow({ notification }: { notification: SentNotification 
                         <span className="truncate font-medium text-foreground">{formatEventType(notification.eventType)}</span>
                         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                             <SentNotificationDestinationIcon destinationType={notification.destinationType} />
-                            <span className="truncate">{notification.destinationLabel}</span>
+                            <span className="truncate">{notification.destinationLabel || "—"}</span>
                             {notification.notificationUrl && (
                                 <a
                                     href={notification.notificationUrl}

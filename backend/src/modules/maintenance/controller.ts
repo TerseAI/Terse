@@ -7,6 +7,8 @@ import { SecretManagerClient } from "../../common/secretManagerClient"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 
+import { scrubExpiredRunHistory } from "./piiScrubber"
+
 const clearOldSecretVersionsRequestSchema = z.object({
     dryRun: z.preprocess(value => {
         return value !== undefined && typeof value === "string" && value.trim().toLowerCase() === "true"
@@ -82,6 +84,19 @@ export async function refreshAllTokens(req: Request, res: Response) {
         logger.error("Error in token refresh cron job:", { error })
         return res.status(500).json({ error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" })
     }
+}
+
+export async function scrubExpiredRunHistoryHandler(_req: Request, res: Response) {
+    logger.info("PII scrub cron job triggered")
+    res.status(200).json({ received: true })
+
+    scrubExpiredRunHistory()
+        .then(result => {
+            logger.info("PII scrub completed", result)
+        })
+        .catch(error => {
+            logger.error("PII scrub failed", { error: error instanceof Error ? error.message : "Unknown error" })
+        })
 }
 
 export async function clearOldSecretVersions(req: Request, res: Response) {

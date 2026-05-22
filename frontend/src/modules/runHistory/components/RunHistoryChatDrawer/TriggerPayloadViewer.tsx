@@ -6,17 +6,32 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import ToolCallParameters from "@/modules/chat/components/ToolCallParameters"
 
+import { ScrubbedNotice } from "../ScrubbedNotice"
+
 type Props = {
     event: string | null
     eventType?: string | null
     isTruncated?: boolean
     isOpen: boolean
+    piiScrubbedAt?: string | null
 }
 
-export default function TriggerPayloadViewer({ event, eventType, isTruncated = false, isOpen }: Props) {
+export default function TriggerPayloadViewer({ event, eventType, isTruncated = false, isOpen, piiScrubbedAt }: Props) {
     const [isCopied, setIsCopied] = useState(false)
 
-    if (!event || !isOpen) return null
+    if (!isOpen) return null
+
+    if (piiScrubbedAt) {
+        return (
+            <div className="px-4 pb-2">
+                <div className="space-y-2 border-t border-border/50 pt-2">
+                    <ScrubbedNotice scrubbedAt={piiScrubbedAt} variant="panel" />
+                </div>
+            </div>
+        )
+    }
+
+    if (!event) return null
 
     const handleCopy = async () => {
         try {
