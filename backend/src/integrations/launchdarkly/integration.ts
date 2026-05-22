@@ -19,6 +19,18 @@ import {
     createNotConnectedCliDisplayState
 } from "../abstract/Integration"
 
+// LaunchDarkly project/environment keys: ASCII alphanumerics + . _ - up to 20 chars.
+// Validated before interpolation into LaunchDarkly API URLs to prevent path injection
+// (e.g. `..%2Ftokens` pivoting to other endpoints with the org's API key).
+const LD_KEY_RE = /^[a-zA-Z0-9._-]{1,20}$/
+
+export function assertLDKey(value: string, label: string): string {
+    if (typeof value !== "string" || !LD_KEY_RE.test(value)) {
+        throw new Error(`Invalid ${label}`)
+    }
+    return value
+}
+
 export class LaunchDarklyIntegrationManager
     extends Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata, LaunchDarklyProject>
     implements FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY>
@@ -328,6 +340,7 @@ export async function getLaunchDarklyAccessTokenOrThrow(integrationId: string): 
  * Verifies that the given LaunchDarkly project exists and is accessible with the provided API key.
  */
 export async function validateLaunchDarklyProjectExists(apiKey: string, projectKey: string): Promise<void> {
+    assertLDKey(projectKey, "projectKey")
     const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}`, {
         method: "GET",
         headers: {
@@ -347,6 +360,7 @@ export async function validateLaunchDarklyProjectExists(apiKey: string, projectK
  */
 export async function validateLaunchDarklyEnvironmentsExist(apiKey: string, projectKey: string, environmentKeys: string[]): Promise<void> {
     if (!environmentKeys.length) return
+    assertLDKey(projectKey, "projectKey")
     const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
         method: "GET",
         headers: {
