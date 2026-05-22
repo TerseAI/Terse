@@ -11,6 +11,6 @@ const limit = rateLimit(RateLimitKind.Default)
 
 router.get("/integrations", limit, auth, getGmailIntegrations)
 router.get("/callback", rateLimit(RateLimitKind.AuthEndpoint), gmailCallback)
-router.delete("/integrations/:id", limit, auth, deleteGmailIntegration)
+router.delete("/delete-integration", limit, auth, deleteGmailIntegration)
 
 export default router

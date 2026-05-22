@@ -10,7 +10,7 @@ const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])
 const limit = rateLimit(RateLimitKind.Default)
 
 router.get("/integrations", limit, auth, getAttioIntegrations)
-router.get("/oauth-callback", rateLimit(RateLimitKind.AuthEndpoint), attioOAuthCallback)
-router.get("/objects", limit, auth, getAttioObjects)
+router.get("/oauth/callback", rateLimit(RateLimitKind.AuthEndpoint), attioOAuthCallback)
+router.get("/integrations/:integrationId/objects", limit, auth, getAttioObjects)
 
 export default router

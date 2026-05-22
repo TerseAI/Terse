@@ -9,7 +9,7 @@ const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])
 const limit = rateLimit(RateLimitKind.Default)
 
-router.get("/oauth-callback", rateLimit(RateLimitKind.AuthEndpoint), linearOAuthCallback)
+router.get("/oauth/callback", rateLimit(RateLimitKind.AuthEndpoint), linearOAuthCallback)
 router.get("/integrations", limit, auth, getLinearIntegrations)
 router.get("/teams", limit, auth, getLinearTeams)
 router.get("/projects", limit, auth, getLinearProjects)
