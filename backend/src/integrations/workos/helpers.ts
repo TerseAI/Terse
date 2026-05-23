@@ -1,8 +1,9 @@
-import { WorkOS } from "@workos-inc/node"
+import { NotFoundException, WorkOS } from "@workos-inc/node"
 import type { EventName } from "@workos-inc/node"
 import { WorkOSEventType } from "terse-types/Configs"
 import { Role, User } from "terse-types/types"
 
+import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
 import { settings } from "../../settings"
 
@@ -34,7 +35,22 @@ export async function getUserForOrg(userId: string, organizationId: string): Pro
     }
 
     const workOSId = dbUser.workos_id
-    const workOSUser = await workos.userManagement.getUser(workOSId)
+
+    let workOSUser
+    try {
+        workOSUser = await workos.userManagement.getUser(workOSId)
+    } catch (error) {
+        if (error instanceof NotFoundException) {
+            logger.warn("WorkOS user not found; treating local user as unlinked", {
+                dbUserId: dbUser.id,
+                workOSId,
+                organizationId
+            })
+            return null
+        }
+        throw error
+    }
+
     if (!workOSUser) {
         return null
     }
