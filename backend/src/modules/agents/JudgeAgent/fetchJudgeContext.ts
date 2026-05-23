@@ -34,7 +34,7 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
     const formattedConfig = formatAgentForSystemPrompt(automation)
     return {
         formattedConfig,
-        projectId: automation.project?.id ?? null,
+        projectId: automation.project?.id,
         rawConfig: {
             id: automation.id,
             name: automation.name,
@@ -50,8 +50,7 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
     }
 }
 
-async function fetchActiveSourceImageId(projectId: string | null): Promise<string | undefined> {
-    if (!projectId) return undefined
+async function fetchActiveSourceImageId(projectId: string): Promise<string | undefined> {
     const deploy = await getActiveDeployForProject(projectId)
     if (!deploy?.sdk_source_image_id) return undefined
 
@@ -59,7 +58,7 @@ async function fetchActiveSourceImageId(projectId: string | null): Promise<strin
         where: { id: deploy.sdk_source_image_id },
         select: { image_id: true }
     })
-    return sourceImage?.image_id ?? undefined
+    return sourceImage?.image_id
 }
 
 async function fetchRunHistory(automationId: string, orgId: string, periodDays = PERIOD_DAYS_DEFAULT) {
