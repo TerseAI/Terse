@@ -71,11 +71,8 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
 
         const parseResult = linearWebhookPayloadSchema.safeParse(parsedJson)
         if (!parseResult.success) {
-            const payload = parsedJson as { type?: unknown; action?: unknown }
             logger.warn("Linear webhook payload failed schema validation; acking 200 to stop retries", {
-                issues: parseResult.error.issues,
-                eventType: typeof payload?.type === "string" ? payload.type : undefined,
-                action: typeof payload?.action === "string" ? payload.action : undefined
+                issues: parseResult.error.issues
             })
             return res.status(200).json({ received: true, ignored: true })
         }
