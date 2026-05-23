@@ -1,4 +1,4 @@
-export interface SandboxService {
+export interface SandboxService<I extends SandboxImage = SandboxImage> {
     /**
      * Mark: App related API
      */
@@ -6,14 +6,14 @@ export interface SandboxService {
     /**
      * Mark: Image related API
      */
-    getImageFromRegistry(registry: string): SandboxImage
-    getImageFromId(imageId: string): Promise<SandboxImage>
+    getImageFromRegistry(registry: string): I
+    getImageFromId(imageId: string): Promise<I>
     deleteImage(imageId: string): Promise<void>
 
     /**
      * Mark: Sandbox related API
      */
-    getOrCreateSandbox(app: SandboxApp, image: SandboxImage, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox>
+    getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox>
 }
 
 export interface SandboxApp {

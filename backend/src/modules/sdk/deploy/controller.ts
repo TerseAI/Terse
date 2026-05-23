@@ -16,7 +16,6 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "../../../modules/agents/controller"
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
-import { uploadSdkDeployZip } from "../../../services/FileStorageService"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
@@ -71,16 +70,11 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
         const results: SdkDeployResponseBody["results"] = []
 
-        let sourceZipBuffer: Buffer | undefined
-        let gcsKey: string | undefined
         if (sourceZipBase64) {
-            emitStage("UPLOADING_SOURCE")
-            sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64)
-            gcsKey = await uploadSourceZipToGcs(sourceZipBuffer)
+            const sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64)
 
             const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
                 zipBuffer: sourceZipBuffer,
-                gcsKey,
                 organizationId,
                 cliVersion,
                 onProgress: phase => {
@@ -137,9 +131,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: buildDeployResultTriggers(agent) })
 
-            emitCacheInvalidationWithWildcard(organizationId, "agentFiles", agent.id)
-            emitCacheInvalidationWithWildcard(organizationId, "agentFileContent", agent.id)
-
             logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, { automationId: agent.id, jobName: job.jobName, organizationId, triggerCount: job.triggers.length })
         }
 
@@ -159,7 +150,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         emitCacheInvalidationWithKey(organizationId, "agents")
         emitCacheInvalidationWithKey(organizationId, "organization-projects")
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
-        emitCacheInvalidationWithWildcard(organizationId, "projectSourceFiles", projectId)
         emitCacheInvalidationWithWildcard(organizationId, "project", projectId)
 
         const response: SdkDeployResponseBody = {
@@ -183,10 +173,6 @@ function parseSourceZipBuffer(sourceZipBase64: string): Buffer {
     const zipBuffer = Buffer.from(sourceZipBase64, "base64")
     if (zipBuffer.length === 0) throw new Error("sourceZipBase64 is empty")
     return zipBuffer
-}
-
-async function uploadSourceZipToGcs(zipBuffer: Buffer): Promise<string> {
-    return uploadSdkDeployZip(zipBuffer)
 }
 
 async function updateExistingAutomation(

@@ -96,11 +96,3 @@ export async function findProjectDeploys(projectId: string, max: number): Promis
     ])
     return { deploys: deployRows, activeDeployId: activeDeploy?.id ?? null }
 }
-
-export async function findActiveDeployWithSourceImage(projectId: string) {
-    return db().project_deploys.findFirst({
-        where: { project_id: projectId, status: "SUCCEEDED" },
-        orderBy: { created_at: "desc" },
-        include: { sdk_source_image: true }
-    })
-}

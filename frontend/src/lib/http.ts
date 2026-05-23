@@ -37,8 +37,6 @@ import { GetSentNotificationsResponse } from "terse-types/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 import {
     Agent,
-    AgentFileContentResponse,
-    AgentFilesResponse,
     type AgentTrigger,
     AgentUpdate,
     AgentsResponse,
@@ -61,7 +59,6 @@ import {
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
     ProjectSecretsListResponse,
-    ProjectSourceFilesResponse,
     ProjectsListResponse,
     RecentAgent,
     SdkJobServerCheckResponse,
@@ -343,16 +340,6 @@ interface BackendService {
     deleteProjectSecret(id: string, name: string): Promise<void>
 
     /**
-     * Lists the source files of a project's currently-active deploy.
-     */
-    getProjectSourceFiles(id: string): Promise<ProjectSourceFilesResponse>
-
-    /**
-     * Returns the raw bytes (base64) of a single file from the project's active deploy archive.
-     */
-    getProjectSourceFileContent(id: string, fileId: string): Promise<AgentFileContentResponse>
-
-    /**
      * Verifies that a self-hosted SDK job server is reachable and correctly configured
      */
     verifySdkJobServer(agentId: string): Promise<SdkJobServerCheckResponse>
@@ -592,16 +579,6 @@ interface BackendService {
         warehouse: string,
         stateToken?: string
     ): Promise<{ success: boolean; accountIdentifier: string; warehouse: string }>
-
-    /**
-     * Lists out the files uploaded to an agent
-     */
-    getAgentFiles(agentId: string): Promise<AgentFilesResponse>
-
-    /**
-     * Gets the content of a file uploaded to an agent as a presigend URL
-     */
-    getAgentFileContent(agentId: string, fileId: string): Promise<AgentFileContentResponse>
 
     getBillingContext(params: BillingContextQuery): Promise<BillingContextResponse>
     getBillingUsageBuckets(params: BillingUsageBucketsQuery): Promise<UsageResponse>
@@ -931,16 +908,6 @@ export const BackendProvider: BackendService = {
         return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(() => undefined)
     },
 
-    getProjectSourceFiles: (id: string) => {
-        const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILES, { id })
-        return axios.get<ProjectSourceFilesResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
-    },
-
-    getProjectSourceFileContent: (id: string, fileId: string) => {
-        const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, { id, fileId })
-        return axios.get<AgentFileContentResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
-    },
-
     verifySdkJobServer: (agentId: string) => {
         const url = buildRoute(ApiRoutes.SDK.VERIFY_JOB_SERVER, { agentId })
         return axios.post<SdkJobServerCheckResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true }).then(response => response.data)
@@ -1242,13 +1209,6 @@ export const BackendProvider: BackendService = {
             ...(applyToAllAgents !== undefined && { applyToAllAgents })
         }
         return axios.post(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, payload, { withCredentials: true }).then(() => undefined)
-    },
-    getAgentFiles: (agentId: string) => {
-        return axios.get<AgentFilesResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILES, { agentId })}`, { withCredentials: true }).then(response => response.data)
-    },
-
-    getAgentFileContent: (agentId: string, fileId: string) => {
-        return axios.get<AgentFileContentResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILE_CONTENT, { agentId, fileId })}`, { withCredentials: true }).then(response => response.data)
     },
     getBillingContext: (params: BillingContextQuery) =>
         axios.get<BillingContextResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CONTEXT}`, { withCredentials: true, params }).then(response => response.data),

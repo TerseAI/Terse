@@ -158,9 +158,7 @@ export const settings = {
     // Google Cloud Storage
     gcs: {
         imageBucket: optionalEnv("GCS_IMAGE_BUCKET", "terse-documents"),
-        imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images"),
-        codeBucket: optionalEnv("GCS_CODE_BUCKET", "terse-sdk-zips"),
-        codePrefix: optionalEnv("GCS_CODE_PREFIX", "sdk-zips")
+        imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images")
     },
 
     // Cloud Scheduler (for cron jobs)

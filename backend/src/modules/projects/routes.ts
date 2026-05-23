@@ -3,16 +3,7 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
-import {
-    handleGetProjectById,
-    handleGetProjectDeploys,
-    handleGetProjectSourceFileContent,
-    handleGetProjectSourceFiles,
-    handleListProjects,
-    handleProjectDelete,
-    handleRotateProjectApiKey,
-    handleRotateProjectSigningSecret
-} from "./controller"
+import { handleGetProjectById, handleGetProjectDeploys, handleListProjects, handleProjectDelete, handleRotateProjectApiKey, handleRotateProjectSigningSecret } from "./controller"
 
 const router = Router()
 
@@ -23,8 +14,6 @@ router.get("/", limit, auth, handleListProjects)
 router.get("/:id", limit, auth, handleGetProjectById)
 router.delete("/:id", limit, auth, handleProjectDelete)
 router.get("/:id/deploys", limit, auth, handleGetProjectDeploys)
-router.get("/:id/source/files", limit, auth, handleGetProjectSourceFiles)
-router.get("/:id/source/files/:fileId", limit, auth, handleGetProjectSourceFileContent)
 router.post("/:id/rotate-signing-secret", limit, auth, handleRotateProjectSigningSecret)
 router.post("/:id/rotate-api-key", limit, auth, handleRotateProjectApiKey)
 

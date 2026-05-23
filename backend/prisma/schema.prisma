@@ -360,7 +360,6 @@ model sdk_source_images {
   organization_id     String
   runtime             String
   source_hash         String
-  gcs_key             String
   image_id            String   @unique
   dependency_image_id String
   last_used_at        DateTime @default(now())
@@ -372,7 +371,6 @@ model sdk_source_images {
 
   @@unique([organization_id, dependency_image_id, source_hash])
   @@index([organization_id])
-  @@index([gcs_key])
   @@index([last_used_at])
 }
 

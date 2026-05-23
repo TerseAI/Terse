@@ -1,6 +1,6 @@
 import logger from "../../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../../common/prismaIncludes"
-import { getActiveSourceCodeGcsKeyForAutomation } from "../../../common/projectHelper"
+import { getActiveDeployForProject } from "../../../common/projectHelper"
 import { db } from "../../../loaders/prisma"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
 
@@ -32,9 +32,9 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
     if (!automation) throw new Error("Agent not found")
 
     const formattedConfig = formatAgentForSystemPrompt(automation)
-    const gcsKey = automation.project ? await getActiveSourceCodeGcsKeyForAutomation(automation) : null
     return {
         formattedConfig,
+        projectId: automation.project?.id,
         rawConfig: {
             id: automation.id,
             name: automation.name,
@@ -46,9 +46,19 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
             outputs: automation.outputs,
             toolApprovals: automation.tool_approvals.map(row => row.tool_name),
             notificationSettings: automation.notification_settings
-        },
-        gcsKey: gcsKey ?? undefined
+        }
     }
+}
+
+async function fetchActiveSourceImageId(projectId: string): Promise<string | undefined> {
+    const deploy = await getActiveDeployForProject(projectId)
+    if (!deploy?.sdk_source_image_id) return undefined
+
+    const sourceImage = await db().sdk_source_images.findUnique({
+        where: { id: deploy.sdk_source_image_id },
+        select: { image_id: true }
+    })
+    return sourceImage?.image_id
 }
 
 async function fetchRunHistory(automationId: string, orgId: string, periodDays = PERIOD_DAYS_DEFAULT) {
@@ -185,6 +195,8 @@ export interface JudgeContext {
     runHistory: Awaited<ReturnType<typeof fetchRunHistory>>
     runDetails: Array<{ runId: string; details: Awaited<ReturnType<typeof fetchRunDetails>> }>
     pastImprovements: Awaited<ReturnType<typeof fetchPastImprovements>>
+    /** Modal image ID (`sdk_source_images.image_id`) to boot the Judge sandbox from. Absent if the project has no successful deploy yet. */
+    sourceImageId: string | undefined
 }
 
 export async function fetchFullJudgeContext(automationId: string, orgId: string): Promise<JudgeContext> {
@@ -199,5 +211,7 @@ export async function fetchFullJudgeContext(automationId: string, orgId: string)
         }))
     )
 
-    return { agentConfig, runHistory, runDetails, pastImprovements }
+    const sourceImageId = await fetchActiveSourceImageId(agentConfig.projectId)
+
+    return { agentConfig, runHistory, runDetails, pastImprovements, sourceImageId }
 }
