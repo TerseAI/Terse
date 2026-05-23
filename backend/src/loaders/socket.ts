@@ -286,6 +286,9 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
 
             try {
                 const skills = readSdkSkillsFromJson(runRecord.sdk_skills)
+                // KNOWN LIMITATION: faithful only for single-agent SDK runs. If the trigger
+                // created multiple TerseAgents, `sdk_prompt` is the last one written and
+                // `skills` is the union of every agent's tools — see upsertSdkPrompt JSDoc.
                 const prompt = [runRecord.sdk_prompt, agent.prompt?.content].filter(Boolean).join("\n\n")
 
                 const sdkRunner = new SdkAgentRunner({

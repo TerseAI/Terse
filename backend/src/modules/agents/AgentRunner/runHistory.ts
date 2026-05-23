@@ -342,9 +342,19 @@ export async function upsertSdkSkills(runId: string, organizationId: string, inc
 }
 
 /**
- * Stores the SDK system prompt on a run record. Last write wins — if a single
- * job execution calls `TerseAgent.create` multiple times, the most recent
- * prompt is what chat continuations will replay.
+ * Stores the SDK system prompt on a run record.
+ *
+ * KNOWN LIMITATION — multi-agent jobs are incoherent.
+ * SDK jobs may call `TerseAgent.create` more than once per `onTrigger`. Each
+ * call is a distinct agent with its own prompt and skills, but the run record
+ * has only one bucket per field:
+ *   - this column is last-write-wins
+ *   - `sdk_skills` is unioned across all agents in the run
+ *   - the chat memory session replays every agent's events as one stream
+ * For single-agent jobs (the common case today) this is correct. For
+ * multi-agent jobs, chat continuations get a mongrel system prompt + tool
+ * set that matches no single agent that actually ran. A proper fix tracks
+ * per-agent-invocation legs on the run; see follow-up issue.
  */
 export async function upsertSdkPrompt(runId: string, organizationId: string, prompt: string): Promise<void> {
     if (!prompt) return
