@@ -3,14 +3,7 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
-import {
-    handleGetProjectById,
-    handleGetProjectDeploys,
-    handleListProjects,
-    handleProjectDelete,
-    handleRotateProjectApiKey,
-    handleRotateProjectSigningSecret
-} from "./controller"
+import { handleGetProjectById, handleGetProjectDeploys, handleListProjects, handleProjectDelete, handleRotateProjectApiKey, handleRotateProjectSigningSecret } from "./controller"
 
 const router = Router()
 

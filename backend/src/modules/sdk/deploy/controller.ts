@@ -131,9 +131,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: buildDeployResultTriggers(agent) })
 
-            emitCacheInvalidationWithWildcard(organizationId, "agentFiles", agent.id)
-            emitCacheInvalidationWithWildcard(organizationId, "agentFileContent", agent.id)
-
             logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, { automationId: agent.id, jobName: job.jobName, organizationId, triggerCount: job.triggers.length })
         }
 
@@ -153,7 +150,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         emitCacheInvalidationWithKey(organizationId, "agents")
         emitCacheInvalidationWithKey(organizationId, "organization-projects")
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
-        emitCacheInvalidationWithWildcard(organizationId, "projectSourceFiles", projectId)
         emitCacheInvalidationWithWildcard(organizationId, "project", projectId)
 
         const response: SdkDeployResponseBody = {

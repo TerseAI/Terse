@@ -145,38 +145,6 @@ export async function getProjectDeploysForOrganization(projectId: string, organi
     return { projectId, deploys }
 }
 
-export async function getProjectSourceFiles(projectId: string, organizationId: string): Promise<ProjectSourceFilesResponse> {
-    const project = await findProjectBasic(projectId, organizationId)
-    if (!project) throw new ProjectNotFoundError()
-
-    const activeDeploy = await findActiveDeployWithSourceImage(projectId)
-    if (!activeDeploy?.sdk_source_image?.gcs_key) {
-        return { projectId, deployId: null, deployedAt: null, files: [] }
-    }
-
-    const zip = await loadSdkSourceZip(activeDeploy.sdk_source_image.gcs_key)
-    const files = zip ? listSdkZipPathsRecursive(zip) : []
-    return {
-        projectId,
-        deployId: activeDeploy.id,
-        deployedAt: activeDeploy.created_at.toISOString(),
-        files
-    }
-}
-
-export async function getProjectSourceFileContent(projectId: string, fileId: string, organizationId: string) {
-    const project = await findProjectBasic(projectId, organizationId)
-    if (!project) throw new ProjectNotFoundError()
-
-    const gcsKey = await getActiveSourceCodeGcsKeyForProject(projectId)
-    const zip = await loadSdkSourceZip(gcsKey)
-    if (!zip) throw new ProjectBadRequestError("No source archive for this project")
-
-    const payload = extractSdkZipFile(zip, fileId)
-    if (!payload) throw new ProjectNotFoundError()
-    return payload
-}
-
 export async function rotateSigningSecret(projectId: string, organizationId: string, userId: string): Promise<{ signingSecret: string }> {
     const project = await findProjectForRotation(projectId, organizationId)
     if (!project) throw new ProjectNotFoundError()

@@ -722,4 +722,3 @@ export async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): P
         }
     }
 }
-

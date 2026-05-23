@@ -37,8 +37,6 @@ import { GetSentNotificationsResponse } from "terse-types/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 import {
     Agent,
-    AgentFileContentResponse,
-    AgentFilesResponse,
     type AgentTrigger,
     AgentUpdate,
     AgentsResponse,
@@ -61,7 +59,6 @@ import {
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
     ProjectSecretsListResponse,
-    ProjectSourceFilesResponse,
     ProjectsListResponse,
     RecentAgent,
     SdkJobServerCheckResponse,
@@ -333,16 +330,6 @@ interface BackendService {
      * Deletes one project secret by name.
      */
     deleteProjectSecret(id: string, name: string): Promise<void>
-
-    /**
-     * Lists the source files of a project's currently-active deploy.
-     */
-    getProjectSourceFiles(id: string): Promise<ProjectSourceFilesResponse>
-
-    /**
-     * Returns the raw bytes (base64) of a single file from the project's active deploy archive.
-     */
-    getProjectSourceFileContent(id: string, fileId: string): Promise<AgentFileContentResponse>
 
     /**
      * Verifies that a self-hosted SDK job server is reachable and correctly configured
