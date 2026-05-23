@@ -74,7 +74,9 @@ const IMPROVEMENTS_SCHEMA = {
 }
 
 const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
-const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23", "2607:6bc0::/48"]
+// Modal sandbox CIDR allowlist accepts IPv4 only. Anthropic's IPv6 range (2607:6bc0::/48) is dropped;
+// requests will fall back to IPv4 (160.79.104.0/23).
+const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23"]
 
 export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()

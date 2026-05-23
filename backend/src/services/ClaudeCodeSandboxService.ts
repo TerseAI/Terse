@@ -70,15 +70,26 @@ export class ClaudeCodeSandboxService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
-    private async installClaudeCodeAndUser(sb: Sandbox, label: string): Promise<void> {
-        const installCmd = `npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} && npm cache clean --force && (id -u coder >/dev/null 2>&1 || useradd -m -s /bin/bash coder)`
-        const proc = await sb.exec(["sh", "-c", installCmd], { stdout: "pipe", stderr: "pipe" })
-        const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
-        const exitCode = await proc.wait()
-        if (exitCode !== 0) {
-            const detail = stderr.trim().slice(0, 1000) || stdout.trim().slice(0, 1000) || `exit ${exitCode}`
-            logger.error(`[ClaudeCodeSandbox:${label}] Claude Code install failed`, { exitCode, detail })
-            throw new Error(`Claude Code install failed: ${detail}`)
+    private async buildClaudeCodeImage(sandboxService: ModalSandboxService, sourceImageId: string, label: string): Promise<string> {
+        const t = performance.now()
+        const app = await sandboxService.getOrCreateApp("terse-claude-code-builder")
+        const baseImage = await sandboxService.getImageFromId(sourceImageId)
+        const sb = await sandboxService.getOrCreateSandbox(app, baseImage, `cc-build-${crypto.randomBytes(14).toString("hex")}`, { timeoutMs: 10 * 60 * 1000 })
+        try {
+            const installCmd = `npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} && npm cache clean --force && (id -u coder >/dev/null 2>&1 || useradd -m -s /bin/bash coder)`
+            const proc = await sb.exec(["sh", "-c", installCmd], { stdout: "pipe", stderr: "pipe" })
+            const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
+            const exitCode = await proc.wait()
+            if (exitCode !== 0) {
+                const detail = stderr.trim().slice(0, 1000) || stdout.trim().slice(0, 1000) || `exit ${exitCode}`
+                logger.error(`[ClaudeCodeSandbox:${label}] Claude Code install failed`, { exitCode, detail })
+                throw new Error(`Claude Code install failed: ${detail}`)
+            }
+            const snapshot = await sb.snapshotFilesystem()
+            logger.info(`[ClaudeCodeSandbox:${label}] Built Claude Code image`, { imageId: snapshot.imageId, duration: this.elapsed(t) })
+            return snapshot.imageId
+        } finally {
+            await sb.terminate().catch(err => logger.warn(`[ClaudeCodeSandbox:${label}] Builder sandbox terminate failed`, { error: err }))
         }
     }
 
@@ -119,9 +130,11 @@ export class ClaudeCodeSandboxService {
 
         const sandboxService = new ModalSandboxService()
 
+        const judgeImageId = await this.buildClaudeCodeImage(sandboxService, sourceImageId, label)
+
         let t = performance.now()
         const app = await sandboxService.getOrCreateApp("terse-claude-code-sandbox")
-        const image = await sandboxService.getImageFromId(sourceImageId)
+        const image = await sandboxService.getImageFromId(judgeImageId)
 
         const uniqueName = `cc-${crypto.randomBytes(14).toString("hex")}`
         const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, {
@@ -135,12 +148,6 @@ export class ClaudeCodeSandboxService {
         })
 
         try {
-            // Snapshotted source images don't support Dockerfile layering, so install Claude Code
-            // and the non-root `coder` user at runtime. ~30s per run; weekly cron tolerates this.
-            t = performance.now()
-            await this.installClaudeCodeAndUser(sb, label)
-            logger.info(`[ClaudeCodeSandbox:${label}] Installed Claude Code`, { duration: this.elapsed(t) })
-
             // Write the tool denylist into the source image's project dir. This overwrites any
             // attacker-supplied .claude/settings.json that may have been baked into the user's code.
             await this.writeClaudeSettings(sb, label, extraToolDenyRules)
@@ -242,6 +249,8 @@ export class ClaudeCodeSandboxService {
         } catch (error) {
             await sb.terminate().catch(() => {})
             throw error
+        } finally {
+            await sandboxService.deleteImage(judgeImageId).catch(err => logger.warn(`[ClaudeCodeSandbox:${label}] Failed to delete Judge image`, { imageId: judgeImageId, error: err }))
         }
     }
 }
