@@ -13,7 +13,7 @@ export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
 const CREATE_MAX_ATTEMPTS = 6
 const CREATE_RETRY_BASE_DELAY_MS = 150
 
-export class ModalSandboxService implements SandboxService {
+export class ModalSandboxService implements SandboxService<ModalImage> {
     private readonly modal: ModalClient
 
     constructor(modal?: ModalClient) {
@@ -37,11 +37,11 @@ export class ModalSandboxService implements SandboxService {
         }
     }
 
-    getImageFromRegistry(registry: string): SandboxImage {
+    getImageFromRegistry(registry: string): ModalImage {
         return this.modal.images.fromRegistry(registry)
     }
 
-    async getImageFromId(imageId: string): Promise<SandboxImage> {
+    async getImageFromId(imageId: string): Promise<ModalImage> {
         const t0 = Date.now()
         try {
             const image = await this.modal.images.fromId(imageId)
@@ -64,7 +64,7 @@ export class ModalSandboxService implements SandboxService {
         }
     }
 
-    async getOrCreateSandbox(app: SandboxApp, image: SandboxImage, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox> {
+    async getOrCreateSandbox(app: SandboxApp, image: ModalImage, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox> {
         if (!app.name) {
             throw new Error("App name is required")
         }

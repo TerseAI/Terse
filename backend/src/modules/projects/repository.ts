@@ -96,4 +96,3 @@ export async function findProjectDeploys(projectId: string, max: number): Promis
     ])
     return { deploys: deployRows, activeDeployId: activeDeploy?.id ?? null }
 }
-
