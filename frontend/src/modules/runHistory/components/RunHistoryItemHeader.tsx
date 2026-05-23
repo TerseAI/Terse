@@ -59,7 +59,7 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                     {run.isManuallyTriggered && (
                         <>
                             <span className="flex-shrink-0 text-muted-foreground/40">·</span>
-                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 font-medium text-accent-tertiary flex-shrink-0">Manual</span>
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 font-medium text-success flex-shrink-0">Manual</span>
                         </>
                     )}
                 </div>
