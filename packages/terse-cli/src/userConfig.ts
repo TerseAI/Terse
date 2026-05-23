@@ -19,6 +19,7 @@ type Schema = {
     apiKey?: string
     activeOrgId?: string
     tokensByOrg?: Record<string, OrgTokenEntry>
+    completionAsked?: boolean
 }
 
 let _store: Conf<Schema> | null = null
@@ -73,6 +74,14 @@ export function cacheOrgToken(orgId: string, apiKey: string, orgName: string): v
 
 export function setActiveOrg(orgId: string): void {
     store().set("activeOrgId", orgId)
+}
+
+export function hasCompletionPromptBeenAsked(): boolean {
+    return Boolean(store().get("completionAsked"))
+}
+
+export function markCompletionPromptAsked(): void {
+    store().set("completionAsked", true)
 }
 
 // Returns true if any credentials were present before clearing. Removes the

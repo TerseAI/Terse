@@ -29,6 +29,7 @@
     "dependencies": {
         "@clack/prompts": "^1.0.0",
         "@inquirer/prompts": "^7.0.0",
+        "@pnpm/tabtab": "^0.5.4",
         "chalk": "^5.0.0",
         "commander": "^14.0.0",
         "conf": "^15.1.0",
