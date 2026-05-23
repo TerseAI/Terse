@@ -24,7 +24,6 @@ import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjec
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 interface SdkJobExecutionParams {
-    sourceImageId: string
     runId: string
     agent: AgentWithRelations
     orgId: string
@@ -90,7 +89,7 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { sourceImageId, runId, agent, userId, user, jobName } = params
+        const { runId, agent, userId, user, jobName } = params
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
@@ -100,7 +99,7 @@ export class SdkJobExecutionService {
         const orgId = params.orgId
 
         try {
-            const sourceImage = await this.resolveSourceImage({ agent, sourceImageId, runId })
+            const sourceImage = await this.resolveSourceImage({ agent, runId })
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
 
             const { rawToken, tokenId } = await createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id })
@@ -164,16 +163,18 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async resolveSourceImage(params: { agent: AgentWithRelations; sourceImageId: string; runId: string }): Promise<SdkSourceImageRecord> {
-        const { agent, sourceImageId, runId } = params
+    private async resolveSourceImage(params: { agent: AgentWithRelations; runId: string }): Promise<SdkSourceImageRecord> {
+        const { agent, runId } = params
+        // Single query — derive both the deploy attachment and the source image from the same snapshot.
+        // If a new deploy lands between queue-time and now, this run executes against it consistently.
         const activeDeploy = await getActiveDeployForProject(agent.project.id)
-        if (!activeDeploy) {
-            throw new Error(`SDK agent "${agent.id}" is missing active deploy`)
+        if (!activeDeploy?.sdk_source_image_id) {
+            throw new Error(`SDK agent "${agent.id}" is missing an active source image`)
         }
 
-        const sourceImage = await this.getSourceImageRecord(sourceImageId)
+        const sourceImage = await this.getSourceImageRecord(activeDeploy.sdk_source_image_id)
         if (!sourceImage) {
-            throw new Error(`SDK source image row not found: ${sourceImageId}`)
+            throw new Error(`SDK source image row not found: ${activeDeploy.sdk_source_image_id}`)
         }
 
         await this.touchSourceImageUsage(sourceImage)
