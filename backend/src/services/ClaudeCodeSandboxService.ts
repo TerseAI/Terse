@@ -76,7 +76,17 @@ export class ClaudeCodeSandboxService {
         const baseImage = await sandboxService.getImageFromId(sourceImageId)
         const sb = await sandboxService.getOrCreateSandbox(app, baseImage, `cc-build-${crypto.randomBytes(14).toString("hex")}`, { timeoutMs: 10 * 60 * 1000 })
         try {
-            const installCmd = `npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} && npm cache clean --force && (id -u coder >/dev/null 2>&1 || useradd -m -s /bin/bash coder)`
+            // SDK source images don't ship git; the Judge needs it for the baseline commit + diffs
+            // that back Claude's `suggestedPatch` output.
+            const installCmd = [
+                "export DEBIAN_FRONTEND=noninteractive",
+                "apt-get update -qq",
+                "apt-get install -y -qq git ca-certificates",
+                "rm -rf /var/lib/apt/lists/*",
+                `npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}`,
+                "npm cache clean --force",
+                "(id -u coder >/dev/null 2>&1 || useradd -m -s /bin/bash coder)"
+            ].join(" && ")
             const proc = await sb.exec(["sh", "-c", installCmd], { stdout: "pipe", stderr: "pipe" })
             const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
             const exitCode = await proc.wait()
@@ -174,7 +184,12 @@ export class ClaudeCodeSandboxService {
                     ["sh", "-c", `cd ${SDK_SOURCE_IMAGE_PROJECT_DIR} && git init -q && git add -A && git -c user.name=terse -c user.email=terse@terse.ai commit --allow-empty -q -m baseline`],
                     { stdout: "pipe", stderr: "pipe" }
                 )
-                await gitProc.wait()
+                const [gitStdout, gitStderr] = await Promise.all([gitProc.stdout.readText(), gitProc.stderr.readText()])
+                const gitExit = await gitProc.wait()
+                if (gitExit !== 0) {
+                    const detail = gitStderr.trim().slice(0, 500) || gitStdout.trim().slice(0, 500) || `exit ${gitExit}`
+                    throw new Error(`Git baseline failed: ${detail}`)
+                }
                 logger.info(`[ClaudeCodeSandbox:${label}] Git baseline created`, { duration: this.elapsed(t) })
             }
 
