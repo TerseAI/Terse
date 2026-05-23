@@ -470,12 +470,11 @@ export class LinearIntegrationManager
                     return existingAccessToken // Return existing token as fallback
                 }
 
-                // Exchange refresh token for new access token
                 const params = new URLSearchParams()
-                params.append("refreshToken", refreshToken)
+                params.append("refresh_token", refreshToken)
                 params.append("client_id", settings.linear.clientId)
                 params.append("client_secret", settings.linear.clientSecret)
-                params.append("grant_type", "refreshToken")
+                params.append("grant_type", "refresh_token")
 
                 const tokenResponse = await fetch("https://api.linear.app/oauth/token", {
                     method: "POST",

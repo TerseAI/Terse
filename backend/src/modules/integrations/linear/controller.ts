@@ -2,6 +2,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { linearWebhookPayloadSchema } from "terse-types"
 import { LinearProjectSummary, LinearTeam } from "terse-types/types"
+import { ZodError } from "zod"
 
 import logger from "../../../common/logger"
 import { LinearIntegrationManager } from "../../../integrations/linear/integration"
@@ -67,7 +68,15 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
             logger.error("Malformed JSON in Linear webhook body:", { error })
             return res.sendStatus(400)
         }
-        const body = linearWebhookPayloadSchema.parse(parsedJson)
+
+        const parseResult = linearWebhookPayloadSchema.safeParse(parsedJson)
+        if (!parseResult.success) {
+            logger.warn("Linear webhook payload failed schema validation; acking 200 to stop retries", {
+                issues: parseResult.error.issues
+            })
+            return res.status(200).json({ received: true, ignored: true })
+        }
+        const body = parseResult.data
 
         // Ack early, avoid spamming the webhook
         res.status(200).json({ received: true })
@@ -76,9 +85,15 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
         const integration = new LinearIntegrationManager()
         await integration.processWebhookEvent(body)
     } catch (error) {
+        if (error instanceof ZodError) {
+            logger.warn("Linear webhook ZodError after ack; ignoring", { issues: error.issues })
+            return
+        }
         logger.error("Error processing webhook:", { error })
         // Indicate to Linear that there was a server error so the webhook is retried later
-        return res.sendStatus(500)
+        if (!res.headersSent) {
+            return res.sendStatus(500)
+        }
     }
 }
 

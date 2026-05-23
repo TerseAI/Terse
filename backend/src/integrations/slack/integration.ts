@@ -1302,6 +1302,18 @@ async function fetchEnrichedSlackMessageData(client: WebClient, message: SlackMe
     }
 }
 
+function getSlackErrorCode(error: unknown): string | undefined {
+    const data = (error as { data?: { error?: unknown } } | undefined)?.data
+    return typeof data?.error === "string" ? data.error : undefined
+}
+
+const EXPECTED_NOT_IN_CHANNEL_ERRORS = new Set(["channel_not_found", "not_in_channel", "is_archived", "missing_scope"])
+
+function isExpectedNotInChannelError(error: unknown): boolean {
+    const code = getSlackErrorCode(error)
+    return code !== undefined && EXPECTED_NOT_IN_CHANNEL_ERRORS.has(code)
+}
+
 function inferSlackChannelType(channelId: string, fallback?: SlackChannelType | null): SlackChannelType | null {
     if (fallback) {
         return fallback
@@ -1393,6 +1405,14 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
                     channel: channelId
                 })
             } catch (error) {
+                if (isExpectedNotInChannelError(error)) {
+                    logger.debug("conversations.members says user not in channel", {
+                        error: getSlackErrorCode(error),
+                        channel: channelId,
+                        teamId
+                    })
+                    return false
+                }
                 logger.error(`Error getting members`, {
                     error,
                     channel: channelId,
@@ -1414,6 +1434,14 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
                 return false
             }
         } catch (error) {
+            if (isExpectedNotInChannelError(error)) {
+                logger.debug("conversations.members says user not in channel", {
+                    error: getSlackErrorCode(error),
+                    channel: channelId,
+                    teamId
+                })
+                return false
+            }
             logger.error(`Error getting members`, {
                 error,
                 channel: channelId,

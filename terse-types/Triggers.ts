@@ -252,37 +252,38 @@ export const LinearWebhookAssigneeSchema = z.object({
     name: z.string()
 })
 
-export const LinearWebhookDataSchema = z.object({
-    id: z.string(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
-    number: z.number(),
-    title: z.string(),
-    priority: z.number(),
-    sortOrder: z.number(),
-    prioritySortOrder: z.number(),
-    slaType: z.string(),
-    addedToTeamAt: z.string(),
-    trashed: z.boolean(),
-    labelIds: z.array(z.string()),
-    teamId: z.string(),
-    previousIdentifiers: z.array(z.string()),
-    stateId: z.string(),
-    reactionData: z.array(z.any()),
-    priorityLabel: z.string(),
-    botActor: z.string().optional(),
-    identifier: z.string(),
-    url: z.string(),
-    subscriberIds: z.array(z.string()),
-    state: LinearWebhookStateSchema,
-    team: LinearWebhookTeamSchema,
-    labels: z.array(z.any()),
-    description: z.string().optional(),
-    descriptionData: z.string().optional(),
-    assignee: LinearWebhookAssigneeSchema.optional(),
-    /** Present on many issue webhooks; used for trigger scoping */
-    projectId: z.string().optional()
-})
+export const LinearWebhookDataSchema = z
+    .object({
+        id: z.string(),
+        createdAt: z.string().optional(),
+        updatedAt: z.string().optional(),
+        number: z.number().optional(),
+        title: z.string().optional(),
+        priority: z.number().optional(),
+        sortOrder: z.number().optional(),
+        prioritySortOrder: z.number().optional(),
+        slaType: z.string().optional(),
+        addedToTeamAt: z.string().optional(),
+        trashed: z.boolean().nullable().optional(),
+        labelIds: z.array(z.string()).optional(),
+        teamId: z.string().optional(),
+        previousIdentifiers: z.array(z.string()).optional(),
+        stateId: z.string().optional(),
+        reactionData: z.array(z.any()).optional(),
+        priorityLabel: z.string().optional(),
+        botActor: z.string().nullable().optional(),
+        identifier: z.string().optional(),
+        url: z.string().optional(),
+        subscriberIds: z.array(z.string()).optional(),
+        state: LinearWebhookStateSchema.optional(),
+        team: LinearWebhookTeamSchema.optional(),
+        labels: z.array(z.any()).optional(),
+        description: z.string().optional(),
+        descriptionData: z.string().optional(),
+        assignee: LinearWebhookAssigneeSchema.optional(),
+        projectId: z.string().optional()
+    })
+    .passthrough()
 
 export const LinearWebhookCommentDataSchema = z
     .object({
