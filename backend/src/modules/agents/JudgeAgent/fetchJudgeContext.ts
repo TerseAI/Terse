@@ -53,7 +53,13 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
 async function fetchActiveSourceImageId(projectId: string | null): Promise<string | undefined> {
     if (!projectId) return undefined
     const deploy = await getActiveDeployForProject(projectId)
-    return deploy?.sdk_source_image_id ?? undefined
+    if (!deploy?.sdk_source_image_id) return undefined
+
+    const sourceImage = await db().sdk_source_images.findUnique({
+        where: { id: deploy.sdk_source_image_id },
+        select: { image_id: true }
+    })
+    return sourceImage?.image_id ?? undefined
 }
 
 async function fetchRunHistory(automationId: string, orgId: string, periodDays = PERIOD_DAYS_DEFAULT) {
@@ -190,7 +196,7 @@ export interface JudgeContext {
     runHistory: Awaited<ReturnType<typeof fetchRunHistory>>
     runDetails: Array<{ runId: string; details: Awaited<ReturnType<typeof fetchRunDetails>> }>
     pastImprovements: Awaited<ReturnType<typeof fetchPastImprovements>>
-    /** Modal source image to boot the Judge sandbox from. Absent if the project has no successful deploy yet. */
+    /** Modal image ID (`sdk_source_images.image_id`) to boot the Judge sandbox from. Absent if the project has no successful deploy yet. */
     sourceImageId: string | undefined
 }
 

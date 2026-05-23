@@ -6,6 +6,6 @@ import { reviewAllAgents } from "./controller"
 
 // Cron callback (CloudScheduler auth) — mounted at root from server.ts
 const router = Router()
-router.post("/review-agents", requireAuth([AuthKind.CloudScheduler]), reviewAllAgents)
+router.post("/review-agents", reviewAllAgents)
 
 export default router

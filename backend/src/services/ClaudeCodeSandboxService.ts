@@ -70,6 +70,18 @@ export class ClaudeCodeSandboxService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
+    private async installClaudeCodeAndUser(sb: Sandbox, label: string): Promise<void> {
+        const installCmd = `npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} && npm cache clean --force && (id -u coder >/dev/null 2>&1 || useradd -m -s /bin/bash coder)`
+        const proc = await sb.exec(["sh", "-c", installCmd], { stdout: "pipe", stderr: "pipe" })
+        const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
+        const exitCode = await proc.wait()
+        if (exitCode !== 0) {
+            const detail = stderr.trim().slice(0, 1000) || stdout.trim().slice(0, 1000) || `exit ${exitCode}`
+            logger.error(`[ClaudeCodeSandbox:${label}] Claude Code install failed`, { exitCode, detail })
+            throw new Error(`Claude Code install failed: ${detail}`)
+        }
+    }
+
     private async writeClaudeSettings(sb: Sandbox, label: string, extraDenyRules: string[]): Promise<void> {
         const settingsDir = `${SDK_SOURCE_IMAGE_PROJECT_DIR}/.claude`
         const mkdir = await sb.exec(["mkdir", "-p", settingsDir], { stdout: "pipe", stderr: "pipe" })
@@ -109,13 +121,7 @@ export class ClaudeCodeSandboxService {
 
         let t = performance.now()
         const app = await sandboxService.getOrCreateApp("terse-claude-code-sandbox")
-        const baseImage = await sandboxService.getImageFromId(sourceImageId)
-        // Layer Claude Code + a non-root user on top of the source image. Modal caches by hash,
-        // so the same (sourceImage, claude-code version) pair builds once and reuses thereafter.
-        const image = baseImage.dockerfileCommands([
-            `RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} && npm cache clean --force`,
-            "RUN id -u coder >/dev/null 2>&1 || useradd -m -s /bin/bash coder"
-        ])
+        const image = await sandboxService.getImageFromId(sourceImageId)
 
         const uniqueName = `cc-${crypto.randomBytes(14).toString("hex")}`
         const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, {
@@ -129,6 +135,12 @@ export class ClaudeCodeSandboxService {
         })
 
         try {
+            // Snapshotted source images don't support Dockerfile layering, so install Claude Code
+            // and the non-root `coder` user at runtime. ~30s per run; weekly cron tolerates this.
+            t = performance.now()
+            await this.installClaudeCodeAndUser(sb, label)
+            logger.info(`[ClaudeCodeSandbox:${label}] Installed Claude Code`, { duration: this.elapsed(t) })
+
             // Write the tool denylist into the source image's project dir. This overwrites any
             // attacker-supplied .claude/settings.json that may have been baked into the user's code.
             await this.writeClaudeSettings(sb, label, extraToolDenyRules)
