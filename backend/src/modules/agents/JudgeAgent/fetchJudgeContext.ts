@@ -1,6 +1,6 @@
 import logger from "../../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../../common/prismaIncludes"
-import { getActiveSourceCodeGcsKeyForAutomation } from "../../../common/projectHelper"
+import { getActiveSourceImageIdForAutomation } from "../../../common/projectHelper"
 import { db } from "../../../loaders/prisma"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
 
@@ -32,7 +32,7 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
     if (!automation) throw new Error("Agent not found")
 
     const formattedConfig = formatAgentForSystemPrompt(automation)
-    const gcsKey = automation.project ? await getActiveSourceCodeGcsKeyForAutomation(automation) : null
+    const sourceImageId = automation.project ? await getActiveSourceImageIdForAutomation(automation) : null
     return {
         formattedConfig,
         rawConfig: {
@@ -47,7 +47,7 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
             toolApprovals: automation.tool_approvals.map(row => row.tool_name),
             notificationSettings: automation.notification_settings
         },
-        gcsKey: gcsKey ?? undefined
+        sourceImageId: sourceImageId ?? undefined
     }
 }
 

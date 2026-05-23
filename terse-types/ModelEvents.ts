@@ -123,7 +123,6 @@ export const toolCallCompleteSchema = modelEventBaseSchema.extend({
 export type ToolCallComplete = z.infer<typeof toolCallCompleteSchema>
 
 export enum SandboxStage {
-    DOWNLOADING_SOURCE = "downloading_source",
     BOOTING = "booting",
     INSTALLING_DEPENDENCIES = "installing_dependencies",
     INSTALLING_CLI = "installing_cli",
@@ -133,7 +132,6 @@ export enum SandboxStage {
 export const sandboxStageSchema = z.enum(SandboxStage)
 
 export const SANDBOX_STAGE_LABELS: Record<SandboxStage, string> = {
-    [SandboxStage.DOWNLOADING_SOURCE]: "Downloading source code",
     [SandboxStage.BOOTING]: "Booting sandbox",
     [SandboxStage.INSTALLING_DEPENDENCIES]: "Installing dependencies",
     [SandboxStage.INSTALLING_CLI]: "Installing CLI",

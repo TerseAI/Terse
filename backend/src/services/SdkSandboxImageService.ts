@@ -90,12 +90,11 @@ export class SdkSandboxImageService {
 
     async prepareFromSourceZip(params: {
         zipBuffer: Buffer
-        gcsKey: string
         organizationId: string
         cliVersion: string
         onProgress?: (phase: "dependency_image" | "source_image") => void
     }): Promise<PreparedSdkSandboxImages> {
-        const { zipBuffer, gcsKey, organizationId, cliVersion, onProgress } = params
+        const { zipBuffer, organizationId, cliVersion, onProgress } = params
         const archive = new ZipSdkProjectArchive(zipBuffer)
         const executor = sdkRuntimeExecutorRegistry.resolve(archive.entries)
 
@@ -117,7 +116,6 @@ export class SdkSandboxImageService {
             dependencyImageId: dependencyImage.id,
             dependencySandboxImageId: dependencyImage.image_id,
             executor,
-            gcsKey,
             organizationId,
             sourceHash,
             sourceLayerKey,
@@ -262,13 +260,12 @@ export class SdkSandboxImageService {
         dependencyImageId: string
         dependencySandboxImageId: string
         executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>
-        gcsKey: string
         organizationId: string
         sourceHash: string
         sourceLayerKey: string
         zipBuffer: Buffer
     }) {
-        const { dependencyImageId, dependencySandboxImageId, executor, gcsKey, organizationId, sourceHash, sourceLayerKey, zipBuffer } = params
+        const { dependencyImageId, dependencySandboxImageId, executor, organizationId, sourceHash, sourceLayerKey, zipBuffer } = params
         const prisma = db()
 
         const existing = await prisma.sdk_source_images.findFirst({
@@ -287,10 +284,7 @@ export class SdkSandboxImageService {
             })
             return prisma.sdk_source_images.update({
                 where: { id: existing.id },
-                data: {
-                    gcs_key: gcsKey,
-                    last_used_at: new Date()
-                }
+                data: { last_used_at: new Date() }
             })
         }
 
@@ -308,7 +302,6 @@ export class SdkSandboxImageService {
                     organization_id: organizationId,
                     runtime: executor.runtime,
                     source_hash: sourceHash,
-                    gcs_key: gcsKey,
                     image_id: sandboxImageId,
                     dependency_image_id: dependencyImageId
                 }
@@ -332,10 +325,7 @@ export class SdkSandboxImageService {
                             source_hash: sourceHash
                         }
                     },
-                    data: {
-                        gcs_key: gcsKey,
-                        last_used_at: new Date()
-                    }
+                    data: { last_used_at: new Date() }
                 })
                 logger.info("SDK image cache: reuse source layer", {
                     sourceLayerKey: sourceLayerKey,

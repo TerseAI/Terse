@@ -12,8 +12,6 @@ import {
     deleteProjectForOrganization,
     getProjectDeploysForOrganization,
     getProjectDetail,
-    getProjectSourceFileContent,
-    getProjectSourceFiles,
     listProjects,
     rotateProjectApiKey,
     rotateSigningSecret
@@ -79,33 +77,6 @@ export async function handleGetProjectDeploys(req: Request, res: Response) {
         res.status(200).json(response)
     } catch (error) {
         return handleServiceError(error, res, { projectId: id, userId: user.id })
-    }
-}
-
-export async function handleGetProjectSourceFiles(req: Request, res: Response) {
-    const user = requireUser(req, res)
-    if (!user) return
-    const { id } = req.params
-    if (!id) return res.status(400).json({ error: "Project id is required" })
-    try {
-        const response = await getProjectSourceFiles(id, user.organizationId)
-        res.status(200).json(response)
-    } catch (error) {
-        return handleServiceError(error, res, { projectId: id, userId: user.id })
-    }
-}
-
-export async function handleGetProjectSourceFileContent(req: Request, res: Response) {
-    const user = requireUser(req, res)
-    if (!user) return
-    const { id, fileId } = req.params
-    if (!id) return res.status(400).json({ error: "Project id is required" })
-    if (!fileId || typeof fileId !== "string") return res.status(400).json({ error: "Invalid file ID" })
-    try {
-        const payload = await getProjectSourceFileContent(id, fileId, user.organizationId)
-        res.status(200).json(payload)
-    } catch (error) {
-        return handleServiceError(error, res, { projectId: id, fileId, userId: user.id })
     }
 }
 

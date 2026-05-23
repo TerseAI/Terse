@@ -8,15 +8,7 @@ export async function getActiveDeployForProject(projectId: string): Promise<proj
     })
 }
 
-export async function getActiveSourceCodeGcsKeyForProject(projectId: string): Promise<string | null> {
-    const deploy = await db().project_deploys.findFirst({
-        where: { project_id: projectId, status: "SUCCEEDED" },
-        orderBy: { created_at: "desc" },
-        include: { sdk_source_image: true }
-    })
-    return deploy?.sdk_source_image?.gcs_key ?? null
-}
-
-export async function getActiveSourceCodeGcsKeyForAutomation(automation: AgentWithRelations): Promise<string | null> {
-    return getActiveSourceCodeGcsKeyForProject(automation.project.id)
+export async function getActiveSourceImageIdForAutomation(automation: AgentWithRelations): Promise<string | null> {
+    const deploy = await getActiveDeployForProject(automation.project.id)
+    return deploy?.sdk_source_image_id ?? null
 }

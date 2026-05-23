@@ -682,7 +682,7 @@ export const errorSchema = z.object({ type: z.literal("error"), message: z.strin
 
 export const doneSchema = z.object({ type: z.literal("done") })
 
-export const sdkDeployStageEnum = z.enum(["UPLOADING_SOURCE", "BUILDING_DEPENDENCY_IMAGE", "BUILDING_SOURCE_IMAGE", "CONFIGURING_AUTOMATIONS"])
+export const sdkDeployStageEnum = z.enum(["BUILDING_DEPENDENCY_IMAGE", "BUILDING_SOURCE_IMAGE", "CONFIGURING_AUTOMATIONS"])
 export type SdkDeployStage = z.infer<typeof sdkDeployStageEnum>
 
 export const deployStageSchema = z.object({ type: z.literal("deploy_stage"), stage: sdkDeployStageEnum })

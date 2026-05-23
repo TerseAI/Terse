@@ -1,10 +1,8 @@
 import { Prisma } from "@prisma/client"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectSourceFilesResponse, ProjectsListResponse } from "terse-types/types"
+import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectsListResponse } from "terse-types/types"
 
 import logger from "../../common/logger"
-import { getActiveSourceCodeGcsKeyForProject } from "../../common/projectHelper"
-import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from "../../common/sdkZipReader"
 import { generateWebhookSecret } from "../../common/webhookSecrets"
 import { workos } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
@@ -17,7 +15,6 @@ import {
     DeployRow,
     createProjectRow,
     deleteProject,
-    findActiveDeployWithSourceImage,
     findFirstActiveRunForAutomations,
     findProjectBasic,
     findProjectDeploys,

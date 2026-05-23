@@ -10,7 +10,6 @@ import { JudgeContext } from "../modules/agents/JudgeAgent/fetchJudgeContext"
 import { settings } from "../settings"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
-import { downloadSdkDeployZip } from "./FileStorageService"
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDir = path.dirname(currentFilePath)
@@ -81,17 +80,11 @@ export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
 
     async evaluate(automationId: string, context: JudgeContext): Promise<JudgeAgentOutputType> {
-        const gcsKey = context.agentConfig.gcsKey
+        const sourceImageId = context.agentConfig.sourceImageId
 
-        if (!gcsKey) {
-            logger.warn("[SdkImprovementService] No GCS key for source code", { automationId })
+        if (!sourceImageId) {
+            logger.warn("[SdkImprovementService] No SDK source image for automation", { automationId })
             return { title: "No source code available", summary: "Could not find source code to review.", improvements: [] }
-        }
-
-        const zipBuffer = await downloadSdkDeployZip(gcsKey)
-        if (!zipBuffer) {
-            logger.warn("[SdkImprovementService] Failed to download zip", { automationId })
-            return { title: "Source code unavailable", summary: "Could not download source code.", improvements: [] }
         }
 
         const prompt = buildClaudeCodePrompt(automationId, context)
@@ -108,7 +101,7 @@ export class SdkImprovementService {
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
                 prompt,
-                sourceZip: zipBuffer,
+                sourceImageId,
                 gitInit: true,
                 jsonSchema: IMPROVEMENTS_SCHEMA,
                 timeoutMs: SANDBOX_TIMEOUT_MS,
