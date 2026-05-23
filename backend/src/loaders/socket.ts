@@ -286,11 +286,12 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
 
             try {
                 const skills = readSdkSkillsFromJson(runRecord.sdk_skills)
+                const prompt = [runRecord.sdk_prompt, agent.prompt?.content].filter(Boolean).join("\n\n")
 
                 const sdkRunner = new SdkAgentRunner({
                     runId,
                     user,
-                    prompt: agent.prompt?.content ?? "",
+                    prompt,
                     skills,
                     // TODO: This probably isn't right. Idk how to handle tool approvals anymore for this use case. Need to think more about it.
                     toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),

@@ -10,7 +10,7 @@ import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
 import { finalizeRunFailure } from "../../../loaders/socket"
 import { SdkAgentRunner } from "../../../modules/agents/AgentRunner/SdkAgentRunner"
-import { appendRunAction, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
+import { appendRunAction, upsertSdkPrompt, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
 import { onListenForwardedEvent } from "../../../modules/agents/ListenBus"
 import { emitSessionEvent, onSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { classifyAgentError } from "../../../modules/agents/agentErrorUtils"
@@ -61,6 +61,9 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         if (isProductionRun) {
             void upsertSdkSkills(runId, orgId, data.skills ?? []).catch(err => {
                 logger.warn("Failed to persist SDK skills for run", { error: err, runId })
+            })
+            void upsertSdkPrompt(runId, orgId, data.prompt).catch(err => {
+                logger.warn("Failed to persist SDK prompt for run", { error: err, runId })
             })
         }
 

@@ -342,6 +342,24 @@ export async function upsertSdkSkills(runId: string, organizationId: string, inc
 }
 
 /**
+ * Stores the SDK system prompt on a run record. Last write wins — if a single
+ * job execution calls `TerseAgent.create` multiple times, the most recent
+ * prompt is what chat continuations will replay.
+ */
+export async function upsertSdkPrompt(runId: string, organizationId: string, prompt: string): Promise<void> {
+    if (!prompt) return
+    const prisma = db()
+    await prisma.$executeRaw`
+        UPDATE run_history_records rhr
+        SET sdk_prompt = ${prompt}
+        FROM automations a
+        WHERE rhr.id = ${runId}
+          AND a.id = rhr.automation_id
+          AND a.organization_id = ${organizationId}
+    `
+}
+
+/**
  * Reads and parses the SDK skills stored on a run record.
  * Returns an empty array if nothing is stored or parsing fails.
  */
