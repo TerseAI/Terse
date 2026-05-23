@@ -19,6 +19,7 @@ import {
     DatadogIntegration,
     GithubIntegration,
     GmailIntegration,
+    HeyReachIntegration,
     InstallationOptionsFor,
     IntegrationType,
     IntegrationWithStatus,
@@ -278,6 +279,16 @@ interface BackendService {
      * Gets HeyReach campaigns for an integration
      */
     getHeyReachCampaigns(integrationId: string): Promise<{ campaigns: Array<{ id: string; name: string }> }>
+
+    /**
+     * Gets all HeyReach integrations for the current user
+     */
+    getHeyReachIntegrations(): Promise<HeyReachIntegration[]>
+
+    /**
+     * Creates or updates a HeyReach integration with an API key
+     */
+    createOrUpdateHeyReachIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
 
     /**
      * Gets available channels for a Slack integration
@@ -805,6 +816,18 @@ export const BackendProvider: BackendService = {
         return axios
             .get<{ campaigns: Array<{ id: string; name: string }> }>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.CAMPAIGNS}?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
+    },
+
+    getHeyReachIntegrations: () => {
+        return axios.get<HeyReachIntegration[]>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    createOrUpdateHeyReachIntegration: (apiKey: string, stateToken?: string) => {
+        const body: Record<string, string> = { apiKey }
+        if (stateToken) {
+            body.state = stateToken
+        }
+        return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
     },
 
     getSlackIntegrations: () => {
