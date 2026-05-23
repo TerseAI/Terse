@@ -1,6 +1,6 @@
 import logger from "../../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../../common/prismaIncludes"
-import { getActiveSourceImageIdForAutomation } from "../../../common/projectHelper"
+import { getActiveDeployForProject } from "../../../common/projectHelper"
 import { db } from "../../../loaders/prisma"
 import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext"
 
@@ -32,9 +32,9 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
     if (!automation) throw new Error("Agent not found")
 
     const formattedConfig = formatAgentForSystemPrompt(automation)
-    const sourceImageId = automation.project ? await getActiveSourceImageIdForAutomation(automation) : null
     return {
         formattedConfig,
+        projectId: automation.project?.id ?? null,
         rawConfig: {
             id: automation.id,
             name: automation.name,
@@ -46,9 +46,14 @@ async function fetchAgentConfig(automationId: string, orgId: string) {
             outputs: automation.outputs,
             toolApprovals: automation.tool_approvals.map(row => row.tool_name),
             notificationSettings: automation.notification_settings
-        },
-        sourceImageId: sourceImageId ?? undefined
+        }
     }
+}
+
+async function fetchActiveSourceImageId(projectId: string | null): Promise<string | undefined> {
+    if (!projectId) return undefined
+    const deploy = await getActiveDeployForProject(projectId)
+    return deploy?.sdk_source_image_id ?? undefined
 }
 
 async function fetchRunHistory(automationId: string, orgId: string, periodDays = PERIOD_DAYS_DEFAULT) {
@@ -185,6 +190,8 @@ export interface JudgeContext {
     runHistory: Awaited<ReturnType<typeof fetchRunHistory>>
     runDetails: Array<{ runId: string; details: Awaited<ReturnType<typeof fetchRunDetails>> }>
     pastImprovements: Awaited<ReturnType<typeof fetchPastImprovements>>
+    /** Modal source image to boot the Judge sandbox from. Absent if the project has no successful deploy yet. */
+    sourceImageId: string | undefined
 }
 
 export async function fetchFullJudgeContext(automationId: string, orgId: string): Promise<JudgeContext> {
@@ -199,5 +206,7 @@ export async function fetchFullJudgeContext(automationId: string, orgId: string)
         }))
     )
 
-    return { agentConfig, runHistory, runDetails, pastImprovements }
+    const sourceImageId = await fetchActiveSourceImageId(agentConfig.projectId)
+
+    return { agentConfig, runHistory, runDetails, pastImprovements, sourceImageId }
 }

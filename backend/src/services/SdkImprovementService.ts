@@ -80,7 +80,7 @@ export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
 
     async evaluate(automationId: string, context: JudgeContext): Promise<JudgeAgentOutputType> {
-        const sourceImageId = context.agentConfig.sourceImageId
+        const { sourceImageId } = context
 
         if (!sourceImageId) {
             logger.warn("[SdkImprovementService] No SDK source image for automation", { automationId })
