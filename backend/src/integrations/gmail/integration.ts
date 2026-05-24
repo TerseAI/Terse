@@ -19,7 +19,7 @@ import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oau
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { SecretService } from "../../services/SecretService"
 import { settings, urls } from "../../settings"
-import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../../types/prisma"
+import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { Integration, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"

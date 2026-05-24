@@ -24,7 +24,7 @@ import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oau
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { GetSecretsArg, SecretService } from "../../services/SecretService"
 import { urls } from "../../settings"
-import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../../types/prisma"
+import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithSlack } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
@@ -658,7 +658,7 @@ export class SlackIntegrationManager
 
         const userSlackIntegration = await prisma.user_slack_integrations.findUnique({
             where: { id: integrationId, organization_id: organizationId },
-            include: { slack_integration: true, user: true }
+            include: { slack_integration: true }
         })
 
         if (!userSlackIntegration?.slack_integration) {
@@ -788,7 +788,7 @@ function createSlackRouteError(message: string, statusCode: number, details?: st
     return error
 }
 
-const getSlackToken = async (integration: UserSlackIntegrationWithUser) => {
+const getSlackToken = async (integration: UserSlackIntegrationWithSlack) => {
     return await resolveSlackAccessToken(integration)
 }
 
@@ -810,8 +810,7 @@ export const fetchSlackChannelsForIntegration = async (userId: string, organizat
             organization_id: organizationId
         },
         include: {
-            slack_integration: true,
-            user: true
+            slack_integration: true
         }
     })
 
@@ -936,8 +935,7 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
             organization_id: organizationId
         },
         include: {
-            slack_integration: true,
-            user: true
+            slack_integration: true
         }
     })
     if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
@@ -1382,13 +1380,12 @@ function buildSlackTriggerData(params: {
     }
 }
 
-async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: string, channelType: SlackChannelType | null): Promise<UserSlackIntegrationWithUser[]> {
+async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: string, channelType: SlackChannelType | null): Promise<UserSlackIntegrationWithSlack[]> {
     const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
         where: {
             slack_team_id: teamId
         },
         include: {
-            user: true,
             slack_integration: true
         }
     })
@@ -1396,7 +1393,7 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
     const resolvedChannelType = inferSlackChannelType(channelId, channelType)
     const isPublicChannel = resolvedChannelType === SlackChannelType.CHANNEL
 
-    const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
+    const isInChannel = async (integration: UserSlackIntegrationWithSlack) => {
         try {
             const botClient = await initializeSlackWebClient(integration)
 
@@ -1466,7 +1463,7 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
 }
 
 async function processSlackAutomationForUsers(args: {
-    filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]
+    filteredWorkspaceUserIntegrations: UserSlackIntegrationWithSlack[]
     slackEventData: SlackTrigger
     storedFiles?: StoredFile[]
     teamId: string
@@ -1478,7 +1475,7 @@ async function processSlackAutomationForUsers(args: {
         try {
             const organizationId = userSlackIntegration.organization_id
             if (!organizationId) continue
-            const fullUser = await getUserForOrg(userSlackIntegration.user.id, organizationId)
+            const fullUser = await getUserForOrg(userSlackIntegration.user_id, organizationId)
             if (!fullUser) continue
             await runWithUserContext(fullUser, async () => {
                 const slackEvent = new SlackTriggerRuntime(slackEventData, userSlackIntegration.id, storedFiles)
@@ -1496,9 +1493,9 @@ async function processSlackAutomationForUsers(args: {
                 }
             })
         } catch (error) {
-            logger.error(`Error processing automations for user ${userSlackIntegration.user.id}`, {
+            logger.error(`Error processing automations for user ${userSlackIntegration.user_id}`, {
                 error,
-                userId: userSlackIntegration.user.id
+                userId: userSlackIntegration.user_id
             })
         }
     }

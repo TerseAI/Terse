@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client"
 
 import { db } from "../../../loaders/prisma"
-import { UserNotificationDestination, UserSlackIntegrationWithUser } from "../../../types/prisma"
+import { UserNotificationDestination, UserSlackIntegrationWithSlack } from "../../../types/prisma"
 
 export async function findDestinationsForUser(userId: string): Promise<UserNotificationDestination[]> {
     return db().user_notification_destinations.findMany({
@@ -28,9 +28,9 @@ export async function deleteDestination(destinationId: string): Promise<void> {
     await db().user_notification_destinations.delete({ where: { id: destinationId } })
 }
 
-export async function findSlackIntegrationForOrganization(integrationId: string, organizationId: string): Promise<UserSlackIntegrationWithUser | null> {
+export async function findSlackIntegrationForOrganization(integrationId: string, organizationId: string): Promise<UserSlackIntegrationWithSlack | null> {
     return db().user_slack_integrations.findFirst({
         where: { id: integrationId, organization_id: organizationId },
-        include: { user: true, slack_integration: true }
+        include: { slack_integration: true }
     })
 }

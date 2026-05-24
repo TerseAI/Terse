@@ -9,19 +9,14 @@ import type {
     project_deploys,
     user_notification_destinations,
     user_notification_settings,
-    user_slack_integrations,
-    users
+    user_slack_integrations
 } from "@prisma/client"
-
-// PascalCase aliases
-export type User = users
 
 export type UserSlackIntegration = user_slack_integrations
 
-// Extended type for UserSlackIntegration with user relation included
-export type UserSlackIntegrationWithUser = Prisma.user_slack_integrationsGetPayload<{
+// Extended type for UserSlackIntegration with slack_integration included
+export type UserSlackIntegrationWithSlack = Prisma.user_slack_integrationsGetPayload<{
     include: {
-        user: true
         slack_integration: true
     }
 }>

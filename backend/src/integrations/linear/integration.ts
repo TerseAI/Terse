@@ -134,9 +134,6 @@ export class LinearIntegrationManager
         const matchingIntegrations = await db().linear_integrations.findMany({
             where: {
                 workspace_id: workspaceIdentifier
-            },
-            include: {
-                user: true
             }
         })
 
