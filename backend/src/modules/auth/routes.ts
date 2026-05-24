@@ -1,5 +1,6 @@
 import { Router } from "express"
 
+import { GithubIntegrationManager } from "../../integrations/github/integration"
 import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
@@ -19,8 +20,9 @@ router.get("/login/url", authEndpointLimit, loginUrl)
 router.get("/logout", authEndpointLimit, logout)
 router.get("/logout/url", authEndpointLimit, logoutUrl)
 
-// /auth/* OAuth callbacks — public, signature/state-verified
-router.get("/auth/github-app/callback", authEndpointLimit, githubAppCallbackIntegrate)
+if (new GithubIntegrationManager().isAvailable) {
+    router.get("/auth/github-app/callback", authEndpointLimit, githubAppCallbackIntegrate)
+}
 router.get("/auth/workos/callback", authEndpointLimit, callback)
 
 // /auth/workos/widget-token — authenticated, returns widget JWT
