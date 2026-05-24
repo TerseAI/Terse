@@ -23,6 +23,17 @@ export interface ConnectionCapOptions {
     heartbeatIntervalMs: number
 }
 
+export interface KeyLimitOptions {
+    name: string
+    points: number
+    duration: number
+    blockDuration?: number
+}
+
+export interface KeyLimiter {
+    tryConsume(key: string): Promise<boolean>
+}
+
 export class RateLimiterClient {
     private static instance: RateLimiterClient
     private redisClient: RedisClientType | null = null
@@ -92,6 +103,27 @@ export class RateLimiterClient {
     public createConnectionCap(opts: ConnectionCapOptions): ConnectionCap {
         this.assertInitialized()
         return new ConnectionCap(this.redisClient, opts)
+    }
+
+    /**
+     * Non-HTTP key-based limiter.
+     */
+    public createKeyLimiter(opts: KeyLimitOptions): KeyLimiter {
+        this.assertInitialized()
+        const limiter = this.buildLimiter({ ...opts, keyBy: () => null })
+        return {
+            async tryConsume(key: string): Promise<boolean> {
+                try {
+                    await limiter.consume(key)
+                    return true
+                } catch (rejection) {
+                    if (rejection instanceof RateLimiterRes) {
+                        return false
+                    }
+                    throw rejection
+                }
+            }
+        }
     }
 
     private buildLimiter(opts: RateLimitOptions): RateLimiterAbstract {

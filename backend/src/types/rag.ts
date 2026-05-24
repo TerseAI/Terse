@@ -2,7 +2,7 @@ import { HydratorType } from "terse-types"
 import { hydratorTypeEnum } from "terse-types"
 
 import logger from "../common/logger"
-import type { IdentifiableRunHistoryRawEvent } from "../hydrators/runHistoryRag/hydrator"
+import type { IdentifiableRunHistoryRawEvent } from "../hydrators/runhistory/hydrator"
 import type { GithubTriggerRuntime } from "../integrations/github/integration"
 import type { GmailTriggerRuntime } from "../integrations/gmail/integration"
 import type { LinearTriggerRuntime } from "../integrations/linear/integration"
