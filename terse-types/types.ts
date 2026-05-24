@@ -24,25 +24,22 @@ export type Role = z.infer<typeof roleSchema>
 // Code smell. We are mixing Session with user identity in the same type.
 // Suggest we split into:  UserProfile  -> just identity, what AuthProvider returns
 // then  UserSession  --> UserProfile + org context, what req.session.user holds
-export const userSchema = z.object({
+export const userProfileSchema = z.object({
     id: z.string(),
-    organizationId: z.string(),
-    organizationName: z.string(),
     email: z.string(),
     displayName: z.string(),
     firstName: z.string().nullable(),
     lastName: z.string().nullable(),
-    displayPhotoUrl: z.string(),
+    displayPhotoUrl: z.string()
+})
+export type UserProfile = z.infer<typeof userProfileSchema>
+
+export const userSessionSchema = userProfileSchema.extend({
+    organizationId: z.string(),
+    organizationName: z.string(),
     roles: z.array(roleSchema)
 })
-export type User = z.infer<typeof userSchema>
-
-export const userNoOrganizationSchema = userSchema.omit({
-    organizationId: true,
-    organizationName: true,
-    roles: true
-})
-export type UserNoOrganization = z.infer<typeof userNoOrganizationSchema>
+export type UserSession = z.infer<typeof userSessionSchema>
 
 export const commitAssociationSchema = z.object({
     sha: z.string(),

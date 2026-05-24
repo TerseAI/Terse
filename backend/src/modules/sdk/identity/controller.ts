@@ -13,9 +13,9 @@ import { ZodError } from "zod"
 
 import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
-import { workos } from "../../../integrations/workos/helpers"
-import { WorkosTokenError, verifyWorkosJwt } from "../../../integrations/workos/jwt"
 import { createApiToken } from "../../../modules/auth/helpers/apiTokens"
+import { getAuthProvider } from "../../../services/authProvider"
+import { AuthTokenError } from "../../../services/authProvider/AuthProvider"
 
 const featureFlagService = FeatureFlagService.getInstance()
 
@@ -25,14 +25,14 @@ function cliLoginExpiry(): Date {
 }
 
 async function verifyWorkosAccessToken(accessToken: string): Promise<{ workosUserId: string }> {
-    const payload = await verifyWorkosJwt(accessToken)
+    const payload = await getAuthProvider().verifyJWT(accessToken)
     const workosUserId = payload.sub as string | undefined
-    if (!workosUserId) throw new WorkosTokenError(401, "Invalid access token: missing subject")
+    if (!workosUserId) throw new AuthTokenError(401, "Invalid access token: missing subject")
     return { workosUserId }
 }
 
 function handleVerifyError(error: any, res: Response, route: string): Response | null {
-    if (error instanceof WorkosTokenError) return res.status(error.status).json({ error: error.message })
+    if (error instanceof AuthTokenError) return res.status(error.status).json({ error: error.message })
     if (error?.code === "ERR_JWT_EXPIRED" || error?.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED" || error?.code === "ERR_JWKS_NO_MATCHING_KEY") {
         return res.status(401).json({ error: "Invalid or expired access token" })
     }

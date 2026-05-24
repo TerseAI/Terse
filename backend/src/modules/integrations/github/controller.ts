@@ -6,7 +6,7 @@ import { ZodError } from "zod"
 
 import logger from "../../../common/logger"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../../../integrations/github/integration"
-import { resolveUserInOrg } from "../../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../../utility/identity"
 import { db } from "../../../loaders/prisma"
 import { readBearerToken } from "../../../modules/auth/helpers/authDispatch"
 import { SecretService } from "../../../services/SecretService"

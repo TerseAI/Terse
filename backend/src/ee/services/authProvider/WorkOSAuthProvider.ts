@@ -1,12 +1,14 @@
 import { WorkOS } from "@workos-inc/node"
 import crypto from "crypto"
-import { Request, Response } from "express"
-import { User } from "terse-types"
+import express, { Express, Request, Response } from "express"
+import { JWTPayload, jwtVerify } from "jose"
+import { ApiRoutes, UserProfile, UserSession } from "terse-types"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
 import { getClaimsFromAuthResult } from "../../../modules/auth/helpers/accessTokenClaims"
-import AuthProvider, { CookieAuthOutcome } from "../../../services/authProvider/AuthProvider"
+import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
+import AuthProvider, { AuthTokenError, CookieAuthOutcome } from "../../../services/authProvider/AuthProvider"
 import { SettingsDependant, settings } from "../../../settings"
 
 import {
@@ -21,6 +23,7 @@ import {
     setSessionCookie,
     shouldRedirectToLogin
 } from "./service"
+import { handleWorkOSWebhook } from "./workosWebhook"
 
 export class WorkOSAuthProvider extends SettingsDependant implements AuthProvider {
     readonly settingsKey = "workos"
@@ -30,20 +33,34 @@ export class WorkOSAuthProvider extends SettingsDependant implements AuthProvide
         clientId: this.config.clientId
     })
 
-    async getUser(userId: string): Promise<User | null> {
+    // Auth webhook from Terse's own WorkOS account (user/session lifecycle). Always on while WorkOS is the auth provider.
+    registerRoutes(app: Express): void {
+        app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
+        app.post(ApiRoutes.WEBHOOKS.WORKOS, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
+            handleWorkOSWebhook(this.workos, this.config.webhookSecret, req, res)
+        })
+    }
+
+    async getUser(userId: string): Promise<UserProfile | null> {
         const workosUser = await this.workos.userManagement.getUser(userId)
         if (!workosUser) return null
         return {
             id: workosUser.id,
-            organizationId: "",
-            organizationName: "",
             email: workosUser.email,
             displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
             firstName: workosUser.firstName || null,
             lastName: workosUser.lastName || null,
-            displayPhotoUrl: workosUser.profilePictureUrl || "",
-            roles: []
+            displayPhotoUrl: workosUser.profilePictureUrl || ""
         }
+    }
+
+    async verifyJWT(token: string): Promise<JWTPayload> {
+        const jwks = await this.workos.userManagement.getJWKS()
+        if (!jwks) {
+            throw new AuthTokenError(500, "WorkOS JWKS unavailable")
+        }
+        const { payload } = await jwtVerify(token, jwks, { algorithms: ["RS256"] })
+        return payload
     }
 
     async login(_req: Request, res: Response): Promise<void> {
@@ -99,13 +116,16 @@ export class WorkOSAuthProvider extends SettingsDependant implements AuthProvide
 
         try {
             const workOSUser = await this.workos.userManagement.getUser(user.id)
-            const refreshedUser: User = {
-                ...user,
+            const refreshedUser: UserSession = {
+                id: workOSUser.id,
                 email: workOSUser.email,
                 displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" ") || "",
                 firstName: workOSUser.firstName || null,
                 lastName: workOSUser.lastName || null,
-                displayPhotoUrl: workOSUser.profilePictureUrl || ""
+                displayPhotoUrl: workOSUser.profilePictureUrl || "",
+                organizationId: user.organizationId,
+                organizationName: user.organizationName,
+                roles: user.roles
             }
             res.send(refreshedUser)
         } catch (error) {

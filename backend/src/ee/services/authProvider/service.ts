@@ -2,7 +2,7 @@ import { WorkOS } from "@workos-inc/node"
 import crypto from "crypto"
 import { Response } from "express"
 import { ApiRoutes } from "terse-types"
-import { Role, User } from "terse-types/types"
+import { Role, UserSession } from "terse-types/types"
 
 import { AccessTokenClaims } from "../../../modules/auth/helpers/accessTokenClaims"
 import { settings } from "../../../settings"
@@ -84,7 +84,7 @@ export async function getWorkOSLogoutUrl(workos: WorkOS, sealedSessionData: stri
     return session.getLogoutUrl({ returnTo })
 }
 
-export async function buildUserFromWorkOS(workos: WorkOS, authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: User }> {
+export async function buildUserFromWorkOS(workos: WorkOS, authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: UserSession }> {
     const workosUser = authContext.user
     const organizationId = authContext.organizationId ?? ""
 

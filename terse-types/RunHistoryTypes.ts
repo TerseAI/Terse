@@ -3,7 +3,7 @@ import * as z from "zod"
 import { configTypeEnum } from "./Configs"
 import { integrationTypeEnum } from "./Integrations"
 import type { ModelEvent } from "./ModelEvents"
-import type { RunHistoryRecord, RunHistoryRecordWithAgent, User } from "./types"
+import type { RunHistoryRecord, RunHistoryRecordWithAgent, UserProfile } from "./types"
 
 export const RunHistoryStatus = {
     SUCCESS: "success",
@@ -90,5 +90,5 @@ export type RunHistoryModelSocketEvent = {
 export type TrackingParams = {
     runId: string
     agentId: string
-    user: User
+    user: UserProfile
 }

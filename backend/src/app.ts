@@ -8,6 +8,7 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { isCorsOriginAllowed } from "./common/corsOrigins"
 import logger from "./common/logger"
+import { handleWorkOSWebhook } from "./ee/services/authProvider/workosWebhook"
 import { INTEGRATION_REGISTRY } from "./integrations/abstract/IntegrationRegistry"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
 import { httpAccessLog } from "./middlewares/httpAccessLog"
@@ -18,7 +19,6 @@ import apiTokensRouter from "./modules/api-tokens/routes"
 import approvalsRouter from "./modules/approvals/routes"
 import { AuthKind, requireAuth } from "./modules/auth/helpers/authMiddleware"
 import authRouter from "./modules/auth/routes"
-import { handleWorkOSWebhook } from "./modules/auth/workosWebhook"
 import billingCacheInvalidationRouter from "./modules/billing/cache-invalidation/routes"
 import billingRouter from "./modules/billing/routes"
 import improvementsRouter from "./modules/improvements/routes"
@@ -56,6 +56,7 @@ import toolsRouter from "./modules/tools/routes"
 import triggersRouter from "./modules/triggers/routes"
 import usersRouter from "./modules/users/routes"
 import { RateLimitKind, rateLimit } from "./rateLimit/routeLimits"
+import { getAuthProvider } from "./services/authProvider"
 import { settings } from "./settings"
 
 type SlackReceiver = Awaited<ReturnType<typeof setupSlackBolt>>
@@ -172,11 +173,8 @@ export function createApp(options: CreateAppOptions) {
         })
     }
 
-    // Auth webhook from Terse's own WorkOS account (user/session lifecycle). Always on while WorkOS is the auth provider.
-    app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
-    app.post(ApiRoutes.WEBHOOKS.WORKOS, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-        handleWorkOSWebhook(req, res)
-    })
+    // Allow AuthProvider to register its own routes
+    getAuthProvider().registerRoutes?.(app)
 
     if (isIntegrationAvailable(IntegrationType.WORKOS)) {
         app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, express.raw({ type: "application/json" }))

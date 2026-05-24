@@ -1,9 +1,10 @@
 import { WorkOS } from "@workos-inc/node"
 import { Request, Response } from "express"
 import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSchema, organizationSwitchRequestSchema, organizationUpdateRequestSchema } from "terse-types"
+import { Role } from "terse-types/types"
 
 import logger from "../../../common/logger"
-import OrganizationProvider from "../../../services/organizationProvider/OrganizationProvider"
+import OrganizationProvider, { Membership } from "../../../services/organizationProvider/OrganizationProvider"
 import { SettingsDependant, settings } from "../../../settings"
 import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../authProvider/service"
 
@@ -33,14 +34,17 @@ export class WorkOSOrganizationProvider extends SettingsDependant implements Org
         return organization.id
     }
 
-    async getMembershipId(externalUserId: string, organizationId: string): Promise<string> {
+    async getMembership(externalUserId: string, organizationId: string): Promise<Membership | null> {
         const organizationMemberships = await this.workos.userManagement.listOrganizationMemberships({
             userId: externalUserId,
             organizationId,
             statuses: ["active"]
         })
-        const matchingMembership = organizationMemberships.data?.find(m => m.organizationId === organizationId)
-        return matchingMembership?.id ?? ""
+        const matching = organizationMemberships.data?.find(m => m.organizationId === organizationId)
+        if (!matching) return null
+        const organization = await this.workos.organizations.getOrganization(organizationId)
+        const roles: Role[] = (matching.roles?.map(r => r.slug) as Role[]) ?? []
+        return { organizationName: organization.name, roles }
     }
 
     async createOrganization(req: Request, res: Response): Promise<void> {

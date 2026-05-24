@@ -9,7 +9,7 @@ import { z } from "zod"
 
 import logger from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
-import { resolveUserInOrg } from "../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../utility/identity"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { getWorkOSUser } from "../../outputs/workos/workosApiClient"

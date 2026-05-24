@@ -7,7 +7,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import logger, { runWithUserContext } from "../../common/logger"
 import { SchedulerClient, createSchedulerClient } from "../../common/schedulerClient"
-import { resolveUserInOrg } from "../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../utility/identity"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { settings } from "../../settings"
