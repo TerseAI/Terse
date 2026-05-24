@@ -70,6 +70,7 @@ UPDATE "linear_integrations"            SET "user_id" = u."workos_id" FROM "user
 UPDATE "notion_integrations"            SET "user_id" = u."workos_id" FROM "users" u WHERE "notion_integrations"."user_id" = u."id";
 UPDATE "posthog_integrations"           SET "user_id" = u."workos_id" FROM "users" u WHERE "posthog_integrations"."user_id" = u."id";
 UPDATE "project_deploys"                SET "deployed_by_user_id" = u."workos_id" FROM "users" u WHERE "project_deploys"."deployed_by_user_id" = u."id";
+UPDATE "sent_notifications"             SET "user_id" = u."workos_id" FROM "users" u WHERE "sent_notifications"."user_id" = u."id";
 UPDATE "snowflake_integrations"         SET "user_id" = u."workos_id" FROM "users" u WHERE "snowflake_integrations"."user_id" = u."id";
 UPDATE "user_notification_destinations" SET "user_id" = u."workos_id" FROM "users" u WHERE "user_notification_destinations"."user_id" = u."id";
 UPDATE "user_notification_settings"     SET "user_id" = u."workos_id" FROM "users" u WHERE "user_notification_settings"."user_id" = u."id";
