@@ -2,7 +2,9 @@ import { Request, Response } from "express"
 
 import { getOrganizationProvider } from "../../services/organizationProvider"
 
-export async function createOrganization(req: Request, res: Response) {}
+export async function createOrganization(req: Request, res: Response) {
+    getOrganizationProvider().createOrganization(req, res)
+}
 
 export async function getCurrentOrganization(req: Request, res: Response) {
     getOrganizationProvider().getCurrentOrganization(req, res)

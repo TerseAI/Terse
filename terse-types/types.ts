@@ -21,9 +21,6 @@ import { TriggerSchema, TriggerTypeSchema, serializedEventDisplaySchema, seriali
 export const roleSchema = z.enum(["admin", "user"])
 export type Role = z.infer<typeof roleSchema>
 
-// Code smell. We are mixing Session with user identity in the same type.
-// Suggest we split into:  UserProfile  -> just identity, what AuthProvider returns
-// then  UserSession  --> UserProfile + org context, what req.session.user holds
 export const userProfileSchema = z.object({
     id: z.string(),
     email: z.string(),
