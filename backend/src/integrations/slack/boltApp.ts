@@ -50,8 +50,8 @@ async function resolveSlackClicker(body: SlackAction | SlackViewAction, expected
  * This isolates all Slack Bolt code from the main server.ts
  */
 export async function setupSlackBolt() {
-    if (!settings.slack.signingSecret) {
-        logger.warn("⚠️  SLACK_SIGNING_SECRET not set - Slack Bolt app will not be initialized")
+    if (!settings.slack?.signingSecret) {
+        logger.warn("⚠️  Slack integration disabled or SLACK_SIGNING_SECRET not set - Slack Bolt app will not be initialized")
         return null
     }
 

@@ -43,5 +43,6 @@ const INTEGRATION_TUPLE = [
     new HeyReachIntegrationManager()
 ] as const satisfies readonly IntegrationWithInstallation[]
 
-export const INTEGRATION_REGISTRY: readonly IntegrationWithInstallation[] = INTEGRATION_TUPLE
+// Only include integrations that have necessary secrets provided
+export const INTEGRATION_REGISTRY: readonly IntegrationWithInstallation[] = INTEGRATION_TUPLE.filter(m => m.isAvailable)
 export type IntegrationManagers = typeof INTEGRATION_TUPLE

@@ -18,7 +18,7 @@ import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { SecretService } from "../../services/SecretService"
-import { gmail as gmailConfig, urls } from "../../settings"
+import { settings, urls } from "../../settings"
 import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
@@ -30,6 +30,13 @@ const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.g
 
 export class GmailIntegrationManager extends Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never> implements OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     readonly integrationType = IntegrationType.GMAIL
+    static get config() {
+        if (!settings.gmail) throw new Error("Gmail integration is not configured")
+        return settings.gmail
+    }
+    get isAvailable() {
+        return settings.gmail !== undefined
+    }
     readonly secretSchema = z.object({
         accessToken: z.string(),
         refreshToken: z.string()
@@ -337,7 +344,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
             const watchResponse = await gmail.users.watch({
                 userId: "me",
                 requestBody: {
-                    topicName: gmailConfig.pubsubTopic,
+                    topicName: GmailIntegrationManager.config.pubsubTopic,
                     labelIds: ["INBOX"],
                     labelFilterAction: "include"
                 }
@@ -511,7 +518,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
                 const watchResponse = await gmail.users.watch({
                     userId: "me",
                     requestBody: {
-                        topicName: gmailConfig.pubsubTopic,
+                        topicName: GmailIntegrationManager.config.pubsubTopic,
                         labelIds: ["INBOX"],
                         labelFilterAction: "include"
                     }
@@ -674,7 +681,7 @@ export class GmailTriggerRuntime extends TriggerRuntime<GmailTrigger> implements
 
 // Create OAuth2 client
 export function getOAuth2Client(): OAuth2Client {
-    return new OAuth2Client(gmailConfig.clientId, gmailConfig.clientSecret, gmailConfig.redirectUri)
+    return new OAuth2Client(GmailIntegrationManager.config.clientId, GmailIntegrationManager.config.clientSecret, GmailIntegrationManager.config.redirectUri)
 }
 
 /**

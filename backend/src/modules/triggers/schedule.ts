@@ -15,7 +15,6 @@ import { WebMonitorIntegrationManager } from "../../integrations/webMonitor/inte
 import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
-import { settings } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { fetchEventFromRunId } from "../sdk/run-trigger/controller"
 
@@ -141,7 +140,7 @@ export async function handleWebMonitorWebhook(req: Request, res: Response) {
         return
     }
 
-    if (!verifyParallelWebhookSignature(webhookSignature, settings.parallel.webhookSecret, webhookId, webhookTimestamp, bodyStr)) {
+    if (!verifyParallelWebhookSignature(webhookSignature, WebMonitorIntegrationManager.config.webhookSecret, webhookId, webhookTimestamp, bodyStr)) {
         logger.warn("Web event webhook signature verification failed", { inputId })
         res.status(401).send("Invalid signature")
         return

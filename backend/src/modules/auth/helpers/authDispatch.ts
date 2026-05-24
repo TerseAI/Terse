@@ -9,7 +9,8 @@ import { getUserForOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../../modules/auth/service"
 import { getOrCreateDbUserFromWorkOS } from "../../../modules/auth/service"
-import { cloudScheduler, settings } from "../../../settings"
+import { CronJobIntegrationManager } from "../../../integrations/cronJob/integration"
+import { settings } from "../../../settings"
 
 import { getClaimsFromAuthResult } from "./accessTokenClaims"
 import { hashToken } from "./apiTokens"
@@ -95,8 +96,9 @@ export async function authenticateViaApiToken(rawToken: string): Promise<ApiToke
 
 export function validateCloudSchedulerHeader(authHeaderValue: string | undefined): boolean {
     if (!authHeaderValue) return false
+    if (!new CronJobIntegrationManager().isAvailable) return false
     const token = authHeaderValue.startsWith("Bearer ") ? authHeaderValue.substring(7) : authHeaderValue
-    return secretsMatch(token, cloudScheduler.secret)
+    return secretsMatch(token, CronJobIntegrationManager.config.secret)
 }
 
 export function readBearerToken(authHeaderValue: string | undefined): string | null {

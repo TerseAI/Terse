@@ -34,6 +34,13 @@ export class LinearIntegrationManager
     implements OAuthIntegrationInstallation<IntegrationType.LINEAR>
 {
     readonly integrationType = IntegrationType.LINEAR
+    static get config() {
+        if (!settings.linear) throw new Error("Linear integration is not configured")
+        return settings.linear
+    }
+    get isAvailable() {
+        return settings.linear !== undefined
+    }
     readonly secretSchema = z.object({
         accessToken: z.string(),
         refreshToken: z.string()
@@ -185,8 +192,8 @@ export class LinearIntegrationManager
             additionalStatePayload
         })
 
-        const clientId = settings.linear.clientId
-        const redirectUri = settings.linear.oauthCallbackUrl
+        const clientId = LinearIntegrationManager.config.clientId
+        const redirectUri = LinearIntegrationManager.config.oauthCallbackUrl
 
         // Build OAuth URL with proper encoding
         const authUrl = new URL("https://linear.app/oauth/authorize")
@@ -235,9 +242,9 @@ export class LinearIntegrationManager
             // Exchange authorization code for access token
             const params = new URLSearchParams()
             params.append("code", code as string)
-            params.append("redirect_uri", settings.linear.oauthCallbackUrl)
-            params.append("client_id", settings.linear.clientId)
-            params.append("client_secret", settings.linear.clientSecret)
+            params.append("redirect_uri", LinearIntegrationManager.config.oauthCallbackUrl)
+            params.append("client_id", LinearIntegrationManager.config.clientId)
+            params.append("client_secret", LinearIntegrationManager.config.clientSecret)
             params.append("grant_type", "authorization_code")
 
             const tokenResponse = await fetch("https://api.linear.app/oauth/token", {
@@ -472,8 +479,8 @@ export class LinearIntegrationManager
 
                 const params = new URLSearchParams()
                 params.append("refresh_token", refreshToken)
-                params.append("client_id", settings.linear.clientId)
-                params.append("client_secret", settings.linear.clientSecret)
+                params.append("client_id", LinearIntegrationManager.config.clientId)
+                params.append("client_secret", LinearIntegrationManager.config.clientSecret)
                 params.append("grant_type", "refresh_token")
 
                 const tokenResponse = await fetch("https://api.linear.app/oauth/token", {

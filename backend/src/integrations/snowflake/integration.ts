@@ -14,6 +14,9 @@ export class SnowflakeIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.SNOWFLAKE>
 {
     readonly integrationType = IntegrationType.SNOWFLAKE
+    get isAvailable() {
+        return true
+    }
     readonly secretSchema = z.object({
         privateKey: z.string(),
         privateKeyPassphrase: z.string().optional()

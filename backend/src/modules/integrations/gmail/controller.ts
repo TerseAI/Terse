@@ -9,7 +9,7 @@ import { GmailIntegrationManager, GmailWebhookEvent, getOAuth2Client } from "../
 import { db } from "../../../loaders/prisma"
 import { readBearerToken } from "../../../modules/auth/helpers/authDispatch"
 import { SecretService } from "../../../services/SecretService"
-import { gmail as gmailConfig, settings } from "../../../settings"
+import { settings } from "../../../settings"
 
 const pubsubOidcClient = new OAuth2Client()
 
@@ -151,7 +151,7 @@ export async function handleGmailWebhook(req: Request, res: Response) {
 }
 
 async function verifyPubsubOidc(req: Request): Promise<boolean> {
-    const audience = gmailConfig.pubsubAudience
+    const audience = GmailIntegrationManager.config.pubsubAudience
     if (!audience) {
         if (settings.nodeEnv === "production") {
             logger.error("[gmail-webhook] GMAIL_PUBSUB_AUDIENCE not configured in production — refusing webhook delivery")
@@ -178,7 +178,7 @@ async function verifyPubsubOidc(req: Request): Promise<boolean> {
             logger.warn("[gmail-webhook] OIDC token email_verified is not true", { email: payload.email })
             return false
         }
-        const expectedEmail = gmailConfig.pubsubServiceAccountEmail
+        const expectedEmail = GmailIntegrationManager.config.pubsubServiceAccountEmail
         if (expectedEmail && payload.email !== expectedEmail) {
             logger.warn("[gmail-webhook] OIDC token email does not match configured service account", { email: payload.email })
             return false

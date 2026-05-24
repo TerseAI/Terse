@@ -11,7 +11,7 @@ import { db } from "../../loaders/prisma"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { fetchNotionResources } from "../../modules/integrations/notion/controller"
 import { SecretNotFoundError } from "../../services/SecretService"
-import { notion as notionConfig, urls } from "../../settings"
+import { settings, urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
@@ -20,6 +20,13 @@ import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, cr
 
 export class NotionIntegrationManager extends Integration<NotionIntegration, never, typeof NotionIntegrationMetadata, NotionResource> implements OAuthIntegrationInstallation<IntegrationType.NOTION> {
     readonly integrationType = IntegrationType.NOTION
+    static get config() {
+        if (!settings.notion) throw new Error("Notion integration is not configured")
+        return settings.notion
+    }
+    get isAvailable() {
+        return settings.notion !== undefined
+    }
     readonly secretSchema = z.object({
         integrationToken: z.string()
     })
@@ -124,8 +131,8 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
             additionalStatePayload
         })
 
-        const clientId = notionConfig.clientId
-        const redirectUri = notionConfig.redirectUri
+        const clientId = NotionIntegrationManager.config.clientId
+        const redirectUri = NotionIntegrationManager.config.redirectUri
 
         // Build OAuth URL with proper encoding
         const authUrl = new URL("https://api.notion.com/v1/oauth/authorize")
@@ -176,13 +183,13 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
             const tokenResponse = await fetch("https://api.notion.com/v1/oauth/token", {
                 method: "POST",
                 headers: {
-                    Authorization: `Basic ${Buffer.from(`${notionConfig.clientId}:${notionConfig.clientSecret}`).toString("base64")}`,
+                    Authorization: `Basic ${Buffer.from(`${NotionIntegrationManager.config.clientId}:${NotionIntegrationManager.config.clientSecret}`).toString("base64")}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
                     grant_type: "authorization_code",
                     code: code,
-                    redirect_uri: notionConfig.redirectUri
+                    redirect_uri: NotionIntegrationManager.config.redirectUri
                 })
             })
 
@@ -263,7 +270,7 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
         try {
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.NOTION, recordId: integrationId } })
             if (secrets?.integrationToken) {
-                const basic = Buffer.from(`${notionConfig.clientId}:${notionConfig.clientSecret}`).toString("base64")
+                const basic = Buffer.from(`${NotionIntegrationManager.config.clientId}:${NotionIntegrationManager.config.clientSecret}`).toString("base64")
                 const response = await fetch("https://api.notion.com/v1/oauth/revoke", {
                     method: "POST",
                     headers: {

@@ -24,7 +24,7 @@ import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstal
 import { getGitHubAccessToken } from "../../outputs/github/githubApiClient"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../../services/FileStorageService"
 import { SecretService } from "../../services/SecretService"
-import { githubApp, urls } from "../../settings"
+import { settings, urls } from "../../settings"
 import { AgentTriggerWithConfigs, User as PrismaUser } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
@@ -37,6 +37,13 @@ export class GithubIntegrationManager
     implements OAuthIntegrationInstallation<IntegrationType.GITHUB>
 {
     readonly integrationType = IntegrationType.GITHUB
+    static get config() {
+        if (!settings.githubApp) throw new Error("GitHub integration is not configured")
+        return settings.githubApp
+    }
+    get isAvailable() {
+        return settings.githubApp !== undefined
+    }
     readonly secretSchema = z.object({
         accessToken: z.string()
     })
@@ -160,9 +167,9 @@ export class GithubIntegrationManager
         req: Request,
         res: Response
     ): Promise<OAuthInstallationDetails> {
-        const appName = githubApp.appName
-        const clientId = githubApp.clientId
-        const redirectUri = githubApp.integrateCallbackUrl
+        const appName = GithubIntegrationManager.config.appName
+        const clientId = GithubIntegrationManager.config.clientId
+        const redirectUri = GithubIntegrationManager.config.integrateCallbackUrl
 
         const state = mintOAuthState(req, res, {
             userId,
@@ -291,8 +298,8 @@ export class GithubIntegrationManager
         try {
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: integrationId } })
             if (secrets?.accessToken) {
-                const basic = Buffer.from(`${githubApp.clientId}:${githubApp.clientSecret}`).toString("base64")
-                const response = await fetch(`https://api.github.com/applications/${githubApp.clientId}/token`, {
+                const basic = Buffer.from(`${GithubIntegrationManager.config.clientId}:${GithubIntegrationManager.config.clientSecret}`).toString("base64")
+                const response = await fetch(`https://api.github.com/applications/${GithubIntegrationManager.config.clientId}/token`, {
                     method: "DELETE",
                     headers: {
                         Authorization: `Basic ${basic}`,
@@ -571,8 +578,8 @@ async function exchangeCodeForAccessToken(
     const tokenResp = await axios.post(
         "https://github.com/login/oauth/access_token",
         {
-            client_id: githubApp.clientId,
-            client_secret: githubApp.clientSecret,
+            client_id: GithubIntegrationManager.config.clientId,
+            client_secret: GithubIntegrationManager.config.clientSecret,
             code,
             ...(redirectUri && { redirect_uri: redirectUri })
         },

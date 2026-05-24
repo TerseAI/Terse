@@ -23,7 +23,7 @@ import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { GetSecretsArg, SecretService } from "../../services/SecretService"
-import { slack as slackConfig, urls } from "../../settings"
+import { settings, urls } from "../../settings"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
@@ -38,6 +38,13 @@ export class SlackIntegrationManager
     implements OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
     readonly integrationType = IntegrationType.SLACK
+    static get config() {
+        if (!settings.slack) throw new Error("Slack integration is not configured")
+        return settings.slack
+    }
+    get isAvailable() {
+        return settings.slack !== undefined
+    }
     readonly secretSchema = z.object({
         accessToken: z.string().optional(),
         authedUserAccessToken: z.string().optional()
@@ -253,8 +260,8 @@ export class SlackIntegrationManager
         if (!options) {
             throw new Error("Slack integration requires options (isBotUser)")
         }
-        const client_id = slackConfig.clientId
-        const redirect_uri = slackConfig.oauthCallbackUrl
+        const client_id = SlackIntegrationManager.config.clientId
+        const redirect_uri = SlackIntegrationManager.config.oauthCallbackUrl
         const isBotUser = options.isBotUser
         const scope =
             "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read,chat:write,app_mentions:read,reactions:read,reactions:write,files:read"
@@ -315,9 +322,9 @@ export class SlackIntegrationManager
             return
         }
 
-        const client_id = slackConfig.clientId
-        const client_secret = slackConfig.clientSecret
-        const redirect_uri = slackConfig.oauthCallbackUrl
+        const client_id = SlackIntegrationManager.config.clientId
+        const client_secret = SlackIntegrationManager.config.clientSecret
+        const redirect_uri = SlackIntegrationManager.config.oauthCallbackUrl
 
         try {
             const response = await axios.post<SlackOAuthResponse>(
