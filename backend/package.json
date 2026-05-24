@@ -22,8 +22,10 @@
         "test:processor": "tsx src/testing/testEventProcessor.ts",
         "test:processor:quick": "tsx src/testing/quickProcessorTest.ts",
         "test:seed-run-history": "tsx src/testing/seedRunHistory.ts",
-        "db:generate": "prisma generate",
+        "db:generate": "prisma generate && prisma generate --schema=./prisma/local-auth/schema.prisma",
         "db:push": "prisma db push",
+        "db:push:local-auth": "prisma db push --schema=./prisma/local-auth/schema.prisma",
+        "db:migrate:local-auth": "prisma migrate dev --schema=./prisma/local-auth/schema.prisma",
         "db:studio": "prisma studio",
         "index-tickets": "./index-tickets.sh"
     },

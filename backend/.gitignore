@@ -3,5 +3,10 @@ node_modules
 .env
 
 /src/generated/prisma
+/src/generated/local-auth-prisma
+
+# Local-auth SQLite database (created by `prisma migrate dev` in local mode)
+/local-auth.db
+/local-auth.db-journal
 
 dist

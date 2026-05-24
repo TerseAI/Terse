@@ -46,6 +46,12 @@ export const settings = {
         webhookSecret: requireSecretMinLength("WORKOS_WEBHOOK_SECRET")
     })),
 
+    // Local auth — SQLite-backed identities. Used by LocalAuthProvider when WorkOS isn't configured.
+    // This needs to be set to: "file:./local-auth.db" in the environment variables or this CANNOT run
+    localAuth: {
+        dbUrl: optionalEnv("LOCAL_AUTH_DB_URL")
+    },
+
     openai: {
         apiKey: requireEnv("OPENAI_API_KEY")
     },
