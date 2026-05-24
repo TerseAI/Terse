@@ -101,11 +101,7 @@ function coerceRawInputForField(raw: string, fieldSchema: unknown): unknown {
  * schema, then validate with the schema. Returns the typed result on success or
  * throws a `CliError` with structured detail describing each invalid field.
  */
-export function coerceAndValidateForSchema<S extends z.ZodObject<z.ZodRawShape>>(
-    raw: Record<string, string>,
-    schema: S,
-    errorContext: { integrationType: string }
-): z.infer<S> {
+export function coerceAndValidateForSchema<S extends z.ZodObject<z.ZodRawShape>>(raw: Record<string, string>, schema: S, errorContext: { integrationType: string }): z.infer<S> {
     const shape = schema.shape
     const coerced: Record<string, unknown> = {}
 
