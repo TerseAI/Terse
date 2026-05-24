@@ -66,7 +66,7 @@ export function billingServiceProxyForRequest(req: Request): BillingService {
     }
     return billingServiceForOrganizationAuth({
         organizationId: user.organizationId,
-        userId: user.workosId
+        userId: user.id
     })
 }
 

@@ -266,7 +266,7 @@ export class EventProcessor {
         try {
             logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id })
 
-            const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId, this.user.workosId)
+            const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId, this.user.id)
             await startBillingRun(billingForRunner, { organizationId: this.user.organizationId, runId })
         } catch (error) {
             logger.error(`SDK sandbox failed to start for agent "${agent.name}"`, { error, runId, agentId: agent.id })

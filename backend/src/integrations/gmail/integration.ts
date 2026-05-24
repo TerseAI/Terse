@@ -114,7 +114,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
                 if (!claim.shouldProcess) {
                     continue
                 }
-                const { integration, user, oldHistoryId } = claim
+                const { integration, oldHistoryId } = claim
                 const fullUser = await getUserForOrg(integration.user_id, integration.organization_id)
                 if (!fullUser) continue
 
@@ -769,7 +769,6 @@ async function claimHistoryIdUpdateInTransaction(
             {
                 shouldProcess: false,
                 integration: null,
-                user: null,
                 oldHistoryId: null
             }
         ]
@@ -784,7 +783,6 @@ async function claimHistoryIdUpdateInTransaction(
                 return {
                     shouldProcess: false,
                     integration: null,
-                    user: null,
                     oldHistoryId: null
                 }
             }
@@ -796,29 +794,9 @@ async function claimHistoryIdUpdateInTransaction(
                 data: { history_id: newHistoryIdString }
             })
 
-            const user = await tx.users.findUnique({
-                where: {
-                    id: integration.user_id
-                }
-            })
-
-            if (!user) {
-                logger.warn("No user found for integration", {
-                    userId: integration.user_id,
-                    integrationId: integration.id
-                })
-                return {
-                    shouldProcess: false,
-                    integration: null,
-                    user: null,
-                    oldHistoryId: null
-                }
-            }
-
             return {
                 shouldProcess: true,
                 integration: updatedIntegration,
-                user: user,
                 oldHistoryId: oldHistoryId
             }
         })
@@ -1014,13 +992,11 @@ type ProcessedWebhookClaim =
     | {
           shouldProcess: true
           integration: PrismaGmailIntegration
-          user: User
           oldHistoryId: string
       }
     | {
           shouldProcess: false
           integration: null
-          user: null
           oldHistoryId: null
       }
 
