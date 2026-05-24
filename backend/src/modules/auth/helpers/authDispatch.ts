@@ -4,7 +4,6 @@ import { UserSession } from "terse-types/types"
 
 import { secretsMatch } from "../../../common/crypto"
 import logger from "../../../common/logger"
-import { WORKOS_SESSION_COOKIE_NAME } from "../../../ee/services/authProvider/service"
 import { CronJobIntegrationManager } from "../../../integrations/cronJob/integration"
 import { db } from "../../../loaders/prisma"
 import { getAuthProvider } from "../../../services/authProvider"
@@ -67,5 +66,5 @@ export function readBearerToken(authHeaderValue: string | undefined): string | n
 }
 
 export function readSealedSessionCookie(cookies: Record<string, string> | undefined): string | undefined {
-    return cookies?.[WORKOS_SESSION_COOKIE_NAME]
+    return cookies?.[getAuthProvider().sessionCookieName]
 }

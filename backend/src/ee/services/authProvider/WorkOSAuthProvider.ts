@@ -6,7 +6,8 @@ import { ApiRoutes, UserProfile, UserSession } from "terse-types"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { getClaimsFromAuthResult } from "../../../modules/auth/helpers/accessTokenClaims"
+import { getClaimsFromAuthResult } from "./accessTokenClaims"
+import { AuthKind, requireAuth } from "../../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 import AuthProvider, { AuthTokenError, CookieAuthOutcome } from "../../../services/authProvider/AuthProvider"
 import { SettingsDependant, settings } from "../../../settings"
@@ -33,12 +34,20 @@ export class WorkOSAuthProvider extends SettingsDependant implements AuthProvide
         clientId: this.config.clientId
     })
 
-    // Auth webhook from Terse's own WorkOS account (user/session lifecycle). Always on while WorkOS is the auth provider.
+    readonly sessionCookieName = WORKOS_SESSION_COOKIE_NAME
+
     registerRoutes(app: Express): void {
+        // Auth webhook from Terse's own WorkOS account (user/session lifecycle).
         app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
         app.post(ApiRoutes.WEBHOOKS.WORKOS, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
             handleWorkOSWebhook(this.workos, this.config.webhookSecret, req, res)
         })
+
+        // OAuth callback from WorkOS AuthKit.
+        app.get(ApiRoutes.AUTH.WORKOS_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), (req, res) => this.callback(req, res))
+
+        // Admin portal widget token (WorkOS-only feature).
+        app.get(ApiRoutes.WORKOS.WIDGET_TOKEN, rateLimit(RateLimitKind.Default), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), (req, res) => this.getWorkOSWidgetToken(req, res))
     }
 
     async getUser(userId: string): Promise<UserProfile | null> {

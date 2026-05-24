@@ -4,8 +4,9 @@ import { Response } from "express"
 import { ApiRoutes } from "terse-types"
 import { Role, UserSession } from "terse-types/types"
 
-import { AccessTokenClaims } from "../../../modules/auth/helpers/accessTokenClaims"
 import { settings } from "../../../settings"
+
+import { AccessTokenClaims } from "./accessTokenClaims"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
 export const WORKOS_OAUTH_STATE_COOKIE_NAME = "TERSE_WORKOS_OAUTH_STATE"
