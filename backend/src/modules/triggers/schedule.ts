@@ -12,10 +12,10 @@ import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import { CronJobIntegrationManager } from "../../integrations/cronJob/integration"
 import { buildGithubTriggerMetadata } from "../../integrations/github/integration"
 import { WebMonitorIntegrationManager } from "../../integrations/webMonitor/integration"
-import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 import { fetchEventFromRunId } from "../sdk/run-trigger/controller"
 
 interface ManualTriggerRequest {
@@ -217,7 +217,7 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
         return res.status(404).json({ error: "Automation not found" })
     }
 
-    const user = await getUserForOrg(session.user.id, session.user.organizationId)
+    const user = await resolveUserInOrg(session.user.id, session.user.organizationId)
     if (!user) {
         return res.status(404).json({ error: "User not found" })
     }

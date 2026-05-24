@@ -6,7 +6,7 @@ import { z } from "zod"
 
 import logger from "../../common/logger"
 import { SecretService } from "../../services/SecretService"
-import { settings } from "../../settings"
+import { SettingsDependant, settings } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 
 import { FetchResourcesOptions } from "./FetchResourcesOptions"
@@ -18,7 +18,7 @@ export interface IntegrationWithResources<T extends IntegrationInstance, R> {
 }
 
 // This ensures T is a valid Prisma model type
-export abstract class Integration<T extends IntegrationInstance, W, M extends IntegrationDetails, R> {
+export abstract class Integration<T extends IntegrationInstance, W, M extends IntegrationDetails, R> extends SettingsDependant {
     protected get secretService(): SecretService {
         return SecretService.getInstance()
     }
@@ -35,23 +35,6 @@ export abstract class Integration<T extends IntegrationInstance, W, M extends In
     fetchResourcesForOrganization?(organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<IntegrationWithResources<T, R>[]> {
         logger.warn("fetchResourcesForOrganization is not implemented for integration type", { integrationType: this.integrationType })
         return Promise.resolve([])
-    }
-
-    readonly settingsKey: keyof typeof settings | null = null
-
-    get isAvailable(): boolean {
-        return this.settingsKey === null || settings[this.settingsKey] !== undefined
-    }
-
-    get config(): NonNullable<(typeof settings)[Exclude<this["settingsKey"], null>]> {
-        if (this.settingsKey === null) {
-            throw new Error(`Integration ${this.integrationType} has no settings key`)
-        }
-        const value = settings[this.settingsKey]
-        if (value === undefined) {
-            throw new Error(`Integration ${this.integrationType} is not configured`)
-        }
-        return value as NonNullable<(typeof settings)[Exclude<this["settingsKey"], null>]>
     }
 
     getSampleEvents?(

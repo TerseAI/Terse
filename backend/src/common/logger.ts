@@ -5,7 +5,7 @@ import { BatchLogRecordProcessor } from "@opentelemetry/sdk-logs"
 import { NodeSDK } from "@opentelemetry/sdk-node"
 import { AsyncLocalStorage } from "async_hooks"
 import chalk from "chalk"
-import { User } from "terse-types"
+import { UserSession } from "terse-types/types"
 
 import { extractErrorMessage } from "../common/strings"
 import { settings } from "../settings"
@@ -121,7 +121,7 @@ const userContextStorage = new AsyncLocalStorage<UserContext>()
  * Runs a function with the specified user context.
  * Useful for background jobs or non-request contexts.
  */
-export function runWithUserContext<T>(user: User, fn: () => T): T {
+export function runWithUserContext<T>(user: UserSession, fn: () => T): T {
     return userContextStorage.run(
         {
             userId: user.id,

@@ -1,6 +1,6 @@
 import { type Organization, type User, WorkOS } from "@workos-inc/node"
 import { IntegrationType } from "terse-types"
-import { User as TerseUser } from "terse-types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
@@ -10,7 +10,7 @@ import { SecretService } from "../../services/SecretService"
  * Get the WorkOS API key for a given integration, validating that
  * the integration belongs to the user's organization.
  */
-export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user: TerseUser): Promise<string | null> {
+export async function getWorkOSApiKeyByIntegrationId(integrationId: string, user: UserSession): Promise<string | null> {
     const integration = await db().workos_integrations.findUnique({
         where: { id: integrationId }
     })

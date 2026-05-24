@@ -1,7 +1,7 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { Request, Response } from "express"
 import { TriggerConfigData } from "terse-types/Configs"
-import { SdkDeployResponseBody, SdkDeployStage, User, sdkDeployRequestBodySchema } from "terse-types/types"
+import { SdkDeployResponseBody, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { getInputConfigInclude } from "../../../common/prismaIncludes"
@@ -20,7 +20,7 @@ import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
 
     const userId = user.id

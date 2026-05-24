@@ -2,7 +2,7 @@ import { Server } from "socket.io"
 import { ModelEvent } from "terse-types"
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, TrackingParams } from "terse-types"
 import { SocketEvents, SocketRooms } from "terse-types"
-import { User } from "terse-types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { randomString } from "../../../common/strings"

@@ -1,13 +1,12 @@
 import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import { pendingApprovalsKey } from "terse-types/InvalidationKeys"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
 import { SlackApprovalMessageStatus } from "../integrations/slack/ApprovalStatus"
 import { updateSlackApprovalMessage } from "../integrations/slack/helpers"
-import { getUserForOrg } from "../integrations/workos/helpers"
 import { db } from "../loaders/prisma"
 import { markRunFailed, markRunInProgress } from "../modules/agents/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../modules/agents/ApprovalSummaryAgent/ApprovalSummaryAgent"
@@ -15,6 +14,7 @@ import { appendToolApprovalResponseSystemEvent } from "../modules/agents/systemE
 import { NotificationManager } from "../modules/notifications/Notification"
 import { resolveApprovalDecision } from "../modules/sdk/approval-gate/queue"
 import { AgentWithRelations } from "../types/prisma"
+import { resolveUserInOrg } from "../utility/identity"
 
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "./CacheInvalidationService"
 
@@ -68,7 +68,7 @@ export class ApprovalService {
      * Updates Slack notification for an approval request.
      * Handles fetching approval message, cached summary, channel info, and updating both Slack message and database.
      */
-    private static async updateSlackNotification(runId: string, stepId: string, status: SlackApprovalMessageStatus, user: User, channelId: string): Promise<void> {
+    private static async updateSlackNotification(runId: string, stepId: string, status: SlackApprovalMessageStatus, user: UserSession, channelId: string): Promise<void> {
         const prisma = db()
 
         try {
@@ -167,7 +167,7 @@ export class ApprovalService {
         // Keep minimal state outside the try so the catch can update Slack if we already flipped it to "processing".
         let channelIdForSlack: string | null = null
         let slackMarkedProcessing = false
-        let user: User | null = null
+        let user: UserSession | null = null
         let channelForNotifications: AgentWithRelations | null = null
 
         try {
@@ -177,7 +177,7 @@ export class ApprovalService {
             channelForNotifications = channel
 
             // Create base session for AgentRunner (runtime User type)
-            user = await getUserForOrg(userId, channel.organization_id)
+            user = await resolveUserInOrg(userId, channel.organization_id)
             if (!user) {
                 throw new Error(`User not found: ${userId}`)
             }

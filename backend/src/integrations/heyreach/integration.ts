@@ -9,11 +9,11 @@ import { z } from "zod"
 import logger from "../../common/logger"
 import { previewError } from "../../common/redact"
 import { buildHeyReachWebhookUrl } from "../../common/webhookUrl"
-import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { SecretService } from "../../services/SecretService"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
 
@@ -74,7 +74,7 @@ export class HeyReachIntegrationManager
             return
         }
 
-        const user = await getUserForOrg(subscribedTrigger.automation.user_id, subscribedTrigger.automation.organization_id)
+        const user = await resolveUserInOrg(subscribedTrigger.automation.user_id, subscribedTrigger.automation.organization_id)
         if (!user) {
             logger.warn("HeyReach webhook: user not found", {
                 userId: subscribedTrigger.automation.user_id,

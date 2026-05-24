@@ -17,11 +17,11 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
-import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { settings } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
 
@@ -126,7 +126,7 @@ export class WebMonitorIntegrationManager
             return
         }
 
-        const user = await getUserForOrg(agentTrigger.automation.user_id, channel.organization_id)
+        const user = await resolveUserInOrg(agentTrigger.automation.user_id, channel.organization_id)
         if (!user) {
             logger.warn("User not found for web event trigger", { userId: agentTrigger.automation.user_id })
             return

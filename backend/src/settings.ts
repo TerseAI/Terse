@@ -6,60 +6,23 @@
  * The application will fail to start if any required variables are missing.
  */
 
-function requireEnv(name: string): string {
-    const value = process.env[name]
-    if (!value || value.trim() === "") {
-        throw new Error(`Missing required environment variable: ${name}. ` + `Please set ${name} in your environment configuration.`)
-    }
-    return value
-}
+export abstract class SettingsDependant {
+    readonly settingsKey: keyof typeof settings | null = null
 
-function requireSecretMinLength(name: string, minLen = 16): string {
-    const value = requireEnv(name)
-    if (value.length < minLen) {
-        throw new Error(`Environment variable ${name} is too short (got ${value.length} chars, need at least ${minLen}).`)
-    }
-    return value
-}
-
-function optionalEnv(name: string, defaultValue?: string): string | undefined {
-    const value = process.env[name]
-    if (value && value.trim() !== "") {
-        return value
-    }
-    return defaultValue
-}
-
-function optionalBoolEnv(name: string, defaultValue = false): boolean {
-    const value = optionalEnv(name)
-
-    if (value === undefined) {
-        return defaultValue
+    get isAvailable(): boolean {
+        return this.settingsKey === null || settings[this.settingsKey] !== undefined
     }
 
-    if (value === "true") {
-        return true
+    get config(): NonNullable<(typeof settings)[Exclude<this["settingsKey"], null>]> {
+        if (this.settingsKey === null) {
+            throw new Error(`SettingsDependant ${this.settingsKey} has no settings key`)
+        }
+        const value = settings[this.settingsKey]
+        if (value === undefined) {
+            throw new Error(`SettingsDependant ${this.settingsKey} is not configured`)
+        }
+        return value as NonNullable<(typeof settings)[Exclude<this["settingsKey"], null>]>
     }
-
-    if (value === "false") {
-        return false
-    }
-
-    throw new Error(`Invalid boolean environment variable: ${name}. Expected "true" or "false".`)
-}
-
-/**
- * Builds an opt-in integration config block. If none of the listed env vars are set, returns `undefined`
- * so the integration registers as "unavailable" and self-hosters can skip it. If any are set but the
- * builder throws (e.g. a missing requireEnv), the error propagates — partial configuration is misconfig.
- */
-function optionalIntegrationSettings<T>(envNames: readonly string[], build: () => T): T | undefined {
-    const anySet = envNames.some(n => {
-        const v = process.env[n]
-        return v !== undefined && v.trim() !== ""
-    })
-    if (!anySet) return undefined
-    return build()
 }
 
 // Core configuration
@@ -74,13 +37,14 @@ export const settings = {
         url: requireEnv("DATABASE_URL")
     },
 
-    workos: {
+    // WorkOS — opt-in. Present means AuthProvider picks WorkOS; absent means LocalAuthProvider.
+    workos: optionalIntegrationSettings(["WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD", "WORKOS_REDIRECT_URI", "WORKOS_WEBHOOK_SECRET"], () => ({
         clientId: requireEnv("WORKOS_CLIENT_ID"),
         apiKey: requireEnv("WORKOS_API_KEY"),
         cookiePassword: requireSecretMinLength("WORKOS_COOKIE_PASSWORD"),
         redirectUri: requireEnv("WORKOS_REDIRECT_URI"),
         webhookSecret: requireSecretMinLength("WORKOS_WEBHOOK_SECRET")
-    },
+    })),
 
     openai: {
         apiKey: requireEnv("OPENAI_API_KEY")
@@ -242,3 +206,61 @@ export const { jwt, gemini, urls, gcp, gcs, optional } = settings
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively
 export const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 12 * 60 * 60 * 1000 // 12 hours in milliseconds
+
+// Helpers
+
+function requireEnv(name: string): string {
+    const value = process.env[name]
+    if (!value || value.trim() === "") {
+        throw new Error(`Missing required environment variable: ${name}. ` + `Please set ${name} in your environment configuration.`)
+    }
+    return value
+}
+
+function requireSecretMinLength(name: string, minLen = 16): string {
+    const value = requireEnv(name)
+    if (value.length < minLen) {
+        throw new Error(`Environment variable ${name} is too short (got ${value.length} chars, need at least ${minLen}).`)
+    }
+    return value
+}
+
+function optionalEnv(name: string, defaultValue?: string): string | undefined {
+    const value = process.env[name]
+    if (value && value.trim() !== "") {
+        return value
+    }
+    return defaultValue
+}
+
+function optionalBoolEnv(name: string, defaultValue = false): boolean {
+    const value = optionalEnv(name)
+
+    if (value === undefined) {
+        return defaultValue
+    }
+
+    if (value === "true") {
+        return true
+    }
+
+    if (value === "false") {
+        return false
+    }
+
+    throw new Error(`Invalid boolean environment variable: ${name}. Expected "true" or "false".`)
+}
+
+/**
+ * Builds an opt-in integration config block. If none of the listed env vars are set, returns `undefined`
+ * so the integration registers as "unavailable" and self-hosters can skip it. If any are set but the
+ * builder throws (e.g. a missing requireEnv), the error propagates — partial configuration is misconfig.
+ */
+function optionalIntegrationSettings<T>(envNames: readonly string[], build: () => T): T | undefined {
+    const anySet = envNames.some(n => {
+        const v = process.env[n]
+        return v !== undefined && v.trim() !== ""
+    })
+    if (!anySet) return undefined
+    return build()
+}

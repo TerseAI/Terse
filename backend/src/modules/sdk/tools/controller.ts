@@ -1,7 +1,7 @@
 import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { z } from "zod"
 
@@ -27,7 +27,7 @@ type SdkToolDescriptor = {
 }
 
 export async function handleToolDefinitions(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ error: "Unauthorized" })
 
     try {
@@ -96,7 +96,7 @@ function normalizeInvokedToolResult(rawResult: unknown): unknown {
     return rawResult
 }
 
-async function resolvePersistedRunContext(runIdHeader: string | undefined, user: User): Promise<DeterministicToolCallRunContext | null> {
+async function resolvePersistedRunContext(runIdHeader: string | undefined, user: UserSession): Promise<DeterministicToolCallRunContext | null> {
     const runId = runIdHeader?.trim()
     if (!runId || !user.organizationId) return null
 
@@ -114,7 +114,7 @@ async function resolvePersistedRunContext(runIdHeader: string | undefined, user:
 }
 
 export async function handleToolExecute(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
 
     const { toolName, params } = sdkToolExecuteRequestSchema.parse(req.body)

@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from "terse-types/types"
 
 import logger from "../../common/logger"
@@ -17,8 +17,8 @@ import {
     rotateSigningSecret
 } from "./service"
 
-function requireUser(req: Request, res: Response): User | null {
-    const user = req.session?.user as User | undefined
+function requireUser(req: Request, res: Response): UserSession | null {
+    const user = req.session?.user
     if (!user) {
         res.status(401).json({ success: false, error: "Unauthorized" })
         return null

@@ -33,8 +33,8 @@ export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking
     }
 }
 
-async function getBillingOverageReason(organizationId: string, workosUserId: string): Promise<RunGateDenyReason | null> {
-    const billing = billingServiceProxyForOrganization(organizationId, workosUserId)
+async function getBillingOverageReason(organizationId: string, userId: string): Promise<RunGateDenyReason | null> {
+    const billing = billingServiceProxyForOrganization(organizationId, userId)
     const gate = await billing.checkRunGate({ organizationId, breakCache: false })
     if (!gate.allow) {
         // Signal to all agents we are stopping.

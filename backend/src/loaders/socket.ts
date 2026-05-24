@@ -5,14 +5,12 @@ import { Server, Socket } from "socket.io"
 import { SendModelRequest, ToolApprovalResponse } from "terse-types"
 import { type RunHistoryModelEvent, type RunHistoryModelSocketEvent, RunHistoryStatus } from "terse-types"
 import { SocketEvents, SocketRooms } from "terse-types"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 
 import { isCorsOriginAllowed } from "../common/corsOrigins"
 import logger from "../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
 import { randomString } from "../common/strings"
-import { getUserForOrg } from "../integrations/workos/helpers"
-import { verifyWorkosJwt } from "../integrations/workos/jwt"
 import { db } from "../loaders/prisma"
 import { SdkAgentRunner } from "../modules/agents/AgentRunner/SdkAgentRunner"
 import { evaluateCompletedRun, finalizeRunStatus, getPendingApprovalState, markRunFailed, readSdkSkillsFromJson } from "../modules/agents/AgentRunner/runHistory"
@@ -24,8 +22,10 @@ import { NotificationManager } from "../modules/notifications/Notification"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { billingServiceProxyForOrganization } from "../services/BillingService"
 import { invalidateRunAndChatHistory } from "../services/CacheInvalidationService"
+import { getAuthProvider } from "../services/authProvider"
 import { optional } from "../settings"
 import { Agent, AgentWithRelations } from "../types/prisma"
+import { resolveUserInOrg } from "../utility/identity"
 
 // Extended Socket type with userId, organizationId, and WorkOS session ID
 interface AuthenticatedSocket extends Socket {
@@ -108,18 +108,18 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
         }
 
         try {
-            const payload = await verifyWorkosJwt(token)
+            const payload = await getAuthProvider().verifyJWT(token)
 
-            const workosUserId = payload.sub as string
+            const userId = payload.sub as string
             const organizationId = payload.org_id as string | undefined
             const workosSessionId = payload.sid as string | undefined // WorkOS session ID - used for session-specific logout
 
             logger.info("User in socket authenticated", {
-                userId: workosUserId,
+                userId: userId,
                 organizationId: organizationId ?? "(none)"
             })
             const authSocket = socket as AuthenticatedSocket
-            authSocket.userId = workosUserId
+            authSocket.userId = userId
             authSocket.organizationId = organizationId
             authSocket.workosSessionId = workosSessionId
             next()
@@ -195,7 +195,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                 return
             }
 
-            const user = await getUserForOrg(userId, organizationIdForRun)
+            const user = await resolveUserInOrg(userId, organizationIdForRun)
             if (!user) {
                 logger.error(`[agent:chat:message] User not found for userId: ${userId}`, { userId })
                 return
@@ -465,7 +465,7 @@ async function getAccessibleRunRecord(runId: string, organizationId: string | un
     return runRecord
 }
 
-export async function finalizeRunFailure(runId: string, classified: ClassifiedError, user: User, agent: Agent): Promise<void> {
+export async function finalizeRunFailure(runId: string, classified: ClassifiedError, user: UserSession, agent: Agent): Promise<void> {
     const transitioned = await markRunFailedAndInvalidate(runId, classified, user.organizationId, agent.id)
     if (!transitioned) return
     try {

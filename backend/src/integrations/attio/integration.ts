@@ -24,13 +24,13 @@ import { z } from "zod"
 import logger from "../../common/logger"
 import { previewError } from "../../common/redact"
 import { buildAttioWebhookUrl } from "../../common/webhookUrl"
-import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { SecretNotFoundError, SecretService } from "../../services/SecretService"
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
@@ -166,7 +166,7 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
             return
         }
 
-        const user = await getUserForOrg(subscribedTrigger.automation.user_id, subscribedTrigger.automation.organization_id)
+        const user = await resolveUserInOrg(subscribedTrigger.automation.user_id, subscribedTrigger.automation.organization_id)
         if (!user) {
             logger.warn("Attio webhook: user not found", {
                 userId: subscribedTrigger.automation.user_id,

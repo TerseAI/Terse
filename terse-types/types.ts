@@ -21,25 +21,35 @@ import { TriggerSchema, TriggerTypeSchema, serializedEventDisplaySchema, seriali
 export const roleSchema = z.enum(["admin", "user"])
 export type Role = z.infer<typeof roleSchema>
 
-export const userSchema = z.object({
+export const userProfileSchema = z.object({
     id: z.string(),
-    organizationId: z.string(),
-    organizationName: z.string(),
     email: z.string(),
     displayName: z.string(),
     firstName: z.string().nullable(),
     lastName: z.string().nullable(),
-    displayPhotoUrl: z.string(),
+    displayPhotoUrl: z.string()
+})
+export type UserProfile = z.infer<typeof userProfileSchema>
+
+export const userSessionSchema = userProfileSchema.extend({
+    organizationId: z.string(),
+    organizationName: z.string(),
     roles: z.array(roleSchema)
 })
-export type User = z.infer<typeof userSchema>
+export type UserSession = z.infer<typeof userSessionSchema>
 
-export const userNoOrganizationSchema = userSchema.omit({
-    organizationId: true,
-    organizationName: true,
-    roles: true
+export const organizationSchema = z.object({
+    id: z.string(),
+    name: z.string()
 })
-export type UserNoOrganization = z.infer<typeof userNoOrganizationSchema>
+export type Organization = z.infer<typeof organizationSchema>
+
+export const membershipSchema = z.object({
+    organizationId: z.string(),
+    organizationName: z.string(),
+    roles: z.array(roleSchema)
+})
+export type Membership = z.infer<typeof membershipSchema>
 
 export const commitAssociationSchema = z.object({
     sha: z.string(),
@@ -214,11 +224,7 @@ export const deviceTokenExchangeResponseSchema = z.object({
 })
 export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResponseSchema>
 
-export const identifyUserSchema = z.object({
-    workosId: z.string(),
-    email: z.string(),
-    firstName: z.string().nullable(),
-    lastName: z.string().nullable(),
+export const identifyUserSchema = userProfileSchema.pick({ id: true, email: true, firstName: true, lastName: true }).extend({
     displayName: z.string().nullable()
 })
 

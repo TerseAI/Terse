@@ -1,6 +1,6 @@
 import { LogLevel, WebClient } from "@slack/web-api"
 import { Request, Response } from "express"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { SlackIntegrationManager, fetchSlackChannelsForIntegration, fetchSlackUsersForIntegration } from "../../../integrations/slack/integration"
@@ -36,7 +36,7 @@ export async function getCurrentSlackIntegration(req: Request, res: Response) {
         return
     }
 
-    const user: User = req.session.user
+    const user: UserSession = req.session.user
 
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {

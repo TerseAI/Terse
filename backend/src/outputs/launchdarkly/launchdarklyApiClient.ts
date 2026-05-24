@@ -1,5 +1,5 @@
 import { IntegrationType } from "terse-types"
-import { User } from "terse-types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
@@ -9,7 +9,7 @@ import { SecretService } from "../../services/SecretService"
  * Get LaunchDarkly API key by integration ID
  * Validates that the integration belongs to the user
  */
-export async function getLaunchDarklyApiKeyByIntegrationId(integrationId: string, user: User): Promise<string | null> {
+export async function getLaunchDarklyApiKeyByIntegrationId(integrationId: string, user: UserSession): Promise<string | null> {
     const integration = await db().launchdarkly_integrations.findUnique({
         where: { id: integrationId }
     })

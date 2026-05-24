@@ -1,13 +1,13 @@
 import { Request, Response } from "express"
 
 import logger from "../../common/logger"
-
-import { UserNotFoundError, getUserInOrganization } from "./service"
+import { resolveUserInOrg } from "../../utility/identity"
 
 export async function getUserById(req: Request, res: Response) {
     const requester = req.session?.user
     if (!requester) {
-        return res.status(401).json({ error: "Unauthorized" })
+        res.status(401).json({ error: "Unauthorized" })
+        return
     }
 
     const organizationId = requester.organizationId
@@ -21,13 +21,12 @@ export async function getUserById(req: Request, res: Response) {
     }
 
     try {
-        const user = await getUserInOrganization(userId, organizationId, requester.organizationName)
-        return res.status(200).json(user)
-    } catch (error: unknown) {
-        if (error instanceof UserNotFoundError) {
+        const user = await resolveUserInOrg(userId, organizationId)
+        if (!user) {
             return res.status(404).json({ error: "User not found" })
         }
-
+        return res.status(200).json(user)
+    } catch (error: unknown) {
         const statusCode = typeof error === "object" && error !== null && "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : undefined
         if (statusCode === 404) {
             return res.status(404).json({ error: "User not found" })

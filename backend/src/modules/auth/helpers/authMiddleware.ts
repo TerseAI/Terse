@@ -1,8 +1,8 @@
 import { TokenKind } from "@prisma/client"
 import { NextFunction, Request, RequestHandler, Response } from "express"
-import type { User } from "terse-types/types"
+import type { UserSession } from "terse-types/types"
 
-import { clearSessionCookies } from "../../../modules/auth/service"
+import { clearSessionCookies } from "../../../ee/services/authProvider/service"
 
 import { authenticateViaApiToken, authenticateViaCookie, readBearerToken, readSealedSessionCookie, validateCloudSchedulerHeader } from "./authDispatch"
 
@@ -137,7 +137,7 @@ function sendOrganizationRequired(res: Response) {
     })
 }
 
-function assertAdminIfRequired(opts: AuthOptions, user: User, res: Response): boolean {
+function assertAdminIfRequired(opts: AuthOptions, user: UserSession, res: Response): boolean {
     if (!opts.requireAdmin) return true
     if (!user.roles?.includes("admin")) {
         res.status(403).json({ error: "Only organization admins can perform this action" })

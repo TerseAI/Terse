@@ -61,7 +61,7 @@ export { User as TicketSystemUser }
 export interface UserContext {
     userInfo: User
     teams: Team[]
-    organization: Organization
+    organization: LinearOrganization
     ticketStates: TicketState[]
     milestones: Milestone[]
 }
@@ -77,7 +77,7 @@ interface Milestone {
     name: string
 }
 
-export interface Organization {
+export interface LinearOrganization {
     id: string
     name: string
     createdAt: string

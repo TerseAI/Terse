@@ -5,8 +5,8 @@ import { OutputConfigType, RunHistoryActionType } from "@prisma/client"
 import { CONFIG_DETAILS, ConfigData, Decision } from "terse-types"
 import { ChangedItem, ModelEvent, ToolCallExecutionStatus } from "terse-types"
 import { RunHistoryAction } from "terse-types"
-import { SdkAgentStreamEvent, User } from "terse-types"
 import { stripZodJsonSchemaMetadata } from "terse-types"
+import { SdkAgentStreamEvent, UserSession } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { convertConfigTypeToOutputConfigType } from "../../../common/typeConverters"
@@ -33,7 +33,7 @@ import { clearPendingApprovalState as clearPendingApprovalStateDb, markRunInProg
 
 export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>> {
     private readonly sdkRunId: string
-    private readonly user: User
+    private readonly user: UserSession
     private readonly prompt: string
     private readonly outputs: Output<ConfigData>[]
     private readonly tools: Tool<SdkRunnerSession>[]
@@ -391,7 +391,7 @@ type SdkRunnerSession = SessionWithTracking<Session>
 
 type SdkAgentRunnerParams = {
     runId: string
-    user: User
+    user: UserSession
     prompt: string
     skills: ConfigData[]
     toolApprovals: string[]

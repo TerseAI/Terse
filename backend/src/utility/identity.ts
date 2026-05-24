@@ -1,34 +1,23 @@
+import { UserSession } from "terse-types/types"
+
 import logger from "../common/logger"
 import { db } from "../loaders/prisma"
+import { getAuthProvider } from "../services/authProvider"
+import { getOrganizationProvider } from "../services/organizationProvider"
 
 /**
- * Delete every row across the schema that references a user. Stands in for
- * cascade-delete now that user_id has no FK constraint pointing anywhere.
- * Add a delete here whenever a new table grows a user_id column.
+ * Build the session-shape `UserSession` for an identity in an org context.
+ * Composes the auth + organization providers: identity from one, org name
+ * and roles from the other. Returns null if the identity isn't found or isn't
+ * an active member of the org.
  */
-export async function cleanupIdentity(workosUserId: string): Promise<void> {
-    const prisma = db()
-    try {
-        await prisma.$transaction([
-            prisma.api_tokens.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.attio_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.automations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.datadog_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.github_app_tokens.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.gmail_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.launchdarkly_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.linear_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.notion_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.posthog_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.sent_notifications.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.snowflake_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.user_notification_destinations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.user_notification_settings.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.user_slack_integrations.deleteMany({ where: { user_id: workosUserId } }),
-            prisma.workos_integrations.deleteMany({ where: { user_id: workosUserId } })
-        ])
-    } catch (error) {
-        logger.error("cleanupIdentity failed", { workosUserId, error })
-        throw error
+export async function resolveUserInOrg(externalUserId: string, organizationId: string): Promise<UserSession | null> {
+    const [profile, membership] = await Promise.all([getAuthProvider().getUser(externalUserId), getOrganizationProvider().getMembership(externalUserId, organizationId)])
+    if (!profile || !membership) return null
+    return {
+        ...profile,
+        organizationId,
+        organizationName: membership.organizationName,
+        roles: membership.roles
     }
 }

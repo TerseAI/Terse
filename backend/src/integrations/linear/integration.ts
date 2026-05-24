@@ -14,7 +14,6 @@ import { z } from "zod"
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { LinearAdapter } from "../../integrations/linear/ticketing"
-import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
@@ -23,6 +22,7 @@ import { StoredFile } from "../../services/FileStorageService"
 import { SecretNotFoundError } from "../../services/SecretService"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
@@ -146,7 +146,7 @@ export class LinearIntegrationManager
 
         // Process event for each matching integration
         for (const integration of matchingIntegrations) {
-            const user = await getUserForOrg(integration.user_id, integration.organization_id)
+            const user = await resolveUserInOrg(integration.user_id, integration.organization_id)
             if (!user) {
                 continue
             }

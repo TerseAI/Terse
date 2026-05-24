@@ -6,10 +6,10 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import logger, { runWithUserContext } from "../../common/logger"
 import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
-import { getUserForOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 
 class WebhookTriggerRuntime extends TriggerRuntime<WebhookTrigger> {
     readonly integrationType = IntegrationType.WEBHOOK
@@ -80,7 +80,7 @@ export async function handleWebhookTrigger(req: Request, res: Response) {
     res.status(200).json({ received: true })
 
     // Process asynchronously
-    const user = await getUserForOrg(automation.user_id, automation.organization_id)
+    const user = await resolveUserInOrg(automation.user_id, automation.organization_id)
     if (!user) {
         logger.warn("User not found for webhook trigger", { userId: automation.user_id })
         return

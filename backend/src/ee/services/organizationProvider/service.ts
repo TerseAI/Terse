@@ -1,7 +1,8 @@
-import logger from "../../common/logger"
-import { workos } from "../../integrations/workos/helpers"
-import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../../services/FileStorageService"
-import { settings } from "../../settings"
+import { WorkOS } from "@workos-inc/node"
+
+import logger from "../../../common/logger"
+import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../../../services/FileStorageService"
+import { settings } from "../../../settings"
 
 export class UnauthorizedError extends Error {
     constructor() {
@@ -37,13 +38,15 @@ export interface CreateOrgResult {
 }
 
 export async function createOrganizationForUser(input: {
+    workos: WorkOS
+    workosCookiePassword: string
     workosUserId: string
     name: string
     firstName?: string | null
     lastName?: string | null
     sealedSessionData: string | undefined
 }): Promise<CreateOrgResult> {
-    const { workosUserId, name, firstName, lastName, sealedSessionData } = input
+    const { workos, workosCookiePassword, workosUserId, name, firstName, lastName, sealedSessionData } = input
 
     if (firstName || lastName) {
         await workos.userManagement.updateUser({
@@ -67,11 +70,11 @@ export async function createOrganizationForUser(input: {
 
     const session = workos.userManagement.loadSealedSession({
         sessionData: sealedSessionData,
-        cookiePassword: settings.workos.cookiePassword
+        cookiePassword: workosCookiePassword
     })
     const refreshResult = await session.refresh({
         organizationId: organization.id,
-        cookiePassword: settings.workos.cookiePassword
+        cookiePassword: workosCookiePassword
     })
 
     if (!refreshResult.authenticated || !refreshResult.sealedSession) {
@@ -86,12 +89,12 @@ export async function createOrganizationForUser(input: {
     }
 }
 
-export async function getOrganizationDetails(organizationId: string): Promise<{ id: string; name: string }> {
+export async function getOrganizationDetails(workos: WorkOS, organizationId: string): Promise<{ id: string; name: string }> {
     const organization = await workos.organizations.getOrganization(organizationId)
     return { id: organization.id, name: organization.name }
 }
 
-export async function listUserOrganizations(workosUserId: string): Promise<Array<{ id: string; name: string }>> {
+export async function listUserOrganizations(workos: WorkOS, workosUserId: string): Promise<Array<{ id: string; name: string }>> {
     const memberships = await workos.userManagement.listOrganizationMemberships({ userId: workosUserId })
     const orgIds = [...new Set((memberships.data ?? []).map(m => m.organizationId))]
     return Promise.all(
@@ -106,14 +109,14 @@ export interface SwitchOrgResult {
     sealedSession: string
 }
 
-export async function switchUserOrganization(sealedSessionData: string, organizationId: string): Promise<SwitchOrgResult> {
+export async function switchUserOrganization(workos: WorkOS, cookiePassword: string, sealedSessionData: string, organizationId: string): Promise<SwitchOrgResult> {
     const session = workos.userManagement.loadSealedSession({
         sessionData: sealedSessionData,
-        cookiePassword: settings.workos.cookiePassword
+        cookiePassword: cookiePassword
     })
     const refreshResult = await session.refresh({
         organizationId,
-        cookiePassword: settings.workos.cookiePassword
+        cookiePassword: cookiePassword
     })
     if (!refreshResult.authenticated || !refreshResult.sealedSession) {
         throw new ForbiddenError("Not authorized for this organization")
@@ -132,7 +135,7 @@ export async function getLogoUrlForOrganization(organizationId: string): Promise
     return getOrgLogoDownloadUrl(organizationId)
 }
 
-export async function updateOrganizationName(organizationId: string, name: string, userId: string): Promise<{ id: string; name: string }> {
+export async function updateOrganizationName(workos: WorkOS, organizationId: string, name: string, userId: string): Promise<{ id: string; name: string }> {
     const organization = await workos.organizations.updateOrganization({
         organization: organizationId,
         name: name.trim()
