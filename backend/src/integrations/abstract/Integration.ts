@@ -22,6 +22,7 @@ export abstract class Integration<T extends IntegrationInstance, W, M extends In
         return SecretService.getInstance()
     }
     abstract integrationType: IntegrationType
+    abstract get isAvailable(): boolean
     secretSchema?: z.ZodObject<z.ZodRawShape>
     abstract getInstancesForOrganization(organizationId: string): Promise<T[]>
     abstract getCliDisplayStateForOrganization(organizationId: string): Promise<CliIntegrationDisplayState>

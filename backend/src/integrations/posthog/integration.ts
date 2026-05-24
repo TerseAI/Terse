@@ -24,6 +24,9 @@ export class PosthogIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.POSTHOG>
 {
     readonly integrationType = IntegrationType.POSTHOG
+    get isAvailable() {
+        return true
+    }
     readonly secretSchema = z.object({
         apiKey: z.string()
     })
