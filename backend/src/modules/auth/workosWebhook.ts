@@ -4,7 +4,6 @@ import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
 import logger from "../../common/logger"
 import { workos } from "../../integrations/workos/helpers"
-import { db } from "../../loaders/prisma"
 import { getRealtimeSocket } from "../../loaders/socket"
 import { emitBillingCachesInvalidated } from "../../services/CacheInvalidationService"
 import { settings } from "../../settings"
@@ -23,16 +22,6 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
     const { event: eventType, data } = event
 
     switch (eventType) {
-        case "user.created": {
-            const workosUserId = data.id
-            if (!workosUserId) {
-                logger.warn("[WorkOS webhook] user.created: no user id in payload", { data: JSON.stringify(data) })
-                break
-            }
-            await ensureDefaultNotificationSettings(workosUserId)
-            break
-        }
-
         case "user.updated": {
             const workosUserId = data.id
             if (!workosUserId) {
@@ -162,14 +151,3 @@ export async function handleWorkOSWebhook(req: Request, res: Response): Promise<
     }
 }
 
-async function ensureDefaultNotificationSettings(workosUserId: string): Promise<void> {
-    await db().user_notification_settings.upsert({
-        where: { user_id: workosUserId },
-        create: {
-            user_id: workosUserId,
-            agent_default_notifications: ["error"],
-            weekly_agent_improvements: true
-        },
-        update: {}
-    })
-}
