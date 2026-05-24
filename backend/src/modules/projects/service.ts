@@ -103,7 +103,7 @@ export async function getProjectDeploysForOrganization(projectId: string, organi
 
     const { deploys: deployRows, activeDeployId } = await findProjectDeploys(projectId, MAX_DEPLOYS_RETURNED)
 
-    const workosIds = Array.from(new Set(deployRows.map(d => d.deployed_by?.workos_id).filter((w): w is string => !!w)))
+    const workosIds = Array.from(new Set(deployRows.map(d => d.deployed_by_user_id).filter((w): w is string => !!w)))
     const workosUsers = await Promise.all(
         workosIds.map(async workosId => {
             try {
@@ -118,11 +118,11 @@ export async function getProjectDeploysForOrganization(projectId: string, organi
     const workosUserById = new Map(workosUsers)
 
     const deploys: ProjectDeploy[] = deployRows.map((d: DeployRow) => {
-        const dbUser = d.deployed_by
-        const workosUser = dbUser?.workos_id ? workosUserById.get(dbUser.workos_id) : null
-        const deployedBy: ProjectDeployUser | null = dbUser
+        const deployerId = d.deployed_by_user_id
+        const workosUser = deployerId ? workosUserById.get(deployerId) : null
+        const deployedBy: ProjectDeployUser | null = deployerId
             ? {
-                  id: dbUser.id,
+                  id: deployerId,
                   displayName: workosUser ? `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || workosUser.email : "Unknown",
                   email: workosUser?.email ?? null,
                   avatarUrl: workosUser?.profilePictureUrl ?? null
