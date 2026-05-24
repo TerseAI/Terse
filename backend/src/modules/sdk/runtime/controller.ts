@@ -43,7 +43,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
     try {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
-        const billingForRunner = billingServiceProxyForOrganization(orgId, user.workosId)
+        const billingForRunner = billingServiceProxyForOrganization(orgId, user.id)
         const sdkRunner = createSdkRunner({
             runId,
             user,
@@ -76,7 +76,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             const decision = await waitForApprovalDecision(runId, stepId, orgId)
             if (decision.hardReject) {
                 if (isProductionRun && productionRunContext) {
-                    await markRunCancelledAndInvalidate(runId, productionRunContext.agentId, productionRunContext.organizationId, user.workosId, CancelReason.HARD_REJECT)
+                    await markRunCancelledAndInvalidate(runId, productionRunContext.agentId, productionRunContext.organizationId, user.id, CancelReason.HARD_REJECT)
                 }
                 hardRejected = true
                 break

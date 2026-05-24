@@ -13,6 +13,7 @@ import { db } from "../../../loaders/prisma"
 import { MAX_IMPROVEMENTS_PER_AGENT } from "../../../modules/agents/JudgeAgent/JudgeAgent"
 import { fetchFullJudgeContext } from "../../../modules/agents/JudgeAgent/fetchJudgeContext"
 import { sendWeeklyReviewEmail } from "../../../modules/notifications/channels/emailNotifications"
+import { getUserNotificationSettings } from "../../../modules/notifications/settings/repository"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
 import { SdkImprovementService } from "../../../services/SdkImprovementService"
 import { settings } from "../../../settings"
@@ -182,11 +183,8 @@ export async function reviewAllAgents(req: Request, res: Response) {
         for (const [userId, group] of emailGroups.entries()) {
             if (group.agents.length === 0) continue
 
-            const userSettings = await db().user_notification_settings.findUnique({
-                where: { user_id: userId },
-                select: { weekly_agent_improvements: true }
-            })
-            if (userSettings && !userSettings.weekly_agent_improvements) continue
+            const userSettings = await getUserNotificationSettings(userId)
+            if (!userSettings.weekly_agent_improvements) continue
 
             let emailError: unknown
             try {

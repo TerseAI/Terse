@@ -245,7 +245,6 @@ export async function storePendingApprovalState(runId: string, organizationId: s
             updated_at: new Date()
         },
         create: {
-            usersId: runRecord.automation.user_id,
             run_history_record_id: runId,
             serialized_state: serializedState,
             interruptions: interruptions as Prisma.InputJsonValue

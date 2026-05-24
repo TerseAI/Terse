@@ -3,15 +3,37 @@ import { RunHistoryActionType } from "terse-types/RunHistoryTypes"
 import { db } from "../../../loaders/prisma"
 import { UserNotificationSettings } from "../../../types/prisma"
 
-export async function findUserNotificationSettings(userId: string): Promise<UserNotificationSettings | null> {
-    return db().user_notification_settings.findUnique({ where: { user_id: userId } })
+export const DEFAULT_AGENT_NOTIFICATIONS: RunHistoryActionType[] = ["error"]
+export const DEFAULT_WEEKLY_AGENT_IMPROVEMENTS = true
+
+/**
+ * Returns the user's notification settings, or the static defaults if no row
+ * exists. The row is only written when the user explicitly customizes something
+ * (see updateUserNotificationSettings).
+ */
+export async function getUserNotificationSettings(userId: string): Promise<UserNotificationSettings> {
+    const row = await db().user_notification_settings.findUnique({ where: { user_id: userId } })
+    if (row) return row
+    const now = new Date()
+    return {
+        id: "",
+        user_id: userId,
+        agent_default_notifications: DEFAULT_AGENT_NOTIFICATIONS,
+        weekly_agent_improvements: DEFAULT_WEEKLY_AGENT_IMPROVEMENTS,
+        created_at: now,
+        updated_at: now
+    }
 }
 
 export async function updateUserNotificationSettings(
     userId: string,
     data: { agent_default_notifications: RunHistoryActionType[]; weekly_agent_improvements: boolean }
 ): Promise<UserNotificationSettings> {
-    return db().user_notification_settings.update({ where: { user_id: userId }, data })
+    return db().user_notification_settings.upsert({
+        where: { user_id: userId },
+        create: { user_id: userId, ...data },
+        update: data
+    })
 }
 
 export async function applySettingsToAllAgentsInOrganization(organizationId: string, agentDefaultNotifications: RunHistoryActionType[], targetEnabled: boolean): Promise<string[]> {

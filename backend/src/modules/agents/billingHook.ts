@@ -13,7 +13,7 @@ export async function billingHook<TSession extends SessionWithTracking<Session>>
     }
     const organizationId = args.context.user.organizationId
 
-    const denyReason = await getBillingOverageReason(organizationId, args.context.user.workosId)
+    const denyReason = await getBillingOverageReason(organizationId, args.context.user.id)
     if (denyReason !== null) {
         throw new CreditGateDeniedError(denyReason)
     }
@@ -25,7 +25,7 @@ export const billingInputGuardrail: InputGuardrailForSession<SessionWithTracking
     runInParallel: false,
     execute: async ({ context }) => {
         const organizationId = context.context.user.organizationId
-        const denyReason = await getBillingOverageReason(organizationId, context.context.user.workosId)
+        const denyReason = await getBillingOverageReason(organizationId, context.context.user.id)
         return {
             outputInfo: { reason: denyReason ?? "OK" },
             tripwireTriggered: denyReason !== null

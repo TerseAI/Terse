@@ -18,6 +18,7 @@ import apiTokensRouter from "./modules/api-tokens/routes"
 import approvalsRouter from "./modules/approvals/routes"
 import { AuthKind, requireAuth } from "./modules/auth/helpers/authMiddleware"
 import authRouter from "./modules/auth/routes"
+import { handleWorkOSWebhook } from "./modules/auth/workosWebhook"
 import billingCacheInvalidationRouter from "./modules/billing/cache-invalidation/routes"
 import billingRouter from "./modules/billing/routes"
 import improvementsRouter from "./modules/improvements/routes"
@@ -38,7 +39,6 @@ import posthogRouter from "./modules/integrations/posthog/routes"
 import integrationsRouter from "./modules/integrations/routes"
 import slackVendorRouter from "./modules/integrations/slack/routes"
 import snowflakeRouter from "./modules/integrations/snowflake/routes"
-import { handleWorkOSWebhook } from "./modules/integrations/workos/controller"
 import { handleWorkOSTriggerWebhook } from "./modules/integrations/workosIntegration/controller"
 import workosIntegrationRouter from "./modules/integrations/workosIntegration/routes"
 import maintenanceRouter from "./modules/maintenance/routes"
@@ -172,12 +172,13 @@ export function createApp(options: CreateAppOptions) {
         })
     }
 
-    if (isIntegrationAvailable(IntegrationType.WORKOS)) {
-        app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
-        app.post(ApiRoutes.WEBHOOKS.WORKOS, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-            handleWorkOSWebhook(req, res)
-        })
+    // Auth webhook from Terse's own WorkOS account (user/session lifecycle). Always on while WorkOS is the auth provider.
+    app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
+    app.post(ApiRoutes.WEBHOOKS.WORKOS, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
+        handleWorkOSWebhook(req, res)
+    })
 
+    if (isIntegrationAvailable(IntegrationType.WORKOS)) {
         app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, express.raw({ type: "application/json" }))
         app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
             handleWorkOSTriggerWebhook(req, res)

@@ -2,12 +2,11 @@ import { AuthenticateWithSessionCookieSuccessResponse } from "@workos-inc/node"
 import { JWTPayload } from "jose"
 
 export interface AccessTokenClaims {
-    dbId: string
     orgName: string
 }
 
 /**
- * Extract custom JWT-template claims (db_id, org_name) from a sealed-session
+ * Extract the custom org_name JWT-template claim from a sealed-session
  * authentication result.
  *
  * Safety: the input type can only be constructed by `WorkOS.userManagement
@@ -20,12 +19,12 @@ export function getClaimsFromAuthResult(authResult: AuthenticateWithSessionCooki
 }
 
 /**
- * Extract custom JWT-template claims (db_id, org_name) from a JWT payload that
- * has already been signature-verified — e.g. the `payload` returned by
- * `jose.jwtVerify(token, jwks)` against the WorkOS JWKS.
+ * Extract the org_name claim from a JWT payload that has already been
+ * signature-verified — e.g. the `payload` returned by `jose.jwtVerify(token,
+ * jwks)` against the WorkOS JWKS.
  */
 export function getClaimsFromVerifiedPayload(payload: JWTPayload): AccessTokenClaims | null {
-    return readClaims(payload.db_id, payload.org_name)
+    return readClaims(payload.org_name)
 }
 
 function decodePayloadFromVerifiedToken(verifiedAccessToken: string): AccessTokenClaims | null {
@@ -33,14 +32,13 @@ function decodePayloadFromVerifiedToken(verifiedAccessToken: string): AccessToke
         const parts = verifiedAccessToken.split(".")
         if (parts.length !== 3) return null
         const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString())
-        return readClaims(payload.db_id, payload.org_name)
+        return readClaims(payload.org_name)
     } catch {
         return null
     }
 }
 
-function readClaims(dbId: unknown, orgName: unknown): AccessTokenClaims | null {
-    if (typeof dbId !== "string" || !dbId) return null
+function readClaims(orgName: unknown): AccessTokenClaims | null {
     if (typeof orgName !== "string") return null
-    return { dbId, orgName }
+    return { orgName }
 }

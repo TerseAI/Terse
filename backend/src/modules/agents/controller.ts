@@ -18,6 +18,7 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../../types/prisma"
+import { getUserNotificationSettings } from "../notifications/settings/repository"
 
 export async function createTriggerConfig(tx: PrismaTransaction, triggerId: string, config: AgentTrigger, userId: string): Promise<void> {
     logger.debug("🔵 [TRIGGER CONFIG] config", {
@@ -58,14 +59,7 @@ async function upsertNotificationSettings(tx: PrismaTransaction, automationId: s
     let enabled
     let actionTypes
     if (!settings) {
-        const defaultSettings = await db().user_notification_settings.findUnique({
-            where: {
-                user_id: userId
-            }
-        })
-        if (!defaultSettings) {
-            throw new Error(`Unable to find matching user notification setting for ${userId}`)
-        }
+        const defaultSettings = await getUserNotificationSettings(userId)
         enabled = defaultSettings.agent_default_notifications.length > 0
         actionTypes = defaultSettings.agent_default_notifications
     } else {

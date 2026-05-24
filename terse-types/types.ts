@@ -23,7 +23,6 @@ export type Role = z.infer<typeof roleSchema>
 
 export const userSchema = z.object({
     id: z.string(),
-    workosId: z.string(),
     organizationId: z.string(),
     organizationName: z.string(),
     email: z.string(),

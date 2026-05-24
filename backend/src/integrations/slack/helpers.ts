@@ -34,8 +34,7 @@ export async function sendSlackMessage(userSlackIntegrationId: string, channelId
             id: userSlackIntegrationId
         },
         include: {
-            slack_integration: true,
-            user: true
+            slack_integration: true
         }
     })
 
@@ -85,7 +84,7 @@ export async function resolveSlackDmCounterpartUser(userSlackIntegrationId: stri
 
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: { id: userSlackIntegrationId },
-        include: { slack_integration: true, user: true }
+        include: { slack_integration: true }
     })
 
     if (!userSlackIntegration?.slack_integration) {
@@ -118,8 +117,7 @@ export async function resolveSlackChannelIdForDestination(userSlackIntegrationId
             id: userSlackIntegrationId
         },
         include: {
-            slack_integration: true,
-            user: true
+            slack_integration: true
         }
     })
 
@@ -236,8 +234,7 @@ export async function sendSlackApprovalMessage(
             id: userSlackIntegrationId
         },
         include: {
-            slack_integration: true,
-            user: true
+            slack_integration: true
         }
     })
 
@@ -327,8 +324,7 @@ export async function updateSlackApprovalMessage(
             id: userSlackIntegrationId
         },
         include: {
-            slack_integration: true,
-            user: true
+            slack_integration: true
         }
     })
 

@@ -7,7 +7,7 @@ import logger from "../../../common/logger"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../../services/CacheInvalidationService"
 import { UserNotificationSettings } from "../../../types/prisma"
 
-import { applySettingsToAllAgentsInOrganization, findUserNotificationSettings, updateUserNotificationSettings } from "./repository"
+import { applySettingsToAllAgentsInOrganization, getUserNotificationSettings, updateUserNotificationSettings } from "./repository"
 
 const NOTIFICATION_SETTINGS_INVALIDATION_KEY = notificationSettingsKey()[0]
 
@@ -16,13 +16,6 @@ export const updateNotificationSettingsSchema = z.object({
     weeklyAgentImprovements: z.boolean(),
     applyToAllAgents: z.boolean().optional()
 })
-
-export class NotificationSettingsNotFoundError extends Error {
-    constructor() {
-        super("Notification settings not found")
-        this.name = "NotificationSettingsNotFoundError"
-    }
-}
 
 export class ApplyToAllAgentsForbiddenError extends Error {
     constructor() {
@@ -40,8 +33,7 @@ function transformUserSettingsToFrontendFormat(userSettings: UserNotificationSet
 }
 
 export async function getNotificationSettingsForUser(userId: string): Promise<NotificationSettings> {
-    const userSettings = await findUserNotificationSettings(userId)
-    if (!userSettings) throw new NotificationSettingsNotFoundError()
+    const userSettings = await getUserNotificationSettings(userId)
     return transformUserSettingsToFrontendFormat(userSettings)
 }
 
@@ -75,9 +67,6 @@ export async function updateNotificationSettingsForUser(input: UpdateSettingsInp
         logger.warn("🚫 applyToAllAgents blocked: requester is not an org admin", { userId, organizationId })
         throw new ApplyToAllAgentsForbiddenError()
     }
-
-    const existing = await findUserNotificationSettings(userId)
-    if (!existing) throw new NotificationSettingsNotFoundError()
 
     const updatedSettings = await updateUserNotificationSettings(userId, {
         agent_default_notifications: agentDefaultNotifications,

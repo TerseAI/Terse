@@ -4,7 +4,7 @@ import { EmailNotificationDestination, NotificationDestinationType as SharedNoti
 
 import { initializeSlackWebClient } from "../../../integrations/slack/client"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
-import { UserNotificationDestination, UserSlackIntegrationWithUser } from "../../../types/prisma"
+import { UserNotificationDestination, UserSlackIntegrationWithSlack } from "../../../types/prisma"
 
 import { createDestination, deleteDestination, findDestinationById, findDestinationsForUser, findSlackIntegrationForOrganization, updateDestination } from "./repository"
 
@@ -84,7 +84,7 @@ function getResolvedSlackDestinationFromStoredDestination(destination: UserNotif
     }
 }
 
-async function resolveSlackDestinationTarget(params: { slackIntegration: UserSlackIntegrationWithUser; targetSelection: SlackTargetSelection }): Promise<ResolvedSlackDestination> {
+async function resolveSlackDestinationTarget(params: { slackIntegration: UserSlackIntegrationWithSlack; targetSelection: SlackTargetSelection }): Promise<ResolvedSlackDestination> {
     if (params.targetSelection.targetType === "channel") {
         return {
             slackChannelId: params.targetSelection.slackChannelId,

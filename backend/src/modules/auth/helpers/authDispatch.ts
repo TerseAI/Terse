@@ -8,8 +8,7 @@ import { CronJobIntegrationManager } from "../../../integrations/cronJob/integra
 import { workos } from "../../../integrations/workos/helpers"
 import { getUserForOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
-import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../../modules/auth/service"
-import { getOrCreateDbUserFromWorkOS } from "../../../modules/auth/service"
+import { WORKOS_SESSION_COOKIE_NAME, buildUserFromWorkOS, setSessionCookie } from "../../../modules/auth/service"
 import { settings } from "../../../settings"
 
 import { getClaimsFromAuthResult } from "./accessTokenClaims"
@@ -31,7 +30,7 @@ export async function authenticateViaCookie(sealedSessionData: string | undefine
 
         if (authResult.authenticated) {
             const claims = getClaimsFromAuthResult(authResult)
-            const { user } = await getOrCreateDbUserFromWorkOS(authResult, claims)
+            const { user } = await buildUserFromWorkOS(authResult, claims)
             return { ok: true, user }
         }
 
@@ -45,7 +44,7 @@ export async function authenticateViaCookie(sealedSessionData: string | undefine
             logger.warn("Session refresh failed")
             return { ok: false, reason: "auth_failed" }
         }
-        const { user } = await getOrCreateDbUserFromWorkOS(refreshed)
+        const { user } = await buildUserFromWorkOS(refreshed)
         if (refreshed.sealedSession) {
             setSessionCookie(res, refreshed.sealedSession)
             if (req.cookies) {

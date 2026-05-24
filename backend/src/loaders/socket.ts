@@ -114,23 +114,12 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
             const organizationId = payload.org_id as string | undefined
             const workosSessionId = payload.sid as string | undefined // WorkOS session ID - used for session-specific logout
 
-            const dbUser = await db().users.findUnique({
-                where: { workos_id: workosUserId }
-            })
-
-            if (!dbUser) {
-                logger.warn("Socket.IO auth failed: User not found", {
-                    workosUserId
-                })
-                return next(new Error("User not found"))
-            }
-
             logger.info("User in socket authenticated", {
-                userId: dbUser.id,
+                userId: workosUserId,
                 organizationId: organizationId ?? "(none)"
             })
             const authSocket = socket as AuthenticatedSocket
-            authSocket.userId = dbUser.id
+            authSocket.userId = workosUserId
             authSocket.organizationId = organizationId
             authSocket.workosSessionId = workosSessionId
             next()
@@ -282,7 +271,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
             let endedWithToolFailure = false
             let finalOutput: unknown = undefined
 
-            const billing = billingServiceProxyForOrganization(user.organizationId, user.workosId)
+            const billing = billingServiceProxyForOrganization(user.organizationId, user.id)
 
             try {
                 const skills = readSdkSkillsFromJson(runRecord.sdk_skills)
