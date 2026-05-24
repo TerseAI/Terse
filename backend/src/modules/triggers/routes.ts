@@ -26,7 +26,7 @@ router.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, requireAuth([AuthKind.Cloud
 
 if (INTEGRATION_REGISTRY.some(m => m.integrationType === IntegrationType.WEBMONITOR)) {
     router.use(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, rateLimit(RateLimitKind.WebhookByIp), express.raw({ type: "application/json", limit: LARGE_BODY_LIMIT }))
-    router.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, handleWebMonitorWebhook)
+    router.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, rateLimit(RateLimitKind.WebhookByIp), handleWebMonitorWebhook)
 }
 
 router.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, rateLimit(RateLimitKind.WebhookByToken), handleWebhookTrigger)
