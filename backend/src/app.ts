@@ -14,7 +14,6 @@ import { setupSlackBolt } from "./integrations/slack/boltApp"
 import { httpAccessLog } from "./middlewares/httpAccessLog"
 import agentsReviewRouter from "./modules/agents/review/routes"
 import agentsRouter from "./modules/agents/routes"
-import { requestSessionSocketToken } from "./modules/agents/socket"
 import apiTokensRouter from "./modules/api-tokens/routes"
 import approvalsRouter from "./modules/approvals/routes"
 import { AuthKind, requireAuth } from "./modules/auth/helpers/authMiddleware"
@@ -246,7 +245,7 @@ export function createApp(options: CreateAppOptions) {
 
     // MARK: SESSION
     app.get(ApiRoutes.SESSION.TOKEN, rateLimit(RateLimitKind.SessionToken), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {
-        requestSessionSocketToken(req, res)
+        getAuthProvider().requestSessionSocketToken(req, res)
     })
 
     /**

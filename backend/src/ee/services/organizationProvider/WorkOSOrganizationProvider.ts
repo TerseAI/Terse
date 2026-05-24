@@ -1,10 +1,10 @@
 import { WorkOS } from "@workos-inc/node"
 import { Request, Response } from "express"
 import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSchema, organizationSwitchRequestSchema, organizationUpdateRequestSchema } from "terse-types"
-import { Role } from "terse-types/types"
+import { Membership, Organization, Role } from "terse-types/types"
 
 import logger from "../../../common/logger"
-import OrganizationProvider, { Membership } from "../../../services/organizationProvider/OrganizationProvider"
+import OrganizationProvider from "../../../services/organizationProvider/OrganizationProvider"
 import { SettingsDependant, settings } from "../../../settings"
 import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../authProvider/service"
 
@@ -29,9 +29,10 @@ export class WorkOSOrganizationProvider extends SettingsDependant implements Org
         clientId: this.config.clientId
     })
 
-    async getOrganization(organizationId: string): Promise<string> {
+    async getOrganization(organizationId: string): Promise<Organization | null> {
         const organization = await this.workos.organizations.getOrganization(organizationId)
-        return organization.id
+        if (!organization) return null
+        return { id: organization.id, name: organization.name }
     }
 
     async getMembership(externalUserId: string, organizationId: string): Promise<Membership | null> {
@@ -44,7 +45,16 @@ export class WorkOSOrganizationProvider extends SettingsDependant implements Org
         if (!matching) return null
         const organization = await this.workos.organizations.getOrganization(organizationId)
         const roles: Role[] = (matching.roles?.map(r => r.slug) as Role[]) ?? []
-        return { organizationName: organization.name, roles }
+        return { organizationId: organization.id, organizationName: organization.name, roles }
+    }
+
+    async getMemberships(externalUserId: string): Promise<Membership[]> {
+        const memberships = await this.workos.userManagement.listOrganizationMemberships({
+            userId: externalUserId,
+            statuses: ["active"]
+        })
+        if (!memberships) return []
+        return memberships.data.map(m => ({ organizationId: m.organizationId, organizationName: m.organizationName, roles: m.roles?.map(r => r.slug as Role) ?? [] }))
     }
 
     async createOrganization(req: Request, res: Response): Promise<void> {

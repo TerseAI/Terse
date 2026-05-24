@@ -1,16 +1,11 @@
 import { Request, Response } from "express"
-import { Role } from "terse-types/types"
-
-export interface Membership {
-    organizationName: string
-    roles: Role[]
-}
+import { Membership, Organization } from "terse-types/types"
 
 interface OrganizationProvider {
     // Resolve Ids
-    getOrganization(organizationId: string): Promise<string>
-    /** Returns null when the user isn't an active member of the given org. */
+    getOrganization(organizationId: string): Promise<Organization | null>
     getMembership(externalUserId: string, organizationId: string): Promise<Membership | null>
+    getMemberships(externalUserId: string): Promise<Membership[]>
 
     // Request handlers
     createOrganization(req: Request, res: Response): Promise<void>

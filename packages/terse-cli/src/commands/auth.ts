@@ -1,7 +1,7 @@
 import { log } from "@clack/prompts"
 import { confirm, select } from "@inquirer/prompts"
 import chalk from "chalk"
-import type { DeviceTokenExchangeResponse, IdentifyResponse, SdkOrganizationsListResponse } from "terse-types"
+import type { DeviceTokenExchangeResponse, IdentifyResponse, SdkOrganizationsListResponse, UserSession } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
@@ -342,15 +342,10 @@ type MeSummary = {
 
 async function fetchMeForKey(apiKey: string): Promise<MeSummary | null> {
     try {
-        const me = await fetchWithAuth<{
-            displayName?: string | null
-            firstName?: string | null
-            email?: string | null
-            organization?: { id: string; name: string } | null
-        }>("/sdk/me", apiKey)
+        const me = await fetchWithAuth<UserSession>("/sdk/me", apiKey)
         return {
             displayName: me.displayName || me.firstName || me.email || "Unknown user",
-            organization: me.organization ?? null
+            organization: me.organizationId ? { id: me.organizationId, name: me.organizationName } : null
         }
     } catch {
         return null

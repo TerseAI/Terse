@@ -4,12 +4,12 @@ import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetail
 
 import logger from "../../common/logger"
 import { generateWebhookSecret } from "../../common/webhookSecrets"
-import { workos } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../loaders/socket"
 import { tearDownAgentTriggers } from "../../modules/agents/controller"
 import { createProjectScopedToken } from "../../modules/auth/helpers/apiTokens"
 import { SecretService } from "../../services/SecretService"
+import { getAuthProvider } from "../../services/authProvider"
 
 import {
     DeployRow,
@@ -103,29 +103,24 @@ export async function getProjectDeploysForOrganization(projectId: string, organi
 
     const { deploys: deployRows, activeDeployId } = await findProjectDeploys(projectId, MAX_DEPLOYS_RETURNED)
 
-    const workosIds = Array.from(new Set(deployRows.map(d => d.deployed_by_user_id).filter((w): w is string => !!w)))
-    const workosUsers = await Promise.all(
-        workosIds.map(async workosId => {
-            try {
-                const u = await workos.userManagement.getUser(workosId)
-                return [workosId, u] as const
-            } catch (error) {
-                logger.warn("Failed to fetch WorkOS user for deploy", { error, workosId })
-                return [workosId, null] as const
-            }
+    const userIds = Array.from(new Set(deployRows.map(d => d.deployed_by_user_id).filter((w): w is string => !!w)))
+    const users = await Promise.all(
+        userIds.map(async userId => {
+            const u = await getAuthProvider().getUser(userId)
+            return [userId, u] as const
         })
     )
-    const workosUserById = new Map(workosUsers)
+    const userById = new Map(users)
 
     const deploys: ProjectDeploy[] = deployRows.map((d: DeployRow) => {
         const deployerId = d.deployed_by_user_id
-        const workosUser = deployerId ? workosUserById.get(deployerId) : null
+        const user = deployerId ? userById.get(deployerId) : null
         const deployedBy: ProjectDeployUser | null = deployerId
             ? {
                   id: deployerId,
-                  displayName: workosUser ? `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || workosUser.email : "Unknown",
-                  email: workosUser?.email ?? null,
-                  avatarUrl: workosUser?.profilePictureUrl ?? null
+                  displayName: user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email : "Unknown",
+                  email: user?.email ?? null,
+                  avatarUrl: user?.displayPhotoUrl ?? null
               }
             : null
         const durationMs = d.completed_at ? d.completed_at.getTime() - d.created_at.getTime() : null

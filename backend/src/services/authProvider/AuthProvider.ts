@@ -21,6 +21,9 @@ export interface AuthProvider {
     // Widget Token
     getWorkOSWidgetToken(req: Request, res: Response): Promise<void>
 
+    // Socket Tokens
+    requestSessionSocketToken(req: Request, res: Response): Promise<void>
+
     // Optional: Allow AuthProvider to register Routes
     registerRoutes?(app: Express): void
 }

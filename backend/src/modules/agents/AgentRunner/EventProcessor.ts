@@ -1,9 +1,8 @@
-import { User } from "terse-types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../../common/prismaIncludes"
 import { getActiveDeployForProject } from "../../../common/projectHelper"
-import { Session } from "../../../express"
 import { TriggerRuntime } from "../../../integrations/abstract/TriggerRuntime"
 import { db } from "../../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../../loaders/socket"
@@ -36,10 +35,10 @@ class ProcessorResult {
 
 export class EventProcessor {
     private inputEvent: TriggerRuntime
-    private user: User
+    private user: UserSession
     private isManuallyTriggered: boolean
 
-    constructor(inputEvent: TriggerRuntime, user: User, options?: { isManuallyTriggered?: boolean }) {
+    constructor(inputEvent: TriggerRuntime, user: UserSession, options?: { isManuallyTriggered?: boolean }) {
         this.inputEvent = inputEvent
         this.user = user
         this.isManuallyTriggered = options?.isManuallyTriggered ?? false

@@ -41,6 +41,19 @@ export const userSessionSchema = userProfileSchema.extend({
 })
 export type UserSession = z.infer<typeof userSessionSchema>
 
+export const organizationSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+export type Organization = z.infer<typeof organizationSchema>
+
+export const membershipSchema = z.object({
+    organizationId: z.string(),
+    organizationName: z.string(),
+    roles: z.array(roleSchema)
+})
+export type Membership = z.infer<typeof membershipSchema>
+
 export const commitAssociationSchema = z.object({
     sha: z.string(),
     message: z.string(),
@@ -214,11 +227,7 @@ export const deviceTokenExchangeResponseSchema = z.object({
 })
 export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResponseSchema>
 
-export const identifyUserSchema = z.object({
-    workosId: z.string(),
-    email: z.string(),
-    firstName: z.string().nullable(),
-    lastName: z.string().nullable(),
+export const identifyUserSchema = userProfileSchema.pick({ id: true, email: true, firstName: true, lastName: true }).extend({
     displayName: z.string().nullable()
 })
 

@@ -1,5 +1,5 @@
 import { LinearClient } from "@linear/sdk"
-import { Organization, Team, TicketSystemType, TicketSystemUser, UserContext } from "terse-types/TicketSystem"
+import { Organization, Team, TicketSystemUser, UserContext } from "terse-types/TicketSystem"
 
 export class LinearAdapter {
     private client: LinearClient

@@ -1,16 +1,22 @@
 import { Request, Response } from "express"
+import { Membership, Organization } from "terse-types/types"
 
-import OrganizationProvider, { Membership } from "./OrganizationProvider"
+import OrganizationProvider from "./OrganizationProvider"
 
 export class LocalOrganizationProvider implements OrganizationProvider {
-    async getOrganization(_organizationId: string): Promise<string> {
+    async getOrganization(_organizationId: string): Promise<Organization | null> {
         // TODO: return the single self-host org from local_organizations
-        return ""
+        return null
     }
 
     async getMembership(_externalUserId: string, _organizationId: string): Promise<Membership | null> {
-        // TODO: return { organizationName, roles: ["admin"] } from local_memberships (single-org mode)
+        // TODO: return { organizationId, organizationName, roles: ["admin"] } from local_memberships (single-org mode)
         return null
+    }
+
+    async getMemberships(_externalUserId: string): Promise<Membership[]> {
+        // TODO: return [the one membership] for the single self-host org
+        return []
     }
 
     async createOrganization(req: Request, res: Response): Promise<void> {

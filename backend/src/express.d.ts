@@ -1,11 +1,11 @@
 // Define a session type that matches what we're actually using in auth
 import type { TokenKind } from "@prisma/client"
-import type { User } from "terse-types/types"
+import type { UserSession } from "terse-types/types"
 
 export type AuthMethod = { kind: "cookie" } | { kind: "api_token"; tokenKind: TokenKind }
 
 export type Session = {
-    user: User
+    user: UserSession
     authMethod?: AuthMethod
 }
 

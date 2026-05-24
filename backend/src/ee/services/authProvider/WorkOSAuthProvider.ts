@@ -258,4 +258,30 @@ export class WorkOSAuthProvider extends SettingsDependant implements AuthProvide
         })
         res.json({ token: widgetToken })
     }
+
+    async requestSessionSocketToken(req: Request, res: Response): Promise<void> {
+        try {
+            const sealedSessionData = req.cookies[WORKOS_SESSION_COOKIE_NAME]
+            if (!sealedSessionData) {
+                res.status(401).json({ error: "No session" })
+                return
+            }
+
+            const session = this.workos.userManagement.loadSealedSession({
+                sessionData: sealedSessionData,
+                cookiePassword: this.config.cookiePassword
+            })
+
+            const authResult = await session.authenticate()
+            if (!authResult.authenticated) {
+                res.status(401).json({ error: "Invalid session" })
+                return
+            }
+
+            res.json({ token: authResult.accessToken })
+        } catch (error) {
+            logger.error("Failed to request session socket token", { error })
+            res.status(500).json({ error: "Failed to request session socket token" })
+        }
+    }
 }

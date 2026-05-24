@@ -1,10 +1,10 @@
+import { WorkOS } from "@workos-inc/node"
 import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
 import { webhookWorkOSTriggerParamsSchema, workosWebhookSecretUpdateRequestSchema } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
-import { workos } from "../../../integrations/workos/helpers"
 import { WorkOSIntegrationManager } from "../../../integrations/workos/integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
@@ -122,11 +122,7 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
             return
         }
 
-        await workos.webhooks.constructEvent({
-            payload,
-            sigHeader,
-            secret: webhookSecret
-        })
+        await verifyWorkOSWebhook(payload, sigHeader, webhookSecret)
 
         // Respond 200 immediately
         res.status(200).json({ received: true })
@@ -142,4 +138,10 @@ export async function handleWorkOSTriggerWebhook(req: Request, res: Response) {
             res.status(401).json({ error: "Invalid signature" })
         }
     }
+}
+
+// integrations/workos/webhookVerification.ts  (or wherever)
+const verifier = new WorkOS("unused") // module-scoped, used only for HMAC
+function verifyWorkOSWebhook(payload: Record<string, unknown>, sigHeader: string, secret: string) {
+    return verifier.webhooks.constructEvent({ payload, sigHeader, secret })
 }
