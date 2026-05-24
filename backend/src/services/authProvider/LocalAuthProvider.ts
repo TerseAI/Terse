@@ -14,6 +14,11 @@ const execAsync = promisify(exec)
 const SESSION_COOKIE_NAME = "TERSE_LOCAL_SESSION"
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
+// Hardcoded IDs for the singleton identity + org. Using fixed IDs makes the
+// bootstrap atomic via `upsert` — no race when concurrent first requests hit.
+const SINGLETON_IDENTITY_ID = "local-singleton-identity"
+const SINGLETON_ORG_ID = "local-singleton-org"
+
 const cookieOptions: CookieOptions = {
     path: "/",
     httpOnly: true,
@@ -23,6 +28,8 @@ const cookieOptions: CookieOptions = {
     ...(settings.optional.cookieDomain ? { domain: settings.optional.cookieDomain } : {})
 }
 
+type IdentityRow = { id: string; email: string; display_name: string | null }
+
 export class LocalAuthProvider implements AuthProvider {
     readonly sessionCookieName = SESSION_COOKIE_NAME
 
@@ -30,9 +37,11 @@ export class LocalAuthProvider implements AuthProvider {
         // No extra routes — single-user local mode has no login form.
     }
 
-    async getUser(_userId: string): Promise<UserProfile | null> {
-        const { profile } = await ensureLocalUser()
-        return profile
+    async getUser(userId: string): Promise<UserProfile | null> {
+        await ensureLocalUser()
+        const identity = await localAuthDb().local_identities.findUnique({ where: { id: userId } })
+        if (!identity) return null
+        return identityToProfile(identity)
     }
 
     async verifyJWT(_token: string): Promise<JWTPayload> {
@@ -86,31 +95,27 @@ export class LocalAuthProvider implements AuthProvider {
 
 async function ensureLocalUser(): Promise<{ user: UserSession; profile: UserProfile }> {
     const db = localAuthDb()
-    let identity = await db.local_identities.findFirst()
-    if (!identity) {
-        const username = await readSystemUsername()
-        identity = await db.local_identities.create({
-            data: { email: `${username}@localhost`, display_name: username, created_via: "bootstrap" }
-        })
-    }
-    let org = await db.local_organizations.findFirst()
-    if (!org) {
-        org = await db.local_organizations.create({ data: { name: "Self-Hosted" } })
-    }
+    const username = await readSystemUsername()
+
+    // Atomic singleton bootstrap. Fixed IDs make upsert idempotent across
+    // concurrent first requests.
+    const identity = await db.local_identities.upsert({
+        where: { id: SINGLETON_IDENTITY_ID },
+        create: { id: SINGLETON_IDENTITY_ID, email: `${username}@localhost`, display_name: username, created_via: "bootstrap" },
+        update: {}
+    })
+    const org = await db.local_organizations.upsert({
+        where: { id: SINGLETON_ORG_ID },
+        create: { id: SINGLETON_ORG_ID, name: "Self-Hosted" },
+        update: {}
+    })
     await db.local_memberships.upsert({
         where: { identity_id_organization_id: { identity_id: identity.id, organization_id: org.id } },
         create: { identity_id: identity.id, organization_id: org.id, roles: "admin" },
         update: {}
     })
 
-    const profile: UserProfile = {
-        id: identity.id,
-        email: identity.email,
-        displayName: identity.display_name ?? identity.email,
-        firstName: null,
-        lastName: null,
-        displayPhotoUrl: ""
-    }
+    const profile = identityToProfile(identity)
     const user: UserSession = {
         ...profile,
         organizationId: org.id,
@@ -118,6 +123,17 @@ async function ensureLocalUser(): Promise<{ user: UserSession; profile: UserProf
         roles: ["admin"]
     }
     return { user, profile }
+}
+
+function identityToProfile(identity: IdentityRow): UserProfile {
+    return {
+        id: identity.id,
+        email: identity.email,
+        displayName: identity.display_name ?? identity.email,
+        firstName: null,
+        lastName: null,
+        displayPhotoUrl: ""
+    }
 }
 
 async function readSystemUsername(): Promise<string> {

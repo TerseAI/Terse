@@ -47,9 +47,10 @@ export const settings = {
     })),
 
     // Local auth — SQLite-backed identities. Used by LocalAuthProvider when WorkOS isn't configured.
-    // This needs to be set to: "file:./local-auth.db" in the environment variables or this CANNOT run
+    // Note: Prisma CLI also needs LOCAL_AUTH_DB_URL set in .env for migration commands (it can't
+    // read this TS default). The runtime default below is a defensive fallback only.
     localAuth: {
-        dbUrl: optionalEnv("LOCAL_AUTH_DB_URL")
+        dbUrl: optionalEnv("LOCAL_AUTH_DB_URL", "file:./prisma/local-auth/local-auth.db")!
     },
 
     openai: {
