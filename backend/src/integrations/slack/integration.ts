@@ -195,7 +195,7 @@ export class SlackIntegrationManager
                     break
                 case "tokens_revoked":
                     const tokensEvent = eventData as TokensRevokedEvent
-                    if (tokensEvent.tokens?.bot?.length) {
+                    if (tokensEvent.tokens.bot?.length) {
                         await markWorkspaceUninstalled(team_id)
                     } else {
                         await Promise.all((tokensEvent.tokens?.oauth ?? []).map(userId => deactivateToken(team_id, userId, false)))
@@ -220,10 +220,8 @@ export class SlackIntegrationManager
         } else if (type === "app_uninstalled") {
             await markWorkspaceUninstalled(team_id)
         } else if (type === "tokens_revoked") {
-            const tokensEvent = event as {
-                tokens?: { bot?: string[]; oauth?: string[] }
-            }
-            if (tokensEvent.tokens?.bot?.length) {
+            const tokensEvent = event as TokensRevokedEvent
+            if (tokensEvent.tokens.bot?.length) {
                 await markWorkspaceUninstalled(team_id)
             } else {
                 await Promise.all((tokensEvent.tokens?.oauth ?? []).map(userId => deactivateToken(team_id, userId, false)))
