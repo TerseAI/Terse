@@ -53,21 +53,22 @@ export class LocalAuthProvider implements AuthProvider {
 
     async login(_req: Request, res: Response): Promise<void> {
         ensureCookie(res)
-        res.redirect("/")
+        res.redirect(settings.urls.frontend)
     }
 
     async loginUrl(_req: Request, res: Response): Promise<void> {
-        res.json({ loginUrl: "/" })
+        // Absolute backend URL so the SPA's router can't capture the navigation;
+        // browser fully leaves the SPA and hits the /login handler, which sets the cookie.
+        res.json({ loginUrl: new URL("/login", settings.urls.backend).toString() })
     }
 
     async logoutUrl(_req: Request, res: Response): Promise<void> {
-        res.clearCookie(SESSION_COOKIE_NAME, cookieOptions)
-        res.json({ logoutUrl: "/" })
+        res.json({ logoutUrl: new URL("/logout", settings.urls.backend).toString() })
     }
 
     async logout(_req: Request, res: Response): Promise<void> {
         res.clearCookie(SESSION_COOKIE_NAME, cookieOptions)
-        res.redirect("/")
+        res.redirect(settings.urls.frontend)
     }
 
     async me(req: Request, res: Response): Promise<void> {
