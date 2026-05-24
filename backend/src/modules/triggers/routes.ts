@@ -1,6 +1,8 @@
 import express, { Router } from "express"
 import { ApiRoutes } from "terse-types"
+import { IntegrationType } from "terse-types/Integrations"
 
+import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
@@ -22,9 +24,10 @@ router.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, limit, userAuth, handleTrigge
 // Webhook callbacks — bespoke auth (CloudScheduler for schedule, raw body for webmonitor, token for webhook trigger)
 router.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, requireAuth([AuthKind.CloudScheduler]), handleScheduleWebhook)
 
-// WebMonitor webhook needs raw body for signature verification
-router.use(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, express.raw({ type: "application/json", limit: LARGE_BODY_LIMIT }))
-router.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, rateLimit(RateLimitKind.WebhookByIp), handleWebMonitorWebhook)
+if (INTEGRATION_REGISTRY.some(m => m.integrationType === IntegrationType.WEBMONITOR)) {
+    router.use(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, express.raw({ type: "application/json", limit: LARGE_BODY_LIMIT }))
+    router.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, rateLimit(RateLimitKind.WebhookByIp), handleWebMonitorWebhook)
+}
 
 router.post(ApiRoutes.WEBHOOKS.WEBHOOK_TRIGGER_BY_TOKEN, rateLimit(RateLimitKind.WebhookByToken), handleWebhookTrigger)
 
