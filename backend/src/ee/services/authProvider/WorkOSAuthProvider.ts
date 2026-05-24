@@ -6,12 +6,12 @@ import { ApiRoutes, UserProfile, UserSession } from "terse-types"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { getClaimsFromAuthResult } from "./accessTokenClaims"
 import { AuthKind, requireAuth } from "../../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 import AuthProvider, { AuthTokenError, CookieAuthOutcome } from "../../../services/authProvider/AuthProvider"
 import { SettingsDependant, settings } from "../../../settings"
 
+import { getClaimsFromAuthResult } from "./accessTokenClaims"
 import {
     WORKOS_OAUTH_STATE_COOKIE_NAME,
     WORKOS_OAUTH_STATE_COOKIE_OPTIONS,
