@@ -1,5 +1,5 @@
 import { type InputGuardrail, Runner } from "@openai/agents-core"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 
 export enum AgentType {
     AGENT_RUNNER = "agent_runner",
@@ -15,7 +15,7 @@ type RunnerConfig = {
     agentId: string
     agentType: AgentType
     runId?: string
-    user: User
+    user: UserSession
     env: string
     inputGuardrails?: InputGuardrail[]
 }

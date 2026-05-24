@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import crypto from "node:crypto"
 import { BillingError, CreditGateDeniedError, SdkListenStreamEvent, sdkListenQuerySchema } from "terse-types"
 import { SkillConfigData } from "terse-types/Configs"
-import { SdkAgentRunResponseBody, SdkAgentStreamEvent, User, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
+import { SdkAgentRunResponseBody, SdkAgentStreamEvent, UserSession, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
 
 import logger from "../../../common/logger"
@@ -23,7 +23,7 @@ import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-ga
 const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({ prompt: z.string().min(1) })
 
 export async function handleSdkAgentRun(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
 
     const parsed = sdkAgentRunInputSchema.safeParse(req.body)
@@ -112,7 +112,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 }
 
-async function finalizeFailedProductionRun(runId: string, organizationId: string, user: User, error: unknown): Promise<void> {
+async function finalizeFailedProductionRun(runId: string, organizationId: string, user: UserSession, error: unknown): Promise<void> {
     try {
         const record = await db().run_history_records.findFirst({
             where: { id: runId, automation: { organization_id: organizationId } },
@@ -125,7 +125,7 @@ async function finalizeFailedProductionRun(runId: string, organizationId: string
     }
 }
 
-async function resolveProductionRunContext(headerRunId: string, user: User): Promise<{ runId: string; agentId: string; organizationId: string } | null> {
+async function resolveProductionRunContext(headerRunId: string, user: UserSession): Promise<{ runId: string; agentId: string; organizationId: string } | null> {
     if (!user.organizationId) return null
     const runRecord = await db().run_history_records.findFirst({
         where: { id: headerRunId, automation: { organization_id: user.organizationId } },
@@ -139,7 +139,7 @@ async function resolveProductionRunContext(headerRunId: string, user: User): Pro
 }
 
 export async function handleSdkApprovalDecision(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
 
     const parsed = sdkApprovalDecisionRequestBodySchema.safeParse(req.body)
@@ -210,7 +210,7 @@ function finishSseStream(res: Response, send: (event: SdkAgentStreamEvent) => vo
 
 function createSdkRunner(params: {
     runId: string
-    user: User
+    user: UserSession
     prompt: string
     skills: SkillConfigData[]
     toolApprovals: string[]
@@ -240,7 +240,7 @@ function createSdkRunner(params: {
 const LISTEN_HEARTBEAT_INTERVAL_MS = 25_000
 
 export async function handleSdkListen(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
 
     const parsed = sdkListenQuerySchema.safeParse(req.query)
@@ -302,7 +302,7 @@ function getSseCap() {
 }
 
 export async function handleSessionEvents(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
 
     const slot = await getSseCap().tryAcquire(user.id)

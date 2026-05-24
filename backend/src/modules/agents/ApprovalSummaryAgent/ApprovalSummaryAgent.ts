@@ -1,7 +1,7 @@
 import { Agent } from "@openai/agents"
 import { AgentInputItem } from "@openai/agents-core"
 import { ToolCall } from "terse-types"
-import { User } from "terse-types"
+import { UserSession } from "terse-types/types"
 import { z } from "zod"
 
 import logger from "../../../common/logger"
@@ -18,7 +18,7 @@ const ApprovalSummaryClassification = z.object({
 
 type ApprovalSummaryClassificationType = z.infer<typeof ApprovalSummaryClassification>
 
-export async function generateApprovalSummary(runId: string, user: User, agentId: string, stepId: string): Promise<ApprovalSummaryClassificationType> {
+export async function generateApprovalSummary(runId: string, user: UserSession, agentId: string, stepId: string): Promise<ApprovalSummaryClassificationType> {
     const prisma = db()
 
     // Fetch run history record to get trigger information

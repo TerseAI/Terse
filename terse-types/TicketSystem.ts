@@ -58,6 +58,14 @@ interface User {
 }
 export { User as TicketSystemUser }
 
+export interface UserContext {
+    userInfo: User
+    teams: Team[]
+    organization: LinearOrganization
+    ticketStates: TicketState[]
+    milestones: Milestone[]
+}
+
 interface TicketState {
     id: string
     name: string
@@ -67,6 +75,15 @@ interface TicketState {
 interface Milestone {
     id: string
     name: string
+}
+
+export interface LinearOrganization {
+    id: string
+    name: string
+    createdAt: string
+    createdIssueCount: number
+    userCount: number
+    projects: Project[]
 }
 
 type Project = {

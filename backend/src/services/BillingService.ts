@@ -28,7 +28,6 @@ import {
     billingRecordLlmResponseSchema,
     parseBillingForbiddenJson
 } from "terse-types"
-import type { User } from "terse-types/types"
 
 import { settings } from "../settings"
 
@@ -60,7 +59,7 @@ export interface BillingService {
 
 /** Authenticated browser/API routes: JWT derives from the session user. */
 export function billingServiceProxyForRequest(req: Request): BillingService {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user?.organizationId) {
         throw new Error("Billing requires an authenticated session with organizationId")
     }

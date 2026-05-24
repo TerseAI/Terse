@@ -1,7 +1,7 @@
 import { NotificationDestinationType, RunHistoryActionType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
 import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { RunHistoryAction } from "terse-types/RunHistoryTypes"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
@@ -15,10 +15,10 @@ import { sendSlackApprovalRequest, sendSlackNotification, sendSlackRunFailure } 
 const SENT_NOTIFICATIONS_INVALIDATION_KEY = sentNotificationsKey()[0]
 
 export class NotificationManager {
-    private user: User
+    private user: UserSession
     private agent: Agent
 
-    constructor(user: User, agent: Agent) {
+    constructor(user: UserSession, agent: Agent) {
         this.user = user
         this.agent = agent
     }
@@ -251,7 +251,7 @@ async function getActiveNotificationDestinationByType(userId: string, destinatio
     })
 }
 
-async function resolveNotificationDestination(user: User): Promise<UserNotificationDestination> {
+async function resolveNotificationDestination(user: UserSession): Promise<UserNotificationDestination> {
     const slackDestination = await getActiveNotificationDestinationByType(user.id, NotificationDestinationType.SLACK)
     if (slackDestination) {
         return slackDestination
@@ -265,7 +265,7 @@ async function resolveNotificationDestination(user: User): Promise<UserNotificat
     return getDefaultEmailNotificationDestination(user)
 }
 
-function getDefaultEmailNotificationDestination(user: User): UserNotificationDestination {
+function getDefaultEmailNotificationDestination(user: UserSession): UserNotificationDestination {
     return {
         id: "",
         user_id: user.id,

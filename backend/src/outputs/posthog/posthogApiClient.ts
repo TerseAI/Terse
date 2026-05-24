@@ -1,5 +1,5 @@
 import { IntegrationType } from "terse-types"
-import { User } from "terse-types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
@@ -9,7 +9,7 @@ import { SecretService } from "../../services/SecretService"
  * Get PostHog API key by integration ID
  * Validates that the integration belongs to the user
  */
-export async function getPosthogApiKeyByIntegrationId(integrationId: string, user: User): Promise<string | null> {
+export async function getPosthogApiKeyByIntegrationId(integrationId: string, user: UserSession): Promise<string | null> {
     const integration = await db().posthog_integrations.findUnique({
         where: { id: integrationId }
     })

@@ -1,12 +1,11 @@
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 import { IntegrationType } from "terse-types/Integrations"
-import { GetGithubRepositoriesForIntegrationResponse, User as RuntimeUser } from "terse-types/types"
+import { GetGithubRepositoriesForIntegrationResponse } from "terse-types/types"
 import { ZodError } from "zod"
 
 import logger from "../../../common/logger"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../../../integrations/github/integration"
-import { resolveUserInOrg } from "../../../utility/identity"
 import { db } from "../../../loaders/prisma"
 import { readBearerToken } from "../../../modules/auth/helpers/authDispatch"
 import { SecretService } from "../../../services/SecretService"

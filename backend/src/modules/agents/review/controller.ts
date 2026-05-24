@@ -3,12 +3,11 @@ import { Request, Response } from "express"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { sentNotificationsKey } from "terse-types/InvalidationKeys"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 
 import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { resolveUserInOrg } from "../../../utility/identity"
 import { db } from "../../../loaders/prisma"
 import { MAX_IMPROVEMENTS_PER_AGENT } from "../../../modules/agents/JudgeAgent/JudgeAgent"
 import { fetchFullJudgeContext } from "../../../modules/agents/JudgeAgent/fetchJudgeContext"
@@ -17,13 +16,14 @@ import { getUserNotificationSettings } from "../../../modules/notifications/sett
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
 import { SdkImprovementService } from "../../../services/SdkImprovementService"
 import { settings } from "../../../settings"
+import { resolveUserInOrg } from "../../../utility/identity"
 
 type EligibleAutomation = {
     id: string
     name: string
     user_id: string
     organization_id: string
-    user: User
+    user: UserSession
     runCount: number
 }
 
@@ -52,7 +52,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
             select: { id: true, name: true, user_id: true, organization_id: true }
         })
         resolveUserInOrg
-        const userCache = new Map<string, Awaited<ReturnType<typeof getUserForOrg>>>()
+        const userCache = new Map<string, Awaited<ReturnType<typeof resolveUserInOrg>>>()
         const featureFlagCache = new Map<string, boolean>()
         const emailGroups = new Map<string, EmailGroup>()
         const failures: Array<{ automationId: string; error: string }> = []
@@ -69,7 +69,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 const userCacheKey = `${automation.user_id}:${automation.organization_id}`
                 if (!userCache.has(userCacheKey)) {
                     resolveUserInOrg
-                    userCache.set(userCacheKey, await getUserForOrg(automation.user_id, automation.organization_id))
+                    userCache.set(userCacheKey, await resolveUserInOrg(automation.user_id, automation.organization_id))
                 }
                 const user = userCache.get(userCacheKey)
                 if (!user) {

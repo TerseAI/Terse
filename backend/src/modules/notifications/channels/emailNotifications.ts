@@ -3,7 +3,7 @@ import path from "path"
 import { Resend } from "resend"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import { RunHistoryAction } from "terse-types"
-import { User } from "terse-types"
+import { UserSession } from "terse-types"
 import { fileURLToPath } from "url"
 
 import { FailureState } from "../../../modules/agents/AgentRunner/runHistory"
@@ -63,7 +63,7 @@ export async function sendEmailNotification(notificationDestination: UserNotific
     })
 }
 
-export async function sendEmailApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: User) {
+export async function sendEmailApprovalRequest(notificationDestination: UserNotificationDestination, runId: string, runAction: RunHistoryAction, agent: Agent, user: UserSession) {
     const runUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agent.id, runId })}` : undefined
     const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined

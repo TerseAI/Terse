@@ -1,6 +1,6 @@
 import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { User } from "terse-types/types"
+import { UserSession } from "terse-types/types"
 
 import logger from "../common/logger"
 import { getActiveDeployForProject } from "../common/projectHelper"
@@ -28,7 +28,7 @@ interface SdkJobExecutionParams {
     agent: AgentWithRelations
     orgId: string
     userId: string
-    user: User
+    user: UserSession
     jobName: string
 }
 

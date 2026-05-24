@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { IntegrationType, type SdkSampleEventRef as SampleEventRef, type SdkSampleEventsResponse, type SerializedEvent, type User } from "terse-types"
+import { IntegrationType, type SdkSampleEventRef as SampleEventRef, type SdkSampleEventsResponse, type SerializedEvent } from "terse-types"
 import { sdkHydrateSampleEventRequestSchema, sdkHydrateSampleEventResponseSchema, sdkSampleEventsRequestSchema, sdkSampleEventsResponseSchema } from "terse-types/types"
 
 import logger from "../../../common/logger"
@@ -10,7 +10,7 @@ import { fetchSampleEvents } from "../../../integrations/abstract/sampleEvents"
 import { requireHydratorType } from "../../../types/rag"
 
 export async function handleSampleEvents(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ error: "Unauthorized" })
 
     const { jobName, projectId, triggers } = sdkSampleEventsRequestSchema.parse(req.body)
@@ -56,7 +56,7 @@ function hasSerializedEvent(value: unknown): value is { getSerializedEvent: () =
 }
 
 export async function handleHydrateSampleEvent(req: Request, res: Response) {
-    const user = req.session?.user as User | undefined
+    const user = req.session?.user
     if (!user) return res.status(401).json({ error: "Unauthorized" })
 
     const { entityType, entityId } = sdkHydrateSampleEventRequestSchema.parse(req.body)

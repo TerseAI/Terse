@@ -1,12 +1,12 @@
 import { Request, Response } from "express"
-import { User, projectSecretUpsertRequestSchema, projectSecretsImportRequestSchema } from "terse-types/types"
+import { UserSession, projectSecretUpsertRequestSchema, projectSecretsImportRequestSchema } from "terse-types/types"
 
 import logger from "../../../common/logger"
 
 import { ProjectSecretBadRequestError, ProjectSecretNotFoundError, deleteSecretForProject, importSecretsForProject, listSecretsForProject, upsertSecretForProject } from "./service"
 
-function requireUser(req: Request, res: Response): User | null {
-    const user = req.session?.user as User | undefined
+function requireUser(req: Request, res: Response): UserSession | null {
+    const user = req.session?.user
     if (!user) {
         res.status(401).json({ success: false, error: "Unauthorized" })
         return null

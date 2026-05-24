@@ -1,7 +1,7 @@
 import { SerializedEvent } from "terse-types"
 import type { ChatSnippet, WebhookFailureStage } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { SdkJobServerCheckStep, User, webhookJobTriggerResponseSchema } from "terse-types/types"
+import { SdkJobServerCheckStep, UserSession, webhookJobTriggerResponseSchema } from "terse-types/types"
 
 import logger from "../common/logger"
 import { safeFetch } from "../common/safeFetch"
@@ -20,7 +20,7 @@ interface WebhookJobExecutionParams {
     runId: string
     agent: AgentWithRelations
     orgId: string
-    user: User
+    user: UserSession
     event: SerializedEvent
     jobName: string
     signingSecret: string
