@@ -261,7 +261,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options: InstallationOptionsFor<IntegrationType.GMAIL> | undefined,
+        options: InstallationOptionsFor<IntegrationType.GMAIL>,
         additionalStatePayload: AdditionalStateParams | undefined,
         req: Request,
         res: Response

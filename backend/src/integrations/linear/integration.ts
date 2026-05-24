@@ -171,7 +171,7 @@ export class LinearIntegrationManager
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options: InstallationOptionsFor<IntegrationType.LINEAR> | undefined,
+        options: InstallationOptionsFor<IntegrationType.LINEAR>,
         additionalStatePayload: AdditionalStateParams | undefined,
         req: Request,
         res: Response

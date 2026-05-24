@@ -217,7 +217,7 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options: InstallationOptionsFor<IntegrationType.ATTIO> | undefined,
+        options: InstallationOptionsFor<IntegrationType.ATTIO>,
         additionalStatePayload: AdditionalStateParams | undefined,
         req: Request,
         res: Response

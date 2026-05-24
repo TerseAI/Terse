@@ -16,7 +16,7 @@ export async function submitIntegrationForm(apiKey: string, integrationType: str
     return fetchWithAuth<{ success: boolean; error?: string }>(buildRoute(ApiRoutes.SDK.INTEGRATION_FORM_SUBMIT, { integrationType }), apiKey, { formValues }, "POST")
 }
 
-export async function fetchInstallationUrl(apiKey: string, integrationType: string, options?: Record<string, string>): Promise<OAuthInstallationDetails> {
+export async function fetchInstallationUrl(apiKey: string, integrationType: string, options?: Record<string, unknown>): Promise<OAuthInstallationDetails> {
     const optionsParam = options ? `?options=${encodeURIComponent(JSON.stringify(options))}` : ""
     return fetchWithAuth<OAuthInstallationDetails>(`${buildRoute(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE, { integrationType })}${optionsParam}`, apiKey)
 }

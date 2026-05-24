@@ -92,7 +92,7 @@ export interface OAuthIntegrationInstallation<T extends IntegrationType> {
     getInstallationUrl(
         userId: string,
         organizationId: string,
-        options: InstallationOptionsFor<T> | undefined,
+        options: InstallationOptionsFor<T>,
         additionalStatePayload: AdditionalStateParams | undefined,
         req: Request,
         res: Response

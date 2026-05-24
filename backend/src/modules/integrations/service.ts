@@ -1,11 +1,13 @@
 import { Request, Response } from "express"
-import { InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "terse-types/Integrations"
+import { InstallationOptionsFor, InstallationOptionsSchemas, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "terse-types/Integrations"
 import { OAuthInstallationDetails } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { Integration, isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { decodeOAuthStateToken } from "../../modules/auth/helpers/oauth"
+
+import { MissingIntegrationOptionsError } from "./errors"
 
 export class IntegrationNotFoundError extends Error {
     constructor(integrationType: string) {
@@ -27,6 +29,8 @@ export class IntegrationInstallationUnsupportedError extends Error {
         this.name = "IntegrationInstallationUnsupportedError"
     }
 }
+
+export { MissingIntegrationOptionsError } from "./errors"
 
 function findIntegration(integrationType: string) {
     return INTEGRATION_REGISTRY.find(instance => instance.integrationType === integrationType)
@@ -54,17 +58,29 @@ export async function getInstallationInformation(
     integration: IntegrationType,
     userId: string,
     organizationId: string,
-    options: InstallationOptionsFor<IntegrationType>,
+    options: unknown,
     additionalStatePayload: Record<string, string> | undefined,
     req: Request,
     res: Response
 ): Promise<OAuthInstallationDetails> {
     const integrationInstance = findIntegration(integration)
     if (!integrationInstance) throw new IntegrationNotFoundError(integration)
-    if (isOAuthIntegrationInstallation<typeof integration>(integrationInstance)) {
-        return integrationInstance.getInstallationUrl(userId, organizationId, options, additionalStatePayload, req, res)
+    if (!isOAuthIntegrationInstallation<typeof integration>(integrationInstance)) {
+        throw new IntegrationInstallationUnsupportedError(integration)
     }
-    throw new IntegrationInstallationUnsupportedError(integration)
+
+    const parsedOptions = parseInstallationOptionsOrThrow(integration, options)
+    return integrationInstance.getInstallationUrl(userId, organizationId, parsedOptions, additionalStatePayload, req, res)
+}
+
+function parseInstallationOptionsOrThrow<T extends IntegrationType>(integration: T, options: unknown): InstallationOptionsFor<T> {
+    const schema = InstallationOptionsSchemas[integration]
+    const result = schema.safeParse(options ?? {})
+    if (!result.success) {
+        const missingFields = result.error.issues.map(issue => issue.path.join(".")).filter(Boolean)
+        throw new MissingIntegrationOptionsError(integration, missingFields.length > 0 ? missingFields : ["<unknown>"])
+    }
+    return result.data as InstallationOptionsFor<T>
 }
 
 export async function listIntegrationsForOrganization(organizationId: string): Promise<IntegrationWithStatus[]> {
