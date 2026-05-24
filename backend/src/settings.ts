@@ -46,6 +46,13 @@ export const settings = {
         webhookSecret: requireSecretMinLength("WORKOS_WEBHOOK_SECRET")
     })),
 
+    // Local auth — SQLite-backed identities. Used by LocalAuthProvider when WorkOS isn't configured.
+    // Note: Prisma CLI also needs LOCAL_AUTH_DB_URL set in .env for migration commands (it can't
+    // read this TS default). The runtime default below is a defensive fallback only.
+    localAuth: {
+        dbUrl: optionalEnv("LOCAL_AUTH_DB_URL", "file:./prisma/local-auth/local-auth.db")!
+    },
+
     openai: {
         apiKey: requireEnv("OPENAI_API_KEY")
     },

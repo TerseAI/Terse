@@ -22,5 +22,5 @@ jobs:
                   cache-dependency-path: pnpm-lock.yaml
             - run: pnpm install --frozen-lockfile
             - run: pnpm --filter terse-types run build
-            - run: cd backend && pnpm exec prisma generate
+            - run: cd backend && pnpm run db:generate
             - run: cd backend && pnpm run build

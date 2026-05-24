@@ -136,7 +136,7 @@ jobs:
 
             - name: Generate Prisma client
               working-directory: backend
-              run: pnpm exec prisma generate
+              run: pnpm run db:generate
 
             - name: Build all packages
               env:
