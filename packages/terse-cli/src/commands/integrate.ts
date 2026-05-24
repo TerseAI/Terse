@@ -3,10 +3,11 @@ import { input } from "@inquirer/prompts"
 import chalk from "chalk"
 import type { CliIntegrationDisplayState, FormIntegrationSetup, IntegrationWithStatus } from "terse-types"
 import { INTEGRATION_METADATA, IntegrationType } from "terse-types"
+import { InstallationOptionsSchemas } from "terse-types/Integrations"
 
 import { readApiKey, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
-import { type NonInteractiveOpts, isNonInteractive, parseKeyValueFlags, readFieldsFromStdin } from "../cliHelpers.js"
+import { type NonInteractiveOpts, coerceAndValidateForSchema, isNonInteractive, parseKeyValueFlags, readFieldsFromStdin } from "../cliHelpers.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
 import {
     ConfigurationFieldDefinition,
@@ -523,6 +524,31 @@ export async function integrateDescribe(opts: IntegrateDescribeOpts): Promise<vo
     }
 }
 
+async function collectRawFields(opts: Pick<IntegrateConnectOpts, "fieldFlags" | "fieldsStdin">): Promise<Record<string, string>> {
+    const fromFlags = parseKeyValueFlags(opts.fieldFlags)
+    const fromStdin = opts.fieldsStdin ? await readFieldsFromStdin() : {}
+    return { ...fromFlags, ...fromStdin }
+}
+
+function validateFormFields(type: IntegrationType, declaredFields: FormFieldDefinition[], provided: Record<string, string>): Record<string, string> {
+    const knownFieldNames = new Set(declaredFields.map(f => f.name))
+    const unknown = Object.keys(provided).filter(name => !knownFieldNames.has(name))
+    if (unknown.length > 0) {
+        throw new CliError("unknown_fields", `Unknown field(s): ${unknown.join(", ")}`, {
+            detail: `Valid fields: ${declaredFields.map(f => f.name).join(", ") || "(none)"}`
+        })
+    }
+
+    const missing = declaredFields.filter(f => f.required && !provided[f.name]).map(f => f.name)
+    if (missing.length > 0) {
+        throw new CliError("missing_fields", `Missing required field(s): ${missing.join(", ")}`, {
+            detail: `Run \`terse integrate describe ${type} --json\` to see the full field schema.`
+        })
+    }
+
+    return provided
+}
+
 export async function integrateConnect(opts: IntegrateConnectOpts): Promise<void> {
     const type = parseIntegrationTypeOrThrow(opts.integrationType)
     const apiKey = readApiKeyOrBail()
@@ -540,8 +566,14 @@ export async function integrateConnect(opts: IntegrateConnectOpts): Promise<void
         return
     }
 
+    const raw = await collectRawFields(opts)
+
     if (fieldsResponse.installationType === "oauth") {
-        const installation = await fetchInstallationUrl(apiKey, type)
+        const optionsSchema = InstallationOptionsSchemas[type]
+        const parsed = coerceAndValidateForSchema(raw, optionsSchema, { integrationType: type })
+        const optionsArg = Object.keys(parsed as Record<string, unknown>).length > 0 ? (parsed as Record<string, unknown>) : undefined
+
+        const installation = await fetchInstallationUrl(apiKey, type, optionsArg)
         openUrlInBrowser(installation.oauthUrl)
 
         const waitCommand = `terse integrate wait ${type}`
@@ -568,26 +600,8 @@ export async function integrateConnect(opts: IntegrateConnectOpts): Promise<void
         return
     }
 
-    const formFields = fieldsResponse.fields as FormFieldDefinition[]
-    const fromFlags = parseKeyValueFlags(opts.fieldFlags)
-    const fromStdin = opts.fieldsStdin ? await readFieldsFromStdin() : {}
-    const provided = { ...fromFlags, ...fromStdin }
-
-    const knownFieldNames = new Set(formFields.map(f => f.name))
-    const unknown = Object.keys(provided).filter(name => !knownFieldNames.has(name))
-    if (unknown.length > 0) {
-        throw new CliError("unknown_fields", `Unknown field(s): ${unknown.join(", ")}`, {
-            detail: `Valid fields: ${formFields.map(f => f.name).join(", ")}`
-        })
-    }
-
-    const missing = formFields.filter(f => f.required && !provided[f.name]).map(f => f.name)
-    if (missing.length > 0) {
-        throw new CliError("missing_fields", `Missing required field(s): ${missing.join(", ")}`, {
-            detail: `Run \`terse integrate describe ${type} --json\` to see the full field schema.`
-        })
-    }
-
+    const declaredFields = (fieldsResponse.fields ?? []) as FormFieldDefinition[]
+    const provided = validateFormFields(type, declaredFields, raw)
     const result = await submitIntegrationForm(apiKey, type, provided)
     if (!result.success) {
         throw new CliError("connect_failed", result.error ?? "Failed to connect integration.")

@@ -113,7 +113,7 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options: InstallationOptionsFor<IntegrationType.NOTION> | undefined,
+        options: InstallationOptionsFor<IntegrationType.NOTION>,
         additionalStatePayload: AdditionalStateParams | undefined,
         req: Request,
         res: Response

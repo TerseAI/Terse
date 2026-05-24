@@ -249,14 +249,11 @@ export class SlackIntegrationManager
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options: InstallationOptionsFor<IntegrationType.SLACK> | undefined,
+        options: InstallationOptionsFor<IntegrationType.SLACK>,
         additionalStatePayload: AdditionalStateParams | undefined,
         req: Request,
         res: Response
     ): Promise<OAuthInstallationDetails> {
-        if (!options) {
-            throw new Error("Slack integration requires options (isBotUser)")
-        }
         const client_id = this.config.clientId
         const redirect_uri = this.config.oauthCallbackUrl
         const isBotUser = options.isBotUser

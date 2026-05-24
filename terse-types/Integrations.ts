@@ -186,36 +186,40 @@ export const IntegrationInstanceSchema = z.object({
 })
 export type IntegrationInstance = z.infer<typeof IntegrationInstanceSchema>
 
-export interface SlackInstallationOptions {
-    isBotUser: boolean
-}
+export const NoInstallationOptionsSchema = z.object({}).strict()
+export type NoInstallationOptions = z.infer<typeof NoInstallationOptionsSchema>
 
-export type NoInstallationOptions = Record<string, never>
+export const SlackInstallationOptionsSchema = z
+    .object({
+        isBotUser: z.boolean()
+    })
+    .strict()
+export type SlackInstallationOptions = z.infer<typeof SlackInstallationOptionsSchema>
 
 export type AdditionalStateParams = Record<string, string>
 
-type EnsureExhaustiveInstallationOptions<T extends Record<IntegrationType, NoInstallationOptions | SlackInstallationOptions>> = T
+// Exhaustive schema map keyed by IntegrationType — adding a new IntegrationType without
+// adding an entry here is a compile error.
+export const InstallationOptionsSchemas = {
+    [IntegrationType.SLACK]: SlackInstallationOptionsSchema,
+    [IntegrationType.GMAIL]: NoInstallationOptionsSchema,
+    [IntegrationType.NOTION]: NoInstallationOptionsSchema,
+    [IntegrationType.LINEAR]: NoInstallationOptionsSchema,
+    [IntegrationType.GITHUB]: NoInstallationOptionsSchema,
+    [IntegrationType.TERSE]: NoInstallationOptionsSchema,
+    [IntegrationType.POSTHOG]: NoInstallationOptionsSchema,
+    [IntegrationType.DATADOG]: NoInstallationOptionsSchema,
+    [IntegrationType.CRON_JOB]: NoInstallationOptionsSchema,
+    [IntegrationType.LAUNCHDARKLY]: NoInstallationOptionsSchema,
+    [IntegrationType.WORKOS]: NoInstallationOptionsSchema,
+    [IntegrationType.ATTIO]: NoInstallationOptionsSchema,
+    [IntegrationType.SNOWFLAKE]: NoInstallationOptionsSchema,
+    [IntegrationType.WEBHOOK]: NoInstallationOptionsSchema,
+    [IntegrationType.WEBMONITOR]: NoInstallationOptionsSchema,
+    [IntegrationType.HEY_REACH]: NoInstallationOptionsSchema
+} as const satisfies Record<IntegrationType, z.ZodTypeAny>
 
-export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions<{
-    [IntegrationType.SLACK]: SlackInstallationOptions
-    [IntegrationType.GMAIL]: NoInstallationOptions
-    [IntegrationType.NOTION]: NoInstallationOptions
-    [IntegrationType.LINEAR]: NoInstallationOptions
-    [IntegrationType.GITHUB]: NoInstallationOptions
-    [IntegrationType.TERSE]: NoInstallationOptions
-    [IntegrationType.POSTHOG]: NoInstallationOptions
-    [IntegrationType.DATADOG]: NoInstallationOptions
-    [IntegrationType.CRON_JOB]: NoInstallationOptions
-    [IntegrationType.LAUNCHDARKLY]: NoInstallationOptions
-    [IntegrationType.WORKOS]: NoInstallationOptions
-    [IntegrationType.ATTIO]: NoInstallationOptions
-    [IntegrationType.SNOWFLAKE]: NoInstallationOptions
-    [IntegrationType.WEBHOOK]: NoInstallationOptions
-    [IntegrationType.WEBMONITOR]: NoInstallationOptions
-    [IntegrationType.HEY_REACH]: NoInstallationOptions
-}>
-
-export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T]
+export type InstallationOptionsFor<T extends IntegrationType> = z.infer<(typeof InstallationOptionsSchemas)[T]>
 
 export const SlackIntegrationSchema = IntegrationInstanceSchema.extend({
     teamId: z.string().optional(),

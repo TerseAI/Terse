@@ -7,6 +7,7 @@ import {
     IntegrationInstallationUnsupportedError,
     IntegrationNotConnectedError,
     IntegrationNotFoundError,
+    MissingIntegrationOptionsError,
     decodeOptionalStatePayload,
     disconnectIntegrationForOrganization,
     getInstallationInformation,
@@ -31,6 +32,13 @@ export async function getIntegrationInstallationDetails(req: Request, res: Respo
     } catch (error: unknown) {
         if (error instanceof IntegrationNotFoundError) return res.status(404).json({ error: error.message })
         if (error instanceof IntegrationInstallationUnsupportedError) return res.status(400).json({ error: error.message })
+        if (error instanceof MissingIntegrationOptionsError) {
+            return res.status(400).json({
+                error: error.message,
+                integrationType: error.integration,
+                missingFields: error.missingFields
+            })
+        }
         logger.error("Error getting installation details", { error, integrationType: req.params.integrationType, userId: req.session?.user?.id })
         res.status(500).json({ error: "Failed to get installation details" })
     }

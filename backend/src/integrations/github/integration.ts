@@ -156,7 +156,7 @@ export class GithubIntegrationManager
     async getInstallationUrl(
         userId: string,
         organizationId: string,
-        options: InstallationOptionsFor<IntegrationType.GITHUB> | undefined,
+        options: InstallationOptionsFor<IntegrationType.GITHUB>,
         additionalStatePayload: AdditionalStateParams | undefined,
         req: Request,
         res: Response
