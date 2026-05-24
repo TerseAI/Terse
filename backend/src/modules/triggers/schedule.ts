@@ -12,10 +12,10 @@ import { TriggerRuntime } from "../../integrations/abstract/TriggerRuntime"
 import { CronJobIntegrationManager } from "../../integrations/cronJob/integration"
 import { buildGithubTriggerMetadata } from "../../integrations/github/integration"
 import { WebMonitorIntegrationManager } from "../../integrations/webMonitor/integration"
-import { resolveUserInOrg } from "../../utility/identity"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 import { fetchEventFromRunId } from "../sdk/run-trigger/controller"
 
 interface ManualTriggerRequest {

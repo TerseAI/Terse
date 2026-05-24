@@ -6,10 +6,10 @@ import { secretsMatch } from "../../../common/crypto"
 import logger from "../../../common/logger"
 import { WORKOS_SESSION_COOKIE_NAME } from "../../../ee/services/authProvider/service"
 import { CronJobIntegrationManager } from "../../../integrations/cronJob/integration"
-import { resolveUserInOrg } from "../../../utility/identity"
 import { db } from "../../../loaders/prisma"
 import { getAuthProvider } from "../../../services/authProvider"
 import { CookieAuthOutcome } from "../../../services/authProvider/AuthProvider"
+import { resolveUserInOrg } from "../../../utility/identity"
 
 import { hashToken } from "./apiTokens"
 

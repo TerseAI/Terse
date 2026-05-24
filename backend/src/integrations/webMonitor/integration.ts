@@ -17,11 +17,11 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
-import { resolveUserInOrg } from "../../utility/identity"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { settings } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
 

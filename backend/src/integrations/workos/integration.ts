@@ -9,12 +9,12 @@ import { z } from "zod"
 
 import logger from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
-import { resolveUserInOrg } from "../../utility/identity"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { getWorkOSUser } from "../../outputs/workos/workosApiClient"
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
+import { resolveUserInOrg } from "../../utility/identity"
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
 
