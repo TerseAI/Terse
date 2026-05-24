@@ -26,13 +26,7 @@ export class CronJobIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.CRON_JOB>
 {
     readonly integrationType = IntegrationType.CRON_JOB
-    static get config() {
-        if (!settings.cloudScheduler) throw new Error("CronJob integration is not configured (CLOUD_SCHEDULER_SECRET missing)")
-        return settings.cloudScheduler
-    }
-    get isAvailable() {
-        return settings.cloudScheduler !== undefined
-    }
+    readonly settingsKey = "cloudScheduler"
     private schedulerClient: SchedulerClient | null = null
 
     getFormFields(): FormFieldDefinition[] {

@@ -11,9 +11,6 @@ import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult,
 
 export class DatadogIntegrationManager extends Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata, never> implements FormIntegrationInstallation<IntegrationType.DATADOG> {
     readonly integrationType = IntegrationType.DATADOG
-    get isAvailable() {
-        return true
-    }
     readonly secretSchema = z.object({
         apiKey: z.string(),
         appKey: z.string()

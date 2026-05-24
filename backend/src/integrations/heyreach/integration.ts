@@ -29,9 +29,6 @@ export class HeyReachIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.HEY_REACH>
 {
     readonly integrationType = IntegrationType.HEY_REACH
-    get isAvailable() {
-        return true
-    }
     readonly secretSchema = z.object({
         apiKey: z.string()
     })

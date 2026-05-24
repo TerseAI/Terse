@@ -25,9 +25,6 @@ export class WorkOSIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.WORKOS>
 {
     readonly integrationType = IntegrationType.WORKOS
-    get isAvailable() {
-        return true
-    }
     readonly secretSchema = z.object({
         apiKey: z.string(),
         webhookSecret: z.string().optional()

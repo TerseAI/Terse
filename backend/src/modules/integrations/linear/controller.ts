@@ -20,7 +20,7 @@ function verifySignature(headerSignatureString: string | undefined, rawBody: Buf
         return false
     }
 
-    const LINEAR_WEBHOOK_SECRET = LinearIntegrationManager.config.signingSecret
+    const LINEAR_WEBHOOK_SECRET = new LinearIntegrationManager().config.signingSecret
 
     try {
         const headerSignature = Buffer.from(headerSignatureString, "hex")

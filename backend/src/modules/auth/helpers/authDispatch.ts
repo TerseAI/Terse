@@ -4,12 +4,12 @@ import { User } from "terse-types/types"
 
 import { secretsMatch } from "../../../common/crypto"
 import logger from "../../../common/logger"
+import { CronJobIntegrationManager } from "../../../integrations/cronJob/integration"
 import { workos } from "../../../integrations/workos/helpers"
 import { getUserForOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../../modules/auth/service"
 import { getOrCreateDbUserFromWorkOS } from "../../../modules/auth/service"
-import { CronJobIntegrationManager } from "../../../integrations/cronJob/integration"
 import { settings } from "../../../settings"
 
 import { getClaimsFromAuthResult } from "./accessTokenClaims"
@@ -96,9 +96,10 @@ export async function authenticateViaApiToken(rawToken: string): Promise<ApiToke
 
 export function validateCloudSchedulerHeader(authHeaderValue: string | undefined): boolean {
     if (!authHeaderValue) return false
-    if (!new CronJobIntegrationManager().isAvailable) return false
+    const cron = new CronJobIntegrationManager()
+    if (!cron.isAvailable) return false
     const token = authHeaderValue.startsWith("Bearer ") ? authHeaderValue.substring(7) : authHeaderValue
-    return secretsMatch(token, CronJobIntegrationManager.config.secret)
+    return secretsMatch(token, cron.config.secret)
 }
 
 export function readBearerToken(authHeaderValue: string | undefined): string | null {

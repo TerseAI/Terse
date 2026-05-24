@@ -24,9 +24,6 @@ export class LaunchDarklyIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY>
 {
     readonly integrationType = IntegrationType.LAUNCHDARKLY
-    get isAvailable() {
-        return true
-    }
     readonly secretSchema = z.object({
         apiKey: z.string()
     })

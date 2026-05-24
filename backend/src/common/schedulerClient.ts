@@ -120,7 +120,7 @@ export class SchedulerClient {
                     uri: url,
                     httpMethod: "POST",
                     headers: {
-                        Authorization: `Bearer ${CronJobIntegrationManager.config.secret}`,
+                        Authorization: `Bearer ${new CronJobIntegrationManager().config.secret}`,
                         "Content-Type": "application/json"
                     }
                 }

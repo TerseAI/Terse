@@ -140,7 +140,7 @@ export async function handleWebMonitorWebhook(req: Request, res: Response) {
         return
     }
 
-    if (!verifyParallelWebhookSignature(webhookSignature, WebMonitorIntegrationManager.config.webhookSecret, webhookId, webhookTimestamp, bodyStr)) {
+    if (!verifyParallelWebhookSignature(webhookSignature, new WebMonitorIntegrationManager().config.webhookSecret, webhookId, webhookTimestamp, bodyStr)) {
         logger.warn("Web event webhook signature verification failed", { inputId })
         res.status(401).send("Invalid signature")
         return
