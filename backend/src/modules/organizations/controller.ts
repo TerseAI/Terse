@@ -7,25 +7,25 @@ export async function createOrganization(req: Request, res: Response) {
 }
 
 export async function getCurrentOrganization(req: Request, res: Response) {
-    getOrganizationProvider().getCurrentOrganization(req, res)
+    await getOrganizationProvider().getCurrentOrganization(req, res)
 }
 
 export async function getUserOrganizations(req: Request, res: Response) {
-    getOrganizationProvider().getUserOrganizations(req, res)
+    await getOrganizationProvider().getUserOrganizations(req, res)
 }
 
 export async function switchOrganization(req: Request, res: Response) {
-    getOrganizationProvider().switchOrganization(req, res)
+    await getOrganizationProvider().switchOrganization(req, res)
 }
 
 export async function getLogoUploadUrl(req: Request, res: Response) {
-    getOrganizationProvider().getLogoUploadUrl(req, res)
+    await getOrganizationProvider().getLogoUploadUrl(req, res)
 }
 
 export async function getLogoUrl(req: Request, res: Response) {
-    getOrganizationProvider().getLogoUrl(req, res)
+    await getOrganizationProvider().getLogoUrl(req, res)
 }
 
 export async function updateOrganization(req: Request, res: Response) {
-    getOrganizationProvider().updateOrganization(req, res)
+    await getOrganizationProvider().updateOrganization(req, res)
 }
