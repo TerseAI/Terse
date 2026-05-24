@@ -20,6 +20,7 @@ export async function cleanupIdentity(workosUserId: string): Promise<void> {
             prisma.linear_integrations.deleteMany({ where: { user_id: workosUserId } }),
             prisma.notion_integrations.deleteMany({ where: { user_id: workosUserId } }),
             prisma.posthog_integrations.deleteMany({ where: { user_id: workosUserId } }),
+            prisma.sent_notifications.deleteMany({ where: { user_id: workosUserId } }),
             prisma.snowflake_integrations.deleteMany({ where: { user_id: workosUserId } }),
             prisma.user_notification_destinations.deleteMany({ where: { user_id: workosUserId } }),
             prisma.user_notification_settings.deleteMany({ where: { user_id: workosUserId } }),
