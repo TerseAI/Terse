@@ -15,9 +15,7 @@ import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { workos } from "../../../integrations/workos/helpers"
 import { WorkosTokenError, verifyWorkosJwt } from "../../../integrations/workos/jwt"
-import { getClaimsFromVerifiedPayload } from "../../../modules/auth/helpers/accessTokenClaims"
 import { createApiToken } from "../../../modules/auth/helpers/apiTokens"
-import { getOrCreateDbUserFromWorkOS } from "../../auth/service"
 
 const featureFlagService = FeatureFlagService.getInstance()
 
@@ -26,11 +24,11 @@ function cliLoginExpiry(): Date {
     return new Date(Date.now() + CLI_LOGIN_TOKEN_TTL_MS)
 }
 
-async function verifyWorkosAccessToken(accessToken: string): Promise<{ payload: JWTPayload; workosUserId: string }> {
+async function verifyWorkosAccessToken(accessToken: string): Promise<{ workosUserId: string }> {
     const payload = await verifyWorkosJwt(accessToken)
     const workosUserId = payload.sub as string | undefined
     if (!workosUserId) throw new WorkosTokenError(401, "Invalid access token: missing subject")
-    return { payload, workosUserId }
+    return { workosUserId }
 }
 
 function handleVerifyError(error: any, res: Response, route: string): Response | null {
@@ -79,7 +77,7 @@ export async function identify(req: Request, res: Response) {
 export async function deviceTokenExchange(req: Request, res: Response) {
     try {
         const { accessToken, organizationId } = deviceTokenExchangeRequestSchema.parse(req.body)
-        const { payload, workosUserId } = await verifyWorkosAccessToken(accessToken)
+        const { workosUserId } = await verifyWorkosAccessToken(accessToken)
         const workosUser = await workos.userManagement.getUser(workosUserId)
 
         const isSdkEnabled = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.SDK_INTERFACE, workosUser.email, { email: workosUser.email })
@@ -88,12 +86,8 @@ export async function deviceTokenExchange(req: Request, res: Response) {
         const memberships = await workos.userManagement.listOrganizationMemberships({ userId: workosUserId, statuses: ["active"] })
         const membership = memberships.data.find(m => m.organizationId === organizationId)
         if (!membership) return res.status(403).json({ error: "You are not a member of that organization" })
-        const roles = membership.roles?.map(r => r.slug) ?? []
 
-        const claims = getClaimsFromVerifiedPayload(payload)
-        const { user: dbUser } = await getOrCreateDbUserFromWorkOS({ user: workosUser, organizationId, roles }, claims)
-
-        const { rawToken } = await createApiToken(dbUser.id, organizationId, "CLI Login", { expiresAt: cliLoginExpiry() })
+        const { rawToken } = await createApiToken(workosUserId, organizationId, "CLI Login", { expiresAt: cliLoginExpiry() })
 
         const displayName = [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || null
 
@@ -117,7 +111,7 @@ export async function listMyOrganizations(req: Request, res: Response) {
     if (!user) return res.status(401).json({ error: "Unauthorized" })
 
     try {
-        const memberships = await workos.userManagement.listOrganizationMemberships({ userId: user.workosId, statuses: ["active"] })
+        const memberships = await workos.userManagement.listOrganizationMemberships({ userId: user.id, statuses: ["active"] })
         const organizations = memberships.data.map(m => ({ id: m.organizationId, name: m.organizationName }))
         const response: SdkOrganizationsListResponse = { organizations, activeOrganizationId: user.organizationId }
         return res.json(response)
@@ -133,7 +127,7 @@ export async function switchOrganization(req: Request, res: Response) {
 
     try {
         const { organizationId } = switchOrganizationRequestSchema.parse(req.body)
-        const memberships = await workos.userManagement.listOrganizationMemberships({ userId: user.workosId, statuses: ["active"] })
+        const memberships = await workos.userManagement.listOrganizationMemberships({ userId: user.id, statuses: ["active"] })
         const membership = memberships.data.find(m => m.organizationId === organizationId)
         if (!membership) return res.status(403).json({ error: "You are not a member of that organization" })
 
@@ -157,7 +151,7 @@ export async function sdkMe(req: Request, res: Response) {
     if (!user) return res.status(401).json({ error: "Unauthorized" })
 
     try {
-        const workOSUser = await workos.userManagement.getUser(user.workosId)
+        const workOSUser = await workos.userManagement.getUser(user.id)
         return res.json({
             id: user.id,
             email: workOSUser.email,

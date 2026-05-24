@@ -15,34 +15,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model users {
-  id String @id @default(cuid())
-
-  workos_id  String   @unique
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  linear_integrations       linear_integrations[]
-  user_slack_integrations   user_slack_integrations[]
-  gmail_integrations        gmail_integrations[]
-  notion_integrations       notion_integrations[]
-  automations               automations[]
-  pending_approvals         pending_approvals[]
-  github_app_tokens         github_app_tokens[]
-  notification_destinations user_notification_destinations[]
-  api_tokens                api_tokens[]
-  notification_settings     user_notification_settings?
-  posthog_integrations      posthog_integrations[]
-  launchdarkly_integrations launchdarkly_integrations[]
-  datadog_integrations      datadog_integrations[]
-  workos_integrations       workos_integrations[]
-  attio_integrations        attio_integrations[]
-  snowflake_integrations    snowflake_integrations[]
-  project_deploys           project_deploys[]
-
-  @@index([workos_id])
-}
-
 model github_app_tokens {
   id              String    @id @default(cuid())
   user_id         String
@@ -51,8 +23,6 @@ model github_app_tokens {
   token_expiry    DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
-
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, github_username])
   @@index([organization_id])
@@ -68,8 +38,6 @@ model linear_integrations {
   token_expiry    DateTime
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([organization_id])
@@ -87,7 +55,6 @@ model user_slack_integrations {
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
-  user                           users                            @relation(fields: [user_id], references: [id], onDelete: Cascade)
   slack_integration              slack_integrations               @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
   user_notification_destinations user_notification_destinations[]
 
@@ -123,7 +90,6 @@ model gmail_integrations {
   created_at                  DateTime  @default(now())
   updated_at                  DateTime  @updatedAt
 
-  user                     users                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   processed_gmail_messages processed_gmail_messages[]
 
   @@unique([user_id, email]) // Allow multiple Gmail accounts per user, but not duplicates
@@ -169,8 +135,6 @@ model notion_integrations {
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
   @@index([user_id])
   @@index([organization_id])
   @@index([workspace_id])
@@ -184,8 +148,6 @@ model posthog_integrations {
   org_name        String?
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([organization_id])
@@ -210,8 +172,6 @@ model launchdarkly_integrations {
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
   @@index([user_id])
   @@index([organization_id])
 }
@@ -223,8 +183,6 @@ model datadog_integrations {
   region          String
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([organization_id])
@@ -238,8 +196,6 @@ model workos_integrations {
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
   @@index([user_id])
   @@index([organization_id])
 }
@@ -250,8 +206,6 @@ model attio_integrations {
   organization_id String
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([organization_id])
@@ -269,8 +223,6 @@ model snowflake_integrations {
   role_name          String?
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([organization_id])
@@ -307,7 +259,6 @@ model automations {
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
-  user                       users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prompt                     automation_prompts?
   inputs                     automation_inputs[]
   outputs                    automation_outputs[]
@@ -360,7 +311,6 @@ model sdk_source_images {
   organization_id     String
   runtime             String
   source_hash         String
-  gcs_key             String
   image_id            String   @unique
   dependency_image_id String
   last_used_at        DateTime @default(now())
@@ -372,7 +322,6 @@ model sdk_source_images {
 
   @@unique([organization_id, dependency_image_id, source_hash])
   @@index([organization_id])
-  @@index([gcs_key])
   @@index([last_used_at])
 }
 
@@ -391,7 +340,6 @@ model project_deploys {
 
   project          projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
   sdk_source_image sdk_source_images?    @relation(fields: [sdk_source_image_id], references: [id], onDelete: Cascade)
-  deployed_by      users                 @relation(fields: [deployed_by_user_id], references: [id], onDelete: SetNull)
   runs             run_history_records[]
   jobs             project_deploy_jobs[]
 
@@ -926,8 +874,6 @@ model pending_approvals {
   approved_at           DateTime?
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
-  users              users?              @relation(fields: [usersId], references: [id])
-  usersId            String?
 
   @@index([created_at])
   @@index([run_history_record_id])
@@ -988,7 +934,6 @@ model user_notification_destinations {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user              users                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   slack_integration user_slack_integrations? @relation(fields: [slack_integration_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
@@ -1015,7 +960,6 @@ model api_tokens {
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 
-  user    users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   project projects? @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
@@ -1032,7 +976,6 @@ model user_notification_settings {
   weekly_agent_improvements   Boolean
   created_at                  DateTime               @default(now())
   updated_at                  DateTime               @updatedAt
-  user                        users                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
 }

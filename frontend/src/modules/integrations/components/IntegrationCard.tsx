@@ -7,6 +7,7 @@ import AttioIntegrationCard from "./AttioIntegrationCard"
 import DatadogIntegrationCard from "./DatadogIntegrationCard"
 import GithubIntegrationCard from "./GithubIntegrationCard"
 import GmailIntegrationCard from "./GmailIntegrationCard"
+import HeyReachIntegrationCard from "./HeyReachIntegrationCard"
 import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard"
 import LinearIntegrationCard from "./LinearIntegrationCard"
 import NotionIntegrationCard from "./NotionIntegrationCard"
@@ -44,9 +45,10 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <AttioIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.SNOWFLAKE:
             return <SnowflakeIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.HEY_REACH:
+            return <HeyReachIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:
         case IntegrationType.WEBMONITOR:
-        case IntegrationType.HEY_REACH:
             return null
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing

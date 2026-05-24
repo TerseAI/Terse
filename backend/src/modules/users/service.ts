@@ -2,8 +2,6 @@ import { Role, User } from "terse-types/types"
 
 import { workos } from "../../integrations/workos/helpers"
 
-import { findUserById } from "./repository"
-
 export class UserNotFoundError extends Error {
     constructor() {
         super("User not found")
@@ -11,18 +9,9 @@ export class UserNotFoundError extends Error {
     }
 }
 
-function isRole(role: string): role is Role {
-    return role === "admin" || role === "user"
-}
-
-export async function getUserInOrganization(userId: string, organizationId: string, organizationName: string): Promise<User> {
-    const dbUser = await findUserById(userId)
-    if (!dbUser) {
-        throw new UserNotFoundError()
-    }
-
+export async function getUserInOrganization(workosUserId: string, organizationId: string, organizationName: string): Promise<User> {
     const memberships = await workos.userManagement.listOrganizationMemberships({
-        userId: dbUser.workos_id,
+        userId: workosUserId,
         organizationId,
         statuses: ["active"]
     })
@@ -33,12 +22,11 @@ export async function getUserInOrganization(userId: string, organizationId: stri
         throw new UserNotFoundError()
     }
 
-    const workOSUser = await workos.userManagement.getUser(dbUser.workos_id)
+    const workOSUser = await workos.userManagement.getUser(workosUserId)
     const roles: Role[] = (membership.roles ?? []).map(role => role.slug).filter(isRole)
 
     return {
-        id: dbUser.id,
-        workosId: dbUser.workos_id,
+        id: workOSUser.id,
         organizationId,
         organizationName,
         email: workOSUser.email,
@@ -48,4 +36,8 @@ export async function getUserInOrganization(userId: string, organizationId: stri
         displayPhotoUrl: workOSUser.profilePictureUrl || "",
         roles
     }
+}
+
+function isRole(role: string): role is Role {
+    return role === "admin" || role === "user"
 }

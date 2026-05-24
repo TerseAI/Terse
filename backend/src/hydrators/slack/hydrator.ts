@@ -91,8 +91,7 @@ export class SlackEventHydrator extends Hydrator<SlackTriggerRuntime> {
                 ...(teamId && { slack_team_id: teamId })
             },
             include: {
-                slack_integration: true,
-                user: true
+                slack_integration: true
             }
         })
 

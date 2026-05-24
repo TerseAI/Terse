@@ -24,8 +24,8 @@ import { GithubAppInstallation, GithubAppInstallationRepository, GithubAppInstal
 import { getGitHubAccessToken } from "../../outputs/github/githubApiClient"
 import { FileDownloadResult, StoredFile, buildGithubFileKey, ensureStoredWithMetadata } from "../../services/FileStorageService"
 import { SecretService } from "../../services/SecretService"
-import { githubApp, urls } from "../../settings"
-import { AgentTriggerWithConfigs, User as PrismaUser } from "../../types/prisma"
+import { urls } from "../../settings"
+import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
@@ -37,6 +37,7 @@ export class GithubIntegrationManager
     implements OAuthIntegrationInstallation<IntegrationType.GITHUB>
 {
     readonly integrationType = IntegrationType.GITHUB
+    readonly settingsKey = "githubApp"
     readonly secretSchema = z.object({
         accessToken: z.string()
     })
@@ -123,20 +124,20 @@ export class GithubIntegrationManager
     }
 
     async processWebhookEvent(event: GithubTrigger): Promise<void> {
-        const users: PrismaUser[] = await resolveUsersForGithubInstallation(event.installationId)
+        const userIds = await resolveUserIdsForGithubInstallation(event.installationId)
 
-        if (users.length === 0) {
+        if (userIds.length === 0) {
             logger.warn(`⚠️  No users found for GitHub event from ${event.installationId}`, { installationId: event.installationId, eventType: event.eventType })
             return
         }
 
-        for (const user of users) {
+        for (const userId of userIds) {
             const token = await db().github_app_tokens.findFirst({
-                where: { user_id: user.id },
+                where: { user_id: userId },
                 select: { id: true, organization_id: true }
             })
             if (!token?.organization_id) continue
-            const fullUser = await getUserForOrg(user.id, token.organization_id)
+            const fullUser = await getUserForOrg(userId, token.organization_id)
             if (!fullUser) continue
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
             if (!secrets) {
@@ -160,9 +161,9 @@ export class GithubIntegrationManager
         req: Request,
         res: Response
     ): Promise<OAuthInstallationDetails> {
-        const appName = githubApp.appName
-        const clientId = githubApp.clientId
-        const redirectUri = githubApp.integrateCallbackUrl
+        const appName = this.config.appName
+        const clientId = this.config.clientId
+        const redirectUri = this.config.integrateCallbackUrl
 
         const state = mintOAuthState(req, res, {
             userId,
@@ -209,19 +210,6 @@ export class GithubIntegrationManager
                 res.status(400).json({
                     message: "Organization context required. Please try again from the app."
                 })
-                return
-            }
-
-            const user: PrismaUser | null = await db().users.findUnique({
-                where: { id: user_id }
-            })
-
-            if (!user) {
-                logger.error("[GitHub Setup URL Installation] ERROR: User not found", {
-                    userId: user_id,
-                    installationId: installation_id
-                })
-                res.status(400).json({ message: "User not found" })
                 return
             }
 
@@ -291,8 +279,8 @@ export class GithubIntegrationManager
         try {
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: integrationId } })
             if (secrets?.accessToken) {
-                const basic = Buffer.from(`${githubApp.clientId}:${githubApp.clientSecret}`).toString("base64")
-                const response = await fetch(`https://api.github.com/applications/${githubApp.clientId}/token`, {
+                const basic = Buffer.from(`${this.config.clientId}:${this.config.clientSecret}`).toString("base64")
+                const response = await fetch(`https://api.github.com/applications/${this.config.clientId}/token`, {
                     method: "DELETE",
                     headers: {
                         Authorization: `Basic ${basic}`,
@@ -571,8 +559,8 @@ async function exchangeCodeForAccessToken(
     const tokenResp = await axios.post(
         "https://github.com/login/oauth/access_token",
         {
-            client_id: githubApp.clientId,
-            client_secret: githubApp.clientSecret,
+            client_id: new GithubIntegrationManager().config.clientId,
+            client_secret: new GithubIntegrationManager().config.clientSecret,
             code,
             ...(redirectUri && { redirect_uri: redirectUri })
         },
@@ -671,43 +659,28 @@ export async function getAppInstallationRepositories(oAuthToken: string, install
     return allRepositories
 }
 
-// Given an installation, we need to fetch all users that are associated with that installation.
-async function resolveUsersForGithubInstallation(installationId: number): Promise<PrismaUser[]> {
+// Given an installation, return the user ids associated with that installation.
+async function resolveUserIdsForGithubInstallation(installationId: number): Promise<string[]> {
     const secretService = SecretService.getInstance()
-    return db().$transaction(async tx => {
-        const githubAppUsers = await tx.github_app_tokens.findMany()
-        const installationResults = await Promise.all(
-            githubAppUsers.map(async user => {
-                const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
-                if (!secrets) {
-                    logger.warn(`Github app token ${user.id} is missing its secret blob; skipping`, { integrationId: user.id })
-                    return {
-                        userId: user.user_id,
-                        installations: []
-                    }
-                }
-
-                const installations = await getAppInstallationsForUser(secrets.accessToken, {
-                    userId: user.user_id,
-                    tokenId: user.id,
-                    installationId
-                })
-                return {
-                    userId: user.user_id,
-                    installations: installations.installations
-                }
+    const githubAppUsers = await db().github_app_tokens.findMany()
+    const installationResults = await Promise.all(
+        githubAppUsers.map(async user => {
+            const secrets = await secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: user.id } })
+            if (!secrets) {
+                logger.warn(`Github app token ${user.id} is missing its secret blob; skipping`, { integrationId: user.id })
+                return { userId: user.user_id, installations: [] }
+            }
+            const installations = await getAppInstallationsForUser(secrets.accessToken, {
+                userId: user.user_id,
+                tokenId: user.id,
+                installationId
             })
-        )
-        const userIds = installationResults.filter(result => result.installations.some(inst => inst.id === installationId)).map(result => result.userId)
-        const users = await tx.users.findMany({
-            where: { id: { in: userIds } }
+            return { userId: user.user_id, installations: installations.installations }
         })
-        logger.debug(`Found ${users.length} users for event from installation`, {
-            installationId,
-            userCount: users.length
-        })
-        return users
-    })
+    )
+    const userIds = installationResults.filter(result => result.installations.some(inst => inst.id === installationId)).map(result => result.userId)
+    logger.debug(`Found ${userIds.length} users for event from installation`, { installationId, userCount: userIds.length })
+    return userIds
 }
 
 export type ValidateGithubRepositoryIdsOptions = {

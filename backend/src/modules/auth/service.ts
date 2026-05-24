@@ -1,16 +1,11 @@
-import { User as WorkOSUser } from "@workos-inc/node"
 import crypto from "crypto"
 import { Response } from "express"
-import { ApiRoutes, UserMetadata, userMetadataSchema } from "terse-types"
+import { ApiRoutes } from "terse-types"
 import { Role, User } from "terse-types/types"
 
-import logger from "../../common/logger"
-import { extractErrorMessage } from "../../common/strings"
 import { workos } from "../../integrations/workos/helpers"
 import { AccessTokenClaims } from "../../modules/auth/helpers/accessTokenClaims"
 import { settings } from "../../settings"
-
-import { createUserWithDefaultNotifications, findUserByWorkosId } from "./repository"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
 export const WORKOS_OAUTH_STATE_COOKIE_NAME = "TERSE_WORKOS_OAUTH_STATE"
@@ -48,7 +43,6 @@ export interface WorkOSAuthContext {
         firstName: string | null
         lastName: string | null
         profilePictureUrl: string | null
-        metadata?: Record<string, string>
     }
     organizationId?: string | null
     roles?: string[]
@@ -90,27 +84,38 @@ export async function getWorkOSLogoutUrl(sealedSessionData: string | undefined, 
     return session.getLogoutUrl({ returnTo })
 }
 
-type UserWithMetadata = Omit<WorkOSUser, "metadata"> & { metadata: UserMetadata }
-
-async function setDefaultUserMetadata(workosUserId: string, dbUserId: string): Promise<UserWithMetadata> {
-    const metadata = userMetadataSchema.parse({ db_id: dbUserId })
-    const user = await workos.userManagement.updateUser({ userId: workosUserId, metadata })
-    return {
-        ...user,
-        metadata: userMetadataSchema.parse(user.metadata)
-    }
-}
-
-export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: User }> {
+export async function buildUserFromWorkOS(authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: User }> {
     const workosUser = authContext.user
+    const organizationId = authContext.organizationId ?? ""
 
-    // Fast path: JWT Template claims have our DB ID and org name — skip DB/WorkOS API calls
+    // Fast path: org_name lifted from JWT custom claim (no extra WorkOS call).
     if (claims) {
-        const user: User = {
-            id: claims.dbId,
-            workosId: workosUser.id,
-            organizationId: authContext.organizationId ?? "",
-            organizationName: claims.orgName,
+        return {
+            user: {
+                id: workosUser.id,
+                organizationId,
+                organizationName: claims.orgName,
+                email: workosUser.email,
+                displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
+                firstName: workosUser.firstName || null,
+                lastName: workosUser.lastName || null,
+                displayPhotoUrl: workosUser.profilePictureUrl || "",
+                roles: (authContext.roles || []) as Role[]
+            }
+        }
+    }
+
+    let organizationName = ""
+    if (organizationId) {
+        const organization = await workos.organizations.getOrganization(organizationId)
+        organizationName = organization.name
+    }
+
+    return {
+        user: {
+            id: workosUser.id,
+            organizationId,
+            organizationName,
             email: workosUser.email,
             displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
             firstName: workosUser.firstName || null,
@@ -118,42 +123,5 @@ export async function getOrCreateDbUserFromWorkOS(authContext: WorkOSAuthContext
             displayPhotoUrl: workosUser.profilePictureUrl || "",
             roles: (authContext.roles || []) as Role[]
         }
-        return { user }
     }
-
-    // Slow path: claims missing — look up DB user and org name
-    let dbUser = await findUserByWorkosId(workosUser.id)
-    let isNewUser = false
-    if (!dbUser) {
-        dbUser = await createUserWithDefaultNotifications(workosUser.id)
-        isNewUser = true
-    }
-
-    if (isNewUser || !workosUser.metadata?.db_id) {
-        try {
-            await setDefaultUserMetadata(workosUser.id, dbUser.id)
-        } catch (error) {
-            logger.warn("Failed to backfill WorkOS user metadata with db_id", { error: extractErrorMessage(error) })
-        }
-    }
-
-    let organizationName: string | undefined = undefined
-    if (authContext.organizationId) {
-        const organization = await workos.organizations.getOrganization(authContext.organizationId)
-        organizationName = organization.name
-    }
-
-    const user: User = {
-        id: dbUser.id,
-        workosId: workosUser.id,
-        organizationId: authContext.organizationId ?? "",
-        organizationName: organizationName ?? "",
-        email: workosUser.email,
-        displayName: [workosUser.firstName, workosUser.lastName].filter(Boolean).join(" ") || "",
-        firstName: workosUser.firstName || null,
-        lastName: workosUser.lastName || null,
-        displayPhotoUrl: workosUser.profilePictureUrl || "",
-        roles: (authContext.roles || []) as Role[]
-    }
-    return { user }
 }

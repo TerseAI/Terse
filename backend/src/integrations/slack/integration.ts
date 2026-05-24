@@ -24,8 +24,8 @@ import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oau
 import { KeyLimiter, RateLimiterClient } from "../../rateLimit/RateLimiterClient"
 import { FileCategory, FileDownloadResult, StoredFile, buildSlackFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { GetSecretsArg, SecretService } from "../../services/SecretService"
-import { slack as slackConfig, urls } from "../../settings"
-import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../../types/prisma"
+import { urls } from "../../settings"
+import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithSlack } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
@@ -39,6 +39,7 @@ export class SlackIntegrationManager
     implements OAuthIntegrationInstallation<IntegrationType.SLACK>
 {
     readonly integrationType = IntegrationType.SLACK
+    readonly settingsKey = "slack"
     readonly secretSchema = z.object({
         accessToken: z.string().optional(),
         authedUserAccessToken: z.string().optional()
@@ -256,8 +257,8 @@ export class SlackIntegrationManager
         if (!options) {
             throw new Error("Slack integration requires options (isBotUser)")
         }
-        const client_id = slackConfig.clientId
-        const redirect_uri = slackConfig.oauthCallbackUrl
+        const client_id = this.config.clientId
+        const redirect_uri = this.config.oauthCallbackUrl
         const isBotUser = options.isBotUser
         const scope = "channels:history,groups:history,im:history,channels:read,groups:read,im:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
         const user_scope = isBotUser
@@ -317,9 +318,9 @@ export class SlackIntegrationManager
             return
         }
 
-        const client_id = slackConfig.clientId
-        const client_secret = slackConfig.clientSecret
-        const redirect_uri = slackConfig.oauthCallbackUrl
+        const client_id = this.config.clientId
+        const client_secret = this.config.clientSecret
+        const redirect_uri = this.config.oauthCallbackUrl
 
         try {
             const response = await axios.post<SlackOAuthResponse>(
@@ -659,7 +660,7 @@ export class SlackIntegrationManager
 
         const userSlackIntegration = await prisma.user_slack_integrations.findUnique({
             where: { id: integrationId, organization_id: organizationId },
-            include: { slack_integration: true, user: true }
+            include: { slack_integration: true }
         })
 
         if (!userSlackIntegration?.slack_integration) {
@@ -789,7 +790,7 @@ function createSlackRouteError(message: string, statusCode: number, details?: st
     return error
 }
 
-const getSlackToken = async (integration: UserSlackIntegrationWithUser) => {
+const getSlackToken = async (integration: UserSlackIntegrationWithSlack) => {
     return await resolveSlackAccessToken(integration)
 }
 
@@ -811,8 +812,7 @@ export const fetchSlackChannelsForIntegration = async (userId: string, organizat
             organization_id: organizationId
         },
         include: {
-            slack_integration: true,
-            user: true
+            slack_integration: true
         }
     })
 
@@ -937,8 +937,7 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
             organization_id: organizationId
         },
         include: {
-            slack_integration: true,
-            user: true
+            slack_integration: true
         }
     })
     if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
@@ -1341,6 +1340,18 @@ async function fetchEnrichedSlackMessageData(client: WebClient, message: SlackMe
     }
 }
 
+function getSlackErrorCode(error: unknown): string | undefined {
+    const data = (error as { data?: { error?: unknown } } | undefined)?.data
+    return typeof data?.error === "string" ? data.error : undefined
+}
+
+const EXPECTED_NOT_IN_CHANNEL_ERRORS = new Set(["channel_not_found", "not_in_channel", "is_archived", "missing_scope"])
+
+function isExpectedNotInChannelError(error: unknown): boolean {
+    const code = getSlackErrorCode(error)
+    return code !== undefined && EXPECTED_NOT_IN_CHANNEL_ERRORS.has(code)
+}
+
 function inferSlackChannelType(channelId: string, fallback?: SlackChannelType | null): SlackChannelType | null {
     if (fallback) {
         return fallback
@@ -1408,13 +1419,12 @@ function buildSlackTriggerData(params: {
     }
 }
 
-async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: string, channelType: SlackChannelType | null): Promise<UserSlackIntegrationWithUser[]> {
+async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: string, channelType: SlackChannelType | null): Promise<UserSlackIntegrationWithSlack[]> {
     const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
         where: {
             slack_team_id: teamId
         },
         include: {
-            user: true,
             slack_integration: true
         }
     })
@@ -1422,7 +1432,7 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
     const resolvedChannelType = inferSlackChannelType(channelId, channelType)
     const isPublicChannel = resolvedChannelType === SlackChannelType.CHANNEL
 
-    const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
+    const isInChannel = async (integration: UserSlackIntegrationWithSlack) => {
         try {
             const botClient = await initializeSlackWebClient(integration)
 
@@ -1432,6 +1442,14 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
                     channel: channelId
                 })
             } catch (error) {
+                if (isExpectedNotInChannelError(error)) {
+                    logger.debug("conversations.members says user not in channel", {
+                        error: getSlackErrorCode(error),
+                        channel: channelId,
+                        teamId
+                    })
+                    return false
+                }
                 logger.error(`Error getting members`, {
                     error,
                     channel: channelId,
@@ -1453,6 +1471,14 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
                 return false
             }
         } catch (error) {
+            if (isExpectedNotInChannelError(error)) {
+                logger.debug("conversations.members says user not in channel", {
+                    error: getSlackErrorCode(error),
+                    channel: channelId,
+                    teamId
+                })
+                return false
+            }
             logger.error(`Error getting members`, {
                 error,
                 channel: channelId,
@@ -1476,7 +1502,7 @@ async function getFilteredWorkspaceUserIntegrations(teamId: string, channelId: s
 }
 
 async function processSlackAutomationForUsers(args: {
-    filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[]
+    filteredWorkspaceUserIntegrations: UserSlackIntegrationWithSlack[]
     slackEventData: SlackTrigger
     storedFiles?: StoredFile[]
     teamId: string
@@ -1488,7 +1514,7 @@ async function processSlackAutomationForUsers(args: {
         try {
             const organizationId = userSlackIntegration.organization_id
             if (!organizationId) continue
-            const fullUser = await getUserForOrg(userSlackIntegration.user.id, organizationId)
+            const fullUser = await getUserForOrg(userSlackIntegration.user_id, organizationId)
             if (!fullUser) continue
             await runWithUserContext(fullUser, async () => {
                 const slackEvent = new SlackTriggerRuntime(slackEventData, userSlackIntegration.id, storedFiles)
@@ -1506,9 +1532,9 @@ async function processSlackAutomationForUsers(args: {
                 }
             })
         } catch (error) {
-            logger.error(`Error processing automations for user ${userSlackIntegration.user.id}`, {
+            logger.error(`Error processing automations for user ${userSlackIntegration.user_id}`, {
                 error,
-                userId: userSlackIntegration.user.id
+                userId: userSlackIntegration.user_id
             })
         }
     }

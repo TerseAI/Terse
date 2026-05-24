@@ -30,6 +30,7 @@ export class WebMonitorIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.WEBMONITOR>
 {
     readonly integrationType = IntegrationType.WEBMONITOR
+    readonly settingsKey = "parallel"
 
     getFormFields(): FormFieldDefinition[] {
         return []
@@ -336,7 +337,7 @@ export async function createMonitor(body: CreateMonitorBody): Promise<{ monitor_
         throw new Error("Frequency must be between 1 and 30 days")
     }
 
-    const client = new Client({ apiKey: settings.parallel.apiKey })
+    const client = new Client({ apiKey: new WebMonitorIntegrationManager().config.apiKey })
     const monitor = (await client.post("/v1alpha/monitors", {
         body: {
             query,
@@ -356,7 +357,7 @@ interface GetMonitorResponse {
 }
 
 export async function getMonitor(monitorId: string): Promise<GetMonitorResponse> {
-    const client = new Client({ apiKey: settings.parallel.apiKey })
+    const client = new Client({ apiKey: new WebMonitorIntegrationManager().config.apiKey })
     const response = (await client.get(`/v1alpha/monitors/${monitorId}`)) as {
         query: string
         frequency: string
@@ -381,12 +382,12 @@ function parseParallelFrequency(frequency: string): { number: number; unit: Freq
 }
 
 async function parallelMonitorsDelete(monitorId: string): Promise<void> {
-    const client = new Client({ apiKey: settings.parallel.apiKey })
+    const client = new Client({ apiKey: new WebMonitorIntegrationManager().config.apiKey })
     await client.delete(`/v1alpha/monitors/${monitorId}`)
 }
 
 export async function getEventGroup(monitorId: string, eventGroupId: string): Promise<ParallelMonitorEvent[]> {
-    const client = new Client({ apiKey: settings.parallel.apiKey })
+    const client = new Client({ apiKey: new WebMonitorIntegrationManager().config.apiKey })
     const response = (await client.get(`/v1alpha/monitors/${monitorId}/event_groups/${eventGroupId}`)) as {
         events?: unknown[]
     }
@@ -395,7 +396,7 @@ export async function getEventGroup(monitorId: string, eventGroupId: string): Pr
 }
 
 async function listMonitorEvents(monitorId: string, lookbackPeriod: string = "10d"): Promise<ParallelMonitorEvent[]> {
-    const client = new Client({ apiKey: settings.parallel.apiKey })
+    const client = new Client({ apiKey: new WebMonitorIntegrationManager().config.apiKey })
     const response = (await client.get(`/v1alpha/monitors/${monitorId}/events?lookback_period=${encodeURIComponent(lookbackPeriod)}`)) as {
         events?: Array<unknown>
     }

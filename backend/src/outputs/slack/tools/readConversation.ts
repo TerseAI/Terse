@@ -34,8 +34,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
                     organization_id: organizationId
                 },
                 include: {
-                    slack_integration: true,
-                    user: true
+                    slack_integration: true
                 }
             })
 

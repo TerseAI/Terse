@@ -1,10 +1,8 @@
 import { Prisma } from "@prisma/client"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectSourceFilesResponse, ProjectsListResponse } from "terse-types/types"
+import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectsListResponse } from "terse-types/types"
 
 import logger from "../../common/logger"
-import { getActiveSourceCodeGcsKeyForProject } from "../../common/projectHelper"
-import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from "../../common/sdkZipReader"
 import { generateWebhookSecret } from "../../common/webhookSecrets"
 import { workos } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
@@ -17,7 +15,6 @@ import {
     DeployRow,
     createProjectRow,
     deleteProject,
-    findActiveDeployWithSourceImage,
     findFirstActiveRunForAutomations,
     findProjectBasic,
     findProjectDeploys,
@@ -106,7 +103,7 @@ export async function getProjectDeploysForOrganization(projectId: string, organi
 
     const { deploys: deployRows, activeDeployId } = await findProjectDeploys(projectId, MAX_DEPLOYS_RETURNED)
 
-    const workosIds = Array.from(new Set(deployRows.map(d => d.deployed_by?.workos_id).filter((w): w is string => !!w)))
+    const workosIds = Array.from(new Set(deployRows.map(d => d.deployed_by_user_id).filter((w): w is string => !!w)))
     const workosUsers = await Promise.all(
         workosIds.map(async workosId => {
             try {
@@ -121,11 +118,11 @@ export async function getProjectDeploysForOrganization(projectId: string, organi
     const workosUserById = new Map(workosUsers)
 
     const deploys: ProjectDeploy[] = deployRows.map((d: DeployRow) => {
-        const dbUser = d.deployed_by
-        const workosUser = dbUser?.workos_id ? workosUserById.get(dbUser.workos_id) : null
-        const deployedBy: ProjectDeployUser | null = dbUser
+        const deployerId = d.deployed_by_user_id
+        const workosUser = deployerId ? workosUserById.get(deployerId) : null
+        const deployedBy: ProjectDeployUser | null = deployerId
             ? {
-                  id: dbUser.id,
+                  id: deployerId,
                   displayName: workosUser ? `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || workosUser.email : "Unknown",
                   email: workosUser?.email ?? null,
                   avatarUrl: workosUser?.profilePictureUrl ?? null
@@ -146,38 +143,6 @@ export async function getProjectDeploysForOrganization(projectId: string, organi
     })
 
     return { projectId, deploys }
-}
-
-export async function getProjectSourceFiles(projectId: string, organizationId: string): Promise<ProjectSourceFilesResponse> {
-    const project = await findProjectBasic(projectId, organizationId)
-    if (!project) throw new ProjectNotFoundError()
-
-    const activeDeploy = await findActiveDeployWithSourceImage(projectId)
-    if (!activeDeploy?.sdk_source_image?.gcs_key) {
-        return { projectId, deployId: null, deployedAt: null, files: [] }
-    }
-
-    const zip = await loadSdkSourceZip(activeDeploy.sdk_source_image.gcs_key)
-    const files = zip ? listSdkZipPathsRecursive(zip) : []
-    return {
-        projectId,
-        deployId: activeDeploy.id,
-        deployedAt: activeDeploy.created_at.toISOString(),
-        files
-    }
-}
-
-export async function getProjectSourceFileContent(projectId: string, fileId: string, organizationId: string) {
-    const project = await findProjectBasic(projectId, organizationId)
-    if (!project) throw new ProjectNotFoundError()
-
-    const gcsKey = await getActiveSourceCodeGcsKeyForProject(projectId)
-    const zip = await loadSdkSourceZip(gcsKey)
-    if (!zip) throw new ProjectBadRequestError("No source archive for this project")
-
-    const payload = extractSdkZipFile(zip, fileId)
-    if (!payload) throw new ProjectNotFoundError()
-    return payload
 }
 
 export async function rotateSigningSecret(projectId: string, organizationId: string, userId: string): Promise<{ signingSecret: string }> {

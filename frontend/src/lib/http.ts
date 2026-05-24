@@ -19,6 +19,7 @@ import {
     DatadogIntegration,
     GithubIntegration,
     GmailIntegration,
+    HeyReachIntegration,
     InstallationOptionsFor,
     IntegrationType,
     IntegrationWithStatus,
@@ -37,8 +38,6 @@ import { GetSentNotificationsResponse } from "terse-types/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 import {
     Agent,
-    AgentFileContentResponse,
-    AgentFilesResponse,
     type AgentTrigger,
     AgentUpdate,
     AgentsResponse,
@@ -61,7 +60,6 @@ import {
     ProjectRotateApiKeyResponse,
     ProjectRotateSigningSecretResponse,
     ProjectSecretsListResponse,
-    ProjectSourceFilesResponse,
     ProjectsListResponse,
     RecentAgent,
     SdkJobServerCheckResponse,
@@ -283,6 +281,16 @@ interface BackendService {
     getHeyReachCampaigns(integrationId: string): Promise<{ campaigns: Array<{ id: string; name: string }> }>
 
     /**
+     * Gets all HeyReach integrations for the current user
+     */
+    getHeyReachIntegrations(): Promise<HeyReachIntegration[]>
+
+    /**
+     * Creates or updates a HeyReach integration with an API key
+     */
+    createOrUpdateHeyReachIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
+
+    /**
      * Gets available channels for a Slack integration
      */
     getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>
@@ -341,16 +349,6 @@ interface BackendService {
      * Deletes one project secret by name.
      */
     deleteProjectSecret(id: string, name: string): Promise<void>
-
-    /**
-     * Lists the source files of a project's currently-active deploy.
-     */
-    getProjectSourceFiles(id: string): Promise<ProjectSourceFilesResponse>
-
-    /**
-     * Returns the raw bytes (base64) of a single file from the project's active deploy archive.
-     */
-    getProjectSourceFileContent(id: string, fileId: string): Promise<AgentFileContentResponse>
 
     /**
      * Verifies that a self-hosted SDK job server is reachable and correctly configured
@@ -593,16 +591,6 @@ interface BackendService {
         stateToken?: string
     ): Promise<{ success: boolean; accountIdentifier: string; warehouse: string }>
 
-    /**
-     * Lists out the files uploaded to an agent
-     */
-    getAgentFiles(agentId: string): Promise<AgentFilesResponse>
-
-    /**
-     * Gets the content of a file uploaded to an agent as a presigend URL
-     */
-    getAgentFileContent(agentId: string, fileId: string): Promise<AgentFileContentResponse>
-
     getBillingContext(params: BillingContextQuery): Promise<BillingContextResponse>
     getBillingUsageBuckets(params: BillingUsageBucketsQuery): Promise<UsageResponse>
     getBillingStatus(): Promise<BillingStatusResponse>
@@ -830,6 +818,18 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
     },
 
+    getHeyReachIntegrations: () => {
+        return axios.get<HeyReachIntegration[]>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    createOrUpdateHeyReachIntegration: (apiKey: string, stateToken?: string) => {
+        const body: Record<string, string> = { apiKey }
+        if (stateToken) {
+            body.state = stateToken
+        }
+        return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
+    },
+
     getSlackIntegrations: () => {
         return axios.get<SlackIntegration[]>(`${backendBaseUrl}${ApiRoutes.SLACK.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
@@ -929,16 +929,6 @@ export const BackendProvider: BackendService = {
     deleteProjectSecret: (id: string, name: string) => {
         const url = buildRoute(ApiRoutes.PROJECT_SECRETS.DELETE, { id, name })
         return axios.delete<void>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(() => undefined)
-    },
-
-    getProjectSourceFiles: (id: string) => {
-        const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILES, { id })
-        return axios.get<ProjectSourceFilesResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
-    },
-
-    getProjectSourceFileContent: (id: string, fileId: string) => {
-        const url = buildRoute(ApiRoutes.PROJECTS.SOURCE_FILE_CONTENT, { id, fileId })
-        return axios.get<AgentFileContentResponse>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     verifySdkJobServer: (agentId: string) => {
@@ -1242,13 +1232,6 @@ export const BackendProvider: BackendService = {
             ...(applyToAllAgents !== undefined && { applyToAllAgents })
         }
         return axios.post(`${backendBaseUrl}${ApiRoutes.NOTIFICATION_SETTINGS}`, payload, { withCredentials: true }).then(() => undefined)
-    },
-    getAgentFiles: (agentId: string) => {
-        return axios.get<AgentFilesResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILES, { agentId })}`, { withCredentials: true }).then(response => response.data)
-    },
-
-    getAgentFileContent: (agentId: string, fileId: string) => {
-        return axios.get<AgentFileContentResponse>(`${backendBaseUrl}${buildRoute(ApiRoutes.AGENTS.FILE_CONTENT, { agentId, fileId })}`, { withCredentials: true }).then(response => response.data)
     },
     getBillingContext: (params: BillingContextQuery) =>
         axios.get<BillingContextResponse>(`${backendBaseUrl}${ApiRoutes.BILLING.CONTEXT}`, { withCredentials: true, params }).then(response => response.data),

@@ -10,19 +10,12 @@ if (!gcp.serviceAccountBase64 || !gcp.projectId || !gcs.imageBucket) {
     throw new Error("GCS not configured - file storage disabled. Set GCP_SERVICE_ACCOUNT_BASE64, GCP_PROJECT_ID, and GCS_IMAGE_BUCKET to enable.")
 }
 
-export type BucketTarget = "image" | "code"
-
 interface BucketConfig {
     bucket: string
     prefix?: string
 }
 
-function resolveBucket(target: BucketTarget = "image"): BucketConfig {
-    if (target === "code") {
-        const bucket = gcs.codeBucket ?? gcs.imageBucket
-        if (!bucket) throw new Error("No GCS bucket configured for code storage")
-        return { bucket, prefix: gcs.codePrefix }
-    }
+function resolveBucket(): BucketConfig {
     if (!gcs.imageBucket) throw new Error("No GCS bucket configured for image storage")
     return { bucket: gcs.imageBucket, prefix: gcs.imagePrefix }
 }
@@ -154,22 +147,22 @@ function sanitizeObjectKey(primaryKey: string): string {
     return primaryKey.replace(/[^a-zA-Z0-9._\-\/]/g, "_")
 }
 
-function buildObjectName(primaryKey: string, target?: BucketTarget): string {
+function buildObjectName(primaryKey: string): string {
     const sanitized = sanitizeObjectKey(primaryKey)
-    const { prefix } = resolveBucket(target)
+    const { prefix } = resolveBucket()
     if (prefix) {
         return `${prefix}/${sanitized}`
     }
     return sanitized
 }
 
-function getFile(primaryKey: string, target?: BucketTarget): File | null {
+function getFile(primaryKey: string): File | null {
     const storage = getStorageClient()
     if (!storage) {
         return null
     }
-    const { bucket } = resolveBucket(target)
-    const objectName = buildObjectName(primaryKey, target)
+    const { bucket } = resolveBucket()
+    const objectName = buildObjectName(primaryKey)
     return storage.bucket(bucket).file(objectName)
 }
 
@@ -182,8 +175,8 @@ async function generatePresignedUrl(file: File): Promise<string> {
     return signedUrl
 }
 
-export async function ensureStoredWithMetadata(primaryKey: string, download: FileDownloadFn, target?: BucketTarget): Promise<StoredFile | null> {
-    const file = getFile(primaryKey, target)
+export async function ensureStoredWithMetadata(primaryKey: string, download: FileDownloadFn): Promise<StoredFile | null> {
+    const file = getFile(primaryKey)
 
     if (!file) {
         logger.debug("GCS not configured, skipping file storage", { primaryKey })
@@ -285,7 +278,7 @@ function isInternalGcsBucketUrl(url: string): boolean {
         return false
     }
 
-    const knownBuckets = [gcs.imageBucket, gcs.codeBucket].filter((b): b is string => !!b).map(b => b.trim().toLowerCase())
+    const knownBuckets = [gcs.imageBucket].filter((b): b is string => !!b).map(b => b.trim().toLowerCase())
 
     if (knownBuckets.length === 0) {
         return false
@@ -329,58 +322,6 @@ export function buildGithubFileKey(integraitonId: string, fileId: string): strin
 export function buildImageEditKey(organizationId: string, imageUrl: string, prompt: string): string {
     const hash = crypto.createHash("sha256").update(`${organizationId}\0${imageUrl}\0${prompt}`, "utf8").digest("hex")
     return `image-edits/${organizationId}/${hash}`
-}
-
-// SDK deploy helpers
-
-function buildSdkDeployKey(zipBuffer: Buffer): string {
-    const hash = crypto.createHash("sha256").update(zipBuffer).digest("hex")
-    return `sdk-deploys/${hash}/code.zip`
-}
-
-export async function uploadSdkDeployZip(zipBuffer: Buffer): Promise<string> {
-    const primaryKey = buildSdkDeployKey(zipBuffer)
-    const file = getFile(primaryKey, "code")
-
-    if (!file) {
-        throw new Error("GCS not configured — cannot upload SDK deploy zip")
-    }
-
-    const [exists] = await file.exists()
-    if (exists) {
-        logger.info("SDK deploy zip already exists in GCS, skipping upload", { primaryKey })
-        return primaryKey
-    }
-
-    await file.save(zipBuffer, {
-        contentType: "application/zip",
-        metadata: {
-            cacheControl: "no-cache"
-        }
-    })
-
-    logger.info("SDK deploy zip uploaded to GCS", { primaryKey, sizeBytes: zipBuffer.length })
-    return primaryKey
-}
-
-export async function downloadSdkDeployZip(gcsKey: string): Promise<Buffer | null> {
-    const file = getFile(gcsKey, "code")
-
-    if (!file) {
-        return null
-    }
-
-    try {
-        const [exists] = await file.exists()
-        if (!exists) {
-            return null
-        }
-        const [data] = await file.download()
-        return data
-    } catch (error) {
-        logger.error("Error downloading SDK deploy zip", { gcsKey, error })
-        return null
-    }
 }
 
 // Organization logo helpers

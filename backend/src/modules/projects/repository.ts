@@ -77,7 +77,7 @@ export async function createProjectRow(organizationId: string, name: string) {
     })
 }
 
-export type DeployRow = Prisma.project_deploysGetPayload<{ include: { deployed_by: true } }>
+export type DeployRow = Prisma.project_deploysGetPayload<object>
 
 export async function findProjectDeploys(projectId: string, max: number): Promise<{ deploys: DeployRow[]; activeDeployId: string | null }> {
     const prisma = db()
@@ -85,8 +85,7 @@ export async function findProjectDeploys(projectId: string, max: number): Promis
         prisma.project_deploys.findMany({
             where: { project_id: projectId },
             orderBy: { created_at: "desc" },
-            take: max,
-            include: { deployed_by: true }
+            take: max
         }),
         prisma.project_deploys.findFirst({
             where: { project_id: projectId, status: "SUCCEEDED" },
@@ -95,12 +94,4 @@ export async function findProjectDeploys(projectId: string, max: number): Promis
         })
     ])
     return { deploys: deployRows, activeDeployId: activeDeploy?.id ?? null }
-}
-
-export async function findActiveDeployWithSourceImage(projectId: string) {
-    return db().project_deploys.findFirst({
-        where: { project_id: projectId, status: "SUCCEEDED" },
-        orderBy: { created_at: "desc" },
-        include: { sdk_source_image: true }
-    })
 }

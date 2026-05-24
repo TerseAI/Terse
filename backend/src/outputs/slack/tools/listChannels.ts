@@ -51,7 +51,7 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
         try {
             const userSlackIntegration = await db().user_slack_integrations.findFirst({
                 where: { id: integrationId, organization_id: organizationId },
-                include: { slack_integration: true, user: true }
+                include: { slack_integration: true }
             })
 
             if (!userSlackIntegration) {

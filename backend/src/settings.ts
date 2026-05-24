@@ -48,6 +48,20 @@ function optionalBoolEnv(name: string, defaultValue = false): boolean {
     throw new Error(`Invalid boolean environment variable: ${name}. Expected "true" or "false".`)
 }
 
+/**
+ * Builds an opt-in integration config block. If none of the listed env vars are set, returns `undefined`
+ * so the integration registers as "unavailable" and self-hosters can skip it. If any are set but the
+ * builder throws (e.g. a missing requireEnv), the error propagates — partial configuration is misconfig.
+ */
+function optionalIntegrationSettings<T>(envNames: readonly string[], build: () => T): T | undefined {
+    const anySet = envNames.some(n => {
+        const v = process.env[n]
+        return v !== undefined && v.trim() !== ""
+    })
+    if (!anySet) return undefined
+    return build()
+}
+
 // Core configuration
 export const settings = {
     // Core secrets and keys
@@ -95,8 +109,8 @@ export const settings = {
         checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")!
     },
 
-    // Gmail OAuth
-    gmail: {
+    // Gmail OAuth — opt-in
+    gmail: optionalIntegrationSettings(["GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_REDIRECT_URI", "GMAIL_PUBSUB_TOPIC", "GMAIL_FRONTEND_REDIRECT"], () => ({
         clientId: requireEnv("GMAIL_CLIENT_ID"),
         clientSecret: requireEnv("GMAIL_CLIENT_SECRET"),
         redirectUri: requireEnv("GMAIL_REDIRECT_URI"),
@@ -106,47 +120,47 @@ export const settings = {
         // OIDC verification for inbound Pub/Sub push deliveries.
         pubsubAudience: optionalEnv("GMAIL_PUBSUB_AUDIENCE"),
         pubsubServiceAccountEmail: optionalEnv("GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL")
-    },
+    })),
 
-    // GitHub App (for repository integration and OAuth)
-    githubApp: {
+    // GitHub App (for repository integration and OAuth) — opt-in
+    githubApp: optionalIntegrationSettings(["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "GITHUB_APP_CALLBACK_URL", "GITHUB_APP_NAME"], () => ({
         clientId: requireEnv("GITHUB_CLIENT_ID"),
         clientSecret: requireEnv("GITHUB_CLIENT_SECRET"),
         integrateCallbackUrl: requireEnv("GITHUB_APP_CALLBACK_URL"),
         loginCallbackUrl: optionalEnv("GITHUB_LOGIN_CALLBACK_URL"),
         appName: requireEnv("GITHUB_APP_NAME"),
         loginRedirect: optionalEnv("GITHUB_LOGIN_REDIRECT")
-    },
+    })),
 
-    // Notion OAuth
-    notion: {
+    // Notion OAuth — opt-in
+    notion: optionalIntegrationSettings(["NOTION_OAUTH_CLIENT_ID", "NOTION_OAUTH_CLIENT_SECRET", "NOTION_OAUTH_REDIRECT_URI"], () => ({
         clientId: requireEnv("NOTION_OAUTH_CLIENT_ID"),
         clientSecret: requireEnv("NOTION_OAUTH_CLIENT_SECRET"),
         redirectUri: requireEnv("NOTION_OAUTH_REDIRECT_URI")
-    },
+    })),
 
-    // Slack OAuth
-    slack: {
+    // Slack OAuth — opt-in
+    slack: optionalIntegrationSettings(["SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET", "SLACK_OAUTH_CALLBACK_URL"], () => ({
         clientId: requireEnv("SLACK_CLIENT_ID"),
         clientSecret: requireEnv("SLACK_CLIENT_SECRET"),
         oauthCallbackUrl: requireEnv("SLACK_OAUTH_CALLBACK_URL"),
         signingSecret: optionalEnv("SLACK_SIGNING_SECRET")
-    },
+    })),
 
-    // Linear OAuth
-    linear: {
+    // Linear OAuth — opt-in
+    linear: optionalIntegrationSettings(["LINEAR_CLIENT_ID", "LINEAR_CLIENT_SECRET_ID", "LINEAR_OAUTH_CALLBACK_URL", "LINEAR_WEBHOOK_SIGNING_SECRET"], () => ({
         clientId: requireEnv("LINEAR_CLIENT_ID"),
         clientSecret: requireEnv("LINEAR_CLIENT_SECRET_ID"),
         oauthCallbackUrl: requireEnv("LINEAR_OAUTH_CALLBACK_URL"),
         signingSecret: requireSecretMinLength("LINEAR_WEBHOOK_SIGNING_SECRET")
-    },
+    })),
 
-    // Attio OAuth
-    attio: {
+    // Attio OAuth — opt-in
+    attio: optionalIntegrationSettings(["ATTIO_CLIENT_ID", "ATTIO_CLIENT_SECRET", "ATTIO_REDIRECT_URI"], () => ({
         clientId: requireEnv("ATTIO_CLIENT_ID"),
         clientSecret: requireEnv("ATTIO_CLIENT_SECRET"),
         redirectUri: requireEnv("ATTIO_REDIRECT_URI")
-    },
+    })),
 
     // Google Cloud Platform (GCP)
     gcp: {
@@ -158,15 +172,13 @@ export const settings = {
     // Google Cloud Storage
     gcs: {
         imageBucket: optionalEnv("GCS_IMAGE_BUCKET", "terse-documents"),
-        imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images"),
-        codeBucket: optionalEnv("GCS_CODE_BUCKET", "terse-sdk-zips"),
-        codePrefix: optionalEnv("GCS_CODE_PREFIX", "sdk-zips")
+        imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images")
     },
 
-    // Cloud Scheduler (for cron jobs)
-    cloudScheduler: {
+    // Cloud Scheduler (for cron jobs) — opt-in
+    cloudScheduler: optionalIntegrationSettings(["CLOUD_SCHEDULER_SECRET"], () => ({
         secret: requireSecretMinLength("CLOUD_SCHEDULER_SECRET")
-    },
+    })),
 
     // Posthog Logs
     posthog: {
@@ -201,11 +213,11 @@ export const settings = {
         corsAllowedOrigins: optionalEnv("CORS_ALLOWED_ORIGINS")
     },
 
-    // Parallel (Web Event monitors + webhook verification)
-    parallel: {
+    // Parallel (Web Event monitors + webhook verification) — opt-in
+    parallel: optionalIntegrationSettings(["PARALLEL_API_KEY", "PARALLEL_WEBHOOK_SECRET"], () => ({
         apiKey: requireEnv("PARALLEL_API_KEY"),
         webhookSecret: requireSecretMinLength("PARALLEL_WEBHOOK_SECRET")
-    },
+    })),
 
     aisdk: {
         default: optionalEnv("MODEL_DEFAULT", "anthropic:claude-opus-4-7")
@@ -222,8 +234,10 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
     throw new Error("BILLING_ENABLED is true but BILLING_SERVICE_URL or BILLING_JWT_SECRET is missing. Set both, or unset BILLING_ENABLED.")
 }
 
-// Export individual settings for convenience
-export const { jwt, gemini, urls, gmail, githubApp, notion, slack, attio, gcp, gcs, cloudScheduler, optional } = settings
+// Export individual always-on settings for convenience. Opt-in integration blocks
+// (gmail, githubApp, notion, slack, linear, attio, cloudScheduler, parallel) must be
+// accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
+export const { jwt, gemini, urls, gcp, gcs, optional } = settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively

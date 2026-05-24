@@ -290,8 +290,6 @@ function readEligibleLocalEnv(envPath: string): ProjectSecretUpsertRequest[] {
 
 function getStageMessage(stage: SdkDeployStage): string {
     switch (stage) {
-        case "UPLOADING_SOURCE":
-            return "Uploading source"
         case "BUILDING_DEPENDENCY_IMAGE":
             return "Building dependency image"
         case "BUILDING_SOURCE_IMAGE":

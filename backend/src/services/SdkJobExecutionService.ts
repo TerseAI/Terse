@@ -14,11 +14,9 @@ import { classifyAgentError } from "../modules/agents/agentErrorUtils"
 import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../modules/agents/systemEvents/processOutputSystemEvent"
 import { createSandboxToken } from "../modules/auth/helpers/apiTokens"
 import { settings } from "../settings"
-import { AgentWithRelations, project_deploys } from "../types/prisma"
+import { AgentWithRelations } from "../types/prisma"
 
 import { getSocketIO } from "./CacheInvalidationService"
-import { downloadSdkDeployZip } from "./FileStorageService"
-import { SdkSandboxImageService } from "./SdkSandboxImageService"
 import { SecretService } from "./SecretService"
 import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
@@ -26,7 +24,6 @@ import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjec
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 interface SdkJobExecutionParams {
-    gcsKey: string
     runId: string
     agent: AgentWithRelations
     orgId: string
@@ -43,8 +40,6 @@ type SdkSourceImageRecord = {
     sourceLayerKey: string
     cliVersion: string
 }
-
-type ResolvedSdkSourceImage = SdkSourceImageRecord & { zipBuffer?: Buffer }
 
 export class SdkJobExecutionService {
     private emitter: StreamEventEmitter | null = null
@@ -94,16 +89,17 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { gcsKey, runId, agent, orgId, userId, user, jobName } = params
+        const { runId, agent, userId, user, jobName } = params
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
 
         let sandboxApiKey: string | undefined
         let sandboxTokenId: string | undefined
+        const orgId = params.orgId
 
         try {
-            const sourceImage = await this.resolveOrPrepareSourceImage({ agent, gcsKey, orgId, runId })
+            const sourceImage = await this.resolveSourceImage({ agent, runId })
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
 
             const { rawToken, tokenId } = await createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id })
@@ -167,67 +163,23 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async resolveOrPrepareSourceImage(params: { agent: AgentWithRelations; gcsKey: string; orgId: string; runId: string }): Promise<ResolvedSdkSourceImage> {
-        const { agent, gcsKey, orgId, runId } = params
+    private async resolveSourceImage(params: { agent: AgentWithRelations; runId: string }): Promise<SdkSourceImageRecord> {
+        const { agent, runId } = params
+        // Single query — derive both the deploy attachment and the source image from the same snapshot.
+        // If a new deploy lands between queue-time and now, this run executes against it consistently.
         const activeDeploy = await getActiveDeployForProject(agent.project.id)
-        if (!activeDeploy) {
-            throw new Error(`SDK agent "${agent.id}" is missing active deploy`)
+        if (!activeDeploy?.sdk_source_image_id) {
+            throw new Error(`SDK agent "${agent.id}" is missing an active source image`)
         }
 
-        if (activeDeploy.sdk_source_image_id) {
-            const sourceImage = await this.getSourceImageRecord(activeDeploy.sdk_source_image_id)
-            if (sourceImage) {
-                await this.touchSourceImageUsage(sourceImage)
-                await attachProjectDeployToRun(runId, activeDeploy.id)
-                return sourceImage
-            }
-
-            logger.warn("SDK sandbox: prompt referenced missing sdk_source_images row, rebuilding from GCS", {
-                agentId: agent.id,
-                runId,
-                sourceImageId: activeDeploy.sdk_source_image_id
-            })
-        }
-
-        const zipBuffer = await this.downloadSourceZipFromGcs(gcsKey, runId, agent.id)
-        return this.prepareAndLinkSourceImage({ agent, gcsKey, orgId, runId, zipBuffer, activeDeploy })
-    }
-
-    private async prepareAndLinkSourceImage(params: {
-        agent: AgentWithRelations
-        gcsKey: string
-        orgId: string
-        runId: string
-        zipBuffer: Buffer
-        activeDeploy: project_deploys
-    }): Promise<ResolvedSdkSourceImage> {
-        const { agent, gcsKey, orgId, runId, zipBuffer, activeDeploy } = params
-        const cliVersion = "latest"
-        const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
-            zipBuffer,
-            gcsKey,
-            organizationId: orgId,
-            cliVersion
-        })
-
-        if (!activeDeploy.sdk_source_image_id) {
-            await db().project_deploys.update({
-                where: { id: activeDeploy.id },
-                data: { sdk_source_image_id: preparedImages.sourceImageId }
-            })
-        }
-
-        await attachProjectDeployToRun(runId, activeDeploy.id)
-
-        const sourceImage = await this.getSourceImageRecord(preparedImages.sourceImageId)
+        const sourceImage = await this.getSourceImageRecord(activeDeploy.sdk_source_image_id)
         if (!sourceImage) {
-            throw new Error(`Prepared SDK source image ${preparedImages.sourceImageId} was not found`)
+            throw new Error(`SDK source image row not found: ${activeDeploy.sdk_source_image_id}`)
         }
 
-        return {
-            ...sourceImage,
-            zipBuffer
-        }
+        await this.touchSourceImageUsage(sourceImage)
+        await attachProjectDeployToRun(runId, activeDeploy.id)
+        return sourceImage
     }
 
     private async getSourceImageRecord(sourceImageId: string): Promise<SdkSourceImageRecord | null> {
@@ -307,31 +259,6 @@ export class SdkJobExecutionService {
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, SDK_SOURCE_IMAGE_PROJECT_DIR, true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
-    }
-
-    private async downloadSourceZipFromGcs(gcsKey: string, runId: string, agentId: string): Promise<Buffer> {
-        this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "started")
-        const start = performance.now()
-
-        const zipBuffer = await downloadSdkDeployZip(gcsKey)
-        if (!zipBuffer) {
-            this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "failed", {
-                duration_ms: this.elapsedMs(start),
-                detail: "Failed to download SDK deploy zip from GCS"
-            })
-            throw new Error("Failed to download SDK deploy zip from GCS")
-        }
-
-        this.emitSandboxStatus(SandboxStage.DOWNLOADING_SOURCE, "completed", { duration_ms: this.elapsedMs(start) })
-        logger.info("SDK sandbox: downloaded zip from GCS", {
-            runId,
-            agentId,
-            gcsKey,
-            duration: this.elapsed(start),
-            sizeBytes: zipBuffer.length
-        })
-
-        return zipBuffer
     }
 
     private createRuntimeExecutorContext(

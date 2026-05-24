@@ -2,13 +2,11 @@ import { Request, Response } from "express"
 import { isValidToolName } from "terse-types"
 import { AttioInputConfig, ConfigData, ConfigType, WebMonitorConfig } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
-import { Agent, AgentFileContentResponse, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, File, agentUpdateSchema } from "terse-types/types"
+import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, agentUpdateSchema } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { parsePageParams } from "../../common/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
-import { getActiveSourceCodeGcsKeyForAutomation } from "../../common/projectHelper"
-import { extractSdkZipFile, listSdkZipPathsRecursive, loadSdkSourceZip } from "../../common/sdkZipReader"
 import { extractErrorMessage } from "../../common/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../../common/typeConverters"
 import { buildHeyReachWebhookUrl, buildWebhookUrl } from "../../common/webhookUrl"
@@ -20,6 +18,7 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../../types/prisma"
+import { getUserNotificationSettings } from "../notifications/settings/repository"
 
 export async function createTriggerConfig(tx: PrismaTransaction, triggerId: string, config: AgentTrigger, userId: string): Promise<void> {
     logger.debug("🔵 [TRIGGER CONFIG] config", {
@@ -60,14 +59,7 @@ async function upsertNotificationSettings(tx: PrismaTransaction, automationId: s
     let enabled
     let actionTypes
     if (!settings) {
-        const defaultSettings = await db().user_notification_settings.findUnique({
-            where: {
-                user_id: userId
-            }
-        })
-        if (!defaultSettings) {
-            throw new Error(`Unable to find matching user notification setting for ${userId}`)
-        }
+        const defaultSettings = await getUserNotificationSettings(userId)
         enabled = defaultSettings.agent_default_notifications.length > 0
         actionTypes = defaultSettings.agent_default_notifications
     } else {
@@ -723,115 +715,4 @@ export async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): P
             })
         }
     }
-}
-
-export async function getAgentFiles(req: Request, res: Response) {
-    if (!req.session?.user) {
-        res.status(401).json({ error: "Unauthorized" })
-        return
-    }
-
-    const organizationId = req.session.user.organizationId
-    const agentId = req.params.agentId
-    try {
-        const agent: AgentWithRelations | null = await db().automations.findFirst({
-            where: {
-                id: agentId,
-                organization_id: organizationId
-            },
-            include: {
-                prompt: true,
-                project: true,
-                inputs: {
-                    include: getInputConfigInclude()
-                },
-                outputs: {
-                    include: getOutputConfigInclude()
-                },
-                tool_approvals: true
-            }
-        })
-
-        if (!agent) {
-            res.status(404).json({ error: "Agent files not found" })
-            return
-        }
-
-        const files = await getAgentFilesFromGCS(agent)
-
-        res.status(200).json({ id: agent.id, files })
-    } catch (error) {
-        logger.error("Error fetching agent files", { error, organizationId, agentId })
-        res.status(500).json({ error: "Failed to fetch agent files" })
-    }
-}
-
-export async function getAgentFileContent(req: Request, res: Response) {
-    if (!req.session?.user) {
-        res.status(401).json({ error: "Unauthorized" })
-        return
-    }
-
-    const organizationId = req.session.user.organizationId
-    const agentId = req.params.agentId
-    const fileId = req.params.fileId
-
-    if (!fileId || typeof fileId !== "string") {
-        res.status(400).json({ error: "Invalid file ID" })
-        return
-    }
-
-    try {
-        const agent: AgentWithRelations | null = await db().automations.findFirst({
-            where: {
-                id: agentId,
-                organization_id: organizationId
-            },
-            include: {
-                prompt: true,
-                project: true,
-                inputs: {
-                    include: getInputConfigInclude()
-                },
-                outputs: {
-                    include: getOutputConfigInclude()
-                },
-                tool_approvals: true
-            }
-        })
-
-        if (!agent) {
-            res.status(404).json({ error: "Agent not found" })
-            return
-        }
-
-        const payload = await getAgentFileFromGCS(agent, fileId)
-        if (!payload) {
-            res.status(404).json({ error: "File not found" })
-            return
-        }
-
-        res.status(200).json(payload)
-    } catch (error) {
-        logger.error("Error fetching agent file", { error, organizationId, agentId, fileId })
-        res.status(500).json({ error: "Failed to fetch agent file" })
-    }
-}
-
-async function getAgentFilesFromGCS(agent: AgentWithRelations): Promise<File[]> {
-    const gcsKey = await getActiveSourceCodeGcsKeyForAutomation(agent)
-    const zip = await loadSdkSourceZip(gcsKey)
-    if (!zip) {
-        return []
-    }
-    return listSdkZipPathsRecursive(zip)
-}
-
-async function getAgentFileFromGCS(agent: AgentWithRelations, fileId: string): Promise<AgentFileContentResponse | null> {
-    const gcsKey = await getActiveSourceCodeGcsKeyForAutomation(agent)
-    const zip = await loadSdkSourceZip(gcsKey)
-    if (!zip) {
-        return null
-    }
-    return extractSdkZipFile(zip, fileId)
 }

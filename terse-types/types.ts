@@ -23,7 +23,6 @@ export type Role = z.infer<typeof roleSchema>
 
 export const userSchema = z.object({
     id: z.string(),
-    workosId: z.string(),
     organizationId: z.string(),
     organizationName: z.string(),
     email: z.string(),
@@ -682,7 +681,7 @@ export const errorSchema = z.object({ type: z.literal("error"), message: z.strin
 
 export const doneSchema = z.object({ type: z.literal("done") })
 
-export const sdkDeployStageEnum = z.enum(["UPLOADING_SOURCE", "BUILDING_DEPENDENCY_IMAGE", "BUILDING_SOURCE_IMAGE", "CONFIGURING_AUTOMATIONS"])
+export const sdkDeployStageEnum = z.enum(["BUILDING_DEPENDENCY_IMAGE", "BUILDING_SOURCE_IMAGE", "CONFIGURING_AUTOMATIONS"])
 export type SdkDeployStage = z.infer<typeof sdkDeployStageEnum>
 
 export const deployStageSchema = z.object({ type: z.literal("deploy_stage"), stage: sdkDeployStageEnum })
@@ -1094,29 +1093,6 @@ export const webhookJobTriggerResponseSchema = z.object({
     filtered: z.boolean().optional()
 })
 export type WebhookJobTriggerResponse = z.infer<typeof webhookJobTriggerResponseSchema>
-const fileSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    get children() {
-        return z.array(fileSchema).optional()
-    }
-})
-export type File = z.infer<typeof fileSchema>
-
-export const agentFilesResponseSchema = z.object({
-    id: z.string(),
-    files: z.array(fileSchema)
-})
-export type AgentFilesResponse = z.infer<typeof agentFilesResponseSchema>
-
-/** Proxied SDK zip member: raw bytes as base64 plus path metadata (no separate GCS objects). */
-export const agentFileContentResponseSchema = z.object({
-    path: z.string(),
-    fileName: z.string(),
-    contentBase64: z.string(),
-    mimeType: z.string().optional()
-})
-export type AgentFileContentResponse = z.infer<typeof agentFileContentResponseSchema>
 
 export const projectDeployStatusSchema = z.enum(["IN_PROGRESS", "SUCCEEDED", "FAILED", "ROLLED_BACK"])
 export type ProjectDeployStatus = z.infer<typeof projectDeployStatusSchema>
@@ -1152,14 +1128,6 @@ export const projectDeploysResponseSchema = z.object({
     deploys: z.array(projectDeploySchema)
 })
 export type ProjectDeploysResponse = z.infer<typeof projectDeploysResponseSchema>
-
-export const projectSourceFilesResponseSchema = z.object({
-    projectId: z.string(),
-    deployId: z.string().nullable(),
-    deployedAt: z.string().nullable(),
-    files: z.array(fileSchema)
-})
-export type ProjectSourceFilesResponse = z.infer<typeof projectSourceFilesResponseSchema>
 
 export const sdkListenQuerySchema = z.object({
     jobName: z.string().min(1),

@@ -18,8 +18,8 @@ import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { FileDownloadResult, StoredFile, buildGmailFileKey, ensureStoredWithMetadata, isSupportedFileType } from "../../services/FileStorageService"
 import { SecretService } from "../../services/SecretService"
-import { gmail as gmailConfig, urls } from "../../settings"
-import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../../types/prisma"
+import { settings, urls } from "../../settings"
+import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { Integration, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
@@ -30,6 +30,7 @@ const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.g
 
 export class GmailIntegrationManager extends Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never> implements OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     readonly integrationType = IntegrationType.GMAIL
+    readonly settingsKey = "gmail" as const
     readonly secretSchema = z.object({
         accessToken: z.string(),
         refreshToken: z.string()
@@ -113,7 +114,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
                 if (!claim.shouldProcess) {
                     continue
                 }
-                const { integration, user, oldHistoryId } = claim
+                const { integration, oldHistoryId } = claim
                 const fullUser = await getUserForOrg(integration.user_id, integration.organization_id)
                 if (!fullUser) continue
 
@@ -337,7 +338,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
             const watchResponse = await gmail.users.watch({
                 userId: "me",
                 requestBody: {
-                    topicName: gmailConfig.pubsubTopic,
+                    topicName: this.config.pubsubTopic,
                     labelIds: ["INBOX"],
                     labelFilterAction: "include"
                 }
@@ -511,7 +512,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
                 const watchResponse = await gmail.users.watch({
                     userId: "me",
                     requestBody: {
-                        topicName: gmailConfig.pubsubTopic,
+                        topicName: this.config.pubsubTopic,
                         labelIds: ["INBOX"],
                         labelFilterAction: "include"
                     }
@@ -674,7 +675,8 @@ export class GmailTriggerRuntime extends TriggerRuntime<GmailTrigger> implements
 
 // Create OAuth2 client
 export function getOAuth2Client(): OAuth2Client {
-    return new OAuth2Client(gmailConfig.clientId, gmailConfig.clientSecret, gmailConfig.redirectUri)
+    const cfg = new GmailIntegrationManager().config
+    return new OAuth2Client(cfg.clientId, cfg.clientSecret, cfg.redirectUri)
 }
 
 /**
@@ -767,7 +769,6 @@ async function claimHistoryIdUpdateInTransaction(
             {
                 shouldProcess: false,
                 integration: null,
-                user: null,
                 oldHistoryId: null
             }
         ]
@@ -782,7 +783,6 @@ async function claimHistoryIdUpdateInTransaction(
                 return {
                     shouldProcess: false,
                     integration: null,
-                    user: null,
                     oldHistoryId: null
                 }
             }
@@ -794,29 +794,9 @@ async function claimHistoryIdUpdateInTransaction(
                 data: { history_id: newHistoryIdString }
             })
 
-            const user = await tx.users.findUnique({
-                where: {
-                    id: integration.user_id
-                }
-            })
-
-            if (!user) {
-                logger.warn("No user found for integration", {
-                    userId: integration.user_id,
-                    integrationId: integration.id
-                })
-                return {
-                    shouldProcess: false,
-                    integration: null,
-                    user: null,
-                    oldHistoryId: null
-                }
-            }
-
             return {
                 shouldProcess: true,
                 integration: updatedIntegration,
-                user: user,
                 oldHistoryId: oldHistoryId
             }
         })
@@ -1012,13 +992,11 @@ type ProcessedWebhookClaim =
     | {
           shouldProcess: true
           integration: PrismaGmailIntegration
-          user: User
           oldHistoryId: string
       }
     | {
           shouldProcess: false
           integration: null
-          user: null
           oldHistoryId: null
       }
 

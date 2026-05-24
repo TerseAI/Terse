@@ -53,7 +53,6 @@ export class ApprovalService {
                     include: getOutputConfigInclude()
                 },
                 tool_approvals: true,
-                user: true,
                 project: true
             }
         })

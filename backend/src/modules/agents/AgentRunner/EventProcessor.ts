@@ -263,18 +263,10 @@ export class EventProcessor {
     private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
-        let gcsKey: string
         try {
-            const activeDeploy = await getActiveDeployForProject(agent.project.id)
-            const resolvedGcsKey = activeDeploy?.sdk_source_image_id
-            if (!resolvedGcsKey) {
-                throw new Error(`SDK agent "${agent.name}" is missing source_code_gcs_key`)
-            }
-            gcsKey = resolvedGcsKey
+            logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id })
 
-            logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id, gcsKey })
-
-            const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId, this.user.workosId)
+            const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId, this.user.id)
             await startBillingRun(billingForRunner, { organizationId: this.user.organizationId, runId })
         } catch (error) {
             logger.error(`SDK sandbox failed to start for agent "${agent.name}"`, { error, runId, agentId: agent.id })
@@ -286,7 +278,6 @@ export class EventProcessor {
         const service = new SdkJobExecutionService()
         void service
             .execute({
-                gcsKey,
                 runId,
                 agent,
                 orgId: this.user.organizationId,

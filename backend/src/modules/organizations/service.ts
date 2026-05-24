@@ -38,13 +38,12 @@ export interface CreateOrgResult {
 
 export async function createOrganizationForUser(input: {
     workosUserId: string
-    userId: string
     name: string
     firstName?: string | null
     lastName?: string | null
     sealedSessionData: string | undefined
 }): Promise<CreateOrgResult> {
-    const { workosUserId, userId, name, firstName, lastName, sealedSessionData } = input
+    const { workosUserId, name, firstName, lastName, sealedSessionData } = input
 
     if (firstName || lastName) {
         await workos.userManagement.updateUser({
@@ -62,7 +61,7 @@ export async function createOrganizationForUser(input: {
     })
 
     if (!sealedSessionData) {
-        logger.error("Failed to create organization: no session cookie", { organizationId: organization.id, userId })
+        logger.error("Failed to create organization: no session cookie", { organizationId: organization.id, workosUserId })
         throw new SessionExpiredError("Session expired. Please log in again and try creating the organization.")
     }
 
@@ -76,11 +75,11 @@ export async function createOrganizationForUser(input: {
     })
 
     if (!refreshResult.authenticated || !refreshResult.sealedSession) {
-        logger.error("Failed to create organization: session refresh failed", { organizationId: organization.id, userId })
+        logger.error("Failed to create organization: session refresh failed", { organizationId: organization.id, workosUserId })
         throw new SessionExpiredError("Organization was created but we could not update your session. Please log out and log back in to use it.")
     }
 
-    logger.info("Organization created", { organizationId: organization.id, userId, name: organization.name })
+    logger.info("Organization created", { organizationId: organization.id, workosUserId, name: organization.name })
     return {
         organization: { id: organization.id, name: organization.name },
         sealedSession: refreshResult.sealedSession
