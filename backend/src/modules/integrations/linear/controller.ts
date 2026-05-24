@@ -8,7 +8,6 @@ import logger from "../../../common/logger"
 import { LinearIntegrationManager } from "../../../integrations/linear/integration"
 import { LinearAdapter } from "../../../integrations/linear/ticketing"
 import { db } from "../../../loaders/prisma"
-import { settings } from "../../../settings"
 
 /**
  * Verify Linear webhook signature
@@ -21,11 +20,7 @@ function verifySignature(headerSignatureString: string | undefined, rawBody: Buf
         return false
     }
 
-    const LINEAR_WEBHOOK_SECRET = settings.linear.signingSecret
-    if (!LINEAR_WEBHOOK_SECRET) {
-        logger.error("LINEAR_WEBHOOK_SECRET is not configured")
-        return false
-    }
+    const LINEAR_WEBHOOK_SECRET = new LinearIntegrationManager().config.signingSecret
 
     try {
         const headerSignature = Buffer.from(headerSignatureString, "hex")

@@ -4,9 +4,11 @@ import cors from "cors"
 import express, { NextFunction, Request, Response } from "express"
 import helmet from "helmet"
 import { ApiRoutes } from "terse-types"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { isCorsOriginAllowed } from "./common/corsOrigins"
 import logger from "./common/logger"
+import { INTEGRATION_REGISTRY } from "./integrations/abstract/IntegrationRegistry"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
 import { httpAccessLog } from "./middlewares/httpAccessLog"
 import agentsReviewRouter from "./modules/agents/review/routes"
@@ -66,6 +68,10 @@ export interface CreateAppOptions {
 const LARGE_BODY_LIMIT_ROUTES: string[] = [ApiRoutes.GITHUB.UNIFIED_EVENT, ApiRoutes.SDK.DEPLOY]
 const LARGE_BODY_LIMIT = "10mb"
 const DEFAULT_BODY_LIMIT = "1mb"
+
+function isIntegrationAvailable(type: IntegrationType): boolean {
+    return INTEGRATION_REGISTRY.some(m => m.integrationType === type)
+}
 
 export function createApp(options: CreateAppOptions) {
     const { corsAllowedOrigins, slackReceiver } = options
@@ -149,39 +155,53 @@ export function createApp(options: CreateAppOptions) {
         next()
     })
 
-    // MARK: WEBHOOKS — each handler verifies its own provider signature, some need raw body
+    // MARK: WEBHOOKS — each handler verifies its own provider signature, some need raw body.
+    // Each route is gated on the corresponding integration being available so disabled
+    // integrations get a clean 404 instead of a 500 from missing config.
 
-    app.post(ApiRoutes.WEBHOOKS.GMAIL, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-        handleGmailWebhook(req, res)
-    })
+    if (isIntegrationAvailable(IntegrationType.GMAIL)) {
+        app.post(ApiRoutes.WEBHOOKS.GMAIL, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
+            handleGmailWebhook(req, res)
+        })
+    }
 
-    app.use(ApiRoutes.LINEAR.WEBHOOK, express.raw({ type: "application/json" }))
-    app.post(ApiRoutes.LINEAR.WEBHOOK, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-        handleLinearWebhook(req, res)
-    })
+    if (isIntegrationAvailable(IntegrationType.LINEAR)) {
+        app.use(ApiRoutes.LINEAR.WEBHOOK, express.raw({ type: "application/json" }))
+        app.post(ApiRoutes.LINEAR.WEBHOOK, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
+            handleLinearWebhook(req, res)
+        })
+    }
 
-    app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
-    app.post(ApiRoutes.WEBHOOKS.WORKOS, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-        handleWorkOSWebhook(req, res)
-    })
+    if (isIntegrationAvailable(IntegrationType.WORKOS)) {
+        app.use(ApiRoutes.WEBHOOKS.WORKOS, express.raw({ type: "application/json" }))
+        app.post(ApiRoutes.WEBHOOKS.WORKOS, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
+            handleWorkOSWebhook(req, res)
+        })
 
-    app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, express.raw({ type: "application/json" }))
-    app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-        handleWorkOSTriggerWebhook(req, res)
-    })
+        app.use(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, express.raw({ type: "application/json" }))
+        app.post(ApiRoutes.WEBHOOKS.WORKOS_TRIGGER_BY_INTEGRATION_ID, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
+            handleWorkOSTriggerWebhook(req, res)
+        })
+    }
 
-    app.post(ApiRoutes.WEBHOOKS.HEY_REACH_BY_INTEGRATION_ID, rateLimit(RateLimitKind.HeyReachByTrigger), async (req, res) => {
-        handleHeyReachWebhook(req, res)
-    })
+    if (isIntegrationAvailable(IntegrationType.HEY_REACH)) {
+        app.post(ApiRoutes.WEBHOOKS.HEY_REACH_BY_INTEGRATION_ID, rateLimit(RateLimitKind.HeyReachByTrigger), async (req, res) => {
+            handleHeyReachWebhook(req, res)
+        })
+    }
 
-    app.use(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, express.raw({ type: "application/json" }))
-    app.post(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-        handleAttioWebhook(req, res)
-    })
+    if (isIntegrationAvailable(IntegrationType.ATTIO)) {
+        app.use(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, express.raw({ type: "application/json" }))
+        app.post(ApiRoutes.WEBHOOKS.ATTIO_BY_TRIGGER_ID, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
+            handleAttioWebhook(req, res)
+        })
+    }
 
-    app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
-        await githubAppUnifiedEvent(req, res)
-    })
+    if (isIntegrationAvailable(IntegrationType.GITHUB)) {
+        app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
+            await githubAppUnifiedEvent(req, res)
+        })
+    }
 
     // MARK: DOMAIN ROUTERS (MVC — controller/service/repository per domain)
     app.use("/stats", statsRouter)
@@ -207,19 +227,20 @@ export function createApp(options: CreateAppOptions) {
     app.use(maintenanceRouter)
     app.use(billingCacheInvalidationRouter)
     app.use(authRouter)
-    // Per-vendor integration routers (mounted at vendor-specific prefixes)
-    app.use("/attio", attioRouter)
-    app.use("/datadog", datadogRouter)
-    app.use("/github", githubVendorRouter)
-    app.use("/gmail", gmailRouter)
-    app.use("/heyreach", heyreachRouter)
-    app.use("/launchdarkly", launchdarklyRouter)
-    app.use("/linear", linearRouter)
-    app.use("/notion", notionRouter)
-    app.use("/posthog", posthogRouter)
-    app.use("/slack", slackVendorRouter)
-    app.use("/snowflake", snowflakeRouter)
-    app.use("/workos-integration", workosIntegrationRouter)
+    // Per-vendor integration routers (mounted at vendor-specific prefixes). Gated on
+    // integration availability so unconfigured providers return a clean 404.
+    if (isIntegrationAvailable(IntegrationType.ATTIO)) app.use("/attio", attioRouter)
+    if (isIntegrationAvailable(IntegrationType.DATADOG)) app.use("/datadog", datadogRouter)
+    if (isIntegrationAvailable(IntegrationType.GITHUB)) app.use("/github", githubVendorRouter)
+    if (isIntegrationAvailable(IntegrationType.GMAIL)) app.use("/gmail", gmailRouter)
+    if (isIntegrationAvailable(IntegrationType.HEY_REACH)) app.use("/heyreach", heyreachRouter)
+    if (isIntegrationAvailable(IntegrationType.LAUNCHDARKLY)) app.use("/launchdarkly", launchdarklyRouter)
+    if (isIntegrationAvailable(IntegrationType.LINEAR)) app.use("/linear", linearRouter)
+    if (isIntegrationAvailable(IntegrationType.NOTION)) app.use("/notion", notionRouter)
+    if (isIntegrationAvailable(IntegrationType.POSTHOG)) app.use("/posthog", posthogRouter)
+    if (isIntegrationAvailable(IntegrationType.SLACK)) app.use("/slack", slackVendorRouter)
+    if (isIntegrationAvailable(IntegrationType.SNOWFLAKE)) app.use("/snowflake", snowflakeRouter)
+    if (isIntegrationAvailable(IntegrationType.WORKOS)) app.use("/workos-integration", workosIntegrationRouter)
 
     // MARK: SESSION
     app.get(ApiRoutes.SESSION.TOKEN, rateLimit(RateLimitKind.SessionToken), requireAuth([AuthKind.UserCookie, AuthKind.UserToken]), async (req, res) => {

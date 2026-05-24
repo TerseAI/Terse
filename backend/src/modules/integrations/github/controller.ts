@@ -10,7 +10,7 @@ import { getUserForOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { readBearerToken } from "../../../modules/auth/helpers/authDispatch"
 import { SecretService } from "../../../services/SecretService"
-import { githubApp, jwt as jwtConfig } from "../../../settings"
+import { jwt as jwtConfig } from "../../../settings"
 
 import { parseGithubUnifiedEventPayload } from "./eventParser"
 import { GithubAppInstallationRepository } from "./types"

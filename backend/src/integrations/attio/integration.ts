@@ -29,7 +29,7 @@ import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
 import { SecretNotFoundError, SecretService } from "../../services/SecretService"
-import { attio as attioConfig, settings, urls } from "../../settings"
+import { urls } from "../../settings"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
 import { integrationTaskQueue } from "../IntegrationTaskQueues"
@@ -43,6 +43,7 @@ type AttioWebhookRequest = { triggerId: string; payload: AttioWebhookPayload; id
 
 export class AttioIntegrationManager extends Integration<AttioIntegration, never, typeof AttioIntegrationMetadata, AttioObject> implements OAuthIntegrationInstallation<IntegrationType.ATTIO> {
     readonly integrationType = IntegrationType.ATTIO
+    readonly settingsKey = "attio"
     readonly secretSchema = z.object({
         accessToken: z.string(),
         webhookSecret: z.string().optional()
@@ -229,9 +230,9 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
         })
 
         const authUrl = new URL("https://app.attio.com/authorize")
-        authUrl.searchParams.append("client_id", attioConfig.clientId)
+        authUrl.searchParams.append("client_id", this.config.clientId)
         authUrl.searchParams.append("response_type", "code")
-        authUrl.searchParams.append("redirect_uri", attioConfig.redirectUri)
+        authUrl.searchParams.append("redirect_uri", this.config.redirectUri)
         authUrl.searchParams.append("state", state)
 
         return {
@@ -280,9 +281,9 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
                 body: new URLSearchParams({
                     grant_type: "authorization_code",
                     code: code as string,
-                    redirect_uri: attioConfig.redirectUri,
-                    client_id: attioConfig.clientId,
-                    client_secret: attioConfig.clientSecret
+                    redirect_uri: this.config.redirectUri,
+                    client_id: this.config.clientId,
+                    client_secret: this.config.clientSecret
                 }).toString()
             })
 
