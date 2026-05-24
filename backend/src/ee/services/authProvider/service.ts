@@ -1,11 +1,11 @@
+import { WorkOS } from "@workos-inc/node"
 import crypto from "crypto"
 import { Response } from "express"
 import { ApiRoutes } from "terse-types"
 import { Role, User } from "terse-types/types"
 
-import { workos } from "../../integrations/workos/helpers"
-import { AccessTokenClaims } from "../../modules/auth/helpers/accessTokenClaims"
-import { settings } from "../../settings"
+import { AccessTokenClaims } from "../../../modules/auth/helpers/accessTokenClaims"
+import { settings } from "../../../settings"
 
 export const WORKOS_SESSION_COOKIE_NAME = "TERSE_WORKOS_SESSION"
 export const WORKOS_OAUTH_STATE_COOKIE_NAME = "TERSE_WORKOS_OAUTH_STATE"
@@ -48,12 +48,12 @@ export interface WorkOSAuthContext {
     roles?: string[]
 }
 
-export function buildWorkOSLoginUrl(res: Response): string {
+export function buildWorkOSLoginUrl(workos: WorkOS, res: Response, redirectUri: string): string {
     const state = crypto.randomBytes(32).toString("hex")
     res.cookie(WORKOS_OAUTH_STATE_COOKIE_NAME, state, WORKOS_OAUTH_STATE_COOKIE_OPTIONS)
     return workos.userManagement.getAuthorizationUrl({
         provider: "authkit",
-        redirectUri: settings.workos.redirectUri,
+        redirectUri,
         state
     })
 }
@@ -75,16 +75,16 @@ export function shouldRedirectToLogin(value: unknown): boolean {
     return normalizedValue === "true" || normalizedValue === "1"
 }
 
-export async function getWorkOSLogoutUrl(sealedSessionData: string | undefined, returnTo: string): Promise<string | null> {
+export async function getWorkOSLogoutUrl(workos: WorkOS, sealedSessionData: string | undefined, returnTo: string, cookiePassword: string): Promise<string | null> {
     if (!sealedSessionData) return null
     const session = workos.userManagement.loadSealedSession({
         sessionData: sealedSessionData,
-        cookiePassword: settings.workos.cookiePassword
+        cookiePassword
     })
     return session.getLogoutUrl({ returnTo })
 }
 
-export async function buildUserFromWorkOS(authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: User }> {
+export async function buildUserFromWorkOS(workos: WorkOS, authContext: WorkOSAuthContext, claims?: AccessTokenClaims | null): Promise<{ user: User }> {
     const workosUser = authContext.user
     const organizationId = authContext.organizationId ?? ""
 

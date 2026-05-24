@@ -2,7 +2,7 @@ import { TokenKind } from "@prisma/client"
 import { NextFunction, Request, RequestHandler, Response } from "express"
 import type { User } from "terse-types/types"
 
-import { clearSessionCookies } from "../../../modules/auth/service"
+import { clearSessionCookies } from "../../../ee/services/authProvider/service"
 
 import { authenticateViaApiToken, authenticateViaCookie, readBearerToken, readSealedSessionCookie, validateCloudSchedulerHeader } from "./authDispatch"
 

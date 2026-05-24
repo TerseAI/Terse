@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSchema, organizationSwitchRequestSchema, organizationUpdateRequestSchema } from "terse-types/types"
 
 import logger from "../../common/logger"
-import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../modules/auth/service"
+import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../../ee/services/authProvider/service"
 import { settings } from "../../settings"
 
 import {

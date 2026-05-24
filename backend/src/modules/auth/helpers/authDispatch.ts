@@ -4,58 +4,18 @@ import { User } from "terse-types/types"
 
 import { secretsMatch } from "../../../common/crypto"
 import logger from "../../../common/logger"
+import { WORKOS_SESSION_COOKIE_NAME } from "../../../ee/services/authProvider/service"
 import { CronJobIntegrationManager } from "../../../integrations/cronJob/integration"
-import { workos } from "../../../integrations/workos/helpers"
 import { resolveUserInOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
-import { WORKOS_SESSION_COOKIE_NAME, buildUserFromWorkOS, setSessionCookie } from "../../../modules/auth/service"
-import { settings } from "../../../settings"
+import { getAuthProvider } from "../../../services/authProvider"
 
-import { getClaimsFromAuthResult } from "./accessTokenClaims"
 import { hashToken } from "./apiTokens"
 
 export type CookieAuthOutcome = { ok: true; user: User } | { ok: false; reason: "no_cookie" | "auth_failed" }
 
 export async function authenticateViaCookie(sealedSessionData: string | undefined, req: Request, res: Response): Promise<CookieAuthOutcome> {
-    if (!sealedSessionData) {
-        return { ok: false, reason: "no_cookie" }
-    }
-
-    try {
-        const session = workos.userManagement.loadSealedSession({
-            sessionData: sealedSessionData,
-            cookiePassword: settings.workos.cookiePassword
-        })
-        const authResult = await session.authenticate()
-
-        if (authResult.authenticated) {
-            const claims = getClaimsFromAuthResult(authResult)
-            const { user } = await buildUserFromWorkOS(authResult, claims)
-            return { ok: true, user }
-        }
-
-        if (authResult.reason === "no_session_cookie_provided") {
-            return { ok: false, reason: "no_cookie" }
-        }
-
-        logger.info("Session expired, attempting refresh", { reason: authResult.reason })
-        const refreshed = await session.refresh({ cookiePassword: settings.workos.cookiePassword })
-        if (!refreshed.authenticated) {
-            logger.warn("Session refresh failed")
-            return { ok: false, reason: "auth_failed" }
-        }
-        const { user } = await buildUserFromWorkOS(refreshed)
-        if (refreshed.sealedSession) {
-            setSessionCookie(res, refreshed.sealedSession)
-            if (req.cookies) {
-                req.cookies[WORKOS_SESSION_COOKIE_NAME] = refreshed.sealedSession
-            }
-        }
-        return { ok: true, user }
-    } catch (error) {
-        logger.error("Cookie auth failed", { error })
-        return { ok: false, reason: "auth_failed" }
-    }
+    return await getAuthProvider().authenticateViaCookie(sealedSessionData, req, res)
 }
 
 export type ApiTokenAuthOutcome = { ok: true; user: User; tokenKind: TokenKind } | { ok: false; reason: "not_found" | "expired" | "user_org_unresolved" }

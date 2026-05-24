@@ -14,11 +14,6 @@ void _assertValidEventNames
  * WorkOS client instance - used for authentication, user management, and organization management.
  * This is a singleton shared across the application.
  */
-export const workos = new WorkOS({
-    apiKey: settings.workos.apiKey,
-    clientId: settings.workos.clientId
-})
-
 /**
  * Fetches a user with their organization context from WorkOS. Used by API-token
  * auth and integration paths that hold a workos_id (no DB join needed — the
