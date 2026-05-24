@@ -150,4 +150,3 @@ export async function handleWorkOSWebhook(req: Request, res: Response): Promise<
         res.status(401).send("Unauthorized")
     }
 }
-
