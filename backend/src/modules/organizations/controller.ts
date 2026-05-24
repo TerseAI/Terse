@@ -24,8 +24,7 @@ export async function createOrganization(req: Request, res: Response) {
     const { name, firstName, lastName } = organizationCreateRequestSchema.parse(req.body)
     try {
         const result = await createOrganizationForUser({
-            workosUserId: user.workosId,
-            userId: user.id,
+            workosUserId: user.id,
             name,
             firstName,
             lastName,
@@ -58,9 +57,8 @@ export async function getCurrentOrganization(req: Request, res: Response) {
 export async function getUserOrganizations(req: Request, res: Response) {
     const user = req.session?.user
     if (!user) return res.status(401).json({ error: "Unauthorized" })
-    if (!user.workosId) return res.status(400).json({ error: "User has no WorkOS ID. Re-authenticate to link account." })
     try {
-        const organizations = await listUserOrganizations(user.workosId)
+        const organizations = await listUserOrganizations(user.id)
         res.json({ organizations })
     } catch (error) {
         logger.error("Failed to list user organizations", { error, userId: user.id })

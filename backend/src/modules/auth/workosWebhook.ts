@@ -2,24 +2,13 @@ import type { Event as WorkOSEvent } from "@workos-inc/node"
 import { Request, Response } from "express"
 import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
-import logger from "../../../common/logger"
-import { workos } from "../../../integrations/workos/helpers"
-import { db } from "../../../loaders/prisma"
-import { getRealtimeSocket } from "../../../loaders/socket"
-import { emitBillingCachesInvalidated } from "../../../services/CacheInvalidationService"
-import { settings } from "../../../settings"
-
-/**
- * Map WorkOS user ID to local database user ID.
- * Returns null if user not found in our database.
- */
-async function getLocalUserIdFromWorkOS(workosUserId: string): Promise<string | null> {
-    const prisma = db()
-    const user = await prisma.users.findUnique({
-        where: { workos_id: workosUserId }
-    })
-    return user?.id ?? null
-}
+import logger from "../../common/logger"
+import { workos } from "../../integrations/workos/helpers"
+import { db } from "../../loaders/prisma"
+import { getRealtimeSocket } from "../../loaders/socket"
+import { emitBillingCachesInvalidated } from "../../services/CacheInvalidationService"
+import { settings } from "../../settings"
+import { cleanupIdentity } from "../../utility/identity"
 
 /**
  * Process a validated WorkOS webhook event and emit socket events.
@@ -34,23 +23,24 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
     const { event: eventType, data } = event
 
     switch (eventType) {
-        case "user.updated": {
-            // WorkOS User Management puts user at top level: data.id, data.email, etc.
+        case "user.created": {
             const workosUserId = data.id
             if (!workosUserId) {
-                logger.warn("[WorkOS webhook] user.updated: no user id in payload", {
-                    data: JSON.stringify(data)
-                })
+                logger.warn("[WorkOS webhook] user.created: no user id in payload", { data: JSON.stringify(data) })
                 break
             }
-            const localUserId = await getLocalUserIdFromWorkOS(workosUserId)
-            const room = SocketRooms.user(localUserId ?? "")
-            if (!localUserId) {
-                logger.warn("[WorkOS webhook] user.updated: no local user found for workos user", { workosUserId })
+            await ensureDefaultNotificationSettings(workosUserId)
+            break
+        }
+
+        case "user.updated": {
+            const workosUserId = data.id
+            if (!workosUserId) {
+                logger.warn("[WorkOS webhook] user.updated: no user id in payload", { data: JSON.stringify(data) })
                 break
             }
-            io.to(room).emit(SocketEvents.WORKOS_USER_UPDATED, {
-                userId: localUserId
+            io.to(SocketRooms.user(workosUserId)).emit(SocketEvents.WORKOS_USER_UPDATED, {
+                userId: workosUserId
             })
             break
         }
@@ -58,17 +48,18 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
         case "user.deleted": {
             const workosUserId = data.id
             if (!workosUserId) break
-            const localUserId = await getLocalUserIdFromWorkOS(workosUserId)
-            if (localUserId) {
-                io.to(SocketRooms.user(localUserId)).emit(SocketEvents.WORKOS_FORCE_LOGOUT, {
-                    reason: "user_deleted"
-                })
+            io.to(SocketRooms.user(workosUserId)).emit(SocketEvents.WORKOS_FORCE_LOGOUT, {
+                reason: "user_deleted"
+            })
+            try {
+                await cleanupIdentity(workosUserId)
+            } catch (error) {
+                logger.error("[WorkOS webhook] user.deleted: cleanupIdentity failed", { workosUserId, error })
             }
             break
         }
 
         case "session.revoked": {
-            // WorkOS puts session fields at top level: data.id (session id), data.userId, etc.
             // Emit ONLY to the session room - so only the device with that session gets logged out.
             // Revoking "Chrome on Mac" should not log out "Safari on iPhone".
             const revokedSessionId = data.id
@@ -76,8 +67,7 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
                 logger.warn("[WorkOS webhook] session.revoked: no session id in payload")
                 break
             }
-            const sessionRoom = SocketRooms.session(revokedSessionId)
-            io.to(sessionRoom).emit(SocketEvents.WORKOS_FORCE_LOGOUT, {
+            io.to(SocketRooms.session(revokedSessionId)).emit(SocketEvents.WORKOS_FORCE_LOGOUT, {
                 reason: "session_revoked"
             })
             break
@@ -86,12 +76,9 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
         case "session.created": {
             const workosUserId = data.userId
             if (!workosUserId) break
-            const localUserId = await getLocalUserIdFromWorkOS(workosUserId)
-            if (localUserId) {
-                io.to(SocketRooms.user(localUserId)).emit(SocketEvents.WORKOS_SESSION_UPDATED, {
-                    userId: localUserId
-                })
-            }
+            io.to(SocketRooms.user(workosUserId)).emit(SocketEvents.WORKOS_SESSION_UPDATED, {
+                userId: workosUserId
+            })
             break
         }
 
@@ -112,12 +99,9 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
             }
             const workosUserId = (data as { user?: { id: string }; user_id?: string }).user?.id ?? (data as { user_id?: string }).user_id
             if (workosUserId) {
-                const localUserId = await getLocalUserIdFromWorkOS(workosUserId)
-                if (localUserId) {
-                    io.to(SocketRooms.user(localUserId)).emit(SocketEvents.WORKOS_USER_UPDATED, {
-                        userId: localUserId
-                    })
-                }
+                io.to(SocketRooms.user(workosUserId)).emit(SocketEvents.WORKOS_USER_UPDATED, {
+                    userId: workosUserId
+                })
             }
             break
         }
@@ -176,4 +160,16 @@ export async function handleWorkOSWebhook(req: Request, res: Response): Promise<
         logger.error("WorkOS webhook signature verification failed", { error })
         res.status(401).send("Unauthorized")
     }
+}
+
+async function ensureDefaultNotificationSettings(workosUserId: string): Promise<void> {
+    await db().user_notification_settings.upsert({
+        where: { user_id: workosUserId },
+        create: {
+            user_id: workosUserId,
+            agent_default_notifications: ["error"],
+            weekly_agent_improvements: true
+        },
+        update: {}
+    })
 }

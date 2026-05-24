@@ -4,7 +4,6 @@ import { WorkOSEventType } from "terse-types/Configs"
 import { Role, User } from "terse-types/types"
 
 import logger from "../../common/logger"
-import { db } from "../../loaders/prisma"
 import { settings } from "../../settings"
 
 // Compile-time check: every WorkOSEventType must be a valid @workos-inc/node EventName
@@ -21,65 +20,44 @@ export const workos = new WorkOS({
 })
 
 /**
- * Fetches a user with their organization context from WorkOS.
- * This is used by integrations and other services that need user data.
+ * Fetches a user with their organization context from WorkOS. Used by API-token
+ * auth and integration paths that hold a workos_id (no DB join needed — the
+ * workos_id is the identity).
  */
-export async function getUserForOrg(userId: string, organizationId: string): Promise<User | null> {
-    const prisma = db()
-    const dbUser = await prisma.users.findUnique({
-        where: { id: userId }
-    })
-
-    if (!dbUser) {
-        return null
-    }
-
-    const workOSId = dbUser.workos_id
-
+export async function getUserForOrg(workosUserId: string, organizationId: string): Promise<User | null> {
     let workOSUser
     try {
-        workOSUser = await workos.userManagement.getUser(workOSId)
+        workOSUser = await workos.userManagement.getUser(workosUserId)
     } catch (error) {
         if (error instanceof NotFoundException) {
-            logger.warn("WorkOS user not found; treating local user as unlinked", {
-                dbUserId: dbUser.id,
-                workOSId,
-                organizationId
-            })
+            logger.warn("WorkOS user not found", { workosUserId, organizationId })
             return null
         }
         throw error
     }
-
-    if (!workOSUser) {
-        return null
-    }
+    if (!workOSUser) return null
 
     const organization = await workos.organizations.getOrganization(organizationId)
-    const organizationName = organization.name
 
     const organizationMemberships = await workos.userManagement.listOrganizationMemberships({
-        userId: workOSId,
-        organizationId: organizationId,
+        userId: workosUserId,
+        organizationId,
         statuses: ["active"]
     })
     const matchingMembership = organizationMemberships.data?.find(m => m.organizationId === organizationId)
-    if (!matchingMembership) {
-        return null
-    }
+    if (!matchingMembership) return null
 
     const roles: Role[] = (matchingMembership.roles?.map(role => role.slug) as Role[]) ?? []
 
     return {
-        id: dbUser.id,
-        workosId: workOSId,
-        organizationId: organizationId,
-        organizationName: organizationName,
+        id: workOSUser.id,
+        organizationId,
+        organizationName: organization.name,
         email: workOSUser.email,
         displayName: [workOSUser.firstName, workOSUser.lastName].filter(Boolean).join(" "),
         firstName: workOSUser.firstName || null,
         lastName: workOSUser.lastName || null,
         displayPhotoUrl: workOSUser.profilePictureUrl || "",
-        roles: roles
+        roles
     }
 }

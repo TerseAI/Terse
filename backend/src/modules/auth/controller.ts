@@ -6,7 +6,6 @@ import logger from "../../common/logger"
 import { extractErrorMessage } from "../../common/strings"
 import { GithubIntegrationManager } from "../../integrations/github/integration"
 import { workos } from "../../integrations/workos/helpers"
-import { getClaimsFromAuthResult } from "../../modules/auth/helpers/accessTokenClaims"
 import { settings } from "../../settings"
 
 import {
@@ -15,7 +14,6 @@ import {
     WORKOS_SESSION_COOKIE_NAME,
     buildWorkOSLoginUrl,
     clearSessionCookies,
-    getOrCreateDbUserFromWorkOS,
     getPostLogoutRedirectUrl,
     getWorkOSLogoutUrl,
     setSessionCookie,
@@ -71,7 +69,7 @@ export async function me(req: Request, res: Response) {
     if (!user) return res.status(401).send("Unauthorized")
 
     try {
-        const workOSUser = await workos.userManagement.getUser(user.workosId)
+        const workOSUser = await workos.userManagement.getUser(user.id)
         const refreshedUser: User = {
             ...user,
             email: workOSUser.email,
@@ -132,9 +130,6 @@ export async function callback(req: Request, res: Response) {
             return res.status(401).send("Failed to authenticate")
         }
 
-        const claims = getClaimsFromAuthResult(authResult)
-        await getOrCreateDbUserFromWorkOS(authResult, claims)
-
         setSessionCookie(res, authenticateResponse.sealedSession)
         return res.redirect(settings.urls.frontend)
     } catch (error) {
@@ -153,11 +148,10 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
     const user = req.session?.user
     if (!user) return res.status(401).json({ error: "Unauthorized" })
     if (!user.organizationId) return res.status(400).json({ error: "User has no organization. Create an organization first." })
-    if (!user.workosId) return res.status(400).json({ error: "User has no WorkOS ID. Re-authenticate to link account." })
 
     const widgetToken = await workos.widgets.getToken({
         organizationId: user.organizationId,
-        userId: user.workosId
+        userId: user.id
     })
     return res.json({ token: widgetToken })
 }
