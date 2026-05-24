@@ -24,7 +24,7 @@ export const workos = new WorkOS({
  * auth and integration paths that hold a workos_id (no DB join needed — the
  * workos_id is the identity).
  */
-export async function getUserForOrg(workosUserId: string, organizationId: string): Promise<User | null> {
+export async function resolveUserInOrg(workosUserId: string, organizationId: string): Promise<User | null> {
     let workOSUser
     try {
         workOSUser = await workos.userManagement.getUser(workosUserId)

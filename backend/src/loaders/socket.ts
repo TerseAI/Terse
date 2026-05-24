@@ -11,7 +11,7 @@ import { isCorsOriginAllowed } from "../common/corsOrigins"
 import logger from "../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
 import { randomString } from "../common/strings"
-import { getUserForOrg } from "../integrations/workos/helpers"
+import { resolveUserInOrg } from "../integrations/workos/helpers"
 import { verifyWorkosJwt } from "../integrations/workos/jwt"
 import { db } from "../loaders/prisma"
 import { SdkAgentRunner } from "../modules/agents/AgentRunner/SdkAgentRunner"
@@ -195,7 +195,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                 return
             }
 
-            const user = await getUserForOrg(userId, organizationIdForRun)
+            const user = await resolveUserInOrg(userId, organizationIdForRun)
             if (!user) {
                 logger.error(`[agent:chat:message] User not found for userId: ${userId}`, { userId })
                 return

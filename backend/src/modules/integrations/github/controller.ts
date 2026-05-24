@@ -6,7 +6,7 @@ import { ZodError } from "zod"
 
 import logger from "../../../common/logger"
 import { GithubIntegrationManager, getAppInstallationRepositories, getAppInstallationsForUser } from "../../../integrations/github/integration"
-import { getUserForOrg } from "../../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { readBearerToken } from "../../../modules/auth/helpers/authDispatch"
 import { SecretService } from "../../../services/SecretService"
@@ -16,6 +16,17 @@ import { parseGithubUnifiedEventPayload } from "./eventParser"
 import { GithubAppInstallationRepository } from "./types"
 
 // MARK: - Route Handlers
+
+export async function githubAppCallbackIntegrate(req: Request, res: Response) {
+    logger.info("Github App OAuth callback received", { query: req.query })
+    const { code, state } = req.query as { code?: string; state?: string }
+    if (!code || !state) {
+        return res.status(400).send("Invalid OAuth state")
+    }
+
+    const integration = new GithubIntegrationManager()
+    await integration.processInstallationCallback(req, res)
+}
 
 export async function getGithubIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

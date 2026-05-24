@@ -8,7 +8,7 @@ import { User } from "terse-types/types"
 import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
-import { getUserForOrg } from "../../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { MAX_IMPROVEMENTS_PER_AGENT } from "../../../modules/agents/JudgeAgent/JudgeAgent"
 import { fetchFullJudgeContext } from "../../../modules/agents/JudgeAgent/fetchJudgeContext"
@@ -51,7 +51,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
             where: { is_active: true, improvements_enabled: true },
             select: { id: true, name: true, user_id: true, organization_id: true }
         })
-
+        resolveUserInOrg
         const userCache = new Map<string, Awaited<ReturnType<typeof getUserForOrg>>>()
         const featureFlagCache = new Map<string, boolean>()
         const emailGroups = new Map<string, EmailGroup>()
@@ -68,6 +68,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
             try {
                 const userCacheKey = `${automation.user_id}:${automation.organization_id}`
                 if (!userCache.has(userCacheKey)) {
+                    resolveUserInOrg
                     userCache.set(userCacheKey, await getUserForOrg(automation.user_id, automation.organization_id))
                 }
                 const user = userCache.get(userCacheKey)

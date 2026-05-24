@@ -17,7 +17,7 @@ import { z } from "zod"
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../../integrations/slack/blockKitHelpers"
-import { getUserForOrg } from "../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
@@ -1475,7 +1475,7 @@ async function processSlackAutomationForUsers(args: {
         try {
             const organizationId = userSlackIntegration.organization_id
             if (!organizationId) continue
-            const fullUser = await getUserForOrg(userSlackIntegration.user_id, organizationId)
+            const fullUser = await resolveUserInOrg(userSlackIntegration.user_id, organizationId)
             if (!fullUser) continue
             await runWithUserContext(fullUser, async () => {
                 const slackEvent = new SlackTriggerRuntime(slackEventData, userSlackIntegration.id, storedFiles)

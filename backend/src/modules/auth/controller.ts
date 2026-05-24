@@ -4,7 +4,6 @@ import { User } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { extractErrorMessage } from "../../common/strings"
-import { GithubIntegrationManager } from "../../integrations/github/integration"
 import { workos } from "../../integrations/workos/helpers"
 import { settings } from "../../settings"
 
@@ -156,13 +155,3 @@ export async function getWorkOSWidgetToken(req: Request, res: Response) {
     return res.json({ token: widgetToken })
 }
 
-export async function githubAppCallbackIntegrate(req: Request, res: Response) {
-    logger.info("Github App OAuth callback received", { query: req.query })
-    const { code, state } = req.query as { code?: string; state?: string }
-    if (!code || !state) {
-        return res.status(400).send("Invalid OAuth state")
-    }
-
-    const integration = new GithubIntegrationManager()
-    await integration.processInstallationCallback(req, res)
-}

@@ -12,7 +12,7 @@ import { z } from "zod"
 
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
-import { getUserForOrg } from "../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
@@ -30,7 +30,7 @@ const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.g
 
 export class GmailIntegrationManager extends Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata, never> implements OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     readonly integrationType = IntegrationType.GMAIL
-    readonly settingsKey = "gmail" as const
+    readonly settingsKey = "gmail"
     readonly secretSchema = z.object({
         accessToken: z.string(),
         refreshToken: z.string()
@@ -115,7 +115,7 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
                     continue
                 }
                 const { integration, oldHistoryId } = claim
-                const fullUser = await getUserForOrg(integration.user_id, integration.organization_id)
+                const fullUser = await resolveUserInOrg(integration.user_id, integration.organization_id)
                 if (!fullUser) continue
 
                 // Process with user context for logging

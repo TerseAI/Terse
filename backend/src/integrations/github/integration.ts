@@ -15,7 +15,7 @@ import { z } from "zod"
 
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
-import { getUserForOrg } from "../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
@@ -137,7 +137,7 @@ export class GithubIntegrationManager
                 select: { id: true, organization_id: true }
             })
             if (!token?.organization_id) continue
-            const fullUser = await getUserForOrg(userId, token.organization_id)
+            const fullUser = await resolveUserInOrg(userId, token.organization_id)
             if (!fullUser) continue
             const secrets = await this.secretService.tryGetSecrets({ type: "integration", secret: { integrationType: IntegrationType.GITHUB, recordId: token.id } })
             if (!secrets) {

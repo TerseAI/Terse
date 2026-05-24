@@ -6,7 +6,7 @@ import { secretsMatch } from "../../../common/crypto"
 import logger from "../../../common/logger"
 import { CronJobIntegrationManager } from "../../../integrations/cronJob/integration"
 import { workos } from "../../../integrations/workos/helpers"
-import { getUserForOrg } from "../../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../../integrations/workos/helpers"
 import { db } from "../../../loaders/prisma"
 import { WORKOS_SESSION_COOKIE_NAME, buildUserFromWorkOS, setSessionCookie } from "../../../modules/auth/service"
 import { settings } from "../../../settings"
@@ -73,7 +73,7 @@ export async function authenticateViaApiToken(rawToken: string): Promise<ApiToke
         return { ok: false, reason: "expired" }
     }
 
-    const user = await getUserForOrg(apiToken.user_id, apiToken.organization_id)
+    const user = await resolveUserInOrg(apiToken.user_id, apiToken.organization_id)
     if (!user) {
         logger.warn("API token references a user/org that no longer resolves; rejecting", {
             tokenId: apiToken.id,

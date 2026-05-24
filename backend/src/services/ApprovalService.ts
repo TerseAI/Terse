@@ -7,7 +7,7 @@ import logger from "../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
 import { SlackApprovalMessageStatus } from "../integrations/slack/ApprovalStatus"
 import { updateSlackApprovalMessage } from "../integrations/slack/helpers"
-import { getUserForOrg } from "../integrations/workos/helpers"
+import { resolveUserInOrg } from "../integrations/workos/helpers"
 import { db } from "../loaders/prisma"
 import { markRunFailed, markRunInProgress } from "../modules/agents/AgentRunner/runHistory"
 import { generateApprovalSummary } from "../modules/agents/ApprovalSummaryAgent/ApprovalSummaryAgent"
@@ -177,7 +177,7 @@ export class ApprovalService {
             channelForNotifications = channel
 
             // Create base session for AgentRunner (runtime User type)
-            user = await getUserForOrg(userId, channel.organization_id)
+            user = await resolveUserInOrg(userId, channel.organization_id)
             if (!user) {
                 throw new Error(`User not found: ${userId}`)
             }

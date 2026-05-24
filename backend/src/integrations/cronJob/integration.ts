@@ -7,7 +7,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import logger, { runWithUserContext } from "../../common/logger"
 import { SchedulerClient, createSchedulerClient } from "../../common/schedulerClient"
-import { getUserForOrg } from "../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { settings } from "../../settings"
@@ -105,7 +105,7 @@ export class CronJobIntegrationManager
             isManualTrigger
         })
 
-        const user = await getUserForOrg(agentTrigger.automation.user_id, channel.organization_id)
+        const user = await resolveUserInOrg(agentTrigger.automation.user_id, channel.organization_id)
         if (!user) {
             logger.warn("User not found for cron job trigger", {
                 userId: agentTrigger.automation.user_id

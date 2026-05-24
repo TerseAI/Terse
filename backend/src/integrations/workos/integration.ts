@@ -9,7 +9,7 @@ import { z } from "zod"
 
 import logger from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
-import { getUserForOrg } from "../../integrations/workos/helpers"
+import { resolveUserInOrg } from "../../integrations/workos/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { getWorkOSUser } from "../../outputs/workos/workosApiClient"
@@ -94,7 +94,7 @@ export class WorkOSIntegrationManager
             return
         }
 
-        const user = await getUserForOrg(integration.user_id, integration.organization_id)
+        const user = await resolveUserInOrg(integration.user_id, integration.organization_id)
         if (!user) {
             logger.warn("WorkOS webhook: user not found", { userId: integration.user_id, organizationId: integration.organization_id })
             return

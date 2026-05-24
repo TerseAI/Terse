@@ -25,7 +25,7 @@ import improvementsRouter from "./modules/improvements/routes"
 import { handleAttioWebhook } from "./modules/integrations/attio/controller"
 import attioRouter from "./modules/integrations/attio/routes"
 import datadogRouter from "./modules/integrations/datadog/routes"
-import { githubAppUnifiedEvent } from "./modules/integrations/github/controller"
+import { githubAppCallbackIntegrate, githubAppUnifiedEvent } from "./modules/integrations/github/controller"
 import githubVendorRouter from "./modules/integrations/github/routes"
 import { handleGmailWebhook } from "./modules/integrations/gmail/controller"
 import gmailRouter from "./modules/integrations/gmail/routes"
@@ -201,6 +201,9 @@ export function createApp(options: CreateAppOptions) {
     if (isIntegrationAvailable(IntegrationType.GITHUB)) {
         app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, rateLimit(RateLimitKind.WebhookByIp), async (req, res) => {
             await githubAppUnifiedEvent(req, res)
+        })
+        app.get(ApiRoutes.AUTH.GITHUB_APP_CALLBACK, rateLimit(RateLimitKind.AuthEndpoint), async (req, res) => {
+            await githubAppCallbackIntegrate(req, res)
         })
     }
 
