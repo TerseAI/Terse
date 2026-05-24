@@ -195,10 +195,11 @@ export class SlackIntegrationManager
                     break
                 case "tokens_revoked":
                     const tokensEvent = eventData as TokensRevokedEvent
-                    await Promise.all([
-                        ...(tokensEvent.tokens.bot ?? []).map(userId => deactivateToken(team_id, userId, true)),
-                        ...(tokensEvent.tokens.oauth ?? []).map(userId => deactivateToken(team_id, userId, false))
-                    ])
+                    if (tokensEvent.tokens?.bot?.length) {
+                        await markWorkspaceUninstalled(team_id)
+                    } else {
+                        await Promise.all((tokensEvent.tokens?.oauth ?? []).map(userId => deactivateToken(team_id, userId, false)))
+                    }
                     break
                 case "message":
                 case "app_mention":
@@ -222,10 +223,11 @@ export class SlackIntegrationManager
             const tokensEvent = event as {
                 tokens?: { bot?: string[]; oauth?: string[] }
             }
-            await Promise.all([
-                ...(tokensEvent.tokens?.bot ?? []).map(userId => deactivateToken(team_id, userId, true)),
-                ...(tokensEvent.tokens?.oauth ?? []).map(userId => deactivateToken(team_id, userId, false))
-            ])
+            if (tokensEvent.tokens?.bot?.length) {
+                await markWorkspaceUninstalled(team_id)
+            } else {
+                await Promise.all((tokensEvent.tokens?.oauth ?? []).map(userId => deactivateToken(team_id, userId, false)))
+            }
         }
     }
 
@@ -1599,12 +1601,25 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             return
         }
 
+        const isAppMention = messageEvent.type === "app_mention"
+        const isDirectMessage = messageEvent.channel_type === SlackChannelType.IM
+        const isFromHumanUser = !messageEvent.bot_id && messageEvent.subtype !== "bot_message"
+        const shouldFallback = isFromHumanUser && (isAppMention || isDirectMessage) && Boolean(messageEvent.channel)
+
         const filteredWorkspaceUserIntegrations = await getFilteredWorkspaceUserIntegrations(teamId, messageEvent.channel!, messageEvent.channel_type || null)
 
         if (filteredWorkspaceUserIntegrations.length === 0) {
             logger.info("No users found with Slack integrations for this workspace", {
                 teamId
             })
+            if (shouldFallback) {
+                await sendSlackUnrecognizedFallback({
+                    teamId,
+                    channelId: messageEvent.channel!,
+                    threadTs: messageEvent.thread_ts,
+                    slackIntegrationId: slackIntegration.id
+                })
+            }
             return
         }
 
@@ -1668,14 +1683,10 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             sourceChannelId: messageEvent.channel
         })
 
-        const isAppMention = messageEvent.type === "app_mention"
-        const isDirectMessage = messageEvent.channel_type === SlackChannelType.IM
-        const isFromHumanUser = !messageEvent.bot_id && messageEvent.subtype !== "bot_message"
-
-        if (totalMatches === 0 && isFromHumanUser && (isAppMention || isDirectMessage) && messageEvent.channel) {
+        if (totalMatches === 0 && shouldFallback) {
             await sendSlackUnrecognizedFallback({
                 teamId,
-                channelId: messageEvent.channel,
+                channelId: messageEvent.channel!,
                 threadTs: messageEvent.thread_ts,
                 slackIntegrationId: slackIntegration.id
             })
