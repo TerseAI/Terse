@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client"
 
-import { PrismaClient as LocalAuthPrismaClient } from "../generated/local-auth-prisma"
+import { PrismaClient as LocalAuthPrismaClient } from "../generated/local-auth-prisma/index.js"
 import { settings } from "../settings"
 
 let prisma: PrismaClient | undefined
