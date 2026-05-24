@@ -13,7 +13,7 @@
         "dev:server": "tsx watch src/server.ts",
         "dev:tunnel": "node ./scripts/dev.mjs --tunnel",
         "build": "tsc && pnpm run postbuild",
-        "postbuild": "tsc-esm-fix dist && cp -r src/modules/notifications/emails/templates dist/modules/notifications/emails/templates && cp -r src/modules/notifications/emails/assets dist/modules/notifications/emails/assets && cp -r ../packages/terse-claude-plugin dist/terse-claude-plugin",
+        "postbuild": "tsc-esm-fix dist && cp -r src/generated/local-auth-prisma dist/generated/local-auth-prisma && cp -r src/modules/notifications/emails/templates dist/modules/notifications/emails/templates && cp -r src/modules/notifications/emails/assets dist/modules/notifications/emails/assets && cp -r ../packages/terse-claude-plugin dist/terse-claude-plugin",
         "start": "node dist/server.js",
         "test": "jest",
         "test:watch": "jest --watch",
