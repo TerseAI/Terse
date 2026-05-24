@@ -33,12 +33,22 @@ export function completionHandler(rootProgram: Command): void {
 export async function maybePromptForCompletion(actionCommand: Command): Promise<void> {
     if (!shouldPromptForCompletion(actionCommand)) return
 
+    let answer: boolean
     try {
-        markCompletionPromptAsked()
-        const answer = await confirm({ message: "Enable tab completion for `terse`?", default: true })
-        if (!answer) return
+        answer = await confirm({ message: "Enable tab completion for `terse`?", default: true })
+    } catch {
+        return
+    }
+    markCompletionPromptAsked()
+    if (!answer) return
+
+    try {
         await completionInstall()
-    } catch {}
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error(chalk.yellow(`\n  Failed to install tab completion: ${message}`))
+        console.error(chalk.dim(`  Run \`terse completion install\` to try again.\n`))
+    }
 }
 
 function shouldPromptForCompletion(actionCommand: Command): boolean {
