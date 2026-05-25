@@ -7,7 +7,7 @@ import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { type NonInteractiveOpts } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
-import { BACKEND_URL, FRONTEND_URL, WORKOS_CLIENT_ID } from "../config.js"
+import { BACKEND_URL, FRONTEND_URL, USE_WORKOS, WORKOS_CLIENT_ID } from "../config.js"
 import { openUrlInBrowser } from "../openBrowser.js"
 import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setActiveOrgToken } from "../userConfig.js"
 
@@ -133,31 +133,39 @@ async function pickOrganization(orgs: IdentifyResponse["organizations"]): Promis
 
 async function login(): Promise<{ apiKey: string; displayName: string | null; organizationId: string; organizationName: string } | null> {
     const s = createSpinner()
-    s.start("Requesting login code")
 
-    let deviceData: DeviceCodeResponse
-    try {
-        deviceData = await requestDeviceCode()
-        s.stop("Login code ready")
-    } catch (err: any) {
-        s.stop("Failed to start login flow")
-        console.error(chalk.red(`  ${err.message}`))
-        return null
-    }
+    let accessToken: string
+    if (USE_WORKOS) {
+        s.start("Requesting login code")
 
-    log.info(`Open ${chalk.cyan(deviceData.verification_uri_complete)} in your browser`)
-    log.info(`Or visit ${chalk.cyan(deviceData.verification_uri)} and enter code ${chalk.bold(deviceData.user_code)}`)
-    openUrlInBrowser(deviceData.verification_uri_complete)
+        let deviceData: DeviceCodeResponse
+        try {
+            deviceData = await requestDeviceCode()
+            s.stop("Login code ready")
+        } catch (err: any) {
+            s.stop("Failed to start login flow")
+            console.error(chalk.red(`  ${err.message}`))
+            return null
+        }
 
-    s.start("Waiting for authentication in browser")
+        log.info(`Open ${chalk.cyan(deviceData.verification_uri_complete)} in your browser`)
+        log.info(`Or visit ${chalk.cyan(deviceData.verification_uri)} and enter code ${chalk.bold(deviceData.user_code)}`)
+        openUrlInBrowser(deviceData.verification_uri_complete)
 
-    let tokenData: TokenResponse
-    try {
-        tokenData = await pollForTokens(deviceData.device_code, deviceData.expires_in, deviceData.interval)
-    } catch (err: any) {
-        s.stop("Login failed")
-        console.error(chalk.red(`  ${err.message}`))
-        return null
+        s.start("Waiting for authentication in browser")
+
+        try {
+            const tokenData = await pollForTokens(deviceData.device_code, deviceData.expires_in, deviceData.interval)
+            accessToken = tokenData.access_token
+        } catch (err: any) {
+            s.stop("Login failed")
+            console.error(chalk.red(`  ${err.message}`))
+            return null
+        }
+    } else {
+        // Self-hosted backend: the local auth provider ignores this token and
+        // resolves the singleton user, so the device-code dance is unnecessary.
+        accessToken = "local"
     }
 
     const jwtDeadline = Date.now() + 5 * 60 * 1000
@@ -165,7 +173,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     s.message("Loading your organizations")
     let identity: IdentifyResponse
     try {
-        identity = await identifyWithJwt(tokenData.access_token)
+        identity = await identifyWithJwt(accessToken)
     } catch (err: any) {
         s.stop("Login failed")
         if (err instanceof JwtRejectedError) {
@@ -184,7 +192,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
         log.info(`  ${chalk.cyan(orgCreateUrl)}`)
         s.start("Waiting for organization creation")
         try {
-            identity = await waitForOrganizationCreation(tokenData.access_token, jwtDeadline)
+            identity = await waitForOrganizationCreation(accessToken, jwtDeadline)
         } catch (err: any) {
             s.stop("Login failed")
             if (err instanceof JwtRejectedError) {
@@ -207,7 +215,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     }
 
     try {
-        const exchangeData = await exchangeForApiKey(tokenData.access_token, organizationId)
+        const exchangeData = await exchangeForApiKey(accessToken, organizationId)
         s.stop(`Logged in as ${exchangeData.user.displayName || exchangeData.user.email} · ${exchangeData.organization.name}`)
         return {
             apiKey: exchangeData.apiKey,
