@@ -11,9 +11,7 @@ import { Triggers } from "./terse.generated"
 createJob({
     name: "Tell a programming joke example job",
 
-    // When should this job run? `Triggers.*` lists everything available in
-    // your workspace (cron, webhooks, integration events). Add more by
-    // connecting integrations and running `terse generate`.
+    // This is where you configure what events will fire this job.
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
 
     // The handler runs every time a trigger fires. `event` is typed to match
