@@ -53,7 +53,9 @@ export async function maybePromptForCompletion(actionCommand: Command): Promise<
 
 function shouldPromptForCompletion(actionCommand: Command): boolean {
     if (isDescendantOfCompletion(actionCommand)) return false
-    if (isNonInteractive(actionCommand.optsWithGlobals())) return false
+    const opts = actionCommand.optsWithGlobals()
+    if (isNonInteractive(opts)) return false
+    if (opts.json) return false
     if (!detectShellFromEnv()) return false
     if (hasCompletionPromptBeenAsked()) return false
     return true
