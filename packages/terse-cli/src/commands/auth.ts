@@ -1,7 +1,7 @@
 import { log } from "@clack/prompts"
 import { select } from "@inquirer/prompts"
 import chalk from "chalk"
-import type { AuthModeResponse, DeviceTokenExchangeResponse, IdentifyResponse, UserSession } from "terse-types"
+import { type DeviceTokenExchangeResponse, type IdentifyResponse, type UserSession, authModeResponseSchema } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
@@ -25,8 +25,7 @@ async function fetchAuthMode(): Promise<"workos" | "local"> {
     try {
         const res = await fetch(`${BACKEND_URL}/sdk/auth/mode`)
         if (!res.ok) return "workos"
-        const data = (await res.json()) as AuthModeResponse
-        return data.mode
+        return authModeResponseSchema.parse(await res.json()).mode
     } catch {
         return "workos"
     }
