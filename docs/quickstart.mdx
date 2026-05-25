@@ -22,11 +22,13 @@ terse init my-project
 
 `terse init` handles the full setup in one command:
 
-1. Scaffolds your TypeScript project files (`src/index.ts`, config, etc.)
-2. Installs dependencies
-3. Opens the browser to authenticate via `terse login`
-4. Checks your connected integrations and prompts you to add more if needed
+1. Authenticates first — reuses saved CLI credentials when they are still valid, or opens the browser for `terse auth login` when you are not signed in
+2. Scaffolds your TypeScript project files (`src/terse.jobs.ts`, config, etc.)
+3. Installs dependencies
+4. Creates a Terse project and checks your connected integrations (prompts you to add more if needed)
 5. Runs `terse generate` to produce a typed SDK from your workspace
+
+If init fails after creating a new project directory, the CLI removes that directory so you are not left with a half-built folder on disk. To switch organizations or sign in as a different user, use `terse auth org switch` or `terse auth logout` followed by `terse auth login` — init does not prompt you to re-authenticate when you are already logged in.
 
 After init, your project looks like this:
 
@@ -43,7 +45,7 @@ my-project/
 ```
 </CodeGroup>
 
-`terse login` during init stores CLI credentials in your **user config**, not in the project folder. Copy **`.env.example`** to **`.env`** when you want `TERSE_API_KEY` (or other secrets) available to your app or tooling as environment variables.
+`terse auth login` during init stores CLI credentials in your **user config**, not in the project folder. Copy **`.env.example`** to **`.env`** when you want `TERSE_API_KEY` (or other secrets) available to your app or tooling as environment variables.
 
   </Step>
   <Step title="Write your workflow">
@@ -66,7 +68,7 @@ Runs your workflow locally against the Terse backend so you can verify it works 
 terse deploy
 ```
 
-Your code is packaged, uploaded, and hosted serverlessly. Navigate to the link provided to monitor your workflow. [Learn more about how deployment works.](/hosting)
+Your code is packaged, uploaded, and hosted serverlessly. The CLI prints dashboard links (for example `https://app.useterse.ai/app/agents/...`) so you can open each workflow in the app. [Learn more about how deployment works.](/hosting)
 
   </Step>
 </Steps>
