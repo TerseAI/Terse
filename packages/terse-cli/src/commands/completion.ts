@@ -11,6 +11,7 @@ const BINARY = "terse"
 
 export async function completionInstall(): Promise<void> {
     await tabtab.install({ name: BINARY, completer: BINARY, shell: detectShellFromEnv() })
+    markCompletionPromptAsked()
     console.log(chalk.green(`\n  Tab completion installed for \`${BINARY}\`.`))
     console.log(chalk.dim(`  Open a new shell or source your shell config to activate it.\n`))
 }
