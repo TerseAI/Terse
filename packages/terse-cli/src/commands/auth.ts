@@ -1,17 +1,15 @@
 import { log } from "@clack/prompts"
-import { confirm, select } from "@inquirer/prompts"
+import { select } from "@inquirer/prompts"
 import chalk from "chalk"
-import type { DeviceTokenExchangeResponse, IdentifyResponse, SdkOrganizationsListResponse, UserSession } from "terse-types"
+import type { DeviceTokenExchangeResponse, IdentifyResponse, UserSession } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
-import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
+import { type NonInteractiveOpts } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 import { BACKEND_URL, FRONTEND_URL, WORKOS_CLIENT_ID } from "../config.js"
 import { openUrlInBrowser } from "../openBrowser.js"
 import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setActiveOrgToken } from "../userConfig.js"
-
-import { resolveApiKeyForOrg } from "./authOrg.js"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"
@@ -224,55 +222,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     }
 }
 
-type AlreadyLoggedInChoice = { kind: "keep" } | { kind: "switch"; apiKey: string } | { kind: "reauth" } | { kind: "failed" }
-
-async function promptAlreadyLoggedInChoice(currentApiKey: string, me: MeSummary): Promise<AlreadyLoggedInChoice> {
-    let allOrgs: SdkOrganizationsListResponse | null = null
-    try {
-        allOrgs = await fetchWithAuth<SdkOrganizationsListResponse>("/sdk/me/organizations", currentApiKey)
-    } catch {
-        // Fall back to the simple confirm path below.
-    }
-
-    const activeId = allOrgs?.activeOrganizationId ?? null
-    const orgs = allOrgs?.organizations ?? []
-
-    if (orgs.length <= 1) {
-        const shouldReauth = await confirm({ message: "Log in again with a different account?", default: false })
-        return shouldReauth ? { kind: "reauth" } : { kind: "keep" }
-    }
-
-    const choice = await select<string>({
-        message: "Which organization?",
-        choices: [
-            ...orgs.map(o => ({
-                name: o.id === activeId ? `${o.name} ${chalk.dim("(current)")}` : o.name,
-                value: o.id
-            })),
-            { name: "Log in with a different account", value: "__reauth__" }
-        ],
-        default: activeId ?? orgs[0].id
-    })
-
-    if (choice === "__reauth__") return { kind: "reauth" }
-    if (choice === activeId) return { kind: "keep" }
-
-    const picked = orgs.find(o => o.id === choice)!
-    const s = createSpinner()
-    s.start(`Switching to ${picked.name}`)
-    try {
-        const newKey = await resolveApiKeyForOrg(picked.id, picked.name, currentApiKey)
-        setActiveOrgToken(picked.id, newKey, picked.name)
-        s.stop(`Switched to ${picked.name}`)
-        return { kind: "switch", apiKey: newKey }
-    } catch (err: any) {
-        s.stop(`Failed to switch: ${err.message}`)
-        return { kind: "failed" }
-    }
-}
-
 export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiKey: string; displayName: string | null } | null> {
-    const skipPrompts = isNonInteractive(opts)
     const canFallToDeviceLogin = !opts?.nonInteractive
 
     const stored = getStoredApiKey()
@@ -284,23 +234,7 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
         if (me) {
             const orgLabel = me.organization?.name ?? "(no organization)"
             s.stop(`Already logged in as ${me.displayName} · ${orgLabel}`)
-            if (skipPrompts) return { apiKey: stored, displayName: me.displayName }
-
-            const next = await promptAlreadyLoggedInChoice(stored, me)
-            if (next.kind === "keep") {
-                return { apiKey: stored, displayName: me.displayName }
-            }
-            if (next.kind === "switch") {
-                return { apiKey: next.apiKey, displayName: me.displayName }
-            }
-            if (next.kind === "failed") {
-                return null
-            }
-            // next.kind === "reauth" — drop every cached per-org token before
-            // logging in again. Otherwise the new user inherits the previous
-            // user's tokens for any org they both belong to, and a later
-            // `terse auth org switch` would silently reuse the prior token.
-            clearStoredApiKey()
+            return { apiKey: stored, displayName: me.displayName }
         } else {
             s.stop("Existing API key is invalid or expired")
             if (!canFallToDeviceLogin) {
