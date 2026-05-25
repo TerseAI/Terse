@@ -33,6 +33,7 @@ import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, cr
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
 
 import { initializeSlackWebClient, resolveSlackAccessToken } from "./client"
+import { SLACKBOT_USER_ID } from "./helpers"
 
 export class SlackIntegrationManager
     extends Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>
@@ -1624,7 +1625,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
 
         const isAppMention = messageEvent.type === "app_mention"
         const isDirectMessage = messageEvent.channel_type === SlackChannelType.IM
-        const isFromHumanUser = !messageEvent.bot_id && messageEvent.subtype !== "bot_message"
+        const isFromHumanUser = !messageEvent.bot_id && messageEvent.subtype !== "bot_message" && messageEvent.user !== SLACKBOT_USER_ID
         const shouldFallback = isFromHumanUser && (isAppMention || isDirectMessage) && Boolean(messageEvent.channel)
 
         const filteredWorkspaceUserIntegrations = await getFilteredWorkspaceUserIntegrations(teamId, messageEvent.channel!, messageEvent.channel_type || null)
@@ -1637,7 +1638,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
                 await sendSlackUnrecognizedFallback({
                     teamId,
                     channelId: messageEvent.channel!,
-                    threadTs: messageEvent.thread_ts,
+                    threadTs: messageEvent.thread_ts ?? (isAppMention ? messageEvent.ts : null),
                     slackIntegrationId: slackIntegration.id
                 })
             }
@@ -1708,7 +1709,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             await sendSlackUnrecognizedFallback({
                 teamId,
                 channelId: messageEvent.channel!,
-                threadTs: messageEvent.thread_ts,
+                threadTs: messageEvent.thread_ts ?? (isAppMention ? messageEvent.ts : null),
                 slackIntegrationId: slackIntegration.id
             })
         }

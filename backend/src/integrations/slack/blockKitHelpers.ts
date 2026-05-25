@@ -1,4 +1,4 @@
-import type { AppMentionEvent, Button, GenericMessageEvent, KnownBlock, ModalView } from "@slack/types"
+import type { AppMentionEvent, Button, GenericMessageEvent, HomeView, KnownBlock, ModalView } from "@slack/types"
 import { WebClient } from "@slack/web-api"
 import { SlackAttachment, SlackBlock, SlackFile, SlackFiles, SlackTrigger } from "terse-types"
 
@@ -273,6 +273,29 @@ export function createRunFailureNotificationMessage(options: {
     }
 
     return blocks
+}
+
+export function createTerseHomeView(options: { dashboardUrl?: string }): HomeView {
+    const blocks: KnownBlock[] = []
+    blocks.push(...createHeaderBlock("Welcome to Terse", "Terse runs automations that react to events across your tools — Slack, Gmail, Linear, GitHub, and more."))
+    blocks.push(createSectionBlock("Build agents, configure approvals, and review run history from the Terse dashboard."))
+
+    if (options.dashboardUrl) {
+        blocks.push(createActionBlock([createButton("Open Terse dashboard", "open_terse_dashboard", { style: "primary", url: options.dashboardUrl })]))
+    }
+
+    blocks.push(createDividerBlock())
+    blocks.push({
+        type: "context",
+        elements: [
+            {
+                type: "mrkdwn",
+                text: "Tip: @mention me in a channel where an automation is configured, or DM me directly. Need help? Visit <https://useterse.ai|useterse.ai>."
+            }
+        ]
+    })
+
+    return { type: "home", blocks }
 }
 
 /**

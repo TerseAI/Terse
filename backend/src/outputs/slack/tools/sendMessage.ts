@@ -6,7 +6,7 @@ import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse
 import logger from "../../../common/logger"
 import { isValidEpochTimestamp } from "../../../common/strings"
 import { initializeSlackWebClient } from "../../../integrations/slack/client"
-import { resolveSlackChannelIdForDestination, resolveSlackDmCounterpartUser } from "../../../integrations/slack/helpers"
+import { describeSlackPostMessageError, resolveSlackChannelIdForDestination, resolveSlackDmCounterpartUser } from "../../../integrations/slack/helpers"
 import { db } from "../../../loaders/prisma"
 import { defineSessionTool } from "../../../tools/toolUtils"
 import { ToolACLValidationResult, ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
@@ -189,13 +189,9 @@ export const slackSendMessageTool = defineSessionTool({
                 slackUserId
             })
 
-            // Provide helpful error messages
-            if (error.data?.error === "channel_not_found") {
-                throw new Error(`Channel not found. The bot may not have access to this channel.`)
-            } else if (error.data?.error === "not_in_channel") {
-                throw new Error(`The Terse bot is not a member of this channel. Please invite the bot to the channel first.`)
-            } else if (error.data?.error === "is_archived") {
-                throw new Error(`Cannot send messages to an archived channel.`)
+            const actionable = describeSlackPostMessageError(error)
+            if (actionable) {
+                throw new Error(actionable)
             }
 
             throw new Error(`Failed to send Slack message: ${error.message || error}`)
