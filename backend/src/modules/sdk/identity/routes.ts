@@ -3,11 +3,12 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 
-import { deviceTokenExchange, identify, listMyOrganizations, sdkMe, switchOrganization } from "./controller"
+import { authMode, deviceTokenExchange, identify, listMyOrganizations, sdkMe, switchOrganization } from "./controller"
 
 const router = Router()
 
 // Public endpoints (device-code flow): use bespoke rate limits
+router.get("/auth/mode", rateLimit(RateLimitKind.Default), authMode)
 router.post("/auth/identify", rateLimit(RateLimitKind.Identify), identify)
 router.post("/auth/device-token-exchange", rateLimit(RateLimitKind.TokenMinting), deviceTokenExchange)
 

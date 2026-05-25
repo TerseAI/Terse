@@ -1,13 +1,13 @@
 import { log } from "@clack/prompts"
 import { select } from "@inquirer/prompts"
 import chalk from "chalk"
-import type { DeviceTokenExchangeResponse, IdentifyResponse, UserSession } from "terse-types"
+import type { AuthModeResponse, DeviceTokenExchangeResponse, IdentifyResponse, UserSession } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { type NonInteractiveOpts } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
-import { BACKEND_URL, FRONTEND_URL, USE_WORKOS, WORKOS_CLIENT_ID } from "../config.js"
+import { BACKEND_URL, FRONTEND_URL, WORKOS_CLIENT_ID } from "../config.js"
 import { openUrlInBrowser } from "../openBrowser.js"
 import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setActiveOrgToken } from "../userConfig.js"
 
@@ -19,6 +19,17 @@ const IDENTIFY_POLL_INTERVAL_MS = 3000
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function fetchAuthMode(): Promise<"workos" | "local"> {
+    try {
+        const res = await fetch(`${BACKEND_URL}/sdk/auth/mode`)
+        if (!res.ok) return "workos"
+        const data = (await res.json()) as AuthModeResponse
+        return data.mode
+    } catch {
+        return "workos"
+    }
 }
 
 async function requestDeviceCode(): Promise<DeviceCodeResponse> {
@@ -134,8 +145,10 @@ async function pickOrganization(orgs: IdentifyResponse["organizations"]): Promis
 async function login(): Promise<{ apiKey: string; displayName: string | null; organizationId: string; organizationName: string } | null> {
     const s = createSpinner()
 
+    const mode = await fetchAuthMode()
+
     let accessToken: string
-    if (USE_WORKOS) {
+    if (mode === "workos") {
         s.start("Requesting login code")
 
         let deviceData: DeviceCodeResponse
