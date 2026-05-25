@@ -3,16 +3,18 @@ import { SlackAction, App as SlackApp, SlackViewAction } from "@slack/bolt"
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver"
 import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js"
 import { GenericMessageEvent, ReactionAddedEvent } from "@slack/types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { IntegrationType } from "terse-types/Integrations"
 
 import logger from "../../common/logger"
+import { SLACKBOT_USER_ID } from "../../integrations/slack/helpers"
 import { SimplifiedSlackEvent, SlackIntegrationManager } from "../../integrations/slack/integration"
 import { db } from "../../loaders/prisma"
 import { ApprovalProcessingStatus, ApprovalService } from "../../services/ApprovalService"
 import { SecretService } from "../../services/SecretService"
 import { settings } from "../../settings"
 
-import { createFeedbackModal } from "./blockKitHelpers"
+import { createFeedbackModal, createTerseHomeView } from "./blockKitHelpers"
 
 const ExpressReceiver = ((ExpressReceiverModule as any).default || ExpressReceiverModule) as typeof ExpressReceiverType
 
@@ -155,6 +157,19 @@ export async function setupSlackBolt() {
                 thread_ts: event.thread_ts
             }
         })
+    })
+
+    slack.event("app_home_opened", async ({ event, client }) => {
+        if (event.tab !== "home") return
+        try {
+            const dashboardUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.HOME}` : undefined
+            await client.views.publish({
+                user_id: event.user,
+                view: createTerseHomeView({ dashboardUrl })
+            })
+        } catch (error) {
+            logger.error("Error publishing Slack app home view", { error, slackUserId: event.user })
+        }
     })
 
     slack.event("reaction_added", async ({ event, body }) => {
@@ -543,7 +558,7 @@ export async function setupSlackBolt() {
             const submitterSlackUserId = (body as any)?.user?.id as string | undefined
 
             const notifySubmitter = async (text: string, channelId?: string) => {
-                if (!submitterSlackUserId) return
+                if (!submitterSlackUserId || submitterSlackUserId === SLACKBOT_USER_ID) return
 
                 // Prefer ephemeral in the original channel if we have it; fall back to DM.
                 if (channelId) {

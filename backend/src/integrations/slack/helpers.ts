@@ -28,7 +28,28 @@ export interface RunFailureNotificationContext {
     failureState: FailureState
 }
 
-export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<{ success: boolean; permalink?: string }> {
+export const SLACKBOT_USER_ID = "USLACKBOT"
+
+export function describeSlackPostMessageError(error: unknown): string | null {
+    const code = (error as { data?: { error?: string } } | null | undefined)?.data?.error
+    switch (code) {
+        case "channel_not_found":
+            return "Channel not found. The Terse bot may not have access to this channel."
+        case "not_in_channel":
+            return "The Terse bot is not a member of this channel. Invite it with `/invite @terse` and try again."
+        case "is_archived":
+            return "This channel is archived, so messages can't be posted to it."
+        case "msg_too_long":
+            return "The message is too long for Slack (4000 character limit)."
+        case "rate_limited":
+        case "ratelimited":
+            return "Slack rate-limited this request. Try again in a few seconds."
+        default:
+            return null
+    }
+}
+
+export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<{ success: boolean; permalink?: string; error?: string }> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
             id: userSlackIntegrationId
@@ -40,7 +61,7 @@ export async function sendSlackMessage(userSlackIntegrationId: string, channelId
 
     if (!userSlackIntegration?.slack_integration) {
         logger.error(`[sendSlackMessage] No Slack integration found for ID: ${userSlackIntegrationId}`, { userSlackIntegrationId })
-        return { success: false }
+        return { success: false, error: "Slack integration not found." }
     }
 
     const client: WebClient = await initializeSlackWebClient(userSlackIntegration)
@@ -71,7 +92,7 @@ export async function sendSlackMessage(userSlackIntegrationId: string, channelId
         return { success: true, permalink }
     } catch (error) {
         logger.error(`[sendSlackMessage] Failed to send message`, { error, channelId, userSlackIntegrationId })
-        return { success: false }
+        return { success: false, error: describeSlackPostMessageError(error) ?? "Slack rejected the message." }
     }
 }
 
@@ -109,6 +130,11 @@ export async function resolveSlackChannelIdForDestination(userSlackIntegrationId
     }
 
     if (!slackUserId) {
+        return null
+    }
+
+    if (slackUserId === SLACKBOT_USER_ID) {
+        logger.warn(`[resolveSlackChannelIdForDestination] Refusing to open DM with Slackbot`, { userSlackIntegrationId })
         return null
     }
 
@@ -228,7 +254,7 @@ export async function sendSlackApprovalMessage(
     notificationFor: string,
     agentName: string,
     automationId?: string
-): Promise<{ success: boolean; messageTs?: string; permalink?: string }> {
+): Promise<{ success: boolean; messageTs?: string; permalink?: string; error?: string }> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
             id: userSlackIntegrationId
@@ -240,7 +266,7 @@ export async function sendSlackApprovalMessage(
 
     if (!userSlackIntegration?.slack_integration) {
         logger.error(`[sendSlackApprovalMessage] No Slack integration found for ID: ${userSlackIntegrationId}`)
-        return { success: false }
+        return { success: false, error: "Slack integration not found." }
     }
 
     const client: WebClient = await initializeSlackWebClient(userSlackIntegration)
@@ -300,11 +326,11 @@ export async function sendSlackApprovalMessage(
             return { success: true, messageTs: result.ts, permalink }
         } else {
             logger.error(`[sendSlackApprovalMessage] Failed to send message: ${result.error}`)
-            return { success: false }
+            return { success: false, error: result.error ?? "Slack rejected the message." }
         }
     } catch (error) {
         logger.error(`[sendSlackApprovalMessage] Failed to send message:`, { error })
-        return { success: false }
+        return { success: false, error: describeSlackPostMessageError(error) ?? "Slack rejected the message." }
     }
 }
 

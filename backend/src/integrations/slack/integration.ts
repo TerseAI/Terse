@@ -1637,7 +1637,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
                 await sendSlackUnrecognizedFallback({
                     teamId,
                     channelId: messageEvent.channel!,
-                    threadTs: messageEvent.thread_ts,
+                    threadTs: messageEvent.thread_ts ?? (isAppMention ? messageEvent.ts : null),
                     slackIntegrationId: slackIntegration.id
                 })
             }
@@ -1708,7 +1708,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             await sendSlackUnrecognizedFallback({
                 teamId,
                 channelId: messageEvent.channel!,
-                threadTs: messageEvent.thread_ts,
+                threadTs: messageEvent.thread_ts ?? (isAppMention ? messageEvent.ts : null),
                 slackIntegrationId: slackIntegration.id
             })
         }
