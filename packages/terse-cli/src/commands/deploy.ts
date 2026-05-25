@@ -91,7 +91,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
         for (const r of deployResult.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
-            const agentUrl = `${FRONTEND_URL}/agents/${r.automationId}`
+            const agentUrl = `${FRONTEND_URL}/app/agents/${r.automationId}`
             log.step(`${verb}: ${chalk.bold(r.jobName)}  ${chalk.dim(agentUrl)}`)
             if (r.triggers) {
                 for (const t of r.triggers) {

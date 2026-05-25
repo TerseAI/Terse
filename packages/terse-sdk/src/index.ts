@@ -98,7 +98,7 @@ import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type 
 declare const process: { env: Record<string, string | undefined> }
 
 function resolveTerseBackendUrl(): string {
-    return process.env.TERSE_BACKEND_URL || "https://app.useterse.ai/api"
+    return process.env.TERSE_BACKEND_URL || "https://api.useterse.ai"
 }
 
 function resolveApiBaseUrl(): string {
