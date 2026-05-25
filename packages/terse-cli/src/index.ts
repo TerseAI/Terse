@@ -10,6 +10,7 @@ import { attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
 import { authOrgList, authOrgSwitch } from "./commands/authOrg.js"
 import { authStatus } from "./commands/authStatus.js"
+import { completionHandler, completionInstall, completionUninstall, maybePromptForCompletion } from "./commands/completion.js"
 import { openDashboard } from "./commands/dashboard.js"
 import { deploy } from "./commands/deploy.js"
 import { openDocs } from "./commands/docs.js"
@@ -41,6 +42,9 @@ function syncJsonErrorOutput(command: Command): void {
 program.name("terse").description("The Terse CLI — create and manage Terse projects").version(getCliVersion())
 program.hook("preAction", (_thisCommand, actionCommand) => {
     syncJsonErrorOutput(actionCommand)
+})
+program.hook("postAction", async (_thisCommand, actionCommand) => {
+    await maybePromptForCompletion(actionCommand)
 })
 
 program.commandsGroup("Getting started:")
@@ -470,7 +474,25 @@ program
     .action(() => {
         openDocs()
     })
+
+const completionCommand = program.command("completion").description("Manage shell tab completion for terse")
+
+completionCommand
+    .command("install")
+    .description("Install tab completion into your shell")
+    .action(() => completionInstall())
+
+completionCommand
+    .command("uninstall")
+    .description("Remove tab completion from your shell")
+    .action(() => completionUninstall())
+
 program.helpCommand(true)
+
+if (process.argv[2] === "completion-server") {
+    completionHandler(program)
+    process.exit(0)
+}
 
 try {
     await program.parseAsync()

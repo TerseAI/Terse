@@ -3,6 +3,7 @@ import { notificationDestinationsKey } from "terse-types/InvalidationKeys"
 import { EmailNotificationDestination, NotificationDestinationType as SharedNotificationDestinationType, SlackNotificationDestination } from "terse-types/Notifications"
 
 import { initializeSlackWebClient } from "../../../integrations/slack/client"
+import { SLACKBOT_USER_ID } from "../../../integrations/slack/helpers"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
 import { UserNotificationDestination, UserSlackIntegrationWithSlack } from "../../../types/prisma"
 
@@ -94,6 +95,9 @@ async function resolveSlackDestinationTarget(params: { slackIntegration: UserSla
         }
     }
     const userId = params.targetSelection.slackUserId
+    if (userId === SLACKBOT_USER_ID) {
+        throw new InvalidDestinationError("Slackbot can't be a notification destination — pick a real user or channel.")
+    }
     const client = await initializeSlackWebClient(params.slackIntegration)
     const result = await client.conversations.open({ users: userId })
     const dmChannelId = result.channel?.id

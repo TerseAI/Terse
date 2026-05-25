@@ -4,8 +4,6 @@ CLI for scaffolding, testing, and deploying [Terse](https://useterse.ai) workflo
 
 Terse is a code-first AI workflow platform. You write workflows in TypeScript, generate a typed SDK from your connected integrations, and deploy serverlessly. Full docs at [docs.useterse.ai](https://docs.useterse.ai).
 
-> Terse is currently in private beta. [Email support@useterse.ai](mailto:support@useterse.ai) to request access.
-
 ## Install
 
 ```bash

@@ -224,6 +224,11 @@ export const deviceTokenExchangeResponseSchema = z.object({
 })
 export type DeviceTokenExchangeResponse = z.infer<typeof deviceTokenExchangeResponseSchema>
 
+export const authModeResponseSchema = z.object({
+    mode: z.enum(["workos", "local"])
+})
+export type AuthModeResponse = z.infer<typeof authModeResponseSchema>
+
 export const identifyUserSchema = userProfileSchema.pick({ id: true, email: true, firstName: true, lastName: true }).extend({
     displayName: z.string().nullable()
 })

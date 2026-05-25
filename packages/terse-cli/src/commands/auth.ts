@@ -1,17 +1,15 @@
 import { log } from "@clack/prompts"
-import { confirm, select } from "@inquirer/prompts"
+import { select } from "@inquirer/prompts"
 import chalk from "chalk"
-import type { DeviceTokenExchangeResponse, IdentifyResponse, SdkOrganizationsListResponse, UserSession } from "terse-types"
+import { type DeviceTokenExchangeResponse, type IdentifyResponse, type UserSession, authModeResponseSchema } from "terse-types"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
-import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
+import { type NonInteractiveOpts } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 import { BACKEND_URL, FRONTEND_URL, WORKOS_CLIENT_ID } from "../config.js"
 import { openUrlInBrowser } from "../openBrowser.js"
 import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setActiveOrgToken } from "../userConfig.js"
-
-import { resolveApiKeyForOrg } from "./authOrg.js"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"
@@ -21,6 +19,16 @@ const IDENTIFY_POLL_INTERVAL_MS = 3000
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function fetchAuthMode(): Promise<"workos" | "local"> {
+    try {
+        const res = await fetch(`${BACKEND_URL}/sdk/auth/mode`)
+        if (!res.ok) return "workos"
+        return authModeResponseSchema.parse(await res.json()).mode
+    } catch {
+        return "workos"
+    }
 }
 
 async function requestDeviceCode(): Promise<DeviceCodeResponse> {
@@ -135,31 +143,41 @@ async function pickOrganization(orgs: IdentifyResponse["organizations"]): Promis
 
 async function login(): Promise<{ apiKey: string; displayName: string | null; organizationId: string; organizationName: string } | null> {
     const s = createSpinner()
-    s.start("Requesting login code")
 
-    let deviceData: DeviceCodeResponse
-    try {
-        deviceData = await requestDeviceCode()
-        s.stop("Login code ready")
-    } catch (err: any) {
-        s.stop("Failed to start login flow")
-        console.error(chalk.red(`  ${err.message}`))
-        return null
-    }
+    const mode = await fetchAuthMode()
 
-    log.info(`Open ${chalk.cyan(deviceData.verification_uri_complete)} in your browser`)
-    log.info(`Or visit ${chalk.cyan(deviceData.verification_uri)} and enter code ${chalk.bold(deviceData.user_code)}`)
-    openUrlInBrowser(deviceData.verification_uri_complete)
+    let accessToken: string
+    if (mode === "workos") {
+        s.start("Requesting login code")
 
-    s.start("Waiting for authentication in browser")
+        let deviceData: DeviceCodeResponse
+        try {
+            deviceData = await requestDeviceCode()
+            s.stop("Login code ready")
+        } catch (err: any) {
+            s.stop("Failed to start login flow")
+            console.error(chalk.red(`  ${err.message}`))
+            return null
+        }
 
-    let tokenData: TokenResponse
-    try {
-        tokenData = await pollForTokens(deviceData.device_code, deviceData.expires_in, deviceData.interval)
-    } catch (err: any) {
-        s.stop("Login failed")
-        console.error(chalk.red(`  ${err.message}`))
-        return null
+        log.info(`Open ${chalk.cyan(deviceData.verification_uri_complete)} in your browser`)
+        log.info(`Or visit ${chalk.cyan(deviceData.verification_uri)} and enter code ${chalk.bold(deviceData.user_code)}`)
+        openUrlInBrowser(deviceData.verification_uri_complete)
+
+        s.start("Waiting for authentication in browser")
+
+        try {
+            const tokenData = await pollForTokens(deviceData.device_code, deviceData.expires_in, deviceData.interval)
+            accessToken = tokenData.access_token
+        } catch (err: any) {
+            s.stop("Login failed")
+            console.error(chalk.red(`  ${err.message}`))
+            return null
+        }
+    } else {
+        // Self-hosted backend: the local auth provider ignores this token and
+        // resolves the singleton user, so the device-code dance is unnecessary.
+        accessToken = "local"
     }
 
     const jwtDeadline = Date.now() + 5 * 60 * 1000
@@ -167,7 +185,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     s.message("Loading your organizations")
     let identity: IdentifyResponse
     try {
-        identity = await identifyWithJwt(tokenData.access_token)
+        identity = await identifyWithJwt(accessToken)
     } catch (err: any) {
         s.stop("Login failed")
         if (err instanceof JwtRejectedError) {
@@ -186,7 +204,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
         log.info(`  ${chalk.cyan(orgCreateUrl)}`)
         s.start("Waiting for organization creation")
         try {
-            identity = await waitForOrganizationCreation(tokenData.access_token, jwtDeadline)
+            identity = await waitForOrganizationCreation(accessToken, jwtDeadline)
         } catch (err: any) {
             s.stop("Login failed")
             if (err instanceof JwtRejectedError) {
@@ -209,7 +227,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     }
 
     try {
-        const exchangeData = await exchangeForApiKey(tokenData.access_token, organizationId)
+        const exchangeData = await exchangeForApiKey(accessToken, organizationId)
         s.stop(`Logged in as ${exchangeData.user.displayName || exchangeData.user.email} · ${exchangeData.organization.name}`)
         return {
             apiKey: exchangeData.apiKey,
@@ -224,55 +242,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     }
 }
 
-type AlreadyLoggedInChoice = { kind: "keep" } | { kind: "switch"; apiKey: string } | { kind: "reauth" } | { kind: "failed" }
-
-async function promptAlreadyLoggedInChoice(currentApiKey: string, me: MeSummary): Promise<AlreadyLoggedInChoice> {
-    let allOrgs: SdkOrganizationsListResponse | null = null
-    try {
-        allOrgs = await fetchWithAuth<SdkOrganizationsListResponse>("/sdk/me/organizations", currentApiKey)
-    } catch {
-        // Fall back to the simple confirm path below.
-    }
-
-    const activeId = allOrgs?.activeOrganizationId ?? null
-    const orgs = allOrgs?.organizations ?? []
-
-    if (orgs.length <= 1) {
-        const shouldReauth = await confirm({ message: "Log in again with a different account?", default: false })
-        return shouldReauth ? { kind: "reauth" } : { kind: "keep" }
-    }
-
-    const choice = await select<string>({
-        message: "Which organization?",
-        choices: [
-            ...orgs.map(o => ({
-                name: o.id === activeId ? `${o.name} ${chalk.dim("(current)")}` : o.name,
-                value: o.id
-            })),
-            { name: "Log in with a different account", value: "__reauth__" }
-        ],
-        default: activeId ?? orgs[0].id
-    })
-
-    if (choice === "__reauth__") return { kind: "reauth" }
-    if (choice === activeId) return { kind: "keep" }
-
-    const picked = orgs.find(o => o.id === choice)!
-    const s = createSpinner()
-    s.start(`Switching to ${picked.name}`)
-    try {
-        const newKey = await resolveApiKeyForOrg(picked.id, picked.name, currentApiKey)
-        setActiveOrgToken(picked.id, newKey, picked.name)
-        s.stop(`Switched to ${picked.name}`)
-        return { kind: "switch", apiKey: newKey }
-    } catch (err: any) {
-        s.stop(`Failed to switch: ${err.message}`)
-        return { kind: "failed" }
-    }
-}
-
 export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiKey: string; displayName: string | null } | null> {
-    const skipPrompts = isNonInteractive(opts)
     const canFallToDeviceLogin = !opts?.nonInteractive
 
     const stored = getStoredApiKey()
@@ -284,23 +254,7 @@ export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiK
         if (me) {
             const orgLabel = me.organization?.name ?? "(no organization)"
             s.stop(`Already logged in as ${me.displayName} · ${orgLabel}`)
-            if (skipPrompts) return { apiKey: stored, displayName: me.displayName }
-
-            const next = await promptAlreadyLoggedInChoice(stored, me)
-            if (next.kind === "keep") {
-                return { apiKey: stored, displayName: me.displayName }
-            }
-            if (next.kind === "switch") {
-                return { apiKey: next.apiKey, displayName: me.displayName }
-            }
-            if (next.kind === "failed") {
-                return null
-            }
-            // next.kind === "reauth" — drop every cached per-org token before
-            // logging in again. Otherwise the new user inherits the previous
-            // user's tokens for any org they both belong to, and a later
-            // `terse auth org switch` would silently reuse the prior token.
-            clearStoredApiKey()
+            return { apiKey: stored, displayName: me.displayName }
         } else {
             s.stop("Existing API key is invalid or expired")
             if (!canFallToDeviceLogin) {

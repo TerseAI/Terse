@@ -1,6 +1,6 @@
 {
     "name": "terse-cli",
-    "version": "0.1.55",
+    "version": "0.1.58",
     "type": "module",
     "license": "SEE LICENSE IN LICENSE.md",
     "repository": {
@@ -29,6 +29,7 @@
     "dependencies": {
         "@clack/prompts": "^1.0.0",
         "@inquirer/prompts": "^7.0.0",
+        "@pnpm/tabtab": "^0.5.4",
         "chalk": "^5.0.0",
         "commander": "^14.0.0",
         "conf": "^15.1.0",

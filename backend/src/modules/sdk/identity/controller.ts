@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
 import { JWTPayload } from "jose"
 import {
+    AuthModeResponse,
     DeviceTokenExchangeResponse,
     IdentifyResponse,
     SdkOrganizationsListResponse,
@@ -17,6 +18,7 @@ import { createApiToken } from "../../../modules/auth/helpers/apiTokens"
 import { getAuthProvider } from "../../../services/authProvider"
 import { AuthTokenError } from "../../../services/authProvider/AuthProvider"
 import { getOrganizationProvider } from "../../../services/organizationProvider"
+import { settings } from "../../../settings"
 
 const featureFlagService = FeatureFlagService.getInstance()
 
@@ -39,6 +41,11 @@ function handleVerifyError(error: any, res: Response, route: string): Response |
     }
     logger.error(`[${route}] Unexpected error`, { error })
     return null
+}
+
+export function authMode(_req: Request, res: Response) {
+    const response: AuthModeResponse = { mode: settings.workos ? "workos" : "local" }
+    res.json(response)
 }
 
 export async function identify(req: Request, res: Response) {
