@@ -1,23 +1,21 @@
 import fs from "fs/promises"
 import path from "path"
-import { Resend } from "resend"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import { RunHistoryAction } from "terse-types"
 import { UserSession } from "terse-types"
 import { fileURLToPath } from "url"
 
 import { FailureState } from "../../../modules/agents/AgentRunner/runHistory"
+import { getEmailProvider } from "../../../services/emailProvider"
 import { settings } from "../../../settings"
 import { Agent, UserNotificationDestination } from "../../../types/prisma"
 import { loadTemplate } from "../emails/templating"
 import { formatApprovalNotificationFor } from "../utils"
 
-const resend = new Resend(settings.resend.apiKey)
 const notificationModuleDir = path.dirname(fileURLToPath(import.meta.url))
 const inlineLogoCid = "terse-logo"
 const fallbackLogoUrl = "https://app.useterse.ai/terse.png"
 const inlineLogoPath = path.resolve(notificationModuleDir, "../emails/assets/terse-logo.png")
-const fromEmail = settings.resend.fromEmail ? `Terse <${settings.resend.fromEmail}>` : ""
 
 type EmailBranding = {
     logoSrc: string
@@ -29,33 +27,12 @@ type EmailBranding = {
     }>
 }
 
-async function getEmailBranding(): Promise<EmailBranding> {
-    try {
-        const logoContent = await fs.readFile(inlineLogoPath)
-
-        return {
-            logoSrc: `cid:${inlineLogoCid}`,
-            attachments: [
-                {
-                    filename: "terse-logo.png",
-                    content: logoContent.toString("base64"),
-                    contentType: "image/png",
-                    contentId: inlineLogoCid
-                }
-            ]
-        }
-    } catch {
-        return { logoSrc: fallbackLogoUrl }
-    }
-}
-
 export async function sendEmailNotification(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, agent: Agent) {
     const agentSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: agent.id })}` : undefined
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
     const branding = await getEmailBranding()
 
-    await resend.emails.send({
-        from: fromEmail,
+    await getEmailProvider().sendEmail({
         to: notificationDestination.email_address || "",
         subject: "Notification from: " + agent.name,
         html: await loadTemplate("notification.html", { runAction, agent, logoSrc: branding.logoSrc, agentSettingsUrl, notificationSettingsUrl }),
@@ -70,8 +47,7 @@ export async function sendEmailApprovalRequest(notificationDestination: UserNoti
     const branding = await getEmailBranding()
     const notificationFor = formatApprovalNotificationFor(runAction.action)
 
-    await resend.emails.send({
-        from: fromEmail,
+    await getEmailProvider().sendEmail({
         to: notificationDestination.email_address || "",
         subject: agent.name + " is requesting your approval",
         html: await loadTemplate("approvalRequest.html", { runId, runAction, agent, user, runUrl, logoSrc: branding.logoSrc, notificationFor, agentSettingsUrl, notificationSettingsUrl }),
@@ -98,8 +74,7 @@ export async function sendEmailRunFailure(notificationDestination: UserNotificat
             break
     }
 
-    await resend.emails.send({
-        from: fromEmail,
+    await getEmailProvider().sendEmail({
         to: notificationDestination.email_address || "",
         subject,
         html: await loadTemplate("runHistoryError.html", {
@@ -127,14 +102,33 @@ export async function sendWeeklyReviewEmail(
     }>
 ): Promise<void> {
     const branding = await getEmailBranding()
-
     const notificationSettingsUrl = settings.urls.frontend ? `${settings.urls.frontend}${FrontendRoutes.NOTIFICATIONS}` : undefined
 
-    await resend.emails.send({
-        from: fromEmail,
+    await getEmailProvider().sendEmail({
         to: emailAddress,
         subject: "Weekly Agent Review",
         html: await loadTemplate("weeklyReview.html", { agents, logoSrc: branding.logoSrc, notificationSettingsUrl }),
         attachments: branding.attachments
     })
+}
+
+// ─────────── helpers ───────────
+
+async function getEmailBranding(): Promise<EmailBranding> {
+    try {
+        const logoContent = await fs.readFile(inlineLogoPath)
+        return {
+            logoSrc: `cid:${inlineLogoCid}`,
+            attachments: [
+                {
+                    filename: "terse-logo.png",
+                    content: logoContent.toString("base64"),
+                    contentType: "image/png",
+                    contentId: inlineLogoCid
+                }
+            ]
+        }
+    } catch {
+        return { logoSrc: fallbackLogoUrl }
+    }
 }

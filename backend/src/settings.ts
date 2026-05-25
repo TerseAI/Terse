@@ -171,11 +171,11 @@ export const settings = {
         tokenSecret: requireEnv("MODAL_TOKEN_SECRET")
     },
 
-    // Resend SMTP (for email notifications)
-    resend: {
+    // Resend — opt-in. Used by ResendEmailProvider; absent falls through to NoOpEmailProvider.
+    resend: optionalIntegrationSettings(["RESEND_API_KEY"], () => ({
         apiKey: requireEnv("RESEND_API_KEY"),
         fromEmail: optionalEnv("RESEND_FROM_EMAIL", "notifications@updates.useterse.ai")
-    },
+    })),
 
     // Optional configuration
     optional: {
