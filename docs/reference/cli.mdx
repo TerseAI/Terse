@@ -445,6 +445,19 @@ terse docs
 
 If `TERSE_DOCS_URL` is set, the CLI opens that URL instead of the public docs.
 
+### Shell tab completion
+
+The CLI can install tab completion for `terse` subcommands and flags in supported shells (bash, zsh, and fish, detected from your `SHELL` environment variable).
+
+```bash
+terse completion install
+terse completion uninstall
+```
+
+After a successful interactive command, the CLI may ask once whether to enable tab completion. The prompt is skipped when you pass `--non-interactive` or `--json`, when your shell is not supported, or when you run `terse completion` commands. Accepting runs `terse completion install`; declining or installing records that you were asked in your user-level config so you are not prompted again. `terse logout` keeps that preference.
+
+Open a new terminal or source your shell profile after install for completions to take effect.
+
 ## API key resolution
 
 Commands that call the Terse API resolve credentials in this order:
