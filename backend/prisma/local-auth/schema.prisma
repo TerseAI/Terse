@@ -1,0 +1,53 @@
+// Local-auth SQLite schema. Used only when AUTH_PROVIDER=local (settings.workos absent).
+// Kept physically separate from the main Postgres schema — auth data has no FK
+// relationship with the main domain after the users-table drop.
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "../../src/generated/local-auth-prisma"
+}
+
+datasource db {
+    provider = "sqlite"
+    url      = env("LOCAL_AUTH_DB_URL")
+}
+
+model local_identities {
+    id            String   @id @default(cuid())
+    /// Email or synthetic `<whoami>@localhost` for bootstrap users.
+    email         String   @unique
+    /// Null for bootstrap-created users until they explicitly set a password.
+    password_hash String?
+    display_name  String?
+    /// "bootstrap" (whoami auto-create) | "signup" | "invite"
+    created_via   String
+    created_at    DateTime @default(now())
+    updated_at    DateTime @updatedAt
+
+    memberships local_memberships[]
+}
+
+model local_organizations {
+    id         String   @id @default(cuid())
+    name       String
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+
+    memberships local_memberships[]
+}
+
+model local_memberships {
+    id              String   @id @default(cuid())
+    identity_id     String
+    organization_id String
+    /// SQLite has no array type; comma-separated. App parses to Role[].
+    roles           String
+    created_at      DateTime @default(now())
+
+    identity     local_identities    @relation(fields: [identity_id], references: [id], onDelete: Cascade)
+    organization local_organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+    @@unique([identity_id, organization_id])
+    @@index([identity_id])
+    @@index([organization_id])
+}
