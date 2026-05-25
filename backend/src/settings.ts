@@ -50,7 +50,7 @@ export const settings = {
     // Note: Prisma CLI also needs LOCAL_AUTH_DB_URL set in .env for migration commands (it can't
     // read this TS default). The runtime default below is a defensive fallback only.
     localAuth: {
-        dbUrl: optionalEnv("LOCAL_AUTH_DB_URL", "file:./prisma/local-auth/local-auth.db")!
+        dbUrl: optionalEnv("LOCAL_AUTH_DB_URL", "file:./prisma/local-auth/local-auth.db")
     },
 
     openai: {
@@ -77,7 +77,7 @@ export const settings = {
     nodeEnv: optionalEnv("NODE_ENV", "development") as "development" | "production" | "test",
 
     health: {
-        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")!
+        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/health")
     },
 
     // Gmail OAuth — opt-in
@@ -232,6 +232,8 @@ function requireSecretMinLength(name: string, minLen = 16): string {
     return value
 }
 
+function optionalEnv(name: string): string | undefined
+function optionalEnv(name: string, defaultValue: string): string
 function optionalEnv(name: string, defaultValue?: string): string | undefined {
     const value = process.env[name]
     if (value && value.trim() !== "") {

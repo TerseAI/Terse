@@ -252,9 +252,6 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
 
     private getModel(): ModelReference {
         const defaultModel = settings.aisdk.default
-        if (!defaultModel) {
-            throw new Error("Default model not set")
-        }
         const resolved = parseModelReference(defaultModel)
         return resolved
     }
