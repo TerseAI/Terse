@@ -1,19 +1,14 @@
-export interface SandboxService<I extends SandboxImage = SandboxImage> {
-    /**
-     * Mark: App related API
-     */
+export interface SandboxService<I extends SandboxImage = SandboxImage, S extends Sandbox = Sandbox> {
+    // True when the provider runs jobs in isolated containers (Modal/Docker/etc). False for in-memory.
+    readonly supportsContainerizedRunners: boolean
+
     getOrCreateApp(name: string): Promise<SandboxApp>
-    /**
-     * Mark: Image related API
-     */
+
     getImageFromRegistry(registry: string): I
     getImageFromId(imageId: string): Promise<I>
     deleteImage(imageId: string): Promise<void>
 
-    /**
-     * Mark: Sandbox related API
-     */
-    getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox>
+    getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<S>
 }
 
 export interface SandboxApp {
@@ -33,18 +28,19 @@ export interface Sandbox {
     snapshotFilesystem(): Promise<SandboxFileSystemSnapshot>
 }
 
-interface ReadStream<R = any> extends ReadableStream<R> {
+export interface ReadStream<R = string> {
     readText(): Promise<string>
     readBytes(): Promise<Uint8Array>
+    getReader(): ReadableStreamDefaultReader<R>
 }
 
-interface WriteStream<R = any> extends WritableStream<R> {
+export interface WriteStream {
     writeText(text: string): Promise<void>
     writeBytes(bytes: Uint8Array): Promise<void>
 }
 
-interface ContainerProcess {
-    get stdin(): WriteStream<string>
+export interface ContainerProcess {
+    get stdin(): WriteStream
     get stdout(): ReadStream<string>
     get stderr(): ReadStream<string>
     wait(): Promise<number>
@@ -90,7 +86,7 @@ interface Secret {
 type StdioBehavior = "pipe" | "ignore"
 type StreamMode = "text" | "binary"
 
-interface SandboxFile {
+export interface SandboxFile {
     read(): Promise<Uint8Array>
     write(data: Uint8Array): Promise<void>
     flush(): Promise<void>

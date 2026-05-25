@@ -18,7 +18,9 @@ import { AgentWithRelations } from "../types/prisma"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { SecretService } from "./SecretService"
-import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
+import { getSandboxProvider } from "./sandboxProvider"
+import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
+import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
@@ -125,7 +127,7 @@ export class SdkJobExecutionService {
             const result = await this.executeWithSourceImage({
                 executor,
                 jobName,
-                sandboxService: new ModalSandboxService(),
+                sandboxService: getSandboxProvider(),
                 runId,
                 agentId: agent.id,
                 sandboxEnv,

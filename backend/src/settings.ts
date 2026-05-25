@@ -77,7 +77,7 @@ export const settings = {
     nodeEnv: optionalEnv("NODE_ENV", "development") as "development" | "production" | "test",
 
     health: {
-        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/health")
+        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")
     },
 
     // Gmail OAuth — opt-in
@@ -165,11 +165,11 @@ export const settings = {
         improvementWorkspaceId: requireEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
     },
 
-    // Modal (sandbox execution for SDK jobs)
-    modal: {
+    // Modal — opt-in. Used by ModalSandboxService; absent falls through to InMemorySandboxService.
+    modal: optionalIntegrationSettings(["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"], () => ({
         tokenId: requireEnv("MODAL_TOKEN_ID"),
         tokenSecret: requireEnv("MODAL_TOKEN_SECRET")
-    },
+    })),
 
     // Resend — opt-in. Used by ResendEmailProvider; absent falls through to NoOpEmailProvider.
     resend: optionalIntegrationSettings(["RESEND_API_KEY"], () => ({

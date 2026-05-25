@@ -14,6 +14,7 @@ import { fetchFullJudgeContext } from "../../../modules/agents/JudgeAgent/fetchJ
 import { sendWeeklyReviewEmail } from "../../../modules/notifications/channels/emailNotifications"
 import { getUserNotificationSettings } from "../../../modules/notifications/settings/repository"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
+import { getSandboxProvider } from "../../../services/sandboxProvider"
 import { SdkImprovementService } from "../../../services/SdkImprovementService"
 import { settings } from "../../../settings"
 import { resolveUserInOrg } from "../../../utility/identity"
@@ -41,6 +42,14 @@ type EmailGroup = {
 
 export async function reviewAllAgents(req: Request, res: Response) {
     logger.info("[ReviewAgents] Weekly review job triggered")
+
+    // Weekly reviews depend on ClaudeCodeSandboxService, which runs the Claude Code CLI
+    // inside a container. In-memory sandbox can't host that — feature is cloud-only for now.
+    if (!getSandboxProvider().supportsContainerizedRunners) {
+        logger.info("[ReviewAgents] Skipping: current sandbox provider does not support containerized runners")
+        res.status(200).json({ skipped: true, reason: "sandbox_provider_no_containers" })
+        return
+    }
 
     const featureFlagService = FeatureFlagService.getInstance()
     const periodEnd = new Date()

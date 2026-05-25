@@ -6,7 +6,8 @@ import logger from "../common/logger"
 import { shellQuote } from "../common/shellEscape"
 import { db } from "../loaders/prisma"
 
-import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
+import { getSandboxProvider } from "./sandboxProvider"
+import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import {
@@ -341,7 +342,7 @@ export class SdkSandboxImageService {
     }
 
     private async buildDependencyImage(archive: SdkProjectArchive, executor: SdkRuntimeExecutor, dependencyHash: string, cliVersion: string): Promise<string> {
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
 
         const baseImage = sandboxService.getImageFromRegistry(executor.sandboxImage)
@@ -375,7 +376,7 @@ export class SdkSandboxImageService {
         zipBuffer: Buffer
     }): Promise<string> {
         const { dependencySandboxImageId, executor, sourceLayerKey, zipBuffer } = params
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
         const dependencyImage = await sandboxService.getImageFromId(dependencySandboxImageId)
         const sb = await sandboxService.getOrCreateSandbox(app, dependencyImage, sourceImageBuildSandboxUniqueName(sourceLayerKey), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
@@ -404,7 +405,7 @@ export class SdkSandboxImageService {
     }
 
     private async prewarmRuntimeSandbox(modalSourceImageId: string, sourceLayerKey: string): Promise<void> {
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
         const image = await sandboxService.getImageFromId(modalSourceImageId)
         const uniqueName = runtimeSandboxUniqueName(sourceLayerKey)
@@ -429,7 +430,7 @@ export class SdkSandboxImageService {
     }
 
     private async deleteImage(imageId: string): Promise<void> {
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = getSandboxProvider()
         await sandboxService.deleteImage(imageId)
     }
 

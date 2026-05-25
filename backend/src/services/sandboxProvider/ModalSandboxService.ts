@@ -1,7 +1,7 @@
-import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, NotFoundError, SandboxCreateParams } from "modal"
+import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams } from "modal"
 
 import logger from "../../common/logger"
-import { settings } from "../../settings"
+import { SettingsDependant } from "../../settings"
 
 import { Sandbox, SandboxApp, SandboxImage, SandboxService } from "./SandboxService"
 
@@ -13,17 +13,14 @@ export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
 const CREATE_MAX_ATTEMPTS = 6
 const CREATE_RETRY_BASE_DELAY_MS = 150
 
-export class ModalSandboxService implements SandboxService<ModalImage> {
-    private readonly modal: ModalClient
+export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, ModalSandbox> {
+    readonly settingsKey = "modal"
+    readonly supportsContainerizedRunners = true
 
-    constructor(modal?: ModalClient) {
-        this.modal =
-            modal ??
-            new ModalClient({
-                tokenId: settings.modal.tokenId,
-                tokenSecret: settings.modal.tokenSecret
-            })
-    }
+    private readonly modal = new ModalClient({
+        tokenId: this.config.tokenId,
+        tokenSecret: this.config.tokenSecret
+    })
 
     async getOrCreateApp(name: string): Promise<SandboxApp> {
         const t0 = Date.now()
@@ -64,7 +61,7 @@ export class ModalSandboxService implements SandboxService<ModalImage> {
         }
     }
 
-    async getOrCreateSandbox(app: SandboxApp, image: ModalImage, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox> {
+    async getOrCreateSandbox(app: SandboxApp, image: ModalImage, uniqueName: string, params?: SandboxCreateParams): Promise<ModalSandbox> {
         if (!app.name) {
             throw new Error("App name is required")
         }
@@ -88,7 +85,7 @@ export class ModalSandboxService implements SandboxService<ModalImage> {
         return this.createSandboxWithRetries(app, image, name, params, opStart)
     }
 
-    private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<Sandbox | null> {
+    private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<ModalSandbox | null> {
         const lookupStart = Date.now()
 
         try {
@@ -159,7 +156,7 @@ export class ModalSandboxService implements SandboxService<ModalImage> {
         }
     }
 
-    private async createSandboxWithRetries(app: SandboxApp, image: SandboxImage, name: string, params: SandboxCreateParams | undefined, opStart: number): Promise<Sandbox> {
+    private async createSandboxWithRetries(app: SandboxApp, image: SandboxImage, name: string, params: SandboxCreateParams | undefined, opStart: number): Promise<ModalSandbox> {
         const imageRef = image as ModalImage
 
         for (let attempt = 0; attempt < CREATE_MAX_ATTEMPTS; attempt++) {
@@ -187,7 +184,7 @@ export class ModalSandboxService implements SandboxService<ModalImage> {
         throw new Error(`Modal sandbox: exhausted create attempts for ${name}`)
     }
 
-    private async createSandboxOnce(app: SandboxApp, image: SandboxImage, name: string, params: SandboxCreateParams | undefined, attempt: number, opStart: number): Promise<Sandbox> {
+    private async createSandboxOnce(app: SandboxApp, image: SandboxImage, name: string, params: SandboxCreateParams | undefined, attempt: number, opStart: number): Promise<ModalSandbox> {
         const appRef = app as ModalApp
         const imageRef = image as ModalImage
         const createStart = Date.now()
@@ -215,7 +212,7 @@ export class ModalSandboxService implements SandboxService<ModalImage> {
         return sandbox
     }
 
-    private async recoverFromCreateConflict(appName: string, name: string, attempt: number, opStart: number): Promise<Sandbox | null> {
+    private async recoverFromCreateConflict(appName: string, name: string, attempt: number, opStart: number): Promise<ModalSandbox | null> {
         const recoveryStart = Date.now()
 
         logger.warn("Modal sandbox: name conflict on create, attempting recovery", {
