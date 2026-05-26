@@ -10,8 +10,7 @@ import { gmailCreateDraftTool } from "./tools/createDraft"
 
 export class GmailDraftOutput extends Output<GmailDraftOutputConfig> {
     constructor() {
-        const toolbox = [{ tool: gmailCreateDraftTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft", validateACL: unrestricted }]
-        super(OutputConfigType.GMAIL_DRAFT, toolbox)
+        super(OutputConfigType.GMAIL_DRAFT, [{ tool: gmailCreateDraftTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Create draft", validateACL: unrestricted }])
     }
 
     async validateConfig(output: GmailDraftOutputConfig, _userId: string): Promise<void> {}

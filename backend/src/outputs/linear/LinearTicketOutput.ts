@@ -20,7 +20,7 @@ import { linearUpdateTicketTool, validateLinearUpdateTicket } from "./tools/upda
 
 export class LinearTicketOutput extends Output<LinearOutputConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.LINEAR_TICKET, [
             { tool: linearSearchTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Search tickets", validateACL: unrestricted },
             { tool: linearGetTeamsTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get teams", validateACL: unrestricted },
             { tool: linearGetStatesTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Get states", validateACL: validateLinearGetStates },
@@ -31,8 +31,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             { tool: linearUpdateTicketTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Update ticket", validateACL: validateLinearUpdateTicket },
             { tool: linearAddCommentTool, isReadOnly: false, integration: IntegrationType.LINEAR, displayName: "Add comment", validateACL: validateLinearAddComment },
             { tool: linearReadTicketTool, isReadOnly: true, integration: IntegrationType.LINEAR, displayName: "Read ticket", validateACL: validateLinearReadTicket }
-        ]
-        super(OutputConfigType.LINEAR_TICKET, toolbox)
+        ])
     }
 
     async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {

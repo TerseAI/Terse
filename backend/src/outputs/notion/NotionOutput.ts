@@ -25,7 +25,7 @@ import {
 
 export class NotionOutput extends Output<NotionConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.NOTION, [
             { tool: notionGetSchemaTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Get datasource schema", validateACL: validateNotionGetSchema },
             { tool: notionQueryDatabaseTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query database", validateACL: validateNotionQueryDatabase },
             {
@@ -45,8 +45,7 @@ export class NotionOutput extends Output<NotionConfig> {
             { tool: notionQueryPageTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "Query page", validateACL: validateNotionQueryPage },
             { tool: notionModifyBlocksTool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: "Modify blocks", validateACL: validateNotionModifyBlocks },
             { tool: notionListUsersTool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: "List workspace users", validateACL: unrestricted }
-        ]
-        super(OutputConfigType.NOTION, toolbox)
+        ])
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {

@@ -16,7 +16,7 @@ import type {
     SnowflakeIntegration,
     WorkOSIntegration
 } from "terse-types"
-import { ApiRoutes, IntegrationType, buildRoute, isValidToolName } from "terse-types"
+import { ApiRoutes, IntegrationType, type ToolDefinition, buildRoute, isValidToolName, toolDefinitionsResponseSchema } from "terse-types"
 
 import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
@@ -34,8 +34,7 @@ import {
     type LinearInstanceData,
     type NotionInstanceData,
     type PosthogInstanceData,
-    type SlackInstanceData,
-    type ToolDefinition
+    type SlackInstanceData
 } from "../providers/codegenTypes.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
@@ -86,7 +85,8 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
 
     let toolDefs: ToolDefinition[] = []
     try {
-        const resp = await fetchWithAuth<{ tools: ToolDefinition[] }>(ApiRoutes.SDK.TOOL_DEFINITIONS, apiKey)
+        const raw = await fetchWithAuth<unknown>(ApiRoutes.SDK.TOOL_DEFINITIONS, apiKey)
+        const resp = toolDefinitionsResponseSchema.parse(raw)
         const activeSet = new Set(activeTypes as string[])
         toolDefs = resp.tools.filter(t => activeSet.has(t.integration))
         const skippedToolNames = [...new Set(toolDefs.filter(t => !isValidToolName(t.name)).map(t => t.name))].sort()

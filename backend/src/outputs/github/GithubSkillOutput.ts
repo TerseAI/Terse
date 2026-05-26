@@ -18,7 +18,7 @@ import { summarizeGitHubPullRequestDiffTool, validateSummarizeGitHubPullRequestD
 
 export class GithubSkillOutput extends Output<GitHubConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.GITHUB, [
             { tool: searchGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search code", validateACL: validateSearchGitHubCode },
             { tool: grepGitHubCodeTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Grep code", validateACL: validateGrepGitHubCode },
             { tool: readGitHubFileTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Read file", validateACL: validateReadGitHubFile },
@@ -26,9 +26,7 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
             { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests", validateACL: validateListGitHubPullRequests },
             { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits", validateACL: validateListGitHubCommits },
             { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff", validateACL: validateSummarizeGitHubPullRequestDiff }
-        ]
-
-        super(OutputConfigType.GITHUB, toolbox)
+        ])
     }
 
     async validateConfig(output: GitHubConfig, userId: string): Promise<void> {

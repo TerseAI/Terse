@@ -1,6 +1,7 @@
 import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import crypto from "node:crypto"
+import { ToolDefinition } from "terse-types"
 import { UserSession } from "terse-types/types"
 import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { z } from "zod"
@@ -31,22 +32,25 @@ export async function handleToolDefinitions(req: Request, res: Response) {
     if (!user) return res.status(401).json({ error: "Unauthorized" })
 
     try {
-        const tools: Array<{ name: string; displayName: string; description: string; integration: string; isReadOnly: boolean; supportsApproval: boolean }> = []
+        const tools: ToolDefinition[] = []
         const seen = new Set<string>()
 
         for (const [, factory] of OutputFactory.OUTPUT_REGISTRY) {
             const output = factory()
             for (const entry of output.toolbox) {
-                const toolEntry = tool(entry.tool) as Tool
+                const toolEntry = tool(entry.tool)
                 const name = toolEntry.name
                 if (seen.has(name)) continue
                 seen.add(name)
 
-                const ft = toolEntry as FunctionTool
+                console.log("toolEntry name", toolEntry.name)
+                // console.log("toolEntry", toolEntry)
+                console.log("entry", entry.supportsApproval)
+
                 tools.push({
                     name,
                     displayName: entry.displayName,
-                    description: ft.description ?? "",
+                    description: toolEntry.description,
                     integration: entry.integration,
                     isReadOnly: entry.isReadOnly,
                     supportsApproval: entry.supportsApproval ?? false

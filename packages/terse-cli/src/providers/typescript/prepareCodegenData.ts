@@ -1,4 +1,4 @@
-import { toolsWithIntegrationId } from "terse-types"
+import { type ToolDefinition, toolsWithIntegrationId } from "terse-types"
 
 import type {
     AttioAttributeData,
@@ -13,8 +13,7 @@ import type {
     NotionInstanceData,
     PosthogInstanceData,
     SlackInstanceData,
-    SnowflakeInstanceData,
-    ToolDefinition
+    SnowflakeInstanceData
 } from "../codegenTypes.js"
 
 interface ResourceFieldMapping {
@@ -356,6 +355,7 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
         "GithubPushTrigger",
         "GithubTrigger"
     ]
+    console.log("tools", tools)
     const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
 
     const repositoriesWithFullName = inst.repositories.map(repo => {
