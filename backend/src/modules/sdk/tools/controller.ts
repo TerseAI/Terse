@@ -43,10 +43,6 @@ export async function handleToolDefinitions(req: Request, res: Response) {
                 if (seen.has(name)) continue
                 seen.add(name)
 
-                console.log("toolEntry name", toolEntry.name)
-                // console.log("toolEntry", toolEntry)
-                console.log("entry", entry.supportsApproval)
-
                 tools.push({
                     name,
                     displayName: entry.displayName,
