@@ -355,7 +355,6 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
         "GithubPushTrigger",
         "GithubTrigger"
     ]
-    console.log("tools", tools)
     const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
 
     const repositoriesWithFullName = inst.repositories.map(repo => {
