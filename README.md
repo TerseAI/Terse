@@ -8,7 +8,7 @@
 
   <h1>Terse</h1>
 
-  <p><strong>AI Workflows as Code.</strong></p>
+  <p><strong>Workflow building for the coding agent era.</strong></p>
 
   <p>
     A code-first AI workflow platform for developers and coding agents.<br/>
@@ -40,7 +40,6 @@
     <a href="https://docs.useterse.ai/quickstart">Quickstart</a> ·
     <a href="https://docs.useterse.ai/reference/typescript-sdk">SDK</a> ·
     <a href="https://docs.useterse.ai/reference/cli">CLI</a> ·
-    <a href="https://docs.useterse.ai/templates">Templates</a> ·
     <a href="https://useterse.ai">Sign up</a>
   </p>
 </div>

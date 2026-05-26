@@ -10,37 +10,36 @@ You declare which tools need approval in your job definition. When the model (or
 
 ## Configuring tool approvals
 
-List the tool names that require approval in `toolApprovals` (TypeScript)
+List the tool names that require approval in `toolApprovals`:
 
-<CodeGroup>
-
-```ts TypeScript
+```ts
 createJob({
     name: "deal-enrichment",
-    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
-    onTrigger: async (event: Trigger) => {
+    triggers: [Triggers.attio.onRecordCreated({ object: AttioObject.Deal })],
+    onTrigger: async (event) => {
         const agent = TerseAgent.create({
             prompt: "You enrich new deals and post summaries to the deal desk.",
             skills: [
-                Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }),
-                Apollo.skill(),
-                Slack.skill({ channel: SlackChannel.DealDesk })
+                Skills.attio({ object: AttioObject.Deal }),
+                Skills.web(),
+                Skills.slack({ channel: SlackChannel.DealDesk })
             ],
-            toolApprovals: ["attio.updateRecord", "slack.sendMessage"]
+            toolApprovals: ["attio_upsert_record", "slack_send_message"]
         })
 
-        // This call runs immediately (Apollo reads don't need approval)
-        const company = await agent.tools.apollo.enrichCompany({
-            domain: event.record.values.company_domain
+        // Agentic: web research runs immediately (read-only)
+        const summary = await agent.runAndWait(
+            `Summarize what ${event.record.values.company_name} does in one paragraph.`
+        )
+
+        // This call pauses and waits for human approval
+        await agent.tools.attio.upsertRecord({
+            object: AttioObject.Deal,
+            matchingAttribute: "record_id",
+            records: [{ record_id: event.record.id, research_summary: summary }]
         })
 
-        // These calls pause and wait for human approval
-        await agent.tools.attio.updateRecord({
-            list: AttioList.Pipeline.NewDeals,
-            recordId: event.record.id,
-            fields: { research_summary: company.industry }
-        })
-
+        // So does this one
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
             message: `New deal enriched: ${event.record.values.company_name}`
@@ -49,9 +48,7 @@ createJob({
 })
 ```
 
-</CodeGroup>
-
-An empty `toolApprovals` array means no tools require approval. Omitting the field entirely has the same effect.
+`toolApprovals` is typed against the tools exposed by your declared `skills`, so your editor autocompletes the exact tool names. An empty array means no tools require approval; omitting the field entirely has the same effect.
 
 ## Approval in development vs. production
 
@@ -62,21 +59,21 @@ The approval experience adapts to your environment:
 When you test locally, approval requests appear as interactive prompts in your terminal:
 
 ```
-  Approval required: attio.updateRecord
+  Approval required: attio_upsert_record
     {
-      "list": "new-deals",
-      "recordId": "rec_abc123",
-      "fields": { "research_summary": "SaaS company, 150 employees" }
+      "objectSlug": "deals",
+      "matchingAttribute": "record_id",
+      "records": [{ "record_id": "rec_abc123", "research_summary": "SaaS company, 150 employees" }]
     }
 
-  Approve attio.updateRecord? (Y/n)
+  Approve attio_upsert_record? (Y/n)
 ```
 
 Type `Y` to approve or `n` to reject. The run resumes immediately in the same terminal session.
 
 ### Production (deployed workflows)
 
-In production, approval requests are delivered through your configured notification channels and handled through the Terse app:
+In production, Terse delivers approval requests through your configured notification channels and handles them in the app:
 
 | Channel    | Experience                                                                                          |
 | ---------- | --------------------------------------------------------------------------------------------------- |
@@ -88,32 +85,18 @@ You can also approve or reject from the **Activity** tab by opening the paused r
 
 ## When to use tool approvals
 
-Tool approvals add latency because the run waits for a human. Use them deliberately:
+Tool approvals add latency because the run waits for a human. Use them deliberately. Good candidates are write operations to production CRMs during early development, customer-facing messages (emails, Slack DMs to external contacts), database mutations (especially deletes), and any workflow where compliance requires a human checkpoint. Skip them for read-only operations like queries and enrichment lookups, internal notifications to team Slack channels or dashboards, workflows that have been validated and are running reliably, and high-volume operations where per-run approval isn't practical.
 
-**Good candidates for approval:**
-
-- Write operations to production CRMs during early development
-- Customer-facing messages (emails, Slack DMs to external contacts)
-- Database mutations (especially delete operations)
-- Any workflow where compliance requires a human checkpoint
-
-**Skip approval for:**
-
-- Read-only operations (queries, enrichment lookups)
-- Internal notifications (team Slack channels, internal dashboards)
-- Workflows that have been validated and are running reliably
-- High-volume operations where per-run approval isn't practical
-
-A common pattern is to start with approvals enabled during development and the first few production runs, then remove them once you're confident the workflow behaves correctly.
+A common pattern is to start with approvals enabled during development and the first few production runs, then remove them once the workflow behaves correctly.
 
 ## Notification configuration
 
-Approval requests are delivered through your workflow's notification settings. To receive approval notifications, make sure:
+Terse delivers approval requests through your workflow's notification settings. To receive them, make sure:
 
-1. **Notification destination** is configured. Add a Slack workspace or confirm your email in **Profile > Notification destinations**.
-2. **Approval requests are enabled.** In your workflow's notification settings, include "Approval requests" in the action types to notify on.
+1. **You've added a notification destination.** Add a Slack workspace or confirm your email in **Profile > Notification destinations**.
+2. **You've enabled approval requests.** In your workflow's notification settings, include "Approval requests" in the action types to notify on.
 
-Terse tries Slack first when you have an active Slack destination. If Slack isn't configured, it falls back to email. Every approval request sent is logged in your notification history.
+Terse tries Slack first when you have an active destination. If Slack isn't configured, it falls back to email. Terse logs every approval request it sends in your notification history.
 
 ## Where to go next
 

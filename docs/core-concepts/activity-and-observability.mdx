@@ -31,18 +31,18 @@ The top-level record captures the basics: status, trigger source, trigger title,
 
 ### Action trace
 
-Each side effect (a CRM record updated, a Slack message sent, a query executed) is logged as an **action** with:
+Terse logs each side effect (a CRM record updated, a Slack message sent, a query executed) as an action with:
 
 - The integration and tool name
 - Whether it was a read or write
 - A human-readable summary
 - An optional link to the result (e.g., a URL to the created record)
 
-Actions are categorized by type: `create`, `update`, `delete`, `read`, `approve`, or `error`.
+Terse categorizes actions by type: `create`, `update`, `delete`, `read`, `approve`, or `error`.
 
 ### Raw event stream
 
-The full model conversation is stored as a sequence of raw events: every prompt, tool call, tool result, and model response, in order. This is what powers the run replay in the Activity drawer. You can step through the entire execution and see exactly what the model was thinking and doing at each point.
+Terse stores the full model conversation as a sequence of raw events: every prompt, tool call, tool result, and model response, in order. That stream powers the run replay in the Activity drawer. You can step through the entire execution and see exactly what the model was thinking and doing at each point.
 
 ## Activity tab
 
@@ -56,7 +56,7 @@ The Activity tab shows all runs across your workflows in one place, with the mos
 
 **Inspect a run** by clicking any row. This opens a drawer with the full run replay: the trigger payload, the model conversation, tool calls with their arguments and results, and the final output. For runs awaiting approval, you can approve or reject directly from here.
 
-From the run drawer or list, you can **re-trigger** the workflow with the same trigger payload (a new run on Terse). To execute that payload against your local code instead, use [`terse replay`](/reference/cli#terse-replay-run-id) with the run ID. To list past runs and optional trigger payloads from the terminal, use [`terse history`](/reference/cli#terse-history-job-name).
+From the run drawer or list, you can **re-trigger** the workflow with the same trigger payload, creating a new run on Terse. To replay that payload against your local code instead, use [`terse replay`](/reference/cli#terse-replay-run-id) with the run ID. To list past runs and their payloads from the terminal, use [`terse history`](/reference/cli#terse-history-job-name).
 
 ## Stats dashboard
 
@@ -71,7 +71,7 @@ The Stats page aggregates run data into a dashboard with configurable time inter
 | **Most active agents** | Top 10 workflows by run count |
 | **Run status breakdown** | Distribution across success, failed, cancelled, etc. |
 | **Trigger sources** | Which integrations are firing the most triggers |
-| **Action integrations** | Which integrations are being written to most |
+| **Action integrations** | Which integrations receive the most writes |
 
 ## Notifications
 
@@ -83,9 +83,9 @@ Terse can notify you about run outcomes through multiple channels:
 | **Email** | Action notifications, approval requests, weekly improvement reviews |
 | **In-app** | Pending approvals, sent notification history |
 
-Notifications are configured per-workflow. You choose which action types to notify on (creates, updates, deletes, errors, and approval requests) and Terse delivers to your preferred channel. Slack is used when you have an active Slack destination configured; otherwise, notifications fall back to email.
+You configure notifications per-workflow. Choose which action types to notify on (creates, updates, deletes, errors, and approval requests) and Terse delivers to your preferred channel. Terse uses Slack when you have an active Slack destination configured; otherwise it falls back to email.
 
-Every notification sent is recorded in your notification history, so you have an audit trail of what was delivered and when.
+Terse records every notification it sends in your notification history, so you have an audit trail of what went out and when.
 
 ## How observability feeds self-improvement
 

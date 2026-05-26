@@ -6,26 +6,22 @@ icon: "boxes"
 
 A job is the core building block in Terse. It connects an event (the trigger) to the code that should run when that event happens (the handler). When you deploy a Terse project, you're deploying one or more jobs.
 
-In the SDK, you define jobs with `createJob()` in TypeScript. In the Terse app and across these docs, we call them **workflows**. Same thing, different name.
+In the SDK, you define jobs with `createJob()`. In the Terse app and across these docs, we call them workflows. Same thing, different name.
 
 ## Anatomy of a job
 
 Every job has four parts:
 
-<CodeGroup>
-
-```ts TypeScript
+```ts
 createJob({
     name: "new-deal-enrichment",
-    triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
+    triggers: [Triggers.attio.onRecordCreated({ object: AttioObject.Deal })],
     filter: (event) => event.record.values.stage === "contract-sent",
     onTrigger: async (event) => {
         // your logic here
     }
 })
 ```
-
-</CodeGroup>
 
 ### Name
 
@@ -35,7 +31,7 @@ A unique string identifier. Terse uses this to match the job across deploys, so 
 
 The event that starts the job. A trigger is always tied to an integration (Attio record created, Slack message received, GitHub PR opened) or to the system (cron schedule, webhook). A job can have multiple triggers, but each execution is started by exactly one event.
 
-## Filter (Optional)
+### Filter (optional)
 
 Runs a closure when the event fires and you can decide to skip this particular event.
 
@@ -51,7 +47,7 @@ Trigger fires → Filter (optional) → Handler executes → Run recorded in Act
 
 1. **Trigger fires.** An event arrives from the connected integration or on the configured schedule.
 2. **Filter evaluates.** If you defined a `filter` function, Terse calls it with the event. Return `false` to skip the run entirely. No tokens spent, no side effects.
-3. **Handler executes.** Your `onTrigger` (TypeScript) runs with the event payload and a `TerseAgent`. You control the logic: call tools deterministically, hand off to the model, or both.
+3. **Handler executes.** Your `onTrigger` runs with the event payload and a `TerseAgent`. You control the logic: call tools deterministically, hand off to the model, or both.
 4. **Run is recorded.** Every execution, whether it succeeds or fails, is logged in Activity with the full action trace so you can inspect what happened.
 
 ## Deterministic vs. agentic
@@ -65,48 +61,40 @@ Inside a handler, you have two ways to get things done:
 
 Most production jobs combine both. Use deterministic calls for predictable operations (fetch data, update a record, send a message) and agentic calls when the model adds value (scoring, summarizing, routing).
 
-<CodeGroup>
-
-```ts TypeScript
-onTrigger: async (event: Trigger) => {
+```ts
+onTrigger: async (event) => {
     const agent = TerseAgent.create({
         prompt: "You enrich new deals with research and clear summaries.",
-        skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Apollo.skill()]
-    })
-    // Deterministic: always enrich
-    const company = await agent.tools.apollo.enrichCompany({
-        domain: event.record.values.company_domain
+        skills: [Skills.attio({ object: AttioObject.Deal }), Skills.web()]
     })
 
-    // Agentic: let the model reason about the data
-    const summary = await agent.runAndWait(`Summarize this company for the account owner.\nIndustry: ${company.industry}\nEmployees: ${company.employeeCount}`, event)
+    // Agentic: let the model research and summarize
+    const summary = await agent.runAndWait(
+        `Research ${event.record.values.company_name} and summarize what they do for the account owner.`
+    )
 
     // Deterministic: always write the result back
-    await agent.tools.attio.updateRecord({
-        list: AttioList.Pipeline.NewDeals,
-        recordId: event.record.id,
-        fields: { research_summary: summary }
+    await agent.tools.attio.upsertRecord({
+        object: AttioObject.Deal,
+        matchingAttribute: "record_id",
+        records: [{ record_id: event.record.id, research_summary: summary }]
     })
 }
 ```
-
-</CodeGroup>
 
 ## Filtering events
 
 Not every event needs a full run. Use `filter` to skip events that don't match your criteria before the handler executes.
 
-<CodeGroup>
-
-```ts TypeScript
+```ts
 createJob({
     name: "contract-alerts",
-    triggers: [Attio.onRecordUpdated({ list: AttioList.Pipeline.OpenDeals })],
-    filter: (event: Trigger) => event.record.values.stage === "contract-sent",
-    onTrigger: async (event: Trigger) => {
+    triggers: [Triggers.attio.onRecordUpdated({ object: AttioObject.Deal })],
+    filter: (event) => event.record.values.stage === "contract-sent",
+    onTrigger: async (event) => {
         const agent = TerseAgent.create({
             prompt: "You notify the deal desk when contracts are sent.",
-            skills: [Slack.skill({ channel: SlackChannel.DealDesk })]
+            skills: [Skills.slack({ channel: SlackChannel.DealDesk })]
         })
         await agent.tools.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
@@ -116,17 +104,15 @@ createJob({
 })
 ```
 
-</CodeGroup>
-
 ## Tool approvals
 
-For jobs that write to production systems, you can require human approval before specific tools execute. List the tool names in `toolApprovals` (TypeScript). During local testing, the CLI prompts in your terminal. In production, approval requests appear in the Terse app under **Notifications**.
+For jobs that write to production systems, you can require human approval before specific tools execute. List the tool names in `toolApprovals`. During local testing, the CLI prompts in your terminal. In production, approval requests appear in the Terse app under **Notifications**.
 
 ## Lifecycle
 
 Jobs follow a straightforward path from code to production:
 
-1. **Define.** Register workflows with top-level **`createJob()`** in **`src/terse.jobs.ts`** (or split across files and import them for side effects).
+1. **Define.** Register workflows with top-level `createJob()` in `src/terse.jobs.ts` (or split across files and import them for side effects).
 2. **Generate.** Run `terse generate` to get typed helpers for your integrations.
 3. **Test.** Run `terse test` to execute against real sample events locally.
 4. **Deploy.** Run `terse deploy` to package and host serverlessly. New jobs are created, existing jobs are updated, and removed jobs are cleaned up.

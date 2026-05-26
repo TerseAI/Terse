@@ -4,13 +4,9 @@ description: "Anatomy of src/terse.generated.ts. What terse generate writes, how
 icon: "file-code-2"
 ---
 
-[Context as Code](/context-as-code) is the idea. The **generated SDK** is the artifact.
+[Context as Code](/context-as-code) is the idea. The generated SDK is the artifact.
 
-Running `terse generate` writes a single typed file to your project:
-
-- `src/terse.generated.ts` for TypeScript
-
-Every trigger, skill, deterministic tool wrapper, and real workspace resource (channels, repos, lists, objects, owners) is exported as a typed value. Your workflows import from it. Your coding agent reads it. The compiler enforces it.
+Running `terse generate` writes a single typed file to your project at `src/terse.generated.ts`. Every trigger, skill, deterministic tool wrapper, and real workspace resource (channels, repos, objects, owners) is exported as a typed value. Your workflows import from it. Your coding agent reads it. The compiler enforces it.
 
 <Warning>The generated file is deterministic, overwritten on every `terse generate`, and committed alongside your workflows. Do not hand-edit it.</Warning>
 
@@ -63,83 +59,80 @@ export class Repos {
     } as const
 }
 
-export class AttioList {
+export class AttioObject<TSlug extends string, TRecordValues, TInputValues> {
     constructor(
-        public readonly listId: string,
-        public readonly name: string
+        public readonly apiSlug: TSlug,
+        public readonly name: string,
+        public readonly objectId: string,
+        public readonly attributes: readonly AttioAttributeDefinition[] = []
     ) {}
 
-    static Pipeline = {
-        NewDeals: new AttioList("f1e3c0b2-…", "new-deals"),
-        OpenDeals: new AttioList("8d22a17c-…", "open-deals"),
-        ClosedWon: new AttioList("4b90f54e-…", "closed-won")
-    } as const
+    static Deal = new AttioObject("deals", "deal", "obj_f1e3c0b2…", [/* attributes */])
+    static Company = new AttioObject("companies", "company", "obj_8d22a17c…", [/* attributes */])
 }
 ```
 
 ### Trigger builders and skills
 
-Each integration becomes a namespace of typed trigger builders and a `skill()` constructor. The parameters take resource constants, not strings.
+Triggers and skills are exposed under two umbrella namespaces, with each integration as a nested key. Parameters take resource constants, not strings.
 
 ```ts src/terse.generated.ts
-export const Slack = {
-    /** Trigger on any message in a channel */
-    onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
-        /* … */
+export const Triggers = {
+    slack: {
+        /** Trigger on any message in a channel */
+        onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> { /* … */ },
+        /** Trigger when the Slack app is directly mentioned */
+        onAppMention(opts: { channel: SlackChannel }): TypedTrigger<SlackAppMentionTrigger> { /* … */ }
     },
-    /** Trigger when the Slack app is directly mentioned */
-    onAppMention(opts: { channel: SlackChannel }): TypedTrigger<SlackAppMentionTrigger> {
-        /* … */
+    github: {
+        /** Trigger when a pull request is opened */
+        onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> { /* … */ },
+        /** Trigger when a pull request is merged */
+        onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> { /* … */ }
     },
-    /** Use in `skills[]` */
-    skill(opts: { channel: SlackChannel }): TypedSkill<SlackTools> {
-        /* … */
+    attio: {
+        /** Trigger when a record is created. Pass `object` to scope to a specific Attio object. */
+        onRecordCreated<T extends GeneratedAttioObject>(opts?: { object: T }): TypedTrigger<AttioRecordCreatedTrigger> { /* … */ }
+    },
+    schedule: {
+        /** Run on a cron schedule */
+        cron(opts: { expression: string }): TypedTrigger<CronTrigger> { /* … */ }
     }
 }
 
-export const GitHub = {
-    /** Trigger when a pull request is opened */
-    onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> {
-        /* … */
-    },
-    /** Trigger when a pull request is merged */
-    onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> {
-        /* … */
-    },
-    /** Use in `skills[]` */
-    skill(opts: { repos: Repos[] }): TypedSkill<GitHubTools> {
-        /* … */
-    }
+export const Skills = {
+    /** Slack — send messages and manage threads in a specific channel */
+    slack(opts: { channel: SlackChannel }): TypedSkill<"slack_send_message"> { /* … */ },
+    /** GitHub — read code and pull requests from the given repositories */
+    github(opts: { repos: Repos[] }): TypedSkill<GitHubTools> { /* … */ },
+    /** Attio — query and upsert records on a CRM object */
+    attio(opts: { object: AttioObject<any> }): TypedSkill<AttioTools> { /* … */ }
 }
 ```
 
 ### Deterministic tool wrappers
 
-Every connected integration also generates typed wrappers on `agent.tools.*`, with the exact parameter and return types of each tool. These are the calls you make when you know what to do and don't want to burn tokens letting a model decide.
+Every connected integration also generates typed wrappers on `agent.tools.*`, with the exact parameter and return types of each tool. Use them when you know what to do and don't want to burn tokens letting a model decide.
 
-The same file exports **`toolbox`**: identical typed namespaces, but callable **without** a `TerseAgent` and **not** limited to integrations listed in **`skills`**. Prefer **`toolbox`** for workflows that are purely deterministic.
+`agent.tools.*` is gated by the agent's `skills`: only integrations declared as skills appear on the agent's typed tool object. The same file also exports `toolbox`: identical typed namespaces, but callable **without** a `TerseAgent` and **not** filtered by `skills`. Prefer `toolbox` for workflows that are purely deterministic.
 
 ```ts src/terse.generated.ts
 export type GeneratedTools = {
     slack: {
         /** Send to a channel, existing DM (`channelId`), or member DM (`slackUserId`). */
-        sendMessage(args: {
-            message: string
-            channelId?: string | null
-            slackUserId?: string | null
-        }): Promise<{ message_ts: string; channel_id: string }>
-        /** Update an existing message in place */
-        updateMessage(args: { channelId: string; ts: string; message: string }): Promise<SlackMessageResult>
+        sendMessage(args: SlackSendMessageParams): Promise<SlackSendMessageResult>
+        /** Read message history from a Slack channel or DM */
+        readConversation(args: SlackReadConversationParams): Promise<SlackReadConversationResult>
     }
     attio: {
-        /** Update fields on an Attio record */
-        updateRecord(args: { list: AttioList; recordId: string; fields: Record<string, unknown> }): Promise<AttioRecord>
-        /** Query records in a list */
-        queryRecords(args: { list: AttioList; filter?: AttioFilter }): Promise<AttioRecord[]>
+        /** Query records on an Attio object */
+        queryRecords<T extends GeneratedAttioObject>(args: AttioQueryRecordsParams<T>): Promise<AttioQueryRecordsResult<T>>
+        /** Upsert records on an Attio object */
+        upsertRecord<T extends GeneratedAttioObject>(args: AttioUpsertRecordParams<T>): Promise<AttioUpsertRecordResult<T>>
     }
     github: {
-        /** Open a comment on a pull request */
-        addComment(args: { repo: Repos; pullNumber: number; body: string }): Promise<GithubComment>
+        /** Search code by semantic meaning */
+        searchCode(args: SearchGitHubCodeParams): Promise<SearchGitHubCodeResult>
     }
 }
 
@@ -155,17 +148,17 @@ declare module "terse-sdk" {
 Because every resource, trigger, skill, and tool is an export, your workflow code reads like a description of your business, not a scavenger hunt through admin UIs.
 
 ```ts src/index.ts
-import { TerseAgent, Trigger, createJob } from "terse-sdk"
+import { TerseAgent, createJob } from "terse-sdk"
 
-import { GitHub, Repos, Slack, SlackChannel } from "./terse.generated"
+import { Repos, Skills, SlackChannel, Triggers } from "./terse.generated"
 
 createJob({
     name: "pr-summary-to-slack",
-    triggers: [GitHub.onPROpened({ repo: Repos.TerseAI.Terse })],
-    onTrigger: async (event: Trigger) => {
+    triggers: [Triggers.github.onPROpened({ repo: Repos.TerseAI.Terse })],
+    onTrigger: async (event) => {
         const agent = TerseAgent.create({
             prompt: "You summarize PRs and post concise thread replies in Slack.",
-            skills: [GitHub.skill({ repos: [Repos.TerseAI.Terse] }), Slack.skill({ channel: SlackChannel.Engineering })]
+            skills: [Skills.github({ repos: [Repos.TerseAI.Terse] }), Skills.slack({ channel: SlackChannel.Engineering })]
         })
 
         const message = await agent.tools.slack.sendMessage({
@@ -182,24 +175,19 @@ No channel IDs. No repository numbers. No list UUIDs. The only strings you write
 
 ## Why humans love it
 
-Before the generated SDK, shipping a workflow meant context switching between your editor, your CRM admin, your Slack workspace, and GitHub settings to collect IDs.
-
-- **No more ID hunting.** `SlackChannel.DealDesk` replaces `"C08XYZ1234"`. `Repos.TerseAI.Terse` replaces a numeric repository ID you'd otherwise have to dig out of a URL.
-- **Autocomplete instead of documentation.** Your editor lists every connected channel, list, and repo inline. Hover for its real name and ID.
-- **Renames are tracked.** When `#deal-desk` gets renamed in Slack, the next `terse generate` rewrites the constant. Your code keeps working against `SlackChannel.DealDesk`.
-- **Reviews read like English.** PRs show `AttioList.Pipeline.NewDeals`, not `"f1e3c0b2-…"`. Teammates can actually tell what changed.
+Before the generated SDK, shipping a workflow meant context switching between your editor, your CRM admin, your Slack workspace, and GitHub settings to collect IDs. After it, `SlackChannel.DealDesk` replaces `"C08XYZ1234"` and `Repos.TerseAI.Terse` replaces a repository ID you'd otherwise dig out of a URL. Your editor lists every connected channel, object, and repo inline; hover for the real name. When `#deal-desk` is renamed in Slack, the next `terse generate` rewrites the constant and your code keeps working against `SlackChannel.DealDesk`. PRs read like English: `AttioObject.Deal`, not `"obj_f1e3c0b2…"`.
 
 ## Why coding agents love it even more
 
-The generated SDK is the difference between an agent that guesses and an agent that knows. This is where the compounding wins live.
+The generated SDK is the difference between an agent that guesses and an agent that knows. This is where the compounding wins live:
 
-- **The workspace is the prompt.** Cursor, Claude Code, Windsurf, and Codex see every real channel, repo, and list as an exported symbol. They don't need to ask you "which channel should this post to?" — they pick the one that exists.
-- **No copy-pasted UUIDs.** Agents are notoriously bad at preserving long opaque strings across tool calls. With resource constants, there's nothing to copy.
-- **Hallucinations stop compiling.** If an agent invents `SlackChannel.SalesTeam` or `Repos.TerseAI.Website`, the TypeScript compiler rejects the build. `terse deploy` refuses to ship code that doesn't type-check. There is no path to production for a made-up resource.
-- **Tool parameters are typed end-to-end.** `agent.tools.slack.sendMessage` requires `message` plus either `channelId` or `slackUserId` (or both; `channelId` wins). An agent can't accidentally pass `channel_name` or forget `message` — the signature is enforced.
-- **The agent can read the same file you do.** Point your coding assistant at `src/terse.generated.ts` and it instantly has a complete map of the integrations, resources, and tools available in your workspace. No documentation gap.
+- Cursor, Claude Code, Windsurf, and Codex see every real channel, repo, and list as an exported symbol; they pick the one that exists instead of asking which channel to post to.
+- Agents are notoriously bad at preserving long opaque strings across tool calls. With resource constants, there's nothing to copy.
+- If an agent invents `SlackChannel.SalesTeam` or `Repos.TerseAI.Website`, the TypeScript compiler rejects the build. `terse deploy` refuses to ship code that doesn't type-check, so a made-up resource has no path to production.
+- `agent.tools.slack.sendMessage` requires `message` plus either `channelId` or `slackUserId` (or both; `channelId` wins). The signature is enforced, so an agent can't accidentally pass `channel_name` or forget `message`.
+- Point your coding assistant at `src/terse.generated.ts` and it instantly has a complete map of the integrations, resources, and tools available in your workspace. No documentation gap.
 
-The net effect: coding agents ship working workflows on the first try, without a human looping through "here is the channel ID, here is the list ID, here is the repo name" every time.
+The net effect: coding agents ship working workflows on the first try, without a human looping through "here's the channel ID, here's the list ID, here's the repo name" every time.
 
 ## How it stays in sync
 
