@@ -44,6 +44,16 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
     intro(`terse deploy`)
 
+    const typecheckSpinner = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
+    typecheckSpinner.start("Type-checking")
+    try {
+        await provider.typecheck()
+        typecheckSpinner.stop("Type-check passed")
+    } catch (error) {
+        typecheckSpinner.stop("Type-check failed")
+        throw error
+    }
+
     if (!config.selfHosted) {
         await syncMissingLocalSecrets({ projectId, apiKey })
     }
