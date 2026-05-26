@@ -14,14 +14,12 @@ import { searchRumEventsTool } from "./tools/searchRumEvents"
 
 export class DatadogSkillOutput extends Output<DatadogConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.DATADOG, [
             { tool: searchDatadogLogsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search logs", validateACL: validateSearchDatadogLogs },
             { tool: listRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "List events", validateACL: unrestricted },
             { tool: searchRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Search RUM events", validateACL: unrestricted },
             { tool: aggregateRumEventsTool, isReadOnly: true, integration: IntegrationType.DATADOG, displayName: "Aggregate RUM events", validateACL: unrestricted }
-        ]
-
-        super(OutputConfigType.DATADOG, toolbox)
+        ])
     }
 
     async validateConfig(output: DatadogConfig, _userId: string): Promise<void> {

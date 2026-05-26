@@ -10,8 +10,7 @@ import { imageEditTool } from "./tools/editImage"
 
 export class ImageEditOutput extends Output<ImageEditConfig> {
     constructor() {
-        const toolbox = [{ tool: imageEditTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Edit Image", validateACL: unrestricted }]
-        super(OutputConfigType.IMAGE_EDIT, toolbox)
+        super(OutputConfigType.IMAGE_EDIT, [{ tool: imageEditTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Edit Image", validateACL: unrestricted }])
     }
 
     async validateConfig(_output: ImageEditConfig, _userId: string): Promise<void> {}

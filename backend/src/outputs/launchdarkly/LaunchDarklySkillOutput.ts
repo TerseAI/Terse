@@ -11,12 +11,10 @@ import { listLaunchDarklyFlagsTool, validateListLaunchDarklyFlags } from "./tool
 
 export class LaunchDarklySkillOutput extends Output<LaunchDarklyConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.LAUNCHDARKLY, [
             { tool: listLaunchDarklyFlagsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "List feature flags", validateACL: validateListLaunchDarklyFlags },
             { tool: getLaunchDarklyFlagDetailsTool, isReadOnly: true, integration: IntegrationType.LAUNCHDARKLY, displayName: "Get flag details", validateACL: validateGetLaunchDarklyFlagDetails }
-        ]
-
-        super(OutputConfigType.LAUNCHDARKLY, toolbox)
+        ])
     }
 
     async validateConfig(output: LaunchDarklyConfig, _userId: string): Promise<void> {

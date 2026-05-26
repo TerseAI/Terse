@@ -11,7 +11,7 @@ import { snowflakeExplainQueryTool } from "./tools/explainQuery"
 
 export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.SNOWFLAKE, [
             { tool: snowflakeExplainQueryTool, isReadOnly: true, integration: IntegrationType.SNOWFLAKE, displayName: "Explain query", validateACL: unrestricted },
             {
                 tool: snowflakeExecuteQueryTool,
@@ -21,9 +21,7 @@ export class SnowflakeSkillOutput extends Output<SnowflakeOutputConfig> {
                 displayName: "Execute query",
                 validateACL: unrestricted
             }
-        ]
-
-        super(OutputConfigType.SNOWFLAKE, toolbox)
+        ])
     }
 
     async validateConfig(output: SnowflakeOutputConfig, _userId: string): Promise<void> {}

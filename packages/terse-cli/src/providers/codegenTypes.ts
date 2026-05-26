@@ -1,4 +1,4 @@
-import type { GithubIntegration } from "terse-types"
+import type { GithubIntegration, ToolDefinition } from "terse-types"
 
 interface GitHubRepo {
     id: number
@@ -119,15 +119,6 @@ interface HeyReachCampaignData {
 
 export interface HeyReachInstanceData extends IntegrationInstanceData {
     campaigns: HeyReachCampaignData[]
-}
-
-export interface ToolDefinition {
-    name: string
-    displayName: string
-    description: string
-    integration: string
-    isReadOnly: boolean
-    supportsApproval: boolean
 }
 
 export interface CodegenInput {

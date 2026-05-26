@@ -12,13 +12,11 @@ import { listWorkOSUsersTool } from "./tools/listUsers"
 
 export class WorkOSOutput extends Output<WorkOSOutputConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.WORKOS, [
             { tool: listWorkOSUsersTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List users", validateACL: unrestricted },
             { tool: listWorkOSOrganizationsTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "List organizations", validateACL: unrestricted },
             { tool: getWorkOSUserTool, isReadOnly: true, integration: IntegrationType.WORKOS, displayName: "Get user", validateACL: unrestricted }
-        ]
-
-        super(OutputConfigType.WORKOS, toolbox)
+        ])
     }
 
     async validateConfig(output: WorkOSOutputConfig, _userId: string): Promise<void> {}

@@ -1,4 +1,4 @@
-import { toolsWithIntegrationId } from "terse-types"
+import { type ToolDefinition, toolsWithIntegrationId } from "terse-types"
 
 import type {
     AttioAttributeData,
@@ -13,8 +13,7 @@ import type {
     NotionInstanceData,
     PosthogInstanceData,
     SlackInstanceData,
-    SnowflakeInstanceData,
-    ToolDefinition
+    SnowflakeInstanceData
 } from "../codegenTypes.js"
 
 interface ResourceFieldMapping {
