@@ -16,33 +16,28 @@ The fastest way to get started is `npm install -g terse-cli && terse init my-pro
 
 ## Example
 
+What `terse init` scaffolds in `src/terse.jobs.ts`:
+
 ```ts
-import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
-import { Repos, Skills, SlackChannel, Triggers } from "./terse.generated"
+import { createJob, TerseAgent } from "terse-sdk"
+import { z } from "zod"
+
+import { Triggers } from "./terse.generated"
 
 createJob({
-    name: "Summarize PR and post to Slack",
-    triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
-    onTrigger: async (event: GithubPRTrigger) => {
+    name: "Tell a programming joke example job",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    onTrigger: async (event) => {
         const agent = TerseAgent.create({
-            prompt: "Summarize incoming PRs and post a Block Kit message to Slack.",
-            skills: [
-                Skills.github({ repos: [Repos.MyOrg.MyRepo] }),
-                Skills.slack({ channel: SlackChannel.Engineering })
-            ]
+            prompt: "You are a helpful assistant that tells programming jokes.",
+            skills: []
         })
 
-        // Deterministic tool call. Strongly typed.
-        const message = await agent.tools.slack.sendMessage({
-            channelId: SlackChannel.Engineering.channelId,
-            message: `New PR from ${event.sender.login}`
-        })
+        const response = await agent.runAndWait("Tell me a programming joke.", z.object({
+            joke: z.string()
+        }))
 
-        // Hand off to the agent for judgment.
-        await agent.runAndWait(`
-            Summarize this PR: ${event.formatForAgentRunner()}
-            Reply in a thread to ts: ${message.message_ts}.
-        `)
+        console.log(response.joke)
     }
 })
 ```
