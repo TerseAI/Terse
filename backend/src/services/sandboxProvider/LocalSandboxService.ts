@@ -6,6 +6,7 @@ import os from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
 
+import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, unregisterSandbox } from "./localSandboxLifecycle"
 import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, WriteStream } from "./SandboxService"
 
 const SANDBOX_ROOT = path.join(os.tmpdir(), "terse-sandbox")
@@ -35,6 +36,13 @@ const REGISTRY_IMAGE_MARKER = "__registry__"
  */
 export class LocalSandboxService implements SandboxService<SandboxImage, LocalSandbox> {
     readonly supportsContainerizedRunners = false
+
+    constructor() {
+        // Kill any child processes left alive by a previous backend run before
+        // we hand out new sandboxes. Fire-and-forget; we don't want to block
+        // provider construction on filesystem I/O.
+        void sweepOrphanedSandboxProcesses(SANDBOXES_DIR)
+    }
 
     async getOrCreateApp(name: string): Promise<SandboxApp> {
         return { appId: FAKE_APP_ID, name }
@@ -90,7 +98,9 @@ export class LocalSandbox implements Sandbox {
     constructor(
         readonly sandboxId: string,
         readonly workingDir: string
-    ) {}
+    ) {
+        registerSandbox(this)
+    }
 
     async exec(command: string[], params?: { env?: Record<string, string> }): Promise<ContainerProcess> {
         const [cmd, ...args] = command
@@ -100,6 +110,7 @@ export class LocalSandbox implements Sandbox {
             stdio: ["pipe", "pipe", "pipe"]
         })
         this.children.add(child)
+        void recordChildPid(this.workingDir, child)
         return new ChildContainerProcess(child, () => this.children.delete(child))
     }
 
@@ -118,6 +129,8 @@ export class LocalSandbox implements Sandbox {
             child.kill("SIGTERM")
         }
         this.children.clear()
+        unregisterSandbox(this)
+        await clearPidFile(this.workingDir).catch(() => {})
     }
 
     async snapshotFilesystem(): Promise<{ imageId: string }> {
