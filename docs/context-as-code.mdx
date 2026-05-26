@@ -4,33 +4,33 @@ description: "Terse compiles your workspace into a typed SDK. Workflows referenc
 icon: "lightbulb"
 ---
 
-Most automation platforms treat your workspace as runtime data: every execution rediscovers which channel is which, which list is which, which repo is which. That's fragile for humans and invisible to coding agents.
-
-Terse inverts that. `terse generate` reads your connected integrations and compiles your workspace into typed code. Your workflows import real resources by name, and your coding agent (Cursor, Claude Code, Windsurf) sees the full surface as autocompletions and types.
+Think of it as infrastructure as code, scoped to your workspace. `terse generate` reads your connected integrations and writes a single typed file: every channel, repo, list, and owner becomes a constant your workflow code imports by name. Your coding agent (Cursor, Claude Code, Windsurf) reads the same file and sees the full surface as autocompletions and types.
 
 ## The problem it solves
 
-**At runtime**, without context-as-code, workflows rediscover the workspace on every execution:
+Without a generated SDK, both humans and agents rediscover the workspace on every job.
+
+At runtime, the code looks like this:
 
 ```ts
 const lists = await attio.lists.list()
-const deals = lists.find(list => list.name === "New deals")
+const newDeals = lists.find(list => list.name === "New deals")
 
 const channels = await slack.conversations.list()
-const alertsChannel = channels.find(channel => channel.name === "deal-desk")
+const dealDesk = channels.find(channel => channel.name === "deal-desk")
 
-if (!deals || !alertsChannel) {
+if (!newDeals || !dealDesk) {
     throw new Error("Workspace context drifted")
 }
 ```
 
-This adds latency, wastes tokens, and silently breaks when someone renames a channel.
+This adds latency, costs tokens, and breaks silently when someone renames a channel.
 
-**At build time**, coding agents have no idea what lives in your workspace. They guess at channel names, hallucinate list IDs, and produce workflows you have to manually correct. There's no autocomplete, no type check, and no way for the agent to know what's actually connected.
+At build time, the cost is worse. A coding agent writing this job has no idea what is actually connected. It guesses at channel names, hallucinates list IDs, and produces code you correct by hand. No autocomplete, no type check, no signal to the agent that `#deal-desk` is real and `#sales-team` is not.
 
-## The idea
+## How it works
 
-Compile your workspace into typed code once, then write workflows against it. Resource IDs become constants. Trigger builders and skills become namespaces. Tool wrappers become typed methods on `agent.tools.*`.
+Compile the workspace once, then write against the compiled file. Resource IDs land as typed constants. Each integration exposes a namespace of trigger builders and a `skill()` constructor. Tool wrappers attach to `agent.tools.*` with full parameter and return types.
 
 ```ts
 import { TerseAgent, createJob } from "terse-sdk"
@@ -57,6 +57,9 @@ No runtime discovery. No hardcoded IDs. If an agent or a human references a reso
 <CardGroup cols={2}>
     <Card title="Generated SDK" icon="file-code-2" href="/core-concepts/generated-sdk">
         The anatomy of `terse.generated.ts`, with samples of every export.
+    </Card>
+    <Card title="Hosting & Deployment" icon="cloud-upload" href="/hosting">
+        What `terse deploy` actually does, from ZIP upload to pre-warmed sandbox.
     </Card>
     <Card title="Quickstart" icon="rocket" href="/quickstart">
         Get a workflow live in under 10 minutes.

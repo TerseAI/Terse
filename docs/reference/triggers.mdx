@@ -6,19 +6,23 @@ icon: "zap"
 
 Triggers define the event that starts your workflow. Each trigger is tied to an integration and fires when a specific event occurs. Your `onTrigger` handler receives a typed event object with the payload.
 
-In TypeScript, `terse generate` writes a single **`Triggers`** object in `src/terse.generated.ts`. Import **`Triggers`** and call the nested helpers (for example **`Triggers.github.onPROpened(...)`**, **`Triggers.slack.onMessage(...)`**). System triggers use **`Triggers.schedule`**, **`Triggers.webhook`**, and **`Triggers.webMonitor`** instead of separate `Schedule` / `Webhook` / `WebMonitor` exports.
+In TypeScript, `terse generate` writes a single `Triggers` object in `src/terse.generated.ts`. Import it and call the nested helper for your event (for example `Triggers.github.onPROpened(...)`). Each integration and system trigger has its own section below.
 
 ## Integration triggers
 
 ### GitHub
 
-| Trigger                   | Event type          | Description                |
-| ------------------------- | ------------------- | -------------------------- |
-| `Triggers.github.onPROpened()`     | `GithubPRTrigger`   | A pull request is opened   |
-| `Triggers.github.onPush()`         | `GithubPushTrigger` | Code is pushed to a branch |
-| `Triggers.github.trigger()`        | `GithubTrigger`     | Other GitHub events you configure |
+| Trigger                              | Event type                    | Description                          |
+| ------------------------------------ | ----------------------------- | ------------------------------------ |
+| `Triggers.github.onPush()`           | `GithubPushTrigger`           | Code is pushed to a branch           |
+| `Triggers.github.onPROpened()`       | `GithubPROpenedTrigger`       | A pull request is opened             |
+| `Triggers.github.onPRMerged()`       | `GithubPRMergedTrigger`       | A pull request is merged             |
+| `Triggers.github.onPRClosed()`       | `GithubPRClosedTrigger`       | A pull request is closed             |
+| `Triggers.github.onPRSynchronized()` | `GithubPRSynchronizedTrigger` | New commits are pushed to a PR       |
+| `Triggers.github.onPR()`             | `GithubPRTrigger`             | Any pull request event               |
+| `Triggers.github.trigger()`          | `GithubTrigger`               | Any GitHub event you select with `eventTypes` |
 
-**Config:** Scoped to specific repositories via `repo` parameter.
+Config: Scoped to specific repositories via `repo` parameter.
 
 <CodeGroup>
 ```ts TypeScript
@@ -28,17 +32,19 @@ triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })]
 
 <Expandable title="Event payload">
 
-**All GitHub events include:**
+All GitHub events include:
 
 - `repository` - `{ id, name, owner, defaultBranch }`
+- `repositoryName`, `username`, `installationId`
 - `sender` - `{ login, email }`
-- `commits` - array of `{ sha, message, fileDiffs: [{ filename, diff }] }`
+- `commits` - array of `{ sha, message, name, fileDiffs: [{ filename, diff }] }`
 
-**PR events add:**
+PR events add:
 
-- `pullRequest` - `{ number, title, body, state, merged, head, base, author, url }`
+- `pullRequest` - `{ id, number, title, body, state, merged, head, base, user, author?, url? }`
+- `branch` (optional)
 
-**Push events add:**
+Push events add:
 
 - `branch` - the branch that was pushed to
 
@@ -46,12 +52,15 @@ triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })]
 
 ### Slack
 
-| Trigger             | Event type     | Description                      |
-| ------------------- | -------------- | -------------------------------- |
-| `Triggers.slack.onMessage()` | `SlackTrigger` | A message is posted in a channel |
-| `Triggers.slack.onDm()`      | `SlackTrigger` | A direct message is received     |
+| Trigger                            | Event type                    | Description                                  |
+| ---------------------------------- | ----------------------------- | -------------------------------------------- |
+| `Triggers.slack.onMessage()`       | `SlackMessageTrigger`         | A message is posted in a channel             |
+| `Triggers.slack.onDm()`            | `SlackMessageTrigger`         | A direct message is received                 |
+| `Triggers.slack.onAppMention()`    | `SlackAppMentionTrigger`      | The Slack app is mentioned in a channel      |
+| `Triggers.slack.onReactionAdded()` | `SlackReactionAddedTrigger`   | An emoji reaction is added to a message      |
+| `Triggers.slack.trigger()`         | `SlackTrigger` (union)        | Any Slack event you select with `eventTypes` |
 
-**Config:** Scoped to specific channels or users.
+Config: Scoped to specific channels or users.
 
 <CodeGroup>
 ```ts TypeScript
@@ -63,20 +72,26 @@ triggers: [Triggers.slack.onMessage({ channel: SlackChannel.Engineering })]
   - `channelId`, `channelName` - where the message was posted
   - `userId`, `userName` - who sent it
   - `text` - message content
-  - `timestamp` - Slack message timestamp (also the thread parent timestamp when the message is in a thread)
+  - `timestamp` - this message's Slack `ts`
+  - `threadTimestamp` - parent message's `ts` when this message is in a thread, otherwise `null`
+  - `permalink` - link to the message
+  - `teamId` - the Slack workspace id
   - `channelType` - `"channel"`, `"group"`, `"mpim"`, or `"im"`
-  - `files` - array of attached files with `{ id, name, mimetype, url_private }`
-  - `attachments` - rich message attachments
+  - `files` - array of attached files
+  - `attachments`, `blocks` - rich message content
+  - `reaction`, `itemTimestamp`, `itemChannelId`, `itemUserId`, `itemType` (only on `SlackReactionAddedTrigger`)
 </Expandable>
 
 ### Linear
 
-| Trigger                   | Event type    | Description         |
-| ------------------------- | ------------- | ------------------- |
-| `Triggers.linear.onIssueCreated()` | `LinearIssueCreatedTrigger` | An issue is created |
-| `Triggers.linear.onIssueUpdated()` | `LinearIssueUpdatedTrigger` | An issue is updated |
+| Trigger                              | Event type                     | Description                                   |
+| ------------------------------------ | ------------------------------ | --------------------------------------------- |
+| `Triggers.linear.onIssueCreated()`   | `LinearIssueCreatedTrigger`    | An issue is created                           |
+| `Triggers.linear.onIssueUpdated()`   | `LinearIssueUpdatedTrigger`    | An issue is updated                           |
+| `Triggers.linear.onComment()`        | `LinearCommentCreatedTrigger`  | A comment is added to an issue                |
+| `Triggers.linear.trigger()`          | `LinearTrigger` (union)        | Any Linear event you select with `eventTypes` |
 
-**Config:** Optionally scoped to a team and/or project using generated `LinearTeam` / `LinearProject` constants (same pattern as `SlackChannel` for Slack).
+Config: Optionally scoped to a team and/or project using generated `LinearTeam` / `LinearProject` constants (same pattern as `SlackChannel` for Slack).
 
 <CodeGroup>
 ```ts TypeScript
@@ -85,25 +100,49 @@ triggers: [Triggers.linear.onIssueCreated({ team: LinearTeam.Engineering, projec
 </CodeGroup>
 
 <Expandable title="Event payload">
-  - `data.action` - `"created"` or `"updated"`
-  - `data.actor` - `{ name, email }`
-  - `data.data` - issue details: `{ id, identifier, title, description, priorityLabel, state, team, assignee, labels, url }`
+  - `action` - `"create"`, `"update"`, or `"remove"`
+  - `type` - the entity that fired the event, `"Issue"` or `"Comment"`
+  - `actor` - `{ id, name, email, url, type }`
+  - `createdAt`, `organizationId`, `webhookTimestamp`, `webhookId`, `url?`
+  - `data` - shape depends on `type`. For `"Issue"`: `{ id, identifier, title, description, priorityLabel, state, team, assignee, labels, url, … }`. For `"Comment"`: `{ id, body?, issueId? }`.
 </Expandable>
 
 ### Attio
 
-Connect **Attio** under **Integrations**, configure which Attio events start each workflow in the Terse app, then run **`terse generate`**. When Attio input triggers are enabled for your workspace, **`Triggers.attio`** appears in **`src/terse.generated.ts`**.
+Connect Attio under Integrations, configure which Attio events start each workflow in the Terse app, then run `terse generate`. When Attio input triggers are enabled for your workspace, `Triggers.attio` appears in `src/terse.generated.ts`.
 
-Each helper maps to an **`AttioEventType`** value (also exported from **`terse-sdk`**). Use **`Triggers.attio.trigger({ eventTypes: [...], object?: … })`** when you need several event types or you pick the type at runtime. For record webhooks, pass **`object: AttioObject.YourObject`** to scope deliveries to one CRM object; omit **`object`** on **`onRecordCreated`**, **`onRecordUpdated`**, **`onRecordMerged`**, and **`onRecordDeleted`** when you want the union of every generated object’s attribute shape.
+| Trigger                                          | Event type                              | Description                                  |
+| ------------------------------------------------ | --------------------------------------- | -------------------------------------------- |
+| `Triggers.attio.onRecordCreated()`               | `AttioRecordCreatedTrigger`             | A record is created                          |
+| `Triggers.attio.onRecordUpdated()`               | `AttioRecordUpdatedTrigger`             | A record is updated                          |
+| `Triggers.attio.onRecordMerged()`                | `AttioRecordMergedTrigger`              | Two records are merged                       |
+| `Triggers.attio.onRecordDeleted()`               | `AttioRecordDeletedTrigger`             | A record is deleted                          |
+| `Triggers.attio.onObjectAttributeCreated()`      | `AttioObjectAttributeCreatedTrigger`    | An object attribute is created               |
+| `Triggers.attio.onObjectAttributeUpdated()`      | `AttioObjectAttributeUpdatedTrigger`    | An object attribute is updated               |
+| `Triggers.attio.onListCreated()`                 | `AttioListCreatedTrigger`               | A list is created                            |
+| `Triggers.attio.onListUpdated()`                 | `AttioListUpdatedTrigger`               | A list is updated                            |
+| `Triggers.attio.onListDeleted()`                 | `AttioListDeletedTrigger`               | A list is deleted                            |
+| `Triggers.attio.onListAttributeCreated()`        | `AttioListAttributeCreatedTrigger`      | A list attribute is created                  |
+| `Triggers.attio.onListAttributeUpdated()`        | `AttioListAttributeUpdatedTrigger`      | A list attribute is updated                  |
+| `Triggers.attio.onListEntryCreated()`            | `AttioListEntryCreatedTrigger`          | A list entry is created                      |
+| `Triggers.attio.onListEntryUpdated()`            | `AttioListEntryUpdatedTrigger`          | A list entry is updated                      |
+| `Triggers.attio.onListEntryDeleted()`            | `AttioListEntryDeletedTrigger`          | A list entry is deleted                      |
+| `Triggers.attio.onNoteCreated()`                 | `AttioNoteCreatedTrigger`               | A note is created                            |
+| `Triggers.attio.onNoteContentUpdated()`          | `AttioNoteContentUpdatedTrigger`        | A note's content is updated                  |
+| `Triggers.attio.onNoteUpdated()`                 | `AttioNoteUpdatedTrigger`               | A note is updated                            |
+| `Triggers.attio.onNoteDeleted()`                 | `AttioNoteDeletedTrigger`               | A note is deleted                            |
+| `Triggers.attio.onCommentCreated()`              | `AttioCommentCreatedTrigger`            | A comment is created                         |
+| `Triggers.attio.onCommentResolved()`             | `AttioCommentResolvedTrigger`           | A comment is resolved                        |
+| `Triggers.attio.onCommentUnresolved()`           | `AttioCommentUnresolvedTrigger`         | A resolved comment is reopened               |
+| `Triggers.attio.onCommentDeleted()`              | `AttioCommentDeletedTrigger`            | A comment is deleted                         |
+| `Triggers.attio.onTaskCreated()`                 | `AttioTaskCreatedTrigger`               | A task is created                            |
+| `Triggers.attio.onTaskUpdated()`                 | `AttioTaskUpdatedTrigger`               | A task is updated                            |
+| `Triggers.attio.onTaskDeleted()`                 | `AttioTaskDeletedTrigger`               | A task is deleted                            |
+| `Triggers.attio.onWorkspaceMemberCreated()`      | `AttioWorkspaceMemberCreatedTrigger`    | A workspace member is added                  |
+| `Triggers.attio.onCallRecordingCreated()`        | `AttioCallRecordingCreatedTrigger`      | A call recording is created                  |
+| `Triggers.attio.trigger()`                       | `AttioTrigger` (union)                  | Any Attio events you select with `eventTypes` |
 
-| Area | Examples |
-| ---- | -------- |
-| Records | `Triggers.attio.onRecordCreated()`, `onRecordUpdated()`, `onRecordMerged()`, `onRecordDeleted()` |
-| Lists & entries | `onListCreated()`, `onListEntryCreated()`, `onListEntryUpdated()`, … |
-| Notes & comments | `onNoteCreated()`, `onCommentCreated()`, `onCommentResolved()`, … |
-| Tasks & workspace | `onTaskCreated()`, `onWorkspaceMemberCreated()`, `onCallRecordingCreated()`, … |
-
-**Event types:** Prefer the helper that matches your handler (for example **`AttioRecordCreatedTrigger`**), or **`AttioTrigger`** for the union when you use **`trigger()`**.
+Config: Pass `object: AttioObject.YourObject` on the record helpers (`onRecordCreated`, `onRecordUpdated`, `onRecordMerged`, `onRecordDeleted`) to scope deliveries to a single CRM object. Omit `object` when you want the union of every generated object's attribute shape.
 
 <CodeGroup>
 ```ts TypeScript
@@ -115,15 +154,16 @@ triggers: [Triggers.attio.onRecordCreated({ object: AttioObject.People })]
 
 <Expandable title="Event payload">
 
-Record triggers include a **`record`** object with Attio ids/slugs plus **`values`** (and related fields) shaped from your workspace’s Attio object metadata—flattened for use in **`onTrigger`** and **`filter`**. Other Attio triggers carry event-specific payloads (lists, notes, tasks, and so on). Every event still exposes **`formatForAgentRunner()`** and **`debugLog()`** from **`terse-sdk`**.
+Record triggers include a `record` object with Attio ids/slugs plus `values` (and related fields) shaped from your workspace’s Attio object metadata—flattened for use in `onTrigger` and `filter`. Other Attio triggers carry event-specific payloads (lists, notes, tasks, and so on). Every event still exposes `formatForAgentRunner()` and `debugLog()` from `terse-sdk`.
 
 </Expandable>
 
 ### Gmail
 
-| Trigger              | Event type   | Description             |
-| -------------------- | ------------ | ----------------------- |
-| `Triggers.gmail.onEmail()` | `GmailTrigger` | A new email is received |
+| Trigger                    | Event type             | Description                                  |
+| -------------------------- | ---------------------- | -------------------------------------------- |
+| `Triggers.gmail.onEmail()` | `GmailTrigger`         | A new email is received                      |
+| `Triggers.gmail.trigger()` | `GmailTrigger` (union) | Any Gmail event you select with `eventTypes` |
 
 <CodeGroup>
 ```ts TypeScript
@@ -132,19 +172,21 @@ triggers: [Triggers.gmail.onEmail()]
 </CodeGroup>
 
 <Expandable title="Event payload">
-  - `data.subject` - email subject
-  - `data.from`, `data.to` - sender and recipient
-  - `data.body` - email body
-  - `data.snippet` - short preview
-  - `data.threadId`, `data.messageId` - for threading
-  - `data.attachments` - array of `{ filename, mimeType, data }`
+  - `subject` - email subject
+  - `from`, `to` - sender and recipient
+  - `body` - email body
+  - `snippet` - short preview
+  - `threadId`, `messageId`, `id` - for threading and message lookup
+  - `date`, `internalDate` - timestamps
+  - `labelIds` - Gmail label ids on the message
+  - `attachments` - array of `{ attachmentId, filename, mimeType, isInline, contentId? }`
 </Expandable>
 
 ### HeyReach
 
-HeyReach fires when LinkedIn outreach events occur (messages, connection requests, campaign milestones, and more). Connect HeyReach under **Integrations** in the Terse app, then run **`terse generate`** so **`Triggers.heyReach`** and typed **`HeyReachCampaign`** constants appear in `src/terse.generated.ts`.
+HeyReach fires when LinkedIn outreach events occur (messages, connection requests, campaign milestones, and more). Connect HeyReach under Integrations in the Terse app, then run `terse generate` so `Triggers.heyReach` and typed `HeyReachCampaign` constants appear in `src/terse.generated.ts`.
 
-Each helper maps to one **`HeyReachEventType`** value (also exported from **`terse-sdk`**). Use **`Triggers.heyReach.trigger({ eventType: HeyReachEventType.MESSAGE_REPLY_RECEIVED })`** when you want to pick the event type dynamically.
+Each helper maps to one `HeyReachEventType` value (also exported from `terse-sdk`). Use `Triggers.heyReach.trigger({ eventType: HeyReachEventType.MESSAGE_REPLY_RECEIVED })` when you want to pick the event type dynamically.
 
 | Trigger | Event type |
 | ------- | ---------- |
@@ -160,7 +202,7 @@ Each helper maps to one **`HeyReachEventType`** value (also exported from **`ter
 | `Triggers.heyReach.onCampaignCompleted()` | `HeyReachCampaignCompletedTrigger` |
 | `Triggers.heyReach.onLeadTagUpdated()` | `HeyReachLeadTagUpdatedTrigger` |
 
-**Config:** Pass **`campaigns`** with generated **`HeyReachCampaign`** instances to handle only those campaigns; omit it to receive events from all campaigns.
+Config: Pass `campaigns` with generated `HeyReachCampaign` instances to handle only those campaigns; omit it to receive events from all campaigns.
 
 <CodeGroup>
 ```ts TypeScript
@@ -182,17 +224,30 @@ Shared fields on HeyReach triggers:
 - `postUrl` — present on liked-post events
 - `tags` — present on lead tag updates
 
-Use **`HeyReachTrigger`** as the union type, or the specific trigger type that matches your helper.
+Use `HeyReachTrigger` as the union type, or the specific trigger type that matches your helper.
 
 </Expandable>
 
 ### WorkOS
 
-| Trigger            | Event type      | Description           |
-| ------------------ | --------------- | --------------------- |
-| `Triggers.workOS.trigger()` | `WorkOSTrigger` (union) | A WorkOS event you select with `eventTypes` |
+| Trigger                                  | Event type                                       | Description                                          |
+| ---------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| `Triggers.workOS.onUserCreated()`        | `WorkOSUserCreatedTrigger`                       | A user is created                                    |
+| `Triggers.workOS.onUserUpdated()`        | `WorkOSUserUpdatedTrigger`                       | A user is updated                                    |
+| `Triggers.workOS.onUserDeleted()`        | `WorkOSUserDeletedTrigger`                       | A user is deleted                                    |
+| `Triggers.workOS.onMembershipCreated()`  | `WorkOSOrganizationMembershipCreatedTrigger`     | An organization membership is created                |
+| `Triggers.workOS.onMembershipUpdated()`  | `WorkOSOrganizationMembershipUpdatedTrigger`     | An organization membership is updated                |
+| `Triggers.workOS.onMembershipDeleted()`  | `WorkOSOrganizationMembershipDeletedTrigger`     | An organization membership is deleted                |
+| `Triggers.workOS.onMembershipChanged()`  | `WorkOSMembershipTrigger`                        | Any membership change                                |
+| `Triggers.workOS.onInvitationCreated()`  | `WorkOSInvitationCreatedTrigger`                 | An invitation is created                             |
+| `Triggers.workOS.onInvitationResent()`   | `WorkOSInvitationResentTrigger`                  | An invitation is resent                              |
+| `Triggers.workOS.onInvitationSent()`     | `WorkOSInvitationTrigger`                        | An invitation is created or resent                   |
+| `Triggers.workOS.onInvitationAccepted()` | `WorkOSInvitationAcceptedTrigger`                | An invitation is accepted                            |
+| `Triggers.workOS.onInvitationRevoked()`  | `WorkOSInvitationRevokedTrigger`                 | An invitation is revoked                             |
+| `Triggers.workOS.onOrganizationCreated()`| `WorkOSOrganizationTrigger`                      | An organization is created                           |
+| `Triggers.workOS.trigger()`              | `WorkOSTrigger` (union)                          | Any WorkOS event you select with `eventTypes`        |
 
-**Config:** Filtered by event types (`user.created`, `organization.created`, `organization_membership.created`, `invitation.created`, etc.). Prefer the typed helpers on **`Triggers.workOS`** (for example **`onUserCreated()`**) when they match your use case.
+Config: Use a typed helper for one event, or pass `eventTypes` to `trigger()` for multiple.
 
 <CodeGroup>
 ```ts TypeScript
@@ -204,9 +259,9 @@ triggers: [Triggers.workOS.trigger({ eventTypes: [WorkOSEventType.USER_CREATED] 
 
 <Expandable title="Event payload">
   - `eventId`, `createdAt` - event metadata
-  - `user` - present on user events: `{ id, email, firstName, lastName }`
-  - `membership` - present on membership events: `{ id, userId, organizationId, role, status }`
-  - `invitation` - present on invitation events: `{ id, email, organizationId, state }`
+  - `user` - present on user events (and optional on invitation events): `{ id, email, firstName?, lastName?, emailVerified, profilePictureUrl? }`
+  - `membership` - present on membership events: `{ id, userId, organizationId, role: { slug }, status }`
+  - `invitation` - present on invitation events: `{ id, email, organizationId, inviterEmail?, state, acceptedAt? }`
   - `organization` - present on organization events: `{ id, name }`
 </Expandable>
 
@@ -277,20 +332,20 @@ type MonitorEvent = WebMonitorTriggerFor<typeof outputSchema>
 
 The monitor matches by intent, not keywords. Write your query as a natural sentence describing what you care about — not a search string.
 
-**Do:**
+Do:
 
 - Write in plain language: `"What are a16z's latest investments?"`
 - Track narratives and social buzz: `"What are people saying on Twitter about Cloud agents?"`
 - Be specific about subject and signal: `"FDA approval decisions for GLP-1 drugs"`
 - Combine related signals: `"OpenAI or Anthropic model releases and benchmark results"`
 
-**Don't:**
+Don’t:
 
 - Use Boolean operators (`AND`, `OR`, `NOT`) — this is not a search engine
 - Include specific dates — monitors track new developments going forward, not history
 - Write keyword dumps: `"acme corp acme funding raise series B"`
 
-**Choosing frequency:**
+Choosing frequency:
 
 | Frequency | Best for                                                        |
 | --------- | --------------------------------------------------------------- |
@@ -313,7 +368,9 @@ triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })] // Every Monday 
 </CodeGroup>
 
 <Expandable title="Event payload">
-    - `data.isManualTrigger` - whether the run was triggered manually from the dashboard - `data.manualContext` - optional context string provided on manual triggers
+  - `isManualTrigger` - whether the run was triggered manually from the dashboard
+  - `manualContext` - optional context string provided on manual triggers
+  - `inputId` - id of the schedule input
 </Expandable>
 
 ### Webhook
@@ -322,7 +379,7 @@ triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })] // Every Monday 
 | --------------------- | ---------------- | --------------------------------------------------------- |
 | `Triggers.webhook.onRequest()` | `WebhookTrigger` | Fires when an HTTP request hits the generated webhook URL |
 
-Webhook URLs are auto-generated on deploy and remain stable across redeploys. After **`terse deploy`**, the CLI prints that URL for each affected workflow so you can copy it straight into your caller or load test.
+Webhook URLs are auto-generated on deploy and remain stable across redeploys. After `terse deploy`, the CLI prints that URL for each affected workflow so you can copy it straight into your caller or load test.
 
 Pass a type argument to `Triggers.webhook.onRequest<YourPayload>()` so `onTrigger` and `filter` see your JSON body shape on `event.body` (defaults to `unknown` when omitted).
 

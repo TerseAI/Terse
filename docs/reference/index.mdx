@@ -2,17 +2,17 @@
 title: "Reference"
 ---
 
-## CLI and SDK
-
-<CardGroup cols={3}>
-  <Card title="CLI reference" icon="terminal" href="/reference/cli">
-    Scaffold, generate, test, run, and deploy TypeScript from the terminal.
+<CardGroup cols={2}>
+  <Card title="CLI" icon="terminal" href="/reference/cli">
+    Scaffold, generate, test, run, and deploy from the terminal.
   </Card>
-  <Card
-    title="TypeScript SDK reference"
-    icon="braces"
-    href="/reference/typescript-sdk"
-  >
-    Look up `createJob()`, triggers, skills, and generated helpers.
+  <Card title="TypeScript SDK" icon="braces" href="/reference/typescript-sdk">
+    `createJob`, `TerseAgent`, `toolbox`, and the rest of the runtime surface.
+  </Card>
+  <Card title="Triggers" icon="zap" href="/reference/triggers">
+    Every trigger you can pass to `createJob({ triggers })`, with payload shapes.
+  </Card>
+  <Card title="Skills & tools" icon="wrench" href="/reference/skills">
+    Every skill and the tools each one exposes to the agent.
   </Card>
 </CardGroup>
