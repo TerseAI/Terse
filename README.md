@@ -32,7 +32,6 @@
 
   <p>
     <a href="https://skills.sh/terseai/terse"><img alt="Listed on skills.sh" src="https://img.shields.io/badge/skills.sh-TerseAI%2FTerse-000000?style=flat&labelColor=000000"></a>
-    <a href="https://skillsplayground.com/skills/by/TerseAI/"><img alt="Skills Playground" src="https://skillsplayground.com/badges/author/TerseAI.svg"></a>
     <a href="https://github.com/TerseAI/Terse/tree/main/packages/terse-claude-plugin"><img alt="Claude Code skill" src="https://img.shields.io/badge/Claude%20Code-skill-d97757?logo=anthropic&logoColor=white"></a>
   </p>
 
@@ -80,6 +79,34 @@ npx skills add TerseAI/Terse
 ```
 
 That's it. `terse deploy` ships to Terse's hosted runtime — no infra to stand up.
+
+## Example
+
+What `terse init` scaffolds in `src/terse.jobs.ts`:
+
+```ts
+import { createJob, TerseAgent } from "terse-sdk"
+import { z } from "zod"
+
+import { Triggers } from "./terse.generated"
+
+createJob({
+    name: "Tell a programming joke example job",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    onTrigger: async (event) => {
+        const agent = TerseAgent.create({
+            prompt: "You are a helpful assistant that tells programming jokes.",
+            skills: []
+        })
+
+        const response = await agent.runAndWait("Tell me a programming joke.", z.object({
+            joke: z.string()
+        }))
+
+        console.log(response.joke)
+    }
+})
+```
 
 ## Integrations
 

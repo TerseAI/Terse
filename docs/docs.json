@@ -25,6 +25,7 @@
             {
                 "group": "Core Concepts",
                 "pages": [
+                    "core-concepts/projects",
                     "core-concepts/jobs",
                     "core-concepts/skills-and-integrations",
                     "core-concepts/generated-sdk",

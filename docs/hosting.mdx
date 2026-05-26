@@ -14,6 +14,20 @@ When you run `terse deploy`, your workflow goes from local code to a hosted, tri
 
 Each execution runs in its own isolated [Modal](https://modal.com) sandbox with a **project-scoped**, short-lived API token that is removed when the run finishes (and may also carry an expiration time). Your code and credentials are never shared across runs or organizations.
 
+## Secrets
+
+Secrets are **project-scoped** and **write-only**. When you add a secret with `terse secrets add OPENAI_API_KEY`, or upload a whole `.env` file with `terse secrets import .env`, Terse encrypts the value and injects it into that project's sandbox as an environment variable at run time. Other projects in your org cannot see it, and once stored the value cannot be read back out by anyone, including the CLI and any AI coding agent you point at the project. That's deliberate: a leaked API key or a compromised laptop never exposes the rest of your secrets. See [Projects](/core-concepts/projects) for how project scope works across deploys, jobs, and integrations.
+
+The tradeoff: `terse test` cannot pull your hosted secrets onto your machine for local runs. Keep a local `.env` file (gitignored) in your project directory with the same variable names, and the CLI loads it automatically when you run `terse test`. The deploy step excludes `.env` from the upload, so the hosted runtime uses whatever you stored with `terse secrets`.
+
+```bash
+echo "OPENAI_API_KEY=sk-..." >> .env   # values for local `terse test`
+terse secrets import .env              # mirror them into the hosted vault
+terse deploy
+```
+
+After deploy, rotate or remove values with `terse secrets add <NAME>` to overwrite, or `terse secrets remove <NAME>` to delete. Run `terse secrets list` to see which names are set on the server; the values themselves stay sealed.
+
 ## What gets uploaded
 
 The CLI respects standard ignore patterns. The following are always excluded:
