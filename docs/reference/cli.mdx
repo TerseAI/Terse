@@ -186,6 +186,7 @@ What happens:
 - New workflows are created on the platform
 - Existing workflows are updated
 - Workflows removed from your code are removed from Terse
+- For each deployed job, the CLI prints a link to its page in the app (`/app/jobs/<id>`)
 - For each workflow that includes a webhook trigger, the CLI prints a Webhook URL line after deploy so you can wire up external systems without opening the app
 - For managed (non-self-hosted) projects with a local `.env`, the CLI offers to upload any variables not already stored as project secrets before the deploy runs. Use [`terse secrets`](#terse-secrets) for finer-grained control.
 
@@ -386,11 +387,11 @@ Run `terse generate` again after you connect or disconnect an integration, after
 
 ## Improvements
 
-Terse surfaces suggested code patches for your deployed agents based on past runs. These commands let you browse and apply them locally.
+Terse surfaces suggested code patches for your deployed jobs based on past runs. These commands let you browse and apply them locally.
 
 ### `terse list improvements`
 
-Lists pending improvements grouped by agent.
+Lists pending improvements grouped by job.
 
 ```bash
 terse list improvements

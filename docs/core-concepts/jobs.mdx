@@ -6,7 +6,9 @@ icon: "boxes"
 
 A job is the core building block in Terse. It connects an event (the trigger) to the code that should run when that event happens (the handler). When you deploy a Terse project, you're deploying one or more jobs.
 
-In the SDK, you define jobs with `createJob()`. Across these docs, we sometimes call them workflows, and the Terse app surfaces them as agents. Same thing, different names.
+In the SDK, you define jobs with `createJob()`. Across these docs, we often call them **workflows** in prose; in the Terse app they appear under each project as **jobs** (for example `https://app.useterse.ai/app/jobs/<id>`). `TerseAgent` is separate: it is the in-handler runtime for agentic loops, not the deployed job itself.
+
+<Note>App URLs moved from `/app/agents/*` to `/app/jobs/*`. Update bookmarks and deep links accordingly.</Note>
 
 ## Anatomy of a job
 

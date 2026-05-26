@@ -15,7 +15,8 @@
 
 - Use "workflow" for code-defined automations deployed with the CLI.
 - The TypeScript SDK method is `createJob()`. In prose, prefer "workflow" for the product concept and show the real SDK method name in code samples.
-- Use "agent" for UI-created automations, or when the product UI itself uses the word "Agents".
+- In the Terse app, use **job** for a deployed automation (routes under `/app/jobs`, breadcrumb label **Jobs**). Do not call deployed automations "agents" in UI-facing copy.
+- Reserve **agent** for `TerseAgent`, agentic loops (`run` / `runAndWait`), `agent.tools.*`, and comparisons to other AI agent platforms—not for the deployed job entity.
 - Use "integration" for a connected external system such as Attio, Apollo, Slack, Outreach, or Snowflake.
 - Use "skill" for the capabilities a workflow can use after you connect an integration and run code generation.
 - Use "trigger" for the event or schedule that starts a workflow.
@@ -39,13 +40,13 @@
 - State prerequisites before commands that depend on integrations, sample events, or an API token
 - Call out generated files clearly. Do not imply that users should hand-edit `src/terse.generated.ts`.
 - When the UI and CLI overlap, explain which source of truth owns the configuration
-- Use the live UI label for buttons, tabs, and sidebar items. If the SDK still says "job" in code, explain that once and then keep using "workflow" in prose.
+- Use the live UI label for buttons, tabs, and sidebar items. The SDK and CLI use **job** in identifiers (`createJob`, `terse test my-job`); in prose you can still say "workflow" after explaining that once.
 
 ## Content boundaries
 
 - Prioritize external developer docs for TypeScript workflows, CLI workflows, templates, and the parts of the web UI needed to operate them.
-- Document the user-visible app areas that matter for code workflows: Home, Workflows, Integrations, Activity, Stats, Notifications, and Profile.
-- Mention UI agents only when users need orientation or migration context.
+- Document the user-visible app areas that matter for code workflows: Home, Jobs (per project), Integrations, Activity, Stats, Notifications, API Tokens, and Profile.
+- Mention the old `/app/agents/*` URLs only when users need migration context.
 - Treat templates and comparison pages as first-class product docs, not side content.
 - Frame planned GTM integrations as waitlist or coming soon. Keep the current path clear.
 - Do not document internal admin tools, internal-only templates, implementation details of backend services, or unreleased product behavior.
