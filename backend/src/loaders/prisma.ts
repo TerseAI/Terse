@@ -1,10 +1,10 @@
 import { PrismaClient } from "@prisma/client"
 
-import { PrismaClient as LocalAuthPrismaClient } from "../generated/local-auth-prisma/index.js"
+import { PrismaClient as LocalPrismaClient } from "../generated/local-prisma/index.js"
 import { settings } from "../settings"
 
 let prisma: PrismaClient | undefined
-let localAuthPrisma: LocalAuthPrismaClient | undefined
+let localPrisma: LocalPrismaClient | undefined
 
 export function db(): PrismaClient {
     if (!prisma) {
@@ -13,15 +13,14 @@ export function db(): PrismaClient {
     return prisma
 }
 
-export function localAuthDb(): LocalAuthPrismaClient {
-    if (!localAuthPrisma) {
-        localAuthPrisma = new LocalAuthPrismaClient({
-            datasources: { db: { url: settings.localAuth.dbUrl } }
+export function localDb(): LocalPrismaClient {
+    if (!localPrisma) {
+        localPrisma = new LocalPrismaClient({
+            datasources: { db: { url: settings.local.dbUrl } }
         })
     }
-    return localAuthPrisma
+    return localPrisma
 }
 
-// Export the PrismaClient types for convenience
 export type { PrismaClient }
-export type { LocalAuthPrismaClient }
+export type { LocalPrismaClient }

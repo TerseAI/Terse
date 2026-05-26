@@ -5,7 +5,7 @@ import { UserProfile, UserSession } from "terse-types/types"
 import { promisify } from "util"
 
 import logger from "../../common/logger"
-import { localAuthDb } from "../../loaders/prisma"
+import { localDb } from "../../loaders/prisma"
 import { settings } from "../../settings"
 
 import AuthProvider, { CookieAuthOutcome } from "./AuthProvider"
@@ -39,7 +39,7 @@ export class LocalAuthProvider implements AuthProvider {
 
     async getUser(userId: string): Promise<UserProfile | null> {
         await ensureLocalUser()
-        const identity = await localAuthDb().local_identities.findUnique({ where: { id: userId } })
+        const identity = await localDb().local_identities.findUnique({ where: { id: userId } })
         if (!identity) return null
         return identityToProfile(identity)
     }
@@ -95,7 +95,7 @@ export class LocalAuthProvider implements AuthProvider {
 // ─────────────── helpers ───────────────
 
 async function ensureLocalUser(): Promise<{ user: UserSession; profile: UserProfile }> {
-    const db = localAuthDb()
+    const db = localDb()
     const username = await readSystemUsername()
 
     // Atomic singleton bootstrap. Fixed IDs make upsert idempotent across

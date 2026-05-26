@@ -6,8 +6,8 @@ import os from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
 
-import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, unregisterSandbox } from "./localSandboxLifecycle"
 import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, WriteStream } from "./SandboxService"
+import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, unregisterSandbox } from "./localSandboxLifecycle"
 
 const SANDBOX_ROOT = path.join(os.tmpdir(), "terse-sandbox")
 const IMAGES_DIR = path.join(SANDBOX_ROOT, "images")

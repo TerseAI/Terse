@@ -3,9 +3,10 @@ import { IntegrationType } from "terse-types/Integrations"
 import { z } from "zod"
 
 import logger from "../../common/logger"
-import { SecretManagerClient } from "../../common/secretManagerClient"
+import { GoogleSecretManagerClient } from "../../ee/services/secretManager/GoogleSecretManagerClient"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { settings } from "../../settings"
 
 const clearOldSecretVersionsRequestSchema = z.object({
     dryRun: z.preprocess(value => {
@@ -87,6 +88,11 @@ export async function refreshAllTokens(req: Request, res: Response) {
 export async function clearOldSecretVersions(req: Request, res: Response) {
     logger.info("Clearing old secret versions cron job triggered")
 
+    if (!settings.gcp) {
+        logger.info("[ClearOldSecretVersions] Skipping: gcp not configured (self-host has no per-version concept)")
+        return res.status(200).json({ skipped: true, reason: "gcp_not_configured" })
+    }
+
     const parsedInput = clearOldSecretVersionsRequestSchema.safeParse({
         dryRun: req.query.dryRun ?? req.body?.dryRun
     })
@@ -95,7 +101,7 @@ export async function clearOldSecretVersions(req: Request, res: Response) {
         return res.status(400).json({ error: "Invalid request", details: parsedInput.error.flatten() })
     }
 
-    const secretService = SecretManagerClient.getInstance()
+    const secretService = new GoogleSecretManagerClient()
 
     try {
         const report = await secretService.clearOldSecretVersions(parsedInput.data)

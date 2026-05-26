@@ -46,11 +46,13 @@ export const settings = {
         webhookSecret: requireSecretMinLength("WORKOS_WEBHOOK_SECRET")
     })),
 
-    // Local auth — SQLite-backed identities. Used by LocalAuthProvider when WorkOS isn't configured.
-    // Note: Prisma CLI also needs LOCAL_AUTH_DB_URL set in .env for migration commands (it can't
+    // Local SQLite — holds everything cloud delegates to external services (auth, secrets, ...).
+    // Used by Local* providers when the cloud equivalent isn't configured.
+    // Note: Prisma CLI also needs LOCAL_DB_URL set in .env for migration commands (it can't
     // read this TS default). The runtime default below is a defensive fallback only.
-    localAuth: {
-        dbUrl: optionalEnv("LOCAL_AUTH_DB_URL", "file:./prisma/local-auth/local-auth.db")
+    local: {
+        dbUrl: optionalEnv("LOCAL_DB_URL", "file:./prisma/local/local.db"),
+        secretsEncryptionKey: optionalEnv("LOCAL_SECRETS_ENCRYPTION_KEY")
     },
 
     openai: {
@@ -133,12 +135,12 @@ export const settings = {
         redirectUri: requireEnv("ATTIO_REDIRECT_URI")
     })),
 
-    // Google Cloud Platform (GCP)
-    gcp: {
-        serviceAccountBase64: optionalEnv("GCP_SERVICE_ACCOUNT_BASE64"),
-        projectId: optionalEnv("GCP_PROJECT_ID"),
+    // Google Cloud Platform — opt-in. Powers GoogleSecretManagerClient, Cloud Scheduler, GCS uploads.
+    gcp: optionalIntegrationSettings(["GCP_SERVICE_ACCOUNT_BASE64", "GCP_PROJECT_ID"], () => ({
+        serviceAccountBase64: requireEnv("GCP_SERVICE_ACCOUNT_BASE64"),
+        projectId: requireEnv("GCP_PROJECT_ID"),
         region: optionalEnv("GCP_REGION", "us-central1")
-    },
+    })),
 
     // Google Cloud Storage
     gcs: {
@@ -208,7 +210,7 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 // Export individual always-on settings for convenience. Opt-in integration blocks
 // (gmail, githubApp, notion, slack, linear, attio, cloudScheduler, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
-export const { jwt, gemini, urls, gcp, gcs, optional } = settings
+export const { jwt, gemini, urls, gcs, optional } = settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively
