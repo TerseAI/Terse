@@ -6,11 +6,12 @@
         "ERROR": "/oauth/error"
     },
     "ONBOARD": "/onboard",
-    "AGENTS": {
-        "BY_ID": "/app/agents/:id",
-        "IMPROVEMENTS": "/app/agents/:id?tab=improvements",
-        "ALERTS": "/app/agents/:id?tab=setup&section=alerts",
-        "RUN_HISTORY": "/app/agents/:id?tab=history&runId=:runId"
+    "JOBS": {
+        "LIST": "/app/jobs",
+        "BY_ID": "/app/jobs/:id",
+        "IMPROVEMENTS": "/app/jobs/:id?tab=improvements",
+        "ALERTS": "/app/jobs/:id?tab=setup&section=alerts",
+        "RUN_HISTORY": "/app/jobs/:id?tab=history&runId=:runId"
     },
     "PROJECTS": {
         "BY_ID": "/app/projects/:id",

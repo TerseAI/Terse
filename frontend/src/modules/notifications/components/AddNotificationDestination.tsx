@@ -39,7 +39,7 @@ export function AddNotificationDestination({ trigger, externalOpen, onExternalOp
             <DialogContent className="max-w-lg flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold">Add Notification Destination</DialogTitle>
-                    <DialogDescription>Choose where agent notifications should be sent.</DialogDescription>
+                    <DialogDescription>Choose where job notifications should be sent.</DialogDescription>
                 </DialogHeader>
                 <NotificationDestinationForm onSuccess={() => handleOpenChange(false)} onCancel={() => handleOpenChange(false)} />
             </DialogContent>

@@ -52,7 +52,7 @@ export class EventProcessor {
         // Get integration type from event itself (no hardcoded checks)
         const integrationType = this.inputEvent.integrationType
 
-        // Find all active agents for this user (already includes all config relations)
+        // Find all active jobs for this user (already includes all config relations)
         const agents: AgentWithRelations[] = await db().automations.findMany({
             where: {
                 organization_id: this.user.organizationId,

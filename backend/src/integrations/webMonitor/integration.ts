@@ -283,7 +283,7 @@ export class WebMonitorTriggerRuntime extends TriggerRuntime<WebMonitorTrigger<u
             source: extractWebMonitorSource(this.data.query, firstSourceUrl),
             title: extractWebMonitorTitle(this.data.payload, this.data.rawPayload),
             subheader: extractWebMonitorSubheader(this.data.query, this.data.eventDate),
-            url: firstSourceUrl || buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: this.automationId })
+            url: firstSourceUrl || buildRoute(FrontendRoutes.JOBS.BY_ID, { id: this.automationId })
         }
     }
 }

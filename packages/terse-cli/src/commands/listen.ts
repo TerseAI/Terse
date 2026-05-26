@@ -71,7 +71,7 @@ function mapListenStreamError(error: unknown, jobName: string): unknown {
         }
         if (error.status === 404) {
             return new CliError("listen_local_job_not_deployed", `Job "${jobName}" is not deployed in this project.`, {
-                detail: "Run `terse deploy` to deploy it, then re-run `terse listen`. Without a deployed agent, no events will be forwarded for this job."
+                detail: "Run `terse deploy` to deploy it, then re-run `terse listen`. Until the job is deployed, no events will be forwarded."
             })
         }
         return new CliError("listen_stream_failed", "Could not open the listen stream.", {

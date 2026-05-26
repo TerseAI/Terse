@@ -130,7 +130,7 @@ function HeyReachCardContent({ integrations, isLoading }: { integrations: Array<
                     <HeyReachIcon />
                 </div>
                 <p className="text-sm text-muted-foreground">No HeyReach integrations connected</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Connect your HeyReach account to trigger on LinkedIn outreach events</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Connect your HeyReach account</p>
             </div>
         )
     }

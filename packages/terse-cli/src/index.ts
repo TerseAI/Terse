@@ -79,8 +79,8 @@ const testCommand = program
     .command("test")
     .description("Fetch sample events and run a job interactively")
     .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
-    .option("-v, --verbose", "Show agent stream output", true)
-    .option("--no-verbose", "Hide agent stream output")
+    .option("-v, --verbose", "Show job stream output", true)
+    .option("--no-verbose", "Hide job stream output")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -128,8 +128,8 @@ testCommand
     .option("--id <id>", "Sample event id from `terse test list`")
     .option("--event <json>", "Inline serialized event JSON string")
     .option("--event-file <path>", "Path to a JSON file containing the serialized event")
-    .option("-v, --verbose", "Show agent stream output", true)
-    .option("--no-verbose", "Hide agent stream output")
+    .option("-v, --verbose", "Show job stream output", true)
+    .option("--no-verbose", "Hide job stream output")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -154,8 +154,8 @@ program
     .command("listen")
     .description("Stream live trigger events from a deployed Terse job to your local code (great for self-hosted webhook iteration)")
     .argument("[job-name]", "Name of the job to listen on (auto-selects if only one local job exists)")
-    .option("-v, --verbose", "Show agent stream output", true)
-    .option("--no-verbose", "Hide agent stream output")
+    .option("-v, --verbose", "Show job stream output", true)
+    .option("--no-verbose", "Hide job stream output")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -165,7 +165,7 @@ Examples:
   $ terse listen my-webhook-job             # listen for events on a specific job
 
 Notes:
-  - Each event the live backend dispatches to the deployed agent is mirrored to this stream.
+  - Each event the live backend dispatches to the deployed job is mirrored to this stream.
   - Production processing is unchanged — \`terse listen\` is a tap, not a redirect.
   - The job must already be deployed; if it isn't, the command exits with a clear error.
 `
@@ -337,8 +337,8 @@ if (isCliRunCommandEnabled()) {
         .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
         .option("--event <json>", "Serialized event JSON string")
         .option("--event-file <path>", "Path to a JSON file containing the serialized event")
-        .option("-v, --verbose", "Show agent stream output (use --no-verbose to silence)", true)
-        .option("--no-verbose", "Hide agent stream output")
+        .option("-v, --verbose", "Show job stream output (use --no-verbose to silence)", true)
+        .option("--no-verbose", "Hide job stream output")
         .option(...ENTRY_FILE_OPTION)
         .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
             await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile, opts?.verbose)
@@ -367,7 +367,7 @@ program
     .command("list")
     .description("List Terse resources")
     .addCommand(
-        new Command("improvements").description("List pending improvements across all agents").action(async () => {
+        new Command("improvements").description("List pending improvements across all jobs").action(async () => {
             await listImprovements()
         })
     )

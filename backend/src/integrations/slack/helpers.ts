@@ -219,8 +219,8 @@ export function formatNotificationMessage(runAction: RunHistoryAction, context: 
 }
 
 export function formatRunFailureNotificationMessage(context: RunFailureNotificationContext): SlackMessage {
-    const runHistoryLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: context.agentId, runId: context.runId })}` : undefined
-    const agentSettingsLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.AGENTS.ALERTS, { id: context.agentId })}` : undefined
+    const runHistoryLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.JOBS.RUN_HISTORY, { id: context.agentId, runId: context.runId })}` : undefined
+    const agentSettingsLink = settings.urls.frontend ? `${settings.urls.frontend}${buildRoute(FrontendRoutes.JOBS.ALERTS, { id: context.agentId })}` : undefined
     const errorSummary = context.errorMessage.length > 300 ? `${context.errorMessage.slice(0, 297)}...` : context.errorMessage
     let text: string
     switch (context.failureState.tier) {
@@ -275,7 +275,7 @@ export async function sendSlackApprovalMessage(
     let runHistoryLink: string | undefined
     if (automationId) {
         const frontendUrl = settings.urls.frontend
-        runHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: automationId, runId })}`
+        runHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.JOBS.RUN_HISTORY, { id: automationId, runId })}`
     }
 
     const blocks = createApprovalMessage({
@@ -399,7 +399,7 @@ export async function updateSlackApprovalMessage(
     let runHistoryLink: string | undefined
     if (automationId && runId) {
         const frontendUrl = settings.urls.frontend
-        runHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: automationId, runId })}`
+        runHistoryLink = `${frontendUrl}${buildRoute(FrontendRoutes.JOBS.RUN_HISTORY, { id: automationId, runId })}`
     }
 
     const blocks = createUpdatedApprovalMessage({

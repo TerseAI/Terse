@@ -1,32 +1,18 @@
 import { apiTokensKey } from "terse-types/InvalidationKeys"
 import { ApiToken } from "terse-types/types"
 
-import { FeatureFlag, FeatureFlagService } from "../../common/featureFlags"
 import { createApiToken as createTokenInDb, getApiTokensForUser } from "../../modules/auth/helpers/apiTokens"
 import { emitCacheInvalidationWithKey } from "../../services/CacheInvalidationService"
 
 import { deleteApiTokenById, findUserApiToken, updateApiTokenName } from "./repository"
 
 const API_TOKENS_INVALIDATION_KEY = apiTokensKey()[0]
-const featureFlagService = FeatureFlagService.getInstance()
 
 export class ApiTokenNotFoundError extends Error {
     constructor() {
         super("API token not found")
         this.name = "ApiTokenNotFoundError"
     }
-}
-
-export class SdkInterfaceDisabledError extends Error {
-    constructor() {
-        super("SDK interface is not enabled for your account")
-        this.name = "SdkInterfaceDisabledError"
-    }
-}
-
-export async function assertSdkInterfaceEnabled(userEmail: string): Promise<void> {
-    const enabled = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.SDK_INTERFACE, userEmail, { email: userEmail })
-    if (!enabled) throw new SdkInterfaceDisabledError()
 }
 
 function invalidateApiTokens(organizationId: string | null | undefined): void {

@@ -31,9 +31,9 @@ export async function applyImprovement(improvementId?: string, opts?: NonInterac
     const apiKey = readApiKeyOrBail()
 
     const spinner = createSpinner()
-    spinner.start("Fetching agents and improvements")
+    spinner.start("Fetching jobs and improvements")
     const agentsWithImprovements = await fetchAgentsWithImprovements(apiKey)
-    spinner.stop(`Loaded ${agentsWithImprovements.length} agent${agentsWithImprovements.length === 1 ? "" : "s"}`)
+    spinner.stop(`Loaded ${agentsWithImprovements.length} job${agentsWithImprovements.length === 1 ? "" : "s"}`)
 
     const target = improvementId ? findImprovementById(agentsWithImprovements, improvementId) : await promptForImprovement(agentsWithImprovements)
 
@@ -56,9 +56,9 @@ export async function listImprovements(): Promise<void> {
     const apiKey = readApiKeyOrBail()
 
     const spinner = createSpinner()
-    spinner.start("Fetching agents and improvements")
+    spinner.start("Fetching jobs and improvements")
     const agentsWithImprovements = await fetchAgentsWithImprovements(apiKey)
-    spinner.stop(`Loaded ${agentsWithImprovements.length} agent${agentsWithImprovements.length === 1 ? "" : "s"}`)
+    spinner.stop(`Loaded ${agentsWithImprovements.length} job${agentsWithImprovements.length === 1 ? "" : "s"}`)
 
     const pendingTotal = agentsWithImprovements.reduce((sum, { improvements }) => sum + pendingOnly(improvements).length, 0)
     if (pendingTotal === 0) {
@@ -81,7 +81,7 @@ export async function listImprovements(): Promise<void> {
 
 async function promptForImprovement(agentsWithImprovements: AgentWithImprovements[]): Promise<{ agent: Agent; improvement: AgentImprovement } | null> {
     if (agentsWithImprovements.length === 0) {
-        log.warn("No agents found. Deploy an agent first with `terse deploy`.")
+        log.warn("No jobs found. Deploy a job first with `terse deploy`.")
         return null
     }
 
@@ -89,7 +89,7 @@ async function promptForImprovement(agentsWithImprovements: AgentWithImprovement
 
     const agentId = abortIfCancelled(
         await select<string>({
-            message: "Choose an agent",
+            message: "Choose a job",
             options: agentsWithImprovements.map(({ agent, improvements }) => {
                 const pending = pendingOnly(improvements).length
                 const countLabel = `${pending} pending improvement${pending === 1 ? "" : "s"}`

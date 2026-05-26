@@ -1,6 +1,8 @@
 import { Link, useLocation, useParams } from "react-router-dom"
 
 import { ChevronDownIcon } from "lucide-react"
+import { buildRoute } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { useAgent } from "@/modules/agents/api/useAgents"
 import { useAgents } from "@/modules/agents/api/useAgents"
@@ -15,8 +17,8 @@ const routeLabels: Record<string, string> = {
     "": "Home",
     app: "Home",
     activity: "Activity Feed",
-    agents: "Agents",
-    new: "New Agent",
+    jobs: "Jobs",
+    new: "New Job",
     integrations: "Integrations",
     notifications: "Notifications",
     "api-tokens": "API Tokens",
@@ -35,7 +37,7 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
     const pathSegments = location.pathname.split("/").filter(Boolean)
 
     // Get channel if we're on an channel detail page
-    const channelId = params.id && location.pathname.includes("/agents/") && params.id !== "new" ? params.id : null
+    const channelId = params.id && location.pathname.includes("/jobs/") && params.id !== "new" ? params.id : null
     const { agent, isLoading } = useAgent(channelId)
 
     // Get project if we're on a project detail page
@@ -64,8 +66,8 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
 
             items.push(<BreadcrumbSeparator key={`sep-${i}`} />)
 
-            // Special handling for agent routes
-            if (segment === "agents") {
+            // Special handling for job routes
+            if (segment === "jobs") {
                 // Check if next segment is an ID or 'new'
                 const nextSegment = appSegments[i + 1]
 
@@ -74,14 +76,14 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
                     items.push(
                         <BreadcrumbItem key="channels">
                             <BreadcrumbLink asChild>
-                                <Link to="/app/agents">Agents</Link>
+                                <Link to={FrontendRoutes.JOBS.LIST}>Jobs</Link>
                             </BreadcrumbLink>
                         </BreadcrumbItem>
                     )
                     items.push(<BreadcrumbSeparator key="sep-new" />)
                     items.push(
                         <BreadcrumbItem key="new-channel">
-                            <BreadcrumbPage>New Agent</BreadcrumbPage>
+                            <BreadcrumbPage>New Job</BreadcrumbPage>
                         </BreadcrumbItem>
                     )
                     break // We've handled both segments
@@ -103,7 +105,7 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
                     // Just the channels list page
                     items.push(
                         <BreadcrumbItem key="channels">
-                            <BreadcrumbPage>Agents</BreadcrumbPage>
+                            <BreadcrumbPage>Jobs</BreadcrumbPage>
                         </BreadcrumbItem>
                     )
                     break
@@ -152,9 +154,9 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
         return null
     }
 
-    // Agent and project detail pages manage their own header unless explicitly rendered inline there.
+    // Job and project detail pages manage their own header unless explicitly rendered inline there.
     const appSegments = pathSegments.filter(seg => seg !== "app")
-    if (!inline && (appSegments[0] === "agents" || appSegments[0] === "projects") && appSegments.length >= 2) {
+    if (!inline && (appSegments[0] === "jobs" || appSegments[0] === "projects") && appSegments.length >= 2) {
         return null
     }
 
@@ -195,7 +197,7 @@ function ChannelDropdownMenu() {
     if (isLoading || !agents.length) {
         return (
             <BreadcrumbLink asChild>
-                <Link to="/app/agents">Agents</Link>
+                <Link to={FrontendRoutes.JOBS.LIST}>Jobs</Link>
             </BreadcrumbLink>
         )
     }
@@ -203,13 +205,13 @@ function ChannelDropdownMenu() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-1 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5">
-                Agents
+                Jobs
                 <ChevronDownIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
                 {agents.map(agent => (
                     <DropdownMenuItem key={agent.id}>
-                        <Link to={`/app/agents/${agent.id}`}>{agent.name}</Link>
+                        <Link to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: agent.id })}>{agent.name}</Link>
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>
