@@ -49,7 +49,7 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                     <button
-                        onClick={() => navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: run.agentId }))}
+                        onClick={() => navigate(buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId }))}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[160px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                         title={run.agentName}
                     >

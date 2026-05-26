@@ -395,7 +395,7 @@ function formatEventType(eventType: SentNotificationEventType): string {
         case SentNotificationEventType.RUN_FAILURE:
             return "Run failure"
         case SentNotificationEventType.WEEKLY_REVIEW:
-            return "Weekly agent review"
+            return "Weekly job review"
         default:
             throw eventType satisfies never
     }
@@ -447,7 +447,7 @@ function SentNotificationRow({ notification }: { notification: SentNotification 
                                 </a>
                             )}
                         </span>
-                        {shouldShowAgent && <span className="truncate text-xs text-muted-foreground">Agent: {normalizedAgentName}</span>}
+                        {shouldShowAgent && <span className="truncate text-xs text-muted-foreground">Job: {normalizedAgentName}</span>}
                     </div>
                 </div>
             </TableCell>
@@ -505,9 +505,6 @@ function EmptySentNotificationsRow() {
             <TableCell className="px-4 py-8 align-middle" colSpan={3}>
                 <div className="mx-auto flex max-w-md flex-col gap-1 text-center">
                     <span className="text-sm font-medium text-foreground">No notifications sent yet</span>
-                    <span className="text-sm text-muted-foreground">
-                        When agents send alerts or approval requests to your destinations, each delivery will show up in this table with status and timing.
-                    </span>
                 </div>
             </TableCell>
         </TableRow>
@@ -581,7 +578,7 @@ function NotificationSettingsForm({ notificationSettings, mutateSettings }: Noti
         try {
             await BackendProvider.updateNotificationSettings(values.agentDefaultNotifications, values.weeklyAgentImprovements, applyToAllAgents)
             void mutateSettings()
-            toast.success(applyToAllAgents ? "Notification settings updated for all agents" : "Notification settings updated")
+            toast.success(applyToAllAgents ? "Notification settings updated for all jobs" : "Notification settings updated")
         } catch (err) {
             const message = err instanceof AxiosError && typeof err.response?.data?.error === "string" ? err.response.data.error : "Something went wrong. Please try again."
             setError(message)
@@ -684,7 +681,7 @@ function NotificationSettingsForm({ notificationSettings, mutateSettings }: Noti
                             <FormItem className="pt-2">
                                 <div className="flex items-center justify-between gap-3">
                                     <Label htmlFor="weekly-improvements" className="text-sm font-normal">
-                                        Receive weekly agent improvement email
+                                        Receive weekly job improvement email
                                     </Label>
                                     <FormControl>
                                         <Switch id="weekly-improvements" checked={field.value} onCheckedChange={field.onChange} disabled={isLoading} />
@@ -714,8 +711,8 @@ function NotificationSettingsForm({ notificationSettings, mutateSettings }: Noti
             <Dialog open={isApplyToAllDialogOpen} onOpenChange={handleDialogOpenChange}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Apply to all agents?</DialogTitle>
-                        <DialogDescription>Do you want to apply these default notification event changes to every agent in your organization?</DialogDescription>
+                        <DialogTitle>Apply to all jobs?</DialogTitle>
+                        <DialogDescription>Do you want to apply these default notification event changes to every job in your organization?</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => handleDialogOpenChange(false)} disabled={isLoading}>
@@ -731,7 +728,7 @@ function NotificationSettingsForm({ notificationSettings, mutateSettings }: Noti
                                     Saving...
                                 </>
                             ) : (
-                                "Apply to all agents"
+                                "Apply to all jobs"
                             )}
                         </Button>
                     </DialogFooter>

@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState } from "react"
 
 import { Check, Copy, KeyRound, Pencil, Plus, Trash2 } from "lucide-react"
-import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { ApiToken } from "terse-types/types"
 
 import { Button } from "@/components/ui/button"
@@ -12,28 +10,17 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
 import { BackendProvider } from "@/lib/http"
 import { useApiTokens } from "@/modules/apiTokens/api/useApiTokens"
 import { formatRelativeTime, getFullTimestamp } from "@/utils/time"
 
 export default function ApiTokensPage() {
-    const navigate = useNavigate()
-    const showSdkInterface = useFeatureFlag(FeatureFlags.SDK_INTERFACE)
     const { apiTokens, isError, mutate } = useApiTokens()
 
     const [showCreateDialog, setShowCreateDialog] = useState(false)
     const [editingToken, setEditingToken] = useState<ApiToken | null>(null)
     const [deletingToken, setDeletingToken] = useState<ApiToken | null>(null)
     const [createdRawToken, setCreatedRawToken] = useState<string | null>(null)
-
-    useEffect(() => {
-        if (!showSdkInterface) {
-            navigate(FrontendRoutes.APP, { replace: true })
-        }
-    }, [showSdkInterface, navigate])
-
-    if (!showSdkInterface) return null
 
     const isLoading = apiTokens === undefined && !isError
     const hasTokens = apiTokens && apiTokens.length > 0

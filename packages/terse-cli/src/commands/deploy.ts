@@ -6,6 +6,7 @@ import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
 import { ApiRoutes, SdkDeployStage, buildRoute, sdkDeployRequestBodySchema, validateSecretName, validateSecretValue } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { ProjectSecretUpsertRequest, ProjectSecretsImportResponse, ProjectSecretsListResponse, SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 
 import { ApiError, fetchWithAuth, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
@@ -91,8 +92,8 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
         for (const r of deployResult.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
-            const agentUrl = `${FRONTEND_URL}/app/agents/${r.automationId}`
-            log.step(`${verb}: ${chalk.bold(r.jobName)}  ${chalk.dim(agentUrl)}`)
+            const jobUrl = `${FRONTEND_URL}${buildRoute(FrontendRoutes.JOBS.BY_ID, { id: r.automationId })}`
+            log.step(`${verb}: ${chalk.bold(r.jobName)}  ${chalk.dim(jobUrl)}`)
             if (r.triggers) {
                 for (const t of r.triggers) {
                     if (t.metadata?.webhookUrl) {

@@ -155,7 +155,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 improvementsCreated += improvementRecords.length
 
                 if (improvementRecords.length > 0) {
-                    const improvementsPath = buildRoute(FrontendRoutes.AGENTS.IMPROVEMENTS, { id: automation.id })
+                    const improvementsPath = buildRoute(FrontendRoutes.JOBS.IMPROVEMENTS, { id: automation.id })
                     const improvementsUrl = settings.urls.frontend ? `${settings.urls.frontend}${improvementsPath}` : improvementsPath
                     const group = emailGroups.get(automation.user.id)!
                     group.agents.push({

@@ -8,7 +8,7 @@ export type RunWithEvents = RunHistoryRecord & { chat?: RunChatHistory; triggerE
 
 export function printRuns(jobName: string, agentId: string, items: RunWithEvents[], total: number): void {
     console.log(chalk.cyan(`\n  History for job: ${jobName}`))
-    console.log(chalk.dim(`  Agent: ${agentId} — ${items.length} of ${total} run${total === 1 ? "" : "s"}\n`))
+    console.log(chalk.dim(`  Job: ${agentId} — ${items.length} of ${total} run${total === 1 ? "" : "s"}\n`))
 
     if (items.length === 0) {
         console.log(chalk.dim("  No runs match the requested filters.\n"))

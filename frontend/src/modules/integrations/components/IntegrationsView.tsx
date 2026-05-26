@@ -71,11 +71,11 @@ function NoIntegrations() {
                     <FileText className="text-primary" />
                 </EmptyMedia>
                 <EmptyTitle>No active integrations</EmptyTitle>
-                <EmptyDescription>Connect Slack, GitHub, and other providers from an agent&apos;s setup. Once linked, active integrations show here for a quick overview.</EmptyDescription>
+                <EmptyDescription>Connect Slack, GitHub, and other providers from a job's setup. Once linked, active integrations show here for a quick overview.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
                 <Button size="sm" asChild>
-                    <Link to={FrontendRoutes.HOME}>Go to agents</Link>
+                    <Link to={FrontendRoutes.HOME}>Go to jobs</Link>
                 </Button>
             </EmptyContent>
         </Empty>

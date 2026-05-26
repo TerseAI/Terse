@@ -12,7 +12,7 @@ export function RunHistoryChatEmptyMessages() {
                         <MessageSquare className="text-primary" />
                     </EmptyMedia>
                     <EmptyTitle className="text-base">No messages for this run</EmptyTitle>
-                    <EmptyDescription>Chat turns show up when the agent exchanges messages during this execution. Some runs only record tool steps without a conversation transcript.</EmptyDescription>
+                    <EmptyDescription>Chat turns show up when the job logs tool calls or messages from agents.</EmptyDescription>
                 </EmptyHeader>
             </Empty>
         </div>
