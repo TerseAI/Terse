@@ -13,14 +13,12 @@ import { searchSessionsTool, validateSearchPosthogSessions } from "./tools/searc
 
 export class PosthogSkillOutput extends Output<PosthogConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.POSTHOG, [
             { tool: searchLogsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs", validateACL: validateSearchPosthogLogs },
             { tool: searchSessionsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions", validateACL: validateSearchPosthogSessions },
             { tool: getSessionEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events", validateACL: validateGetPosthogSessionEvents },
             { tool: searchEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events", validateACL: validateSearchPosthogEvents }
-        ]
-
-        super(OutputConfigType.POSTHOG, toolbox)
+        ])
     }
 
     async validateConfig(output: PosthogConfig, _userId: string): Promise<void> {

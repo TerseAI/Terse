@@ -12,12 +12,11 @@ import { webSearchTool } from "./tools/webSearchTool"
 
 export class WebOutput extends Output<WebConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.WEB, [
             { tool: webSearchTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Web Search", validateACL: unrestricted },
             { tool: webExtractTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Extract Page", validateACL: unrestricted },
             { tool: webResearchTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Research", validateACL: unrestricted }
-        ]
-        super(OutputConfigType.WEB, toolbox)
+        ])
     }
 
     async validateConfig(_output: WebConfig, _userId: string): Promise<void> {}

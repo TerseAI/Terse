@@ -14,13 +14,12 @@ import { slackSendMessageTool, validateSlackSendMessage } from "./tools/sendMess
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.SLACK_CHANNEL, [
             { tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message", validateACL: validateSlackSendMessage },
             { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users", validateACL: unrestricted },
             { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels", validateACL: unrestricted },
             { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation }
-        ]
-        super(OutputConfigType.SLACK_CHANNEL, toolbox)
+        ])
     }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {

@@ -10,8 +10,7 @@ import { gmailSendEmailTool } from "./tools/sendEmail"
 
 export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
-        const toolbox = [{ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email", validateACL: unrestricted }]
-        super(OutputConfigType.GMAIL, toolbox)
+        super(OutputConfigType.GMAIL, [{ tool: gmailSendEmailTool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: "Send email", validateACL: unrestricted }])
     }
 
     async validateConfig(output: GmailOutputConfig, _userId: string): Promise<void> {}

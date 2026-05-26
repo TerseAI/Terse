@@ -13,12 +13,11 @@ import { attioUpsertRecordTool, validateAttioUpsertRecord } from "./tools/upsert
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
-        const toolbox = [
+        super(OutputConfigType.ATTIO, [
             { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: unrestricted },
             { tool: attioQueryRecordsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Query records", validateACL: validateAttioQueryRecords },
             { tool: attioUpsertRecordTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Upsert record", validateACL: validateAttioUpsertRecord }
-        ]
-        super(OutputConfigType.ATTIO, toolbox)
+        ])
     }
 
     async validateConfig(output: AttioOutputConfig, _userId: string): Promise<void> {
