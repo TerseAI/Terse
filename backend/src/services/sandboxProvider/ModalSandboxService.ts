@@ -22,6 +22,14 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         tokenSecret: this.config.tokenSecret
     })
 
+    getProjectPath(_sandbox: ModalSandbox): string {
+        return "/opt/terse-sdk-run/project"
+    }
+
+    getDependencyCachePath(_sandbox: ModalSandbox, runtime: string): string {
+        return `/opt/terse-sdk-cache/${runtime}/project`
+    }
+
     async getOrCreateApp(name: string): Promise<SandboxApp> {
         const t0 = Date.now()
         try {

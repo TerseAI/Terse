@@ -1,7 +1,7 @@
 import logger from "../../common/logger"
 import { settings } from "../../settings"
 
-import { InMemorySandboxService } from "./InMemorySandboxService"
+import { LocalSandboxService } from "./LocalSandboxService"
 import { ModalSandboxService } from "./ModalSandboxService"
 import { SandboxService } from "./SandboxService"
 
@@ -10,8 +10,8 @@ const sandboxProvider: SandboxService = (() => {
         logger.info("Using sandbox provider: modal")
         return new ModalSandboxService()
     }
-    logger.info("Using sandbox provider: in-memory (single-process, no containers)")
-    return new InMemorySandboxService()
+    logger.info("Using sandbox provider: local (subprocess, no container isolation)")
+    return new LocalSandboxService()
 })()
 
 export function getSandboxProvider(): SandboxService {

@@ -61,7 +61,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     async prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void> {
         await context.ensureSandboxCommand(
             "copy cached node_modules",
-            `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && cp -R ${context.escapeShellArg(`${this.getTemplateDir()}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
+            `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && cp -R ${context.escapeShellArg(`${context.templateDir}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
         )
     }
 
@@ -79,10 +79,6 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         )
 
         return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --no-verbose`))
-    }
-
-    private getTemplateDir(): string {
-        return "/opt/terse-sdk-cache/typescript/project"
     }
 
     private detectPackageManager(archive: SdkProjectArchive): "npm" | "pnpm" {

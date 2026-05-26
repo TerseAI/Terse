@@ -165,7 +165,7 @@ export const settings = {
         improvementWorkspaceId: requireEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
     },
 
-    // Modal — opt-in. Used by ModalSandboxService; absent falls through to InMemorySandboxService.
+    // Modal — opt-in. Used by ModalSandboxService; absent falls through to LocalSandboxService.
     modal: optionalIntegrationSettings(["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"], () => ({
         tokenId: requireEnv("MODAL_TOKEN_ID"),
         tokenSecret: requireEnv("MODAL_TOKEN_SECRET")

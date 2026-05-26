@@ -9,6 +9,9 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     deleteImage(imageId: string): Promise<void>
 
     getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<S>
+
+    getProjectPath(sandbox: S): string
+    getDependencyCachePath(sandbox: S, runtime: string): string
 }
 
 export interface SandboxApp {
